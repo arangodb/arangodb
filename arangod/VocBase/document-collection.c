@@ -1895,6 +1895,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
+  int res;
   bool waitForSync;
   bool isVolatile;
 
@@ -1948,6 +1949,18 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
     return NULL;
   }
+
+  // save the parameter block (within create, no need to lock)
+  res = TRI_SaveCollectionInfo(collection->_directory, parameter);
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->_directory, TRI_last_error());
+    
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection); // will free document
+
+    return NULL;
+  }
+
 
   return document;
 }

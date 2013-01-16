@@ -1452,7 +1452,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   assert(parameter);
   name = parameter->_name;
 
-
   // check that the name does not contain any strange characters
   if (! TRI_IsAllowedCollectionName(parameter->_isSystem, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -1644,7 +1643,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     // remove dangling .json.tmp file if it exists
-    tmpFile = TRI_Concatenate4String(collection->_path, "/", TRI_COL_PARAMETER_FILE, ".tmp");
+    tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_COL_PARAMETER_FILE, ".tmp");
     if (tmpFile != NULL) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);
