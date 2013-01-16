@@ -50,7 +50,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
-      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(64 * 1024 * 1024) {
+      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -87,8 +87,9 @@ namespace triagens {
           case (IN_WRITE): {
             size_t bytesWritten = 0;
 
+            TRI_set_errno(TRI_ERROR_NO_ERROR);
             if (! _connection->handleWrite(remainingTime, (void*) (_writeBuffer.c_str() + _written), _writeBuffer.length() - _written, &bytesWritten)) {
-              setErrorMessage("::send() failed", errno);
+              setErrorMessage(TRI_last_error(), false);
               this->close();
             }
             else {
@@ -104,6 +105,7 @@ namespace triagens {
           case (IN_READ_BODY):
           case (IN_READ_CHUNKED_HEADER):
           case (IN_READ_CHUNKED_BODY): {
+            TRI_set_errno(TRI_ERROR_NO_ERROR);
             if (_connection->handleRead(remainingTime, _readBuffer)) {
               switch (_state) {
                 case (IN_READ_HEADER):
@@ -123,7 +125,7 @@ namespace triagens {
               }
             }
             else {
-              setErrorMessage("handleRead() failed", errno);
+              setErrorMessage(TRI_last_error(), false);
               this->close();
             }
             break;
@@ -316,6 +318,7 @@ namespace triagens {
               
               // reset connection 
               this->close();
+              _state = DEAD;
           
               return false;              
             }
@@ -383,9 +386,9 @@ namespace triagens {
           // failed: too many bytes
           
           setErrorMessage("Content-Length > max packet size found!", true);
- 
           // reset connection 
           this->close();
+          _state = DEAD;
           
           return false;
         }
