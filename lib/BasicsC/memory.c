@@ -40,6 +40,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief threshold for producing malloc warnings
+///
 /// this is only active if zone debug is enabled. Any malloc operations that
 /// try to alloc more memory than the threshold will be logged so we can check
 /// why so much memory is needed
@@ -47,6 +48,25 @@
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
 #define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief macros for producing log output
+///
+/// these will include the location of the problematic if we are in zone debug 
+/// mode, and will not include it if in non debug mode
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+
+#define ZONE_DEBUG_LOCATION "in %s:%d"
+#define ZONE_DEBUG_PARAMS ,file, line 
+
+#else
+
+#define ZONE_DEBUG_LOCATION 
+#define ZONE_DEBUG_PARAMS 
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +185,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #ifdef TRI_ENABLE_ZONE_DEBUG
   // warn in the case of very big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
-    LOG_WARNING("big malloc action: %llu bytes in %s:%d", (unsigned long long) n, file, line);
+    LOG_WARNING("big malloc action: %zu bytes in %s:%d", (size_t) n, file, line);
   }
 
   m = malloc((size_t) n + sizeof(uintptr_t));
@@ -179,16 +199,21 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
     }
 
     if (CoreReserve == NULL) {
-      printf("FATAL: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+      fprintf(stderr, 
+              "FATAL: failed to allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!", 
+              (size_t) n, 
+              (int) zone->_zid
+              ZONE_DEBUG_PARAMS); 
       exit(EXIT_FAILURE);
     }
 
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL("failed to allocate memory in zone '%d' of size '%ld', retrying!",
-              (int) zone->_zid,
-              (unsigned long) n);
+    LOG_FATAL("failed to allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+              (size_t) n, 
+              (int) zone->_zid
+              ZONE_DEBUG_PARAMS); 
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
     return TRI_AllocateZ(zone, n, set, file, line);
@@ -244,11 +269,11 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   p -= sizeof(uintptr_t);
 
   if (* (uintptr_t*) p != zone->_zid) {
-    printf("MEMORY ZONE: mismatch in TRI_Reallocate(%s,%d), old '%d', new '%d'\n",
-           file,
-           line,
-           (int) * (uintptr_t*) p,
-           (int) zone->_zid);
+    LOG_WARNING("memory zone mismatch in TRI_Reallocate in %s:%d, old zone %d, new zone %d",
+                file,
+                line,
+                (int) * (uintptr_t*) p,
+                (int) zone->_zid);
   }
 
   p = realloc(p, (size_t) n + sizeof(uintptr_t));
@@ -262,16 +287,21 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     }
 
     if (CoreReserve == NULL) {
-      printf("FATAL: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+      fprintf(stderr, 
+              "FATAL: failed to re-allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!", 
+              (size_t) n, 
+              zone->_zid
+              ZONE_DEBUG_PARAMS); 
       exit(EXIT_FAILURE);
     }
 
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL("failed to allocate memory in zone '%d' of size '%ld', retrying!",
-              (int) zone->_zid,
-              (unsigned long) n);
+    LOG_FATAL("failed to re-allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+              (size_t) n, 
+              (int) zone->_zid
+              ZONE_DEBUG_PARAMS);
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
     return TRI_ReallocateZ(zone, m, n, file, line);
@@ -297,24 +327,30 @@ void TRI_FreeZ (TRI_memory_zone_t* zone, void* m, char const* file, int line) {
 #else
 void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 #endif
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
   char* p;
 
   p = (char*) m;
+  
+  if (p == NULL) {
+    LOG_ERROR("freeing nil ptr " ZONE_DEBUG_LOCATION ZONE_DEBUG_PARAMS);
+  }
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
   // zone->_zid is a uint32_t but we'll decrease by sizeof(uintptr_t) bytes for good alignment everywhere
   p -= sizeof(uintptr_t);
 
   if (* (uintptr_t*) p != zone->_zid) {
-    printf("MEMORY ZONE: mismatch in TRI_Free(%s,%d), old '%d', new '%d'\n",
-           file,
-           line,
-           (int) * (uintptr_t*) p,
-           (int) zone->_zid);
+    LOG_WARNING("memory zone mismatch in TRI_Free " ZONE_DEBUG_LOCATION ", old zone %d, new %d"
+                ZONE_DEBUG_PARAMS, 
+                (int) * (uintptr_t*) p,
+                (int) zone->_zid);
   }
-#endif
 
   free(p);
+#else
+  free(m);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +368,7 @@ void TRI_SystemFree (void* p) {
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
   if (p == NULL) {
-    printf("MEMORY ZONE: freeing nil ptr\n");
+    LOG_ERROR("freeing nil ptr in %s:%d", file, line);
   }
 #endif
   free(p);
@@ -353,13 +389,14 @@ void TRI_InitialiseMemory () {
 
     TriUnknownMemZone._zid = 1;
     TriUnknownMemZone._failed = false;
-    TriUnknownMemZone._failable = false;
+    TriUnknownMemZone._failable = true;
 
     CoreReserve = malloc(reserveSize);
 
     if (CoreReserve == NULL) {
-      fprintf(stderr, "FATAL: cannot allocate initial core reserve of size %ld, giving up!\n",
-              (unsigned long) reserveSize);
+      fprintf(stderr, 
+              "FATAL: cannot allocate initial core reserve of size %zu, giving up!\n", 
+              (size_t) reserveSize);
     }
   }
 }
