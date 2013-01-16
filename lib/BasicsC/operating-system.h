@@ -442,6 +442,8 @@ typedef int socket_t;
 #define TRI_ALIGNOF_VOIDP                   4
 #endif
 
+#undef  TRI_HAVE_ANONYMOUS_MMAP            
+
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
 #define snprintf                        _snprintf
