@@ -54,7 +54,7 @@
 static void InitCollection (TRI_vocbase_t* vocbase,
                             TRI_collection_t* collection,
                             char* directory,
-                            TRI_col_info_t* info) {
+                            const TRI_col_info_t* const info) {
   assert(collection);
 
   memset(collection, 0, sizeof(TRI_collection_t));
@@ -510,7 +510,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t* dst, TRI_col_info_t* src) {
+void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const src) {
   assert(dst);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
@@ -546,15 +546,71 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the full directory name for a collection
+///
+/// it is the caller's responsibility to check if the returned string is NULL
+/// and to free it if not. 
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetDirectoryCollection (char const* path,
+                                  const TRI_col_info_t* const parameter) {
+  char* filename;
+
+  assert(path);
+  assert(parameter);
+  
+  // shape collections use just the name, e.g. path/SHAPES
+  if (parameter->_type == TRI_COL_TYPE_SHAPE) {
+    filename = TRI_Concatenate2File(path, parameter->_name);
+  }
+  // other collections use the collection identifier
+  else if (TRI_IS_DOCUMENT_COLLECTION(parameter->_type)) {
+    char* tmp1;
+    char* tmp2;
+
+    tmp1 = TRI_StringUInt64(parameter->_cid);
+    if (tmp1 == NULL) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+
+    tmp2 = TRI_Concatenate2String("collection-", tmp1);
+    if (tmp2 == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+
+    filename = TRI_Concatenate2File(path, tmp2);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
+  }
+  // oops, unknown collection type
+  else {
+    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
+    return NULL;
+  }
+
+  if (filename == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // might be NULL
+  return filename;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
                                         TRI_collection_t* collection,
                                         char const* path,
-                                        TRI_col_info_t* parameter) {
+                                        const TRI_col_info_t* const parameter) {
   char* filename;
-  int res;
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
@@ -576,58 +632,10 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // shape collection use the name
-  if (parameter->_type == TRI_COL_TYPE_SHAPE) {
-    filename = TRI_Concatenate2File(path, parameter->_name);
-    if (filename == NULL) {
-    
-      LOG_ERROR("cannot create collection '%s', out of memory", path);
-      return NULL;
-    }
-  }
 
-  // simple collection use the collection identifier
-  else if (TRI_IS_DOCUMENT_COLLECTION(parameter->_type)) {
-    char* tmp1;
-    char* tmp2;
-
-    tmp1 = TRI_StringUInt64(parameter->_cid);
-    if (tmp1 == NULL) {
-      LOG_ERROR("cannot create collection '%s', out of memory", path);
-
-      return NULL;
-    }
-
-    tmp2 = TRI_Concatenate2String("collection-", tmp1);
-    if (tmp2 == NULL) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-      LOG_ERROR("cannot create collection '%s', out of memory", path);
-
-      return NULL;
-    }
-
-    filename = TRI_Concatenate2File(path, tmp2);
-    if (filename == NULL) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-      LOG_ERROR("cannot create collection '%s', out of memory", path);
-
-      return NULL;
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-  }
-
-  // uups
-  else {
-    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
-
-    LOG_ERROR("cannot create collection '%s' in '%s': unknown type '%d'",
-              parameter->_name,
-              path,
-              (unsigned int) parameter->_type);
-
+  filename = TRI_GetDirectoryCollection(path, parameter);
+  if (filename == NULL) {
+    LOG_ERROR("cannot create collection '%s'", TRI_last_error());
     return NULL;
   }
 
@@ -635,7 +643,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   if (TRI_ExistsFile(filename)) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
-    LOG_ERROR("cannot create collection '%s' in '%s', filename already exists",
+    LOG_ERROR("cannot create collection '%s' in '%s', directory already exists",
               parameter->_name, filename);
     
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -656,16 +664,6 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // save the parameter block (within create, no need to lock)
-  res = TRI_SaveCollectionInfo(filename, parameter);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot save collection parameter '%s': '%s'", filename, TRI_last_error());
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-    return NULL;
-  }
-
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
@@ -678,11 +676,12 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     }
   }
 
+  // we are passing filename to this struct, so we must not free it if you use the struct later
   InitCollection(vocbase, collection, filename, parameter);
   /* PANAIA: 1) the parameter file if it exists must be removed
              2) if collection 
   */
-  // return collection
+  
   return collection;
 }
 
@@ -839,7 +838,7 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const* path, TRI_col_info_t* info) {
+int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) {
   TRI_json_t* json;
   char* filename;
   bool ok;
