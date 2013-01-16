@@ -8,7 +8,3 @@ arango> db.five.all().toArray();
 arango> db.five.all().limit(2).toArray();
 [ { _id : 159896:1798296, _rev : 1798296, doc : 3 },
   { _id : 159896:1732760, _rev : 1732760, doc : 2 } ]
-
-arango> db.five.all().limit(-2);
-[ { _id : 159896:1667224, _rev : 1667224, doc : 1 },
-  { _id : 159896:1929368, _rev : 1929368, doc : 5 } ]
