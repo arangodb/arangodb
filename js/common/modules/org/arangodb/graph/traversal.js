@@ -575,7 +575,7 @@ function GraphDatasourceFactory (name) {
     getAllEdges: function (vertexId) {
       var r = [ ];
       var that = this;
-      this.graph.getVertex(vertexId).getEdges().forEach(function (edge) {
+      this.graph.getVertex(vertexId).edges().forEach(function (edge) {
         var vertexIn = edge.getInVertex();
         var vertexOut = edge.getOutVertex();
         r.push({ _id: edge._id, _to: vertexIn._id.split("/")[1], _from: vertexOut._id.split("/")[1] });
