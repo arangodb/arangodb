@@ -105,7 +105,7 @@ following endpoint specification sytnax is currently supported:
 - `tcp://[host]:port` (HTTP over IPv6)
 - `ssl://host:port` (HTTP over SSL-encrypted IPv4)
 - `ssl://[host]:port` (HTTP over SSL-encrypted IPv6)
-- `unix://path/to/socket` (HTTP over UNIX socket)
+- `unix:///path/to/socket` (HTTP over UNIX socket)
 
 An example value for the option is `--server.endpoint
 tcp://127.0.0.1:8529`.  This will make the server listen to requests
