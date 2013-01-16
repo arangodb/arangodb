@@ -812,6 +812,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new anonymous datafile
+///
+/// this is only supported on certain platforms (Linux, MacOS)
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
@@ -824,10 +826,10 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
   int flags;
   int fd;
 
-#ifdef MAP_ANONYMOUS
-  // this is required for "real" anonymous regions
+#ifdef TRI_MMAP_ANONYMOUS
+  // fd -1 is required for "real" anonymous regions
   fd = -1;
-  flags = MAP_ANONYMOUS | MAP_SHARED;
+  flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
 #else
   // ugly workaround if MAP_ANONYMOUS is not available
   // TODO: make this more portable
@@ -843,7 +845,10 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
   // memory map the data
   res = TRI_MMFile(NULL, maximalSize, PROT_WRITE | PROT_READ, flags, fd, &mmHandle, 0, &data);
  
-#ifndef MAP_ANONYMOUS  
+#ifdef MAP_ANONYMOUS 
+  // nothing to do 
+#else
+  // close auxilliary file
   TRI_CLOSE(fd);
   fd = -1;
 #endif
