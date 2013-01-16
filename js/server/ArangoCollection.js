@@ -373,8 +373,10 @@
       case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
     }
     
-    internal.output("[ArangoCollection ", this._id, ", \"", this.name(), 
-		    "\" (type ", type, ", status ", status, ")]");
+    internal.output("[ArangoCollection ", 
+                    internal.colors.COLOR_NUMBER, this._id, internal.colors.COLOR_RESET, ", \"", 
+                    internal.colors.COLOR_STRING, this.name(), internal.colors.COLOR_RESET, 
+                    "\" (type ", type, ", status ", status, ")]");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
