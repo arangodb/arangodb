@@ -40,7 +40,7 @@ possible format. You can also generate HTML or images. However, a Web server is
 normally better suited for the task as it also implements various caching
 strategies, language selection, compression and so on. Having said that, there
 are still situations where it might be suitable to use the ArangoDB to deliver
-HTML pages - static or dynamic. An simple example is the built-in administration
+HTML pages - static or dynamic. A simple example is the built-in administration
 interface. You can access it using any modern browser and there is no need for a
 separate Apache or IIS.
 
@@ -292,13 +292,13 @@ You can specify a body and a content-type.
 
     { content: {
 	contentType: "text/html",
-	body: "<html><body>Hallo World</body></html>"
+	body: "<html><body>Hello World</body></html>"
       }
     }
 
 If the content type is `text/plain` then you can use the short-cut
 
-    { content: "Hallo World" }
+    { content: "Hello World" }
 
 A Simple Action {#UserManualActionsContentAction}
 =================================================
@@ -397,7 +397,7 @@ You can use
 to define a prefix controller. If the URL `/hello/echoController` is
 given, then the module `org/arangodb/actions/echoController` is used.
 
-If you use an prefix controller, you should make certain that no unwanted
+If you use a prefix controller, you should make certain that no unwanted
 actions are available under the prefix.
 
 The definition
@@ -466,7 +466,7 @@ You may also pass options to the called function:
     ........>   action: {
     ........>     controller: "org/arangodb/actions",
     ........>     do: "echoRequest",
-    ........>     options: { "Hallo": "World" } } });
+    ........>     options: { "Hello": "World" } } });
 
 You should now see the options in the result.
 
@@ -475,7 +475,7 @@ You should now see the options in the result.
 	    ...
 	},
 	"options": {
-	    "Hallo": "World"
+	    "Hello": "World"
 	}
     }
 
@@ -722,7 +722,7 @@ Next create a file `index.html` at `/tmp/example/index.html".
 
     <html>
       <body>
-        Hallo World!
+        Hello World!
       </body>
     </html>
 

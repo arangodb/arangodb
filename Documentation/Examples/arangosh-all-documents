@@ -11,6 +11,6 @@ arangosh> db.example.all().toArray();
   { 
     _id : "70628/1512420", 
     _rev : 1512420, 
-    Hallo : "World"
+    Hello : "World"
    }
 ]

@@ -88,7 +88,7 @@
 /// document, you can use the "If-Match" field to detect conflicts. The revision
 /// of a document can be checking using the HTTP method HEAD.
 ///
-/// @section RestDocumentResource Address and ETag of an Document
+/// @section RestDocumentResource Address and ETag of a Document
 /////////////////////////////////////////////////////////////////
 ///
 /// All documents in ArangoDB have a document handle. This handle uniquely

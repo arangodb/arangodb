@@ -7,7 +7,7 @@ arango> for (i = -90;  i <= 90;  i += 10) {
 .......> }
 
 arango> db.complex.near(0, 170).limit(5);
-exception in file '/simple-query' at 1018,5: an geo-index must be known
+exception in file '/simple-query' at 1018,5: a geo-index must be known
 
 arango> db.complex.ensureGeoIndex("home");
 arango> db.complex.near(0, 170).limit(5).toArray();
@@ -18,7 +18,7 @@ arango> db.complex.near(0, 170).limit(5).toArray();
   { _id : 48834092:72361516, _rev : 72361516, name : Name/0/-180, home : [ 0, -180 ], work : [ 0, 180 ] } ]      
 
 arango> db.complex.geo("work").near(0, 170).limit(5);
-exception in file '/simple-query' at 1018,5: an geo-index must be known
+exception in file '/simple-query' at 1018,5: a geo-index must be known
 
 arango> db.complex.ensureGeoIndex("work");
 arango> db.complex.geo("work").near(0, 170).limit(5).toArray();

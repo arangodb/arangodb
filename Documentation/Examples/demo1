@@ -18,12 +18,12 @@ avocsh> db.demo.all();
   { 
     _id : "161039/4192798", 
     _rev : 4192798, 
-    hallo : "world"
+    hello : "world"
   }, 
 
   { 
     _id : "161039/4258334", 
     _rev : 4258334, 
-    world : "hallo"
+    world : "hello"
   }
 ]

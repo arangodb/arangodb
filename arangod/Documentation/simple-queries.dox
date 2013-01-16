@@ -144,7 +144,7 @@
 /// faster than a simple R* index.
 ///
 /// In general a geo coordinate is a pair of latitude and longitude.  This can
-/// either be an list with two elements like @LIT{[-10\, +30]} (latitude
+/// either be a list with two elements like @LIT{[-10\, +30]} (latitude
 /// first, followed by longitude) or an object like @LIT{{lon: -10\, lat: +30}}.
 /// In order to find all documents within a given radius around a coordinate
 /// use the @FN{within} operator. In order to find all documents near a given
