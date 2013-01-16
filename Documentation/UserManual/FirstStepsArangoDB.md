@@ -103,22 +103,6 @@ The ArangoDB database package comes with the following programs:
   See @ref ImpManual
 
 
-ArangoDB programs {#FirstStepsArangoDBBinaries}
-===============================================
-
-The ArangoDB database package comes with the following programs:
-
-- _arangod_: The ArangoDB database daemon. This server program is
-  intended to run as daemon process and to server the various clients
-  connection to the server via TCP / HTTP. See @ref
-  FirstStepsServerStartStop.
-- _arangosh_: The ArangoDB shell. A client that implements a
-  read-eval-print loop (REPL) and provides functions to access and
-  administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
-- _arangoimp_: A bulk importer for the ArangoDB server.
-  See @ref ImpManual
-
-
 Exploring Collections and Documents {#FirstStepsArangoDBFirstSteps}
 ===================================================================
 
