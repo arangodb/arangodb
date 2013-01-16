@@ -8,7 +8,6 @@ Content-Type: application/x-arango-batchpart
 Content-Id: 1
 
 HTTP/1.1 202 Accepted
-location: /_api/document/101059/9514299
 content-type: application/json; charset=utf-8
 etag: "9514299"
 content-length: 53
@@ -19,7 +18,6 @@ Content-Type: application/x-arango-batchpart
 Content-Id: 2
 
 HTTP/1.1 202 Accepted
-location: /_api/document/101059/9579835
 content-type: application/json; charset=utf-8
 etag: "9579835"
 content-length: 53
@@ -30,7 +28,6 @@ Content-Type: application/x-arango-batchpart
 Content-Id: 3
 
 HTTP/1.1 202 Accepted
-location: /_api/document/101059/9645371
 content-type: application/json; charset=utf-8
 etag: "9645371"
 content-length: 53

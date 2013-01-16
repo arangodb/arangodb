@@ -1,14 +1,14 @@
-arango> var a = { "Hallo" : "World" };
+arango> var a = { "Hello" : "World" };
 
-arango> var b = { "Hallo" : "World" };
-arango> b.PRINT = function() { output(this.Hallo); };
-function () { output(this.Hallo); }
+arango> var b = { "Hello" : "World" };
+arango> b.PRINT = function() { output(this.Hello); };
+function () { output(this.Hello); }
 
 arango> print(a);
-{ "Hallo" : "World" }
+{ "Hello" : "World" }
 
 arango> print(b);
 World
 
 arango> print(a, b);
-{ "Hallo" : "World" }World
+{ "Hello" : "World" }World
