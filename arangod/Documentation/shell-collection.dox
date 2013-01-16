@@ -127,7 +127,11 @@
 ///
 /// This call will either return the collection named @FA{collection-name}
 /// or create a new one with that name and a set of default
-/// properties.
+/// properties. 
+///
+/// Note: creating a collection on the fly using @LIT{db.@FA{collection-name}}
+/// does not work in arangosh. To create a new collection from arangosh,
+/// please use @LIT{db._create(@FA{collection-name});}.
 ///
 /// @CLEARPAGE
 /// @section ShellCollectionShell Working with Collections
