@@ -59,7 +59,7 @@
 ///
 /// This is an introduction to ArangoDB's REST interface for edges.
 ///
-/// AvocacadoDB offers also some graph functionality. A graph consists of nodes,
+/// ArangoDB offers also some graph functionality. A graph consists of nodes,
 /// edges and properties. ArangoDB stores the information how the nodes relate
 /// to each other aside from the properties.
 ///
