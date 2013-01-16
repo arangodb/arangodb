@@ -549,10 +549,10 @@
 /// @brief start pager
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.start_pager = function () {};
+  internal.startPager = function () {};
 
   if (typeof SYS_START_PAGER !== "undefined") {
-    internal.start_pager = SYS_START_PAGER;
+    internal.startPager = SYS_START_PAGER;
     delete SYS_START_PAGER;
   }
 
@@ -560,10 +560,10 @@
 /// @brief stop pager
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stop_pager = function () {};
+  internal.stopPager = function () {};
 
   if (typeof SYS_STOP_PAGER !== "undefined") {
-    internal.stop_pager = SYS_STOP_PAGER;
+    internal.stopPager = SYS_STOP_PAGER;
     delete SYS_STOP_PAGER;
   }
 

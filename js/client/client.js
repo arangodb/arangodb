@@ -285,7 +285,7 @@ function stop_pretty_print () {
 function start_pager () {
   var internal = require("internal");
 
-  internal.start_pager();
+  internal.startPager();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +295,7 @@ function start_pager () {
 function stop_pager () {
   var internal = require("internal");
   
-  internal.stop_pager();
+  internal.stopPager();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
