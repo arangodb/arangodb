@@ -253,7 +253,7 @@ following specification syntax:
 - `tcp://[host]:port (HTTP over IPv6)`
 - `ssl://host:port (HTTP over SSL-encrypted IPv4)`
 - `ssl://[host]:port (HTTP over SSL-encrypted IPv6)`
-- `unix://path/to/socket (HTTP over Unix domain socket)`
+- `unix:///path/to/socket (HTTP over Unix domain socket)`
 
 ### TCP endpoints
 

@@ -543,7 +543,7 @@ v1.0.beta1 (2012-07-29)
   - tcp://[host]:port or http@tcp://[host]:port (HTTP over IPv6)
   - ssl://host:port or http@tcp://host:port (HTTP over SSL-encrypted IPv4)
   - ssl://[host]:port or http@tcp://[host]:port (HTTP over SSL-encrypted IPv6)
-  - unix://path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
+  - unix:///path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
 
   If no port is specified, the default port of 8529 will be used.
 
