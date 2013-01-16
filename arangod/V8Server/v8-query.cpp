@@ -1731,11 +1731,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   TRI_voc_size_t limit;
   ExtractSkipAndLimit(argv, 0, skip, limit);
   
-  // setup result
-  v8::Handle<v8::Object> result = v8::Object::New();
-  v8::Handle<v8::Array> documents = v8::Array::New();
-  result->Set(v8::String::New("documents"), documents);
-
   TRI_barrier_t* barrier = 0;
   uint32_t total = 0;
   vector<TRI_doc_mptr_t*> docs;
@@ -1752,6 +1747,12 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   const size_t n = docs.size();
   uint32_t count = 0;
+  
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Array> documents = v8::Array::New(n);
+  // reserver full capacity in one go
+  result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> document = TRI_WrapShapedJson(col, docs[i], barrier);
@@ -1761,8 +1762,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
     }
     else {
-      documents->Set(count, document);
-      ++count;
+      documents->Set(count++, document);
     }
   }
 
