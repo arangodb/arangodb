@@ -130,7 +130,7 @@ ArangoDB is a database that serves documents to clients.
   are normally represented as JSON objects.
 - Documents are grouped into *collections*. A collection can contains zero
   or more documents.
-- *Queries* are used to extract documents based on filtere criterias;
+- *Queries* are used to extract documents based on filter criteria;
   queries can be as simple as a query by-example or as complex as a
   joins using many collections or graph structures.
 - *Cursors* are used to iterate over the result of a query.
@@ -286,7 +286,7 @@ into memory for you.
 In order to create new documents in a collection, use the `save`
 operator. 
 
-    arangosh> db.example.save({ Hallo : "World" });
+    arangosh> db.example.save({ Hello : "World" });
     { error : false, _id : "70628/1512420", _rev : 1512420 }
     arangosh> db.example.save({ name : "Mustermann", age : 29 });
     { error : false, _id : "70628/1774564", _rev : 1774564 }
@@ -321,7 +321,7 @@ Now extract all elements.
       { 
 	_id : "4538791/5980583", 
 	_rev : 5980583, 
-	Hallo : "World"
+	Hello : "World"
        }
     ]
 

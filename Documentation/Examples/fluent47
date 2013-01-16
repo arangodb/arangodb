@@ -1,3 +1,3 @@
 arango> processCsvFile("csv.txt", function(line, pos) { output(pos, ": ", line, "\n"); });
-0: hallo;world;1;2;false
+0: hello;world;1;2;false
 1: hugo;egon;one;two;1

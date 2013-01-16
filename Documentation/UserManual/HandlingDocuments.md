@@ -44,7 +44,7 @@ has been created. The `_rev` value is maintained by ArangoDB autonomously.
 
 @copydoc GlossaryDocumentEtag
 
-Address and ETag of an Document {#ShellDocumentResource}
+Address and ETag of a Document {#ShellDocumentResource}
 ========================================================
 
 All documents in ArangoDB have a document handle. This handle uniquely defines a
