@@ -497,6 +497,61 @@ function SimpleQueryUniqueRangeSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               basic tests for any
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: range
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryAnySuite () {
+  var cn = "UnitTestsCollectionAny";
+  var collectionEmpty = null;
+  var collectionOne = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      var name;
+      
+      name = cn + "Empty";
+      internal.db._drop(name);
+      collectionEmpty = internal.db._create(name, { waitForSync : false });
+
+      name = cn + "One";
+      collectionOne = internal.db._create(cn, { waitForSync : false });
+      collectionOne.save({ age : 1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collectionEmpty.drop();
+      collectionOne.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: any
+////////////////////////////////////////////////////////////////////////////////
+
+    testAny : function () {
+      var d = collectionEmpty.any();
+      assertEqual(null, d);
+
+      d = collectionOne.any();
+      assertNotNull(d);
+      assertEqual(1, d.age);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
@@ -509,6 +564,7 @@ jsunity.run(SimpleQueryAllSkipLimitSuite);
 jsunity.run(SimpleQueryByExampleSuite);
 jsunity.run(SimpleQueryRangeSuite);
 jsunity.run(SimpleQueryUniqueRangeSuite);
+jsunity.run(SimpleQueryAnySuite);
 
 return jsunity.done();
 
