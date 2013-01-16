@@ -1511,7 +1511,7 @@ function ArangoCollection (database, data) {
 
     client.checkRequestResult(requestResult);
 
-    return requestResult;
+    return requestResult.document;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
