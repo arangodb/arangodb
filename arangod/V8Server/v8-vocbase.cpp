@@ -6040,7 +6040,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                          TRI_vocbase_col_t const*& collection,
                                                          TRI_voc_key_t& key,
                                                          TRI_voc_rid_t& rid,
-                                                         const bool lock,
+                                                         const bool use,
                                                          v8::Handle<v8::Value> val) {
   v8::HandleScope scope;
 
@@ -6115,7 +6115,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                "collection of <document-handle> is unknown"));;
     }
 
-    if (lock) {
+    if (use) {
       // use the collection
       int res = TRI_UseCollectionVocBase(vocbase, col);
 
@@ -6132,7 +6132,6 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
   }
   
   assert(collection);
-  assert(collection->_collection);
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
