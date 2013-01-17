@@ -4,7 +4,10 @@
 var Frank,
   BaseMiddleware,
   _ = require("underscore"),
+  arangodb = require("org/arangodb"),
   internal = {};
+
+var db = arangodb.db;
 
 internal.createUrlObject = function (url, constraint, method) {
   var urlObject = {};

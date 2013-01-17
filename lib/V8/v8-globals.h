@@ -105,7 +105,8 @@ typedef struct TRI_v8_global_s {
       DocumentKeyRegex(),
       IndexIdRegex(),
       IdRegex(),
-      _currentTransaction() {
+      _currentTransaction(),
+      _vocbase(0) {
   }
 
   ~TRI_v8_global_s () {
@@ -430,6 +431,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   void* _currentTransaction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer to the vocbase (TRI_vocbase_t*)
+////////////////////////////////////////////////////////////////////////////////
+
+  void* _vocbase;
 }
 TRI_v8_global_t;
 
