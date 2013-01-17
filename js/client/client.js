@@ -1310,12 +1310,11 @@ function ArangoCollection (database, data) {
 /// @brief adds a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.ensureFulltextIndex = function (attribute, indexSubstrings, minLength) {
-    var doIndexSubstrings = indexSubstrings || false;
+  ArangoCollection.prototype.ensureFulltextIndex = function (attribute, minLength) {
     var minLengthValue = minLength || undefined;
     var body;
 
-    body = { type : "fulltext", indexSubstrings : doIndexSubstrings, minLength : minLengthValue, fields : [ attribute ] };
+    body = { type : "fulltext", minLength : minLengthValue, fields : [ attribute ] };
 
     var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
