@@ -259,9 +259,7 @@
       }
 
       if (typeof(arguments[i]) === "string") {
-        internal.output(internal.colors.COLOR_STRING);
-        internal.output(internal.quoteJsonString(arguments[i]));
-        internal.output(internal.colors.COLOR_RESET);
+        internal.output(arguments[i]);
       }
       else {
         internal.printRecursive(arguments[i], [], "~", [], 0);
