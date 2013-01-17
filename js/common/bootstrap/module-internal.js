@@ -205,6 +205,7 @@
   internal.COLORS.COLOR_TRUE = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_FALSE = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_NULL = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_UNDEFINED = internal.COLORS.COLOR_BOLD_WHITE;
 
   internal.NOCOLORS = { };
   for (var i in internal.COLORS) {
@@ -258,7 +259,9 @@
       }
 
       if (typeof(arguments[i]) === "string") {
-        internal.output(arguments[i]);
+        internal.output(internal.colors.COLOR_STRING);
+        internal.output(internal.quoteJsonString(arguments[i]));
+        internal.output(internal.colors.COLOR_RESET);
       }
       else {
         internal.printRecursive(arguments[i], [], "~", [], 0);
@@ -363,7 +366,9 @@
         }
       }
       else if (value === undefined) {
+        internal.output(internal.colors.COLOR_UNDEFINED);
         internal.output("undefined");
+        internal.output(internal.colors.COLOR_RESET);
       }
       else {
         if (typeof(value) === "string") {
