@@ -307,7 +307,7 @@
 /// @brief quote cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.characterQuoteCache = {
+  var characterQuoteCache = {
     '\b': '\\b', // ASCII 8, Backspace
     '\t': '\\t', // ASCII 9, Tab
     '\n': '\\n', // ASCII 10, Newline
@@ -330,6 +330,13 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+    var output = internal.output;
+
+    var printArray;
+    var printIndent;
+    var printObject;
+    var printRecursive;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output
 ///
@@ -349,27 +356,27 @@
 
     for (i = 0;  i < arguments.length;  ++i) {
       if (0 < i) {
-        internal.output(" ");
+        output(" ");
       }
 
       if (typeof(arguments[i]) === "string") {
-        internal.output(arguments[i]);
+        output(arguments[i]);
       }
       else {
-        internal.printRecursive(arguments[i], [], "~", [], 0);
+        printRecursive(arguments[i], [], "~", [], 0);
       }
     }
     
-    internal.output("\n");
+    output("\n");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a single character
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.quoteSingleJsonCharacter = function (c) {
-    if (internal.characterQuoteCache.hasOwnProperty[c]) {
-      return internal.characterQuoteCache[c];
+  var quoteSingleJsonCharacter = function (c) {
+    if (characterQuoteCache.hasOwnProperty[c]) {
+      return characterQuoteCache[c];
     }
 
     var charCode = c.charCodeAt(0);
@@ -389,7 +396,7 @@
     }
 
     result += charCode.toString(16);
-    internal.characterQuoteCache[c] = result;
+    characterQuoteCache[c] = result;
 
     return result;
   };
@@ -398,16 +405,17 @@
 /// @brief quotes a string character
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.quoteJsonString = function (str) {
-    var quotable = /[\\\"\x00-\x1f]/g;
-    return '"' + str.replace(quotable, internal.quoteSingleJsonCharacter) + '"';
+  var quotable = /[\\\"\x00-\x1f]/g;
+
+  var quoteJsonString = function (str) {
+    return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printRecursive = function (value, seen, path, names, level) {
+  printRecursive = function (value, seen, path, names, level) {
     var p;
 
     if (seen === undefined) {
@@ -418,7 +426,7 @@
     p = seen.indexOf(value);
 
     if (0 <= p) {
-      internal.output(names[p]);
+      output(names[p]);
     }
     else {
       if (value instanceof Object) {
@@ -431,44 +439,44 @@
           value._PRINT(seen, path, names, level);
         }
         else if (value instanceof Array) {
-          internal.printArray(value, seen, path, names, level);
+          printArray(value, seen, path, names, level);
         }
         else if (value.__proto__ === Object.prototype) {
-          internal.printObject(value, seen, path, names, level);
+          printObject(value, seen, path, names, level);
         }
         else if (typeof value.toString === "function") {
-          internal.output(value.toString());
+          output(value.toString());
         }
         else {
-          internal.printObject(value, seen, path, names, level);
+          printObject(value, seen, path, names, level);
         }
       }
       else if (value === undefined) {
-        internal.output("undefined");
+        output("undefined");
       }
       else {
         if (typeof(value) === "string") {
-          internal.output(internal.colors.COLOR_STRING);
-          internal.output(internal.quoteJsonString(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(internal.colors.COLOR_STRING);
+          output(quoteJsonString(value));
+          output(internal.colors.COLOR_RESET);
         }
         else if (typeof(value) === "boolean") {
-          internal.output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
-          internal.output(String(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
         else if (typeof(value) === "number") {
-          internal.output(internal.colors.COLOR_NUMBER);
-          internal.output(String(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(internal.colors.COLOR_NUMBER);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
         else if (value === null) {
-          internal.output(internal.colors.COLOR_NULL);
-          internal.output(String(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(internal.colors.COLOR_NULL);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
         else {
-          internal.output(String(value));
+          output(String(value));
         }
       }
     }
@@ -478,46 +486,46 @@
 /// @brief prints the JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printArray = function (object, seen, path, names, level) {
+  printArray = function (object, seen, path, names, level) {
     if (object.length === 0) {
-      internal.output(internal.colors.COLOR_PUNCTUATION);
-      internal.output("[ ]");
-      internal.output(internal.colors.COLOR_RESET);
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("[ ]");
+      output(internal.colors.COLOR_RESET);
     }
     else {
       var i;
       var sep = " ";
 
-      internal.output(internal.colors.COLOR_PUNCTUATION);
-      internal.output("[");
-      internal.output(internal.colors.COLOR_RESET);
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("[");
+      output(internal.colors.COLOR_RESET);
 
       var newLevel = level + 1;
 
       for (i = 0;  i < object.length;  i++) {
-        internal.output(internal.colors.COLOR_PUNCTUATION);
-        internal.output(sep);
-        internal.output(internal.colors.COLOR_RESET);
+        output(internal.colors.COLOR_PUNCTUATION);
+        output(sep);
+        output(internal.colors.COLOR_RESET);
 
-        internal.printIndent(newLevel);
+        printIndent(newLevel);
 
-        internal.printRecursive(object[i],
-                                seen,
-                                path + "[" + i + "]",
-                                names,
-                                newLevel);
+        printRecursive(object[i],
+                       seen,
+                       path + "[" + i + "]",
+                       names,
+                       newLevel);
         sep = ", ";
       }
 
       if (object.length > 1) {
-        internal.output(" ");
+        output(" ");
       }
 
-      internal.printIndent(level);
+      printIndent(level);
 
-      internal.output(internal.colors.COLOR_PUNCTUATION);
-      internal.output("]");
-      internal.output(internal.colors.COLOR_RESET);
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("]");
+      output(internal.colors.COLOR_RESET);
     }
   };
 
@@ -525,13 +533,13 @@
 /// @brief prints an object
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printObject = function (object, seen, path, names, level) {
+  printObject = function (object, seen, path, names, level) {
     var sep = " ";
     var k;
 
-    internal.output(internal.colors.COLOR_PUNCTUATION);
-    internal.output("{");
-    internal.output(internal.colors.COLOR_RESET);
+    output(internal.colors.COLOR_PUNCTUATION);
+    output("{");
+    output(internal.colors.COLOR_RESET);
 
     var newLevel = level + 1;
 
@@ -539,49 +547,51 @@
       if (object.hasOwnProperty(k)) {
         var val = object[k];
 
-        internal.output(internal.colors.COLOR_PUNCTUATION);
-        internal.output(sep);
-        internal.output(internal.colors.COLOR_RESET);
+        output(internal.colors.COLOR_PUNCTUATION);
+        output(sep);
+        output(internal.colors.COLOR_RESET);
 
-        internal.printIndent(newLevel);
+        printIndent(newLevel);
 
-        internal.output(internal.colors.COLOR_INDEX);
-        internal.output(internal.quoteJsonString(k));
-        internal.output(internal.colors.COLOR_RESET);
-        internal.output(" : ");
+        output(internal.colors.COLOR_INDEX);
+        output(quoteJsonString(k));
+        output(internal.colors.COLOR_RESET);
+        output(" : ");
 
-        internal.printRecursive(val,
-                                seen,
-                                path + "[" + k + "]",
-                                names,
-                                newLevel);
+        printRecursive(val,
+                       seen,
+                       path + "[" + k + "]",
+                       names,
+                       newLevel);
         sep = ", ";
       }
     }
 
     if (sep === ", ") {
-      internal.output(" ");
+      output(" ");
     }
 
-    internal.printIndent(level);
+    printIndent(level);
 
-    internal.output(internal.colors.COLOR_PUNCTUATION);
-    internal.output("}");
-    internal.output(internal.colors.COLOR_RESET);
+    output(internal.colors.COLOR_PUNCTUATION);
+    output("}");
+    output(internal.colors.COLOR_RESET);
   };
+
+  internal.printObject = printObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the ident for pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printIndent = function (level) {
+  printIndent = function (level) {
     var j;
 
     if (internal.PRETTY_PRINT) {
-      internal.output("\n");
+      output("\n");
 
       for (j = 0; j < level; ++j) {
-        internal.output("  ");
+        output("  ");
       }
     }
   };
@@ -621,9 +631,10 @@
 /// @brief global printf
 ////////////////////////////////////////////////////////////////////////////////
 
+  var sprintf = internal.sprintf;
+
   internal.printf = function () {
-    var text = internal.sprintf.apply(internal.springf, arguments);
-    internal.output(text);
+    output(sprintf.apply(springf, arguments));
   };
 
 ////////////////////////////////////////////////////////////////////////////////

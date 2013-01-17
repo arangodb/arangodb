@@ -31,6 +31,7 @@
 var arangodb = require("org/arangodb");
 
 var ArangoError = arangodb.ArangoError;
+var output = arangodb.output;
 
 // forward declaration
 var SimpleQueryArray;
@@ -137,7 +138,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,7 +636,7 @@ SimpleQueryAll.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,7 +725,7 @@ SimpleQueryArray.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,7 +801,7 @@ SimpleQueryByExample.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -883,7 +884,7 @@ SimpleQueryRange.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -938,7 +939,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
        + this._index
        + ")";
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1082,7 +1083,7 @@ SimpleQueryNear.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1236,7 +1237,7 @@ SimpleQueryWithin.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1378,7 +1379,7 @@ SimpleQueryFulltext.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  arangodb.output(text);
+  output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

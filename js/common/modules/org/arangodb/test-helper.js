@@ -30,6 +30,8 @@
 
 var internal = require("internal"); // OK: processCsvFile
 
+var processCsvFile = internal.processCsvFile;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                 module "org/arangodb/test-helper"
 // -----------------------------------------------------------------------------
@@ -49,7 +51,7 @@ var internal = require("internal"); // OK: processCsvFile
 
 exports.Helper = {
   process: function (file, processor) {
-    internal.processCsvFile(file, function (raw_row, index) {
+    processCsvFile(file, function (raw_row, index) {
       if (index !== 0) {
         processor(raw_row.toString().split(","));
       }

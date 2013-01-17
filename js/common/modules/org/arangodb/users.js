@@ -30,7 +30,12 @@
 
 var internal = require("internal"); // OK: encodePassword, reloadAuth
 
+var encodePassword = internal.encodePassword;
+var reloadAuth = internal.reloadAuth;
+
 var arangodb = require("org/arangodb");
+
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/users"
@@ -70,7 +75,7 @@ var validatePassword = function (passwd) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
-  var users = arangodb.db._collection("_users");
+  var users = db._collection("_users");
 
   if (users === null) {
     throw "collection _users does not exist.";
@@ -127,7 +132,7 @@ exports.save = function (username, passwd) {
   var user = users.firstExample({ user: username });
 
   if (user === null) {
-    var hash = internal.encodePassword(passwd);
+    var hash = encodePassword(passwd);
     return users.save({ user: username, password: hash, active: true });
   }
 
@@ -175,7 +180,7 @@ exports.update = function (username, passwd) {
     throw "cannot update user: user does not exist.";
   }
 
-  var hash = internal.encodePassword(passwd);
+  var hash = encodePassword(passwd);
   var data = user.shallowCopy;
   data.password = hash;
   return users.replace(user, data);
@@ -233,7 +238,7 @@ exports.remove = function (username) {
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.reload = function () {
-  return internal.reloadAuth();
+  return reloadAuth();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
