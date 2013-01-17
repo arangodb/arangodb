@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, db, edges, Module, ArangoCollection, ArangoDatabase, ArangoError, ShapedJson, SYS_DEFINE_ACTION */
+/*global require, db, edges, Module, ArangoCollection, ArangoDatabase, 
+         ArangoError, ShapedJson, SYS_DEFINE_ACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
-/*global require */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -49,6 +49,8 @@ var arangosh = require("org/arangodb/arangosh");
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
+var ArangoCollection;
+
 function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
@@ -71,7 +73,7 @@ function ArangoDatabase (connection) {
 exports.ArangoDatabase = ArangoDatabase;
 
 // load after exporting ArangoDatabase
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
