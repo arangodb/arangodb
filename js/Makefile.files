@@ -9,65 +9,20 @@
 ################################################################################
 
 JAVASCRIPT_JSLINT = \
-	@srcdir@/js/common/bootstrap/errors.js \
-	@srcdir@/js/common/bootstrap/module-console.js \
-	@srcdir@/js/common/bootstrap/module-fs.js \
-	@srcdir@/js/common/bootstrap/module-internal.js \
-	@srcdir@/js/common/bootstrap/modules.js \
-	@srcdir@/js/common/bootstrap/monkeypatches.js \
+	`find @srcdir@/js/common/bootstrap -name "*.js"` \
+	`find @srcdir@/js/client/bootstrap -name "*.js"` \
+	`find @srcdir@/js/server/bootstrap -name "*.js"` \
 	\
-	@srcdir@/js/client/bootstrap/module-internal.js \
-	\
-	@srcdir@/js/server/bootstrap/module-internal.js \
-	\
-	@srcdir@/js/common/modules/org/arangodb-common.js \
-	@srcdir@/js/client/modules/org/arangodb.js \
-	@srcdir@/js/server/modules/org/arangodb.js \
-	\
-	@srcdir@/js/common/modules/org/arangodb/arango-statement-common.js \
-	@srcdir@/js/client/modules/org/arangodb/arango-statement.js \
-	@srcdir@/js/server/modules/org/arangodb/arango-statement.js \
-	\
-	@srcdir@/js/common/modules/org/arangodb/arango-collection-common.js \
-	@srcdir@/js/client/modules/org/arangodb/arango-collection.js \
-	@srcdir@/js/server/modules/org/arangodb/arango-collection.js \
-	\
-	@srcdir@/js/common/modules/org/arangodb/arango-error-common.js \
-	@srcdir@/js/client/modules/org/arangodb/arango-error.js \
-	@srcdir@/js/server/modules/org/arangodb/arango-error.js \
-	\
-	@srcdir@/js/common/modules/org/arangodb/simple-query-common.js \
-	@srcdir@/js/client/modules/org/arangodb/simple-query.js \
-	@srcdir@/js/server/modules/org/arangodb/simple-query.js \
-	\
-	@srcdir@/js/client/modules/org/arangodb/arango-query-cursor.js \
-	\
-	@srcdir@/js/client/modules/org/arangodb/arango-database.js \
-	@srcdir@/js/server/modules/org/arangodb/arango-database.js \
-	\
-	@srcdir@/js/client/modules/org/arangodb/actions.js \
-	@srcdir@/js/client/modules/org/arangodb/arangosh.js \
-	@srcdir@/js/client/modules/org/arangodb/deploy.js \
+	`find @srcdir@/js/common/modules/org -name "*.js"` \
+	@srcdir@/js/common/modules/test-helper.js \
+	`find @srcdir@/js/client/modules -name "*.js"` \
+	`find @srcdir@/js/server/modules -name "*.js"` \
 	\
 	@srcdir@/html/admin/js/arangodb/browser.js \
 	\
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
-	@srcdir@/js/actions/system/api-system.js \
-	\
-	@srcdir@/js/client/modules/org/arangodb.js \
-	@srcdir@/js/client/modules/org/arangodb/arangosh.js \
-	@srcdir@/js/client/modules/org/arangodb/deploy.js \
-	\
-	@srcdir@/js/server/ArangoCollection.js \
-	@srcdir@/js/server/ArangoStructure.js \
-	@srcdir@/js/server/modules/org/arangodb.js \
-	@srcdir@/js/server/modules/org/arangodb/actions.js \
-	@srcdir@/js/server/modules/org/arangodb/actions/echoController.js \
-	@srcdir@/js/server/modules/org/arangodb/actions/staticContentController.js \
-	@srcdir@/js/server/modules/org/arangodb/formatter.js \
-	@srcdir@/js/server/modules/org/arangodb/parser.js \
-	@srcdir@/js/server/modules/org/arangodb/validator.js
+	@srcdir@/js/actions/system/api-system.js
 
 ################################################################################
 ### @brief executes jslint

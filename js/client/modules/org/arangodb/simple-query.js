@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -31,12 +31,15 @@
 var internal = require("internal");
 var arangosh = require("arangosh");
 
+var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
+
 var sq = require("simple-query-common");
 
 var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
+var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
 var SimpleQueryRange = sq.SimpleQueryRange;
 var SimpleQueryWithin = sq.SimpleQueryWithin;
@@ -62,13 +65,13 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name()
-    }  
+      collection: this._collection.name()
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -82,7 +85,8 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/all", JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -92,7 +96,7 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -119,14 +123,14 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }  
 
     var data = {
-      collection : this._collection.name(),
-      example : this._example
-    }  
+      collection: this._collection.name(),
+      example: this._example
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -140,7 +144,8 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/by-example", JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -150,59 +155,7 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup SimpleQuery
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.firstExample = function () {
-  var example;
-
-  // example is given as only argument
-  if (arguments.length == 1) {
-    example = arguments[0];
-  }
-
-  // example is given as list
-  else {
-    example = {};
-
-    for (var i = 0;  i < arguments.length;  i += 2) {
-      example[arguments[i]] = arguments[i + 1];
-    }
-  }
-
-  var data = {
-    collection : this.name(),
-    example : example
-  }  
-
-  var requestResult = this._database._connection.PUT("/_api/simple/first-example", JSON.stringify(data));
-
-  if (requestResult !== null
-      && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_HTTP_NOT_FOUND.code) {
-    return null;
-  }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.document;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -229,17 +182,17 @@ SimpleQueryRange.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      attribute : this._attribute,
-      right : this._right,
-      left : this._left,
-      closed : this._type == 1
-    }  
+      collection: this._collection.name(),
+      attribute: this._attribute,
+      right: this._right,
+      left: this._left,
+      closed: this._type === 1
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -253,7 +206,8 @@ SimpleQueryRange.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/range", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/range", JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -263,7 +217,7 @@ SimpleQueryRange.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -290,15 +244,15 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      latitude : this._latitude,
-      longitude : this._longitude
-    }  
+      collection: this._collection.name(),
+      latitude: this._latitude,
+      longitude: this._longitude
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -320,7 +274,8 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/near", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/near", JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -330,7 +285,7 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -357,16 +312,16 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      latitude : this._latitude,
-      longitude : this._longitude,
-      radius : this._radius
-    }  
+      collection: this._collection.name(),
+      latitude: this._latitude,
+      longitude: this._longitude,
+      radius: this._radius
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -388,7 +343,8 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/within", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/within", JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -398,7 +354,7 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -425,15 +381,15 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      attribute : this._attribute,
-      query : this._query
-    }  
+      collection: this._collection.name(),
+      attribute: this._attribute,
+      query: this._query
+    };
     
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -451,7 +407,8 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/fulltext", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/fulltext", JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
@@ -461,7 +418,7 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

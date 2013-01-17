@@ -30,10 +30,7 @@
 
 // extend prototypes for internally defined classes
 
-require("org/arangodb/arango-error");
-require("org/arangodb/shaped-json");
-require("org/arangodb/arango-database");
-require("org/arangodb/arango-collection");
+require("org/arangodb");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

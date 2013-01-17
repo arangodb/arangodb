@@ -29,22 +29,44 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  global variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief top-level module
+////////////////////////////////////////////////////////////////////////////////
+
+module = null;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Module
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+(function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function Module (id) {
-  this.id = id;
-  this.exports = {};
-}
+  function Module (id) {
+    this._id = id;
+    this._normalized = {};
+    this._exports = {};
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -55,11 +77,9 @@ function Module (id) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Module
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-(function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module cache
@@ -83,6 +103,7 @@ function Module (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.root = ModuleCache["/"];
+  module = Module.prototype.root;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -93,7 +114,7 @@ function Module (id) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Module
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,23 +122,31 @@ function Module (id) {
 /// @brief loads a file and creates a new module descriptor
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.require = function (path) {
-    var internal;
+  Module.prototype.require = function (unormalizedPath) {
     var content;
     var f;
+    var internal;
     var module;
+    var path;
     var paths;
     var raw;
     var sandbox;
 
-    internal = ModuleCache["/internal"].exports;
+    internal = ModuleCache["/internal"]._exports;
+
+    // check if you already know the module
+    if (this._normalized.hasOwnProperty(unormalizedPath)) {
+      return this._normalized[unormalizedPath];
+    }
 
     // first get rid of any ".." and "."
-    path = this.normalise(path);
+    path = this.normalise(unormalizedPath);
 
     // check if you already know the module, return the exports
     if (ModuleCache.hasOwnProperty(path)) {
-      return ModuleCache[path].exports;
+      module = ModuleCache[path];
+      this._normalized[unormalizedPath] = module._exports;
+      return module._exports;
     }
 
     // locate file and read content
@@ -143,16 +172,17 @@ function Module (id) {
 
     try {
       f(module,
-        module.exports,
+        module._exports,
         function(path) { return module.require(path); },
-        ModuleCache["/internal"].exports.print);
+        ModuleCache["/internal"]._exports.print);
     }
     catch (err) {
       delete ModuleCache[path];
-      throw "Javascript exception in file '" + path + "': " + err.stack;
+      throw "Javascript exception in file '" + path + "': " + err + " - " + err.stack;
     }
 
-    return module.exports;
+    this._normalized[unormalizedPath] = module._exports;
+    return module._exports;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,14 +205,14 @@ function Module (id) {
     var x;
 
     if (path === "") {
-      return this.id;
+      return this._id;
     }
 
     p = path.split('/');
 
     // relative path
     if (p[0] === "." || p[0] === "..") {
-      q = this.id.split('/');
+      q = this._id.split('/');
       q.pop();
       q = q.concat(p);
     }
@@ -256,36 +286,26 @@ function Module (id) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a module
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype._PRINT = function () {
+    var internal = require("internal");
+    internal.output('[module "' + this._id + '"]');
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Module
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief top-level module
-////////////////////////////////////////////////////////////////////////////////
-
-module = Module.prototype.root;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  global functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Module
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -323,6 +343,15 @@ function require (path) {
 function print () {
   var internal = require("internal");
   internal.print.apply(internal.print, arguments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global printf function
+////////////////////////////////////////////////////////////////////////////////
+
+function printf () {
+  var internal = require("internal");
+  internal.printf.apply(internal.printf, arguments);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,6 +398,22 @@ function stop_pretty_print () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief start pretty printing with optional color
+////////////////////////////////////////////////////////////////////////////////
+
+function start_color_print (color) {
+  require("internal").startColorPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function stop_color_print () {
+  require("internal").stopColorPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -378,5 +423,5 @@ function stop_pretty_print () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:

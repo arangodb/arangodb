@@ -32,8 +32,8 @@
 var internal = require("internal");
 var arangosh = require("org/arangodb/arangosh");
 
-var ArangoStatement = require("org/arangodb/arango-statement.js").ArangoStatement;
-var ArangoQueryCursor = require("org/arangodb/arango-query-cursor.js").ArangoQueryCursor;
+var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement

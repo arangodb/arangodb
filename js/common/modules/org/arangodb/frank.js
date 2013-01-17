@@ -83,7 +83,7 @@ _.extend(Frank.prototype, {
     this.handleRequest("patch", route, argument1, argument2);
   },
 
-  delete: function (route, argument1, argument2) {
+  'delete': function (route, argument1, argument2) {
     this.handleRequest("delete", route, argument1, argument2);
   }
 });

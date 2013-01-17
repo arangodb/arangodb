@@ -30,6 +30,13 @@
 
 var internal = require("internal");
 
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
+
+// forward declaration
+var SimpleQueryArray;
+var SimpleQueryNear;
+var SimpleQueryWithin;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              GENERAL ARRAY CURSOR
 // -----------------------------------------------------------------------------
@@ -101,7 +108,7 @@ GeneralArrayCursor.prototype.execute = function () {
   }
 
   // apply limit
-  if (this._limit != null) {
+  if (this._limit !== null) {
     if (s + this._limit < e) {
       e = s + this._limit;
     }
@@ -111,7 +118,7 @@ GeneralArrayCursor.prototype.execute = function () {
   this._stop = e;
 
   this._countQuery = e - s;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print an all query
@@ -122,16 +129,16 @@ GeneralArrayCursor.prototype._PRINT = function () {
 
   text = "GeneralArrayCursor([.. " + this._documents.length + " docs ..])";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -153,7 +160,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
 GeneralArrayCursor.prototype.toArray = 
 GeneralArrayCursor.prototype.elements = function () {
   return this._documents;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the cursor is exhausted
@@ -161,7 +168,7 @@ GeneralArrayCursor.prototype.elements = function () {
 
 GeneralArrayCursor.prototype.hasNext = function () {
   return this._current < this._stop;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next result document
@@ -171,10 +178,9 @@ GeneralArrayCursor.prototype.next = function() {
   if (this._current < this._stop) {
     return this._documents[this._current++];
   }
-  else {
-    return undefined;
-  }
-}
+
+  return undefined;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the result
@@ -188,7 +194,7 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._countQuery = null;
   this._current = null;
   this._stop = null;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -237,7 +243,7 @@ function SimpleQuery () {
 /// @brief join limits
 ////////////////////////////////////////////////////////////////////////////////
 
-function JoinLimits (query, limit) {
+function joinLimits (query, limit) {
   var q;
 
   // original limit is 0, keep it
@@ -254,7 +260,7 @@ function JoinLimits (query, limit) {
   // no old limit, use new limit
   else if (query._limit === null) {
     query = query.clone();
-    query._limit = limit
+    query._limit = limit;
   }
 
   // use the smaller one
@@ -275,7 +281,7 @@ function JoinLimits (query, limit) {
 
 SimpleQuery.prototype.clone = function () {
   throw "cannot clone abstract query";
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query
@@ -304,7 +310,7 @@ SimpleQuery.prototype.clone = function () {
 
 SimpleQuery.prototype.execute = function () {
   throw "cannot execute abstract query";
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -337,7 +343,7 @@ SimpleQuery.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.limit = function (limit) {
-  if (this._execution != null) {
+  if (this._execution !== null) {
     throw "query is already executing";
   }
 
@@ -348,8 +354,8 @@ SimpleQuery.prototype.limit = function (limit) {
     throw err;
   }
 
-  return JoinLimits(this, limit);
-}
+  return joinLimits(this, limit);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skip
@@ -377,7 +383,7 @@ SimpleQuery.prototype.skip = function (skip) {
     skip = 0;
   }
 
-  if (this._execution != null) {
+  if (this._execution !== null) {
     throw "query is already executing";
   }
 
@@ -403,7 +409,7 @@ SimpleQuery.prototype.skip = function (skip) {
   }
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into an array
@@ -422,7 +428,7 @@ SimpleQuery.prototype.toArray = function () {
   }
 
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the batch size
@@ -435,7 +441,7 @@ SimpleQuery.prototype.toArray = function () {
 
 SimpleQuery.prototype.getBatchSize = function () {
   return this._batchSize;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the batch size for any following requests
@@ -450,7 +456,7 @@ SimpleQuery.prototype.setBatchSize = function (value) {
   if (value >= 1) {
     this._batchSize = value;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents
@@ -491,10 +497,9 @@ SimpleQuery.prototype.count = function (applyPagination) {
   if (applyPagination === undefined || ! applyPagination) {
     return this._countTotal;
   }
-  else {
-    return this._countQuery;
-  }
-}
+
+  return this._countQuery;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the cursor is exhausted
@@ -514,7 +519,7 @@ SimpleQuery.prototype.hasNext = function () {
   this.execute();
 
   return this._execution.hasNext();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next result document
@@ -536,7 +541,7 @@ SimpleQuery.prototype.next = function () {
   this.execute();
 
   return this._execution.next();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disposes the result
@@ -549,14 +554,14 @@ SimpleQuery.prototype.next = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.dispose = function() {
-  if (this._execution != null) {
+  if (this._execution !== null) {
     this._execution.dispose();
   }
 
   this._execution = null;
   this._countQuery = null;
   this._countTotal = null;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -611,7 +616,7 @@ SimpleQueryAll.prototype.clone = function () {
   query._limit = this._limit;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print an all query
@@ -622,16 +627,16 @@ SimpleQueryAll.prototype._PRINT = function () {
 
   text = "SimpleQueryAll(" + this._collection.name() + ")";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -654,9 +659,9 @@ SimpleQueryAll.prototype._PRINT = function () {
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQueryArray (documents) {
+SimpleQueryArray = function (documents) {
   this._documents = documents;
-}
+};
 
 SimpleQueryArray.prototype = new SimpleQuery();
 SimpleQueryArray.prototype.constructor = SimpleQueryArray;
@@ -686,7 +691,7 @@ SimpleQueryArray.prototype.clone = function () {
   query._limit = this._limit;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an all query
@@ -700,7 +705,7 @@ SimpleQueryArray.prototype.execute = function () {
 
     this._execution = new GeneralArrayCursor(this._documents, this._skip, this._limit);
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print an all query
@@ -711,16 +716,16 @@ SimpleQueryArray.prototype._PRINT = function () {
 
   text = "SimpleQueryArray(documents)";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -776,7 +781,7 @@ SimpleQueryByExample.prototype.clone = function () {
   query._limit = this._limit;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a query-by-example
@@ -787,16 +792,16 @@ SimpleQueryByExample.prototype._PRINT = function () {
 
   text = "SimpleQueryByExample(" + this._collection.name() + ")";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -850,12 +855,16 @@ SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 SimpleQueryRange.prototype.clone = function () {
   var query;
 
-  query = new SimpleQueryRange(this._collection, this._attribute, this._left, this._right, this._type);
+  query = new SimpleQueryRange(this._collection,
+                               this._attribute,
+                               this._left,
+                               this._right,
+                               this._type);
   query._skip = this._skip;
   query._limit = this._limit;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a range query
@@ -866,16 +875,16 @@ SimpleQueryRange.prototype._PRINT = function () {
 
   text = "SimpleQueryRange(" + this._collection.name() + ")";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -930,7 +939,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
        + ")";
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -951,7 +960,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
 
 SimpleQueryGeo.prototype.near = function (lat, lon) {
   return new SimpleQueryNear(this._collection, lat, lon, this._index);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a within query for an index
@@ -959,7 +968,7 @@ SimpleQueryGeo.prototype.near = function (lat, lon) {
 
 SimpleQueryGeo.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this._collection, lat, lon, radius, this._index);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -982,8 +991,9 @@ SimpleQueryGeo.prototype.within = function (lat, lon, radius) {
 /// @brief near query
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQueryNear (collection, latitude, longitude, iid) {
+SimpleQueryNear = function (collection, latitude, longitude, iid) {
   var idx;
+  var i;
 
   this._collection = collection;
   this._latitude = latitude;
@@ -994,7 +1004,7 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
   if (iid === undefined) {
     idx = collection.getIndexes();
     
-    for (var i = 0;  i < idx.length;  ++i) {
+    for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
       if (index.type === "geo1" || index.type === "geo2") {
@@ -1014,7 +1024,7 @@ function SimpleQueryNear (collection, latitude, longitude, iid) {
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
-}
+};
 
 SimpleQueryNear.prototype = new SimpleQuery();
 SimpleQueryNear.prototype.constructor = SimpleQueryNear;
@@ -1045,7 +1055,7 @@ SimpleQueryNear.prototype.clone = function () {
   query._distance = this._distance;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a near query
@@ -1064,16 +1074,16 @@ SimpleQueryNear.prototype._PRINT = function () {
        + this._index
        + ")";
 
-  if (this._skip != null && this._skip != 0) {
+  if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
 
-  if (this._limit != null) {
+  if (this._limit !== null) {
     text += ".limit(" + this._limit + ")";
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1105,7 +1115,7 @@ SimpleQueryNear.prototype.distance = function (attribute) {
   }
 
   return clone;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1128,8 +1138,9 @@ SimpleQueryNear.prototype.distance = function (attribute) {
 /// @brief within query
 ////////////////////////////////////////////////////////////////////////////////
 
-function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
+SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
   var idx;
+  var i;
 
   this._collection = collection;
   this._latitude = latitude;
@@ -1141,7 +1152,7 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
   if (iid === undefined) {
     idx = collection.getIndexes();
     
-    for (var i = 0;  i < idx.length;  ++i) {
+    for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
       
       if (index.type === "geo1" || index.type === "geo2") {
@@ -1161,7 +1172,7 @@ function SimpleQueryWithin (collection, latitude, longitude, radius, iid) {
     err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
-}
+};
 
 SimpleQueryWithin.prototype = new SimpleQuery();
 SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
@@ -1186,13 +1197,17 @@ SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
 SimpleQueryWithin.prototype.clone = function () {
   var query;
 
-  query = new SimpleQueryWithin(this._collection, this._latitude, this._longitude, this._radius, this._index);
+  query = new SimpleQueryWithin(this._collection,
+                                this._latitude,
+                                this._longitude,
+                                this._radius, 
+                                this._index);
   query._skip = this._skip;
   query._limit = this._limit;
   query._distance = this._distance;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a within query
@@ -1222,7 +1237,7 @@ SimpleQueryWithin.prototype._PRINT = function () {
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1254,7 +1269,7 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
   }
 
   return clone;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1285,12 +1300,12 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
  
   if (iid === undefined) {
     var idx = collection.getIndexes();
+    var i;
 
-    for (var i = 0;  i < idx.length;  ++i) {
+    for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === "fulltext" && 
-          index.fields[0] == attribute) {
+      if (index.type === "fulltext" && index.fields[0] === attribute) {
         if (this._index === null) {
           this._index = index.id;
         }
@@ -1338,7 +1353,7 @@ SimpleQueryFulltext.prototype.clone = function () {
   query._limit = this._limit;
 
   return query;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a fulltext query
@@ -1364,7 +1379,7 @@ SimpleQueryFulltext.prototype._PRINT = function () {
   }
 
   internal.output(text);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

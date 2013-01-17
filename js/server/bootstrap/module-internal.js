@@ -1,6 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoError, ShapedJson,
-         RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION */
+/*global require, db, ArangoCollection, ArangoDatabase, ArangoError, ArangoCursor,
+         ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
+         DATABASEPATH, THREAD_NUMBER */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -34,12 +35,12 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal module
+/// @brief exports
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
@@ -58,8 +59,17 @@
   internal.ArangoError = ArangoError;
   delete ArangoError;
 
+  internal.ArangoCursor = ArangoCursor;
+  delete ArangoCursor;
+
   internal.ShapedJson = ShapedJson;
   delete ShapedJson;
+
+  internal.DATABASEPATH = DATABASEPATH;
+  delete DATABASEPATH;
+
+  internal.THREAD_NUMBER = THREAD_NUMBER;
+  delete THREAD_NUMBER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -70,7 +80,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,6 +89,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.reloadAuth = RELOAD_AUTH;
+  delete RELOAD_AUTH;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
@@ -149,5 +160,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}"
 // End:

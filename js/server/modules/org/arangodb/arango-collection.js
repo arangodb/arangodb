@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var simple = require("org/arangodb/simple-query");
 
-var ArangoCollection = require("org/arangodb/arango-collection");
-var ArangoDatabase = require("org/arangodb/arango-database");
+var ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
@@ -50,7 +50,8 @@ var ArangoDatabase = require("org/arangodb/arango-database");
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoCollection = internal.ArangoCollection;
+var ArangoCollection = internal.ArangoCollection;
+exports.ArangoCollection = ArangoCollection;
 
 // must be called after exporting ArangoCollection
 require("org/arangodb/arango-collection-common");
@@ -174,6 +175,64 @@ ArangoCollection.prototype.index = function (id) {
     if (index.id === id) {
       return index;
     }
+  }
+
+  return null;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                document functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+///
+/// @FUN{@FA{collection}.firstExample(@FA{example})}
+///
+/// Returns the a document of a collection that match the specified example or
+/// @LIT{null}. The example must be specified as paths and values. See 
+/// @FN{byExample} for details.
+///
+/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+///
+/// As alternative you can supply a list of paths and values.
+///
+/// @EXAMPLES
+///
+/// @TINYEXAMPLE{shell-simple-query-first-example,finds a document with a given name}
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.firstExample = function (example) {
+  var e;
+  var i;
+
+  // example is given as only argument
+  if (arguments.length === 1) {
+    e = example;
+  }
+
+  // example is given as list
+  else {
+    e = {};
+
+    for (i = 0;  i < arguments.length;  i += 2) {
+      e[arguments[i]] = arguments[i + 1];
+    }
+  }
+
+  var documents = simple.byExample(this, e, 0, 1);
+
+  if (0 < documents.documents.length) {
+    return documents.documents[0];
   }
 
   return null;

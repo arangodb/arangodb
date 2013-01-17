@@ -1,9 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         plusplus: true */
-/*global processCsvFile, exports */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper for JavaScript Tests
@@ -32,16 +28,14 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Helper;
+var internal = require("internal");
 
-Helper = {
+exports.Helper = {
   process : function (file, processor) {
-    processCsvFile(file, function (raw_row, index) {
+    internal.processCsvFile(file, function (raw_row, index) {
       if (index !== 0) {
         processor(raw_row.toString().split(","));
       }
     });
   }
 };
-
-exports.Helper = Helper;
