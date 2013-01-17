@@ -291,10 +291,12 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_vocbase_t* GetContextVocBase () {
-  v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent();
-  v8::Handle<v8::Object> db = currentContext->Global()->Get(TRI_V8_SYMBOL("db"))->ToObject();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  return TRI_UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
+  assert(v8g->_vocbase != 0);
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(v8g->_vocbase);
+
+  return vocbase;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6389,6 +6391,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     v8g = new TRI_v8_global_t;
     isolate->SetData(v8g);
   }
+  v8g->_vocbase = vocbase;
 
   // create the regular expressions
   string expr;

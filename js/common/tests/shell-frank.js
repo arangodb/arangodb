@@ -1,10 +1,9 @@
 var jsunity = require("jsunity");
 
-var internal = require("internal");
 var console = require("console");
-
-var db = require("org/arangodb").db;
+var arangodb = require("org/arangodb");
 var Frank = require("org/arangodb/frank").Frank;
+var db = arangodb.db;
 
 function CreateFrankSpec () {
   return {
