@@ -48,6 +48,123 @@ module = null;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  global functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global require function
+///
+/// @FUN{require(@FA{path})}
+///
+/// @FN{require} checks if the file specified by @FA{path} has already been
+/// loaded.  If not, the content of the file is executed in a new
+/// context. Within the context you can use the global variable @LIT{exports}
+/// in order to export variables and functions. This variable is returned by
+/// @FN{require}.
+///
+/// Assume that your module file is @LIT{test1.js} and contains
+///
+/// @verbinclude modules-require-1
+///
+/// Then you can use @FN{require} to load the file and access the exports.
+///
+/// @verbinclude modules-require-2
+///
+/// @FN{require} follows the specification
+/// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
+////////////////////////////////////////////////////////////////////////////////
+
+function require (path) {
+  return module.require(path);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global print function
+////////////////////////////////////////////////////////////////////////////////
+
+function print () {
+  var internal = require("internal");
+  internal.print.apply(internal.print, arguments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global printf function
+////////////////////////////////////////////////////////////////////////////////
+
+function printf () {
+  var internal = require("internal");
+  internal.printf.apply(internal.printf, arguments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn off pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function print_plain () {
+  var internal = require("internal");
+
+  var p = internal.PRETTY_PRINT;
+  internal.PRETTY_PRINT = false;
+
+  var c = internal.COLOR_OUTPUT;
+  internal.COLOR_OUTPUT = false;
+  
+  try {
+    internal.print.apply(internal.print, arguments);
+
+    internal.PRETTY_PRINT = p;
+    internal.COLOR_OUTPUT = c;
+  }
+  catch (e) {
+    internal.PRETTY_PRINT = p;
+    internal.COLOR_OUTPUT = c;
+
+    throw e.message;    
+  }  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function start_pretty_print () {
+  require("internal").startPrettyPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function stop_pretty_print () {
+  require("internal").stopPrettyPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start pretty printing with optional color
+////////////////////////////////////////////////////////////////////////////////
+
+function start_color_print (color) {
+  require("internal").startColorPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function stop_color_print () {
+  require("internal").stopColorPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -299,123 +416,6 @@ module = null;
 ////////////////////////////////////////////////////////////////////////////////
 
 }());
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  global functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global require function
-///
-/// @FUN{require(@FA{path})}
-///
-/// @FN{require} checks if the file specified by @FA{path} has already been
-/// loaded.  If not, the content of the file is executed in a new
-/// context. Within the context you can use the global variable @LIT{exports}
-/// in order to export variables and functions. This variable is returned by
-/// @FN{require}.
-///
-/// Assume that your module file is @LIT{test1.js} and contains
-///
-/// @verbinclude modules-require-1
-///
-/// Then you can use @FN{require} to load the file and access the exports.
-///
-/// @verbinclude modules-require-2
-///
-/// @FN{require} follows the specification
-/// <a href="http://wiki.commonjs.org/wiki/Modules/1.1.1">Modules/1.1.1</a>.
-////////////////////////////////////////////////////////////////////////////////
-
-function require (path) {
-  return module.require(path);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global print function
-////////////////////////////////////////////////////////////////////////////////
-
-function print () {
-  var internal = require("internal");
-  internal.print.apply(internal.print, arguments);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global printf function
-////////////////////////////////////////////////////////////////////////////////
-
-function printf () {
-  var internal = require("internal");
-  internal.printf.apply(internal.printf, arguments);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn off pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function print_plain () {
-  var internal = require("internal");
-
-  var p = internal.PRETTY_PRINT;
-  internal.PRETTY_PRINT = false;
-
-  var c = internal.COLOR_OUTPUT;
-  internal.COLOR_OUTPUT = false;
-  
-  try {
-    internal.print.apply(internal.print, arguments);
-
-    internal.PRETTY_PRINT = p;
-    internal.COLOR_OUTPUT = c;
-  }
-  catch (e) {
-    internal.PRETTY_PRINT = p;
-    internal.COLOR_OUTPUT = c;
-
-    throw e.message;    
-  }  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function start_pretty_print () {
-  require("internal").startPrettyPrint();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function stop_pretty_print () {
-  require("internal").stopPrettyPrint();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty printing with optional color
-////////////////////////////////////////////////////////////////////////////////
-
-function start_color_print (color) {
-  require("internal").startColorPrint();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function stop_color_print () {
-  require("internal").stopColorPrint();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
