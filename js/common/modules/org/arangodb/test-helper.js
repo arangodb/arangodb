@@ -1,14 +1,14 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoError
+/// @brief Helper for JavaScript Tests
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,21 +24,18 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Lucas Dohmen
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var internal = require("internal"); // OK: processCsvFile
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       ArangoError
+// --SECTION--                                 module "org/arangodb/test-helper"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,22 +44,17 @@ var ArangoError = require("org/arangodb/arango-error").ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the object
+/// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoError.prototype._PRINT = function () {
-  internal.output(this.toString());
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts into a string
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoError.prototype.toString = function() {
-  var errorNum = this.errorNum;
-  var errorMessage = this.errorMessage;
-
-  return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+exports.Helper = {
+  process: function (file, processor) {
+    internal.processCsvFile(file, function (raw_row, index) {
+      if (index !== 0) {
+        processor(raw_row.toString().split(","));
+      }
+    });
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,5 +67,5 @@ ArangoError.prototype.toString = function() {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:

@@ -28,27 +28,30 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
+
+var db = arangodb.db;
+var ArangoCollection = arangodb.ArangoCollection;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       module "org/arangodb/graph"
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"),
-  db = internal.db,
-  ArangoCollection = internal.ArangoCollection,
-  findOrCreateCollectionByName,
-  findOrCreateEdgeCollectionByName;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-findOrCreateCollectionByName = function (name) {
-  var col = internal.db._collection(name);
+var findOrCreateCollectionByName = function (name) {
+  var col = db._collection(name);
 
   if (col === null) {
-    col = internal.db._create(name);
-  } else if (! (col instanceof internal.ArangoCollection) || col.type() != internal.ArangoCollection.TYPE_DOCUMENT) {
+    col = db._create(name);
+  } else if (! (col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -63,12 +66,12 @@ findOrCreateCollectionByName = function (name) {
 /// @brief find or create an edge collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-findOrCreateEdgeCollectionByName = function (name) {
-  var col = internal.db._collection(name);
+var findOrCreateEdgeCollectionByName = function (name) {
+  var col = db._collection(name);
 
   if (col === null) {
-    col = internal.db._createEdgeCollection(name);
-  } else if (!(col instanceof internal.ArangoCollection) || col.type() != internal.ArangoCollection.TYPE_EDGE) {
+    col = db._createEdgeCollection(name);
+  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
@@ -325,15 +328,15 @@ Edge.prototype._PRINT = function (seen, path, names) {
   seen = path = names = null;
 
   if (!this._id) {
-    internal.output("[deleted Edge]");
+    arangodb.output("[deleted Edge]");
   } else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      internal.output("Edge(\"", this._properties._key, "\")");
+      arangodb.output("Edge(\"", this._properties._key, "\")");
     } else {
-      internal.output("Edge(", this._properties._key, ")");
+      arangodb.output("Edge(", this._properties._key, ")");
     }
   } else {
-    internal.output("Edge(<", this._id, ">)");
+    arangodb.output("Edge(<", this._id, ">)");
   }
 };
 
@@ -1069,15 +1072,15 @@ Vertex.prototype._PRINT = function (seen, path, names) {
   seen = path = names = null;
 
   if (!this._id) {
-    internal.output("[deleted Vertex]");
+    arangodb.output("[deleted Vertex]");
   } else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      internal.output("Vertex(\"", this._properties._key, "\")");
+      arangodb.output("Vertex(\"", this._properties._key, "\")");
     } else {
-      internal.output("Vertex(", this._properties._key, ")");
+      arangodb.output("Vertex(", this._properties._key, ")");
     }
   } else {
-    internal.output("Vertex(<", this._id, ">)");
+    arangodb.output("Vertex(<", this._id, ">)");
   }
 };
 
@@ -1118,7 +1121,7 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Graph(name, vertices, edges) {
-  var gdb = internal.db._collection("_graphs"),
+  var gdb = db._collection("_graphs"),
     graphProperties,
     graphPropertiesId;
 
@@ -1143,13 +1146,13 @@ function Graph(name, vertices, edges) {
       throw "no graph named '" + name + "' found";
     }
 
-    vertices = internal.db._collection(graphProperties.vertices);
+    vertices = db._collection(graphProperties.vertices);
 
     if (vertices === null) {
       throw "vertex collection '" + graphProperties.vertices + "' has vanished";
     }
 
-    edges = internal.db._collection(graphProperties.edges);
+    edges = db._collection(graphProperties.edges);
 
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
@@ -1245,7 +1248,7 @@ function Graph(name, vertices, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function () {
-  var gdb = internal.db._collection("_graphs");
+  var gdb = db._collection("_graphs");
 
   gdb.remove(this._properties);
 
@@ -1447,7 +1450,7 @@ Graph.prototype.getVertices = function () {
       // Ignores the standard arguments
       seen = path = names = null;
 
-      internal.output("[vertex iterator]");
+      arangodb.output("[vertex iterator]");
     };
   };
 
@@ -1527,7 +1530,7 @@ Graph.prototype.getEdges = function () {
       // Ignores the standard arguments
       seen = path = names = null;
 
-      internal.output("[edge iterator]");
+      arangodb.output("[edge iterator]");
     };
   };
 
@@ -1844,7 +1847,7 @@ Graph.prototype._PRINT = function (seen, path, names) {
   output = "Graph(\"";
   output += this._properties._key;
   output += "\")";
-  internal.output(output);
+  arangodb.output(output);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1860,7 +1863,6 @@ Graph.prototype._PRINT = function (seen, path, names) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoCollection = ArangoCollection;
 exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;

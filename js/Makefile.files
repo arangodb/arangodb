@@ -14,7 +14,6 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/server/bootstrap -name "*.js"` \
 	\
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
-	@srcdir@/js/common/modules/test-helper.js \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
 	\

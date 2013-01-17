@@ -91,3 +91,7 @@ It exports the error codes, for example
 - ERROR_NO_ERROR
 - ERROR_HTTP_NO_FOUND
 - ...
+
+and as hash
+
+- errors
