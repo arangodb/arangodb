@@ -26,8 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
+
+var arangodb = require("org/arangodb");
 var console = require("console");
+
+var ArangoCollection = arangodb.ArangoCollection;
+var db = arangodb.db;
+var ERRORS = arangodb.errors;
+var wait = require("internal").wait;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -38,8 +44,6 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuiteErrorHandling () {
-  var ERRORS = internal.errors;
-
   var vn = "UnitTestsCollectionVertex";
   var vertex = null;
 
@@ -56,11 +60,11 @@ function CollectionEdgeSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(en);
-      edge = internal.db._createEdgeCollection(en, { waitForSync : false });
+      db._drop(en);
+      edge = db._createEdgeCollection(en, { waitForSync : false });
 
-      internal.db._drop(vn);
-      vertex = internal.db._create(vn, { waitForSync : false });
+      db._drop(vn);
+      vertex = db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -74,12 +78,12 @@ function CollectionEdgeSuiteErrorHandling () {
       edge.unload();
       edge.drop();
       edge = null;
-      internal.wait(0.0);
+      wait(0.0);
 
       vertex.unload();
       vertex.drop();
       vertex = null;
-      internal.wait(0.0);
+      wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,8 +123,6 @@ function CollectionEdgeSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuite () {
-  var ERRORS = require("internal").errors;
-
   var vn = "UnitTestsCollectionVertex";
   var vertex = null;
 
@@ -137,12 +139,12 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(en);
-      edge = internal.db._createEdgeCollection(en, { waitForSync : false });
+      db._drop(en);
+      edge = db._createEdgeCollection(en, { waitForSync : false });
       assertEqual(ArangoCollection.TYPE_EDGE, edge.type());
 
-      internal.db._drop(vn);
-      vertex = internal.db._create(vn, { waitForSync : false });
+      db._drop(vn);
+      vertex = db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -157,7 +159,7 @@ function CollectionEdgeSuite () {
       vertex.drop();
       edge = null;
       vertex = null;
-      internal.wait(0.0);
+      wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +241,7 @@ function CollectionEdgeSuite () {
       edge.unload();
 
       console.log("waiting for collections to unload"); 
-      internal.wait(4);
+      wait(4);
 
       var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
       var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
@@ -248,7 +250,7 @@ function CollectionEdgeSuite () {
       edge.unload();
 
       console.log("waiting for collections to unload"); 
-      internal.wait(4);
+      wait(4);
       var e3 = edge.save(k1, k2, { _key: "ex3", connect: "vx1->vx2" });
       
       d1 = edge.document("ex1");
@@ -557,8 +559,8 @@ function CollectionEdgeSuite () {
     testEdgesCollectionTypeInvalid : function () {
       var dn = "UnitTestsCollectionInvalid";
 
-      internal.db._drop(dn);
-      var c = internal.db._create(dn);
+      db._drop(dn);
+      var c = db._create(dn);
       
       try {
         var e = c.edges("the fox");
@@ -567,7 +569,7 @@ function CollectionEdgeSuite () {
         assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
       }
 
-      internal.db._drop(dn);
+      db._drop(dn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -312,7 +312,7 @@
         // success
         lastTasks[task.name] = true;
         // save/update version info
-        SYS_SAVE(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+        internal.write(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
         console.log("Task successful");
       }
       else {
@@ -323,7 +323,7 @@
     }
 
     // save file so version gets saved even if there are no tasks
-    SYS_SAVE(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    internal.write(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
     console.log("Upgrade successfully finished");
 

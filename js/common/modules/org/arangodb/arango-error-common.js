@@ -29,7 +29,9 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var arangodb = require("org/arangodb");
+
+var output = arangodb.output;
 
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
@@ -51,7 +53,7 @@ var ArangoError = require("org/arangodb/arango-error").ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoError.prototype._PRINT = function () {
-  internal.output(this.toString());
+  output(this.toString());
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,3 +79,7 @@ ArangoError.prototype.toString = function() {
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
+var arangodb = require("org/arangodb");
+
+var output = arangodb.output;
+

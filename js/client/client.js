@@ -43,7 +43,6 @@
 
 function start_pager () {
   var internal = require("internal");
-
   internal.startPager();
 }
 
@@ -53,7 +52,7 @@ function start_pager () {
 
 function stop_pager () {
   var internal = require("internal");
-  
+ 
   internal.stopPager();
 }
 
@@ -83,8 +82,6 @@ function clear () {
     print('\n');
   }
 };
-
-internal.db = arangodb.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

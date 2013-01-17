@@ -34,7 +34,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+
+var db = arangodb.db;
+
 var internal = require("internal");
 var console = require("console");
 
@@ -320,10 +324,10 @@ function GET_admin_session (req, res) {
     res.headers = { "www-authenticate" : realm };
   }
   else {
-    var user = internal.db._collection("_users").firstExample({ user : req.user });
+    var user = db._collection("_users").firstExample({ user : req.user });
 
     if (user === null) {
-      actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "unknown user '" + req.user + "'");
+      actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, "unknown user '" + req.user + "'");
     }
     else {
       result = {

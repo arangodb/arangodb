@@ -1,10 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80,
-         sloppy: true */
-/*global require,
-    db,
-    assertEqual, assertTrue */
+/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph traversal class
@@ -34,10 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+
 var console = require("console");
-var internal = require("internal");
+var arangodb = require("org/arangodb");
 var traversal = require("org/arangodb/graph/traversal");
 var graph = require("org/arangodb/graph");
+
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   graph traversal
@@ -1678,7 +1676,7 @@ function CollectionTraversalSuite () {
 
     testIterateFullOutbound : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1717,7 +1715,7 @@ function CollectionTraversalSuite () {
 
     testIterateInbound : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1749,7 +1747,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueGlobalVertices : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1788,7 +1786,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniquePathVertices : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1831,7 +1829,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueEdges : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,

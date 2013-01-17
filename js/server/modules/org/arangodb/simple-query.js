@@ -37,6 +37,7 @@ var sq = require("org/arangodb/simple-query-common");
 
 var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
+var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
@@ -423,11 +424,13 @@ SimpleQueryFulltext.prototype.execute = function () {
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
+exports.SimpleQueryArray = SimpleQueryArray;
 exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryFulltext = SimpleQueryFulltext;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
+exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryWithin = SimpleQueryWithin;
-exports.SimpleQueryFulltext = SimpleQueryFulltext;
 exports.byExample = byExample;
 
 ////////////////////////////////////////////////////////////////////////////////

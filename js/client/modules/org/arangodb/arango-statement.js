@@ -32,7 +32,7 @@
 var internal = require("internal");
 var arangosh = require("org/arangodb/arangosh");
 
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
 var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
 
 // -----------------------------------------------------------------------------

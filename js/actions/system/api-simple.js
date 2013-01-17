@@ -26,7 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
-var simple = require("simple-query");
+var simple = require("org/arangodb/simple-query");
+
 var API = "_api/simple/";
 
 // -----------------------------------------------------------------------------
