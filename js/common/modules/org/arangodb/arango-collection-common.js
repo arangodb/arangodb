@@ -28,11 +28,26 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var simple = require("org/arangodb/simple-query");
-
 var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("org/arangodb/arango-error").ArrangoError;
+
+var arangodb = require("org/arangodb");
+
+var output = arangodb.output;
+var sprintf = arangodb.sprintf;
+var db = arangodb.db;
+
+var colors = require("internal").colors;
+
+var simple = require("org/arangodb/simple-query");
+
+var SimpleQueryAll = simple.SimpleQueryAll;
+var SimpleQueryByExample = simple.SimpleQueryByExample;
+var SimpleQueryRange = simple.SimpleQueryRange;
+var SimpleQueryGeo = simple.SimpleQueryGeo;
+var SimpleQueryNear = simple.SimpleQueryNear;
+var SimpleQueryWithin = simple.SimpleQueryWithin;
+var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
@@ -130,11 +145,11 @@ ArangoCollection.prototype._PRINT = function () {
     case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
   }
 
-  internal.output("[ArangoCollection ", 
-                  internal.colors.COLOR_NUMBER, this._id, internal.colors.COLOR_RESET,
-                  ", \"", 
-                  internal.colors.COLOR_STRING, this.name(), internal.colors.COLOR_RESET, 
-                  "\" (type ", type, ", status ", status, ")]");
+  output("[ArangoCollection ", 
+         colors.COLOR_NUMBER, this._id, colors.COLOR_RESET,
+         ", \"", 
+         colors.COLOR_STRING, this.name(), colors.COLOR_RESET, 
+         "\" (type ", type, ", status ", status, ")]");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +194,7 @@ ArangoCollection.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.all = function () {
-  return new simple.SimpleQueryAll(this);
+  return new SimpleQueryAll(this);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,7 +272,7 @@ ArangoCollection.prototype.byExample = function (example) {
     }
   }
 
-  return new simple.SimpleQueryByExample(this, e);
+  return new SimpleQueryByExample(this, e);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,7 +302,7 @@ ArangoCollection.prototype.byExample = function (example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.range = function (name, left, right) {
-  return new simple.SimpleQueryRange(this, name, left, right, 0);
+  return new SimpleQueryRange(this, name, left, right, 0);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,7 +328,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.closedRange = function (name, left, right) {
-  return new simple.SimpleQueryRange(this, name, left, right, 1);
+  return new SimpleQueryRange(this, name, left, right, 1);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,12 +415,12 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
   if (idx === null) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
-    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    err.errorNum = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
 
-  return new simple.SimpleQueryGeo(this, idx.id);
+  return new SimpleQueryGeo(this, idx.id);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -462,7 +477,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.near = function (lat, lon) {
-  return new simple.SimpleQueryNear(this, lat, lon);
+  return new SimpleQueryNear(this, lat, lon);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -499,7 +514,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
-  return new simple.SimpleQueryWithin(this, lat, lon, radius);
+  return new SimpleQueryWithin(this, lat, lon, radius);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +538,7 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
-  return new simple.SimpleQueryFulltext(this, attribute, query, iid);
+  return new SimpleQueryFulltext(this, attribute, query, iid);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -578,8 +593,8 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
       cursor = this.all();
     }
     else {
-      stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob RETURN d", this.name());
-      stmt = internal.db._createStatement({ query: stmt });
+      stmt = sprintf("FOR d IN %s FILTER rand() >= @prob RETURN d", this.name());
+      stmt = db._createStatement({ query: stmt });
 
       if (probability < 1.0) {
         stmt.bind("prob", probability);
@@ -601,9 +616,9 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
       cursor = this.all().limit(limit);
     }
     else {
-      stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d",
-                              this.name(), limit);
-      stmt = internal.db._createStatement({ query: stmt });
+      stmt = sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d",
+                     this.name(), limit);
+      stmt = db._createStatement({ query: stmt });
 
       if (probability < 1.0) {
         stmt.bind("prob", probability);

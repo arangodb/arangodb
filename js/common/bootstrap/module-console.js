@@ -45,6 +45,9 @@
   var internal = require("internal");
   var console = require("console");
 
+  var sprintf = internal.sprintf;
+  var log = internal.log;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a line from standard input
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,13 +74,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("debug", msg);
+    log("debug", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,13 +96,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("error", msg);
+    log("error", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,13 +118,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("info", msg);
+    log("info", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,13 +140,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("info", msg);
+    log("info", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,13 +162,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("warning", msg);
+    log("warning", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////

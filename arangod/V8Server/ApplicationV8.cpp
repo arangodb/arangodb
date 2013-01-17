@@ -645,13 +645,13 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   files.push_back("common/bootstrap/modules.js");
   files.push_back("common/bootstrap/module-internal.js");
   files.push_back("common/bootstrap/module-fs.js");
-  files.push_back("common/bootstrap/module-console.js");
+  files.push_back("common/bootstrap/module-console.js"); // needs internal
   files.push_back("common/bootstrap/errors.js");
   files.push_back("common/bootstrap/monkeypatches.js");
 
   files.push_back("server/bootstrap/module-internal.js");
   files.push_back("server/ahuacatl.js");
-  files.push_back("server/server.js");
+  files.push_back("server/server.js"); // needs internal
 
   LOGGER_TRACE << "initialising V8 context #" << i;
 

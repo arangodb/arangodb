@@ -1376,15 +1376,15 @@ int main (int argc, char* argv[]) {
   files.push_back("common/bootstrap/modules.js");
   files.push_back("common/bootstrap/module-internal.js");
   files.push_back("common/bootstrap/module-fs.js");
-  files.push_back("common/bootstrap/module-console.js");
+  files.push_back("common/bootstrap/module-console.js");  // needs internal
   files.push_back("common/bootstrap/errors.js");
 
   if (JsLint.empty()) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 
-  files.push_back("client/client.js");
   files.push_back("client/bootstrap/module-internal.js");
+  files.push_back("client/client.js"); // needs internal
   
   for (size_t i = 0;  i < files.size();  ++i) {
     bool ok = StartupLoader.loadScript(context, files[i]);
