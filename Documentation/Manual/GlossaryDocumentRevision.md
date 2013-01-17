@@ -3,15 +3,26 @@ DocumentRevision {#GlossaryDocumentRevision}
 
 @GE{Document Revision}: As ArangoDB supports MVCC, documents can exist
 in more than one revision.  The document revision is the MVCC token
-used to identify a particular revision of a document. It is an integer
-and unique within the list of document revision for a single
-document. Earlier revisions of a document have smaller numbers.
+used to identify a particular revision of a document. It is a string
+value currently containing an integer number and is unique within the 
+list of document revisions for a single document. 
 Document revisions can be used to conditionally update, replace or
 delete documents in the database. In order to find a particular
 revision of a document, you need the document handle and the document
 revision.
 
-ArangoDB currently uses 64bit unsigned integer values for document
-revisions. As this datatype is not portable to all client languages,
-clients should rather treat the revision as an opaque string when they
-store or use document revision values locally.
+ArangoDB currently uses 64bit unsigned integer values to maintain
+document revisions internally. When returning document revisions to 
+clients, ArangoDB will put them into a string to ensure the revision id
+is not clipped by clients that do not support big integers.
+Clients should rather treat the revision returned by ArangoDB as an 
+opaque string when they store or use it locally. This will ArangoDB to
+change the format of revision ids later if this should be required.
+Clients can thus use Revisions ids to perform simple equality/non-equality 
+comparisons (e.g. to check whether a document has changed or not), but 
+they should not use revision ids to perform greater/less than comparisions
+with them to check if a document revision is older than one another,
+even if this might work for some cases. 
+
+Note: revision ids have been returned as integers up to including 
+ArangoDB 1.1
