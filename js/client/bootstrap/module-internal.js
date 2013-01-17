@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, SYS_ARANGO */
+/*global require, ArangoConnection, SYS_ARANGO */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
