@@ -2,7 +2,7 @@
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ,
   SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, SYS_GETLINE,
-  SYS_PARSE, ARANGO_QUIET, MODULES_PATH, COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT,
+  SYS_PARSE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT,
   COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE, COLOR_BOLD_GREEN,
   COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE, COLOR_YELLOW,
   COLOR_BOLD_YELLOW, PRETTY_PRINT  */
@@ -48,7 +48,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = Module.prototype.ModuleCache["/internal"].exports;
+  var internal = require("internal");
 
   // system functions
   if (typeof SYS_EXECUTE !== "undefined") {
@@ -193,9 +193,12 @@
     delete COLORS;
   }
   else {
-    [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW', 'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
-      internal.COLORS[color] = '';
-    });
+    [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
+      'COLOR_YELLOW', 'COLOR_BOLD_YELLOW', 'COLOR_WHITE', 'COLOR_BOLD_WHITE',
+      'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT',
+      'COLOR_RESET' ].forEach(function(color) {
+        internal.COLORS[color] = '';
+      });
   }
 
   internal.COLORS.COLOR_PUNCTUATION = internal.COLORS.COLOR_RESET;
@@ -207,7 +210,10 @@
   internal.COLORS.COLOR_NULL = internal.COLORS.COLOR_BOLD_WHITE;
 
   internal.NOCOLORS = { };
-  for (var i in internal.COLORS) {
+
+  var i;
+
+  for (i in internal.COLORS) {
     if (internal.COLORS.hasOwnProperty(i)) {
       internal.NOCOLORS[i] = '';
     }
@@ -355,7 +361,7 @@
         else if (value.__proto__ === Object.prototype) {
           internal.printObject(value, seen, path, names, level);
         }
-	else if (typeof value.toString === "function") {
+        else if (typeof value.toString === "function") {
           internal.output(value.toString());
         }
         else {
@@ -381,7 +387,7 @@
           internal.output(String(value));
           internal.output(internal.colors.COLOR_RESET);
         }
-        else if (value == null) {
+        else if (value === null) {
           internal.output(internal.colors.COLOR_NULL);
           internal.output(String(value));
           internal.output(internal.colors.COLOR_RESET);
@@ -543,7 +549,7 @@
   internal.printf = function () {
     var text = internal.sprintf.apply(internal.springf, arguments);
     internal.output(text);
-  }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start pager
@@ -575,6 +581,7 @@
     if (! internal.PRETTY_PRINT && ! silent) {
       internal.print("using pretty printing");
     }
+
     internal.PRETTY_PRINT = true;
   };
 
@@ -586,6 +593,7 @@
     if (internal.PRETTY_PRINT && ! silent) {
       internal.print("disabled pretty printing");
     }
+
     internal.PRETTY_PRINT = false;
   };
 
@@ -597,6 +605,7 @@
     if (! internal.COLOR_OUTPUT && ! silent) {
       internal.print("starting color printing"); 
     }
+
     internal.colors = internal.COLORS;
     internal.COLOR_OUTPUT = true;
   };
@@ -609,6 +618,7 @@
     if (internal.COLOR_OUTPUT && ! silent) {
       internal.print("disabled color printing");
     }
+
     internal.COLOR_OUTPUT = false;
     internal.colors = internal.NOCOLORS;
   };
@@ -618,13 +628,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.dump = function () { 
+    var i;
     var oldPretty = internal.PRETTY_PRINT; 
     var oldColor = internal.COLOR_OUTPUT; 
 
     internal.startPrettyPrint(true); 
     internal.startColorPrint(true); 
 
-    for (var i = 0; i < arguments.length; ++i) {
+    for (i = 0; i < arguments.length; ++i) {
       internal.print(arguments[i]); 
     }
 
@@ -660,7 +671,7 @@
     Object.getOwnPropertyNames(source)
       .forEach(function(propName) {
         Object.defineProperty(target, propName,
-			      Object.getOwnPropertyDescriptor(source, propName));
+                              Object.getOwnPropertyDescriptor(source, propName));
       });
 
     return target;
@@ -699,19 +710,19 @@
       mc = internal.db._collection("_modules");
 
       if (mc !== null && typeof mc.firstExample === "function") {
-	n = mc.firstExample({ path: path });
+        n = mc.firstExample({ path: path });
 
-	if (n !== null) {
+        if (n !== null) {
           if (n.hasOwnProperty('content')) {
             Module.prototype.ModuleExistsCache[path] = true;
             return { path : "_collection/" + path, content : n.content };
           }
 
-	  if (Module.prototype.ModuleExistsCache.hasOwnProperty("/console")) {
-	    var console = Module.prototype.ModuleExistsCache["/console"];
-	    console.error("found empty content in '%s'", JSON.stringify(n));
-	  }
-	}
+          if (Module.prototype.ModuleExistsCache.hasOwnProperty("/console")) {
+            var console = Module.prototype.ModuleExistsCache["/console"];
+            console.error("found empty content in '%s'", JSON.stringify(n));
+          }
+        }
       }
     }
 

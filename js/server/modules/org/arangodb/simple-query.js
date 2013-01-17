@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
 ///
@@ -27,7 +30,16 @@
 
 var internal = require("internal");
 var console = require("console");
-var SQ = require("simple-query-basics");
+
+var sq = require("simple-query-common");
+
+var GeneralArrayCursor = sq.GeneralArrayCursor;
+var SimpleQueryAll = sq.SimpleQueryAll;
+var SimpleQueryByExample = sq.SimpleQueryByExample;
+var SimpleQueryFulltext = sq.SimpleQueryFulltext;
+var SimpleQueryNear = sq.SimpleQueryNear;
+var SimpleQueryRange = sq.SimpleQueryRange;
+var SimpleQueryWithin = sq.SimpleQueryWithin;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
@@ -46,7 +58,7 @@ var SQ = require("simple-query-basics");
 /// @brief executes an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryAll.prototype.execute = function () {
+SimpleQueryAll.prototype.execute = function () {
   var documents;
 
   if (this._execution === null) {
@@ -56,7 +68,7 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 
     documents = this._collection.ALL(this._skip, this._limit);
 
-    this._execution = new SQ.GeneralArrayCursor(documents.documents);
+    this._execution = new GeneralArrayCursor(documents.documents);
     this._countQuery = documents.count;
     this._countTotal = documents.total;
   }
@@ -142,7 +154,7 @@ function ByExample (collection, example, skip, limit) {
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryByExample.prototype.execute = function () {
+SimpleQueryByExample.prototype.execute = function () {
   var documents;
 
   if (this._execution === null) {
@@ -152,7 +164,7 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 
     var documents = ByExample(this._collection, this._example, this._skip, this._limit);
 
-    this._execution = new SQ.GeneralArrayCursor(documents.documents);
+    this._execution = new GeneralArrayCursor(documents.documents);
     this._countQuery = documents.count;
     this._countTotal = documents.total;
   }
@@ -275,7 +287,7 @@ function RangedQuery (collection, attribute, left, right, type, skip, limit) {
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryRange.prototype.execute = function () {
+SimpleQueryRange.prototype.execute = function () {
   var documents;
 
   if (this._execution === null) {
@@ -291,7 +303,7 @@ SQ.SimpleQueryRange.prototype.execute = function () {
                                 this._skip, 
                                 this._limit);
 
-    this._execution = new SQ.GeneralArrayCursor(documents.documents);
+    this._execution = new GeneralArrayCursor(documents.documents);
     this._countQuery = documents.count;
     this._countTotal = documents.total;
   }
@@ -318,7 +330,7 @@ SQ.SimpleQueryRange.prototype.execute = function () {
 /// @brief executes a near query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryNear.prototype.execute = function () {
+SimpleQueryNear.prototype.execute = function () {
   var result;
   var documents;
   var distances;
@@ -353,7 +365,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
       }
     }
 
-    this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, null);
+    this._execution = new GeneralArrayCursor(result.documents, this._skip, null);
     this._countQuery = result.documents.length - this._skip;
     this._countTotal = result.documents.length;
   }
@@ -380,7 +392,7 @@ SQ.SimpleQueryNear.prototype.execute = function () {
 /// @brief executes a within query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryWithin.prototype.execute = function () {
+SimpleQueryWithin.prototype.execute = function () {
   var result;
   var documents;
   var distances;
@@ -396,7 +408,7 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
       }
     }
 
-    this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, this._limit);
+    this._execution = new GeneralArrayCursor(result.documents, this._skip, this._limit);
     this._countQuery = result.documents.length - this._skip;
     this._countTotal = result.documents.length;
   }
@@ -423,7 +435,7 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
 /// @brief executes a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryFulltext.prototype.execute = function () {
+SimpleQueryFulltext.prototype.execute = function () {
   var result;
   var documents;
 
@@ -431,7 +443,7 @@ SQ.SimpleQueryFulltext.prototype.execute = function () {
     result = this._collection.FULLTEXT(this._index, this._query);
     documents = result.documents;
 
-    this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, this._limit);
+    this._execution = new GeneralArrayCursor(result.documents, this._skip, this._limit);
     this._countQuery = result.documents.length - this._skip;
     this._countTotal = result.documents.length;
   }
@@ -450,16 +462,21 @@ SQ.SimpleQueryFulltext.prototype.execute = function () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.SimpleQueryAll = SQ.SimpleQueryAll;
-exports.SimpleQueryByExample = SQ.SimpleQueryByExample;
-exports.SimpleQueryGeo = SQ.SimpleQueryGeo;
-exports.SimpleQueryNear = SQ.SimpleQueryNear;
-exports.SimpleQueryWithin = SQ.SimpleQueryWithin;
-exports.SimpleQueryFulltext = SQ.SimpleQueryFulltext;
+exports.GeneralArrayCursor = GeneralArrayCursor;
+exports.SimpleQueryAll = SimpleQueryAll;
+exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryGeo = SimpleQueryGeo;
+exports.SimpleQueryNear = SimpleQueryNear;
+exports.SimpleQueryWithin = SimpleQueryWithin;
+exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

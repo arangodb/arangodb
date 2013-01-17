@@ -1,13 +1,14 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true plusplus: true */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief monkey-patches to built-in prototypes
+/// @brief ArangoShell client API
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,80 +24,94 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Achim Brandt
 /// @author Dr. Frank Celler
-/// @author Lucas Dohmen
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    monkey-patches
+// --SECTION--                                                 Module "arangosh"
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup V8ModuleArangosh
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes last occurrence of element from an array
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Array.prototype, "removeLastOccurrenceOf", {
-  value: function (element) {
-    return this.splice(this.lastIndexOf(element), 1);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a formatted type string for object
+/// 
+/// If the object has an id, it will be included in the string.
+////////////////////////////////////////////////////////////////////////////////
+
+exports.getIdString = function (object, typeName) {
+  var result = "[object " + typeName;
+
+  if (object._id) {
+    result += ":" + object._id;
   }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the union with another array
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Array.prototype, "unite", {
-  value: function (other_array) {
-    return other_array.concat(this.filter(function (element) {
-      return (other_array.indexOf(element) === -1);
-    }));
+  else if (object.data && object.data._id) {
+    result += ":" + object.data._id;
   }
-});
+
+  result += "]";
+
+  return result;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the intersection with another array
+/// @brief handles error results
+/// 
+/// throws an exception in case of an an error
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Array.prototype, "intersect", {
-  value: function (other_array) {
-    return this.filter(function (element) {
-      return (other_array.indexOf(element) > -1);
-    });
+exports.checkRequestResult = function (requestResult) {
+  if (requestResult === undefined) {
+    requestResult = {
+      "error" : true,
+      "code"  : 0,
+      "errorNum" : 0,
+      "errorMessage" : "Unknown error. Request result is empty"
+    };
   }
-});
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copies properties
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, "shallowCopy", {
-  get: function () {
-    var that = this;
-
-    return this.propertyKeys.reduce(function (previous, element) {
-      previous[element] = that[element];
-      return previous;
-    }, {});
+  if (requestResult.error !== undefined && requestResult.error) {    
+    throw new ArangoError(requestResult);
   }
-});
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the property keys
+/// @brief create a formatted headline text 
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Object.prototype, "propertyKeys", {
-  get: function () {
-    return Object.keys(this).filter(function (element) {
-      return (element[0] !== '_' && element[0] !== '$');
-    });
+exports.createHelpHeadline = function (text) {
+  var i;
+  var p = "";
+  var x = Math.abs(78 - text.length) / 2;
+
+  for (i = 0; i < x; ++i) {
+    p += "-";
   }
-});
+
+  return "\n" + p + " " + text + " " + p + "\n";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -108,5 +123,5 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
+// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:

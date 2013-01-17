@@ -2,13 +2,13 @@
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module "js"
+/// @brief ArangoError
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,33 +24,46 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Achim Brandt
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Module "fs"
+// --SECTION--                                                       ArangoError
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleFS
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief file-system module
+/// @brief prints the object
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var internal = require("internal");
-  var fs = require("fs");
+ArangoError.prototype._PRINT = function () {
+  internal.output(this.toString());
+};
 
-  fs.exists = internal.exists;
-  fs.isDirectory = internal.isDirectory;
-  fs.listTree = internal.listTree;
-  fs.move = internal.move;
-  fs.remove = internal.remove;
-}());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts into a string
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoError.prototype.toString = function() {
+  var errorNum = this.errorNum;
+  var errorMessage = this.errorMessage;
+
+  return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -62,5 +75,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:

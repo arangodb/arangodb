@@ -1,13 +1,14 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, AHUACATL_PARSE, AHUACATL_EXPLAIN, AHUACATL_RUN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief monkey-patches to built-in prototypes
+/// @brief ArangoStatement
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,80 +24,58 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Lucas Dohmen
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var ArangoStatement = require("org/arangodb/arango-statement.js").ArangoStatement;
+var GeneralArrayCursor = require("org/arangodb/simple-query-common.js").GeneralArrayCursor;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    monkey-patches
+// --SECTION--                                                   ArangoStatement
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup ArangoStatement
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes last occurrence of element from an array
+/// @brief parse a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Array.prototype, "removeLastOccurrenceOf", {
-  value: function (element) {
-    return this.splice(this.lastIndexOf(element), 1);
-  }
-});
+ArangoStatement.prototype.parse = function () {
+  var result = AHUACATL_PARSE(this._query); 
+
+  return { "bindVars" : result.parameters, "collections" : result.collections };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the union with another array
+/// @brief explain a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Array.prototype, "unite", {
-  value: function (other_array) {
-    return other_array.concat(this.filter(function (element) {
-      return (other_array.indexOf(element) === -1);
-    }));
-  }
-});
+ArangoStatement.prototype.explain = function () {
+  return AHUACATL_EXPLAIN(this._query); 
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the intersection with another array
+/// @brief execute the query
+///
+/// This will return a cursor with the query results in case of success.
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Array.prototype, "intersect", {
-  value: function (other_array) {
-    return this.filter(function (element) {
-      return (other_array.indexOf(element) > -1);
-    });
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copies properties
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, "shallowCopy", {
-  get: function () {
-    var that = this;
-
-    return this.propertyKeys.reduce(function (previous, element) {
-      previous[element] = that[element];
-      return previous;
-    }, {});
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the property keys
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, "propertyKeys", {
-  get: function () {
-    return Object.keys(this).filter(function (element) {
-      return (element[0] !== '_' && element[0] !== '$');
-    });
-  }
-});
+ArangoStatement.prototype.execute = function () {
+  var result = AHUACATL_RUN(this._query, 
+                            this._bindVars, 
+                            this._doCount !== undefined ? this._doCount : false, 
+                            null, 
+                            true);  
+  return new GeneralArrayCursor(result, 0, null);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -108,5 +87,5 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:

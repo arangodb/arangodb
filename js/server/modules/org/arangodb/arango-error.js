@@ -1,14 +1,14 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module "js"
+/// @brief ArangoError
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,33 +24,34 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Achim Brandt
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Module "fs"
+// --SECTION--                                                       ArangoError
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleFS
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief file-system module
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var internal = require("internal");
-  var fs = require("fs");
+exports.ArangoError = internal.ArangoError;
 
-  fs.exists = internal.exists;
-  fs.isDirectory = internal.isDirectory;
-  fs.listTree = internal.listTree;
-  fs.move = internal.move;
-  fs.remove = internal.remove;
-}());
+// must be called after exporting ArangoError
+require("org/arangodb/arango-error-common");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -62,5 +63,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
