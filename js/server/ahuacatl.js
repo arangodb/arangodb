@@ -2349,7 +2349,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
 
   if (params.maxDepth <= 0) {
     // we need to have at least SOME limit to prevent endless iteration
-    params.maxDepth = 1024;
+    params.maxDepth = 256;
   }
 
   // prepare an array of filters
@@ -2384,13 +2384,13 @@ function AHUACATL_GRAPH_TRAVERSE () {
     filter: filter,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
-        'none': traversal.Traverser.UNIQUE_NONE,
         'global': traversal.Traverser.UNIQUE_GLOBAL,
+        'none': traversal.Traverser.UNIQUE_NONE,
         'path': traversal.Traverser.UNIQUE_PATH
       }),
       edges: validate(params.uniqueness && params.uniqueness.edges, {
-        'none': traversal.Traverser.UNIQUE_NONE,
         'global': traversal.Traverser.UNIQUE_GLOBAL,
+        'none': traversal.Traverser.UNIQUE_NONE,
         'path': traversal.Traverser.UNIQUE_PATH
       }),
     },
