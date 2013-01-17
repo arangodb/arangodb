@@ -103,8 +103,8 @@ Now use the browser and access
 
 You should see the `Hello World` in our browser.
 
-Matching an URL {#UserManualActionsMatches}
-===========================================
+Matching a URL {#UserManualActionsMatches}
+==========================================
 
 There are a lot of options for the `url` attribute. If you define different
 routing for the same path, then the following simple rule is applied in order to
@@ -135,7 +135,7 @@ If the definition is
 
 then the match can be a prefix match. The requests for `/hello/world`,
 `/hello/world/my`, and `/hello/world/how/are/you` will all match. However
-`/hello/world2` does not match. Prefix matches within an URL part,
+`/hello/world2` does not match. Prefix matches within a URL part,
 i. e. `/hello/world*`, are not allowed. The wildcard must occur at the end,
 i. e.
 
