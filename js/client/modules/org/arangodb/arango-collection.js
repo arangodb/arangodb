@@ -844,6 +844,47 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a query-by-example for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.firstExample = function (example) {
+  var e;
+  var i;
+
+  // example is given as only argument
+  if (arguments.length === 1) {
+    e = example;
+  }
+
+  // example is given as list
+  else {
+    e = {};
+
+    for (i = 0;  i < arguments.length;  i += 2) {
+      e[arguments[i]] = arguments[i + 1];
+    }
+  }
+
+  var data = {
+    collection: this.name(),
+    example: e
+  };
+
+  var requestResult = this._database._connection.PUT(
+    "/_api/simple/first-example", JSON.stringify(data));
+
+  if (requestResult !== null
+      && requestResult.error === true 
+      && requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+    return null;
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.document;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a document in the collection
 ////////////////////////////////////////////////////////////////////////////////
 

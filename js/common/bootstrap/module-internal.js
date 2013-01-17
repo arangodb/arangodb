@@ -2,10 +2,11 @@
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ,
   SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, SYS_GETLINE,
-  SYS_PARSE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT,
-  COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE, COLOR_BOLD_GREEN,
-  COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE, COLOR_YELLOW,
-  COLOR_BOLD_YELLOW, PRETTY_PRINT  */
+  SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_PROCESS_CSV_FILE,
+  SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, COLOR_OUTPUT_RESET, 
+  COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE,
+  COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE,
+  COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, UPGRADE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -39,7 +40,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -96,6 +97,11 @@
     delete SYS_READ;
   }
 
+  if (typeof SYS_SAVE !== "undefined") {
+    internal.write = SYS_SAVE;
+    delete SYS_SAVE;
+  }
+
   if (typeof SYS_SHA256 !== "undefined") {
     internal.sha256 = SYS_SHA256;
     delete SYS_SHA256;
@@ -141,6 +147,26 @@
     delete FS_REMOVE;
   }
 
+  if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {
+    internal.importCsvFile = SYS_IMPORT_CSV_FILE;
+    delete SYS_IMPORT_CSV_FILE;
+  }
+
+  if (typeof SYS_IMPORT_JSON_FILE !== "undefined") {
+    internal.importJsonFile = SYS_IMPORT_JSON_FILE;
+    delete SYS_IMPORT_JSON_FILE;
+  }
+
+  if (typeof SYS_PROCESS_CSV_FILE !== "undefined") {
+    internal.processCsvFile = SYS_PROCESS_CSV_FILE;
+    delete SYS_PROCESS_CSV_FILE;
+  }
+
+  if (typeof SYS_PROCESS_JSON_FILE !== "undefined") {
+    internal.processJsonFile = SYS_PROCESS_JSON_FILE;
+    delete SYS_PROCESS_JSON_FILE;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +176,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,6 +196,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.ARANGO_QUIET = false;
+
+  if (typeof ARANGO_QUIET !== "undefined") {
+    internal.ARANGO_QUIET = ARANGO_QUIET;
+    delete ARANGO_QUIET;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pretty print flag
@@ -229,6 +260,64 @@
   internal.colors = (internal.COLOR_OUTPUT ? internal.COLORS : internal.NOCOLORS);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief valgrind flag
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.VALGRIND = false;
+
+  if (typeof VALGRIND !== "undefined") {
+    internal.VALGRIND = VALGRIND;
+    delete VALGRIND;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version number
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.VERSION = "unknown";
+
+  if (typeof VERSION !== "undefined") {
+    internal.VERSION = VERSION;
+    delete VERSION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrade number
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.UPGRADE = "unknown";
+
+  if (typeof UPGRADE !== "undefined") {
+    internal.UPGRADE = UPGRADE;
+    delete UPGRADE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief icu flag
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.HAS_ICU = false;
+
+  if (typeof HAS_ICU !== "undefined") {
+    internal.HAS_ICU = HAS_ICU;
+    delete HAS_ICU;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quote cache
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.characterQuoteCache = {
+    '\b': '\\b', // ASCII 8, Backspace
+    '\t': '\\t', // ASCII 9, Tab
+    '\n': '\\n', // ASCII 10, Newline
+    '\f': '\\f', // ASCII 12, Formfeed
+    '\r': '\\r', // ASCII 13, Carriage Return
+    '\"': '\\"',
+    '\\': '\\\\'
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -237,7 +326,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -272,20 +361,6 @@
     }
     
     internal.output("\n");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quote cache
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.characterQuoteCache = {
-    '\b': '\\b', // ASCII 8, Backspace
-    '\t': '\\t', // ASCII 9, Tab
-    '\n': '\\n', // ASCII 10, Newline
-    '\f': '\\f', // ASCII 12, Formfeed
-    '\r': '\\r', // ASCII 13, Carriage Return
-    '\"': '\\"',
-    '\\': '\\\\'
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +475,7 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an array
+/// @brief prints the JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.printArray = function (object, seen, path, names, level) {
@@ -524,11 +599,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -543,7 +618,7 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global print
+/// @brief global printf
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.printf = function () {
@@ -700,7 +775,7 @@
       }
 
       if (internal.exists(n)) {
-        Module.prototype.ModuleExistsCache[path] = true;
+        module.ModuleExistsCache[path] = true;
         return { path : n, content : internal.read(n) };
       }
     }
@@ -714,19 +789,19 @@
 
         if (n !== null) {
           if (n.hasOwnProperty('content')) {
-            Module.prototype.ModuleExistsCache[path] = true;
+            module.ModuleExistsCache[path] = true;
             return { path : "_collection/" + path, content : n.content };
           }
 
-          if (Module.prototype.ModuleExistsCache.hasOwnProperty("/console")) {
-            var console = Module.prototype.ModuleExistsCache["/console"];
+          if (module.ModuleExistsCache.hasOwnProperty("/console")) {
+            var console = module.ModuleExistsCache["/console"];
             console.error("found empty content in '%s'", JSON.stringify(n));
           }
         }
       }
     }
 
-    Module.prototype.ModuleExistsCache[path] = false;
+    module.ModuleExistsCache[path] = false;
 
     throw "cannot find a file named '"
         + path
@@ -806,5 +881,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:

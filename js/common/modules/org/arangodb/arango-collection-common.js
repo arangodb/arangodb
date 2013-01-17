@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +180,7 @@ ArangoCollection.prototype.toString = function () {
 
 ArangoCollection.prototype.all = function () {
   return new simple.SimpleQueryAll(this);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
@@ -238,26 +238,27 @@ ArangoCollection.prototype.all = function () {
 /// @TINYEXAMPLE{simple19,iterate over the result-set}
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.byExample = function () {
-  var example;
+ArangoCollection.prototype.byExample = function (example) {
+  var e;
+  var i;
 
   // example is given as only argument
   if (arguments.length === 1) {
-    example = arguments[0];
+    e = example;
   }
 
   // example is given as list
   else {
-    example = {};
+    e = {};
 
-    for (var i = 0;  i < arguments.length;  i += 2) {
-      example[arguments[i]] = arguments[i + 1];
+    // create a REAL array, otherwise JSON.stringify will fail
+    for (i = 0;  i < arguments.length;  i += 2) {
+      e[arguments[i]] = arguments[i + 1];
     }
   }
 
-  // create a REAL array, otherwise JSON.stringify will fail
-  return new simple.SimpleQueryByExample(this, example);
-}
+  return new simple.SimpleQueryByExample(this, e);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a range query for a collection
@@ -287,7 +288,7 @@ ArangoCollection.prototype.byExample = function () {
 
 ArangoCollection.prototype.range = function (name, left, right) {
   return new simple.SimpleQueryRange(this, name, left, right, 0);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a closed range query for a collection
@@ -313,7 +314,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 
 ArangoCollection.prototype.closedRange = function (name, left, right) {
   return new simple.SimpleQueryRange(this, name, left, right, 1);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a geo index selection
@@ -350,8 +351,9 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
   var locateGeoIndex1 = function(collection, loc, order) {
     var inds = collection.getIndexes();
+    var i;
     
-    for (var i = 0;  i < inds.length;  ++i) {
+    for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
       if (index.type === "geo1") {
@@ -366,8 +368,9 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
   var locateGeoIndex2 = function(collection, lat, lon) {
     var inds = collection.getIndexes();
+    var i;
     
-    for (var i = 0;  i < inds.length;  ++i) {
+    for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
       
       if (index.type === "geo2") {
@@ -403,7 +406,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
   }
 
   return new simple.SimpleQueryGeo(this, idx.id);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for a collection
@@ -460,7 +463,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
 ArangoCollection.prototype.near = function (lat, lon) {
   return new simple.SimpleQueryNear(this, lat, lon);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a within query for a collection
@@ -497,7 +500,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
   return new simple.SimpleQueryWithin(this, lat, lon, radius);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a fulltext query for a collection
@@ -521,7 +524,7 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 
 ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
   return new simple.SimpleQueryFulltext(this, attribute, query, iid);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterators over some elements of a collection

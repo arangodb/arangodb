@@ -132,7 +132,7 @@ actions.defineHttp({
     context : "admin",
     prefix : false,
     callback : function (req, res) {
-      RELOAD_AUTH();
+      internal.RELOAD_AUTH();
       actions.resultOk(req, res, actions.HTTP_OK);
     }
   });
@@ -327,8 +327,8 @@ function GET_admin_session (req, res) {
     }
     else {
       result = {
-	user : user.user,
-	permissions : user.permissions || []
+        user : user.user,
+        permissions : user.permissions || []
       };
 
       actions.resultOk(req, res, actions.HTTP_OK, result);
@@ -359,19 +359,19 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       if (req.requestType === actions.GET) {
-	GET_admin_session(req, res);
+        GET_admin_session(req, res);
       }
       else if (req.requestType === actions.DELETE) {
-	DELETE_admin_session(req, res);
+        DELETE_admin_session(req, res);
       }
       else if (req.requestType === actions.POST) {
-	POST_admin_session(req, res);
+        POST_admin_session(req, res);
       }
       else if (req.requestType === actions.PUT) {
-	PUT_admin_session(req, res);
+        PUT_admin_session(req, res);
       }
       else {
-	actions.resultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
       }
     }
     catch (err) {

@@ -45,7 +45,7 @@
   var db = internal.db;
 
   // path to the VERSION file
-  var versionFile = DATABASEPATH + "/VERSION";
+  var versionFile = internal.DATABASEPATH + "/VERSION";
 
   function runUpgrade (currentVersion) {
     var allTasks = [ ];
@@ -375,7 +375,7 @@
   }
   else if (lastVersion < currentVersion) {
     // upgrade
-    if (UPGRADE) {
+    if (internal.UPGRADE) {
       return runUpgrade(currentVersion);
     }
 

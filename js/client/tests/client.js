@@ -153,7 +153,7 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare : function () {
-      if (HAS_ICU) {
+      if (internal.HAS_ICU) {
         nfc = "Gr\u00FC\u00DF Gott.";
         nfd = "Gru\u0308\u00DF Gott.";
       
@@ -170,7 +170,7 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Normalize : function () {
-      if (HAS_ICU) {
+      if (internal.HAS_ICU) {
         nfc = "Gr\u00FC\u00DF Gott.";
         nfd = "Gru\u0308\u00DF Gott.";
       
@@ -188,7 +188,7 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare_Skiplist_Sorting : function () {
-      if (HAS_ICU) {
+      if (internal.HAS_ICU) {
 
         db._create("ICU_SORTED");
         db["ICU_SORTED"].ensureSkiplist("test");

@@ -28,8 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var ArangoStatement = require("org/arangodb/arango-statement.js").ArangoStatement;
-var GeneralArrayCursor = require("org/arangodb/simple-query-common.js").GeneralArrayCursor;
+var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
+var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArrayCursor;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
@@ -76,6 +76,21 @@ ArangoStatement.prototype.execute = function () {
                             true);  
   return new GeneralArrayCursor(result, 0, null);
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStatement
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+exports.ArangoStatement = ArangoStatement; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

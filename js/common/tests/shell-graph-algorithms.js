@@ -7,8 +7,7 @@
     assertEqual, assertTrue,
     print,
     PRINT_OBJECT,
-    AvocadoCollection, AvocadoEdgesCollection,
-    processCsvFile */
+    AvocadoCollection, AvocadoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class

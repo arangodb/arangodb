@@ -1191,7 +1191,7 @@ int main (int argc, char* argv[]) {
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
 
     // add the client connection to the context:
-    context->Global()->Set(v8::String::New("arango"), 
+    context->Global()->Set(v8::String::New("SYS_ARANGO"), 
                            wrapV8ClientConnection(ClientConnection),
                            v8::ReadOnly);
   }
@@ -1203,10 +1203,10 @@ int main (int argc, char* argv[]) {
                          v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction(),
                          v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("importCsvFile"),
+  context->Global()->Set(v8::String::New("SYS_IMPORT_CSV_FILE"),
                          v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction(),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("importJsonFile"),
+  context->Global()->Set(v8::String::New("SYS_IMPORT_JSON_FILE"),
                          v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
                          v8::ReadOnly);
  
@@ -1377,12 +1377,12 @@ int main (int argc, char* argv[]) {
   files.push_back("common/bootstrap/module-internal.js");
   files.push_back("common/bootstrap/module-fs.js");
   files.push_back("common/bootstrap/module-console.js");
+  files.push_back("common/bootstrap/errors.js");
 
   if (JsLint.empty()) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 
-  files.push_back("common/bootstrap/errors.js");
   files.push_back("client/client.js");
   files.push_back("client/bootstrap/module-internal.js");
   
