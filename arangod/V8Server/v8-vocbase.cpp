@@ -629,8 +629,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
                                                   const bool create) {
   v8::HandleScope scope;
   
-  if (argv.Length() < 1 || argv.Length() > 3) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>, <minLength>)")));
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <minLength>)")));
   }
   
   string attributeName = TRI_ObjectToString(argv[0]);
@@ -638,14 +638,13 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "expecting non-empty <attribute>")));
   }
 
+  // 2013-01-17: deactivated substring indexing option because there is no working implementation
+  // we might activate the option later
   bool indexSubstrings = false;
-  if (argv.Length() > 1) {
-    indexSubstrings = TRI_ObjectToBoolean(argv[1]);
-  }
 
   int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  if (argv.Length() == 3 && argv[2]->IsNumber()) {
-    minWordLength = (int) TRI_ObjectToInt64(argv[2]);
+  if (argv.Length() == 2 && argv[1]->IsNumber()) {
+    minWordLength = (int) TRI_ObjectToInt64(argv[1]);
   }
 
   // .............................................................................
@@ -4231,15 +4230,17 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{indexSubstrings}}
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength}}
 ///
 /// Creates a fulltext index on all documents on attribute @FA{field}.
-/// All documents, which do not have the attribute or with a non-textual value
-/// inside the attribute are ignored.
+/// All documents, which do not have the attribute @FA{field} or that have a
+/// non-textual value inside their @FA{field} attribute are ignored.
 ///
-/// IF @FA{indexSubstrings} is set to @LIT{true}, then substrings are also
-/// indexed. This allows search substring search queries, but will make the
-/// index consume more memory.
+/// The minimum length of words that are indexed can be specified with the
+/// @FA{minWordLength} parameter. Words shorter than @FA{minWordLength}
+/// characters will not be indexed. @FA{minWordLength} has a default value of 2,
+/// but this value might be changed in future versions of ArangoDB. It is thus
+/// recommended to explicitly specify this value
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
