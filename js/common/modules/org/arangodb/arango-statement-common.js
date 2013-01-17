@@ -73,7 +73,7 @@ function ArangoStatement (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ function ArangoStatement (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bind a parameter to the statement
+/// @brief binds a parameter to the statement
 ///
 /// This function can be called multiple times, once for each bind parameter.
 /// All bind parameters will be transferred to the server in one go when 
@@ -115,7 +115,7 @@ ArangoStatement.prototype.bind = function (key, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the bind variables already set
+/// @brief returns the bind variables already set
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.getBindVariables = function () {
@@ -123,7 +123,7 @@ ArangoStatement.prototype.getBindVariables = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the count flag for the statement
+/// @brief gets the count flag for the statement
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.getCount = function () {
@@ -131,7 +131,7 @@ ArangoStatement.prototype.getCount = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the maximum number of results documents the cursor will return
+/// @brief gets the maximum number of results documents the cursor will return
 /// in a single server roundtrip.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -140,7 +140,7 @@ ArangoStatement.prototype.getBatchSize = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get query string
+/// @brief gets query string
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.getQuery = function () {
@@ -148,7 +148,7 @@ ArangoStatement.prototype.getQuery = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the count flag for the statement
+/// @brief sets the count flag for the statement
 ///
 /// Setting the count flag will make the statement's result cursor return the
 /// total number of result documents. The count flag is not set by default.
@@ -159,7 +159,7 @@ ArangoStatement.prototype.setCount = function (bool) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the maximum number of results documents the cursor will return
+/// @brief sets the maximum number of results documents the cursor will return
 /// in a single server roundtrip.
 /// The higher this number is, the less server roundtrips will be made when
 /// iterating over the result documents of a cursor.
@@ -174,7 +174,7 @@ ArangoStatement.prototype.setBatchSize = function (value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the query string
+/// @brief sets the query string
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.setQuery = function (query) {
@@ -182,7 +182,7 @@ ArangoStatement.prototype.setQuery = function (query) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query and return the results
+/// @brief parses a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.parse = function () {
@@ -190,7 +190,7 @@ ArangoStatement.prototype.parse = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explain a query and return the results
+/// @brief explains a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function () {
@@ -198,7 +198,7 @@ ArangoStatement.prototype.explain = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
+/// @brief executes the query
 ///
 /// Invoking execute() will transfer the query and all bind parameters to the
 /// server. It will return a cursor with the query results in case of success.
@@ -234,5 +234,5 @@ exports.ArangoStatement = ArangoStatement;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:

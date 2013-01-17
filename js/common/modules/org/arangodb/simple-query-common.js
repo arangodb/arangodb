@@ -28,9 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var arangodb = require("org/arangodb");
 
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = arangodb.ArangoError;
 
 // forward declaration
 var SimpleQueryArray;
@@ -68,7 +68,7 @@ function GeneralArrayCursor (documents, skip, limit) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +137,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +145,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +231,7 @@ function SimpleQuery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +317,7 @@ SimpleQuery.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,7 +349,7 @@ SimpleQuery.prototype.limit = function (limit) {
 
   if (limit < 0) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorNum = arangodb.ERROR_BAD_PARAMETER;
     err.errorMessage = "limit must be non-negative";
     throw err;
   }
@@ -596,7 +596,7 @@ SimpleQueryAll.prototype.constructor = SimpleQueryAll;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,7 +635,7 @@ SimpleQueryAll.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -671,7 +671,7 @@ SimpleQueryArray.prototype.constructor = SimpleQueryArray;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,7 +724,7 @@ SimpleQueryArray.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -761,7 +761,7 @@ SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,7 +800,7 @@ SimpleQueryByExample.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -840,7 +840,7 @@ SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -883,7 +883,7 @@ SimpleQueryRange.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -917,7 +917,7 @@ function SimpleQueryGeo (collection, index) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -938,7 +938,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
        + this._index
        + ")";
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -946,7 +946,7 @@ SimpleQueryGeo.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,8 +1020,8 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
     
   if (this._index === null) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
-    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
 };
@@ -1034,7 +1034,7 @@ SimpleQueryNear.prototype.constructor = SimpleQueryNear;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1082,7 +1082,7 @@ SimpleQueryNear.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1090,7 +1090,7 @@ SimpleQueryNear.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1168,8 +1168,8 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
     
   if (this._index === null) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
-    err.errorMessage = internal.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING;
+    err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
 };
@@ -1182,7 +1182,7 @@ SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1236,7 +1236,7 @@ SimpleQueryWithin.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1244,7 +1244,7 @@ SimpleQueryWithin.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1319,8 +1319,8 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
     
   if (this._index === null) {
     var err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code;
-    err.errorMessage = internal.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.message;
+    err.errorNum = arangodb.ERROR_QUERY_FULLTEXT_INDEX_MISSING;
+    err.errorMessage = arangodb.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.message;
     throw err;
   }
 }
@@ -1333,7 +1333,7 @@ SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1378,7 +1378,7 @@ SimpleQueryFulltext.prototype._PRINT = function () {
     text += ".limit(" + this._limit + ")";
   }
 
-  internal.output(text);
+  arangodb.output(text);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1414,5 +1414,5 @@ exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:

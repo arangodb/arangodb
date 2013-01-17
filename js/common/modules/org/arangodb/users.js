@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief User management
 ///
@@ -25,18 +28,20 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var internal = require("internal"); // OK: encodePassword, reloadAuth
+
+var arangodb = require("org/arangodb");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       ArangoUsers
+// --SECTION--                                       module "org/arangodb/users"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoUsers
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,14 +70,27 @@ var validatePassword = function (passwd) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
-  var users = internal.db._collection("_users");
+  var users = arangodb.db._collection("_users");
 
-  if (users == null) {
+  if (users === null) {
     throw "collection _users does not exist.";
   }
 
   return users;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new user
@@ -100,7 +118,7 @@ var getStorage = function () {
 /// @TINYEXAMPLE{user-save,saving a new user}
 ////////////////////////////////////////////////////////////////////////////////
   
-saveUser = function (username, passwd) {
+exports.save = function (username, passwd) {
   // validate input
   validateName(username);
   validatePassword(passwd);
@@ -108,13 +126,12 @@ saveUser = function (username, passwd) {
   var users = getStorage();
   var user = users.firstExample({ user: username });
 
-  if (user == null) {
+  if (user === null) {
     var hash = internal.encodePassword(passwd);
     return users.save({ user: username, password: hash, active: true });
   }
-  else {
-    throw "cannot create user: user already exists.";
-  }
+
+  throw "cannot create user: user already exists.";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +162,8 @@ saveUser = function (username, passwd) {
 /// @TINYEXAMPLE{user-replace,replacing an existing user}
 ////////////////////////////////////////////////////////////////////////////////
   
-replaceUser = function (username, passwd) {
+exports.replace =
+exports.update = function (username, passwd) {
   // validate input
   validateName(username);
   validatePassword(passwd);
@@ -153,7 +171,7 @@ replaceUser = function (username, passwd) {
   var users = getStorage();
   var user = users.firstExample({ user: username });
 
-  if (user == null) {
+  if (user === null) {
     throw "cannot update user: user does not exist.";
   }
 
@@ -186,14 +204,14 @@ replaceUser = function (username, passwd) {
 /// @TINYEXAMPLE{user-remove,removing an existing user}
 ////////////////////////////////////////////////////////////////////////////////
   
-removeUser = function (username) {
+exports.remove = function (username) {
   // validate input
   validateName(username);
 
   var users = getStorage();
   var user = users.firstExample({ user: username });
 
-  if (user == null) {
+  if (user === null) {
     throw "cannot delete: user does not exist.";
   }
 
@@ -214,7 +232,7 @@ removeUser = function (username) {
 /// Note: this function will not work from within the web interface
 ////////////////////////////////////////////////////////////////////////////////
   
-reloadUsers = function () {
+exports.reload = function () {
   return internal.reloadAuth();
 };
 
@@ -223,26 +241,11 @@ reloadUsers = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoUsers
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-exports.save = saveUser;
-exports.replace = replaceUser;
-exports.update = replaceUser;
-exports.remove = removeUser;
-exports.reload = reloadUsers;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
 

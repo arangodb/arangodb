@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
 ///
@@ -25,8 +28,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
 var graph = require("org/arangodb/graph");
+var arangodb = require("org/arangodb");
+
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -557,7 +562,7 @@ function CollectionDatasourceFactory (edgeCollection) {
     },
 
     getVertex: function (vertexId) {
-      return internal.db._document(vertexId);
+      return db._document(vertexId);
     }
   };
 };

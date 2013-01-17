@@ -29,14 +29,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var arangodb = require("org/arangodb");
 
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
-var ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+var ArangoError = arangodb.ArangoError;
+var ArangoDatabase = arangodb.ArangoDatabase;
+var ArangoCollection = arangodb.ArangoCollection;
+var ArangoStatement = arangodb.ArangoStatement;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 module "arangodb"
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +111,8 @@ exports.printObject = internal.printObject;
   }
 }());
 
+exports.errors = internal.errors;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,5 +123,5 @@ exports.printObject = internal.printObject;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
