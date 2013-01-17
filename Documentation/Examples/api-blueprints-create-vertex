@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-8
 {
   "vertex": {
     "_id": "21186449/24332177",
-    "_rev": 24332177,
+    "_rev": "24332177",
     "_key": "24332177",
     "$id": "v1",
     "optional1": "val1",

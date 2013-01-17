@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
   "result": [
     {
       "_id": "44402657/47876065",
-      "_rev": 47876065,
+      "_rev": "47876065",
       "_key": "47876065",
       "optional2": 3,
       "$id": "id4",

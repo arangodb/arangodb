@@ -9,13 +9,13 @@ content-type: application/json
     {
       "_id": "2076584128/2082744512",
       "text" : "this text contains a word",
-      "_rev": 2082744512
+      "_rev": "2082744512"
     },
     {
       "_id": "2076584128/2082089152",
       "text" : "this text also contains a word",
       "loc": [ 0, 10 ],
-      "_rev": 2082089152
+      "_rev": "2082089152"
     }
   ],
   "code": 201,

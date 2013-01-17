@@ -5,7 +5,7 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 11916057,
+  "_rev": "11916057",
   "_id": "73482/7229681",
   "error": false
 }
@@ -17,7 +17,7 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 12309273,
+  "_rev": "12309273",
   "_id": "73482/7229681",
   "error": false
 }
@@ -36,7 +36,7 @@ content-type: application/json; charset=utf-8
     "two": 2,
     "three": 3
   },
-  "_rev": 12309273,
+  "_rev": "12309273",
   "_id": "73482/7229681"
 }
 
@@ -44,7 +44,7 @@ content-type: application/json; charset=utf-8
 { "hello": null, "numbers": { "four": 4 } }
 
 {
-  "_rev": 12571417,
+  "_rev": "12571417",
   "_id": "73482/7229681",
   "error": false
 }
@@ -62,6 +62,6 @@ content-type: application/json; charset=utf-8
     "three": 3,
     "four": 4,
   },
-  "_rev": 12571417,
+  "_rev": "12571417",
   "_id": "73482/7229681"
 }

@@ -12,15 +12,15 @@ content-length: 509
   "blocksize" : 5,
   "page" : 0,
   "references" : [
-    "9496015:11126645",
-    "9496015:11519861",
-    "9496015:11388789",
-    "9496015:10733429",
-    "9496015:12633973"
+    "9496015/11126645",
+    "9496015/11519861",
+    "9496015/11388789",
+    "9496015/10733429",
+    "9496015/12633973"
   ]
 }
 
-> curl -X GET --dump - 'http://localhost:8529/_document/9496015:11126645'
+> curl -X GET --dump - 'http://localhost:8529/_document/9496015/11126645'
 HTTP/1.1 200 OK
 content-type: application/json
 connection: Keep-Alive
@@ -31,5 +31,5 @@ content-length: 70
 {
   "age" : 2,
   "name" : "Name2",
-  "_id" : "9496015:11126645"
+  "_id" : "9496015/11126645"
 }

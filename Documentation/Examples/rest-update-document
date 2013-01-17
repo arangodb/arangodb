@@ -5,7 +5,7 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 29919022,
+  "_rev": "29919022",
   "_id": "73482/29853486",
   "error": false
 }
