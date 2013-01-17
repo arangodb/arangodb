@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-8
 {
   "graph": {
     "_id": "1849955/7686033",
-    "_rev": 7686033,
+    "_rev": "7686033",
     "_key": "7686033",
     "vertices": 5523345,
     "edges": 6309777,

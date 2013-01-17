@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
   "result": [
     {
       "_id": "e/edge1",
-      "_rev": 125407382,
+      "_rev": "125407382",
       "_key": "edge1",
       "_bidirectional": false,
       "_from": "v/id1",
@@ -18,7 +18,7 @@ content-type: application/json; charset=utf-8
     },
     {
       "_id": "e/edge2",
-      "_rev": 125800598,
+      "_rev": "125800598",
       "_key": "edge2",
       "_bidirectional": false,
       "_from": "v/id2",

@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 etag: "35159497"
 
 {
-  "_rev": 35159497,
+  "_rev": "35159497",
   "_id": "33652169/35159497",
   "error": false
 }
