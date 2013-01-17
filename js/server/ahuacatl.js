@@ -2347,6 +2347,23 @@ function AHUACATL_GRAPH_TRAVERSE () {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
   }
 
+  if (params.maxDepth <= 0) {
+    // we need to have at least SOME limit to prevent endless iteration
+    params.maxDepth = 1024;
+  }
+
+  // prepare an array of filters
+  var filter = [ ];
+  if (params.minDepth != undefined) {
+    filter.push(traversal.MinDepthFilter);
+  }
+  if (params.maxDepth != undefined) {
+    filter.push(traversal.MaxDepthFilter);
+  }
+  if (filter.length == 0) {
+    filter.push(traversal.VisitAllFilter);
+  }
+
   var config = {
     datasource: traversal.CollectionDatasourceFactory(edgeCollection),
     strategy: validate(params.strategy, {
@@ -2364,7 +2381,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
     maxDepth: params.maxDepth,
-    filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : traversal.VisitAllFilter,
+    filter: filter,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
         'none': traversal.Traverser.UNIQUE_NONE,

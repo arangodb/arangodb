@@ -161,6 +161,125 @@ function CollectionEdgeSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge referring to a vertex documents by keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeKeys : function () {
+      var k1 = vertex.save({ _key: "vx1", vx: 1 });
+      var k2 = vertex.save({ _key: "vx2", vx: 2 });
+      var k3 = vertex.save({ _key: "vx3", vx: 3 });
+
+      var d1 = vertex.document(k1._key);
+      assertEqual("vx1", k1._key);
+      assertEqual(vn + "/vx1", k1._id);
+      assertEqual("vx1", d1._key);
+      assertEqual(1, d1.vx);
+      assertEqual(vn + "/vx1", d1._id);
+
+      var d2 = vertex.document(k2._key);
+      assertEqual("vx2", k2._key);
+      assertEqual(vn + "/vx2", k2._id);
+      assertEqual("vx2", d2._key);
+      assertEqual(2, d2.vx);
+      assertEqual(vn + "/vx2", d2._id);
+      
+      var d3 = vertex.document(vn + "/vx3");
+      assertEqual("vx3", k3._key);
+      assertEqual(vn + "/vx3", k3._id);
+      assertEqual("vx3", d3._key);
+      assertEqual(3, d3.vx);
+      assertEqual(vn + "/vx3", d3._id);
+
+      var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
+      var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
+      var e3 = edge.save(vn + "/vx3", vn + "/vx1", { _key: "ex3", connect: "vx3->vx1" });
+
+      d1 = edge.document("ex1");
+      assertEqual("ex1", d1._key);
+      assertEqual(en + "/ex1", d1._id);
+      assertEqual(vn + "/vx1", d1._from);
+      assertEqual(vn + "/vx2", d1._to);
+      assertEqual("vx1->vx2", d1.connect);
+      assertEqual("ex1", e1._key);
+      assertEqual(en + "/ex1", e1._id);
+
+      d2 = edge.document("ex2");
+      assertEqual("ex2", d2._key);
+      assertEqual(en + "/ex2", d2._id);
+      assertEqual(vn + "/vx2", d2._from);
+      assertEqual(vn + "/vx1", d2._to);
+      assertEqual("vx2->vx1", d2.connect);
+      assertEqual("ex2", e2._key);
+      assertEqual(en + "/ex2", e2._id);
+     
+      d3 = edge.document(en + "/ex3");
+      assertEqual("ex3", d3._key);
+      assertEqual(en + "/ex3", d3._id);
+      assertEqual(vn + "/vx3", d3._from);
+      assertEqual(vn + "/vx1", d3._to);
+      assertEqual("vx3->vx1", d3.connect);
+      assertEqual("ex3", e3._key);
+      assertEqual(en + "/ex3", e3._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge referring to an unloaded vertex collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeUnloaded : function () {
+      var k1 = vertex.save({ _key: "vx1", vx: 1 });
+      var k2 = vertex.save({ _key: "vx2", vx: 2 });
+
+      assertEqual("vx1", k1._key);
+      assertEqual(vn + "/vx1", k1._id);
+      assertEqual("vx2", k2._key);
+      assertEqual(vn + "/vx2", k2._id);
+
+      vertex.unload();
+      edge.unload();
+
+      console.log("waiting for collections to unload"); 
+      internal.wait(4);
+
+      var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
+      var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
+      
+      vertex.unload();
+      edge.unload();
+
+      console.log("waiting for collections to unload"); 
+      internal.wait(4);
+      var e3 = edge.save(k1, k2, { _key: "ex3", connect: "vx1->vx2" });
+      
+      d1 = edge.document("ex1");
+      assertEqual("ex1", d1._key);
+      assertEqual(en + "/ex1", d1._id);
+      assertEqual(vn + "/vx1", d1._from);
+      assertEqual(vn + "/vx2", d1._to);
+      assertEqual("vx1->vx2", d1.connect);
+      assertEqual("ex1", e1._key);
+      assertEqual(en + "/ex1", e1._id);
+
+      d2 = edge.document("ex2");
+      assertEqual("ex2", d2._key);
+      assertEqual(en + "/ex2", d2._id);
+      assertEqual(vn + "/vx2", d2._from);
+      assertEqual(vn + "/vx1", d2._to);
+      assertEqual("vx2->vx1", d2.connect);
+      assertEqual("ex2", e2._key);
+      assertEqual(en + "/ex2", e2._id);
+      
+      d3 = edge.document("ex3");
+      assertEqual("ex3", d3._key);
+      assertEqual(en + "/ex3", d3._id);
+      assertEqual(vn + "/vx1", d3._from);
+      assertEqual(vn + "/vx2", d3._to);
+      assertEqual("vx1->vx2", d3.connect);
+      assertEqual("ex3", e3._key);
+      assertEqual(en + "/ex3", e3._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an edge
 ////////////////////////////////////////////////////////////////////////////////
 

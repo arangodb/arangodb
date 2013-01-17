@@ -1031,6 +1031,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   const bool forceSync = ExtractForceSync(argv, 4);
 
   TRI_document_edge_t edge;
+  // the following values are defaults that will be overridden below
   edge._fromCid = trx->cid();
   edge._toCid = trx->cid();
   edge._fromKey = 0;
@@ -6119,15 +6120,15 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
       // use the collection
       int res = TRI_UseCollectionVocBase(vocbase, col);
 
+      if (res == TRI_ERROR_NO_ERROR && col->_collection == 0) {
+        res = TRI_ERROR_INTERNAL;
+      }
+
       if (res != TRI_ERROR_NO_ERROR) {
         return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection", true));
       }
     }
 
-    if (col->_collection == 0) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection"));
-    }
-    
     collection = col;
   }
   
