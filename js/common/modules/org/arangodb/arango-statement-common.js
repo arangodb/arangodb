@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
 ///
@@ -24,8 +27,6 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
@@ -68,6 +69,19 @@ function ArangoStatement (database, data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStatement
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief bind a parameter to the statement
 ///
 /// This function can be called multiple times, once for each bind parameter.
@@ -87,7 +101,7 @@ ArangoStatement.prototype.bind = function (key, value) {
     this._bindVars[key] = value;
   }
   else if (typeof(key) === "number") {
-    var strKey = String(parseInt(key));
+    var strKey = String(parseInt(key, 10));
 
     if (strKey !== String(key)) {
       throw "invalid bind parameter declaration";
@@ -152,8 +166,10 @@ ArangoStatement.prototype.setCount = function (bool) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.setBatchSize = function (value) {
-  if (parseInt(value) > 0) {
-    this._batchSize = parseInt(value);
+  var batch = parseInt(value, 10);
+
+  if (batch > 0) {
+    this._batchSize = batch;
   }
 };
 
@@ -211,6 +227,10 @@ exports.ArangoStatement = ArangoStatement;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

@@ -1384,6 +1384,7 @@ int main (int argc, char* argv[]) {
 
   files.push_back("common/bootstrap/errors.js");
   files.push_back("client/client.js");
+  files.push_back("client/bootstrap/module-internal.js");
   
   for (size_t i = 0;  i < files.size();  ++i) {
     bool ok = StartupLoader.loadScript(context, files[i]);

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Module */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -42,8 +42,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = Module.prototype.ModuleCache["/internal"].exports;
-  var console = Module.prototype.ModuleCache["/console"].exports;
+  var internal = require("internal");
+  var console = require("console");
 
   console.getline = internal.getline;
 

@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
 ///
@@ -26,8 +29,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var client = require("arangosh");
-var SQ = require("simple-query-basics");
+var arangosh = require("arangosh");
+
+var sq = require("simple-query-common");
+
+var GeneralArrayCursor = sq.GeneralArrayCursor;
+var SimpleQueryAll = sq.SimpleQueryAll;
+var SimpleQueryByExample = sq.SimpleQueryByExample;
+var SimpleQueryFulltext = sq.SimpleQueryFulltext;
+var SimpleQueryNear = sq.SimpleQueryNear;
+var SimpleQueryRange = sq.SimpleQueryRange;
+var SimpleQueryWithin = sq.SimpleQueryWithin;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
@@ -46,7 +58,7 @@ var SQ = require("simple-query-basics");
 /// @brief executes an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
+SimpleQueryAll.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
@@ -72,7 +84,7 @@ SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -103,7 +115,7 @@ SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
+SimpleQueryByExample.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
@@ -130,7 +142,7 @@ SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -187,7 +199,7 @@ ArangoCollection.prototype.firstExample = function () {
     return null;
   }
 
-  client.checkRequestResult(requestResult);
+  arangosh.checkRequestResult(requestResult);
 
   return requestResult.document;
 }
@@ -213,7 +225,7 @@ ArangoCollection.prototype.firstExample = function () {
 /// @brief executes a range query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
+SimpleQueryRange.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
@@ -243,7 +255,7 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/range", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -274,7 +286,7 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
 /// @brief executes a near query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
+SimpleQueryNear.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
@@ -310,7 +322,7 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/near", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -341,7 +353,7 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
 /// @brief executes a within query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
+SimpleQueryWithin.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
@@ -378,7 +390,7 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/within", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -409,7 +421,7 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
 /// @brief executes a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
+SimpleQueryFulltext.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
@@ -441,7 +453,7 @@ SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/fulltext", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -464,16 +476,21 @@ SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.SimpleQueryAll = SQ.SimpleQueryAll;
-exports.SimpleQueryByExample = SQ.SimpleQueryByExample;
-exports.SimpleQueryGeo = SQ.SimpleQueryGeo;
-exports.SimpleQueryNear = SQ.SimpleQueryNear;
-exports.SimpleQueryWithin = SQ.SimpleQueryWithin;
-exports.SimpleQueryFulltext = SQ.SimpleQueryFulltext;
+exports.GeneralArrayCursor = GeneralArrayCursor;
+exports.SimpleQueryAll = SimpleQueryAll;
+exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryGeo = SimpleQueryGeo;
+exports.SimpleQueryNear = SimpleQueryNear;
+exports.SimpleQueryWithin = SimpleQueryWithin;
+exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

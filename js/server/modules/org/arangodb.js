@@ -29,6 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var common = require("org/arangodb-common");
+
+for (key in common) {
+  if (common.hasOwnProperty(key)) {
+    exports[key] = common[key];
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
@@ -39,20 +46,11 @@ var internal = require("internal");
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the global db object
+////////////////////////////////////////////////////////////////////////////////
+
 exports.db = internal.db;
-exports.ArangoCollection = internal.ArangoCollection;
-exports.ArangoError = internal.ArangoError;
-
-// copy error codes
-(function () {
-  var name;
-
-  for (name in internal.errors) {
-    if (internal.errors.hasOwnProperty(name)) {
-      exports[name] = internal.errors[name].code;
-    }
-  }
-}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
