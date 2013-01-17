@@ -108,7 +108,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	etag = doc.headers['etag']
@@ -148,7 +148,7 @@ describe ArangoDB do
 
 	# get document, if-none-match with different rev
 	cmd = "/_api/document/#{did}"
-	hdr = { "if-none-match" => "\"#{rev-1}\"" }
+	hdr = { "if-none-match" => "\"54454#{rev}\"" }
         doc = ArangoDB.log_get("#{prefix}-if-none-match-other", cmd, :headers => hdr)
 
 	doc.code.should eq(200)
@@ -164,7 +164,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	etag = doc.headers['etag']
@@ -203,7 +203,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	etag = doc.headers['etag']
@@ -213,7 +213,7 @@ describe ArangoDB do
 
 	# get document, if-match with different rev
 	cmd = "/_api/document/#{did}"
-	hdr = { "if-match" => "\"#{rev-1}\"" }
+	hdr = { "if-match" => "\"348574#{rev}\"" }
         doc = ArangoDB.log_get("#{prefix}-if-match-other", cmd, :headers => hdr)
 
 	doc.code.should eq(412)
@@ -223,7 +223,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.delete(location)

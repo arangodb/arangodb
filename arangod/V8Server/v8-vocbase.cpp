@@ -162,11 +162,25 @@ static int32_t const WRP_TRANSACTION_TYPE = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document id from the parameters
+/// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> DocumentId (const string& collectionName,
-                                                const string& key) {
+static inline v8::Handle<v8::Value> V8RevisionId (const uint64_t rid) {
+  v8::HandleScope scope;
+
+  const string id = StringUtils::itoa(rid);
+
+  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
+
+  return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 document id value from the parameters
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
+                                                  const string& key) {
   v8::HandleScope scope;
 
   const string id = DocumentHelper::assembleDocumentId(collectionName, key);
@@ -177,12 +191,12 @@ static inline v8::Handle<v8::Value> DocumentId (const string& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document id from the parameters
+/// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DocumentId (TRI_vocbase_t* const vocbase,
-                                         const TRI_voc_cid_t cid,
-                                         const string& key) {
+static v8::Handle<v8::Value> V8DocumentId (TRI_vocbase_t* const vocbase,
+                                           const TRI_voc_cid_t cid,
+                                           const string& key) {
   v8::HandleScope scope;
 
   const string id = DocumentHelper::assembleDocumentId(vocbase, cid, key);
@@ -617,8 +631,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
                                                   const bool create) {
   v8::HandleScope scope;
   
-  if (argv.Length() < 1 || argv.Length() > 3) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>, <minLength>)")));
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <minLength>)")));
   }
   
   string attributeName = TRI_ObjectToString(argv[0]);
@@ -626,14 +640,13 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "expecting non-empty <attribute>")));
   }
 
+  // 2013-01-17: deactivated substring indexing option because there is no working implementation
+  // we might activate the option later
   bool indexSubstrings = false;
-  if (argv.Length() > 1) {
-    indexSubstrings = TRI_ObjectToBoolean(argv[1]);
-  }
 
   int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  if (argv.Length() == 3 && argv[2]->IsNumber()) {
-    minWordLength = (int) TRI_ObjectToInt64(argv[2]);
+  if (argv.Length() == 2 && argv[1]->IsNumber()) {
+    minWordLength = (int) TRI_ObjectToInt64(argv[1]);
   }
 
   // .............................................................................
@@ -878,9 +891,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx.collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
-  result->Set(v8g->OldRevKey, v8::Number::New(actualRevision));
+  result->Set(v8g->DidKey, V8DocumentId(trx.collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
+  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -966,8 +979,8 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   assert(document->_key);
   
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx->collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
+  result->Set(v8g->DidKey, V8DocumentId(trx->collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -1087,8 +1100,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   assert(document->_key);
   
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx->collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
+  result->Set(v8g->DidKey, V8DocumentId(trx->collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -1198,9 +1211,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx.collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
-  result->Set(v8g->OldRevKey, v8::Number::New(actualRevision));
+  result->Set(v8g->DidKey, V8DocumentId(trx.collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
+  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -3327,7 +3340,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ///
 /// @code
 /// arango> db.example.document("1432124/2873916");
-/// { "_id" : "1432124/2873916", "_rev" : 2873916, "Hallo" : "World" }
+/// { "_id" : "1432124/2873916", "_rev" : "2873916", "Hello" : "World" }
 /// @endcode
 ///
 /// An error is raised if the document is unknown:
@@ -4219,15 +4232,17 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{indexSubstrings}}
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength}}
 ///
 /// Creates a fulltext index on all documents on attribute @FA{field}.
-/// All documents, which do not have the attribute or with a non-textual value
-/// inside the attribute are ignored.
+/// All documents, which do not have the attribute @FA{field} or that have a
+/// non-textual value inside their @FA{field} attribute are ignored.
 ///
-/// IF @FA{indexSubstrings} is set to @LIT{true}, then substrings are also
-/// indexed. This allows search substring search queries, but will make the
-/// index consume more memory.
+/// The minimum length of words that are indexed can be specified with the
+/// @FA{minWordLength} parameter. Words shorter than @FA{minWordLength}
+/// characters will not be indexed. @FA{minWordLength} has a default value of 2,
+/// but this value might be changed in future versions of ArangoDB. It is thus
+/// recommended to explicitly specify this value
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
@@ -4677,9 +4692,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3449537", "_rev" : 3449537 }
+/// { "_id" : "116308/3449537", "_rev" : "3449537" }
 /// arango> db.example.document(a1);
-/// { "_id" : "116308/3449537", "_rev" : 3449537, "a" : 1 }
+/// { "_id" : "116308/3449537", "_rev" : "3449537", "a" : 1 }
 /// arango> db.example.remove(a1);
 /// true
 /// arango> db.example.document(a1);
@@ -4692,9 +4707,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3857139", "_rev" : 3857139 }
+/// { "_id" : "116308/3857139", "_rev" : "3857139" }
 /// arango> a2 = db.example.replace(a1, { a : 2 });
-/// { "_id" : "116308/3857139", "_rev" : 3922675, "_oldRev" : 3857139 }
+/// { "_id" : "116308/3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
 /// arango> db.example.remove(a1);
 /// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
 /// !db.example.remove(a1);
@@ -5016,7 +5031,7 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 
   TRI_ReleaseCollection(collection);
   
-  return scope.Close(v8::Number::New(rid));
+  return scope.Close(V8RevisionId(rid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5540,7 +5555,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/4214943", "_rev" : 4214943 }
+/// { "_id" : "116308/4214943", "_rev" : "4214943" }
 /// arango> db._remove(a1);
 /// true
 /// arango> db._remove(a1);
@@ -5555,9 +5570,9 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/4042634", "_rev" : 4042634 }
+/// { "_id" : "116308/4042634", "_rev" : "4042634" }
 /// arango> a2 = db._replace(a1, { a : 2 });
-/// { "_id" : "116308/4042634", "_rev" : 4108170, "_oldRev" : 4042634 }
+/// { "_id" : "116308/4042634", "_rev" : "4108170", "_oldRev" : 4042634 }
 /// arango> db._delete(a1);
 /// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1200: conflict: cannot delete document]
 /// !db._delete(a1);
@@ -5932,17 +5947,12 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
-  if (key == "_id") {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+  if (key[0] == '_') {
+    if (key == "_id" || key == "_rev" || key == "_key") {
+      return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+    }
   }
 
-  if (key == "_rev") {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
-  }
-
-  if (key == "_key") {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
-  }
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
@@ -6073,7 +6083,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                "expecting a document-handle in _id"));
     }
 
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey));
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey), true);
 
     if (rid == 0) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
@@ -6317,8 +6327,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   TRI_voc_rid_t rid = document->_rid;
 
   // TODO: protect this against race conditions (parallel rename)
-  result->Set(v8g->DidKey, DocumentId(collection->_name, document->_key), v8::ReadOnly);
-  result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
+  result->Set(v8g->DidKey, V8DocumentId(collection->_name, document->_key), v8::ReadOnly);
+  result->Set(v8g->RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
@@ -6333,16 +6343,16 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
       
       // create _vertices array
       v8::Handle<v8::Array> vertices = v8::Array::New();
-      vertices->Set(0, DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      vertices->Set(1, DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      vertices->Set(0, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      vertices->Set(1, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
       result->Set(v8g->VerticesKey, vertices);
     }
     else {
       // unidirectional edge
       result->Set(v8g->BidirectionalKey, v8::False());
 
-      result->Set(v8g->FromKey, DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      result->Set(v8g->ToKey, DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      result->Set(v8g->FromKey, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      result->Set(v8g->ToKey, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
     }
   }
   

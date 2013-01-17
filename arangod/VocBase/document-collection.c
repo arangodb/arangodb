@@ -4141,9 +4141,10 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
       TRI_fulltext_index_t* fulltext = (TRI_fulltext_index_t*) idx;
       char* fieldName;
 
-      if (fulltext->_indexSubstrings != indexSubstrings) {
-        continue;
-      }
+      // 2013-01-17: deactivated substring indexing
+      // if (fulltext->_indexSubstrings != indexSubstrings) {
+      //   continue;
+      // }
 
       if (fulltext->_minWordLength != minWordLength) {
         continue;
@@ -4229,7 +4230,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   TRI_index_t* idx;
   TRI_json_t* attribute;
   TRI_json_t* fld;
-  TRI_json_t* indexSubstrings;
+  // TRI_json_t* indexSubstrings;
   TRI_json_t* minWordLength;
   char* attributeName;
   size_t fieldCount;
@@ -4253,12 +4254,13 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   attribute = TRI_AtVector(&fld->_value._objects, 0);
   attributeName = attribute->_value._string.data;
   
-  indexSubstrings = TRI_LookupArrayJson(definition, "indexSubstrings");
+  // 2013-01-17: deactivated substring indexing 
+  // indexSubstrings = TRI_LookupArrayJson(definition, "indexSubstrings");
 
   doIndexSubstrings = false;
-  if (indexSubstrings != NULL && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
-    doIndexSubstrings = indexSubstrings->_value._boolean;
-  }
+  // if (indexSubstrings != NULL && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
+  //  doIndexSubstrings = indexSubstrings->_value._boolean;
+  // }
   
   minWordLength = TRI_LookupArrayJson(definition, "minLength");
   minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;

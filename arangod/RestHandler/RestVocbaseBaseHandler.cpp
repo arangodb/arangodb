@@ -179,9 +179,9 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
   _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
-    .appendText("\",\"_rev\":")
-    .appendInteger(rid)
-    .appendText(",\"_key\":\"")
+    .appendText("\",\"_rev\":\"")
+    .appendText(StringUtils::itoa(rid))
+    .appendText("\",\"_key\":\"")
     .appendText(key)
     .appendText("\"}");
 }
@@ -295,7 +295,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectio
   result->add("errorMessage", new VariantString("precondition failed"));
   // _id is safe and does not need to be JSON-encoded
   result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(collectionName, key)));
-  result->add("_rev", new VariantUInt64(rid));
+  // _rev is safe and does not need to be JSON-encoded
+  result->add("_rev", new VariantString(StringUtils::itoa(rid)));
   // _key is safe and does not need to be JSON-encoded
   result->add("_key", new VariantString(key));
 
@@ -351,7 +352,9 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_id", _id);
   }
 
-  TRI_json_t* _rev = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, document->_rid);
+  // convert rid from uint64_t to string
+  string rid = StringUtils::itoa(document->_rid);
+  TRI_json_t* _rev = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
   if (_rev) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_rev", _rev);

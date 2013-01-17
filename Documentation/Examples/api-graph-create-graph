@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-8
 {
   "graph": {
     "_id": "_graphs/graph1",
-    "_rev": 11767958,
+    "_rev": "11767958",
     "_key": "graph1",
     "vertices": "v",
     "edges": "e"

@@ -82,7 +82,11 @@
 ///
 /// @copydoc GlossaryIndexHash
 ///
+/// @copydoc GlossaryIndexEdge
+///
 /// @copydoc GlossaryIndexSkiplist
+///
+/// @copydoc GlossaryIndexFulltext
 ///
 /// @section ShellIndexResource Address and ETag of an Index
 ////////////////////////////////////////////////////////////
