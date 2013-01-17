@@ -283,7 +283,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t*,
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t*, TRI_col_info_t*);
+void TRI_CopyCollectionInfo (TRI_col_info_t*, const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a collection info block
@@ -292,13 +292,22 @@ void TRI_CopyCollectionInfo (TRI_col_info_t*, TRI_col_info_t*);
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the full directory name for a collection
+///
+/// it is the caller's responsibility to check if the returned string is NULL
+/// and to free it if not. 
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetDirectoryCollection (char const*, const TRI_col_info_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t*,
                                         TRI_collection_t*,
                                         char const*,
-                                        TRI_col_info_t*);
+                                        const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -337,7 +346,7 @@ int TRI_LoadCollectionInfo (char const*, TRI_col_info_t*);
 /// @brief saves a parameter info block to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const*, TRI_col_info_t*);
+int TRI_SaveCollectionInfo (char const*, const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
