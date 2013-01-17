@@ -5,7 +5,7 @@ HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
 
 {
-  "_rev": 30443310,
+  "_rev": "30443310",
   "_id": "73482/30443310",
   "error": true
 }

@@ -612,14 +612,12 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 /// @brief adds a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.ensureFulltextIndex = function (attribute, indexSubstrings, minLength) {
-  var doIndexSubstrings = indexSubstrings || false;
+ArangoCollection.prototype.ensureFulltextIndex = function (attribute, minLength) {
   var minLengthValue = minLength || undefined;
   var body;
 
   body = {
     type: "fulltext",
-    indexSubstrings: doIndexSubstrings,
     minLength: minLengthValue,
     fields: [ attribute ]
   };

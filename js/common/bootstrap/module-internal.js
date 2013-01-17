@@ -239,6 +239,7 @@
   internal.COLORS.COLOR_TRUE = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_FALSE = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_NULL = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_UNDEFINED = internal.COLORS.COLOR_BOLD_WHITE;
 
   internal.NOCOLORS = { };
 
@@ -452,7 +453,9 @@
         }
       }
       else if (value === undefined) {
+        output(internal.colors.COLOR_UNDEFINED);
         output("undefined");
+        output(internal.colors.COLOR_RESET);
       }
       else {
         if (typeof(value) === "string") {

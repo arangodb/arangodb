@@ -7,5 +7,5 @@ content-type: application/json
 {
   "error": false,
   "code": 200,
-  "document": { "_rev": 668382750, "_id": "666351134/668382750", "a": { "k": 1, "j": 1, "l" : 10 }, "i": 1 }
+  "document": { "_rev": "668382750", "_id": "666351134/668382750", "a": { "k": 1, "j": 1, "l" : 10 }, "i": 1 }
 }

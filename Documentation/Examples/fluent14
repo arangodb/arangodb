@@ -13,16 +13,16 @@ arango> for (i = -90;  i <= 90;  i += 10)
 arango> db.geo2.near(0,0);
 { "location" : { "latitude" : 0, "longitude" : 0 },
   "name" : "Name0-0", 
-  "_id" : "48956356:73466820" }
+  "_id" : "geo2/73466820" }
 { "location" : { "latitude" : 0, "longitude" : -10 },
   "name" : "Name0--10",
-  "_id" : "48956356:73401284" }
+  "_id" : "geo2/73401284" }
 .
 .
 { "location" : { "latitude" : 20, "longitude" : -10 },
   "name" : "Name20--10",
-  "_id" : "48956356:75891652" }
+  "_id" : "geo2/75891652" }
 { "location" : { "latitude" : 10, "longitude" : 20 },
   "name" : "Name10-20",
-  "_id" : "48956356:74843076" }
+  "_id" : "geo2/74843076" }
 ...more results...

@@ -271,11 +271,11 @@ In order to create new documents in a collection, use the `save`
 operator. 
 
     arangosh> db.example.save({ Hello : "World" });
-    { error : false, _id : "70628/1512420", _rev : 1512420 }
+    { error : false, _id : "70628/1512420", _rev : "1512420" }
     arangosh> db.example.save({ name : "Mustermann", age : 29 });
-    { error : false, _id : "70628/1774564", _rev : 1774564 }
+    { error : false, _id : "70628/1774564", _rev : "1774564" }
     arangosh> db.example.save({ name : "Musterfrau", age : 31 });
-    { error : false, _id : "70628/1774565", _rev : 1774565 }
+    { error : false, _id : "70628/1774565", _rev : "1774565" }
 
 Just storing documents would be no fun. We now want to select some of
 the stored documents again.  In order to select all elements of a
@@ -292,19 +292,19 @@ Now extract all elements.
     [
       { 
 	_id : "4538791/6308263", 
-	_rev : 6308263, 
+	_rev : "6308263", 
 	age : 31, 
 	name : "Musterfrau"
        }, 
       { 
 	_id : "4538791/6242727", 
-	_rev : 6242727, 
+	_rev : "6242727", 
 	age : 29, 
 	name : "Mustermann"
        }, 
       { 
 	_id : "4538791/5980583", 
-	_rev : 5980583, 
+	_rev : "5980583", 
 	Hello : "World"
        }
     ]
@@ -317,13 +317,13 @@ The last document was a mistake, so let's delete it
     [
       { 
 	_id : "4538791/6308263", 
-	_rev : 6308263, 
+	_rev : "6308263", 
 	age : 31, 
 	name : "Musterfrau"
        }, 
       { 
 	_id : "4538791/6242727", 
-	_rev : 6242727, 
+	_rev : "6242727", 
 	age : 29, 
 	name : "Mustermann"
        }
@@ -337,7 +337,7 @@ matching a given example.
     [
       { 
 	_id : "4538791/6308263", 
-	_rev : 6308263, 
+	_rev : "6308263", 
 	age : 31, 
 	name : "Musterfrau"
        }
@@ -352,7 +352,7 @@ query language.
     [
       { 
 	_id : "4538791/6308263", 
-	_rev : 6308263, 
+	_rev : "6308263", 
 	age : 31, 
 	name : "Musterfrau"
        }
@@ -364,7 +364,7 @@ Search for all persons over 30.
     [
       { 
 	_id : "4538791/6308263", 
-	_rev : 6308263, 
+	_rev : "6308263", 
 	age : 31, 
 	name : "Musterfrau"
        }

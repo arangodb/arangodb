@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 {
   "edge": {
     "_id": "74569190/77321702",
-    "_rev": 77321702,
+    "_rev": "77321702",
     "_key": "77321702",
     "_bidirectional": false,
     "_from": "73782758/76994022",

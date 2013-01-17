@@ -47,9 +47,11 @@
 ///  <li>@ref HttpSimpleAll "POST /_api/simple/all"</li>
 ///  <li>@ref HttpSimpleByExample "POST /_api/simple/by-example"</li>
 ///  <li>@ref HttpSimpleFirstExample "POST /_api/simple/first-example"</li>
+///  <li>@ref HttpSimpleAny "POST /_api/simple/any"</li>
 ///  <li>@ref HttpSimpleRange "POST /_api/simple/range"</li>
 ///  <li>@ref HttpSimpleNear "POST /_api/simple/near"</li>
 ///  <li>@ref HttpSimpleWithin "POST /_api/simple/within"</li>
+///  <li>@ref HttpSimpleFulltext "POST /_api/simple/fulltext"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,6 +97,9 @@
 /// @anchor HttpSimpleFirstExample
 /// @copydetails JSA_PUT_api_simple_first_example
 ///
+/// @anchor HttpSimpleAny
+/// @copydetails JSA_PUT_api_simple_any
+///
 /// @anchor HttpSimpleRange
 /// @copydetails JSA_PUT_api_simple_range
 ///
@@ -103,6 +108,9 @@
 ///
 /// @anchor HttpSimpleWithin
 /// @copydetails JSA_PUT_api_simple_within
+///
+/// @anchor HttpSimpleFulltext
+/// @copydetails JSA_PUT_api_simple_fulltext
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

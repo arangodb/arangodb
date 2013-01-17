@@ -71,9 +71,11 @@
 ///
 /// @copydoc GlossaryIndexHash
 ///
+/// @copydoc GlossaryIndexEdge
+///
 /// @copydoc GlossaryIndexSkiplist
 ///
-/// @copydoc GlossaryIndexPrioQueue
+/// @copydoc GlossaryIndexFulltext
 ///
 /// The basic operations (create, read, update, delete) for documents are mapped
 /// to the standard HTTP methods (POST, GET, PUT, DELETE).
