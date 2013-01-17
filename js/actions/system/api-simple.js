@@ -446,7 +446,7 @@ actions.defineHttp({
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. (optional)
 ///
-/// - @LIT{geo}: If given, the identifier of the fulltext-index to use. (optional)
+/// - @LIT{index}: If given, the identifier of the fulltext-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
