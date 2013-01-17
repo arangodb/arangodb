@@ -3338,7 +3338,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ///
 /// @code
 /// arango> db.example.document("1432124/2873916");
-/// { "_id" : "1432124/2873916", "_rev" : 2873916, "Hallo" : "World" }
+/// { "_id" : "1432124/2873916", "_rev" : "2873916", "Hello" : "World" }
 /// @endcode
 ///
 /// An error is raised if the document is unknown:
@@ -4690,9 +4690,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3449537", "_rev" : 3449537 }
+/// { "_id" : "116308/3449537", "_rev" : "3449537" }
 /// arango> db.example.document(a1);
-/// { "_id" : "116308/3449537", "_rev" : 3449537, "a" : 1 }
+/// { "_id" : "116308/3449537", "_rev" : "3449537", "a" : 1 }
 /// arango> db.example.remove(a1);
 /// true
 /// arango> db.example.document(a1);
@@ -4705,9 +4705,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/3857139", "_rev" : 3857139 }
+/// { "_id" : "116308/3857139", "_rev" : "3857139" }
 /// arango> a2 = db.example.replace(a1, { a : 2 });
-/// { "_id" : "116308/3857139", "_rev" : 3922675, "_oldRev" : 3857139 }
+/// { "_id" : "116308/3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
 /// arango> db.example.remove(a1);
 /// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
 /// !db.example.remove(a1);
@@ -5553,7 +5553,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/4214943", "_rev" : 4214943 }
+/// { "_id" : "116308/4214943", "_rev" : "4214943" }
 /// arango> db._remove(a1);
 /// true
 /// arango> db._remove(a1);
@@ -5568,9 +5568,9 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ///
 /// @code
 /// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/4042634", "_rev" : 4042634 }
+/// { "_id" : "116308/4042634", "_rev" : "4042634" }
 /// arango> a2 = db._replace(a1, { a : 2 });
-/// { "_id" : "116308/4042634", "_rev" : 4108170, "_oldRev" : 4042634 }
+/// { "_id" : "116308/4042634", "_rev" : "4108170", "_oldRev" : 4042634 }
 /// arango> db._delete(a1);
 /// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1200: conflict: cannot delete document]
 /// !db._delete(a1);
