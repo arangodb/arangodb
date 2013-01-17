@@ -88,7 +88,7 @@ describe ArangoDB do
 	id1.should be_kind_of(String)
 
 	rev1 = doc.parsed_response['_rev']
-	rev1.should be_kind_of(Integer)
+	rev1.should be_kind_of(String)
 
 	# check it
 	cmd2 = "/_api/document/#{id1}"
@@ -193,7 +193,7 @@ describe ArangoDB do
 	id1.should be_kind_of(String)
 
 	rev1 = doc.parsed_response['_rev']
-	rev1.should be_kind_of(Integer)
+	rev1.should be_kind_of(String)
 
 	# check it
 	cmd2 = "/_api/document/#{id1}"
@@ -215,7 +215,7 @@ describe ArangoDB do
 	id2.should be_kind_of(String)
 
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 
 	# create a unique constraint violation during update
 	body = "{ \"a\" : 2, \"b\" : 3 }"
@@ -233,7 +233,7 @@ describe ArangoDB do
 	doc.parsed_response['_rev'].should_not eq(rev1)
 
 	rev3 = doc.parsed_response['_rev']
-	rev3.should be_kind_of(Integer)
+	rev3.should be_kind_of(String)
 
 	# check second document again
 	cmd3 = "/_api/document/#{id2}"

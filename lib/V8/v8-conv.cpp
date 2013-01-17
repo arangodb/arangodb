@@ -1572,7 +1572,8 @@ int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> value) {
 /// @brief converts an V8 object to a uint64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> value) {
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> value, 
+                             const bool allowStringConversion) {
   if (value->IsNumber()) {
     return (uint64_t) value->ToNumber()->Value();
   }
@@ -1580,6 +1581,11 @@ uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> value) {
   if (value->IsNumberObject()) {
     v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(value);
     return (uint64_t) no->NumberValue();
+  }
+
+  if (allowStringConversion && value->IsString()) {
+    v8::String::Utf8Value str(value);
+    return StringUtils::uint64(string(*str, str.length()));
   }
 
   return 0;
