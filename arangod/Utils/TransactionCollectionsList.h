@@ -58,6 +58,7 @@ namespace triagens {
           _vocbase(vocbase),
           _collections(),
           _error(TRI_ERROR_NO_ERROR) {
+
           addCollection(name, accessType, false);
         }
         
@@ -68,6 +69,7 @@ namespace triagens {
           _vocbase(vocbase),
           _collections(),
           _error(TRI_ERROR_NO_ERROR) {
+
           addCollection(name, accessType, true, createType);
         }
         
@@ -79,6 +81,7 @@ namespace triagens {
           _vocbase(vocbase),
           _collections(),
           _error(TRI_ERROR_NO_ERROR) {
+
           addCollection(name, accessType, create, createType);
         }
         
@@ -86,7 +89,9 @@ namespace triagens {
                                     const vector<string>& readCollections,
                                     const vector<string>& writeCollections) : 
           _vocbase(vocbase),
-          _collections() {
+          _collections(),
+          _error(TRI_ERROR_NO_ERROR) {
+
           for (size_t i = 0; i < readCollections.size(); ++i) {
             addCollection(readCollections[i], TRI_TRANSACTION_READ, false);
           }
