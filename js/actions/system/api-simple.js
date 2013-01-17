@@ -122,7 +122,7 @@ actions.defineHttp({
 ///
 /// @REST{PUT /_api/simple/any}
 ///
-/// Returns a random document of a collections. The call expects a JSON object
+/// Returns a random document of a collection. The call expects a JSON object
 /// as body with the following attributes:
 ///
 /// - @LIT{collection}: The identifier or name of the collection to query.
@@ -145,7 +145,7 @@ actions.defineHttp({
 ///   "document": {
 ///     "_id": "222186062247/223172116903",
 ///     "_rev": 223172116903,
-///     "Hallo": "World"
+///     "Hello": "World"
 ///   },
 ///   "error": false,
 ///   "code":200

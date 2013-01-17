@@ -129,12 +129,12 @@
 /// @copydetails JSF_ArangoCollection_prototype_firstExample
 ///
 /// @CLEARPAGE
-/// @anchor SimpleQueryRange
+/// @anchor SimpleQueryAny
 /// @copydetails JSF_ArangoCollection_prototype_range
 ///
 /// @CLEARPAGE
-/// @anchor SimpleQueryAny
-/// @copydetails JSF_ArangoCollection_prototype_any
+/// @anchor SimpleQueryRange
+/// @copydetails JS_AnyQuery
 ///
 /// @CLEARPAGE
 /// @anchor SimpleQueryCollectionCount
