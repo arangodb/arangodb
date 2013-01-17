@@ -236,11 +236,11 @@ function lookupCallbackAction (route, action) {
   }
 
   // .............................................................................
-  // function
+  // user-defined function
   // .............................................................................
 
   if (action.hasOwnProperty('function')) {
-    defn = "func = " + action['function'];
+    defn = "func = (function() {" + action['function'] + "})();";
     env = {};
 
     try {
@@ -1139,6 +1139,22 @@ function firstRouting (type, parts) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if development mode is allowed in general
+////////////////////////////////////////////////////////////////////////////////
+
+function developmentModeAllowed () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if development mode is activated for an application
+////////////////////////////////////////////////////////////////////////////////
+
+function developmentModeActivated (application) {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1469,7 +1485,7 @@ function resultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              specific controllers
+// --SECTION--                                                  specific actions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1515,7 +1531,7 @@ function logRequest (req, res, options, next) {
     else if (level === "log") {
       log = console.log;
     }
-    else if (level === "warn") {
+    else if (level === "warn" || level === "warning") {
       log = console.warn;
     }
     else {
@@ -1565,51 +1581,53 @@ function redirectRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // public functions
-exports.defineHttp              = defineHttp;
-exports.getErrorMessage         = getErrorMessage;
-exports.getJsonBody             = getJsonBody;
-exports.errorFunction           = errorFunction;
-exports.reloadRouting           = reloadRouting;
-exports.firstRouting            = firstRouting;
-exports.nextRouting             = nextRouting;
-exports.routingCache            = function() { return RoutingCache; };
+exports.defineHttp               = defineHttp;
+exports.getErrorMessage          = getErrorMessage;
+exports.getJsonBody              = getJsonBody;
+exports.errorFunction            = errorFunction;
+exports.reloadRouting            = reloadRouting;
+exports.firstRouting             = firstRouting;
+exports.nextRouting              = nextRouting;
+exports.routingCache             = function() { return RoutingCache; };
+exports.developmentModeAllowed   = developmentModeAllowed;
+exports.developmentModeActivated = developmentModeActivated;
 
 // standard HTTP responses
-exports.badParameter            = badParameter;
-exports.resultBad               = resultBad;
-exports.resultError             = resultError;
-exports.resultNotFound          = resultNotFound;
-exports.resultNotImplemented    = resultNotImplemented;
-exports.resultOk                = resultOk;
-exports.resultPermanentRedirect = resultPermanentRedirect;
-exports.resultTemporaryRedirect = resultTemporaryRedirect;
-exports.resultUnsupported       = resultUnsupported;
+exports.badParameter             = badParameter;
+exports.resultBad                = resultBad;
+exports.resultError              = resultError;
+exports.resultNotFound           = resultNotFound;
+exports.resultNotImplemented     = resultNotImplemented;
+exports.resultOk                 = resultOk;
+exports.resultPermanentRedirect  = resultPermanentRedirect;
+exports.resultTemporaryRedirect  = resultTemporaryRedirect;
+exports.resultUnsupported        = resultUnsupported;
 
 // ArangoDB specific responses
-exports.resultCursor            = resultCursor;
-exports.collectionNotFound      = collectionNotFound;
-exports.indexNotFound           = indexNotFound;
-exports.resultException         = resultException;
+exports.resultCursor             = resultCursor;
+exports.collectionNotFound       = collectionNotFound;
+exports.indexNotFound            = indexNotFound;
+exports.resultException          = resultException;
 
 // standard actions
-exports.echoRequest             = echoRequest;
-exports.logRequest              = logRequest;
-exports.redirectRequest         = redirectRequest;
+exports.echoRequest              = echoRequest;
+exports.logRequest               = logRequest;
+exports.redirectRequest          = redirectRequest;
 
 // some useful constants
-exports.COLLECTION              = "collection";
-exports.COLLECTION_IDENTIFIER   = "collection-identifier";
-exports.COLLECTION_NAME         = "collection-name";
-exports.NUMBER                  = "number";
+exports.COLLECTION               = "collection";
+exports.COLLECTION_IDENTIFIER    = "collection-identifier";
+exports.COLLECTION_NAME          = "collection-name";
+exports.NUMBER                   = "number";
 
-exports.DELETE                  = "DELETE";
-exports.GET                     = "GET";
-exports.HEAD                    = "HEAD";
-exports.POST                    = "POST";
-exports.PUT                     = "PUT";
-exports.PATCH                   = "PATCH";
+exports.DELETE                   = "DELETE";
+exports.GET                      = "GET";
+exports.HEAD                     = "HEAD";
+exports.POST                     = "POST";
+exports.PUT                      = "PUT";
+exports.PATCH                    = "PATCH";
 
-exports.ALL_METHODS             = [ "DELETE", "GET", "HEAD", "POST", "PUT", "PATCH" ];
+exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "POST", "PUT", "PATCH" ];
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
@@ -1655,5 +1673,5 @@ reloadRouting();
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
 // End:
