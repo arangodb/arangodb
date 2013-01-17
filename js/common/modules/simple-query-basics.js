@@ -1658,8 +1658,8 @@ SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
 /// @FUN{@FA{collection}.fulltext(@FA{attribute}, @FA{query})}
 ////////////////////////////////////////////////////////////////////////////
 ///
-/// This will find the documents from the collection's fulltext index that match the search
-/// query.
+/// This will find the documents from the collection's fulltext index that match the 
+/// search query.
 ///
 /// In order to use the @FN{fulltext} operator, a fulltext index must be defined for the
 /// collection, for the specified attribute. If multiple fulltext indexes are defined
@@ -1667,7 +1667,7 @@ SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
 ///
 /// @EXAMPLES
 ///
-/// To find all documents which contain the terms @LIT{foo} and @LIT{bar}:
+/// To find all documents which contain the (complete) word @LIT{word}:
 ///
 /// @TINYEXAMPLE{simple-query-fulltext,complete match query}
 ////////////////////////////////////////////////////////////////////////////////
