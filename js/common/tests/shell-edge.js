@@ -287,7 +287,7 @@ function CollectionEdgeSuite () {
       var doc = edge.save(v1, v2, { "Hallo" : "World" });
 
       assertTypeOf("string", doc._id);
-      assertTypeOf("number", doc._rev);
+      assertTypeOf("string", doc._rev);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -160,11 +160,25 @@ static int32_t const WRP_TRANSACTION_TYPE = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document id from the parameters
+/// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> DocumentId (const string& collectionName,
-                                                const string& key) {
+static inline v8::Handle<v8::Value> V8RevisionId (const uint64_t rid) {
+  v8::HandleScope scope;
+
+  const string id = StringUtils::itoa(rid);
+
+  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
+
+  return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 document id value from the parameters
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
+                                                  const string& key) {
   v8::HandleScope scope;
 
   const string id = DocumentHelper::assembleDocumentId(collectionName, key);
@@ -175,12 +189,12 @@ static inline v8::Handle<v8::Value> DocumentId (const string& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document id from the parameters
+/// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DocumentId (TRI_vocbase_t* const vocbase,
-                                         const TRI_voc_cid_t cid,
-                                         const string& key) {
+static v8::Handle<v8::Value> V8DocumentId (TRI_vocbase_t* const vocbase,
+                                           const TRI_voc_cid_t cid,
+                                           const string& key) {
   v8::HandleScope scope;
 
   const string id = DocumentHelper::assembleDocumentId(vocbase, cid, key);
@@ -876,9 +890,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx.collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
-  result->Set(v8g->OldRevKey, v8::Number::New(actualRevision));
+  result->Set(v8g->DidKey, V8DocumentId(trx.collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
+  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -964,8 +978,8 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   assert(document->_key);
   
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx->collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
+  result->Set(v8g->DidKey, V8DocumentId(trx->collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -1085,8 +1099,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   assert(document->_key);
   
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx->collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
+  result->Set(v8g->DidKey, V8DocumentId(trx->collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -1196,9 +1210,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, DocumentId(trx.collectionName(), document->_key));
-  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
-  result->Set(v8g->OldRevKey, v8::Number::New(actualRevision));
+  result->Set(v8g->DidKey, V8DocumentId(trx.collectionName(), document->_key));
+  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
+  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
   return scope.Close(result);
@@ -5014,7 +5028,7 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 
   TRI_ReleaseCollection(collection);
   
-  return scope.Close(v8::Number::New(rid));
+  return scope.Close(V8RevisionId(rid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5930,17 +5944,12 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
-  if (key == "_id") {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+  if (key[0] == '_') {
+    if (key == "_id" || key == "_rev" || key == "_key") {
+      return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+    }
   }
 
-  if (key == "_rev") {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
-  }
-
-  if (key == "_key") {
-    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
-  }
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
@@ -6071,7 +6080,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                "expecting a document-handle in _id"));
     }
 
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey));
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey), true);
 
     if (rid == 0) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
@@ -6315,8 +6324,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   TRI_voc_rid_t rid = document->_rid;
 
   // TODO: protect this against race conditions (parallel rename)
-  result->Set(v8g->DidKey, DocumentId(collection->_name, document->_key), v8::ReadOnly);
-  result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
+  result->Set(v8g->DidKey, V8DocumentId(collection->_name, document->_key), v8::ReadOnly);
+  result->Set(v8g->RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
@@ -6331,16 +6340,16 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
       
       // create _vertices array
       v8::Handle<v8::Array> vertices = v8::Array::New();
-      vertices->Set(0, DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      vertices->Set(1, DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      vertices->Set(0, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      vertices->Set(1, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
       result->Set(v8g->VerticesKey, vertices);
     }
     else {
       // unidirectional edge
       result->Set(v8g->BidirectionalKey, v8::False());
 
-      result->Set(v8g->FromKey, DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      result->Set(v8g->ToKey, DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      result->Set(v8g->FromKey, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      result->Set(v8g->ToKey, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
     }
   }
   

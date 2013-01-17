@@ -220,7 +220,7 @@ function CollectionDocumentSuite () {
       var doc = collection.save({ "Hallo" : "World" });
 
       assertTypeOf("string", doc._id);
-      assertTypeOf("number", doc._rev);
+      assertTypeOf("string", doc._rev);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +231,7 @@ function CollectionDocumentSuite () {
       var doc = collection.save({ "Hallo" : "World" }, false);
 
       assertTypeOf("string", doc._id);
-      assertTypeOf("number", doc._rev);
+      assertTypeOf("string", doc._rev);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +242,7 @@ function CollectionDocumentSuite () {
       var doc = collection.save({ "Hallo" : "World" }, true);
 
       assertTypeOf("string", doc._id);
-      assertTypeOf("number", doc._rev);
+      assertTypeOf("string", doc._rev);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +299,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 });
 
@@ -341,7 +341,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 }, true, false);
 
@@ -357,7 +357,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 }, true, true);
 
@@ -373,7 +373,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.update(a1, { a : 2 });
 
@@ -491,7 +491,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 });
 
@@ -523,7 +523,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.update(a1, { a : 2 }, true, false);
 
@@ -539,7 +539,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.update(a1, { a : 2 }, true, true);
 
@@ -555,7 +555,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, false);
       assertEqual(a2, true);
@@ -569,7 +569,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, true);
       assertEqual(a2, true);
@@ -583,7 +583,7 @@ function CollectionDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       collection.remove(a1);
 
@@ -759,7 +759,7 @@ function DatabaseDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = internal.db._replace(a1, { a : 2 });
 
@@ -801,7 +801,7 @@ function DatabaseDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = internal.db._update(a1, { a : 2 });
 
@@ -919,7 +919,7 @@ function DatabaseDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       var a2 = internal.db._replace(a1, { a : 2 });
 
@@ -951,7 +951,7 @@ function DatabaseDocumentSuite () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
-      assertTypeOf("number", a1._rev);
+      assertTypeOf("string", a1._rev);
 
       internal.db._remove(a1);
 

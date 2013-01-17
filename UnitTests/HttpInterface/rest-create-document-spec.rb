@@ -115,7 +115,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -148,7 +148,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -188,7 +188,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -234,7 +234,7 @@ describe ArangoDB do
         location.should be_kind_of(String)
 
         rev = doc.parsed_response['_rev']
-        rev.should be_kind_of(Integer)
+        rev.should be_kind_of(String)
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
@@ -285,7 +285,7 @@ describe ArangoDB do
         location.should be_kind_of(String)
 
         rev = doc.parsed_response['_rev']
-        rev.should be_kind_of(Integer)
+        rev.should be_kind_of(String)
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
@@ -352,7 +352,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -385,7 +385,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -418,7 +418,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -466,7 +466,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
@@ -525,7 +525,7 @@ describe ArangoDB do
 	location.should be_kind_of(String)
 
 	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
+	rev.should be_kind_of(String)
 
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)

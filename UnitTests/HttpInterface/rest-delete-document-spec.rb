@@ -92,7 +92,7 @@ describe ArangoDB do
 
 	# delete document, different revision
 	cmd = "/_api/document/#{did}?policy=last-write"
-	hdr = { "if-match" => "\"#{rev-1}\"" }
+	hdr = { "if-match" => "\"29867#{rev}\"" }
         doc = ArangoDB.log_delete("#{prefix}-policy-bad", cmd, :headers => hdr)
 
 	doc.code.should eq(400)
@@ -145,7 +145,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
@@ -166,7 +166,7 @@ describe ArangoDB do
 
 	# delete document, different revision
 	cmd = "/_api/document/#{did}"
-	hdr = { "if-match" => "\"#{rev-1}\"" }
+	hdr = { "if-match" => "\"386897#{rev}\"" }
         doc = ArangoDB.log_delete("#{prefix}-if-match-other", cmd, :headers => hdr)
 
 	doc.code.should eq(412)
@@ -178,7 +178,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	# delete document, same revision
@@ -195,7 +195,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
@@ -216,7 +216,7 @@ describe ArangoDB do
 
 	# delete document, different revision
 	cmd = "/_api/document/#{did}?policy=last"
-	hdr = { "if-match" => "\"#{rev-1}\"" }
+	hdr = { "if-match" => "\"398734#{rev}\"" }
         doc = ArangoDB.log_delete("#{prefix}-if-match-other-last-write", cmd, :headers => hdr)
 
 	doc.code.should eq(200)
@@ -228,7 +228,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
@@ -248,7 +248,7 @@ describe ArangoDB do
 	rev = doc.parsed_response['_rev']
 
 	# delete document, different revision
-	cmd = "/_api/document/#{did}?rev=#{rev-1}"
+	cmd = "/_api/document/#{did}?rev=80689986#{rev}"
         doc = ArangoDB.log_delete("#{prefix}-rev-other", cmd)
 
 	doc.code.should eq(412)
@@ -260,7 +260,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	# delete document, same revision
@@ -277,7 +277,7 @@ describe ArangoDB do
 	
 
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
@@ -298,7 +298,7 @@ describe ArangoDB do
 
 	# delete document, different revision
 	cmd = "/_api/document/#{did}?policy=last"
-	hdr = { "rev" => "\"#{rev-1}\"" }
+	hdr = { "rev" => "\"3806589#{rev}\"" }
         doc = ArangoDB.log_delete("#{prefix}-rev-other-last-write", cmd, :headers => hdr)
 
 	doc.code.should eq(200)
@@ -310,7 +310,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
@@ -342,7 +342,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
@@ -374,7 +374,7 @@ describe ArangoDB do
 	did2.should eq(did)
 	
 	rev2 = doc.parsed_response['_rev']
-	rev2.should be_kind_of(Integer)
+	rev2.should be_kind_of(String)
 	rev2.should eq(rev)
 
 	ArangoDB.size_collection(@cid).should eq(0)
