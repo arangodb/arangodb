@@ -1,7 +1,10 @@
-var jsunity = require("jsunity"),
-  internal = require("internal"),
-  console = require("console"),
-  Frank = require("org/arangodb/frank").Frank;
+var jsunity = require("jsunity");
+
+var internal = require("internal");
+var console = require("console");
+
+var db = require("org/arangodb").db;
+var Frank = require("org/arangodb/frank").Frank;
 
 function CreateFrankSpec () {
   return {
@@ -274,8 +277,8 @@ function BaseMiddlewareWithTemplateSpec () {
     testRenderingATemplate: function () {
       var myCollection, middleware;
 
-      internal.db._drop("templateTest");
-      myCollection = internal.db._create("templateTest");
+      db._drop("templateTest");
+      myCollection = db._create("templateTest");
 
       myCollection.save({
         path: "simple/path",
@@ -295,8 +298,8 @@ function BaseMiddlewareWithTemplateSpec () {
     testRenderingATemplateWithAnUnknownTemplateEngine: function () {
       var myCollection, error, middleware;
 
-      internal.db._drop("templateTest");
-      myCollection = internal.db._create("templateTest");
+      db._drop("templateTest");
+      myCollection = db._create("templateTest");
 
       myCollection.save({
         path: "simple/path",
@@ -320,8 +323,8 @@ function BaseMiddlewareWithTemplateSpec () {
     testRenderingATemplateWithAnNotExistingTemplate: function () {
       var myCollection, error, middleware;
 
-      internal.db._drop("templateTest");
-      myCollection = internal.db._create("templateTest");
+      db._drop("templateTest");
+      myCollection = db._create("templateTest");
 
       middleware = new BaseMiddleware(myCollection);
       middleware(request, response, options, next);

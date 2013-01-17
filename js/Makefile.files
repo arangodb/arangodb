@@ -17,6 +17,10 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
 	\
+	@srcdir@/js/client/client.js \
+	@srcdir@/js/server/server.js \
+	@srcdir@/js/server/version-check.js \
+	\
 	@srcdir@/html/admin/js/arangodb/browser.js \
 	\
 	@srcdir@/js/actions/system/api-collection.js \

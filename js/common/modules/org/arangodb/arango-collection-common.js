@@ -606,7 +606,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   else {
     if (typeof limit !== "number") {
       var error = new ArangoError();
-      error.errorNum = internal.errors.ERROR_ILLEGAL_NUMBER.code;
+      error.errorNum = arangodb.errors.ERROR_ILLEGAL_NUMBER.code;
       error.errorMessage = "expecting a number, got " + String(limit);
 
       throw error;

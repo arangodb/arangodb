@@ -32,10 +32,6 @@
 var internal = require("internal");
 var arangosh = require("org/arangodb/arangosh");
 
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ArangoDatabase
 // -----------------------------------------------------------------------------
@@ -71,6 +67,13 @@ function ArangoDatabase (connection) {
     }
   };
 }
+
+exports.ArangoDatabase = ArangoDatabase;
+
+// load after exporting ArangoDatabase
+var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

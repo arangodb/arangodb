@@ -31,10 +31,6 @@
 
 var internal = require("internal");
 
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ArangoDatabase
 // -----------------------------------------------------------------------------
@@ -55,6 +51,11 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 exports.ArangoDatabase = internal.ArangoDatabase;
 
 var ArangoDatabase = exports.ArangoDatabase;
+
+// must called after export
+var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

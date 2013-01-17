@@ -1,10 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*jslint indent: 2, nomen: true, maxlen: 80 */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -34,11 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
 
-var SQB = require("simple-query-basics");
-
-require("simple-query");
+var db = require("org/arangodb").db;
+var SimpleQueryArray = require("org/arangodb/simple-query").SimpleQueryArray;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                  basic skips and limits for array
@@ -60,7 +53,7 @@ function SimpleQueryArraySkipLimitSuite () {
 
     setUp : function () {
       numbers = [0,1,2,3,4,5,6,7,8,9];
-      query = new SQB.SimpleQueryArray(numbers);
+      query = new SimpleQueryArray(numbers);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,8 +169,8 @@ function SimpleQueryAllSkipLimitSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
 
       for (var i = 0;  i < 10;  ++i) {
         collection.save({ n : i });
@@ -306,8 +299,8 @@ function SimpleQueryByExampleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,8 +405,8 @@ function SimpleQueryRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
 
       for (var i = 0;  i < 100;  ++i) {
         collection.save({ age : i });
@@ -464,8 +457,8 @@ function SimpleQueryUniqueRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
 
       for (var i = 0;  i < 100;  ++i) {
         collection.save({ age : i });
@@ -519,11 +512,11 @@ function SimpleQueryAnySuite () {
       var name;
       
       name = cn + "Empty";
-      internal.db._drop(name);
-      collectionEmpty = internal.db._create(name, { waitForSync : false });
+      db._drop(name);
+      collectionEmpty = db._create(name, { waitForSync : false });
 
       name = cn + "One";
-      collectionOne = internal.db._create(cn, { waitForSync : false });
+      collectionOne = db._create(cn, { waitForSync : false });
       collectionOne.save({ age : 1 });
     },
 

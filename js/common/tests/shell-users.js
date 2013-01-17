@@ -1,10 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*jslint indent: 2, nomen: true, maxlen: 80 */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the users management
@@ -34,8 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
-var users = require("users");
+
+var users = require("org/arangodb/users");
+
+var db = require("org/arangodb").db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            users management tests
@@ -46,7 +43,7 @@ var users = require("users");
 ////////////////////////////////////////////////////////////////////////////////
 
 function UsersSuite () {
-  var c = internal.db._collection("_users");
+  var c = db._collection("_users");
 
   var clearGarbage = function () {
     // clear garbage

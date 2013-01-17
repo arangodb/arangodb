@@ -634,7 +634,7 @@
   var sprintf = internal.sprintf;
 
   internal.printf = function () {
-    output(sprintf.apply(springf, arguments));
+    output(sprintf.apply(sprintf, arguments));
   };
 
 ////////////////////////////////////////////////////////////////////////////////

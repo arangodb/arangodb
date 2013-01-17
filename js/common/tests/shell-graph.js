@@ -1,11 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80,
-         sloppy: true */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -35,8 +29,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+
+var arangodb = require("org/arangodb");
 var console = require("console");
-var internal = require("internal");
+
+var ArangoCollection = arangodb.ArangoCollection;
+var print = arangodb.print;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      graph module
@@ -136,8 +134,8 @@ function GraphBasicsSuite() {
       try {
         try {
           graph = new Graph(graph_name);
-          internal.print("FOUND: ");
-          internal.printObject(graph);
+          print("FOUND: ");
+          printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -349,8 +347,8 @@ function VertexSuite() {
       try {
         try {
           graph = new Graph(graph_name);
-          internal.print("FOUND: ");
-          internal.printObject(graph);
+          print("FOUND: ");
+          printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -480,8 +478,8 @@ function EdgeSuite() {
       try {
         try {
           graph = new Graph(graph_name);
-          internal.print("FOUND: ");
-          internal.printObject(graph);
+          print("FOUND: ");
+          printObject(graph);
           graph.drop();
         } catch (err1) {
         }

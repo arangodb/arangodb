@@ -180,9 +180,10 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function Module (id) {
-    this._id = id;
+    this.id = id;               // commonjs Module/1.1.1
+    this.exports = {};         // commonjs Module/1.1.1
+
     this._normalized = {};
-    this._exports = {};
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +250,7 @@ function stop_color_print () {
     var raw;
     var sandbox;
 
-    internal = ModuleCache["/internal"]._exports;
+    internal = ModuleCache["/internal"].exports;
 
     // check if you already know the module
     if (this._normalized.hasOwnProperty(unormalizedPath)) {
@@ -262,8 +263,8 @@ function stop_color_print () {
     // check if you already know the module, return the exports
     if (ModuleCache.hasOwnProperty(path)) {
       module = ModuleCache[path];
-      this._normalized[unormalizedPath] = module._exports;
-      return module._exports;
+      this._normalized[unormalizedPath] = module.exports;
+      return module.exports;
     }
 
     // locate file and read content
@@ -289,17 +290,17 @@ function stop_color_print () {
 
     try {
       f(module,
-        module._exports,
+        module.exports,
         function(path) { return module.require(path); },
-        ModuleCache["/internal"]._exports.print);
+        ModuleCache["/internal"].exports.print);
     }
     catch (err) {
       delete ModuleCache[path];
       throw "Javascript exception in file '" + path + "': " + err + " - " + err.stack;
     }
 
-    this._normalized[unormalizedPath] = module._exports;
-    return module._exports;
+    this._normalized[unormalizedPath] = module.exports;
+    return module.exports;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -322,14 +323,14 @@ function stop_color_print () {
     var x;
 
     if (path === "") {
-      return this._id;
+      return this.id;
     }
 
     p = path.split('/');
 
     // relative path
     if (p[0] === "." || p[0] === "..") {
-      q = this._id.split('/');
+      q = this.id.split('/');
       q.pop();
       q = q.concat(p);
     }
@@ -408,7 +409,7 @@ function stop_color_print () {
 
   Module.prototype._PRINT = function () {
     var internal = require("internal");
-    internal.output('[module "' + this._id + '"]');
+    internal.output('[module "' + this.id + '"]');
   };
 
 ////////////////////////////////////////////////////////////////////////////////
