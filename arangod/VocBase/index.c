@@ -4183,7 +4183,8 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, idx->_unique));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
+  // 2013-01-17: deactivated substring indexing
+  // TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) fulltextIndex->_minWordLength));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
     
@@ -4313,8 +4314,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
 
-  // TODO: indexSubstrings
-  // TODO: minWordLength 
   fts = TRI_CreateFtsIndex(2048, 1, 1); 
   if (fts == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);

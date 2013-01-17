@@ -510,7 +510,7 @@ describe ArangoDB do
       it "returns an error for fulltext query with a wrong index" do
         # create index
 	cmd = "/_api/index?collection=#{@cn}"
-	body = "{ \"type\" : \"fulltext\", \"indexSubstrings\" : false, \"fields\" : [ \"text\" ] }"
+	body = "{ \"type\" : \"fulltext\", \"fields\" : [ \"text\" ] }"
 	doc = ArangoDB.post(cmd, :body => body)
 
         # query index on different attribute
@@ -528,7 +528,7 @@ describe ArangoDB do
       it "returns documents for fulltext queries" do
         # create index
 	cmd = "/_api/index?collection=#{@cn}"
-	body = "{ \"type\" : \"fulltext\", \"indexSubstrings\" : false, \"fields\" : [ \"text\" ] }"
+	body = "{ \"type\" : \"fulltext\", \"fields\" : [ \"text\" ] }"
 	doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/fulltext"
@@ -547,7 +547,7 @@ describe ArangoDB do
       it "returns documents for fulltext queries" do
         # create index
 	cmd = "/_api/index?collection=#{@cn}"
-	body = "{ \"type\" : \"fulltext\", \"indexSubstrings\" : false, \"fields\" : [ \"text\" ] }"
+	body = "{ \"type\" : \"fulltext\", \"fields\" : [ \"text\" ] }"
 	doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/fulltext"
@@ -566,7 +566,7 @@ describe ArangoDB do
       it "returns documents for fulltext queries" do
         # create index
 	cmd = "/_api/index?collection=#{@cn}"
-	body = "{ \"type\" : \"fulltext\", \"indexSubstrings\" : false, \"fields\" : [ \"text\" ] }"
+	body = "{ \"type\" : \"fulltext\", \"fields\" : [ \"text\" ] }"
 	doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/fulltext"
