@@ -1783,8 +1783,8 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> db.example.any()
-/// { "_id" : "222186062247/222716379559", "_rev" : 222716379559, "Hallo" : "World" }
+/// arangod> db.example.any()
+/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
