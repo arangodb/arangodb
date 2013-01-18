@@ -61,32 +61,30 @@ ArangoStatement.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var helpArangoStatement = arangosh.createHelpHeadline("ArangoStatement help") +
-  'ArangoStatement constructor:                                        ' + "\n" +
-  ' > st = new ArangoStatement(db, { "query" : "for ..." });           ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for ..." });               ' + "\n" +
-  'Functions:                                                          ' + "\n" +
-  '  bind(<key>, <value>);          bind single variable               ' + "\n" +
-  '  bind(<values>);                bind multiple variables            ' + "\n" +
-  '  setBatchSize(<max>);           set max. number of results         ' + "\n" +
+  'Create a select query:                                              ' + "\n" +
+  ' > st = new ArangoStatement(db, { "query" : "for..." });            ' + "\n" +
+  ' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
+  'Set query options:                                                  ' + "\n" +
+  ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
   '                                 to be transferred per roundtrip    ' + "\n" +
-  '  setCount(<value>);             set count flag (return number of   ' + "\n" +
+  ' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
   '                                 results in "count" attribute)      ' + "\n" +
-  '  getBatchSize();                return max. number of results      ' + "\n" +
+  'Get query options:                                                  ' + "\n" +
+  ' > st.setBatchSize();            return the max. number of results  ' + "\n" +
   '                                 to be transferred per roundtrip    ' + "\n" +
-  '  getCount();                    return count flag (return number of' + "\n" +
+  ' > st.getCount();                return count flag (return number of' + "\n" +
   '                                 results in "count" attribute)      ' + "\n" +
-  '  getQuery();                    return query string                ' + "\n" +
-  '  execute();                     execute query and return cursor    ' + "\n" +
-  '  _help();                       this help                          ' + "\n" +
-  'Attributes:                                                         ' + "\n" +
-  '  _database                      database object                    ' + "\n" +
-  'Example:                                                            ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for c in coll filter       ' + "\n" +
-  '                              c.x == @a && c.y == @b return c" });  ' + "\n" +
-  ' > st.bind("a", "hello");                                           ' + "\n" +
-  ' > st.bind("b", "world");                                           ' + "\n" +
-  ' > c = st.execute();                                                ' + "\n" +
-  ' > print(c.elements());                                             ';
+  ' > st.getQuery();                return query string                ' + "\n" +
+  '                                 results in "count" attribute)      ' + "\n" +
+  'Bind parameters to a query:                                         ' + "\n" +
+  ' > st.bind(<key>, <value>);      bind single variable               ' + "\n" +
+  ' > st.bind(<values>);            bind multiple variables            ' + "\n" +
+  'Execute query:                                                      ' + "\n" +
+  ' > c = st.execute();             returns a cursor                   ' + "\n" +
+  'Get all results in an array:                                        ' + "\n" +
+  ' > e = c.elements();                                                ' + "\n" +
+  'Or loop over the result set:                                        ' + "\n" +
+  ' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 ArangoStatement.prototype._help = function () {
   internal.print(helpArangoStatement);
