@@ -27,6 +27,7 @@
 
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
@@ -53,7 +54,7 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_THROW (error, data) {
-  var err = new require("org/arangodb/arango-error").ArangoError
+  var err = new ArangoError();
 
   err.errorNum = error.code;
   if (data) {
