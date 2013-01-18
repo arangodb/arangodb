@@ -235,6 +235,7 @@ exports.remove = function (username) {
 /// required, and this can be performed by called this method.
 ///
 /// Note: this function will not work from within the web interface
+/// @anchor JSF_reloadUsers
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.reload = function () {
