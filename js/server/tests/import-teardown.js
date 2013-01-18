@@ -25,16 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+(function () {
+  var db = require("org/arangodb").db;
 
-internal.db._drop("UnitTestsImportJson1");
-internal.db._drop("UnitTestsImportJson2");
-internal.db._drop("UnitTestsImportJson3");
-internal.db._drop("UnitTestsImportJson4");
-internal.db._drop("UnitTestsImportCsv1");
-internal.db._drop("UnitTestsImportCsv2");
-internal.db._drop("UnitTestsImportTsv1");
-internal.db._drop("UnitTestsImportTsv2");
+  db._drop("UnitTestsImportJson1");
+  db._drop("UnitTestsImportJson2");
+  db._drop("UnitTestsImportJson3");
+  db._drop("UnitTestsImportJson4");
+  db._drop("UnitTestsImportCsv1");
+  db._drop("UnitTestsImportCsv2");
+  db._drop("UnitTestsImportTsv1");
+  db._drop("UnitTestsImportTsv2");
+})();
 
 return true;
 
