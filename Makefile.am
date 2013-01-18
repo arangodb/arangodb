@@ -266,7 +266,6 @@ build_posix.h: configure.ac
 ### @brief source files
 ################################################################################
 
-include Makefile.files
 include lib/Makefile.files
 include arangod/Makefile.files
 include arangosh/Makefile.files

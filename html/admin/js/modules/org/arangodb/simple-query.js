@@ -1,4 +1,7 @@
 module.define("simple-query", function(exports, module) {
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
 ///
@@ -26,9 +29,21 @@ module.define("simple-query", function(exports, module) {
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var client = require("arangosh");
-var SQ = require("simple-query-basics");
+var arangosh = require("org/arangodb/arangosh");
+
+var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
+
+var sq = require("org/arangodb/simple-query-common");
+
+var GeneralArrayCursor = sq.GeneralArrayCursor;
+var SimpleQueryAll = sq.SimpleQueryAll;
+var SimpleQueryArray = sq.SimpleQueryArray;
+var SimpleQueryByExample = sq.SimpleQueryByExample;
+var SimpleQueryFulltext = sq.SimpleQueryFulltext;
+var SimpleQueryGeo = sq.SimpleQueryGeo;
+var SimpleQueryNear = sq.SimpleQueryNear;
+var SimpleQueryRange = sq.SimpleQueryRange;
+var SimpleQueryWithin = sq.SimpleQueryWithin;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
@@ -47,17 +62,17 @@ var SQ = require("simple-query-basics");
 /// @brief executes an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
+SimpleQueryAll.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name()
-    }  
+      collection: this._collection.name()
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -71,9 +86,10 @@ SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/all", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -81,7 +97,7 @@ SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -104,18 +120,18 @@ SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
+SimpleQueryByExample.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }  
 
     var data = {
-      collection : this._collection.name(),
-      example : this._example
-    }  
+      collection: this._collection.name(),
+      example: this._example
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -129,9 +145,10 @@ SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/by-example", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -139,59 +156,7 @@ SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup SimpleQuery
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.firstExample = function () {
-  var example;
-
-  // example is given as only argument
-  if (arguments.length == 1) {
-    example = arguments[0];
-  }
-
-  // example is given as list
-  else {
-    example = {};
-
-    for (var i = 0;  i < arguments.length;  i += 2) {
-      example[arguments[i]] = arguments[i + 1];
-    }
-  }
-
-  var data = {
-    collection : this.name(),
-    example : example
-  }  
-
-  var requestResult = this._database._connection.PUT("/_api/simple/first-example", JSON.stringify(data));
-
-  if (requestResult !== null
-      && requestResult.error == true 
-      && requestResult.errorNum == internal.errors.ERROR_HTTP_NOT_FOUND.code) {
-    return null;
-  }
-
-  client.checkRequestResult(requestResult);
-
-  return requestResult.document;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -214,21 +179,21 @@ ArangoCollection.prototype.firstExample = function () {
 /// @brief executes a range query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
+SimpleQueryRange.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      attribute : this._attribute,
-      right : this._right,
-      left : this._left,
-      closed : this._type == 1
-    }  
+      collection: this._collection.name(),
+      attribute: this._attribute,
+      right: this._right,
+      left: this._left,
+      closed: this._type === 1
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -242,9 +207,10 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/range", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/range", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -252,7 +218,7 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -275,19 +241,19 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
 /// @brief executes a near query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
+SimpleQueryNear.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      latitude : this._latitude,
-      longitude : this._longitude
-    }  
+      collection: this._collection.name(),
+      latitude: this._latitude,
+      longitude: this._longitude
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -309,9 +275,10 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/near", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/near", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -319,7 +286,7 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -342,20 +309,20 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
 /// @brief executes a within query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
+SimpleQueryWithin.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      latitude : this._latitude,
-      longitude : this._longitude,
-      radius : this._radius
-    }  
+      collection: this._collection.name(),
+      latitude: this._latitude,
+      longitude: this._longitude,
+      radius: this._radius
+    };
 
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -377,9 +344,10 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/within", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/within", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -387,7 +355,7 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -410,19 +378,19 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
 /// @brief executes a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
+SimpleQueryFulltext.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
-    if (batchSize != undefined && batchSize > 0) {
+    if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
     }
 
     var data = {
-      collection : this._collection.name(),
-      attribute : this._attribute,
-      query : this._query
-    }  
+      collection: this._collection.name(),
+      attribute: this._attribute,
+      query: this._query
+    };
     
     if (this._limit !== null) {
       data.limit = this._limit;
@@ -440,9 +408,10 @@ SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
   
-    var requestResult = this._collection._database._connection.PUT("/_api/simple/fulltext", JSON.stringify(data));
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/fulltext", JSON.stringify(data));
 
-    client.checkRequestResult(requestResult);
+    arangosh.checkRequestResult(requestResult);
 
     this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
 
@@ -450,7 +419,7 @@ SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
       this._countQuery = requestResult.count;
     }
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -465,16 +434,23 @@ SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.SimpleQueryAll = SQ.SimpleQueryAll;
-exports.SimpleQueryByExample = SQ.SimpleQueryByExample;
-exports.SimpleQueryGeo = SQ.SimpleQueryGeo;
-exports.SimpleQueryNear = SQ.SimpleQueryNear;
-exports.SimpleQueryWithin = SQ.SimpleQueryWithin;
-exports.SimpleQueryFulltext = SQ.SimpleQueryFulltext;
+exports.GeneralArrayCursor = GeneralArrayCursor;
+exports.SimpleQueryAll = SimpleQueryAll;
+exports.SimpleQueryArray = SimpleQueryArray;
+exports.SimpleQueryByExample = SimpleQueryByExample;
+exports.SimpleQueryFulltext = SimpleQueryFulltext;
+exports.SimpleQueryGeo = SimpleQueryGeo;
+exports.SimpleQueryNear = SimpleQueryNear;
+exports.SimpleQueryRange = SimpleQueryRange;
+exports.SimpleQueryWithin = SimpleQueryWithin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
