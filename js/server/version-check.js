@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,45 +181,50 @@
         var i;
 
         for (i in collections) {
-          var collection = collections[i];
+          if (collections.hasOwnProperty(i)) {
+            var collection = collections[i];
 
-          try {
-            if (collection.version() > 1) {
-              // already upgraded
-              continue;
-            }
+            try {
+              if (collection.version() > 1) {
+                // already upgraded
+                continue;
+              }
 
-            if (collection.type() == 3) {
-              // already an edge collection
-              collection.setAttribute("version", 2);
-              continue;
-            }
+              if (collection.type() === 3) {
+                // already an edge collection
+                collection.setAttribute("version", 2);
+                continue;
+              }
 
-            if (collection.count() > 0) {
-              var isEdge = true;
-              // check the 1st 50 documents from a collection
-              var documents = collection.ALL(0, 50);
+              if (collection.count() > 0) {
+                var isEdge = true;
+                // check the 1st 50 documents from a collection
+                var documents = collection.ALL(0, 50);
+                var j;
 
-              for (var j in documents) {
-                var doc = documents[j];
+                for (j in documents) {
+                  if (documents.hasOwnProperty(j)) {
+                    var doc = documents[j];
 
-                // check if documents contain both _from and _to attributes
-                if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
-                  isEdge = false;
-                  break;
+                    // check if documents contain both _from and _to attributes
+                    if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
+                      isEdge = false;
+                      break;
+                    }
+                  }
+                }
+
+                if (isEdge) {
+                  collection.setAttribute("type", 3);
+                  console.log("made collection '" + collection.name() + " an edge collection");
                 }
               }
-
-              if (isEdge) {
-                collection.setAttribute("type", 3);
-                console.log("made collection '" + collection.name() + " an edge collection");
-              }
+              collection.setAttribute("version", 2);
             }
-            collection.setAttribute("version", 2);
-          }
-          catch (e) {
-            console.error("could not upgrade collection '" + collection.name() + "'");
-            return false;
+            catch (e) {
+              console.error("could not upgrade collection '" + collection.name() + "'");
+              return false;
+            }
           }
         }
 
@@ -244,9 +249,18 @@
         return false;
       }
 
-      if (routing.count() == 0) {
+      if (routing.count() === 0) {
         // only add route if no other route has been defined
-        routing.save({ url: "/", action: { "do": "org/arangodb/actions/redirectRequest", options: { permanently: true, destination: "/_admin/html/index.html" } } });
+        routing.save({
+          url: "/",
+          action: {
+            "do": "org/arangodb/actions/redirectRequest",
+            options: {
+              permanently: true,
+              destination: "/_admin/html/index.html"
+            }
+          }
+        });
       }
 
       return true;
@@ -255,31 +269,37 @@
     // update markers in all collection datafiles to key markers
     addTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
       var collections = db._collections();
+      var i;
       
-      for (var i in collections) {
-        var collection = collections[i];
+      for (i in collections) {
+        if (collections.hasOwnProperty(i)) {
+          var collection = collections[i];
 
-        try {
-          if (collection.version() >= 3) {
-            // already upgraded
-            continue;
-          }
+          try {
+            if (collection.version() >= 3) {
+              // already upgraded
+              continue;
+            }
 
-          if (collection.upgrade()) {
-            // success
-            collection.setAttribute("version", 3);
+            if (collection.upgrade()) {
+              // success
+              collection.setAttribute("version", 3);
+            }
+            else {
+              // fail
+              console.error("could not upgrade collection datafiles for '"
+                            + collection.name() + "'");
+              return false;
+            }
           }
-          else {
-            // fail
-            console.error("could not upgrade collection datafiles for '" + collection.name() + "'");
+          catch (e) {
+            console.error("could not upgrade collection datafiles for '" 
+                          + collection.name() + "'");
             return false;
           }
         }
-        catch (e) {
-          console.error("could not upgrade collection datafiles for '" + collection.name() + "'");
-          return false;
-        }
       }
+
       return true;
     });
   
@@ -289,47 +309,59 @@
     });
   
     // create a unique index on collection attribute in _structures
-    addTask("createStructuresIndex", "create index on collection attribute in _structures collection", function () {
-      var structures = getCollection("_structures");
+    addTask("createStructuresIndex",
+            "create index on collection attribute in _structures collection",
+      function () {
+        var structures = getCollection("_structures");
 
-      if (! structures) {
-        return false;
-      }
+        if (! structures) {
+          return false;
+        }
 
-      structures.ensureUniqueConstraint("collection");
+        structures.ensureUniqueConstraint("collection");
 
-      return true;
-    });
+        return true;
+      });
 
     // loop through all tasks and execute them
-    console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
+    console.log("Found " + allTasks.length + " defined task(s), "
+                + activeTasks.length + " task(s) to run");
 
     var taskNumber = 0;
-    for (var i in activeTasks) {
-      var task = activeTasks[i];
+    var i;
 
-      console.log("Executing task #" + (++taskNumber) + " (" + task.name + "): " + task.description);
+    for (i in activeTasks) {
+      if (activeTasks.hasOwnProperty(i)) {
+        var task = activeTasks[i];
 
-      // assume failure
-      var result = false;
-      try {
-        // execute task
-        result = task.code();
-      }
-      catch (e) {
-      }
+        console.log("Executing task #" + (++taskNumber) 
+                    + " (" + task.name + "): " + task.description);
 
-      if (result) {
-        // success
-        lastTasks[task.name] = true;
-        // save/update version info
-        internal.write(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
-        console.log("Task successful");
-      }
-      else {
-        console.error("Task failed. Aborting upgrade procedure.");
-        console.error("Please fix the problem and try starting the server again.");
-        return false;
+        // assume failure
+        var result = false;
+
+        try {
+          // execute task
+          result = task.code();
+        }
+        catch (e) {
+        }
+
+        if (result) {
+          // success
+          lastTasks[task.name] = true;
+
+          // save/update version info
+          internal.write(versionFile,
+                         JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+
+          console.log("Task successful");
+        }
+        else {
+          console.error("Task failed. Aborting upgrade procedure.");
+          console.error("Please fix the problem and try starting the server again.");
+          return false;
+        }
       }
     }
 
@@ -341,10 +373,9 @@
     return true;
   }
 
-
-
   var lastVersion = null;
   var currentServerVersion = internal.db._version().match(/^(\d+\.\d+).*$/);
+
   if (! currentServerVersion) {
     // server version is invalid for some reason
     console.error("Unexpected ArangoDB server version: " + internal.db._version());
@@ -360,45 +391,56 @@
 
    // VERSION file exists, read its contents
   var versionInfo = internal.read(versionFile);
-  if (versionInfo != '') {
+  if (versionInfo !== '') {
     var versionValues = JSON.parse(versionInfo);
     if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
       lastVersion = parseFloat(versionValues.version);
     }
   }
   
-  if (lastVersion == null) {
+  if (lastVersion === null) {
     console.info("No VERSION file found in database directory.");
     return runUpgrade(currentVersion);
   }
 
-  if (lastVersion == currentVersion) {
+  if (lastVersion === currentVersion) {
     // version match!
     return true;
   }
 
   if (lastVersion > currentVersion) {
     // downgrade??
-    console.error("Database directory version (" + lastVersion + ") is higher than server version (" + currentVersion + ").");
-    console.error("It seems like you are running ArangoDB on a database directory that was created with a newer version of ArangoDB. Maybe this is what you wanted but it is not supported by ArangoDB.");
+    console.error("Database directory version (" + lastVersion 
+                  + ") is higher than server version (" + currentVersion + ").");
+
+    console.error("It seems like you are running ArangoDB on a database directory"
+                  + " that was created with a newer version of ArangoDB. Maybe this"
+                  +" is what you wanted but it is not supported by ArangoDB.");
+
     // still, allow the start
     return true;
   }
-  else if (lastVersion < currentVersion) {
+
+  if (lastVersion < currentVersion) {
     // upgrade
     if (internal.UPGRADE) {
       return runUpgrade(currentVersion);
     }
 
-    console.error("Database directory version (" + lastVersion + ") is lower than server version (" + currentVersion + ").");
-    console.error("It seems like you have upgraded the ArangoDB binary. If this is what you wanted to do, please restart with the --upgrade option to upgrade the data in the database directory.");
+    console.error("Database directory version (" + lastVersion
+                  + ") is lower than server version (" + currentVersion + ").");
+
+    console.error("It seems like you have upgraded the ArangoDB binary. If this is"
+                  +" what you wanted to do, please restart with the --upgrade option"
+                  +" to upgrade the data in the database directory.");
+
     // do not start unless started with --upgrade
     return false;
   }
 
   // we should never get here
   return true;
-})();
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
