@@ -1,4 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version check at the start of the server, will optionally perform
@@ -61,7 +62,7 @@
 
     function collectionExists (name) {
       var collection = getCollection(name);
-      return (collection != undefined) && (collection != null) && (collection.name() == name);
+      return (collection !== undefined) && (collection !== null) && (collection.name() === name);
     }
 
     function createSystemCollection (name, attributes) {
@@ -70,7 +71,7 @@
       }
 
       var realAttributes = attributes || { };
-      realAttributes['isSystem'] = true;
+      realAttributes.isSystem = true;
 
       if (db._create(name, realAttributes)) {
         return true;
@@ -98,7 +99,7 @@
       // VERSION file exists, read its contents
       var versionInfo = internal.read(versionFile);
 
-      if (versionInfo != '') {
+      if (versionInfo !== '') {
         var versionValues = JSON.parse(versionInfo);
 
         if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
@@ -111,7 +112,8 @@
       }
     }
     
-    console.log("Starting upgrade from version " + (lastVersion || "unknown") + " to " + internal.db._version());
+    console.log("Starting upgrade from version " + (lastVersion || "unknown") 
+                + " to " + internal.db._version());
 
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
@@ -123,16 +125,18 @@
     });
 
     // create a unique index on username attribute in _users
-    addTask("createUsersIndex", "create index on username attribute in _users collection", function () {
-      var users = getCollection("_users");
-      if (! users) {
-        return false;
-      }
+    addTask("createUsersIndex", 
+            "create index on username attribute in _users collection",
+      function () {
+        var users = getCollection("_users");
+        if (! users) {
+          return false;
+        }
 
-      users.ensureUniqueConstraint("username");
+        users.ensureUniqueConstraint("username");
 
-      return true;
-    });
+        return true;
+      });
   
     // add a default root user with no passwd
     addTask("addDefaultUser", "add default root user", function () {
@@ -141,7 +145,7 @@
         return false;
       }
 
-      if (users.count() == 0) {
+      if (users.count() === 0) {
         // only add account if user has not created his/her own accounts already
         users.save({ user: "root", password: internal.encodePassword(""), active: true });
       }
@@ -155,67 +159,72 @@
     });
   
     // create a unique index on name attribute in _graphs
-    addTask("createGraphsIndex", "create index on name attribute in _graphs collection", function () {
-      var graphs = getCollection("_graphs");
+    addTask("createGraphsIndex",
+            "create index on name attribute in _graphs collection",
+      function () {
+        var graphs = getCollection("_graphs");
 
-      if (! graphs) {
-        return false;
-      }
-
-      graphs.ensureUniqueConstraint("name");
-
-      return true;
-    });
-
-    // make distinction between document and edge collections
-    addTask("addCollectionVersion", "set new collection type for edge collections and update collection version", function () {
-      var collections = db._collections();
-      
-      for (var i in collections) {
-        var collection = collections[i];
-
-        try {
-          if (collection.version() > 1) {
-            // already upgraded
-            continue;
-          }
-
-          if (collection.type() == 3) {
-            // already an edge collection
-            collection.setAttribute("version", 2);
-            continue;
-          }
-        
-          if (collection.count() > 0) {
-            var isEdge = true;
-            // check the 1st 50 documents from a collection
-            var documents = collection.ALL(0, 50);
-
-            for (var j in documents) {
-              var doc = documents[j];
-    
-              // check if documents contain both _from and _to attributes
-              if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
-                isEdge = false;
-                break;
-              }
-            }
-
-            if (isEdge) {
-              collection.setAttribute("type", 3);
-              console.log("made collection '" + collection.name() + " an edge collection");
-            }
-          }
-          collection.setAttribute("version", 2);
-        }
-        catch (e) {
-          console.error("could not upgrade collection '" + collection.name() + "'");
+        if (! graphs) {
           return false;
         }
-      }
 
-      return true;
-    });
+        graphs.ensureUniqueConstraint("name");
+
+        return true;
+      });
+
+    // make distinction between document and edge collections
+    addTask("addCollectionVersion",
+            "set new collection type for edge collections and update collection version",
+      function () {
+        var collections = db._collections();
+        var i;
+
+        for (i in collections) {
+          var collection = collections[i];
+
+          try {
+            if (collection.version() > 1) {
+              // already upgraded
+              continue;
+            }
+
+            if (collection.type() == 3) {
+              // already an edge collection
+              collection.setAttribute("version", 2);
+              continue;
+            }
+
+            if (collection.count() > 0) {
+              var isEdge = true;
+              // check the 1st 50 documents from a collection
+              var documents = collection.ALL(0, 50);
+
+              for (var j in documents) {
+                var doc = documents[j];
+
+                // check if documents contain both _from and _to attributes
+                if (! doc.hasOwnProperty("_from") || ! doc.hasOwnProperty("_to")) {
+                  isEdge = false;
+                  break;
+                }
+              }
+
+              if (isEdge) {
+                collection.setAttribute("type", 3);
+                console.log("made collection '" + collection.name() + " an edge collection");
+              }
+            }
+            collection.setAttribute("version", 2);
+          }
+          catch (e) {
+            console.error("could not upgrade collection '" + collection.name() + "'");
+            return false;
+          }
+        }
+
+        return true;
+      });
     
     // create the _modules collection
     addTask("createModules", "setup _modules collection", function () {
