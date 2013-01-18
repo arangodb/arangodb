@@ -382,6 +382,27 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
+  
+  // Document markers are always written to the datafile as the first step of the 
+  // "create document" operation. At the time the marker is written, we do not yet
+  // know whether the insertion actually succeeds or if there will be a duplicate key
+  // error and we need to roll back by writing a deletion marker to the datafile.
+  // The problem with rolling back is that it would work here, but not on a server
+  // restart. When the server is restarted, all datafiles are replayed. Document
+  // insertions are read from the datafile and applied to the index. The problem is
+  // that the datafile replay simply replaces older versions of documents with newer
+  // ones so that there will never be a duplicate key error on restart. Instead, the
+  // old (correct) version of the document in the index would be overwritten, and
+  // afterwards being removed via the following deletion marker. So we will end up
+  // with 0 documents in the index after restart.
+  // To mitigate this problem, we now first probe the primary index for the key,
+  // and fail early (before writing the datafile) if already present. This is ugly
+  // but a sensible way until the primary index can keep multiple versions for the
+  // same key.
+
+  if (TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, keyBody) != NULL) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  }
 
   // .............................................................................
   // create header
