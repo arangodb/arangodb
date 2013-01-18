@@ -31,7 +31,7 @@ module.define("simple-query-common", function(exports, module) {
 
 var arangodb = require("org/arangodb");
 
-var ArangoError = arangodb.ArangoError;
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 var output = arangodb.output;
 
 // forward declaration
@@ -1022,7 +1022,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
     
   if (this._index === null) {
     var err = new ArangoError();
-    err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING.code;
+    err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING;
     err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
