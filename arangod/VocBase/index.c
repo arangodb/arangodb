@@ -542,7 +542,6 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  TRI_edge_header_t* entries;
   TRI_edge_header_t* entryIn;
   TRI_edge_header_t* entryOut;
   TRI_doc_edge_key_marker_t const* edge;
@@ -557,19 +556,19 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   // allocate all edge headers and return early if memory allocation fails
 
-  // use one allocation with 2 slots
-  // the IN entry will be in the first slot, and we only need to free this one later
-  // using one allocation with 2 slots saves a lot of mallocs, and speeds up the
-  // index insertion for a large edge collection
-  entries = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 2 * sizeof(TRI_edge_header_t), false);
-  if (entries == NULL) {
+  entryIn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), false);
+  if (entryIn == NULL) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  // we have allocated all necessary memory by here
-
+  entryOut = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), false);
+  if (entryOut == NULL) {
+    // OOM
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn);
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
   // first slot: IN
-  entryIn = entries;
   entryIn->_mptr = doc;
   entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive);
   entryIn->_cid = edge->_toCid;
@@ -577,7 +576,6 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, false);
 
   // second slot: OUT
-  entryOut = entries + 1;
   entryOut->_mptr = doc;
   entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive);
   entryOut->_cid = edge->_fromCid;
@@ -614,7 +612,12 @@ static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_OUT);
   entry._cid = edge->_fromCid;
   entry._key = ((char*) edge) + edge->_offsetFromKey;
-  TRI_RemoveElementMultiPointer(edgesIndex, &entry);
+  old = TRI_RemoveElementMultiPointer(edgesIndex, &entry);
+
+  // the pointer to the OUT element is also the memory pointer we need to free
+  if (old != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+  }
   
   // IN
   entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_IN);
@@ -723,7 +726,7 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 
   for (i = 0; i < n; ++i) {
     TRI_edge_header_t* element = edgesIndex->_edges._table[i];
-    if (element != NULL && (element->_flags & TRI_EDGE_BIT_DIRECTION_IN) != 0) {
+    if (element != NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
     }
   }
