@@ -62,14 +62,14 @@ function stop_pager () {
 
 function help () {
   var internal = require("internal");
+  var arangodb = require("org/arangodb");
   var client = require("org/arangodb/arangosh");
 
   internal.print(client.HELP);
-  internal.print(client.helpQueries);
-  internal.print(client.helpArangoDatabase);
-  internal.print(client.helpArangoCollection);
-  internal.print(client.helpArangoStatement);
-  internal.print(client.helpArangoQueryCursor);
+  internal.print(arangodb.ArangoStatement.prototype._help());
+  internal.print(arangodb.ArangoDatabase.prototype._help());
+  internal.print(arangodb.ArangoCollection.prototype._help());
+  internal.print(arangodb.ArangoQueryCursor.prototype._help());
   internal.print(client.helpExtended);
 }
 
@@ -85,6 +85,31 @@ function clear () {
     internal.print('\n');
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints help
+////////////////////////////////////////////////////////////////////////////////
+
+(function() {
+  var internal = require("internal");
+  var arangosh = require("org/arangodb/arangosh");
+
+  if (internal.arango !== undefined && internal.arango.isConnected()) {
+    internal.print(arangosh.HELP);
+  }
+}());
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global 'db'
+////////////////////////////////////////////////////////////////////////////////
+
+var db = require("org/arangodb").db;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global 'arango'
+////////////////////////////////////////////////////////////////////////////////
+
+var arango = require("internal").arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
