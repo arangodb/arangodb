@@ -1,9 +1,16 @@
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #357: Some spelling and grammar errors
+
+* fixed issue #355: fix quotes in pdf manual
+ 
+* fixed issue #351: Strange arangosh error message for long running query 
+
 * fixed randomly hanging connections in arangosh on MacOS
 
-* added any query
+* added "any" query method: this returns a random document from a collection. It
+  is also available via REST HTTP at /_api/simple/any.
 
 * added deployment tool
 
@@ -15,8 +22,10 @@ v1.1.2 (XXXX-XX-XX)
 * fixed truncation of human-readable log messages for web interface: the trailing \0
   byte was not appended for messages longer than 256 bytes
 
-* reduce memory usage for the case when there are lots of small collections with few 
-  documents each
+* fixed issue #341: ArangoDB crashes when stressed with Batch jobs
+  Contrary to the issue title, this did not have anything to do with batch jobs but
+  with too high memory usage. The memory usage of ArangoDB is now reduced for cases
+   when there are lots of small collections with few documents each
 
 * started with issue #317: Feature Request (from Google Groups): DATE handling
 
@@ -25,11 +34,11 @@ v1.1.2 (XXXX-XX-XX)
 
 * fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
 
-* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
-
 * fixed issue #336: Collections REST API docs
 
 * fixed issue #335: mmap errors due to wrong memory address calculation 
+
+* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
 
 * added option '--server.disable-authentication' for arangosh as well. No more passwd
   prompts if not needed
