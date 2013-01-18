@@ -680,11 +680,11 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO this is not optiomal for the client, there should a HTTP call handling
-//      everything on the server
-
 ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
   var documents;
+
+// TODO this is not optiomal for the client, there should a HTTP call handling
+//      everything on the server
 
   documents = this.byExample(example);
 
