@@ -1,6 +1,6 @@
 module.define("org/arangodb/graph", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
-/*global require, WeakDictionary, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -1218,9 +1218,9 @@ function Graph(name, vertices, edges) {
   this._vertices = vertices;
   this._edges = edges;
 
-  // and weak dictionary for vertices and edges
-  this._weakVertices = new WeakDictionary();
-  this._weakEdges = new WeakDictionary();
+  // and dictionary for vertices and edges
+  this._verticesCache = {};
+  this._edgesCache = {};
 
   // and store the cashes
   this.predecessors = {};
@@ -1812,10 +1812,10 @@ Graph.prototype.normalizedMeasurement = function (measurement) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructVertex = function (id) {
-  var vertex = this._weakVertices[id];
+  var vertex = this._verticesCache[id];
 
   if (vertex === undefined) {
-    this._weakVertices[id] = vertex = new Vertex(this, id);
+    this._verticesCache[id] = vertex = new Vertex(this, id);
   }
 
   return vertex;
@@ -1826,10 +1826,10 @@ Graph.prototype.constructVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function (id) {
-  var edge = this._weakEdges[id];
+  var edge = this._edgesCache[id];
 
   if (edge === undefined) {
-    this._weakEdges[id] = edge = new Edge(this, id);
+    this._edgesCache[id] = edge = new Edge(this, id);
   }
 
   return edge;

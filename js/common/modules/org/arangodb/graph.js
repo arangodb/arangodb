@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
-/*global require, WeakDictionary, exports */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, white: true, plusplus: true */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -51,7 +51,8 @@ var findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = db._create(name);
-  } else if (! (col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_DOCUMENT) {
+  } 
+  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -71,7 +72,8 @@ var findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = db._createEdgeCollection(name);
-  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_EDGE) {
+  }
+  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
@@ -218,11 +220,11 @@ Edge.prototype.getOutVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPeerVertex = function (vertex) {
-  if (vertex._id == this._properties._to) {
+  if (vertex._id === this._properties._to) {
     return this._graph.constructVertex(this._properties._from);
   }
 
-  if (vertex._id == this._properties._from) {
+  if (vertex._id === this._properties._from) {
     return this._graph.constructVertex(this._properties._to);
   }
 
@@ -669,7 +671,7 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
     return neighbor.id;
   };
 
-  if (typeof(target_vertex) != 'object') {
+  if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be a vertex object";
   }
 
@@ -680,10 +682,12 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
 
   if ((options.listed !== undefined) && (options.listed === true)) {
     return_value = common_neighbors;
-  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
+  }
+  else if ((options.normalized !== undefined) && (options.normalized === true)) {
     all_neighbors = neighbor_set_one.unite(neighbor_set_two);
     return_value = (common_neighbors.length / all_neighbors.length);
-  } else {
+  }
+  else {
     return_value = common_neighbors.length;
   }
 
@@ -736,7 +740,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
-  if (typeof(target_vertex) != 'object') {
+  if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be an object";
   }
   var predecessors = target_vertex.determinePredecessors(this, options || {});
@@ -1169,7 +1173,8 @@ function Graph(name, vertices, edges) {
 
     try {
       graphProperties = gdb.document(name);
-    } catch (e) {
+    }
+    catch (e1) {
       graphProperties = null;
     }
 
@@ -1217,9 +1222,9 @@ function Graph(name, vertices, edges) {
   this._vertices = vertices;
   this._edges = edges;
 
-  // and weak dictionary for vertices and edges
-  this._weakVertices = new WeakDictionary();
-  this._weakEdges = new WeakDictionary();
+  // and dictionary for vertices and edges
+  this._verticesCache = {};
+  this._edgesCache = {};
 
   // and store the cashes
   this.predecessors = {};
@@ -1381,16 +1386,19 @@ Graph.prototype.getVertex = function (id) {
 
   try {
     ref = this._vertices.document(id);
-  } catch (e) {
+  }
+  catch (e) {
     ref = null;
   }
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  } else {
+  }
+  else {
     try {
       vertex = this.constructVertex(id);
-    } catch (e) {
+    }
+    catch (e1) {
       vertex = null;
     }
   }
@@ -1484,7 +1492,7 @@ Graph.prototype.getEdge = function (id) {
   } else {
     try {
       edge = this.constructEdge(id);
-    } catch (e) {
+    } catch (e1) {
       edge = null;
     }
   }
@@ -1811,10 +1819,10 @@ Graph.prototype.normalizedMeasurement = function (measurement) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructVertex = function (id) {
-  var vertex = this._weakVertices[id];
+  var vertex = this._verticesCache[id];
 
   if (vertex === undefined) {
-    this._weakVertices[id] = vertex = new Vertex(this, id);
+    this._verticesCache[id] = vertex = new Vertex(this, id);
   }
 
   return vertex;
@@ -1825,10 +1833,10 @@ Graph.prototype.constructVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function (id) {
-  var edge = this._weakEdges[id];
+  var edge = this._edgesCache[id];
 
   if (edge === undefined) {
-    this._weakEdges[id] = edge = new Edge(this, id);
+    this._edgesCache[id] = edge = new Edge(this, id);
   }
 
   return edge;
