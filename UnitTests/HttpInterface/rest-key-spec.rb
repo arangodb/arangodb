@@ -208,8 +208,8 @@ describe ArangoDB do
         "b",
         "c",
         "A",
-        "b",
-        "c",
+        "B",
+        "C",
         "aBcD-"
       ]
   

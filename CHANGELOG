@@ -1,9 +1,57 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
-* added fulltext queries via AQL FULLTEXT() function. substring queries not supported
+* Added in-memory only collections
 
-* added collection.revision() method to determine whether a collection has changed
+  Added collection creation parameter "isVolatile": 
+  if set to true, the collection is created as an in-memory only collection, 
+  meaning that all document data of that collection will reside in memory only, 
+  and will not be stored permanently to disk. 
+  This means that all collection data will be lost when the collection is unloaded 
+  or the server is shut down.
+  As this collection type does not have datafile disk overhead for the regular 
+  document operations, it may be faster than normal disk-backed collections. The
+  actual performance gains strongly depend on the underlying OS, filesystem, and 
+  settings though.
+  This collection type should be used for caches only and not for any sensible data
+  that cannot be re-created otherwise.
+  Some platforms, namely Windows, currently do not support this collection type.
+  When creating an in-memory collection on such platform, an error message will be
+  returned by ArangoDB telling the user the platform does not support it.
+
+* fixed issue #353: Please include "pretty print" in Emergency Console
+
+* fixed issue #352: "pretty print" console.log
+  This was achieved by adding the dump() function for the "internal" object
+
+* reduced memory usage and insertion time for edges index
+  Inserting into the edges index now performs one instead of two malloc operations,
+  and costly comparisons in case of a hash collisions are also avoided on insertion,
+  reducing the prefilling/loading timer for bigger edge collections
+
+* added fulltext queries to AQL via FULLTEXT() function. This allows search 
+  fulltext indexes from an AQL query to find matching documents
+
+* added fulltext index type. This index type allows indexing words and prefixes of
+  words from a specific document attribute. The index can be queries using a
+  SimpleQueryFull object, the HTTP REST API at /_api/simple/fulltext, or via AQL
+
+* when documents are returned from ArangoDB, the document _revision id was previously
+  returned as a (potentially very big) integer value. This causes problems (clipping,
+  precision loss) for clients that did not support big integers natively and store such
+  values internally in doubles. Javascript and 32 bit-PHP are examples for clients
+  that could encounter such problems. 
+  Therefore, revision ids are now returned by ArangoDB as strings, with the string
+  content being the integer value as previously. Example:
+  - Document returned by ArangoDB 1.1: { "_rev": 1234, ... } 
+  - Document returned by ArangoDB 1.2: { "_rev": "1234", ... } 
+
+* added collection.revision() method to determine whether a collection has changed. 
+  The revision method returns a revision string that can be used by client programs
+  for equality/inequality comparisons. The value returned by the revision method
+  should be treated by clients as an opaque string and clients should not try to
+  figure out the sense of the revision id. This is still useful enough to check
+  whether data in a collection has changed.
 
 * issue #346: adaptively determine NUMBER_HEADERS_PER_BLOCK
 
@@ -141,9 +189,16 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #357: Some spelling and grammar errors
+
+* fixed issue #355: fix quotes in pdf manual
+ 
+* fixed issue #351: Strange arangosh error message for long running query 
+
 * fixed randomly hanging connections in arangosh on MacOS
 
-* added any query
+* added "any" query method: this returns a random document from a collection. It
+  is also available via REST HTTP at /_api/simple/any.
 
 * added deployment tool
 
@@ -155,8 +210,10 @@ v1.1.2 (XXXX-XX-XX)
 * fixed truncation of human-readable log messages for web interface: the trailing \0
   byte was not appended for messages longer than 256 bytes
 
-* reduce memory usage for the case when there are lots of small collections with few 
-  documents each
+* fixed issue #341: ArangoDB crashes when stressed with Batch jobs
+  Contrary to the issue title, this did not have anything to do with batch jobs but
+  with too high memory usage. The memory usage of ArangoDB is now reduced for cases
+   when there are lots of small collections with few documents each
 
 * started with issue #317: Feature Request (from Google Groups): DATE handling
 
@@ -165,13 +222,11 @@ v1.1.2 (XXXX-XX-XX)
 
 * fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
 
-* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
-
-* fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
-
 * fixed issue #336: Collections REST API docs
 
 * fixed issue #335: mmap errors due to wrong memory address calculation 
+
+* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
 
 * added option '--server.disable-authentication' for arangosh as well. No more passwd
   prompts if not needed
