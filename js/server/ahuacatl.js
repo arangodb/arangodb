@@ -27,6 +27,7 @@
 
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
@@ -2347,7 +2348,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
     AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
   }
 
-  if (params.maxDepth <= 0) {
+  if (params.maxDepth === undefined) {
     // we need to have at least SOME limit to prevent endless iteration
     params.maxDepth = 256;
   }
@@ -2381,17 +2382,18 @@ function AHUACATL_GRAPH_TRAVERSE () {
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
     maxDepth: params.maxDepth,
+    minDepth: params.minDepth,
     filter: filter,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
-        'global': traversal.Traverser.UNIQUE_GLOBAL,
-        'none': traversal.Traverser.UNIQUE_NONE,
-        'path': traversal.Traverser.UNIQUE_PATH
+        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
+        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
+        'path': TRAVERSAL.Traverser.UNIQUE_PATH
       }),
       edges: validate(params.uniqueness && params.uniqueness.edges, {
-        'global': traversal.Traverser.UNIQUE_GLOBAL,
-        'none': traversal.Traverser.UNIQUE_NONE,
-        'path': traversal.Traverser.UNIQUE_PATH
+        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
+        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
+        'path': TRAVERSAL.Traverser.UNIQUE_PATH
       }),
     },
     expander: validate(direction, {
@@ -2405,9 +2407,18 @@ function AHUACATL_GRAPH_TRAVERSE () {
     config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
   }
 
+  var v = null;
   var result = [ ];
-  var traverser = new TRAVERSAL.Traverser(config);
-  traverser.traverse(result, vertexCollection.document(startVertex));
+  try {
+    v = vertexCollection.document(startVertex);
+  }
+  catch (err) {
+  }
+
+  if (v != null) {
+    var traverser = new TRAVERSAL.Traverser(config);
+    traverser.traverse(result, v);
+  }
 
   return result;
 }

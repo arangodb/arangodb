@@ -79,7 +79,3 @@ ArangoError.prototype.toString = function() {
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-var arangodb = require("org/arangodb");
-
-var output = arangodb.output;
-

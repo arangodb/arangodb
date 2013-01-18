@@ -25,15 +25,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
+var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var ERRORS = require("org/arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFulltextTestSuite () {
-  var errors = internal.errors;
   var cn = "UnitTestsAhuacatlFulltext";
   var fulltext;
 
@@ -79,9 +80,9 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(cn);
+      db._drop(cn);
 
-      fulltext = internal.db._create(cn);
+      fulltext = db._create(cn);
       fulltext.ensureFulltextIndex("text");
     },
 
@@ -90,7 +91,7 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.db._drop(cn);
+      db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,9 +169,9 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonIndexed : function () {
-      assertEqual(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); } ));
-      assertEqual(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); } ));
-      assertEqual(errors.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
     }
 
   }
