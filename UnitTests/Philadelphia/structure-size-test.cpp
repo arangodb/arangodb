@@ -98,7 +98,6 @@ BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_doc_document_key_marker_t 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +105,18 @@ BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
 BOOST_AUTO_TEST_CASE (tst_document_key_marker) {
   size_t s = sizeof(TRI_doc_document_key_marker_t);
 
-  BOOST_CHECK_EQUAL(24 +32, s);
+  BOOST_CHECK_EQUAL(24 + 32, s); // base + own size
+  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sizeof TRI_doc_edge_key_marker_t 
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_edge_key_marker) {
+  size_t s = sizeof(TRI_doc_edge_key_marker_t);
+
+  BOOST_CHECK_EQUAL(24 + 32 + 20, s); // base + doc + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 }
 
