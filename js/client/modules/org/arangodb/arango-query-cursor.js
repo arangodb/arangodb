@@ -249,7 +249,7 @@ ArangoQueryCursor.prototype.count = function () {
 
 ArangoQueryCursor.prototype._baseurl = function () {
   return "/_api/cursor/"+ encodeURIComponent(this.data.id);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

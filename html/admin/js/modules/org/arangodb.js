@@ -1,4 +1,4 @@
-module.define("arangodb", function(exports, module) {
+module.define("org/arangodb", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
@@ -60,7 +60,7 @@ exports.ArangoCollection = require("org/arangodb/arango-collection").ArangoColle
 /// @brief class "ArangoConnection"
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoConnection = internal.ArangoCollection;
+exports.ArangoConnection = internal.ArangoConnection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoDatabase"
@@ -84,11 +84,25 @@ exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
 exports.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the global db object
+/// @brief class "ArangoQueryCursor"
+////////////////////////////////////////////////////////////////////////////////
+
+// cannot yet not use arangodb
+exports.ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the global "db" and "arango" object
 ////////////////////////////////////////////////////////////////////////////////
 
 if (typeof internal.arango !== 'undefined') {
-  internal.db = exports.db = new exports.ArangoDatabase(internal.arango);
+  try {
+    exports.arango = internal.arango;
+    exports.db = new exports.ArangoDatabase(internal.arango);
+    internal.db = exports.db; // TODO remove
+  }
+  catch (err) {
+    internal.print("cannot connect to server: " + String(err));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

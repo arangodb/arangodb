@@ -1,4 +1,4 @@
-module.define("traversal", function(exports, module) {
+module.define("org/arangodb/graph/traversal", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
