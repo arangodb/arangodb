@@ -378,6 +378,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   TRI_doc_mptr_t* header;
   TRI_voc_size_t total;
   TRI_doc_datafile_info_t* dfi;
+  TRI_doc_mptr_t* existing;
   int res;
 
   primary = context->_collection;
@@ -400,8 +401,16 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   // but a sensible way until the primary index can keep multiple versions for the
   // same key.
 
-  if (TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, keyBody) != NULL) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  existing = (TRI_doc_mptr_t*) TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, keyBody);
+  if (existing != NULL) {
+    LOG_TRACE("found an existing document for key '%s', revision validFrom: %llu, revision validTo: %llu", 
+              (char*) keyBody, 
+              (unsigned long long) existing->_validFrom,
+              (unsigned long long) existing->_validTo);
+    if (existing->_validFrom != existing->_validTo) {
+      // document revision is still alive
+      return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    }
   }
 
   // .............................................................................
