@@ -1030,7 +1030,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   // set document key
   TRI_voc_key_t key = 0;
 
-  bool isBidirectional = false;
   if (argv[2]->IsObject()) {
     v8::Handle<v8::Object> obj = argv[2]->ToObject();
     v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
@@ -1038,10 +1037,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
       TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
       key = TRI_DuplicateString2(*str, str.length());
       holder.registerString(TRI_CORE_MEM_ZONE, key);
-    }
-
-    if (obj->Has(v8g->BidirectionalKey)) {
-      isBidirectional = TRI_ObjectToBoolean(obj->Get(v8g->BidirectionalKey));
     }
   }
     
@@ -1053,7 +1048,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   edge._toCid = trx->cid();
   edge._fromKey = 0;
   edge._toKey = 0;
-  edge._isBidirectional = isBidirectional;
 
   v8::Handle<v8::Value> err;
 
@@ -2992,7 +2986,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker._offsetFromKey = newMarkerSize + keySize + toSize;
             newMarker._toCid = oldMarker->_toCid;
             newMarker._fromCid = oldMarker->_fromCid;
-            newMarker._isBidirectional = 0;
             
             newMarker.base.base._size = newMarkerSize + keyBodySize + bodySize;
             newMarker.base.base._type = TRI_DOC_MARKER_KEY_EDGE;
@@ -6339,23 +6332,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
     TRI_vocbase_t* const vocbase = collection->_vocbase;
 
-    if (marker->_isBidirectional) {
-      // bdirectional edge
-      result->Set(v8g->BidirectionalKey, v8::True());
-      
-      // create _vertices array
-      v8::Handle<v8::Array> vertices = v8::Array::New();
-      vertices->Set(0, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      vertices->Set(1, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
-      result->Set(v8g->VerticesKey, vertices);
-    }
-    else {
-      // unidirectional edge
-      result->Set(v8g->BidirectionalKey, v8::False());
-
-      result->Set(v8g->FromKey, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      result->Set(v8g->ToKey, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
-    }
+    // unidirectional edge
+    result->Set(v8g->FromKey, V8DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->ToKey, V8DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
   }
   
   // and return
@@ -6438,10 +6417,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
   v8g->CreateOptionsKey  = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
   
-  if (v8g->BidirectionalKey.IsEmpty()) {
-    v8g->BidirectionalKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_bidirectional"));
-  }
-
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
   }
@@ -6468,10 +6443,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   if (v8g->ToKey.IsEmpty()) {
     v8g->ToKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_to"));
-  }
-  
-  if (v8g->VerticesKey.IsEmpty()) {
-    v8g->VerticesKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_vertices"));
   }
   
   // .............................................................................

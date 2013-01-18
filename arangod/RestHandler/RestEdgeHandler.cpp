@@ -80,8 +80,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// Creates a new edge in the collection identified by @FA{collection-name}.  
 /// A JSON representation of the edge document must be passed as the body of 
 /// the POST request. This JSON object may contain the edge's document key in
-/// the @LIT{_key} attribute if needed. It may also contain the boolean 
-/// @LIT{_bidirectional} attribute.
+/// the @LIT{_key} attribute if needed. 
 /// The document handle of the start point must be passed in @FA{from-handle}. 
 /// The document handle of the end point must be passed in @FA{to-handle}.
 ///
@@ -90,10 +89,6 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ///
 /// In all other respects the method works like @LIT{POST /document}, see
 /// @ref RestDocument for details.
-///
-/// If you request such an edge, the returned document will also contain the
-/// attributes @LIT{_bidirectional} and either @LIT{_vertices} or 
-/// @LIT{_from} and @LIT{_to}.
 ///
 /// @EXAMPLES
 ///
@@ -181,15 +176,7 @@ bool RestEdgeHandler::createDocument () {
   edge._toCid = cid;
   edge._fromKey = 0;
   edge._toKey = 0;
-  edge._isBidirectional = false;
   
-  if (json->_type == TRI_JSON_ARRAY) {
-    TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_bidirectional");
-    if (k != NULL && k->_type == TRI_JSON_BOOLEAN) {
-      edge._isBidirectional = k->_value._boolean;
-    }    
-  }
-
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
   holder.registerString(TRI_CORE_MEM_ZONE, edge._fromKey);
 

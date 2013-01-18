@@ -170,21 +170,6 @@ v1.2.alpha (XXXX-XX-XX)
   Returning the location header has become unnecessary in ArangoDB 1.2 because users
   can access collections by name and do not need to care about collection ids.
 
-* edges in edge collections can optionally be undirected
-  Edges now have a `_bidirectional` attribute that determines whether the edge is to be
-  treated as directed (unidirectional) or undirected (bidirectional). The attribute
-  can be set when an edge is created. If ommitted, the default is to create unidirectional
-  edges (i.e. `_bidirectional: false`).
-  Unidirectional edges are handled as in previous versions of ArangoDB, that is they
-  have a `_from` and `_to` attribute that indicate the source and target vertices
-  of the edge. Additionally, they now return the `_bidirectional` attribute with a
-  value of `false`.
-  Bidirectional edges do not have unambigious sources and targets (the roles of the connected
-  vertices are unclear), so they return the connected vertices in a `_vertices` list.
-  This list contains the two vertices that the edge connects. It is up to the user to
-  figure out these edges' roles. Additionally, bidirectional edges return the
-  `_bidirectional` attribute with a value of `true`.
-
 
 v1.1.2 (XXXX-XX-XX)
 -------------------

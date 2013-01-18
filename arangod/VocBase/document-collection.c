@@ -1216,7 +1216,6 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
 
     marker._fromCid = edge->_fromCid;
     marker._toCid = edge->_toCid;
-    marker._isBidirectional = (uint8_t) edge->_isBidirectional;
 
     fromSize = strlen(edge->_fromKey) + 1;    
     toSize = strlen(edge->_toKey) + 1;        
@@ -1363,7 +1362,6 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
 
     marker._fromCid = o->_fromCid;
     marker._toCid = o->_toCid;
-    marker._isBidirectional = o->_isBidirectional;
 
     keyBody = ((char*) o) + o->base._offsetKey;  
     keyBodyLength = o->base._offsetJson - o->base._offsetKey;
