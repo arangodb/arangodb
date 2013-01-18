@@ -216,6 +216,134 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ primary key violation
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicate : function () {
+      var d1, d2, doc;
+
+      try {
+        d1 = collection.save({ _key: "test", value: 1 });
+        d2 = collection.save({ _key: "test", value: 2 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertTypeOf("string", d1._id);
+      assertTypeOf("string", d1._key);
+      assertTypeOf("string", d1._rev);
+      assertEqual("UnitTestsCollectionBasics/test", d1._id);
+      assertEqual("test", d1._key);
+
+      doc = collection.document("test");
+      assertEqual("UnitTestsCollectionBasics/test", doc._id);
+      assertEqual("test", doc._key);
+      assertEqual(1, doc.value);
+
+      assertEqual(1, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ secondary key violation
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicateSecondary : function () {
+      var d1, d2, doc;
+
+      collection.ensureUniqueConstraint("value1");
+
+      try {
+        d1 = collection.save({ _key: "test1", value1: 1, value2: 1 });
+        d2 = collection.save({ _key: "test2", value1: 1, value2: 2 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertTypeOf("string", d1._id);
+      assertTypeOf("string", d1._key);
+      assertTypeOf("string", d1._rev);
+      assertEqual("UnitTestsCollectionBasics/test1", d1._id);
+      assertEqual("test1", d1._key);
+
+      doc = collection.document("test1");
+      assertEqual("UnitTestsCollectionBasics/test1", doc._id);
+      assertEqual("test1", doc._key);
+      assertEqual(1, doc.value1);
+      assertEqual(1, doc.value2);
+
+      assertEqual(1, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ primary key violation, then unload/reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicateUnloadReload : function () {
+      var d1, d2, doc;
+
+      try {
+        d1 = collection.save({ _key: "test", value: 1 });
+        d2 = collection.save({ _key: "test", value: 2 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.unload();
+      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+        wait(1);
+      }
+
+      collection.load();
+
+      doc = collection.document("test");
+      assertEqual("UnitTestsCollectionBasics/test", doc._id);
+      assertEqual("test", doc._key);
+      assertEqual(1, doc.value);
+      
+      assertEqual(1, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ secondary key violation, then unload/reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicateSecondaryUnloadReload : function () {
+      var d1, d2, doc;
+      
+      collection.ensureUniqueConstraint("value1");
+
+      try {
+        d1 = collection.save({ _key: "test1", value1: 1, value2: 1 });
+        d2 = collection.save({ _key: "test1", value1: 1, value2: 2 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.unload();
+      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+        wait(1);
+      }
+
+      collection.load();
+
+      doc = collection.document("test1");
+      assertEqual("UnitTestsCollectionBasics/test1", doc._id);
+      assertEqual("test1", doc._key);
+      assertEqual(1, doc.value1);
+      assertEqual(1, doc.value2);
+      
+      assertEqual(1, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document
 ////////////////////////////////////////////////////////////////////////////////
 
