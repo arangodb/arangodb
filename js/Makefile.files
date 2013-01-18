@@ -5,6 +5,29 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief JavaScript modules for browser
+################################################################################
+
+JAVASCRIPT_BROWSER = \
+	html/admin/js/modules/org/arangodb/arango-collection.js \
+	html/admin/js/modules/org/arangodb/arango-database.js \
+	html/admin/js/modules/org/arangodb/arango-error.js \
+	html/admin/js/modules/org/arangodb/arango-query-cursor.js \
+	html/admin/js/modules/org/arangodb/arango-statement.js \
+	html/admin/js/modules/org/arangodb.js \
+	html/admin/js/modules/org/arangodb/arangosh.js \
+	html/admin/js/modules/org/arangodb/simple-query.js \
+	\
+	html/admin/js/modules/org/arangodb-common.js \
+	html/admin/js/modules/org/arangodb/arango-collection-common.js \
+	html/admin/js/modules/org/arangodb/arango-error-common.js \
+	html/admin/js/modules/org/arangodb/arango-statement-common.js \
+	html/admin/js/modules/org/arangodb/graph/traversal.js \
+	html/admin/js/modules/org/arangodb/simple-query-common.js
+
+BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
+
+################################################################################
 ### @brief files for jslint
 ################################################################################
 
@@ -51,7 +74,7 @@ jslint:
 BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
-	@test -d html/admin/js/modules || mkdir -p html/admin/js/modules
+	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
 	@touch $@
 
 ################################################################################
@@ -64,17 +87,11 @@ html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directorie
 html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
 
-################################################################################
-### @brief cleanup
-################################################################################
-
-CLEANUP += $(JAVASCRIPT_HEADER)
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
 ## End:

@@ -1,4 +1,7 @@
-module.define("statement-basics", function(exports, module) {
+module.define("arango-statement-common", function(exports, module) {
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
 ///
@@ -26,8 +29,6 @@ module.define("statement-basics", function(exports, module) {
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
 // -----------------------------------------------------------------------------
@@ -51,7 +52,7 @@ function ArangoStatement (database, data) {
   this._batchSize = null;
   this._bindVars = {};
   
-  if (!(data instanceof Object)) {
+  if (! (data instanceof Object)) {
     throw "ArangoStatement needs initial data";
   }
     
@@ -69,7 +70,20 @@ function ArangoStatement (database, data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bind a parameter to the statement
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStatement
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief binds a parameter to the statement
 ///
 /// This function can be called multiple times, once for each bind parameter.
 /// All bind parameters will be transferred to the server in one go when 
@@ -88,7 +102,7 @@ ArangoStatement.prototype.bind = function (key, value) {
     this._bindVars[key] = value;
   }
   else if (typeof(key) === "number") {
-    var strKey = String(parseInt(key));
+    var strKey = String(parseInt(key, 10));
 
     if (strKey !== String(key)) {
       throw "invalid bind parameter declaration";
@@ -102,7 +116,7 @@ ArangoStatement.prototype.bind = function (key, value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the bind variables already set
+/// @brief returns the bind variables already set
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.getBindVariables = function () {
@@ -110,7 +124,7 @@ ArangoStatement.prototype.getBindVariables = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the count flag for the statement
+/// @brief gets the count flag for the statement
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.getCount = function () {
@@ -118,7 +132,7 @@ ArangoStatement.prototype.getCount = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the maximum number of results documents the cursor will return
+/// @brief gets the maximum number of results documents the cursor will return
 /// in a single server roundtrip.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -127,7 +141,7 @@ ArangoStatement.prototype.getBatchSize = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get query string
+/// @brief gets query string
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.getQuery = function () {
@@ -135,7 +149,7 @@ ArangoStatement.prototype.getQuery = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the count flag for the statement
+/// @brief sets the count flag for the statement
 ///
 /// Setting the count flag will make the statement's result cursor return the
 /// total number of result documents. The count flag is not set by default.
@@ -146,20 +160,22 @@ ArangoStatement.prototype.setCount = function (bool) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the maximum number of results documents the cursor will return
+/// @brief sets the maximum number of results documents the cursor will return
 /// in a single server roundtrip.
 /// The higher this number is, the less server roundtrips will be made when
 /// iterating over the result documents of a cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.setBatchSize = function (value) {
-  if (parseInt(value) > 0) {
-    this._batchSize = parseInt(value);
+  var batch = parseInt(value, 10);
+
+  if (batch > 0) {
+    this._batchSize = batch;
   }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the query string
+/// @brief sets the query string
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.setQuery = function (query) {
@@ -167,7 +183,7 @@ ArangoStatement.prototype.setQuery = function (query) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query and return the results
+/// @brief parses a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.parse = function () {
@@ -175,7 +191,7 @@ ArangoStatement.prototype.parse = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explain a query and return the results
+/// @brief explains a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function () {
@@ -183,7 +199,7 @@ ArangoStatement.prototype.explain = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
+/// @brief executes the query
 ///
 /// Invoking execute() will transfer the query and all bind parameters to the
 /// server. It will return a cursor with the query results in case of success.
@@ -213,8 +229,12 @@ exports.ArangoStatement = ArangoStatement;
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
 });
