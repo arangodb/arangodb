@@ -1,5 +1,5 @@
 module.define("org/arangodb/graph", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,8 @@ var findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = db._create(name);
-  } else if (! (col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_DOCUMENT) {
+  } 
+  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -72,7 +73,8 @@ var findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = db._createEdgeCollection(name);
-  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_EDGE) {
+  }
+  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
@@ -219,11 +221,11 @@ Edge.prototype.getOutVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPeerVertex = function (vertex) {
-  if (vertex._id == this._properties._to) {
+  if (vertex._id === this._properties._to) {
     return this._graph.constructVertex(this._properties._from);
   }
 
-  if (vertex._id == this._properties._from) {
+  if (vertex._id === this._properties._from) {
     return this._graph.constructVertex(this._properties._to);
   }
 
@@ -670,7 +672,7 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
     return neighbor.id;
   };
 
-  if (typeof(target_vertex) != 'object') {
+  if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be a vertex object";
   }
 
@@ -681,10 +683,12 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
 
   if ((options.listed !== undefined) && (options.listed === true)) {
     return_value = common_neighbors;
-  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
+  }
+  else if ((options.normalized !== undefined) && (options.normalized === true)) {
     all_neighbors = neighbor_set_one.unite(neighbor_set_two);
     return_value = (common_neighbors.length / all_neighbors.length);
-  } else {
+  }
+  else {
     return_value = common_neighbors.length;
   }
 
@@ -737,7 +741,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
-  if (typeof(target_vertex) != 'object') {
+  if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be an object";
   }
   var predecessors = target_vertex.determinePredecessors(this, options || {});
@@ -1170,7 +1174,8 @@ function Graph(name, vertices, edges) {
 
     try {
       graphProperties = gdb.document(name);
-    } catch (e) {
+    }
+    catch (e1) {
       graphProperties = null;
     }
 
@@ -1382,16 +1387,19 @@ Graph.prototype.getVertex = function (id) {
 
   try {
     ref = this._vertices.document(id);
-  } catch (e) {
+  }
+  catch (e) {
     ref = null;
   }
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  } else {
+  }
+  else {
     try {
       vertex = this.constructVertex(id);
-    } catch (e) {
+    }
+    catch (e1) {
       vertex = null;
     }
   }
@@ -1485,7 +1493,7 @@ Graph.prototype.getEdge = function (id) {
   } else {
     try {
       edge = this.constructEdge(id);
-    } catch (e) {
+    } catch (e1) {
       edge = null;
     }
   }
