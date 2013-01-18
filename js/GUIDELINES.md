@@ -1,12 +1,12 @@
-Global Variable
-===============
+Global Variables
+================
 
 There should be no global variables/functions except
 
 * require
 * module
 
-The following function are also defined, but should never be used globally in
+The following functions are also defined, but should never be used globally in
 any JavaScript module.
 
 * print
@@ -36,7 +36,7 @@ the following modules:
 These modules are defined in the files `module-xxx.js`. Common parts available
 in the server and client are put into `common/bootstrap/module-xxx.js`,
 server-only functions in `server/bootstrap/module-xxx.js`, and client-only parts
-in `server/bootstrap/module-xxx.js`.
+in `client/bootstrap/module-xxx.js`.
 
 All global variables are moved into the module "internal" and are then deleted.
 
@@ -50,7 +50,7 @@ Sometimes client and server share large parts of the code. If this is true for a
 module "name", than there exists a companion module "name-common" which contains
 these parts.
 
-For large prototypes with a lot of methods, there exists separates files. I. e.
+For large prototypes with a lot of methods, there exist separate files. I. e.
 `ArangoCollection` is defined in `org/arangodb/arango-collection.js`.
 
 Module "internal"
