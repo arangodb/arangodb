@@ -27,6 +27,7 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables

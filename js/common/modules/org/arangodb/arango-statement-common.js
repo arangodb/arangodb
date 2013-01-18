@@ -51,7 +51,7 @@ function ArangoStatement (database, data) {
   this._batchSize = null;
   this._bindVars = {};
   
-  if (!(data instanceof Object)) {
+  if (! (data instanceof Object)) {
     throw "ArangoStatement needs initial data";
   }
     

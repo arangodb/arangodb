@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
+var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var ERRORS = require("internal").errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -120,7 +122,7 @@ var actions = require("org/arangodb/actions");
 
 function POST_api_explain (req, res) {
   if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, internal.errors.ERROR_HTTP_NOT_FOUND.message);
+    actions.resultNotFound(req, res, ERRORS.errors.ERROR_HTTP_NOT_FOUND.code, ERRORS.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 

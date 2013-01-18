@@ -37,6 +37,8 @@
 
 var actions = require("org/arangodb/actions");
 var simple = require("org/arangodb/simple-query");
+var db = require("org/arangodb").db;
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -124,7 +126,7 @@ function postKeyValue(req, res) {
 
   var collection = req.suffix[0];
     
-  if (internal.db._collection(collection) === null) {
+  if (db._collection(collection) === null) {
     actions.collectionNotFound(req, res, collection);
     return;      
   }
@@ -136,7 +138,7 @@ function postKeyValue(req, res) {
   
   var doc = buildDocumentFromReq(req);
 
-  var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
+  var oldDoc = db._collection(collection).firstExample("$key", doc["$key"]);
         
   if (oldDoc != undefined) {
     actions.resultError(req, res, actions.HTTP_BAD, arangodb.ERROR_KEYVALUE_KEY_EXISTS, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_EXISTS));
@@ -167,14 +169,14 @@ function putKeyValue(req, res) {
 
   var collection = req.suffix[0];
     
-  if (internal.db._collection(collection) === null) {
+  if (db._collection(collection) === null) {
     actions.collectionNotFound(req, res);
     return;      
   }
     
   var doc = buildDocumentFromReq(req);
 
-  var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
+  var oldDoc = db._collection(collection).firstExample("$key", doc["$key"]);
         
   if (oldDoc == undefined) {
     if (req.parameters["create"] == 1) {
@@ -223,7 +225,7 @@ function deleteKeyValue(req, res) {
 
   var collection = req.suffix[0];
     
-  if (internal.db._collection(collection) === null) {
+  if (db._collection(collection) === null) {
     actions.collectionNotFound(req, res);
     return;      
   }
@@ -234,7 +236,7 @@ function deleteKeyValue(req, res) {
     key += "/" + req.suffix[i];
   }
 
-  var doc = internal.db._collection(collection).firstExample("$key", key);
+  var doc = db._collection(collection).firstExample("$key", key);
     
   if (doc == undefined) {
     actions.resultError(req, res, actions.HTTP_NOT_FOUND, arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND));
@@ -267,7 +269,7 @@ function getKeyValue(req, res) {
 
   var collection = req.suffix[0];
     
-  if (internal.db._collection(collection) === null) {
+  if (db._collection(collection) === null) {
     actions.collectionNotFound(req, res);
     return;      
   }
@@ -278,7 +280,7 @@ function getKeyValue(req, res) {
     key += "/" + req.suffix[i];
   }
         
-  var doc = internal.db._collection(collection).firstExample("$key", key); 
+  var doc = db._collection(collection).firstExample("$key", key); 
         
   if (doc == undefined) {
     actions.resultError(req, res, actions.HTTP_NOT_FOUND, arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND));
@@ -373,7 +375,7 @@ function searchKeyValue(req, res) {
 
   var collection = req.suffix[0];
     
-  if (internal.db._collection(collection) === null) {
+  if (db._collection(collection) === null) {
     actions.collectionNotFound(req, res);
     return;      
   }
@@ -388,7 +390,7 @@ function searchKeyValue(req, res) {
   // TODO: build a query which selects the keys
   //
     
-  var cursor = internal.db._collection(collection).all();
+  var cursor = db._collection(collection).all();
     
   result = [];
     

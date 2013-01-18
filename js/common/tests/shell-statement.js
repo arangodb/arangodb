@@ -31,8 +31,7 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
-
-var ArangoStatement = arangodb.ArangoStatement;
+var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 var db = arangodb.db;
 
 // -----------------------------------------------------------------------------

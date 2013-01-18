@@ -29,6 +29,7 @@
 (function() {
   var actions = require("org/arangodb/actions");
   var graph = require("org/arangodb/graph");
+  var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables

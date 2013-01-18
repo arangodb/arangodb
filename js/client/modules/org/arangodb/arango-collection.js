@@ -32,7 +32,7 @@
 var internal = require("internal");
 var arangosh = require("org/arangodb/arangosh");
 
-var ArangoError = require("org/arangodb/arango-error");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection

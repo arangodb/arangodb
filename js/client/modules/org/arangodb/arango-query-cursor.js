@@ -213,7 +213,7 @@ ArangoQueryCursor.prototype.next = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (!this.data.id) {
+  if (! this.data.id) {
     // client side only cursor
     return;
   }
@@ -236,12 +236,20 @@ ArangoQueryCursor.prototype.dispose = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.count = function () {
-  if (!this.data.id) {
+  if (! this.data.id) {
     throw "cursor has been disposed";
   }
 
   return this.data.count;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return baseurl for query cursor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoQueryCursor.prototype._baseurl = function () {
+  return "/_api/cursor/"+ encodeURIComponent(this.data.id);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

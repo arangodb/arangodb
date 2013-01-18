@@ -27,6 +27,8 @@
 
 var actions = require("org/arangodb/actions");
 var simple = require("org/arangodb/simple-query");
+var db = require("org/arangodb").db;
+var ERRORS = require("internal").errors;
 
 var API = "_api/simple/";
 
@@ -89,7 +91,7 @@ actions.defineHttp({
         var limit = body.limit;
         var skip = body.skip;
         var name = body.collection;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -172,7 +174,7 @@ actions.defineHttp({
       else {
         var name = body.collection;
         var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = db._collection(id);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -263,7 +265,7 @@ actions.defineHttp({
         var name = body.collection;
         var geo = body.geo;
 
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -378,7 +380,7 @@ actions.defineHttp({
         var radius = body.radius;
         var geo = body.geo;
         var name = body.collection;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -478,7 +480,7 @@ actions.defineHttp({
         var query = body.query;
         var iid = body.index || undefined; 
         var name = body.collection;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -567,7 +569,7 @@ actions.defineHttp({
         var skip = body.skip;
         var example = body.example;
         var name = body.collection;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -644,7 +646,7 @@ actions.defineHttp({
       else {
         var example = body.example;
         var name = body.collection;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -659,7 +661,7 @@ actions.defineHttp({
             actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
           }
           else {
-            actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "no match");
+            actions.resultNotFound(req, res, ERRORS.ERROR_HTTP_NOT_FOUND.code, "no match");
           }
         }
       }
@@ -695,7 +697,7 @@ actions.defineHttp({
         var name = body.collection;
         var example = body.example;
         var index = body.index;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -774,7 +776,7 @@ actions.defineHttp({
         var left = body.left;
         var right = body.right;
         var closed = body.closed;
-        var collection = internal.db._collection(name);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
