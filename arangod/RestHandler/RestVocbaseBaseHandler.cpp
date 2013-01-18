@@ -373,21 +373,8 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
     const string from = DocumentHelper::assembleDocumentId(vocbase, marker->_fromCid, string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(vocbase, marker->_toCid, string((char*) marker +  marker->_offsetToKey));
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_bidirectional", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, marker->_isBidirectional));
-    if (marker->_isBidirectional) {
-      TRI_json_t* vertices;
-
-      vertices = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-      if (vertices) {
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, vertices, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, vertices, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_vertices", vertices);
-      }
-    }
-    else {
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
-    }
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
   }
 
   // convert object to string

@@ -381,7 +381,6 @@ typedef struct TRI_doc_edge_key_marker_s {
 
   uint16_t       _offsetToKey;
   uint16_t       _offsetFromKey;
-  uint8_t        _isBidirectional;
 }
 TRI_doc_edge_key_marker_t;
 

@@ -73,14 +73,6 @@ static TRI_multi_pointer_t* FindEdgesIndex (TRI_document_collection_t* const doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether an edge is bi-directional
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsBidirectional (const TRI_edge_header_t* const edge) {
-  return ((edge->_flags & TRI_EDGE_BIT_BIDIRECTIONAL) > 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether an edge is self-reflexive
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,11 +140,6 @@ static bool FindEdges (const TRI_edge_direction_e direction,
         if (IsReflexive(edge)) {
           continue;
         }
-
-        // in type 2 we are only interested in the counterparts of bidirectional edges
-        if (matchType == 2 && ! IsBidirectional(edge)) {
-          continue;
-        }
       }
 
       TRI_PushBackVectorPointer(result, cnv.v);
@@ -200,15 +187,11 @@ TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e direction) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e direction, 
-                                const bool isReflexive, 
-                                const bool isBidirectional) {
+                                const bool isReflexive) { 
   TRI_edge_flags_t result = TRI_LookupFlagsEdge(direction);
 
   if (isReflexive) {
     result |= TRI_EDGE_BIT_REFLEXIVE;
-  }
-  if (isBidirectional) {
-    result |= TRI_EDGE_BIT_BIDIRECTIONAL;
   }
 
   return result;
@@ -243,14 +226,10 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
     FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 1);
-    // add all bidirectional edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 2);
   }
   else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
     FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 1);
-    // add all bidirectional edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 2);
   }
   else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex

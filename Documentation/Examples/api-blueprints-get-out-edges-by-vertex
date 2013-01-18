@@ -10,7 +10,6 @@ content-type: application/json; charset=utf-8
       "_id": "102896575/106173375",
       "_rev": "106173375",
       "_key": "106173375",
-      "_bidirectional": false,
       "_from": "102110143/105452479",
       "_to": "102110143/105518015",
       "$label": null,
