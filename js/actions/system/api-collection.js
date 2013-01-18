@@ -1,11 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true,
-         stupid: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +152,7 @@ function post_api_collection (req, res) {
 
   if (! body.hasOwnProperty("name")) {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-		      "name must be non-empty");
+                      "name must be non-empty");
     return;
   }
 
@@ -376,7 +369,7 @@ function get_api_collection (req, res) {
   // /_api/collection
   // .............................................................................
     
-  if (req.suffix.length === 0 && req.parameters.id == undefined) {
+  if (req.suffix.length === 0 && req.parameters.id === undefined) {
     get_api_collections(req, res);
     return;
   }
@@ -406,11 +399,12 @@ function get_api_collection (req, res) {
   // .............................................................................
 
   if (req.suffix.length === 1) {
-    var result = collectionRepresentation(collection, false, false, false);
+    result = collectionRepresentation(collection, false, false, false);
     actions.resultOk(req, res, actions.HTTP_OK, result);
+    return;
   }
 
-  else if (req.suffix.length === 2) {
+  if (req.suffix.length === 2) {
     sub = decodeURIComponent(req.suffix[1]);
 
     // .............................................................................
@@ -451,7 +445,8 @@ function get_api_collection (req, res) {
 
     else {
       actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND,
-                             "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
+                             "expecting one of the resources 'count',"
+                             +" 'figures', 'properties', 'parameter'");
     }
   }
   else {
@@ -507,6 +502,7 @@ function put_api_collection_load (req, res, collection) {
 
     var showCount = true;
     var body = actions.getJsonBody(req, res);
+
     if (body && body.hasOwnProperty("count")) {
       showCount = body.count;
     }
@@ -687,7 +683,7 @@ function put_api_collection_rename (req, res, collection) {
 
   if (! body.hasOwnProperty("name")) {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-		      "name must be non-empty");
+                      "name must be non-empty");
     return;
   }
 
@@ -712,7 +708,7 @@ function put_api_collection_rename (req, res, collection) {
 function put_api_collection (req, res) {
   if (req.suffix.length !== 2) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-		      "expected PUT /" + API + "/<collection-name>/<action>");
+                      "expected PUT /" + API + "/<collection-name>/<action>");
     return;
   }
 
@@ -743,7 +739,8 @@ function put_api_collection (req, res) {
   }
   else {
     actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,
-			   "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
+                           "expecting one of the actions 'load', 'unload',"
+                           + " 'truncate', 'properties', 'rename'");
   }
 }
 
@@ -781,7 +778,7 @@ function put_api_collection (req, res) {
 function delete_api_collection (req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-		      "expected DELETE /" + API + "/<collection-name>");
+                      "expected DELETE /" + API + "/<collection-name>");
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
@@ -792,16 +789,16 @@ function delete_api_collection (req, res) {
     }
     else {
       try {
-	var result = {
-	  id : collection._id
-	};
+        var result = {
+          id : collection._id
+        };
 
-	collection.drop();
+        collection.drop();
 
-	actions.resultOk(req, res, actions.HTTP_OK, result);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-	actions.resultException(req, res, err);
+        actions.resultException(req, res, err);
       }
     }
   }
@@ -818,19 +815,19 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       if (req.requestType === actions.GET) {
-	get_api_collection(req, res);
+        get_api_collection(req, res);
       }
       else if (req.requestType === actions.DELETE) {
-	delete_api_collection(req, res);
+        delete_api_collection(req, res);
       }
       else if (req.requestType === actions.POST) {
-	post_api_collection(req, res);
+        post_api_collection(req, res);
       }
       else if (req.requestType === actions.PUT) {
-	put_api_collection(req, res);
+        put_api_collection(req, res);
       }
       else {
-	actions.resultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
       }
     }
     catch (err) {
@@ -849,5 +846,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
 // End:
