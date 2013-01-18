@@ -22,6 +22,7 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb/arango-collection-common.js \
 	html/admin/js/modules/org/arangodb/arango-error-common.js \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
+	html/admin/js/modules/org/arangodb/graph.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js
 
@@ -82,10 +83,10 @@ BUILT_SOURCES += @builddir@/.setup-js-directories
 ################################################################################
 
 html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
-	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+	(echo "module.define(\"$(patsubst js/common/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
-	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

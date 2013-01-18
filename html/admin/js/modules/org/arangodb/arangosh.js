@@ -1,4 +1,4 @@
-module.define("arangosh", function(exports, module) {
+module.define("org/arangodb/arangosh", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true plusplus: true */
 /*global require, exports */
 
@@ -31,8 +31,6 @@ module.define("arangosh", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "arangosh"
@@ -69,10 +67,29 @@ exports.getIdString = function (object, typeName) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a formatted headline text 
+////////////////////////////////////////////////////////////////////////////////
+
+exports.createHelpHeadline = function (text) {
+  var i;
+  var p = "";
+  var x = Math.abs(78 - text.length) / 2;
+
+  for (i = 0; i < x; ++i) {
+    p += "-";
+  }
+
+  return "\n" + p + " " + text + " " + p + "\n";
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handles error results
 /// 
 /// throws an exception in case of an an error
 ////////////////////////////////////////////////////////////////////////////////
+
+// must came after the export of createHelpHeadline
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 exports.checkRequestResult = function (requestResult) {
   if (requestResult === undefined) {
@@ -87,22 +104,6 @@ exports.checkRequestResult = function (requestResult) {
   if (requestResult.error !== undefined && requestResult.error) {    
     throw new ArangoError(requestResult);
   }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a formatted headline text 
-////////////////////////////////////////////////////////////////////////////////
-
-exports.createHelpHeadline = function (text) {
-  var i;
-  var p = "";
-  var x = Math.abs(78 - text.length) / 2;
-
-  for (i = 0; i < x; ++i) {
-    p += "-";
-  }
-
-  return "\n" + p + " " + text + " " + p + "\n";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,32 +148,6 @@ exports.HELP = exports.createHelpHeadline("Help") +
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query help
 ////////////////////////////////////////////////////////////////////////////////
-
-exports.helpQueries = exports.createHelpHeadline("Select query help") +
-  'Create a select query:                                              ' + "\n" +
-  ' > st = new ArangoStatement(db, { "query" : "for..." });            ' + "\n" +
-  ' > st = db._createStatement({ "query" : "for..." });                ' + "\n" +
-  'Set query options:                                                  ' + "\n" +
-  ' > st.setBatchSize(<value>);     set the max. number of results     ' + "\n" +
-  '                                 to be transferred per roundtrip    ' + "\n" +
-  ' > st.setCount(<value>);         set count flag (return number of   ' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  'Get query options:                                                  ' + "\n" +
-  ' > st.setBatchSize();            return the max. number of results  ' + "\n" +
-  '                                 to be transferred per roundtrip    ' + "\n" +
-  ' > st.getCount();                return count flag (return number of' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  ' > st.getQuery();                return query string                ' + "\n" +
-  '                                 results in "count" attribute)      ' + "\n" +
-  'Bind parameters to a query:                                         ' + "\n" +
-  ' > st.bind(<key>, <value>);      bind single variable               ' + "\n" +
-  ' > st.bind(<values>);            bind multiple variables            ' + "\n" +
-  'Execute query:                                                      ' + "\n" +
-  ' > c = st.execute();             returns a cursor                   ' + "\n" +
-  'Get all results in an array:                                        ' + "\n" +
-  ' > e = c.elements();                                                ' + "\n" +
-  'Or loop over the result set:                                        ' + "\n" +
-  ' > while (c.hasNext()) { print( c.next() ); }                       ';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extended help

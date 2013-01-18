@@ -52,7 +52,6 @@ function start_pager () {
 
 function stop_pager () {
   var internal = require("internal");
- 
   internal.stopPager();
 }
 
@@ -94,8 +93,12 @@ function clear () {
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
 
-  if (internal.arango !== undefined && internal.arango.isConnected()) {
-    internal.print(arangosh.HELP);
+  if (internal.arango !== undefined) {
+    if (typeof internal.arango.isConnected !== "undefined") {
+      if (internal.arango.isConnected()) {
+        internal.print(arangosh.HELP);
+      }
+    }
   }
 }());
 
@@ -109,7 +112,7 @@ var db = require("org/arangodb").db;
 /// @brief global 'arango'
 ////////////////////////////////////////////////////////////////////////////////
 
-var arango = require("internal").arango;
+var arango = require("org/arangodb").arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

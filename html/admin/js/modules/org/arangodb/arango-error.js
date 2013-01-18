@@ -1,4 +1,4 @@
-module.define("arango-error", function(exports, module) {
+module.define("org/arangodb/arango-error", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 

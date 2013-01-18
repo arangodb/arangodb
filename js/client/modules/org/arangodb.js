@@ -59,7 +59,7 @@ exports.ArangoCollection = require("org/arangodb/arango-collection").ArangoColle
 /// @brief class "ArangoConnection"
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoConnection = internal.ArangoCollection;
+exports.ArangoConnection = internal.ArangoConnection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoDatabase"
@@ -90,12 +90,14 @@ exports.ArangoStatement = require("org/arangodb/arango-statement").ArangoStateme
 exports.ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the global db object
+/// @brief the global "db" and "arango" object
 ////////////////////////////////////////////////////////////////////////////////
 
 if (typeof internal.arango !== 'undefined') {
   try {
-    internal.db = exports.db = new exports.ArangoDatabase(internal.arango);
+    exports.arango = internal.arango;
+    exports.db = new exports.ArangoDatabase(internal.arango);
+    internal.db = exports.db; // TODO remove
   }
   catch (err) {
     internal.print("cannot connect to server: " + String(err));
