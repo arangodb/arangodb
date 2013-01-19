@@ -520,9 +520,7 @@
         sep = ", ";
       }
 
-      if (object.length > 1) {
-        output(" ");
-      }
+      output(" ");
 
       printIndent(level);
 
@@ -570,9 +568,7 @@
       }
     }
 
-    if (sep === ", ") {
-      output(" ");
-    }
+    output(" ");
 
     printIndent(level);
 
