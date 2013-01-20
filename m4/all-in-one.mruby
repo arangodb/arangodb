@@ -17,9 +17,9 @@ AC_ARG_ENABLE(mruby,
 if test "x$tr_MRUBY" = "xyes";  then
   MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include"
   MRUBY_LDFLAGS=""
-  MRUBY_LIBS="${srcdir}/3rdParty/mruby/lib/libmruby.a"
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/build/host/lib/libmruby.a"
 
-  TRI_MRUBY_VERSION="2012-09-20 (15cf8fdea4a6598aa470e698e8cbc9b9b492319d)"
+  TRI_MRUBY_VERSION="2013-01-20 (583983385b81c21f82704b116eab52d606a609f4)"
 
   AC_DEFINE_UNQUOTED(TRI_ENABLE_MRUBY, 1, [true if mruby should be used])
 fi

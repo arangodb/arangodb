@@ -1,6 +1,8 @@
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* upgraded to mruby 2013-01-20 583983385b81c21f82704b116eab52d606a609f4
+
 * fixed issue #357: Some spelling and grammar errors
 
 * fixed issue #355: fix quotes in pdf manual
