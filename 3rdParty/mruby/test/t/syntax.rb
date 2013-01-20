@@ -45,3 +45,27 @@ assert('Abbreviated variable assignment', '11.4.2.3.2') do
   c += 2
   a == 1 and b == nil and c == 3
 end
+
+assert('Nested const reference') do
+  module Syntax4Const
+    CONST1 = "hello world"
+    class Const2
+      def const1
+        CONST1
+      end
+    end
+  end
+  Syntax4Const::CONST1 == "hello world" and
+  Syntax4Const::Const2.new.const1 == "hello world"
+end
+
+assert('Abbreviated variable assignment as returns') do
+  module Syntax4AbbrVarAsgnAsReturns
+    class A
+      def b
+        @c ||= 1
+      end
+    end
+  end
+  Syntax4AbbrVarAsgnAsReturns::A.new.b == 1
+end

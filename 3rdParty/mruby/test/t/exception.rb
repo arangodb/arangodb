@@ -30,7 +30,7 @@ end
 
 assert('Exception#to_s', '15.2.22.5.3') do
   e = Exception.exception('a')
-  
+
   e.to_s == 'a'
 end
 
@@ -269,6 +269,47 @@ assert('Exception 14') do
   a == :ok
 end
 
+assert('Exception 15') do
+  a = begin
+        :ok
+      rescue
+        :ng
+      end
+  a == :ok
+end
+
+assert('Exception 16') do
+  begin
+    raise "foo"
+    false
+  rescue => e
+    e.message == "foo"
+  end
+end
+
 assert('Exception#inspect without message') do
   Exception.new.inspect
 end
+
+# very deeply recursive function that stil returns albeit very deeply so
+$test_infinite_recursion    = 0
+TEST_INFINITE_RECURSION_MAX = 100000
+def test_infinite_recursion
+  $test_infinite_recursion += 1
+  if $test_infinite_recursion > TEST_INFINITE_RECURSION_MAX
+    return $test_infinite_recursion 
+  end
+  test_infinite_recursion 
+end
+
+assert('Infinite recursion should result in an exception being raised') do
+    a = begin 
+          test_infinite_recursion
+        rescue 
+          :ok
+        end
+    # OK if an exception was caught, otherwise a number will be stored in a
+    a == :ok
+end
+
+

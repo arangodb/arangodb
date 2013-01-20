@@ -70,6 +70,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
   char *infile = NULL;
   char *outfile = NULL;
   char **origargv = argv;
+  int result = 0;
   static const struct _args args_zero = { 0 };
 
   *args = args_zero;
@@ -77,8 +78,11 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
 
   for (argc--,argv++; argc > 0; argc--,argv++) {
     if (**argv == '-') {
-      if (strlen(*argv) <= 1)
-        return -1;
+      if (strlen(*argv) == 1) {
+	args->filename = infile = "-";
+	args->rfp = stdin;
+	break;
+      }
 
       switch ((*argv)[1]) {
       case 'o':
@@ -90,7 +94,8 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
         args->initname = (*argv) + 2;
         if (*args->initname == '\0') {
           printf("%s: Function name is not specified.\n", *origargv);
-          return -2;
+	  result = -2;
+	  goto exit;
         }
         args->dump_type = ((*argv)[1] == 'B') ? DUMP_TYPE_BIN : DUMP_TYPE_CODE;
         break;
@@ -114,8 +119,8 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
           mrb_show_copyright(mrb);
 	  exit(0);
         }
-        else return -3;
-        return 0;
+	result = -3;
+	goto exit;
       default:
 	break;
       }
@@ -124,28 +129,36 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       args->filename = infile = *argv;
       if ((args->rfp = fopen(infile, "r")) == NULL) {
         printf("%s: Cannot open program file. (%s)\n", *origargv, infile);
-        return 0;
+	goto exit;
       }
     }
   }
 
-  if (infile == NULL)
-    return -4;
-  if (args->check_syntax)
-    return 0;
-
-  if (outfile == NULL)
-    outfile = get_outfilename(infile, args->ext);
-
-  if (strcmp("-", outfile) == 0) {
-    args->wfp = stdout;
+  if (infile == NULL) {
+    result = -4;
+    goto exit;
   }
-  else if ((args->wfp = fopen(outfile, "wb")) == NULL) {
-    printf("%s: Cannot open output file. (%s)\n", *origargv, outfile);
-    return 0;
+  if (!args->check_syntax) {
+    if (outfile == NULL) {
+      if (strcmp("-", infile) == 0) {
+	outfile = infile;
+      }
+      else {
+	outfile = get_outfilename(infile, args->ext);
+      }
+    }
+    if (strcmp("-", outfile) == 0) {
+      args->wfp = stdout;
+    }
+    else if ((args->wfp = fopen(outfile, "wb")) == NULL) {
+      printf("%s: Cannot open output file. (%s)\n", *origargv, outfile);
+      result = -1;
+      goto exit;
+    }
   }
-
-  return 0;
+ exit:
+  if (outfile && infile != outfile) free(outfile);
+  return result;
 }
 
 static void
@@ -212,3 +225,10 @@ void
 mrb_init_mrblib(mrb_state *mrb)
 {
 }
+
+#ifndef DISABLE_GEMS
+void
+mrb_init_mrbgems(mrb_state *mrb)
+{
+}
+#endif

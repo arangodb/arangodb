@@ -35,8 +35,8 @@ extern "C" {
 #define ENCODING_MASK (((unsigned int)ENCODING_INLINE_MAX)<<ENCODING_SHIFT)
 
 #define ENCODING_SET_INLINED(obj,i) do {\
-    RBASIC(obj)->flags &= ~ENCODING_MASK;\
-    RBASIC(obj)->flags |= (unsigned int)(i) << ENCODING_SHIFT;\
+    mrb_obj_ptr(obj)->flags &= ~ENCODING_MASK;\
+    mrb_obj_ptr(obj)->flags |= (unsigned int)(i) << ENCODING_SHIFT;\
 } while (0)
 #define ENCODING_SET(mrb, obj,i) do {\
     mrb_value mrb_encoding_set_obj = (obj); \

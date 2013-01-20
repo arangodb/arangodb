@@ -2831,7 +2831,7 @@ CLOSE_BRACKET_WITHOUT_ESC_WARN(ScanEnv* env, UChar* c)
 static void
 CC_DUP_WARN(ScanEnv *env)
 {
-  if (onig_warn == onig_null_warn /*|| !RTEST(ruby_verbose)*/) return ;
+  if (onig_warn == onig_null_warn /*|| !mrb_test(ruby_verbose)*/) return ;
 
   if (IS_SYNTAX_BV((env)->syntax, ONIG_SYN_WARN_CC_DUP) &&
     !((env)->warnings_flag & ONIG_SYN_WARN_CC_DUP)) {
@@ -2843,7 +2843,7 @@ CC_DUP_WARN(ScanEnv *env)
 static void
 UNKNOWN_ESC_WARN(ScanEnv *env, int c)
 {
-  if (onig_warn == onig_null_warn /*|| !RTEST(ruby_verbose)*/) return ;
+  if (onig_warn == onig_null_warn /*|| !mrb_test(ruby_verbose)*/) return ;
   onig_syntax_warn(env, "Unknown escape \\%c is ignored", c);
 }
 

@@ -9,6 +9,10 @@
 #include "mruby/class.h"
 #include "opcode.h"
 
+static mrb_code call_iseq[] = {
+  MKOP_A(OP_CALL, 0),
+};
+
 struct RProc *
 mrb_proc_new(mrb_state *mrb, mrb_irep *irep)
 {
@@ -22,15 +26,14 @@ mrb_proc_new(mrb_state *mrb, mrb_irep *irep)
   return p;
 }
 
-struct RProc *
-mrb_closure_new(mrb_state *mrb, mrb_irep *irep)
+static inline void
+closure_setup(mrb_state *mrb, struct RProc *p, int nlocals)
 {
-  struct RProc *p = mrb_proc_new(mrb, irep);
   struct REnv *e;
 
   if (!mrb->ci->env) {
     e = (struct REnv*)mrb_obj_alloc(mrb, MRB_TT_ENV, (struct RClass*)mrb->ci->proc->env);
-    e->flags= (unsigned int)mrb->ci->proc->body.irep->nlocals;
+    e->flags= (unsigned int)nlocals;
     e->mid = mrb->ci->mid;
     e->cioff = mrb->ci - mrb->cibase;
     e->stack = mrb->stack;
@@ -40,6 +43,14 @@ mrb_closure_new(mrb_state *mrb, mrb_irep *irep)
     e = mrb->ci->env;
   }
   p->env = e;
+}
+
+struct RProc *
+mrb_closure_new(mrb_state *mrb, mrb_irep *irep)
+{
+  struct RProc *p = mrb_proc_new(mrb, irep);
+
+  closure_setup(mrb, p, mrb->ci->proc->body.irep->nlocals);
   return p;
 }
 
@@ -52,6 +63,15 @@ mrb_proc_new_cfunc(mrb_state *mrb, mrb_func_t func)
   p->body.func = func;
   p->flags |= MRB_PROC_CFUNC;
 
+  return p;
+}
+
+struct RProc *
+mrb_closure_new_cfunc(mrb_state *mrb, mrb_func_t func, int nlocals)
+{
+  struct RProc *p = mrb_proc_new_cfunc(mrb, func);
+
+  closure_setup(mrb, p, nlocals);
   return p;
 }
 
@@ -144,14 +164,14 @@ void
 mrb_init_proc(mrb_state *mrb)
 {
   struct RProc *m;
-  mrb_code *call_iseq = (mrb_code *)mrb_alloca(mrb, sizeof(mrb_code));
   mrb_irep *call_irep = (mrb_irep *)mrb_alloca(mrb, sizeof(mrb_irep));
+  static const mrb_irep mrb_irep_zero = { 0 };
 
   if ( call_iseq == NULL || call_irep == NULL )
     return;
 
-  memset(call_irep, 0, sizeof(mrb_irep));
-  *call_iseq = MKOP_A(OP_CALL, 0);
+  *call_irep = mrb_irep_zero;
+  call_irep->flags = MRB_ISEQ_NO_FREE;
   call_irep->idx = -1;
   call_irep->iseq = call_iseq;
   call_irep->ilen = 1;

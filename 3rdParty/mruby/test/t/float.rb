@@ -105,7 +105,7 @@ assert('Float#round', '15.2.9.3.12') do
   i = 3.423456789.round(3)
 
   a == 3 and b == 4 and c == 3 and d == -3 and e == -4 and
-    f == 12350 and g == 3 and h == 3.4 and i == 3.423
+    f == 12350 and g == 3 and check_float(h, 3.4) and check_float(i, 3.423)
 end
 
 assert('Float#to_f', '15.2.9.3.13') do

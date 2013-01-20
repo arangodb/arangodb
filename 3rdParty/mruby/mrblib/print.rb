@@ -74,6 +74,7 @@ module Kernel
 
     def printf(*args)
       __printstr__(sprintf(*args))
+      nil
     end
   end
 end

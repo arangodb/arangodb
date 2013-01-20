@@ -177,7 +177,7 @@ if Object.const_defined?(:Time)
   end
 
   assert('Time#yday', '15.2.19.7.31') do
-    Time.gm(2012, 12, 23).yday == 357
+    Time.gm(2012, 12, 23).yday == 358
   end
 
   assert('Time#year', '15.2.19.7.32') do

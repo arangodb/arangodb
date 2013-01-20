@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include "mruby/dump.h"
+#include <ctype.h>
 
 #include "mruby/string.h"
 #ifdef ENABLE_REGEXP
@@ -76,7 +77,7 @@ static int mrb_write_irep(mrb_state*,int,char*);
 
 
 static inline int
-uint8_dump(unsigned char bin, char *hex, int type)
+uint8_dump(uint8_t bin, char *hex, int type)
 {
   if (type == DUMP_TYPE_BIN) {
     *hex = bin;
@@ -84,7 +85,7 @@ uint8_dump(unsigned char bin, char *hex, int type)
     *hex++  = bin2hex[(bin >> 4) & 0x0f];
     *hex    = bin2hex[bin & 0x0f];
   }
-  return DUMP_SIZE(sizeof(char), type);
+  return DUMP_SIZE(MRB_DUMP_SIZE_OF_CHAR, type);
 }
 
 static inline int
@@ -119,13 +120,16 @@ uint32_dump(uint32_t bin, char *hex, int type)
   }
 }
 
+#define CHAR_ESC_LEN 13 /* sizeof(\x{ hex of 32bit unsigned int } \0) */
+
 static char*
 str_dump(char *str, char *hex, uint16_t len, int type)
 {
   if (type == DUMP_TYPE_BIN)
     memcpy(hex, str, len);
   else {
-    char *src, *dst;
+    char *src, *dst, buf[CHAR_ESC_LEN + 1];
+    int n;
 
     for (src = str, dst = hex; len > 0; src++, dst++, len--) {
       switch (*src) {
@@ -136,11 +140,19 @@ str_dump(char *str, char *hex, uint16_t len, int type)
       case 0x0B:/* VT  */ *dst++ = '\\'; *dst = 'v'; break;
       case 0x0C:/* FF  */ *dst++ = '\\'; *dst = 'f'; break;
       case 0x0D:/* CR  */ *dst++ = '\\'; *dst = 'r'; break;
+      case 0x5C:/* \   */ *dst++ = '\\'; *dst = '\\'; break;
       case 0x22:/* "   */ /* fall through */
       case 0x27:/* '   */ /* fall through */
   //  case 0x3F:/* ?   */ /* fall through */
-      case 0x5C:/* \   */ /* fall through */
-      default: *dst = *src; break;
+      default:
+        if (*src >= ' ' && *src <= '~') {
+          *dst = *src;
+        } else {
+          n = sprintf(buf, "\\%03o", *src & 0377);
+          memcpy(dst, buf, n);
+          dst += (n-1);
+        }
+        break;
       }
     }
   }
@@ -167,15 +179,21 @@ str_dump_len(char *str, uint16_t len, int type)
       case 0x0B:/* VT  */ /* fall through */
       case 0x0C:/* FF  */ /* fall through */
       case 0x0D:/* CR  */ /* fall through */
+      case 0x5C:/* \   */ /* fall through */
         dump_len += 2;
         break;
 
       case 0x22:/* "   */ /* fall through */
       case 0x27:/* '   */ /* fall through */
   //  case 0x3F:/* ?   */ /* fall through */
-      case 0x5C:/* \   */ /* fall through */
       default:
-        dump_len++; break;
+        if (*src >= ' ' && *src <= '~') {
+          dump_len++;
+        } else {
+          // dump_len += sprintf(buf, "\\%03o", *src & 0377);
+          dump_len += 4;
+        }
+        break;
       }
     }
   }
@@ -188,7 +206,7 @@ get_irep_header_size(mrb_state *mrb, mrb_irep *irep, int type)
 {
   uint32_t size = 0;
 
-  size += sizeof(char) * 2;
+  size += 2;
   size += DUMP_SIZE(MRB_DUMP_SIZE_OF_SHORT, type) * 4;
 
   return size;
@@ -215,7 +233,7 @@ get_pool_block_size(mrb_state *mrb, mrb_irep *irep, int type)
   char buf[32];
 
   size += MRB_DUMP_SIZE_OF_LONG; /* plen */
-  size += irep->plen * sizeof(char); /* tt(n) */
+  size += irep->plen; /* tt(n) */
   size += irep->plen * MRB_DUMP_SIZE_OF_SHORT; /* len(n) */
   size += MRB_DUMP_SIZE_OF_SHORT; /* crc */
   size = DUMP_SIZE(size, type);
@@ -226,11 +244,11 @@ get_pool_block_size(mrb_state *mrb, mrb_irep *irep, int type)
 
     switch (mrb_type(irep->pool[pool_no])) {
     case MRB_TT_FIXNUM:
-      len = sprintf( buf, "%d", mrb_fixnum(irep->pool[pool_no]));
+      len = mrb_int_to_str( buf, mrb_fixnum(irep->pool[pool_no]));
       size += (uint32_t)len;
       break;
     case MRB_TT_FLOAT:
-      len = sprintf( buf, "%.16e", mrb_float(irep->pool[pool_no]));
+      len = mrb_float_to_str( buf, mrb_float(irep->pool[pool_no]));
       size += (uint32_t)len;
       break;
     case MRB_TT_STRING:
@@ -333,10 +351,14 @@ write_pool_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
   char *char_buf;
   uint16_t buf_size =0;
   uint16_t len =0;
+  int result;
 
   buf_size = MRB_DUMP_DEFAULT_STR_LEN;
-  if ((char_buf = (char *)mrb_malloc(mrb, buf_size)) == 0)
+  char_buf = (char *)mrb_malloc(mrb, buf_size);
+  if (char_buf == NULL) {
+    result = MRB_DUMP_GENERAL_FAILURE;
     goto error_exit;
+  }
 
   buf += uint32_dump((uint32_t)irep->plen, buf, type); /* number of pool */
 
@@ -346,20 +368,23 @@ write_pool_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
 
     switch (mrb_type(irep->pool[pool_no])) {
     case MRB_TT_FIXNUM:
-      len = sprintf(char_buf, "%d", mrb_fixnum(irep->pool[pool_no]));
+      len = mrb_int_to_str(char_buf, mrb_fixnum(irep->pool[pool_no]));
       break;
 
     case MRB_TT_FLOAT:
-      len = sprintf(char_buf, "%.16e", mrb_float(irep->pool[pool_no]));
+      len = mrb_float_to_str(char_buf, mrb_float(irep->pool[pool_no]));
       break;
 
     case MRB_TT_STRING:
-      str = mrb_string_value( mrb, &irep->pool[pool_no]);
+      str = irep->pool[pool_no];
       len = str_dump_len(RSTRING_PTR(str), RSTRING_LEN(str), type);
-      if ( len > buf_size - 1) {
+      if (len > buf_size - 1) {
         buf_size = len + 1;
-        if ((char_buf = (char *)mrb_realloc(mrb, char_buf, buf_size)) == 0)
+        char_buf = (char *)mrb_realloc(mrb, char_buf, buf_size);
+        if (char_buf == NULL) {
+          result = MRB_DUMP_GENERAL_FAILURE;
           goto error_exit;
+        }
         memset(char_buf, 0, buf_size);
       }
       str_dump(RSTRING_PTR(str), char_buf, RSTRING_LEN(str), type);
@@ -371,8 +396,11 @@ write_pool_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
       len = str_dump_len(RSTRING_PTR(str), RSTRING_LEN(str), type);
       if ( len > buf_size - 1) {
         buf_size = len + 1;
-        if ((char_buf = mrb_realloc(mrb, char_buf, buf_size)) == 0)
+        char_buf = mrb_realloc(mrb, char_buf, buf_size);
+        if (char_buf == NULL) {
+          result = MRB_DUMP_GENERAL_FAILURE;
           goto error_exit;
+        }
         memset(char_buf, 0, buf_size);
       }
       str_dump(RSTRING_PTR(str), char_buf, RSTRING_LEN(str), type);
@@ -390,10 +418,10 @@ write_pool_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
     buf += len;
   }
 
+  result = (int)(buf - buf_top);
 error_exit:
-  if (char_buf)
-    mrb_free(mrb, char_buf);
-  return (int)(buf - buf_top);
+  mrb_free(mrb, char_buf);
+  return result;
 }
 
 static int
@@ -405,7 +433,8 @@ write_syms_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
   uint16_t buf_size =0;
 
   buf_size = MRB_DUMP_DEFAULT_STR_LEN;
-  if ((char_buf = (char *)mrb_malloc(mrb, buf_size)) == 0)
+  char_buf = (char *)mrb_malloc(mrb, buf_size);
+  if (char_buf == NULL)
     goto error_exit;
 
   buf += uint32_dump((uint32_t)irep->slen, buf, type); /* number of symbol */
@@ -421,7 +450,8 @@ write_syms_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
       nlen = str_dump_len((char*)name, len, type);
       if ( nlen > buf_size - 1) {
         buf_size = nlen + 1;
-        if ((char_buf = (char *)mrb_realloc(mrb, char_buf, buf_size)) == 0)
+        char_buf = (char *)mrb_realloc(mrb, char_buf, buf_size);
+        if (char_buf == NULL)
           goto error_exit;
       }
       memset(char_buf, 0, buf_size);
@@ -437,8 +467,7 @@ write_syms_block(mrb_state *mrb, mrb_irep *irep, char *buf, int type)
   }
 
 error_exit:
-  if (char_buf)
-    mrb_free(mrb, char_buf);
+  mrb_free(mrb, char_buf);
   return (int)(buf - buf_top);
 }
 
@@ -448,6 +477,7 @@ calc_crc_section(mrb_state *mrb, mrb_irep *irep, uint16_t *crc, int section)
   char *buf, *buf_top;
   uint32_t buf_size;
   int type = DUMP_TYPE_BIN;
+  int result;
 
   switch (section) {
   case DUMP_IREP_HEADER: buf_size = get_irep_header_size(mrb, irep, type); break;
@@ -457,24 +487,53 @@ calc_crc_section(mrb_state *mrb, mrb_irep *irep, uint16_t *crc, int section)
   default: return MRB_DUMP_GENERAL_FAILURE;
   }
 
-  if ((buf = (char *)mrb_calloc(mrb, 1, buf_size)) == 0)
+  buf = (char *)mrb_calloc(mrb, 1, buf_size);
+  if (buf == NULL)
     return MRB_DUMP_GENERAL_FAILURE;
 
   buf_top = buf;
 
   switch (section) {
-  case DUMP_IREP_HEADER: buf += write_irep_header(mrb, irep, buf, type); break;
-  case DUMP_ISEQ_BLOCK: buf += write_iseq_block(mrb, irep, buf, type); break;
-  case DUMP_POOL_BLOCK: buf += write_pool_block(mrb, irep, buf, type); break;
-  case DUMP_SYMS_BLOCK: buf += write_syms_block(mrb, irep, buf, type); break;
-  default: break;
+  case DUMP_IREP_HEADER:
+    result = write_irep_header(mrb, irep, buf, type);
+    break;
+  case DUMP_ISEQ_BLOCK:
+    result = write_iseq_block(mrb, irep, buf, type);
+    break;
+  case DUMP_POOL_BLOCK:
+    result = write_pool_block(mrb, irep, buf, type);
+    break;
+  case DUMP_SYMS_BLOCK:
+    result = write_syms_block(mrb, irep, buf, type);
+    break;
+  default:
+    result = MRB_DUMP_GENERAL_FAILURE;
+    break; /* Already checked above. */
   }
+  if (result < 0) {
+    goto error_exit;
+  }
+  buf += result;
 
   *crc = calc_crc_16_ccitt((unsigned char*)buf_top, (int)(buf - buf_top));
 
   mrb_free(mrb, buf_top);
 
-  return MRB_DUMP_OK;
+  result = MRB_DUMP_OK;
+ error_exit:
+  return result;
+}
+
+static uint16_t
+calc_rite_header_crc(mrb_state *mrb, int top, rite_binary_header *binary_header, uint32_t rbds, int type)
+{
+  memcpy( binary_header, def_rite_binary_header, sizeof(*binary_header));
+
+  uint32_dump(rbds, (char*)binary_header->rbds, type);
+  uint16_dump((uint16_t)mrb->irep_len, (char*)binary_header->nirep, type);
+  uint16_dump((uint16_t)top, (char*)binary_header->sirep, type);
+
+  return calc_crc_16_ccitt((unsigned char*)binary_header, sizeof(*binary_header));
 }
 
 static int
@@ -485,14 +544,7 @@ write_rite_header(mrb_state *mrb, int top, char* bin, uint32_t rbds)
   int type = DUMP_TYPE_BIN;
 
   binary_header = (rite_binary_header*)bin;
-
-  memcpy( binary_header, def_rite_binary_header, sizeof(*binary_header));
-
-  uint32_dump(rbds, (char*)binary_header->rbds, type);
-  uint16_dump((uint16_t)mrb->irep_len, (char*)binary_header->nirep, type);
-  uint16_dump((uint16_t)top, (char*)binary_header->sirep, type);
-
-  crc = calc_crc_16_ccitt((unsigned char*)binary_header, sizeof(*binary_header));
+  crc = calc_rite_header_crc(mrb, top, binary_header, rbds, type);
   bin += sizeof(*binary_header);
   uint16_dump(crc, bin, type);
 
@@ -500,34 +552,41 @@ write_rite_header(mrb_state *mrb, int top, char* bin, uint32_t rbds)
 }
 
 static int
-dump_rite_header(mrb_state *mrb, int top, FILE* fp, uint32_t rbds)
+calc_rite_file_header(mrb_state *mrb, int top, uint32_t rbds, rite_file_header *file_header)
 {
-  rite_binary_header binary_header;
-  rite_file_header file_header;
+  rite_binary_header *binary_header, b_header;
   uint16_t crc;
   int type;
+
+  /* calc crc */
+  type = DUMP_TYPE_BIN;
+  binary_header = &b_header;
+  crc = calc_rite_header_crc(mrb, top, binary_header, rbds, type);
+
+  /* dump rbc header */
+  memcpy( file_header, def_rite_file_header, sizeof(*file_header));
+
+  type = DUMP_TYPE_HEX;
+  uint32_dump(rbds, (char*)file_header->rbds, type);
+  uint16_dump((uint16_t)mrb->irep_len, (char*)file_header->nirep, type);
+  uint16_dump((uint16_t)top, (char*)file_header->sirep, type);
+  uint16_dump(crc, (char*)file_header->hcrc, type);
+
+  return MRB_DUMP_OK;
+}
+
+static int
+dump_rite_header(mrb_state *mrb, int top, FILE* fp, uint32_t rbds)
+{
+  int rc = MRB_DUMP_OK;
+  rite_file_header file_header;
 
   if (fseek(fp, 0, SEEK_SET) != 0)
     return MRB_DUMP_GENERAL_FAILURE;
 
-  /* calc crc */
-  memcpy( &binary_header, def_rite_binary_header, sizeof(binary_header));
-
-  type = DUMP_TYPE_BIN;
-  uint32_dump(rbds, (char*)&binary_header.rbds, type);
-  uint16_dump((uint16_t)mrb->irep_len, (char*)&binary_header.nirep, type);
-  uint16_dump((uint16_t)top, (char*)&binary_header.sirep, type);
-
-  crc = calc_crc_16_ccitt((unsigned char*)&binary_header, sizeof(binary_header));
-
-  /* dump rbc header */
-  memcpy( &file_header, def_rite_file_header, sizeof(file_header));
-
-  type = DUMP_TYPE_HEX;
-  uint32_dump(rbds, (char*)&file_header.rbds, type);
-  uint16_dump((uint16_t)mrb->irep_len, (char*)&file_header.nirep, type);
-  uint16_dump((uint16_t)top, (char*)&file_header.sirep, type);
-  uint16_dump(crc, (char*)&file_header.hcrc, type);
+  rc = calc_rite_file_header(mrb, top, rbds, &file_header);
+  if (rc != MRB_DUMP_OK)
+    return rc;
 
   if (fwrite(&file_header, sizeof(file_header), 1, fp) != 1)
     return MRB_DUMP_WRITE_FAULT;
@@ -542,7 +601,7 @@ write_irep_record(mrb_state *mrb, int irep_no, char* bin, uint32_t *rlen, int ty
   mrb_irep *irep = mrb->irep[irep_no];
   int section;
 
-  if (irep == 0)
+  if (irep == NULL)
     return MRB_DUMP_INVALID_IREP;
 
   /* buf alloc */
@@ -569,7 +628,8 @@ write_irep_record(mrb_state *mrb, int irep_no, char* bin, uint32_t *rlen, int ty
     default: break;
     }
 
-    if ((rc = calc_crc_section(mrb, irep, &crc, section)) != 0)
+    rc = calc_crc_section(mrb, irep, &crc, section);
+    if (rc != MRB_DUMP_OK)
       return rc;
 
     bin += uint16_dump(crc, bin, type); /* crc */
@@ -586,7 +646,7 @@ dump_irep_record(mrb_state *mrb, int irep_no, FILE* fp, uint32_t *rlen)
   char *buf;
   mrb_irep *irep = mrb->irep[irep_no];
 
-  if (irep == 0)
+  if (irep == NULL)
     return MRB_DUMP_INVALID_IREP;
 
   /* buf alloc */
@@ -594,10 +654,12 @@ dump_irep_record(mrb_state *mrb, int irep_no, FILE* fp, uint32_t *rlen)
   if (irep_record_size == 0)
     return MRB_DUMP_GENERAL_FAILURE;
 
-  if ((buf = (char *)mrb_calloc(mrb, 1, irep_record_size)) == 0)
+  buf = (char *)mrb_calloc(mrb, 1, irep_record_size);
+  if (buf == NULL)
     return MRB_DUMP_GENERAL_FAILURE;
 
-  if ((rc = write_irep_record(mrb, irep_no, buf, rlen, DUMP_TYPE_HEX)) != MRB_DUMP_OK) {
+  rc = write_irep_record(mrb, irep_no, buf, rlen, DUMP_TYPE_HEX);
+  if (rc != MRB_DUMP_OK) {
     rc = MRB_DUMP_GENERAL_FAILURE;
     goto error_exit;
   }
@@ -620,14 +682,15 @@ mrb_write_irep(mrb_state *mrb, int top, char *bin)
   int irep_no;
   char *bin_top;
 
-  if (mrb == 0 || top < 0 || top >= mrb->irep_len || bin == 0)
+  if (mrb == NULL || top < 0 || top >= mrb->irep_len || bin == NULL)
     return MRB_DUMP_INVALID_ARGUMENT;
 
   bin_top = bin;
   bin += sizeof(rite_binary_header) + MRB_DUMP_SIZE_OF_SHORT/* crc */;
 
   for (irep_no=top; irep_no<mrb->irep_len; irep_no++) {
-    if ((rc = write_irep_record(mrb, irep_no, bin, &rlen, DUMP_TYPE_BIN)) != 0)
+    rc = write_irep_record(mrb, irep_no, bin, &rlen, DUMP_TYPE_BIN);
+    if (rc != MRB_DUMP_OK)
       return rc;
 
     bin += (rlen + DUMP_SIZE(MRB_DUMP_SIZE_OF_LONG, DUMP_TYPE_BIN));
@@ -648,14 +711,15 @@ mrb_dump_irep(mrb_state *mrb, int top, FILE* fp)
   uint32_t rlen=0; /* size of irep record */
   int irep_no;
 
-  if (mrb == 0 || top < 0 || top >= mrb->irep_len || fp == 0)
+  if (mrb == NULL || top < 0 || top >= mrb->irep_len || fp == NULL)
     return MRB_DUMP_INVALID_ARGUMENT;
 
   if (fwrite(&def_rite_file_header, sizeof(rite_file_header), 1, fp) != 1) /* dummy write */
     return MRB_DUMP_WRITE_FAULT;
 
   for (irep_no=top; irep_no<mrb->irep_len; irep_no++) {
-    if ((rc = dump_irep_record(mrb, irep_no, fp, &rlen)) != 0)
+    rc = dump_irep_record(mrb, irep_no, fp, &rlen);
+    if (rc != MRB_DUMP_OK)
       return rc;
 
     rbds += rlen;
@@ -678,15 +742,16 @@ mrb_bdump_irep(mrb_state *mrb, int n, FILE *f,const char *initname)
   int buf_size = 0;
   int buf_idx = 0;
 
-  if (mrb == 0 || n < 0 || n >= mrb->irep_len || f == 0 || initname == 0)
-    return -1;
+  if (mrb == NULL || n < 0 || n >= mrb->irep_len || f == NULL || initname == NULL)
+    return MRB_DUMP_INVALID_ARGUMENT;
 
   buf_size = sizeof(rite_binary_header) + MRB_DUMP_SIZE_OF_SHORT/* crc */;
   for (irep_no=n; irep_no<mrb->irep_len; irep_no++)
     buf_size += get_irep_record_size(mrb, irep_no, DUMP_TYPE_BIN);
   buf_size += MRB_DUMP_SIZE_OF_LONG; /* end of file */
 
-  if ((buf = (char *)mrb_malloc(mrb, buf_size)) == 0)
+  buf = (char *)mrb_malloc(mrb, buf_size);
+  if (buf == NULL)
     return MRB_DUMP_GENERAL_FAILURE;
 
   rc = mrb_write_irep(mrb, n, buf);

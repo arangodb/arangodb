@@ -177,7 +177,7 @@ sym_equal(mrb_state *mrb, mrb_value sym1)
 mrb_value
 mrb_sym_to_s(mrb_state *mrb, mrb_value sym)
 {
-  mrb_sym id = SYM2ID(sym);
+  mrb_sym id = mrb_symbol(sym);
   const char *p;
   int len;
 
@@ -331,7 +331,7 @@ sym_inspect(mrb_state *mrb, mrb_value sym)
   mrb_value str;
   const char *name;
   int len;
-  mrb_sym id = SYM2ID(sym);
+  mrb_sym id = mrb_symbol(sym);
 
   name = mrb_sym2name_len(mrb, id, &len);
   str = mrb_str_new(mrb, 0, len+1);

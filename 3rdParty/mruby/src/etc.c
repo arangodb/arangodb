@@ -25,7 +25,7 @@ mrb_data_object_alloc(mrb_state *mrb, struct RClass *klass, void *ptr, const str
 void *
 mrb_get_datatype(mrb_state *mrb, mrb_value obj, const struct mrb_data_type *type)
 {
-  if (SPECIAL_CONST_P(obj) || (mrb_type(obj) != MRB_TT_DATA)) {
+  if (mrb_special_const_p(obj) || (mrb_type(obj) != MRB_TT_DATA)) {
     return NULL;
   }
   if (DATA_TYPE(obj) != type) {
@@ -39,12 +39,12 @@ mrb_check_datatype(mrb_state *mrb, mrb_value obj, const struct mrb_data_type *ty
 {
   static const char mesg[] = "wrong argument type %s (expected %s)";
 
-  if (SPECIAL_CONST_P(obj) || (mrb_type(obj) != MRB_TT_DATA)) {
+  if (mrb_special_const_p(obj) || (mrb_type(obj) != MRB_TT_DATA)) {
     mrb_check_type(mrb, obj, MRB_TT_DATA);
   }
   if (DATA_TYPE(obj) != type) {
     const char *etype = DATA_TYPE(obj)->struct_name;
-    mrb_raise(mrb, E_TYPE_ERROR, mesg, etype, type->struct_name);
+    mrb_raisef(mrb, E_TYPE_ERROR, mesg, etype, type->struct_name);
   }
   return DATA_PTR(obj);
 }
@@ -94,7 +94,7 @@ mrb_to_id(mrb_state *mrb, mrb_value name)
       tmp = mrb_check_string_type(mrb, name);
       if (mrb_nil_p(tmp)) {
         tmp = mrb_inspect(mrb, name);
-        mrb_raise(mrb, E_TYPE_ERROR, "%s is not a symbol",
+        mrb_raisef(mrb, E_TYPE_ERROR, "%s is not a symbol",
              RSTRING_PTR(tmp));
       }
       name = tmp;
@@ -103,7 +103,7 @@ mrb_to_id(mrb_state *mrb, mrb_value name)
       name = mrb_str_intern(mrb, name);
       /* fall through */
     case MRB_TT_SYMBOL:
-      return SYM2ID(name);
+      return mrb_symbol(name);
   }
   return id;
 }
@@ -156,7 +156,7 @@ mrb_obj_id(mrb_value obj)
   case  MRB_TT_TRUE:
     return MakeID(1);
   case  MRB_TT_SYMBOL:
-    return MakeID(SYM2ID(obj));
+    return MakeID(mrb_symbol(obj));
   case  MRB_TT_FIXNUM:
     return MakeID2(float_id((mrb_float)mrb_fixnum(obj)), MRB_TT_FLOAT);
   case  MRB_TT_FLOAT:

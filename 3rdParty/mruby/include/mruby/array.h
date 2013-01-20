@@ -55,6 +55,7 @@ mrb_value mrb_ary_new4(mrb_state *mrb, int n, const mrb_value *elts);
 mrb_value mrb_assoc_new(mrb_state *mrb, mrb_value car, mrb_value cdr);
 mrb_value mrb_ary_entry(mrb_value ary, int offset);
 mrb_value mrb_ary_shift(mrb_state *mrb, mrb_value self);
+mrb_value mrb_ary_clear(mrb_state *mrb, mrb_value self);
 
 #if defined(__cplusplus)
 }  /* extern "C" { */

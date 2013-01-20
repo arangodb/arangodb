@@ -1,14 +1,10 @@
 # /
 *.bak
-*.dylib
-*.inc
-*.o
-*.a
 *.orig
 *.rej
 *.sav
 *.swp
-*.d
+*.tmp
 *~
 .DS_Store
 .ccmalloc
@@ -17,10 +13,4 @@
 cscope.out
 /src/y.tab.c
 /bin
-/mrblib/mrblib.c
-/mrblib/*.*tmp
-/test/mrbtest
-/test/mrbtest.c
-/test/*.*tmp
-CMakeFiles
-CMakeCache.txt
+/build

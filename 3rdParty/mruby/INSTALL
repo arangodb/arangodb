@@ -1,6 +1,7 @@
 * Prerequisites
   
   1. Make sure you have bison (http://www.gnu.org/software/bison/) installed in your system. 
+  2. Make sure you have ruby installed in your system (required to build).
 
 * Compilation and Installation
 
@@ -12,6 +13,10 @@
        * bin
        * lib
        * include
+
+      You can directory invoke 'minirake' as the following.
+
+        $ ruby ./minirake
 
 If an error occurs when compiling mruby, it will be helpful for others if you
 send a detailed report to the developers that includes the error log, machine,

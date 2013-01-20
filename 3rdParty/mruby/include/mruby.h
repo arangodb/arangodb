@@ -44,10 +44,8 @@ struct mrb_state;
 typedef void* (*mrb_allocf) (struct mrb_state *mrb, void*, size_t, void *ud);
 
 #ifndef MRB_ARENA_SIZE
-#define MRB_ARENA_SIZE 1024
+#define MRB_ARENA_SIZE 100
 #endif
-#define ruby_debug   (mrb_nil_value())
-#define ruby_verbose (mrb_nil_value())
 
 typedef struct {
   mrb_sym mid;
@@ -123,7 +121,10 @@ typedef struct mrb_state {
   size_t gc_threshold;
   int gc_interval_ratio;
   int gc_step_ratio;
-  int gc_disabled;
+  unsigned int gc_disabled:1;
+  unsigned int gc_full:1;
+  unsigned int is_generational_gc_mode:1;
+  size_t majorgc_old_threshold;
   struct alloca_header *mems;
 
   mrb_sym symidx;
@@ -238,18 +239,6 @@ void mrb_field_write_barrier(mrb_state *, struct RBasic*, struct RBasic*);
 } while (0);
 void mrb_write_barrier(mrb_state *, struct RBasic*);
 
-#define MRUBY_VERSION "Rite"
-
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
-#if 0
-#define DEBUG(x) x
-#else
-#define DEBUG(x)
-#endif
-
 mrb_value mrb_check_convert_type(mrb_state *mrb, mrb_value val, mrb_int type, const char *tname, const char *method);
 mrb_value mrb_any_to_s(mrb_state *mrb, mrb_value obj);
 const char * mrb_obj_classname(mrb_state *mrb, mrb_value obj);
@@ -282,8 +271,8 @@ mrb_value mrb_exc_new(mrb_state *mrb, struct RClass *c, const char *ptr, long le
 void mrb_exc_raise(mrb_state *mrb, mrb_value exc);
 
 int mrb_block_given_p(void);
-void mrb_raise(mrb_state *mrb, struct RClass *c, const char *fmt, ...);
-void rb_raise(struct RClass *c, const char *fmt, ...);
+void mrb_raise(mrb_state *mrb, struct RClass *c, const char *msg);
+void mrb_raisef(mrb_state *mrb, struct RClass *c, const char *fmt, ...);
 void mrb_warn(const char *fmt, ...);
 void mrb_bug(const char *fmt, ...);
 
@@ -303,23 +292,6 @@ void mrb_bug(const char *fmt, ...);
 #define E_FLOATDOMAIN_ERROR         (mrb_class_obj_get(mrb, "FloatDomainError"))
 
 #define E_KEY_ERROR                 (mrb_class_obj_get(mrb, "KeyError"))
-
-#define SYM2ID(x) ((x).value.sym)
-
-#define NUM2CHR_internal(x) (((mrb_type(x) == MRB_TT_STRING)&&(RSTRING_LEN(x)>=1))?\
-                     RSTRING_PTR(x)[0]:(char)(mrb_fixnum_number(x)&0xff))
-#ifdef __GNUC__
-# define NUM2CHR(x) __extension__ ({mrb_value num2chr_x = (x); NUM2CHR_internal(num2chr_x);})
-#else
-/* TODO: there is no definitions of RSTRING_* here, so cannot compile.
-static inline char
-NUM2CHR(mrb_value x)
-{
-    return NUM2CHR_internal(x);
-}
-*/
-#define NUM2CHR(x) NUM2CHR_internal(x)
-#endif
 
 mrb_value mrb_yield(mrb_state *mrb, mrb_value v, mrb_value blk);
 mrb_value mrb_yield_argv(mrb_state *mrb, mrb_value b, int argc, mrb_value *argv);

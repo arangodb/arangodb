@@ -395,7 +395,7 @@ mrb_time_yday(mrb_state *mrb, mrb_value self)
 
   tm = (struct mrb_time *)mrb_check_datatype(mrb, self, &mrb_time_type);
   if (!tm) return mrb_nil_value();
-  return mrb_fixnum_value(tm->datetime.tm_yday);
+  return mrb_fixnum_value(tm->datetime.tm_yday + 1);
 }
 
 /* 15.2.19.7.32 */
@@ -559,7 +559,7 @@ mrb_time_initialize_copy(mrb_state *mrb, mrb_value copy)
     DATA_PTR(copy) = mrb_malloc(mrb, sizeof(struct mrb_time));
     DATA_TYPE(copy) = &mrb_time_type;
   }
-  memcpy(DATA_PTR(copy), DATA_PTR(src), sizeof(struct mrb_time));
+  *(struct mrb_time *)DATA_PTR(copy) = *(struct mrb_time *)DATA_PTR(src);
   return copy;
 }
 

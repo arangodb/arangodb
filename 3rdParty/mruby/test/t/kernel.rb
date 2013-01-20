@@ -204,6 +204,16 @@ assert('Kernel#extend', '15.3.1.3.13') do
   a.respond_to?(:test_method) == true && b.respond_to?(:test_method) == false
 end
 
+assert('Kernel#extend works on toplevel', '15.3.1.3.13') do
+  module Test4ExtendModule
+    def test_method; end
+  end
+  # This would crash... 
+  extend(Test4ExtendModule)
+
+  respond_to?(:test_method) == true
+end
+
 assert('Kernel#global_variables', '15.3.1.3.14') do
   global_variables.class == Array
 end

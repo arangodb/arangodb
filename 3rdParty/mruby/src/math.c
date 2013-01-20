@@ -51,7 +51,7 @@ erf(double x)
     term *= xsqr/j;
     sum  += term/(2*j+1);
     ++j;
-  } while (fabs(term)/sum > MATH_TOLERANCE);
+  } while (fabs(term/sum) > MATH_TOLERANCE);
   return two_sqrtpi*sum;
 }
 
@@ -64,7 +64,8 @@ erfc(double x)
   double b = x;               
   double c = x; 
   double d = x*x+0.5;         
-  double q1, q2;                  
+  double q1;
+  double q2 = b/d;
   double n = 1.0;
   double t;
   if (fabs(x) < 2.2) {

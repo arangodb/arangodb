@@ -16,7 +16,7 @@ printstr(mrb_state *mrb, mrb_value obj)
   char *s;
   int len;
 
-  if (mrb_type(obj) == MRB_TT_STRING) {
+  if (mrb_string_p(obj)) {
     str = mrb_str_ptr(obj);
     s = str->ptr;
     len = str->len;
@@ -59,13 +59,13 @@ mrb_init_print(mrb_state *mrb)
 void
 mrb_show_version(mrb_state *mrb)
 {
-  printf("mruby - Embeddable Ruby  Copyright (c) 2010-2012 mruby developers\n");
+  printf("mruby - Embeddable Ruby  Copyright (c) 2010-2013 mruby developers\n");
 }
 
 void
 mrb_show_copyright(mrb_state *mrb)
 {
-  printf("mruby - Copyright (c) 2010-2012 mruby developers\n");
+  printf("mruby - Copyright (c) 2010-2013 mruby developers\n");
 }
 #else
 void

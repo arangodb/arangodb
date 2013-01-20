@@ -17,25 +17,26 @@ enum mrb_vtype {
   MRB_TT_SYMBOL,      /*   4 */
   MRB_TT_UNDEF,       /*   5 */
   MRB_TT_FLOAT,       /*   6 */
-  MRB_TT_MAIN,        /*   7 */
-  MRB_TT_OBJECT,      /*   8 */
-  MRB_TT_CLASS,       /*   9 */
-  MRB_TT_MODULE,      /*  10 */
-  MRB_TT_ICLASS,      /*  11 */
-  MRB_TT_SCLASS,      /*  12 */
-  MRB_TT_PROC,        /*  13 */
-  MRB_TT_ARRAY,       /*  14 */
-  MRB_TT_HASH,        /*  15 */
-  MRB_TT_STRING,      /*  16 */
-  MRB_TT_RANGE,       /*  17 */
-  MRB_TT_REGEX,       /*  18 */
-  MRB_TT_STRUCT,      /*  19 */
-  MRB_TT_EXCEPTION,   /*  20 */
-  MRB_TT_MATCH,       /*  21 */
-  MRB_TT_FILE,        /*  22 */
-  MRB_TT_ENV,         /*  23 */
-  MRB_TT_DATA,        /*  24 */
-  MRB_TT_MAXDEFINE    /*  25 */
+  MRB_TT_VOIDP,       /*   7 */
+  MRB_TT_MAIN,        /*   8 */
+  MRB_TT_OBJECT,      /*   9 */
+  MRB_TT_CLASS,       /*  10 */
+  MRB_TT_MODULE,      /*  11 */
+  MRB_TT_ICLASS,      /*  12 */
+  MRB_TT_SCLASS,      /*  13 */
+  MRB_TT_PROC,        /*  14 */
+  MRB_TT_ARRAY,       /*  15 */
+  MRB_TT_HASH,        /*  16 */
+  MRB_TT_STRING,      /*  17 */
+  MRB_TT_RANGE,       /*  18 */
+  MRB_TT_REGEX,       /*  19 */
+  MRB_TT_STRUCT,      /*  20 */
+  MRB_TT_EXCEPTION,   /*  21 */
+  MRB_TT_MATCH,       /*  22 */
+  MRB_TT_FILE,        /*  23 */
+  MRB_TT_ENV,         /*  24 */
+  MRB_TT_DATA,        /*  25 */
+  MRB_TT_MAXDEFINE    /*  26 */
 };
 
 typedef struct mrb_value {
@@ -78,24 +79,25 @@ enum mrb_vtype {
   MRB_TT_SYMBOL,      /*   5 */
   MRB_TT_UNDEF,       /*   6 */
   MRB_TT_FLOAT,       /*   7 */
-  MRB_TT_MAIN,        /*   8 */
-  MRB_TT_OBJECT,      /*   9 */
-  MRB_TT_CLASS,       /*  10 */
-  MRB_TT_MODULE,      /*  11 */
-  MRB_TT_ICLASS,      /*  12 */
-  MRB_TT_SCLASS,      /*  13 */
-  MRB_TT_PROC,        /*  14 */
-  MRB_TT_ARRAY,       /*  15 */
-  MRB_TT_HASH,        /*  16 */
-  MRB_TT_STRING,      /*  17 */
-  MRB_TT_RANGE,       /*  18 */
-  MRB_TT_REGEX,       /*  19 */
-  MRB_TT_STRUCT,      /*  20 */
-  MRB_TT_EXCEPTION,   /*  21 */
-  MRB_TT_MATCH,       /*  22 */
-  MRB_TT_FILE,        /*  23 */
-  MRB_TT_ENV,         /*  24 */
-  MRB_TT_DATA,        /*  25 */
+  MRB_TT_VOIDP,       /*   8 */
+  MRB_TT_MAIN,        /*   9 */
+  MRB_TT_OBJECT,      /*  10 */
+  MRB_TT_CLASS,       /*  11 */
+  MRB_TT_MODULE,      /*  12 */
+  MRB_TT_ICLASS,      /*  13 */
+  MRB_TT_SCLASS,      /*  14 */
+  MRB_TT_PROC,        /*  15 */
+  MRB_TT_ARRAY,       /*  16 */
+  MRB_TT_HASH,        /*  17 */
+  MRB_TT_STRING,      /*  18 */
+  MRB_TT_RANGE,       /*  19 */
+  MRB_TT_REGEX,       /*  20 */
+  MRB_TT_STRUCT,      /*  21 */
+  MRB_TT_EXCEPTION,   /*  22 */
+  MRB_TT_MATCH,       /*  23 */
+  MRB_TT_FILE,        /*  24 */
+  MRB_TT_ENV,         /*  25 */
+  MRB_TT_DATA,        /*  26 */
   MRB_TT_MAXDEFINE    /*  27 */
 };
 
@@ -149,31 +151,58 @@ mrb_float_value(mrb_float f)
 #define mrb_fixnum(o) (o).value.i
 #define mrb_symbol(o) (o).value.sym
 #define mrb_object(o) ((struct RBasic *) (o).value.p)
-#define FIXNUM_P(o)   (mrb_type(o) == MRB_TT_FIXNUM)
+#define mrb_voidp(o) (o).value.p
+#define mrb_fixnum_p(o) (mrb_type(o) == MRB_TT_FIXNUM)
+#define mrb_float_p(o) (mrb_type(o) == MRB_TT_FLOAT)
 #define mrb_undef_p(o) (mrb_type(o) == MRB_TT_UNDEF)
 #define mrb_nil_p(o)  (mrb_type(o) == MRB_TT_FALSE && !(o).value.i)
+#define mrb_symbol_p(o) (mrb_type(o) == MRB_TT_SYMBOL)
+#define mrb_array_p(o) (mrb_type(o) == MRB_TT_ARRAY)
+#define mrb_string_p(o) (mrb_type(o) == MRB_TT_STRING)
+#define mrb_hash_p(o) (mrb_type(o) == MRB_TT_HASH)
+#define mrb_voidp_p(o) (mrb_type(o) == MRB_TT_VOIDP)
 #define mrb_test(o)   (mrb_type(o) != MRB_TT_FALSE)
 
-#include "mruby/object.h"
+#define MRB_OBJECT_HEADER \
+  enum mrb_vtype tt:8;\
+  unsigned int color:3;\
+  unsigned int flags:21;\
+  struct RClass *c;\
+  struct RBasic *gcnext
 
-#define IMMEDIATE_P(x) (mrb_type(x) <= MRB_TT_MAIN)
-#define SPECIAL_CONST_P(x) IMMEDIATE_P(x)
-#define SYMBOL_P(o) (mrb_type(o) == MRB_TT_SYMBOL)
-#define RTEST(o) mrb_test(o)
+/* white: 011, black: 100, gray: 000 */
+#define MRB_GC_GRAY 0
+#define MRB_GC_WHITE_A 1
+#define MRB_GC_WHITE_B (1 << 1)
+#define MRB_GC_BLACK (1 << 2)
+#define MRB_GC_WHITES (MRB_GC_WHITE_A | MRB_GC_WHITE_B)
+#define MRB_GC_COLOR_MASK 7
 
-#define FL_ABLE(x) (!SPECIAL_CONST_P(x))
-#define FL_TEST(x,f) (FL_ABLE(x)?(RBASIC(x)->flags&(f)):0)
-#define FL_ANY(x,f) FL_TEST(x,f)
-#define FL_ALL(x,f) (FL_TEST(x,f) == (f))
-#define FL_SET(x,f) do {if (FL_ABLE(x)) RBASIC(x)->flags |= (f);} while (0)
-#define FL_UNSET(x,f) do {if (FL_ABLE(x)) RBASIC(x)->flags &= ~(f);} while (0)
+#define paint_gray(o) ((o)->color = MRB_GC_GRAY)
+#define paint_black(o) ((o)->color = MRB_GC_BLACK)
+#define paint_white(o) ((o)->color = MRB_GC_WHITES)
+#define paint_partial_white(s, o) ((o)->color = (s)->current_white_part)
+#define is_gray(o) ((o)->color == MRB_GC_GRAY)
+#define is_white(o) ((o)->color & MRB_GC_WHITES)
+#define is_black(o) ((o)->color & MRB_GC_BLACK)
+#define is_dead(s, o) (((o)->color & other_white_part(s) & MRB_GC_WHITES) || (o)->tt == MRB_TT_FREE)
+#define flip_white_part(s) ((s)->current_white_part = other_white_part(s))
+#define other_white_part(s) ((s)->current_white_part ^ MRB_GC_WHITES)
 
-static inline mrb_int
-mrb_special_const_p(mrb_value obj)
-{
-  if (SPECIAL_CONST_P(obj)) return 1;
-  return 0;
-}
+struct RBasic {
+  MRB_OBJECT_HEADER;
+};
+
+#define mrb_basic(v)     ((struct RBasic*)((v).value.p))
+
+struct RObject {
+  MRB_OBJECT_HEADER;
+  struct iv_tbl *iv;
+};
+
+#define mrb_obj_ptr(v)   ((struct RObject*)((v).value.p))
+#define mrb_immediate_p(x) (mrb_type(x) <= MRB_TT_MAIN)
+#define mrb_special_const_p(x) mrb_immediate_p(x)
 
 static inline mrb_value
 mrb_fixnum_value(mrb_int i)
@@ -197,9 +226,18 @@ static inline mrb_value
 mrb_obj_value(void *p)
 {
   mrb_value v;
-  struct RBasic *b = (struct RBasic*) p;
+  struct RBasic *b = (struct RBasic*)p;
 
   MRB_SET_VALUE(v, b->tt, value.p, p);
+  return v;
+}
+
+static inline mrb_value
+mrb_voidp_value(void *p)
+{
+  mrb_value v;
+
+  MRB_SET_VALUE(v, MRB_TT_VOIDP, value.p, p);
   return v;
 }
 

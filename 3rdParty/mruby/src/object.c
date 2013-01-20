@@ -82,7 +82,13 @@ mrb_true(mrb_state *mrb, mrb_value obj)
 static mrb_value
 nil_to_s(mrb_state *mrb, mrb_value obj)
 {
-    return mrb_str_new(mrb, 0, 0);
+  return mrb_str_new(mrb, 0, 0);
+}
+
+static mrb_value
+nil_inspect(mrb_state *mrb, mrb_value obj)
+{
+  return mrb_str_new(mrb, "nil", 3);
 }
 
 /***********************************************************************
@@ -106,10 +112,10 @@ nil_to_s(mrb_state *mrb, mrb_value obj)
 static mrb_value
 true_and(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value obj2;
+  int obj2;
 
-  mrb_get_args(mrb, "o", &obj2);
-  return mrb_test(obj2)?mrb_true_value():mrb_false_value();
+  mrb_get_args(mrb, "b", &obj2);
+  return obj2 ? mrb_true_value() : mrb_false_value();
 }
 
 /* 15.2.5.3.2  */
@@ -125,10 +131,10 @@ true_and(mrb_state *mrb, mrb_value obj)
 static mrb_value
 true_xor(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value obj2;
+  int obj2;
 
-  mrb_get_args(mrb, "o", &obj2);
-  return mrb_test(obj2)?mrb_false_value():mrb_true_value();
+  mrb_get_args(mrb, "b", &obj2);
+  return obj2 ? mrb_false_value() : mrb_true_value();
 }
 
 /* 15.2.5.3.3  */
@@ -165,9 +171,9 @@ true_to_s(mrb_state *mrb, mrb_value obj)
 static mrb_value
 true_or(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value obj2;
+  int obj2;
 
-  mrb_get_args(mrb, "o", &obj2);
+  mrb_get_args(mrb, "b", &obj2);
   return mrb_true_value();
 }
 
@@ -196,9 +202,9 @@ true_or(mrb_state *mrb, mrb_value obj)
 static mrb_value
 false_and(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value obj2;
+  int obj2;
 
-  mrb_get_args(mrb, "o", &obj2);
+  mrb_get_args(mrb, "b", &obj2);
   return mrb_false_value();
 }
 
@@ -218,10 +224,10 @@ false_and(mrb_state *mrb, mrb_value obj)
 static mrb_value
 false_xor(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value obj2;
+  int obj2;
 
-  mrb_get_args(mrb, "o", &obj2);
-  return mrb_test(obj2)?mrb_true_value():mrb_false_value();
+  mrb_get_args(mrb, "b", &obj2);
+  return obj2 ? mrb_true_value() : mrb_false_value();
 }
 
 /* 15.2.4.3.3  */
@@ -238,10 +244,10 @@ false_xor(mrb_state *mrb, mrb_value obj)
 static mrb_value
 false_or(mrb_state *mrb, mrb_value obj)
 {
-  mrb_value obj2;
+  int obj2;
 
-  mrb_get_args(mrb, "o", &obj2);
-  return mrb_test(obj2)?mrb_true_value():mrb_false_value();
+  mrb_get_args(mrb, "b", &obj2);
+  return obj2 ? mrb_true_value() : mrb_false_value();
 }
 
 /* 15.2.6.3.3  */
@@ -272,6 +278,7 @@ mrb_init_object(mrb_state *mrb)
   mrb_define_method(mrb, n, "|",    false_or,       ARGS_REQ(1));  /* 15.2.4.3.3  */
   mrb_define_method(mrb, n, "nil?", mrb_true,       ARGS_NONE());  /* 15.2.4.3.4  */
   mrb_define_method(mrb, n, "to_s", nil_to_s,       ARGS_NONE());  /* 15.2.4.3.5  */
+  mrb_define_method(mrb, n, "inspect", nil_inspect, ARGS_NONE());
 
   t = mrb->true_class  = mrb_define_class(mrb, "TrueClass",  mrb->object_class);
   mrb_undef_class_method(mrb, t, "new");
@@ -279,6 +286,7 @@ mrb_init_object(mrb_state *mrb)
   mrb_define_method(mrb, t, "^",    true_xor,       ARGS_REQ(1));  /* 15.2.5.3.2  */
   mrb_define_method(mrb, t, "to_s", true_to_s,      ARGS_NONE());  /* 15.2.5.3.3  */
   mrb_define_method(mrb, t, "|",    true_or,        ARGS_REQ(1));  /* 15.2.5.3.4  */
+  mrb_define_method(mrb, t, "inspect", true_to_s,   ARGS_NONE());
 
   f = mrb->false_class = mrb_define_class(mrb, "FalseClass", mrb->object_class);
   mrb_undef_class_method(mrb, f, "new");
@@ -286,6 +294,7 @@ mrb_init_object(mrb_state *mrb)
   mrb_define_method(mrb, f, "^",    false_xor,      ARGS_REQ(1));  /* 15.2.6.3.2  */
   mrb_define_method(mrb, f, "to_s", false_to_s,     ARGS_NONE());  /* 15.2.6.3.3  */
   mrb_define_method(mrb, f, "|",    false_or,       ARGS_REQ(1));  /* 15.2.6.3.4  */
+  mrb_define_method(mrb, f, "inspect", false_to_s,  ARGS_NONE());
 }
 
 static mrb_value
@@ -296,7 +305,7 @@ convert_type(mrb_state *mrb, mrb_value val, const char *tname, const char *metho
   m = mrb_intern(mrb, method);
   if (!mrb_respond_to(mrb, val, m)) {
     if (raise) {
-      mrb_raise(mrb, E_TYPE_ERROR, "can't convert %s into %s",
+      mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %s into %s",
          mrb_nil_p(val) ? "nil" :
          (mrb_type(val) == MRB_TT_TRUE) ? "true" :
          (mrb_type(val) == MRB_TT_FALSE) ? "false" :
@@ -332,7 +341,7 @@ mrb_convert_type(mrb_state *mrb, mrb_value val, mrb_int type, const char *tname,
   if (mrb_type(val) == type) return val;
   v = convert_type(mrb, val, tname, method, 1/*Qtrue*/);
   if (mrb_type(v) != type) {
-    mrb_raise(mrb, E_TYPE_ERROR, "%s cannot be converted to %s by #%s",
+    mrb_raisef(mrb, E_TYPE_ERROR, "%s cannot be converted to %s by #%s",
 	      mrb_obj_classname(mrb, val), tname, method);
   }
   return v;
@@ -410,12 +419,12 @@ mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t)
         else {
           etype = mrb_obj_classname(mrb, x);
         }
-        mrb_raise(mrb, E_TYPE_ERROR, "wrong argument type %s (expected %s)",
+        mrb_raisef(mrb, E_TYPE_ERROR, "wrong argument type %s (expected %s)",
 		  etype, type->name);
       }
       type++;
     }
-    mrb_raise(mrb, E_TYPE_ERROR, "unknown type 0x%x (0x%x given)", t, mrb_type(x));
+    mrb_raisef(mrb, E_TYPE_ERROR, "unknown type 0x%x (0x%x given)", t, mrb_type(x));
   }
 }
 
@@ -500,11 +509,11 @@ mrb_to_integer(mrb_state *mrb, mrb_value val, const char *method)
 {
     mrb_value v;
 
-    if (FIXNUM_P(val)) return val;
+    if (mrb_fixnum_p(val)) return val;
     v = convert_type(mrb, val, "Integer", method, TRUE);
     if (!mrb_obj_is_kind_of(mrb, v, mrb->fixnum_class)) {
       const char *cname = mrb_obj_classname(mrb, val);
-      mrb_raise(mrb, E_TYPE_ERROR, "can't convert %s to Integer (%s#%s gives %s)",
+      mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %s to Integer (%s#%s gives %s)",
                cname, cname, method, mrb_obj_classname(mrb, v));
     }
     return v;
@@ -594,5 +603,5 @@ int
 mrb_eql(mrb_state *mrb, mrb_value obj1, mrb_value obj2)
 {
   if (mrb_obj_eq(mrb, obj1, obj2)) return TRUE;
-  return RTEST(mrb_funcall(mrb, obj1, "eql?", 1, obj2));
+  return mrb_test(mrb_funcall(mrb, obj1, "eql?", 1, obj2));
 }

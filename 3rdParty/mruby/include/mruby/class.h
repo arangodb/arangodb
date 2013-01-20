@@ -64,6 +64,7 @@ struct RClass *mrb_vm_define_module(mrb_state*, mrb_value, mrb_sym);
 void mrb_define_method_vm(mrb_state*, struct RClass*, mrb_sym, mrb_value);
 void mrb_define_method_raw(mrb_state*, struct RClass*, mrb_sym, struct RProc *);
 void mrb_define_method_id(mrb_state *mrb, struct RClass *c, mrb_sym mid, mrb_func_t func, int aspec);
+void mrb_alias_method(mrb_state *mrb, struct RClass *c, mrb_sym a, mrb_sym b);
 
 struct RClass *mrb_class_outer_module(mrb_state*, struct RClass *);
 struct RProc *mrb_method_search_vm(mrb_state*, struct RClass**, mrb_sym);

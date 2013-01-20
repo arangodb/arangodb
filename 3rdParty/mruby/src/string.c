@@ -333,7 +333,7 @@ mrb_str_concat(mrb_state *mrb, mrb_value self, mrb_value other)
   int len;
 
   str_modify(mrb, s1);
-  if (mrb_type(other) != MRB_TT_STRING) {
+  if (!mrb_string_p(other)) {
     other = mrb_str_to_str(mrb, other);
   }
   s2 = mrb_str_ptr(other);
@@ -519,7 +519,7 @@ mrb_str_cmp_m(mrb_state *mrb, mrb_value str1)
   mrb_int result;
 
   mrb_get_args(mrb, "o", &str2);
-  if (mrb_type(str2) != MRB_TT_STRING) {
+  if (!mrb_string_p(str2)) {
     if (!mrb_respond_to(mrb, str2, mrb_intern(mrb, "to_s"))) {
       return mrb_nil_value();
     }
@@ -557,7 +557,7 @@ int
 mrb_str_equal(mrb_state *mrb, mrb_value str1, mrb_value str2)
 {
   if (mrb_obj_equal(mrb, str1, str2)) return TRUE;
-  if (mrb_type(str2) != MRB_TT_STRING) {
+  if (!mrb_string_p(str2)) {
     if (mrb_nil_p(str2)) return FALSE;
     if (!mrb_respond_to(mrb, str2, mrb_intern(mrb, "to_str"))) {
       return FALSE;
@@ -595,7 +595,7 @@ mrb_str_to_str(mrb_state *mrb, mrb_value str)
 {
   mrb_value s;
 
-  if (mrb_type(str) != MRB_TT_STRING) {
+  if (!mrb_string_p(str)) {
     s = mrb_check_convert_type(mrb, str, MRB_TT_STRING, "String", "to_str");
     if (mrb_nil_p(s)) {
       s = mrb_convert_type(mrb, str, MRB_TT_STRING, "String", "to_s");
@@ -609,7 +609,7 @@ mrb_value
 mrb_string_value(mrb_state *mrb, mrb_value *ptr)
 {
   mrb_value s = *ptr;
-  if (mrb_type(s) != MRB_TT_STRING) {
+  if (!mrb_string_p(s)) {
     s = mrb_str_to_str(mrb, s);
     *ptr = s;
   }
@@ -840,7 +840,7 @@ mrb_str_aref_m(mrb_state *mrb, mrb_value str)
     return mrb_str_substr(mrb, str, mrb_fixnum(a1), mrb_fixnum(a2));
   }
   if (argc != 1) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (%d for 1)", argc);
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (%d for 1)", argc);
   }
   return mrb_str_aref(mrb, str, a1);
 }
@@ -939,6 +939,7 @@ mrb_str_chomp_bang(mrb_state *mrb, mrb_value str)
     else {
       return mrb_nil_value();
     }
+    s->ptr[s->len] = '\0';
     return str;
   }
 
@@ -970,7 +971,7 @@ mrb_str_chomp_bang(mrb_state *mrb, mrb_value str)
      (rslen <= 1 ||
      memcmp(RSTRING_PTR(rs), pp, rslen) == 0)) {
     s->len = len - rslen;
-    p[len] = '\0';
+    p[s->len] = '\0';
     return str;
   }
   return mrb_nil_value();
@@ -1111,44 +1112,6 @@ mrb_str_downcase(mrb_state *mrb, mrb_value self)
   str = mrb_str_dup(mrb, self);
   mrb_str_downcase_bang(mrb, str);
   return str;
-}
-
-/* 15.2.10.5.15 */
-/*
- *  call-seq:
- *     str.each(separator=$/) {|substr| block }        => str
- *     str.each_line(separator=$/) {|substr| block }   => str
- *
- *  Splits <i>str</i> using the supplied parameter as the record separator
- *  (<code>$/</code> by default), passing each substring in turn to the supplied
- *  block. If a zero-length record separator is supplied, the string is split
- *  into paragraphs delimited by multiple successive newlines.
- *
- *     print "Example one\n"
- *     "hello\nworld".each {|s| p s}
- *     print "Example two\n"
- *     "hello\nworld".each('l') {|s| p s}
- *     print "Example three\n"
- *     "hello\n\n\nworld".each('') {|s| p s}
- *
- *  <em>produces:</em>
- *
- *     Example one
- *     "hello\n"
- *     "world"
- *     Example two
- *     "hel"
- *     "l"
- *     "o\nworl"
- *     "d"
- *     Example three
- *     "hello\n\n\n"
- *     "world"
- */
-static mrb_value
-mrb_str_each_line(mrb_state *mrb, mrb_value str)
-{
-  return mrb_nil_value();
 }
 
 /* 15.2.10.5.16 */
@@ -1317,7 +1280,7 @@ str_gsub(mrb_state *mrb, mrb_value str, mrb_int bang)
     mrb_str_buf_cat(mrb, dest, cp, RSTRING_LEN(str) - offset);
   }
   mrb_reg_search(mrb, pat, str, last, 0);
-  RBASIC(dest)->c = mrb_obj_class(mrb, str);
+  mrb_basic(dest)->c = mrb_obj_class(mrb, str);
   return str;
 }
 
@@ -1525,7 +1488,7 @@ mrb_str_index_m(mrb_state *mrb, mrb_value str)
 
       tmp = mrb_check_string_type(mrb, sub);
       if (mrb_nil_p(tmp)) {
-        mrb_raise(mrb, E_TYPE_ERROR, "type mismatch: %s given",
+        mrb_raisef(mrb, E_TYPE_ERROR, "type mismatch: %s given",
            mrb_obj_classname(mrb, sub));
       }
       sub = tmp;
@@ -1653,11 +1616,11 @@ mrb_obj_as_string(mrb_state *mrb, mrb_value obj)
 {
   mrb_value str;
 
-  if (mrb_type(obj) == MRB_TT_STRING) {
+  if (mrb_string_p(obj)) {
     return obj;
   }
   str = mrb_funcall(mrb, obj, "to_s", 0);
-  if (mrb_type(str) != MRB_TT_STRING)
+  if (!mrb_string_p(str))
     return mrb_any_to_s(mrb, obj);
   return str;
 }
@@ -1931,7 +1894,7 @@ mrb_str_rindex_m(mrb_state *mrb, mrb_value str)
 
       tmp = mrb_check_string_type(mrb, sub);
       if (mrb_nil_p(tmp)) {
-        mrb_raise(mrb, E_TYPE_ERROR, "type mismatch: %s given",
+        mrb_raisef(mrb, E_TYPE_ERROR, "type mismatch: %s given",
                  mrb_obj_classname(mrb, sub));
       }
       sub = tmp;
@@ -2124,7 +2087,7 @@ mrb_str_split_m(mrb_state *mrb, mrb_value str)
   mrb_value spat = mrb_nil_value();
   enum {awk, string, regexp} split_type = string;
   long beg, end, i = 0;
-  int lim = -1;
+  mrb_int lim = -1;
   mrb_value result, tmp;
 
   argc = mrb_get_args(mrb, "|oi", &spat, &lim);
@@ -2141,7 +2104,7 @@ mrb_str_split_m(mrb_state *mrb, mrb_value str)
     split_type = awk;
   }
   else {
-    if (mrb_type(spat) == MRB_TT_STRING) {
+    if (mrb_string_p(spat)) {
       split_type = string;
 #ifdef ENABLE_REGEXP
       if (RSTRING_LEN(spat) == 0) {
@@ -2466,7 +2429,7 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
       break;
     default:
       if (base < 2 || 36 < base) {
-        mrb_raise(mrb, E_ARGUMENT_ERROR, "illegal radix %d", base);
+        mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal radix %d", base);
       }
       if (base <= 32) {
         len = 5;
@@ -2494,7 +2457,7 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
     if (badcheck) goto bad;
     return mrb_fixnum_value(0);
   }
-  len *= strlen(str)*sizeof(char);
+  len *= strlen(str);
 
   val = strtoul((char*)str, &end, base);
 
@@ -2510,7 +2473,7 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
     return mrb_fixnum_value(result);
   }
 bad:
-  mrb_raise(mrb, E_ARGUMENT_ERROR, "invalide string for number(%s)", str);
+  mrb_raisef(mrb, E_ARGUMENT_ERROR, "invalid string for number(%s)", str);
   /* not reached */
   return mrb_fixnum_value(0);
 }
@@ -2543,12 +2506,8 @@ mrb_str_to_inum(mrb_state *mrb, mrb_value str, int base, int badcheck)
   if (s) {
     len = RSTRING_LEN(str);
     if (s[len]) {    /* no sentinel somehow */
-      char *p = (char *)mrb_malloc(mrb, len+1);
-
-      //MEMCPY(p, s, char, len);
-      memcpy(p, s, sizeof(char)*len);
-      p[len] = '\0';
-      s = p;
+      struct RString *temp_str = str_new(mrb, s, len);
+      s = temp_str->ptr;
     }
   }
   return mrb_cstr_to_inum(mrb, s, base, badcheck);
@@ -2589,7 +2548,7 @@ mrb_str_to_i(mrb_state *mrb, mrb_value self)
     base = mrb_fixnum(argv[0]);
 
   if (base < 0) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "illegal radix %d", base);
+    mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal radix %d", base);
   }
   return mrb_str_to_inum(mrb, self, base, 0/*Qfalse*/);
 }
@@ -2620,7 +2579,7 @@ mrb_cstr_to_dbl(mrb_state *mrb, const char * p, int badcheck)
   if (p == end) {
     if (badcheck) {
 bad:
-      mrb_raise(mrb, E_ARGUMENT_ERROR, "invalide string for float(%s)", p);
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "invalid string for float(%s)", p);
       /* not reached */
     }
     return d;
@@ -2680,11 +2639,8 @@ mrb_str_to_dbl(mrb_state *mrb, mrb_value str, int badcheck)
       mrb_raise(mrb, E_ARGUMENT_ERROR, "string for Float contains null byte");
     }
     if (s[len]) {    /* no sentinel somehow */
-      char *p = (char *)mrb_malloc(mrb, len+1);
-
-      memcpy(p, s, sizeof(char)*len);
-      p[len] = '\0';
-      s = p;
+      struct RString *temp_str = str_new(mrb, s, len);
+      s = temp_str->ptr;
     }
   }
   return mrb_cstr_to_dbl(mrb, s, badcheck);
@@ -2989,6 +2945,29 @@ mrb_str_inspect(mrb_state *mrb, mrb_value str)
     return result;
 }
 
+/*
+ * call-seq:
+ *   str.bytes   -> array of fixnums
+ *
+ * Returns an array of bytes in _str_.
+ *
+ *    str = "hello"
+ *    str.bytes       #=> [104, 101, 108, 108, 111]
+ */
+static mrb_value
+mrb_str_bytes(mrb_state *mrb, mrb_value str)
+{
+  struct RString *s = mrb_str_ptr(str);
+  mrb_value a = mrb_ary_new_capa(mrb, s->len);
+  unsigned char *p = (unsigned char *)(s->ptr), *pend = p + s->len;
+
+  while (p < pend) {
+    mrb_ary_push(mrb, a, mrb_fixnum_value(p[0]));
+    p++;
+  }
+  return a;
+}
+
 /* ---------------------------*/
 void
 mrb_init_string(mrb_state *mrb)
@@ -3016,7 +2995,6 @@ mrb_init_string(mrb_state *mrb)
   mrb_define_method(mrb, s, "chop!",           mrb_str_chop_bang,       ARGS_REQ(1));              /* 15.2.10.5.12 */
   mrb_define_method(mrb, s, "downcase",        mrb_str_downcase,        ARGS_NONE());              /* 15.2.10.5.13 */
   mrb_define_method(mrb, s, "downcase!",       mrb_str_downcase_bang,   ARGS_NONE());              /* 15.2.10.5.14 */
-  mrb_define_method(mrb, s, "each_line",       mrb_str_each_line,       ARGS_REQ(1));              /* 15.2.10.5.15 */
   mrb_define_method(mrb, s, "empty?",          mrb_str_empty_p,         ARGS_NONE());              /* 15.2.10.5.16 */
   mrb_define_method(mrb, s, "eql?",            mrb_str_eql,             ARGS_REQ(1));              /* 15.2.10.5.17 */
 #ifdef ENABLE_REGEXP
@@ -3053,4 +3031,5 @@ mrb_init_string(mrb_state *mrb)
   mrb_define_method(mrb, s, "upcase",          mrb_str_upcase,          ARGS_REQ(1));              /* 15.2.10.5.42 */
   mrb_define_method(mrb, s, "upcase!",         mrb_str_upcase_bang,     ARGS_REQ(1));              /* 15.2.10.5.43 */
   mrb_define_method(mrb, s, "inspect",         mrb_str_inspect,         ARGS_NONE());              /* 15.2.10.5.46(x) */
+  mrb_define_method(mrb, s, "bytes",           mrb_str_bytes,           ARGS_NONE());
 }

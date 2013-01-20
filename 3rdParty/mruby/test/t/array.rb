@@ -14,7 +14,17 @@ assert('Array.[]', '15.2.12.4.1') do
 end
 
 assert('Array#*', '15.2.12.5.1') do
-  [1].*(3) == [1, 1, 1]
+  e2 = nil
+  begin
+    # this will cause an exception due to the wrong argument
+    [1].*(-1)
+  rescue => e1
+    e2 = e1
+  end
+  a = [1].*(3)
+  b = [1].*(0)
+  a == [1, 1, 1] and b == [] and
+    e2.class == ArgumentError
 end
 
 assert('Array#+', '15.2.12.5.2') do
@@ -64,8 +74,8 @@ assert('Array#[]=', '15.2.12.5.5') do
     e3 = e1
   end
 
-  [1,2,3].[]=(1,4) == [1, 4, 3] and
-  [1,2,3].[]=(1,2,3) == [1, 3] and
+  [1,2,3].[]=(1,4) == 4 and
+  [1,2,3].[]=(1,2,3) == 3 and
     e2.class == ArgumentError and
     e3.class == ArgumentError
 end
@@ -256,8 +266,10 @@ end
 assert('Array#unshift', '15.2.12.5.30') do
   a = [2,3]
   b = a.unshift(1)
+  c = [2,3]
+  d = c.unshift(0, 1)
 
-  a == [1,2,3] and b == [1,2,3]
+  a == [1,2,3] and b == [1,2,3] and c == [0,1,2,3] and d == [0,1,2,3] 
 end
 
 assert('Array#to_s', '15.2.12.5.31') do
@@ -279,8 +291,9 @@ end
 assert('Array#<=>', '15.2.12.5.36') do
   r1 = [ "a", "a", "c" ]    <=> [ "a", "b", "c" ]   #=> -1
   r2 = [ 1, 2, 3, 4, 5, 6 ] <=> [ 1, 2 ]            #=> +1
+  r3 = [ "a", "b", "c" ]    <=> [ "a", "b", "c" ]   #=> 0
 
-  r1 == -1 and r2 == +1
+  r1 == -1 and r2 == +1 and r3 == 0
 end
 
 # Not ISO specified

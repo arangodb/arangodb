@@ -113,5 +113,13 @@ if Object.const_defined?(:Math)
   assert('Math.erfc 1') do
     check_float(Math.erfc(1), 0.157299207050285)
   end
+
+  assert('Math.erf -1') do
+    check_float(Math.erf(-1), -0.8427007929497148)
+  end
+
+  assert('Math.erfc -1') do
+    check_float(Math.erfc(-1), 1.8427007929497148)
+  end
 end
 

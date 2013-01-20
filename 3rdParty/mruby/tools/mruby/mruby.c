@@ -4,6 +4,7 @@
 #include "mruby/string.h"
 #include "mruby/compile.h"
 #include "mruby/dump.h"
+#include "mruby/variable.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -25,6 +26,7 @@ void mrb_show_copyright(mrb_state *);
 struct _args {
   FILE *rfp;
   char* cmdline;
+  int fname        : 1;
   int mrbfile      : 1;
   int check_syntax : 1;
   int verbose      : 1;
@@ -112,7 +114,7 @@ append_cmdline:
     case '-':
       if (strcmp((*argv) + 2, "version") == 0) {
         mrb_show_version(mrb);
-	exit(0);
+        exit(0);
       }
       else if (strcmp((*argv) + 2, "verbose") == 0) {
         args->verbose = 1;
@@ -120,7 +122,7 @@ append_cmdline:
       }
       else if (strcmp((*argv) + 2, "copyright") == 0) {
         mrb_show_copyright(mrb);
-	exit(0);
+        exit(0);
       }
       else return -3;
       return 0;
@@ -131,9 +133,15 @@ append_cmdline:
 
   if (args->rfp == NULL && args->cmdline == NULL) {
     if (*argv == NULL) args->rfp = stdin;
-    else if ((args->rfp = fopen(*argv, args->mrbfile ? "rb" : "r")) == NULL) {
-      printf("%s: Cannot open program file. (%s)\n", *origargv, *argv);
-      return 0;
+    else {
+      args->rfp = fopen(argv[0], args->mrbfile ? "rb" : "r");
+      if (args->rfp == NULL) {
+        printf("%s: Cannot open program file. (%s)\n", *origargv, *argv);
+        return 0;
+      }
+      args->fname = 1;
+      args->cmdline = argv[0];
+      argc--; argv++;
     }
   }
   args->argv = (char **)mrb_realloc(mrb, args->argv, sizeof(char*) * (argc + 1));
@@ -148,11 +156,76 @@ cleanup(mrb_state *mrb, struct _args *args)
 {
   if (args->rfp && args->rfp != stdin)
     fclose(args->rfp);
-  if (args->cmdline)
+  if (args->cmdline && !args->fname)
     mrb_free(mrb, args->cmdline);
   if (args->argv)
     mrb_free(mrb, args->argv);
   mrb_close(mrb);
+}
+
+static void
+showcallinfo(mrb_state *mrb)
+{
+  mrb_callinfo *ci;
+  mrb_int ciidx;
+  const char *filename, *method, *sep;
+  int i, line;
+
+  printf("trace:\n");
+  ciidx = mrb_fixnum(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "ciidx")));
+  if (ciidx >= mrb->ciend - mrb->cibase)
+    ciidx = 10; /* ciidx is broken... */
+
+  for (i = ciidx; i >= 0; i--) {
+    ci = &mrb->cibase[i];
+    filename = "(unknown)";
+    line = -1;
+
+    if (MRB_PROC_CFUNC_P(ci->proc)) {
+      continue;
+    }
+    else {
+      mrb_irep *irep = ci->proc->body.irep;
+      if (irep->filename != NULL)
+        filename = irep->filename;
+      if (irep->lines != NULL) {
+	mrb_code *pc;
+
+	if (i+1 <= ciidx) {
+	  pc = mrb->cibase[i+1].pc;
+	}
+	else {
+	  pc = (mrb_code*)mrb_voidp(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "lastpc")));
+	}
+        if (irep->iseq <= pc && pc < irep->iseq + irep->ilen) {
+          line = irep->lines[pc - irep->iseq - 1];
+        }
+      }
+    }
+    if (line == -1) continue;
+    if (ci->target_class == ci->proc->target_class)
+      sep = ".";
+    else
+      sep = "#";
+
+    method = mrb_sym2name(mrb, ci->mid);
+    if (method) {
+      const char *cn = mrb_class_name(mrb, ci->proc->target_class);
+    
+      if (cn) {
+	printf("\t[%d] %s:%d:in %s%s%s\n",
+	       i, filename, line, cn, sep, method);
+      }
+      else {
+	printf("\t[%d] %s:%d:in %s\n",
+	       i, filename, line, method);
+      }
+    }
+    else {
+      printf("\t[%d] %s:%d\n",
+	     i, filename, line);
+    }
+  }
 }
 
 int
@@ -165,7 +238,7 @@ main(int argc, char **argv)
   mrb_value ARGV;
 
   if (mrb == NULL) {
-    fprintf(stderr, "Invalid mrb_state, exiting mruby");
+    fprintf(stderr, "Invalid mrb_state, exiting mruby\n");
     return EXIT_FAILURE;
   }
 
@@ -176,20 +249,24 @@ main(int argc, char **argv)
     return n;
   }
 
-  ARGV = mrb_ary_new(mrb);
+  ARGV = mrb_ary_new_capa(mrb, args.argc);
   for (i = 0; i < args.argc; i++) {
     mrb_ary_push(mrb, ARGV, mrb_str_new(mrb, args.argv[i], strlen(args.argv[i])));
   }
   mrb_define_global_const(mrb, "ARGV", ARGV);
 
   if (args.mrbfile) {
-    n = mrb_load_irep(mrb, args.rfp);
-    if (n >= 0) {
-      if (!args.check_syntax) {
-	mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
-	if (mrb->exc) {
-	  p(mrb, mrb_obj_value(mrb->exc));
-	}
+    n = mrb_read_irep_file(mrb, args.rfp);
+    if (n < 0) {
+      fprintf(stderr, "failed to load mrb file: %s\n", args.cmdline);
+    }
+    else if (!args.check_syntax) {
+      mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
+      n = 0;
+      if (mrb->exc) {
+        showcallinfo(mrb);
+        p(mrb, mrb_obj_value(mrb->exc));
+        n = -1;
       }
     }
   }
@@ -202,19 +279,21 @@ main(int argc, char **argv)
     if (args.check_syntax)
       c->no_exec = 1;
 
-    if (args.cmdline) {
-      mrbc_filename(mrb, c, "-e");
-      v = mrb_load_string_cxt(mrb, (char*)args.cmdline, c);
+    if (args.rfp) {
+      mrbc_filename(mrb, c, args.cmdline ? args.cmdline : "-");
+      v = mrb_load_file_cxt(mrb, args.rfp, c);
     }
     else {
-      mrbc_filename(mrb, c, args.argv[0]);
-      v = mrb_load_file_cxt(mrb, args.rfp, c);
+      mrbc_filename(mrb, c, "-e");
+      v = mrb_load_string_cxt(mrb, args.cmdline, c);
     }
     mrbc_context_free(mrb, c);
     if (mrb->exc) {
       if (!mrb_undef_p(v)) {
-	p(mrb, mrb_obj_value(mrb->exc));
+        showcallinfo(mrb);
+        p(mrb, mrb_obj_value(mrb->exc));
       }
+      n = -1;
     }
     else if (args.check_syntax) {
       printf("Syntax OK\n");
@@ -222,5 +301,5 @@ main(int argc, char **argv)
   }
   cleanup(mrb, &args);
 
-  return n > 0 ? 0 : 1;
+  return n == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

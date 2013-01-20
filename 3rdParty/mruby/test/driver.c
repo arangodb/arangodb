@@ -32,7 +32,7 @@ check_error(mrb_state *mrb)
   mrb_value ko_test = mrb_gv_get(mrb, mrb_intern(mrb, "$ko_test"));
   mrb_value kill_test = mrb_gv_get(mrb, mrb_intern(mrb, "$kill_test"));
 
-  return FIXNUM_P(ko_test) && mrb_fixnum(ko_test) == 0 && FIXNUM_P(kill_test) && mrb_fixnum(kill_test) == 0;
+  return mrb_fixnum_p(ko_test) && mrb_fixnum(ko_test) == 0 && mrb_fixnum_p(kill_test) && mrb_fixnum(kill_test) == 0;
 }
 
 int

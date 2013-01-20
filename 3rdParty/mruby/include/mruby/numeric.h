@@ -13,8 +13,8 @@ extern "C" {
 
 #include <limits.h>
 
-#define POSFIXABLE(f) ((f) <= INT_MAX)
-#define NEGFIXABLE(f) ((f) >= INT_MIN)
+#define POSFIXABLE(f) ((f) <= MRB_INT_MAX)
+#define NEGFIXABLE(f) ((f) >= MRB_INT_MIN)
 #define FIXABLE(f) (POSFIXABLE(f) && NEGFIXABLE(f))
 
 mrb_value mrb_flt2big(mrb_state *mrb, mrb_float d);
