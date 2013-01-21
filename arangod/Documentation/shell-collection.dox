@@ -48,20 +48,21 @@
 ///  <li>@ref ShellCollectionCollectionMethods
 ///   <ul>
 ///    <li>@ref ShellCollectionDrop "collection.drop"</li>
-///    <li>@ref ShellCollectionTruncate "collection.truncate"</li>
-///    <li>@ref ShellCollectionProperties "collection.properties"</li>
 ///    <li>@ref ShellCollectionFigures "collection.figures"</li>
+///    <li>@ref ShellCollectionProperties "collection.properties"</li>
+///    <li>@ref ShellCollectionRevision "collection.revision"</li>
 ///    <li>@ref ShellCollectionLoad "collection.load"</li>
 ///    <li>@ref ShellCollectionUnload "collection.unload"</li>
 ///    <li>@ref ShellCollectionUnload "collection.rename"</li>
+///    <li>@ref ShellCollectionTruncate "collection.truncate"</li>
 ///   </ul>
 ///  </li>
 ///  <li>@ref ShellCollectionDatabaseMethods
 ///   <ul>
 ///    <li>@ref ShellCollectionRead "db._collection"</li>
-///    <li>@ref ShellCollectionCreate "db._create"</li>
 ///    <li>@ref ShellCollectionReadAll "db._collections"</li>
 ///    <li>@ref ShellCollectionReadShortCut "db.collection-name"</li>
+///    <li>@ref ShellCollectionCreate "db._create"</li>
 ///    <li>@ref ShellCollectionDropDb "db._drop"</li>
 ///    <li>@ref ShellCollectionTruncateDb "db._truncate"</li>
 ///   </ul>
@@ -114,8 +115,7 @@
 ///
 /// @LIT{db._collection("demo")}
 ///
-/// If no collection with such a name or identifier exists, then
-/// @LIT{null} is returned.
+/// If no collection with such a name exists, then @LIT{null} is returned.
 ///
 /// There is a short-cut that can be used for non-system collections:
 ///
@@ -154,6 +154,10 @@
 /// @CLEARPAGE
 /// @anchor ShellCollectionLoad
 /// @copydetails JS_LoadVocbaseCol
+///
+/// @CLEARPAGE
+/// @anchor ShellCollectionRevision
+/// @copydetails JS_RevisionVocbaseCol
 ///
 /// @CLEARPAGE
 /// @anchor ShellCollectionUnload
