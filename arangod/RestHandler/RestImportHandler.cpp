@@ -200,12 +200,12 @@ bool RestImportHandler::createByDocumentsLines () {
     return false;
   }
   
-  // shall we create the collection?
-  char const* valueStr = _request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(valueStr) : false;
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+    return false;
+  }
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, create, TRI_COL_TYPE_DOCUMENT); 
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection);
   
   // .............................................................................
   // inside write transaction
@@ -345,12 +345,12 @@ bool RestImportHandler::createByDocumentsList () {
     return false;
   }
   
-  // shall we create the collection?
-  char const* valueStr = _request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(valueStr) : false;
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+    return false;
+  }
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, create, TRI_COL_TYPE_DOCUMENT); 
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection); 
   
   // .............................................................................
   // inside write transaction
@@ -439,10 +439,6 @@ bool RestImportHandler::createByKeyValueList () {
     return false;
   }
   
-  // shall we create the collection?
-  char const* valueStr = _request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(valueStr) : false;
-  
   size_t start = 0;
   string body(_request->body(), _request->bodySize());
   size_t next = body.find('\n', start);
@@ -497,8 +493,12 @@ bool RestImportHandler::createByKeyValueList () {
     return false;      
   }        
   
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+    return false;
+  }
+  
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, create, TRI_COL_TYPE_DOCUMENT); 
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection); 
   
   // .............................................................................
   // inside write transaction

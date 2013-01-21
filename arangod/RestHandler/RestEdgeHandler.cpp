@@ -145,10 +145,6 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  // shall we create the collection?
-  char const* valueStr = _request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(valueStr) : false;
-
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
 
@@ -157,8 +153,12 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
   
+  if (! checkCreateCollection(collection, getCollectionType())) {
+    return false;
+  }
+  
   // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection, create, getCollectionType()); 
+  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
   
   // .............................................................................
   // inside write transaction
