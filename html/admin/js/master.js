@@ -1432,6 +1432,8 @@ var lastFormatQuestion = true;
   $('#centerView button').live('click', function () {
     if (this.id == "createCollection") {
       window.location.href = "#createCollection";
+      $('#footerSlideContainer').animate({ 'height': '25px' });
+      $('#footerSlideContent').animate({ 'height': '25px' });
       return false; 
     }
     if (this.id == "refreshCollections") {
@@ -1821,7 +1823,6 @@ $(function() {
       open = false;
       $('#movetologinButton').text("Login");
     }
-    $('body').resizeAll();
   });
 
   $('#movetologinButton').click(function() {

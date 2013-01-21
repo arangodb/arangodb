@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #361: Bug in Admin Interface. Header disappears when clicking new collection
+
 * Added in-memory only collections
 
   Added collection creation parameter "isVolatile": 
