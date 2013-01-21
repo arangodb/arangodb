@@ -33,6 +33,7 @@
 
 #include <regex.h>
 
+#include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
@@ -1397,7 +1398,15 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
+  const char c = *name;
 
+  // if collection name is passed as a stringified id, we'll use the lookupbyid function  
+  // this is safe because collection names must not start with a digit
+  if (c >= '0' && c <= '9') {
+    return TRI_LookupCollectionByIdVocBase(vocbase, TRI_UInt64String(name));
+  }
+
+  // otherwise we'll look up the collection by name
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
