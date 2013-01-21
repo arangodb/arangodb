@@ -340,6 +340,16 @@ function get_api_collections (req, res) {
 ///
 /// Note: the filesizes of shapes and compactor files are not reported.
 ///
+/// @REST{GET /_api/collection/@FA{collection-name}/revision}
+/////////////////////////////////////////////////////////////
+///
+/// In addition to the above, the result will also contain the
+/// collection's revision id. The revision id is a server-generated
+/// string that clients can use to check whether data in a collection
+/// has changed since the last revision check.
+///
+/// - @LIT{revision}: The collection revision id as a string.
+///
 /// @EXAMPLES
 /////////////
 ///
@@ -440,6 +450,16 @@ function get_api_collection (req, res) {
 
     else if (sub === "parameter") {
       result = collectionRepresentation(collection, true, false, false);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    
+    // .............................................................................
+    // /_api/collection/<identifier>/revision
+    // .............................................................................
+
+    else if (sub === "revision") {
+      result = collectionRepresentation(collection, false, false, false);
+      result.revision = collection.revision();
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
 

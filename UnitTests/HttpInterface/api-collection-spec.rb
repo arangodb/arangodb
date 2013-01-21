@@ -263,6 +263,57 @@ describe ArangoDB do
 	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
       end
+      
+      # get revision id
+      it "extracting the revision id of a collection" do
+	cmd = api + "/" + @cn + "/revision"
+        doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(@cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(3)
+        r1 = doc.parsed_response['revision']
+        r1.should be_kind_of(String)
+        r1.should_not eq("");
+
+        # create a new document
+	body = "{ \"test\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}-get-collection-revision", "/_api/document/?collection=" + @cn, :body => body)
+        
+        # fetch revision again
+        doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['revision'].should be_kind_of(String)
+
+        r2 = doc.parsed_response['revision']
+        r2.should_not eq("");
+        r2.should_not eq(r1);
+
+        # truncate
+        doc = ArangoDB.log_put("#{prefix}-get-collection-revision", "/_api/collection/#{@cn}/truncate", :body => "")
+        
+        # fetch revision again
+        doc = ArangoDB.log_get("#{prefix}-get-collection-revision", cmd)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['revision'].should be_kind_of(String)
+
+        r3 = doc.parsed_response['revision']
+        r3.should_not eq("");
+        r3.should_not eq(r1);
+        r3.should_not eq(r2);
+      end
     end
 
 ################################################################################
