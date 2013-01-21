@@ -95,7 +95,7 @@ function AHUACATL_INDEX (collection, indexTypes) {
     var index = indexes[i];
 
     for (var j = 0; j < indexTypes.length; ++j) {
-      if (index.type == indexTypes[j]) {
+      if (index.type === indexTypes[j]) {
         return index.id;
       }
     }
