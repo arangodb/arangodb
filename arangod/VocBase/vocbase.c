@@ -300,7 +300,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 
   if (collection->_collection != NULL) {
     if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-      LOG_ERROR("cannot drop collection '%s' of type '%d'",
+      LOG_ERROR("cannot drop collection '%s' of type %d",
                 collection->_name,
                 (int) collection->_type);
 
@@ -536,7 +536,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     FreeCollectionPath(collection);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 
-    LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) cid, name);
+    LOG_ERROR("duplicate collection identifier %llu for name '%s'", (unsigned long long) cid, name);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
 
     return NULL;
