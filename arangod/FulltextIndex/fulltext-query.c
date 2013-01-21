@@ -274,7 +274,9 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const query,
       start = split;
     }
 
-    if (! TRI_SetQueryFulltextIndex(query, (size_t) i, start, end - start, match, operation)) {
+    assert(end >= start);
+
+    if (! TRI_SetQueryFulltextIndex(query, (size_t) i, start, (size_t) (end - start), match, operation)) {
       // normalisation failed
       return TRI_ERROR_OUT_OF_MEMORY;
     }

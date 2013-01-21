@@ -421,7 +421,6 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   if (args->_members._length <= 4 && 
       TRI_EqualString(name, ".edges.LENGTH()")) {
     // length restriction, can only be applied if length parameters are not already set
-    TRI_aql_node_t* argNode;
     TRI_json_t* value;
     double minValue = 0.0;
     double maxValue = 0.0;
@@ -498,6 +497,8 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
     }
 
     if (useMin || useMax) {
+      TRI_aql_node_t* argNode;
+
       // minLength and maxLength are parameters 5 & 6
       // add as many null value nodes as are missing
       while (args->_members._length < 4) {
