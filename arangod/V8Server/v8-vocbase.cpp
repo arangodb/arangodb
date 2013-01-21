@@ -1741,6 +1741,7 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 /// @brief executes a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
@@ -1832,6 +1833,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   
   return scope.Close(v8::True());
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
@@ -6617,8 +6619,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
   
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
-  
+#if 0  
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
+#endif
   
   // .............................................................................
   // create global variables
