@@ -74,6 +74,14 @@ BOOST_AUTO_TEST_CASE (tst_df_marker) {
 
   BOOST_CHECK_EQUAL(24, s);
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+
+    
+  BOOST_CHECK_EQUAL(0, offsetof(struct TRI_df_marker_s, _size));
+  BOOST_CHECK_EQUAL(4, offsetof(struct TRI_df_marker_s, _crc));
+  BOOST_CHECK_EQUAL(8, offsetof(struct TRI_df_marker_s, _type));
+
+  // TODO: fix alignment in struct TRI_df_marker_s. it is currently not portable!
+  // BOOST_CHECK_EQUAL(16, offsetof(struct TRI_df_marker_s, _tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
