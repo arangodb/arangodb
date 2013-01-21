@@ -356,7 +356,7 @@ TRI_primary_collection_t;
 typedef struct TRI_doc_document_key_marker_s {
   TRI_df_marker_t base;
 
-  TRI_voc_rid_t   _rid;        // this is the tick for an create and update
+  TRI_voc_rid_t   _rid;        // this is the tick for a create and update
   TRI_voc_eid_t   _sid;
 
   TRI_shape_sid_t _shape; 
