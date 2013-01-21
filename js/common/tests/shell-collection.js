@@ -772,6 +772,42 @@ function CollectionSuite () {
       }
       db._drop(cn1);
       db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test revision id
+////////////////////////////////////////////////////////////////////////////////
+
+    testRevision : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      var r1 = c1.revision();
+      assertTypeOf("string", r1);
+      assertTrue(r1 !== "");
+      assertTrue(r1.match(/^[0-9]+$/));
+
+      c1.save({ a : 1 });
+      var r2 = c1.revision();
+      assertTrue(r1 != r2);
+      assertTypeOf("string", r2);
+      assertTrue(r2 !== "");
+      assertTrue(r2.match(/^[0-9]+$/));
+      
+      c1.save({ a : 2 });
+      var r3 = c1.revision();
+      assertTrue(r1 != r3);
+      assertTrue(r2 != r3);
+      assertTypeOf("string", r3);
+      assertTrue(r3 !== "");
+      assertTrue(r3.match(/^[0-9]+$/));
+
+      c1.unload();
+      var r4 = c1.revision();
+      assertTypeOf("string", r4);
+      assertEqual(r3, r4);
     }
 
   };
