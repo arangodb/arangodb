@@ -407,7 +407,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
               (char*) keyBody, 
               (unsigned long long) existing->_validFrom,
               (unsigned long long) existing->_validTo);
-    if (existing->_validFrom != existing->_validTo) {
+    if (existing->_validTo == 0) {
       // document revision is still alive
       return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     }
@@ -506,8 +506,8 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
       oldest = TRI_PopFrontLinkedArray(&primary->_capConstraint->_array);
 
       if (oldest == NULL) {
-        LOG_WARNING("cap collection is empty, but collection '%ld' contains elements", 
-            (unsigned long) primary->base._info._cid);
+        LOG_WARNING("cap collection is empty, but collection %llu contains elements", 
+            (unsigned long long) primary->base._info._cid);
         break;
       }
 
@@ -1105,12 +1105,12 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 
       d = *ptr;
 
-      printf("fid %lu, key %s, rid %lu, validFrom:%lu validTo %lu\n",
+      printf("fid %lu, key %s, rid %llu, validFrom: %llu validTo %llu\n",
              (unsigned long) d->_fid,
              (char*) d->_key,
-             (unsigned long) d->_rid,
-             (unsigned long) d->_validFrom,
-             (unsigned long) d->_validTo);
+             (unsigned long long) d->_rid,
+             (unsigned long long) d->_validFrom,
+             (unsigned long long) d->_validTo);
     }
   }
 }
@@ -1489,10 +1489,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
 
-      LOG_TRACE("document: fid %lu, key %s, rid %lu, _offsetJson %lu, _offsetKey %lu",
+      LOG_TRACE("document: fid %lu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
                 (unsigned long) datafile->_fid,
                 ((char*) d + d->_offsetKey),
-                (unsigned long) d->_rid,
+                (unsigned long long) d->_rid,
                 (unsigned long) d->_offsetJson,
                 (unsigned long) d->_offsetKey);
       
@@ -1502,12 +1502,12 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     else {
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
-      LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %lu, _offsetJson %lu, _offsetKey %lu",
+      LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
                 (unsigned long) datafile->_fid,
                 ((char*) d + d->_offsetKey),
                 ((char*) e + e->_offsetFromKey),
                 ((char*) e + e->_offsetToKey),
-                (unsigned long) d->_rid,
+                (unsigned long long) d->_rid,
                 (unsigned long) d->_offsetJson,
                 (unsigned long) d->_offsetKey);
       
@@ -1602,10 +1602,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     d = (TRI_doc_deletion_key_marker_t const*) marker;
     key = ((char*) d) + d->_offsetKey;
 
-    LOG_TRACE("deletion: fid %lu, key %s, rid %lu, deletion %lu",
+    LOG_TRACE("deletion: fid %lu, key %s, rid %llu, deletion %lu",
               (unsigned long) datafile->_fid,
               (char*) key,
-              (unsigned long) d->_rid,
+              (unsigned long long) d->_rid,
               (unsigned long) marker->_tick);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
@@ -2365,13 +2365,22 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
   // These two cases must be distinguishable in order to notify the caller about an error
 
   if (found != NULL) {
-    LOG_ERROR("document '%s' already existed with revision %lu while creating revision %lu",
-              header->_key,
-              (unsigned long) found->_rid,
-              (unsigned long) header->_rid);
+    // we found a previous revision in the index
+    if (found->_validTo == 0) {
+      // the found revision is still alive
+      LOG_ERROR("document '%s' already existed with revision %llu while creating revision %llu",
+                header->_key,
+                (unsigned long long) found->_rid,
+                (unsigned long long) header->_rid);
 
-    document->_headers->release(document->_headers, header);
-    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      document->_headers->release(document->_headers, header);
+      return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    }
+    else {
+      // a deleted document was found in the index. now insert again and overwrite
+      // this should be an exceptional case
+      found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, header, true);
+    }
   }
 
   // .............................................................................
@@ -2571,10 +2580,10 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       res = idx->insert(idx, mptr);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("failed to insert document '%lu/%s' for index '%lu'",
-                    (unsigned long) primary->base._info._cid,
+        LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
+                    (unsigned long long) primary->base._info._cid,
                     (char*) mptr->_key,
-                    (unsigned long) idx->_iid);
+                    (unsigned long long) idx->_iid);
 
         return res;
       }
@@ -2582,7 +2591,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       ++inserted;
 
       if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %lu documents of collection %lu", (unsigned long) inserted, (unsigned long) primary->base._info._cid);
+        LOG_DEBUG("indexed %lu documents of collection %llu", (unsigned long) inserted, (unsigned long long) primary->base._info._cid);
       }
     }
   }
