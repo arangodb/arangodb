@@ -155,6 +155,35 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a collection needs to be created on the fly
+///
+/// this method will check the "createCollection" attribute of the request. if 
+/// it is set to true, it will verify that the named collection actually exists. 
+/// if the collection does not yet exist, it will create it on the fly.
+/// if the "createCollection" attribute is not set or set to false, nothing will
+/// happen, and the collection name will not be checked
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
+                                                    const TRI_col_type_e type) {
+  bool found;
+  char const* valueStr = _request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+
+  if (! create) {
+    return true;
+  }
+
+  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrBearVocBase(_vocbase, name.c_str(), type);
+  if (collection == 0) {
+    generateTransactionError(name, TRI_errno());
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
 

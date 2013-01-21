@@ -78,25 +78,6 @@ namespace triagens {
           _collection(0) {
         }
         
-        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const string& name,
-                                     const TRI_transaction_type_e accessType,
-                                     const TRI_col_type_e createType) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType, createType)),
-          _name(name),
-          _collection(0) {
-        }
-        
-        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const string& name,
-                                     const TRI_transaction_type_e accessType,
-                                     const bool create,
-                                     const TRI_col_type_e createType) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType, create, createType)),
-          _name(name),
-          _collection(0) {
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
