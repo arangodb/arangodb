@@ -178,7 +178,6 @@ describe ArangoDB do
 	doc.parsed_response['_id'].should eq(id3)
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
-	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	
 	# create another edge
@@ -201,7 +200,6 @@ describe ArangoDB do
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
 	doc.parsed_response['e'].should eq(1)
-	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# create third edge
@@ -224,7 +222,6 @@ describe ArangoDB do
 	doc.parsed_response['_from'].should eq(id2)
 	doc.parsed_response['_to'].should eq(id1)
 	doc.parsed_response['e'].should eq(2)
-	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# check ANY edges
@@ -388,71 +385,6 @@ describe ArangoDB do
 	doc.parsed_response['_key'].should eq("edge1")
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
-	doc.parsed_response['_bidirectional'].should eq(false)
-	doc.parsed_response['what'].should eq("fred->john")
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      end
-
-################################################################################
-## create a bidirectional edge
-################################################################################
-      
-      it "creating bidirectional edge" do
-	cmd = "/_api/document?collection=#{@cv}"
-
-	# create first vertex
-	body = "{ \"name\" : \"Fred\", \"_key\" : \"fred\" }"
-	doc = ArangoDB.log_post("#{prefix}-create-edge-bi", cmd, :body => body)
-
-	doc.code.should eq(201)
-	doc.parsed_response['_id'].should be_kind_of(String)
-	doc.parsed_response['_id'].should eq("#{@cv}/fred")
-	doc.parsed_response['_key'].should be_kind_of(String)
-	doc.parsed_response['_key'].should eq("fred")
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	id1 = doc.parsed_response['_id']
-
-	# create second vertex
-	body = "{ \"name\" : \"John\", \"_key\" : \"john\" }"
-	doc = ArangoDB.log_post("#{prefix}-create-edge-bi", cmd, :body => body)
-
-	doc.code.should eq(201)
-	doc.parsed_response['_id'].should be_kind_of(String)
-	doc.parsed_response['_id'].should eq("#{@cv}/john")
-	doc.parsed_response['_key'].should be_kind_of(String)
-	doc.parsed_response['_key'].should eq("john")
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	id2 = doc.parsed_response['_id']
-
-	# create edge
-	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
-	body = "{ \"what\" : \"fred->john\", \"_key\" : \"edge1\", \"_bidirectional\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-create-edge-bi", cmd, :body => body)
-
-	doc.code.should eq(201)
-	doc.parsed_response['_id'].should be_kind_of(String)
-	doc.parsed_response['_id'].should eq("#{@ce}/edge1")
-	doc.parsed_response['_key'].should be_kind_of(String)
-	doc.parsed_response['_key'].should eq("edge1")
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-	id3 = doc.parsed_response['_id']
-
-	# check edge
-	cmd = "/_api/edge/#{id3}"
-        doc = ArangoDB.log_get("#{prefix}-create-edge-bi", cmd)
-
-	doc.code.should eq(200)
-	doc.parsed_response['_id'].should be_kind_of(String)
-	doc.parsed_response['_id'].should eq(id3)
-	doc.parsed_response['_key'].should be_kind_of(String)
-	doc.parsed_response['_key'].should eq("edge1")
-	doc.parsed_response['_vertices'].should be_kind_of(Array)
-	doc.parsed_response['_vertices'][0].should eq(id1)
-	doc.parsed_response['_vertices'][1].should eq(id2)
-	doc.parsed_response['_bidirectional'].should eq(true)
 	doc.parsed_response['what'].should eq("fred->john")
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
@@ -565,7 +497,6 @@ describe ArangoDB do
 	doc.parsed_response['_id'].should eq(id3)
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
-	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
       
@@ -610,7 +541,6 @@ describe ArangoDB do
 	doc.parsed_response['_id'].should eq(id3)
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
-	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
     end

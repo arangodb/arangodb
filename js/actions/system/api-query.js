@@ -25,16 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-var actions = require("org/arangodb/actions");
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a query and return information about it
@@ -70,7 +72,7 @@ var actions = require("org/arangodb/actions");
 
 function POST_api_query (req, res) {
   if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, internal.errors.ERROR_HTTP_NOT_FOUND.message);
+    actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 

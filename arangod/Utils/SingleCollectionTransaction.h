@@ -78,25 +78,6 @@ namespace triagens {
           _collection(0) {
         }
         
-        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const string& name,
-                                     const TRI_transaction_type_e accessType,
-                                     const TRI_col_type_e createType) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType, createType)),
-          _name(name),
-          _collection(0) {
-        }
-        
-        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const string& name,
-                                     const TRI_transaction_type_e accessType,
-                                     const bool create,
-                                     const TRI_col_type_e createType) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType, create, createType)),
-          _name(name),
-          _collection(0) {
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +150,16 @@ namespace triagens {
 
           assert(_collection != 0);
           return _collection->_cid;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read any (random) document within a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int read (TRI_doc_mptr_t** mptr, TRI_barrier_t** barrier) {
+          TRI_primary_collection_t* const primary = primaryCollection();
+
+          return this->readCollectionAny(primary, mptr, barrier);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -3,7 +3,6 @@
 
 HTTP/1.1 200 OK
 content-type: application/json
-location: /_api/collection/179665369
 
 {
   "name": "UnitTestsCollectionBasics",
@@ -21,7 +20,6 @@ location: /_api/collection/179665369
 
 HTTP/1.1 200 OK
 content-type: application/json
-location: /_api/collection/184354432
 
 {
   "name": "UnitTestsCollectionEdges",

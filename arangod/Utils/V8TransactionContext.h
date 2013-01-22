@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_V8_TRANSACTION_CONTEXT_H
 #define TRIAGENS_UTILS_V8_TRANSACTION_CONTEXT_H
 
+#include "V8/v8-globals.h"
+
 namespace triagens {
   namespace arango {
 

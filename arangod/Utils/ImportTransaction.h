@@ -30,8 +30,7 @@
 
 #include "Utils/SingleCollectionWriteTransaction.h"
 
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
@@ -61,11 +60,9 @@ namespace triagens {
 /// number of writes on it.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ImportTransaction (TRI_vocbase_t* const vocbase,
-                           const string& name, 
-                           const bool create,
-                           const TRI_col_type_e createType) :
-          SingleCollectionWriteTransaction<T, UINT64_MAX>(vocbase, name, create, createType) {
+        ImportTransaction (struct TRI_vocbase_s* const vocbase,
+                           const string& name) :
+          SingleCollectionWriteTransaction<T, UINT64_MAX>(vocbase, name) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -421,7 +421,6 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   if (args->_members._length <= 4 && 
       TRI_EqualString(name, ".edges.LENGTH()")) {
     // length restriction, can only be applied if length parameters are not already set
-    TRI_aql_node_t* argNode;
     TRI_json_t* value;
     double minValue = 0.0;
     double maxValue = 0.0;
@@ -498,6 +497,8 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
     }
 
     if (useMin || useMax) {
+      TRI_aql_node_t* argNode;
+
       // minLength and maxLength are parameters 5 & 6
       // add as many null value nodes as are missing
       while (args->_members._length < 4) {
@@ -614,6 +615,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h,sl", NULL);
+  REGISTER_FUNCTION("MATCHES", "MATCHES", true, false, ".,l", NULL);
 
   // geo functions
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);

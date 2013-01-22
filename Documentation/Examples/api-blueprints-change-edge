@@ -7,9 +7,8 @@ content-type: application/json; charset=utf-8
 {
   "edge": {
     "_id": "82564582/85317094",
-    "_rev": 85906918,
+    "_rev": "85906918",
     "_key": "85317094",
-    "_bidirectional": false,
     "_from": "81778150/84989414",
     "_to": "81778150/84792806",
     "$label": null,

@@ -155,6 +155,35 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a collection needs to be created on the fly
+///
+/// this method will check the "createCollection" attribute of the request. if 
+/// it is set to true, it will verify that the named collection actually exists. 
+/// if the collection does not yet exist, it will create it on the fly.
+/// if the "createCollection" attribute is not set or set to false, nothing will
+/// happen, and the collection name will not be checked
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
+                                                    const TRI_col_type_e type) {
+  bool found;
+  char const* valueStr = _request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+
+  if (! create) {
+    return true;
+  }
+
+  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrBearVocBase(_vocbase, name.c_str(), type);
+  if (collection == 0) {
+    generateTransactionError(name, TRI_errno());
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -179,9 +208,9 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
   _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
-    .appendText("\",\"_rev\":")
-    .appendInteger(rid)
-    .appendText(",\"_key\":\"")
+    .appendText("\",\"_rev\":\"")
+    .appendText(StringUtils::itoa(rid))
+    .appendText("\",\"_key\":\"")
     .appendText(key)
     .appendText("\"}");
 }
@@ -295,7 +324,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectio
   result->add("errorMessage", new VariantString("precondition failed"));
   // _id is safe and does not need to be JSON-encoded
   result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(collectionName, key)));
-  result->add("_rev", new VariantUInt64(rid));
+  // _rev is safe and does not need to be JSON-encoded
+  result->add("_rev", new VariantString(StringUtils::itoa(rid)));
   // _key is safe and does not need to be JSON-encoded
   result->add("_key", new VariantString(key));
 
@@ -351,7 +381,9 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_id", _id);
   }
 
-  TRI_json_t* _rev = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, document->_rid);
+  // convert rid from uint64_t to string
+  string rid = StringUtils::itoa(document->_rid);
+  TRI_json_t* _rev = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
   if (_rev) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_rev", _rev);
@@ -370,21 +402,8 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
     const string from = DocumentHelper::assembleDocumentId(vocbase, marker->_fromCid, string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(vocbase, marker->_toCid, string((char*) marker +  marker->_offsetToKey));
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_bidirectional", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, marker->_isBidirectional));
-    if (marker->_isBidirectional) {
-      TRI_json_t* vertices;
-
-      vertices = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-      if (vertices) {
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, vertices, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, vertices, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_vertices", vertices);
-      }
-    }
-    else {
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
-    }
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
   }
 
   // convert object to string

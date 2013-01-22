@@ -9,7 +9,7 @@ content-type: application/json
   "result": [
     {
       "n": 4,
-      "_rev": 25880119,
+      "_rev": "25880119",
       "_id": "23914039/25880119"
     }
   ],

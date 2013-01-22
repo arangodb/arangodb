@@ -27,13 +27,27 @@
       <script type="text/javascript" src="js/jquery.jeditable.js"></script>
       <script type="text/javascript" src="js/jquery.jeditable.autogrow.js"></script>
       <script type="text/javascript" src="js/master.js"></script>
-      <script type="text/javascript" src="js/arangodb/browser.js"></script>
-      <script type="text/javascript" src="js/arangodb/errors.js"></script>
-      <script type="text/javascript" src="js/arangodb/module-internal.js"></script>
       <script type="text/javascript" src="js/arangodb/monkeypatches.js"></script>
-      <script type="text/javascript" src="js/modules/simple-query-basics.js"></script>
-      <script type="text/javascript" src="js/modules/simple-query.js"></script>
-      <script type="text/javascript" src="js/modules/statement-basics.js"></script>
+      <script type="text/javascript" src="js/arangodb/browser.js"></script>
+      <script type="text/javascript" src="js/arangodb/module-internal-common.js"></script>
+      <script type="text/javascript" src="js/arangodb/module-internal-client.js"></script>
+      <script type="text/javascript" src="js/arangodb/errors.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb-common.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-collection-common.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-collection.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-database.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-error-common.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-error.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-query-cursor.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-statement-common.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arango-statement.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arangosh.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/arangosh.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/graph.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/graph/traversal.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/simple-query-common.js"></script>
+      <script type="text/javascript" src="js/modules/org/arangodb/simple-query.js"></script>
       <script type="text/javascript" src="js/arangodb/client.js"></script>
     <style>
       a:link {color: #797979; text-decoration: none;}  
@@ -116,21 +130,21 @@
         <table cellpadding="3" cellspacing="0" border="0">
           <tr><td>Name:</td>
           <td>
-            <input type="text" class="smallInput" id="createCollName"></input>
+            <input type="text" class="smallInput" id="createCollName" />
           </td>
           <td class="longTD">New collection name.</td>
         </tr>
         <tr><td>journalSize:</td>
         <td>
-          <input type="text" onkeypress='validate(event)' class="smallInput" id="createCollSize"></input>
+          <input type="text" onkeypress='validate(event)' class="smallInput" id="createCollSize" />
         </td>
         <td class="longTD">
           (MB) The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.
         </td></tr>
           <tr><td>waitForSync:</td><td>
             <form action="#" id="waitForSyncForm">
-              <input type="radio" name="waitForSync" value="true">yes</input>
-              <input type="radio" name="waitForSync" value="false" checked>no</input>
+              <input type="radio" name="waitForSync" value="true" />yes
+              <input type="radio" name="waitForSync" value="false" checked />no
             </form>
           </td>
           <td class="longTD">If true then the data is synchronised to disk before returning from a create or update of an document.
@@ -138,8 +152,8 @@
           </tr>
           <tr><td>Type:</td><td>
             <form action="#" id="typeForm">
-              <input type="radio" name="type" value="2" checked>document</input>
-              <input type="radio" name="type" value="3">edge</input>
+              <input type="radio" name="type" value="2" checked />document
+              <input type="radio" name="type" value="3" />edge
             </form>
           </td> 
           <td class="longTD">The type of the collection to create.
@@ -162,15 +176,15 @@
             <tr>
               <td class="first" align="left">journalSize:</td>
               <td>
-                <input type="text" onkeypress='validate(event)' class="smallInput" id="editCollectionJournalSize"></input>
+                <input type="text" onkeypress='validate(event)' class="smallInput" id="editCollectionJournalSize" />
               </td>
             </tr>
             <tr>
               <td>waitForSync:</td>
               <td>
                 <form action="#" id="waitForSyncForm">
-                  <input type="radio" name="editWaitForSync" value="true">yes</input>
-                  <input type="radio" name="editWaitForSync" value="false">no</input>
+                  <input type="radio" name="editWaitForSync" value="true" />yes
+                  <input type="radio" name="editWaitForSync" value="false" />no
                 </form>
               </td>
             </tr>
@@ -215,7 +229,7 @@
 
           <div class="floatRight">
             <form id="docPageForm">
-              Jump to: <input type="text" id="docPageInput" placeholder="Page"></input>
+              Jump to: <input type="text" id="docPageInput" placeholder="Page" />
               <button id="submitDocPageInput">Ok</button>
             </form>
             <button class="enabled" id="documents_first"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
@@ -425,7 +439,7 @@
         <div id="statisticRadioDiv" class="radioFormat">
           <div class="ItemActionButtons">
             <div id="divSaveButton" class="buttonset" style="float: left; font-size:0.6em; ">
-              <input id="btnAddNewStat" class="button" value="Add..." onclick="ItemActionButtons.onSaveExtraClick.apply(this)" type="button"></input>
+              <input id="btnAddNewStat" class="button" value="Add..." onclick="ItemActionButtons.onSaveExtraClick.apply(this)" type="button" />
               <ul class="SaveExtraOptions ui-corner-bottom" id="btnSaveExtraOptions">
                 <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowConnectionsStats.apply(this)"id="addconnectionsLiBtn">Connections</li>
                 <li onclick="$('#btnSaveExtraOptions').toggle(); ItemActionButtons.ShowRequestsStats.apply(this)"id="addrequestsLiBtn">Requests</li>
@@ -441,13 +455,13 @@
         <div id="avocshWindow">
         </div>
         <form>
-          <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
+          <input type="text" class="editBox" id="avocshContent" /><button class="minimal" id="submitAvoc">Ok</button>
         </form>
           <button class="minimal" id="refreshShell">Refresh</button>
             <form action="#" id="formatshellJSONyesno" style="font-size:0.8em;">
               Format JSON? 
-              <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
-              <input type="radio" name="formatshellJSONyesno" value=false>no</input>
+              <input type="radio" name="formatshellJSONyesno" value="true" checked />yes
+              <input type="radio" name="formatshellJSONyesno" value="false" />no
             </form>
           <a href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br />
       </div>
@@ -470,8 +484,8 @@
         </form>   
         <form action="#" id="formatJSONyesno" style="font-size:0.8em;">
           Format JSON? 
-          <input type="radio" name="formatJSONyesno" value="true" checked>yes</input>
-          <input type="radio" name="formatJSONyesno" value="false">no</input>
+          <input type="radio" name="formatJSONyesno" value="true" checked />yes
+          <input type="radio" name="formatJSONyesno" value="false" />no
         </form>
       </div>
 

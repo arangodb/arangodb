@@ -25,8 +25,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var traversal = require("org/arangodb/graph/traversal");
+var INTERNAL = require("internal");
+var TRAVERSAL = require("org/arangodb/graph/traversal");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
@@ -53,7 +54,7 @@ var AHUACATL_TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_THROW (error, data) {
-  var err = new ArangoError
+  var err = new ArangoError();
 
   err.errorNum = error.code;
   if (data) {
@@ -94,7 +95,7 @@ function AHUACATL_INDEX (collection, indexTypes) {
     var index = indexes[i];
 
     for (var j = 0; j < indexTypes.length; ++j) {
-      if (index.type == indexTypes[j]) {
+      if (index.type === indexTypes[j]) {
         return index.id;
       }
     }
@@ -109,16 +110,16 @@ function AHUACATL_INDEX (collection, indexTypes) {
 
 function AHUACATL_COLLECTION (name) {
   if (typeof name !== 'string') {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "internal");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "INTERNAL");
   }
 
   if (name.substring(0, 1) === '_') {
     // system collections need to be accessed slightly differently as they
     // are not returned by the propertyGetter of db
-    return internal.db._collection(name);
+    return INTERNAL.db._collection(name);
   }
 
-  return internal.db[name];
+  return INTERNAL.db[name];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +199,7 @@ function AHUACATL_CLONE (obj) {
 
 function AHUACATL_ARG_CHECK (actualValue, expectedType, functionName) {
   if (AHUACATL_TYPEWEIGHT(actualValue) !== expectedType) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
   }
 }
 
@@ -383,7 +384,7 @@ function AHUACATL_GET_INDEX (value, index) {
   
   if (AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_LIST &&
       AHUACATL_TYPEWEIGHT(value) != AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   var result = value[index];
@@ -423,7 +424,7 @@ function AHUACATL_DOCUMENT_MEMBER (value, attributeName) {
 
 function AHUACATL_LIST (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_LIST) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   return value;
@@ -663,7 +664,7 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_COLLECTIONS () {
-  var collections = internal.db._collections();
+  var collections = INTERNAL.db._collections();
   var result = [ ];
 
   for (var i = 0; i < collections.length; ++i) {
@@ -695,7 +696,7 @@ function AHUACATL_COLLECTIONS () {
 
 function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
   if (AHUACATL_TYPEWEIGHT(condition) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   if (condition) {
@@ -714,7 +715,7 @@ function AHUACATL_TERNARY_OPERATOR (condition, truePart, falsePart) {
 function AHUACATL_LOGICAL_AND (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   if (! lhs) {
@@ -734,7 +735,7 @@ function AHUACATL_LOGICAL_AND (lhs, rhs) {
 function AHUACATL_LOGICAL_OR (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
   
   if (lhs) {
@@ -752,7 +753,7 @@ function AHUACATL_LOGICAL_OR (lhs, rhs) {
 
 function AHUACATL_LOGICAL_NOT (lhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_BOOL) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
   return ! lhs;
@@ -1199,7 +1200,7 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
   var rightWeight = AHUACATL_TYPEWEIGHT(rhs);
   
   if (rightWeight !== AHUACATL_TYPEWEIGHT_LIST) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_LIST_EXPECTED);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
   var numRight = rhs.length;
@@ -1233,12 +1234,12 @@ function AHUACATL_RELATIONAL_IN (lhs, rhs) {
 
 function AHUACATL_UNARY_PLUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1252,12 +1253,12 @@ function AHUACATL_UNARY_PLUS (value) {
 
 function AHUACATL_UNARY_MINUS (value) {
   if (AHUACATL_TYPEWEIGHT(value) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(-value);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1272,12 +1273,12 @@ function AHUACATL_UNARY_MINUS (value) {
 function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) { 
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs + rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1292,12 +1293,12 @@ function AHUACATL_ARITHMETIC_PLUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs - rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1312,12 +1313,12 @@ function AHUACATL_ARITHMETIC_MINUS (lhs, rhs) {
 function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs * rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1332,16 +1333,16 @@ function AHUACATL_ARITHMETIC_TIMES (lhs, rhs) {
 function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
   
   if (rhs == 0) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result = AHUACATL_NUMERIC_VALUE(lhs / rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1356,16 +1357,16 @@ function AHUACATL_ARITHMETIC_DIVIDE (lhs, rhs) {
 function AHUACATL_ARITHMETIC_MODULUS (lhs, rhs) {
   if (AHUACATL_TYPEWEIGHT(lhs) !== AHUACATL_TYPEWEIGHT_NUMBER ||
       AHUACATL_TYPEWEIGHT(rhs) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
   if (rhs == 0) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_DIVISION_BY_ZERO);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
   var result  = AHUACATL_NUMERIC_VALUE(lhs % rhs);
   if (AHUACATL_TYPEWEIGHT(result) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return result;
@@ -1702,7 +1703,7 @@ function AHUACATL_IS_DOCUMENT (value) {
 
 function AHUACATL_NUMBER_FLOOR (value) {
   if (! AHUACATL_IS_NUMBER(value)) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
   
   return Math.floor(value);
@@ -1714,7 +1715,7 @@ function AHUACATL_NUMBER_FLOOR (value) {
 
 function AHUACATL_NUMBER_CEIL (value) {
   if (! AHUACATL_IS_NUMBER(value)) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
   
   return Math.ceil(value);
@@ -1726,7 +1727,7 @@ function AHUACATL_NUMBER_CEIL (value) {
 
 function AHUACATL_NUMBER_ROUND (value) {
   if (! AHUACATL_IS_NUMBER(value)) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
   
   return Math.round(value);
@@ -1738,7 +1739,7 @@ function AHUACATL_NUMBER_ROUND (value) {
 
 function AHUACATL_NUMBER_ABS (value) {
   if (! AHUACATL_IS_NUMBER(value)) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
   
   return Math.abs(value);
@@ -1835,7 +1836,7 @@ function AHUACATL_LIMIT (value, offset, count) {
   AHUACATL_LIST(value);
 
   if (count < 0) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
 
   return value.slice(offset, offset + count);
@@ -1868,7 +1869,7 @@ function AHUACATL_LENGTH () {
     return AHUACATL_KEYS(value, false).length;
   }
   else {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LENGTH");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LENGTH");
   }
 }
 
@@ -1951,7 +1952,7 @@ function AHUACATL_UNION () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_LIST) {
-      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
     }
 
     for (var k in element) {
@@ -2034,7 +2035,7 @@ function AHUACATL_SUM () {
     }
 
     if (AHUACATL_TYPEWEIGHT(currentValue) !== AHUACATL_TYPEWEIGHT_NUMBER) {
-      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
     }
     
     if (result === null) {
@@ -2074,7 +2075,7 @@ function AHUACATL_GEO_NEAR () {
 
   var idx = AHUACATL_INDEX(AHUACATL_COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx == null) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = AHUACATL_COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
@@ -2106,7 +2107,7 @@ function AHUACATL_GEO_WITHIN () {
 
   var idx = AHUACATL_INDEX(AHUACATL_COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx == null) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = AHUACATL_COLLECTION(collection).WITHIN(idx, latitude, longitude, radius);
@@ -2149,7 +2150,7 @@ function AHUACATL_FULLTEXT () {
 
   var idx = AHUACATL_INDEX_FULLTEXT(AHUACATL_COLLECTION(collection), attribute);
   if (idx == null) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
   var result = AHUACATL_COLLECTION(collection).FULLTEXT(idx, query);
@@ -2195,11 +2196,11 @@ function AHUACATL_GRAPH_PATHS () {
     searchDirection = 3;
   }
   else {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
   }
 
   if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
   }
 
   var searchAttributes = { 
@@ -2227,7 +2228,7 @@ function AHUACATL_GRAPH_PATHS () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph, internal part called recursively
+/// @brief find all paths through a graph, INTERNAL part called recursively
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
@@ -2282,7 +2283,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
       var clonedEdges = AHUACATL_CLONE(edges);
       var clonedVertices = AHUACATL_CLONE(vertices);
       try {
-        clonedVertices.push(internal.db._document(targetId));
+        clonedVertices.push(INTERNAL.db._document(targetId));
         clonedEdges.push(subEdge);
       }
       catch (e) {
@@ -2344,43 +2345,61 @@ function AHUACATL_GRAPH_TRAVERSE () {
       }
     }
 
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+  }
+
+  if (params.maxDepth === undefined) {
+    // we need to have at least SOME limit to prevent endless iteration
+    params.maxDepth = 256;
+  }
+
+  // prepare an array of filters
+  var filter = [ ];
+  if (params.minDepth != undefined) {
+    filter.push(TRAVERSAL.MinDepthFilter);
+  }
+  if (params.maxDepth != undefined) {
+    filter.push(TRAVERSAL.MaxDepthFilter);
+  }
+  if (filter.length == 0) {
+    filter.push(TRAVERSAL.VisitAllFilter);
   }
 
   var config = {
-    datasource: traversal.CollectionDatasourceFactory(edgeCollection),
+    datasource: TRAVERSAL.CollectionDatasourceFactory(edgeCollection),
     strategy: validate(params.strategy, {
-      'depthfirst': traversal.Traverser.DEPTH_FIRST,
-      'breadthfirst': traversal.Traverser.BREADTH_FIRST
+      'depthfirst': TRAVERSAL.Traverser.DEPTH_FIRST,
+      'breadthfirst': TRAVERSAL.Traverser.BREADTH_FIRST
     }),
     order: validate(params.order, {
-      'preorder': traversal.Traverser.PRE_ORDER,
-      'postorder': traversal.Traverser.POST_ORDER
+      'preorder': TRAVERSAL.Traverser.PRE_ORDER,
+      'postorder': TRAVERSAL.Traverser.POST_ORDER
     }),
     itemOrder: validate(params.itemOrder, {
-      'forward': traversal.Traverser.FORWARD,
-      'backward': traversal.Traverser.BACKWARD
+      'forward': TRAVERSAL.Traverser.FORWARD,
+      'backward': TRAVERSAL.Traverser.BACKWARD
     }),
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
     maxDepth: params.maxDepth,
-    filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : traversal.VisitAllFilter,
+    minDepth: params.minDepth,
+    filter: filter,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
-        'none': traversal.Traverser.UNIQUE_NONE,
-        'global': traversal.Traverser.UNIQUE_GLOBAL,
-        'path': traversal.Traverser.UNIQUE_PATH
+        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
+        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
+        'path': TRAVERSAL.Traverser.UNIQUE_PATH
       }),
       edges: validate(params.uniqueness && params.uniqueness.edges, {
-        'none': traversal.Traverser.UNIQUE_NONE,
-        'global': traversal.Traverser.UNIQUE_GLOBAL,
-        'path': traversal.Traverser.UNIQUE_PATH
+        'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
+        'none': TRAVERSAL.Traverser.UNIQUE_NONE,
+        'path': TRAVERSAL.Traverser.UNIQUE_PATH
       }),
     },
     expander: validate(direction, {
-      'outbound': traversal.CollectionOutboundExpander,
-      'inbound': traversal.CollectionInboundExpander,
-      'any': traversal.CollectionAnyExpander
+      'outbound': TRAVERSAL.OutboundExpander,
+      'inbound': TRAVERSAL.InboundExpander,
+      'any': TRAVERSAL.AnyExpander
     })
   };
 
@@ -2388,9 +2407,18 @@ function AHUACATL_GRAPH_TRAVERSE () {
     config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
   }
 
+  var v = null;
   var result = [ ];
-  var traverser = new traversal.Traverser(config);
-  traverser.traverse(result, vertexCollection.document(startVertex));
+  try {
+    v = vertexCollection.document(startVertex);
+  }
+  catch (err) {
+  }
+
+  if (v != null) {
+    var traverser = new TRAVERSAL.Traverser(config);
+    traverser.traverse(result, v);
+  }
 
   return result;
 }
@@ -2481,7 +2509,7 @@ function AHUACATL_HAS () {
   }
 
   if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
   }
 
   return element.hasOwnProperty(name);
@@ -2498,7 +2526,7 @@ function AHUACATL_MERGE () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
     }
 
     for (var k in element) {
@@ -2524,7 +2552,7 @@ function AHUACATL_MERGE_RECURSIVE () {
     var element = arguments[i];
 
     if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
-      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
     }
 
     recurse = function (old, element) {
@@ -2552,6 +2580,49 @@ function AHUACATL_MERGE_RECURSIVE () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare an object against a list of examples and return whether the
+/// object matches at least one of the examples 
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MATCHES () {
+  var element = arguments[0];
+
+  if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+    return false;
+  }
+
+  var examples = arguments[1];
+  if (! Array.isArray(examples)) {
+    examples = [ examples ];
+  }
+
+  for (var i = 0; i < examples.length; ++i) {
+    var example = examples[i];
+    var result = true;
+
+    if (AHUACATL_TYPEWEIGHT(example) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
+    }
+
+    var keys = AHUACATL_KEYS(example);
+    for (var j = 0; j < keys.length; ++j) {
+      var key = keys[j];
+
+      if (! AHUACATL_RELATIONAL_EQUAL(element[key], example[key])) {
+        result = false;
+        break;
+      }
+    }
+
+    if (result) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief passthru the argument
 ///
 /// this function is marked as non-deterministic so its argument withstands
@@ -2575,10 +2646,10 @@ function AHUACATL_FAIL () {
   var message = arguments[0];
 
   if (AHUACATL_TYPEWEIGHT(message) === AHUACATL_TYPEWEIGHT_STRING) {
-    AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, message);
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
   }
 
-  AHUACATL_THROW(internal.errors.ERROR_QUERY_FAIL_CALLED, "");
+  AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

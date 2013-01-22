@@ -542,48 +542,45 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  TRI_edge_header_t* entries;
   TRI_edge_header_t* entryIn;
   TRI_edge_header_t* entryOut;
   TRI_doc_edge_key_marker_t const* edge;
   bool isReflexive;
-  bool isBidirectional;
+
   TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
 
   edge = doc->_data;
 
   // is the edge self-reflexive (_from & _to are identical)?
   isReflexive = (edge->_toCid == edge->_fromCid && strcmp(((char*) edge) + edge->_offsetToKey, ((char*) edge) + edge->_offsetFromKey) == 0);
-  isBidirectional = edge->_isBidirectional;
 
   // allocate all edge headers and return early if memory allocation fails
 
-  // use one allocation with 2 slots
-  // the IN entry will be in the first slot, and we only need to free this one later
-  // using one allocation with 2 slots saves a lot of mallocs, and speeds up the
-  // index insertion for a large edge collection
-  entries = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 2 * sizeof(TRI_edge_header_t), false);
-  if (entries == NULL) {
+  entryIn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), false);
+  if (entryIn == NULL) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  // we have allocated all necessary memory by here
-
+  entryOut = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), false);
+  if (entryOut == NULL) {
+    // OOM
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn);
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
   // first slot: IN
-  entryIn = entries;
   entryIn->_mptr = doc;
-  entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive, isBidirectional);
+  entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive);
   entryIn->_cid = edge->_toCid;
   entryIn->_key = ((char*) edge) + edge->_offsetToKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, true);
+  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, false);
 
   // second slot: OUT
-  entryOut = entries + 1;
   entryOut->_mptr = doc;
-  entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive, isBidirectional);
+  entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive);
   entryOut->_cid = edge->_fromCid;
   entryOut->_key = ((char*) edge) + edge->_offsetFromKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, true);
+  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, false);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -615,7 +612,12 @@ static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_OUT);
   entry._cid = edge->_fromCid;
   entry._key = ((char*) edge) + edge->_offsetFromKey;
-  TRI_RemoveElementMultiPointer(edgesIndex, &entry);
+  old = TRI_RemoveElementMultiPointer(edgesIndex, &entry);
+
+  // the pointer to the OUT element is also the memory pointer we need to free
+  if (old != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+  }
   
   // IN
   entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_IN);
@@ -724,7 +726,7 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 
   for (i = 0; i < n; ++i) {
     TRI_edge_header_t* element = edgesIndex->_edges._table[i];
-    if (element != NULL && (element->_flags & TRI_EDGE_BIT_DIRECTION_IN) != 0) {
+    if (element != NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
     }
   }
@@ -4182,7 +4184,8 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, idx->_unique));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
+  // 2013-01-17: deactivated substring indexing
+  // TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) fulltextIndex->_minWordLength));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
     
@@ -4312,8 +4315,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
 
-  // TODO: indexSubstrings
-  // TODO: minWordLength 
   fts = TRI_CreateFtsIndex(2048, 1, 1); 
   if (fts == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);

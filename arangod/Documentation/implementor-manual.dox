@@ -37,9 +37,10 @@
 ///  <li>@ref HttpCursor</li>
 ///  <li>@ref HttpSimple</li>
 ///  <li>@ref IndexCapHttp</li>
-///  <li>@ref IndexGeoHttp</li>
 ///  <li>@ref IndexHashHttp</li>
 ///  <li>@ref IndexSkiplistHttp</li>
+///  <li>@ref IndexGeoHttp</li>
+///  <li>@ref IndexFulltextHttp</li>
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
@@ -62,9 +63,10 @@
 ///   @copydetails HttpQueryTOC
 ///   @copydetails HttpSimpleTOC
 ///   @copydetails IndexCapHttpTOC
-///   @copydetails IndexGeoHttpTOC
 ///   @copydetails IndexHashHttpTOC
 ///   @copydetails IndexSkiplistHttpTOC
+///   @copydetails IndexGeoHttpTOC
+///   @copydetails IndexFulltextHttpTOC
 ///  </li>
 ///  <li>Light-Weight HTTP for Administration
 ///   @copydetails HttpCollectionTOC

@@ -336,8 +336,8 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(context, "processCsvFile", JS_ProcessCsvFile);
-  TRI_AddGlobalFunctionVocbase(context, "processJsonFile", JS_ProcessJsonFile);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_CSV_FILE", JS_ProcessCsvFile);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_JSON_FILE", JS_ProcessJsonFile);
 
   v8::Handle<v8::Object> colors = v8::Object::New();
 

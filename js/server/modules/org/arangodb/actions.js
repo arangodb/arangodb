@@ -236,28 +236,28 @@ function lookupCallbackAction (route, action) {
   }
 
   // .............................................................................
-  // function
+  // user-defined function
   // .............................................................................
 
   if (action.hasOwnProperty('function')) {
-    defn = "func = " + action['function'];
+    defn = "func = (function() {" + action['function'] + "})();";
     env = {};
 
     try {
       internal.execute(defn, env, route);
 
       if (env.hasOwnProperty("func")) {
-	func = env.func;
+        func = env.func;
       }
       else {
         func = notImplementedFunction(route,
-				      "could not define function '" + action['function']);
+                                      "could not define function '" + action['function']);
       }
     }
     catch (err) {
       func = errorFunction(route,
-			   "an error occurred while loading function '" 
-  			     + action['function'] + "': " + String(err));
+                           "an error occurred while loading function '" 
+                           + action['function'] + "': " + String(err));
     }
 
     return {
@@ -288,23 +288,23 @@ function lookupCallbackAction (route, action) {
                                              + name + "' in module '" + joined + "'");
       }
     }
-    catch (err) {
+    catch (err1) {
       if (! moduleExists(joined)) {
         func = notImplementedFunction(route, 
-				      "an error occurred while loading action named '" + name 
-				        + "' in module '" + joined + "': " + String(err));
+                                      "an error occurred while loading action named '" + name 
+                                        + "' in module '" + joined + "': " + String(err1));
       }
       else {
         func = errorFunction(route,
-			     "an error occurred while loading action named '" + name 
-			       + "' in module '" + joined + "': " + String(err));
+                             "an error occurred while loading action named '" + name 
+                               + "' in module '" + joined + "': " + String(err1));
       }
     }
 
     if (func === null || typeof func !== 'function') {
       func = errorFunction(route, 
-			   "invalid definition for the action named '" + name 
-			     + "' in module '" + joined + "'");
+                           "invalid definition for the action named '" + name 
+                             + "' in module '" + joined + "'");
     }
 
     return {
@@ -331,9 +331,10 @@ function lookupCallbackAction (route, action) {
             if (httpMethods.hasOwnProperty(m)) {
               if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
                 func = module[m]
-		  || errorFunction(route, 
-				   "invalid definition for " + m + " action in action controller module '" 
-				     + action.controller + "'");
+                  || errorFunction(route, 
+                                   "invalid definition for " + m 
+                                     + " action in action controller module '" 
+                                     + action.controller + "'");
 
                 return func(req, res, options, next); 
               }
@@ -342,9 +343,9 @@ function lookupCallbackAction (route, action) {
 
           if (module.hasOwnProperty('do')) {
             func = module['do']
-	      || errorFunction(route,
-			       "invalid definition for do action in action controller module '"
-			         + action.controller + "'");
+              || errorFunction(route,
+                               "invalid definition for do action in action controller module '"
+                                 + action.controller + "'");
 
             return func(req, res, options, next);
           }
@@ -355,16 +356,16 @@ function lookupCallbackAction (route, action) {
         methods: action.methods || exports.ALL_METHODS
       };
     }
-    catch (err1) {
+    catch (err2) {
       if (! moduleExists(action.controller)) {
         return notImplementedFunction(route, 
-				      "cannot load/execute action controller module '" 
-				        + action.controller + ": " + String(err1));
+                                      "cannot load/execute action controller module '" 
+                                        + action.controller + ": " + String(err2));
       }
 
       return errorFunction(route, 
-			   "cannot load/execute action controller module '" 
-			     + action.controller + ": " + String(err1));
+                           "cannot load/execute action controller module '" 
+                             + action.controller + ": " + String(err2));
     }
   }
 
@@ -379,7 +380,7 @@ function lookupCallbackAction (route, action) {
       controller: function (req, res, options, next) {
         var module;
         var path;
-	var efunc;
+        var efunc;
 
         // determine path
         if (req.hasOwnProperty('suffix')) {
@@ -394,10 +395,10 @@ function lookupCallbackAction (route, action) {
           require(path);
         }
         catch (err) {
-	  efunc = errorFunction;
+          efunc = errorFunction;
 
           if (! moduleExists(path)) {
-	    efunc = notImplementedFunction;
+            efunc = notImplementedFunction;
           }
 
           return efunc(route, "cannot load prefix controller: " + String(err))(
@@ -412,9 +413,9 @@ function lookupCallbackAction (route, action) {
             if (httpMethods.hasOwnProperty(m)) {
               if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
                 func = module[m]
-		  || errorFunction(route,
-				   "Invalid definition for " + m + " action in prefix controller '"
-				     + action.prefixController + "'");
+                  || errorFunction(route,
+                                   "Invalid definition for " + m + " action in prefix controller '"
+                                     + action.prefixController + "'");
 
                 return func(req, res, options, next);
               }
@@ -423,17 +424,17 @@ function lookupCallbackAction (route, action) {
   
           if (module.hasOwnProperty('do')) {
             func = module['do']
-	      || errorFunction(route, 
-			       "Invalid definition for do action in prefix controller '"
-			         + action.prefixController + "'");
+              || errorFunction(route, 
+                               "Invalid definition for do action in prefix controller '"
+                                 + action.prefixController + "'");
 
             return func(req, res, options, next);
           }
         }
         catch (err2) {
           return errorFunction(route, 
-			       "Cannot load/execute prefix controller '"
-			         + action.prefixController + "': " + String(err2))(
+                               "Cannot load/execute prefix controller '"
+                                 + action.prefixController + "': " + String(err2))(
                    req, res, options, next);
         }
 
@@ -1138,6 +1139,22 @@ function firstRouting (type, parts) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if development mode is allowed in general
+////////////////////////////////////////////////////////////////////////////////
+
+function developmentModeAllowed () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if development mode is activated for an application
+////////////////////////////////////////////////////////////////////////////////
+
+function developmentModeActivated (application) {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1242,7 +1259,7 @@ function resultNotImplemented (req, res, msg, headers) {
 function resultUnsupported (req, res, headers) {
   resultError(req, res,
               exports.HTTP_METHOD_NOT_ALLOWED,
-	      arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
+              arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
               "Unsupported method",
               headers);  
 }
@@ -1468,7 +1485,7 @@ function resultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              specific controllers
+// --SECTION--                                                  specific actions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1514,7 +1531,7 @@ function logRequest (req, res, options, next) {
     else if (level === "log") {
       log = console.log;
     }
-    else if (level === "warn") {
+    else if (level === "warn" || level === "warning") {
       log = console.warn;
     }
     else {
@@ -1564,51 +1581,53 @@ function redirectRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // public functions
-exports.defineHttp              = defineHttp;
-exports.getErrorMessage         = getErrorMessage;
-exports.getJsonBody             = getJsonBody;
-exports.errorFunction           = errorFunction;
-exports.reloadRouting           = reloadRouting;
-exports.firstRouting            = firstRouting;
-exports.nextRouting             = nextRouting;
-exports.routingCache            = function() { return RoutingCache; };
+exports.defineHttp               = defineHttp;
+exports.getErrorMessage          = getErrorMessage;
+exports.getJsonBody              = getJsonBody;
+exports.errorFunction            = errorFunction;
+exports.reloadRouting            = reloadRouting;
+exports.firstRouting             = firstRouting;
+exports.nextRouting              = nextRouting;
+exports.routingCache             = function() { return RoutingCache; };
+exports.developmentModeAllowed   = developmentModeAllowed;
+exports.developmentModeActivated = developmentModeActivated;
 
 // standard HTTP responses
-exports.badParameter            = badParameter;
-exports.resultBad               = resultBad;
-exports.resultError             = resultError;
-exports.resultNotFound          = resultNotFound;
-exports.resultNotImplemented    = resultNotImplemented;
-exports.resultOk                = resultOk;
-exports.resultPermanentRedirect = resultPermanentRedirect;
-exports.resultTemporaryRedirect = resultTemporaryRedirect;
-exports.resultUnsupported       = resultUnsupported;
+exports.badParameter             = badParameter;
+exports.resultBad                = resultBad;
+exports.resultError              = resultError;
+exports.resultNotFound           = resultNotFound;
+exports.resultNotImplemented     = resultNotImplemented;
+exports.resultOk                 = resultOk;
+exports.resultPermanentRedirect  = resultPermanentRedirect;
+exports.resultTemporaryRedirect  = resultTemporaryRedirect;
+exports.resultUnsupported        = resultUnsupported;
 
 // ArangoDB specific responses
-exports.resultCursor            = resultCursor;
-exports.collectionNotFound      = collectionNotFound;
-exports.indexNotFound           = indexNotFound;
-exports.resultException         = resultException;
+exports.resultCursor             = resultCursor;
+exports.collectionNotFound       = collectionNotFound;
+exports.indexNotFound            = indexNotFound;
+exports.resultException          = resultException;
 
 // standard actions
-exports.echoRequest             = echoRequest;
-exports.logRequest              = logRequest;
-exports.redirectRequest         = redirectRequest;
+exports.echoRequest              = echoRequest;
+exports.logRequest               = logRequest;
+exports.redirectRequest          = redirectRequest;
 
 // some useful constants
-exports.COLLECTION              = "collection";
-exports.COLLECTION_IDENTIFIER   = "collection-identifier";
-exports.COLLECTION_NAME         = "collection-name";
-exports.NUMBER                  = "number";
+exports.COLLECTION               = "collection";
+exports.COLLECTION_IDENTIFIER    = "collection-identifier";
+exports.COLLECTION_NAME          = "collection-name";
+exports.NUMBER                   = "number";
 
-exports.DELETE                  = "DELETE";
-exports.GET                     = "GET";
-exports.HEAD                    = "HEAD";
-exports.POST                    = "POST";
-exports.PUT                     = "PUT";
-exports.PATCH                   = "PATCH";
+exports.DELETE                   = "DELETE";
+exports.GET                      = "GET";
+exports.HEAD                     = "HEAD";
+exports.POST                     = "POST";
+exports.PUT                      = "PUT";
+exports.PATCH                    = "PATCH";
 
-exports.ALL_METHODS             = [ "DELETE", "GET", "HEAD", "POST", "PUT", "PATCH" ];
+exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "POST", "PUT", "PATCH" ];
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
@@ -1654,5 +1673,5 @@ reloadRouting();
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
 // End:

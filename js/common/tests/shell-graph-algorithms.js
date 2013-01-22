@@ -1,14 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80,
-         sloppy: true */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    print,
-    PRINT_OBJECT,
-    AvocadoCollection, AvocadoEdgesCollection,
-    processCsvFile */
+/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -37,9 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity"),
-  Helper = require("test-helper").Helper,
-  console = require("console");
+var jsunity = require("jsunity");
+
+var console = require("console");
+
+var Helper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods

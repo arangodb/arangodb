@@ -5,31 +5,51 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief JavaScript modules for browser
+################################################################################
+
+JAVASCRIPT_BROWSER = \
+	html/admin/js/modules/org/arangodb/arango-collection.js \
+	html/admin/js/modules/org/arangodb/arango-database.js \
+	html/admin/js/modules/org/arangodb/arango-error.js \
+	html/admin/js/modules/org/arangodb/arango-query-cursor.js \
+	html/admin/js/modules/org/arangodb/arango-statement.js \
+	html/admin/js/modules/org/arangodb.js \
+	html/admin/js/modules/org/arangodb/arangosh.js \
+	html/admin/js/modules/org/arangodb/simple-query.js \
+	\
+	html/admin/js/modules/org/arangodb-common.js \
+	html/admin/js/modules/org/arangodb/arango-collection-common.js \
+	html/admin/js/modules/org/arangodb/arango-error-common.js \
+	html/admin/js/modules/org/arangodb/arango-statement-common.js \
+	html/admin/js/modules/org/arangodb/graph.js \
+	html/admin/js/modules/org/arangodb/graph/traversal.js \
+	html/admin/js/modules/org/arangodb/simple-query-common.js
+
+BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
+
+################################################################################
 ### @brief files for jslint
 ################################################################################
 
 JAVASCRIPT_JSLINT = \
+	`find @srcdir@/js/common/bootstrap -name "*.js"` \
+	`find @srcdir@/js/client/bootstrap -name "*.js"` \
+	`find @srcdir@/js/server/bootstrap -name "*.js"` \
+	\
+	`find @srcdir@/js/common/modules/org -name "*.js"` \
+	`find @srcdir@/js/client/modules -name "*.js"` \
+	`find @srcdir@/js/server/modules -name "*.js"` \
+	\
+	@srcdir@/js/client/client.js \
+	@srcdir@/js/server/server.js \
+	@srcdir@/js/server/version-check.js \
+	\
 	@srcdir@/html/admin/js/arangodb/browser.js \
+	\
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
-	@srcdir@/js/actions/system/api-system.js \
-	@srcdir@/js/client/modules/org/arangodb.js \
-	@srcdir@/js/client/modules/org/arangodb/deploy.js \
-	@srcdir@/js/common/bootstrap/errors.js \
-	@srcdir@/js/common/bootstrap/module-console.js \
-	@srcdir@/js/common/bootstrap/module-fs.js \
-	@srcdir@/js/common/bootstrap/module-internal.js \
-	@srcdir@/js/common/bootstrap/modules.js \
-	@srcdir@/js/common/bootstrap/monkeypatches.js \
-	@srcdir@/js/server/ArangoCollection.js \
-	@srcdir@/js/server/ArangoStructure.js \
-	@srcdir@/js/server/modules/org/arangodb.js \
-	@srcdir@/js/server/modules/org/arangodb/actions.js \
-	@srcdir@/js/server/modules/org/arangodb/actions/echoController.js \
-	@srcdir@/js/server/modules/org/arangodb/actions/staticContentController.js \
-	@srcdir@/js/server/modules/org/arangodb/formatter.js \
-	@srcdir@/js/server/modules/org/arangodb/parser.js \
-	@srcdir@/js/server/modules/org/arangodb/validator.js
+	@srcdir@/js/actions/system/api-system.js
 
 ################################################################################
 ### @brief executes jslint
@@ -55,7 +75,7 @@ jslint:
 BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
-	@test -d html/admin/js/modules || mkdir -p html/admin/js/modules
+	@test -d html/admin/js/modules/org/arangodb/graph || mkdir -p html/admin/js/modules/org/arangodb/graph
 	@touch $@
 
 ################################################################################
@@ -63,16 +83,10 @@ BUILT_SOURCES += @builddir@/.setup-js-directories
 ################################################################################
 
 html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
-	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
+	(echo "module.define(\"$(patsubst js/common/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
-	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
-
-################################################################################
-### @brief cleanup
-################################################################################
-
-CLEANUP += $(JAVASCRIPT_HEADER)
+	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
@@ -80,5 +94,5 @@ CLEANUP += $(JAVASCRIPT_HEADER)
 
 ## Local Variables:
 ## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
 ## End:

@@ -163,6 +163,8 @@ ArangoApp.prototype._PRINT = function (route) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoApp.prototype.mountStaticFunction = function (url, func, methods) {
+  var pages;
+
   if (url === "") {
     url = "/";
   }
@@ -180,7 +182,7 @@ ArangoApp.prototype.mountStaticFunction = function (url, func, methods) {
     url: { match: url },
     action: {
       'function': String(func),
-      methods: methods,
+      methods: methods
     }
   };
 
@@ -257,9 +259,9 @@ ArangoApp.prototype.mountStaticPages = function (url, collection) {
       controller: "org/arangodb/actions/staticContentController",
       methods: [ "GET", "HEAD" ],
       options: {
-	contentCollection: name,
-	prefix: url,
-	application: this._name
+        contentCollection: name,
+        prefix: url,
+        application: this._name
       }
     }
   };
@@ -299,8 +301,8 @@ ArangoApp.prototype.mountAction = function (url, func, methods) {
       'do': func,
       methods: methods,
       options: {
-	path: url,
-	application: this._name
+        path: url,
+        application: this._name
       }
     }
   };
@@ -463,9 +465,9 @@ exports.createApp = function (name) {
   }
 
   doc = routing.save({ application: name,
-		       urlPrefix: "",
-		       routes: [],
-		       middleware: [] });
+                       urlPrefix: "",
+                       routes: [],
+                       middleware: [] });
 
   return new ArangoApp(routing, routing.document(doc));
 };

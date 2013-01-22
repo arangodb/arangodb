@@ -33,6 +33,7 @@
 
 #include <regex.h>
 
+#include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
@@ -299,7 +300,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 
   if (collection->_collection != NULL) {
     if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-      LOG_ERROR("cannot drop collection '%s' of type '%d'",
+      LOG_ERROR("cannot drop collection '%s' of type %d",
                 collection->_name,
                 (int) collection->_type);
 
@@ -535,7 +536,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     FreeCollectionPath(collection);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 
-    LOG_ERROR("duplicate collection identifier '%lu' for name '%s'", (unsigned long) cid, name);
+    LOG_ERROR("duplicate collection identifier %llu for name '%s'", (unsigned long long) cid, name);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
 
     return NULL;
@@ -581,7 +582,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     file = TRI_Concatenate2File(path, name);
 
-    if (!file) {
+    if (file == NULL) {
       LOG_FATAL("out of memory");
       regfree(&re);
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -589,6 +590,15 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;
+  
+      if (! TRI_IsWritable(file)) {
+        // the collection directory we found is not writable for the current user
+        // this can cause serious trouble so we will abort the server start if we 
+        // encounter this situation
+        LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
+
+        return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
+      }
 
       // no need to lock as we are scanning
       res = TRI_LoadCollectionInfo(file, &info);
@@ -1118,6 +1128,14 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
 
+  if (! TRI_IsWritable(path)) {
+    // database directory is not writable for the current user... bad luck
+    LOG_ERROR("database directory '%s' is not writable for current user", path);
+
+    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
+    return NULL;
+  }
+
   // .............................................................................
   // check that the database is not locked and lock it
   // .............................................................................
@@ -1397,7 +1415,15 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
+  const char c = *name;
 
+  // if collection name is passed as a stringified id, we'll use the lookupbyid function  
+  // this is safe because collection names must not start with a digit
+  if (c >= '0' && c <= '9') {
+    return TRI_LookupCollectionByIdVocBase(vocbase, TRI_UInt64String(name));
+  }
+
+  // otherwise we'll look up the collection by name
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1451,7 +1477,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   
   assert(parameter);
   name = parameter->_name;
-
 
   // check that the name does not contain any strange characters
   if (! TRI_IsAllowedCollectionName(parameter->_isSystem, name)) {
@@ -1644,7 +1669,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     // remove dangling .json.tmp file if it exists
-    tmpFile = TRI_Concatenate4String(collection->_path, "/", TRI_COL_PARAMETER_FILE, ".tmp");
+    tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_COL_PARAMETER_FILE, ".tmp");
     if (tmpFile != NULL) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);

@@ -28,6 +28,8 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+var internal = require("internal");
+var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -206,7 +208,7 @@ function PUT_api_cursor (req, res) {
   var cursorId = decodeURIComponent(req.suffix[0]); 
   var cursor = CURSOR(cursorId);
 
-  if (! (cursor instanceof ArangoCursor)) {
+  if (! (cursor instanceof arangodb.ArangoCursor)) {
     actions.resultBad(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
     return;
   }

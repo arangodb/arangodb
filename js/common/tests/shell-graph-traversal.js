@@ -1,10 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80,
-         sloppy: true */
-/*global require,
-    db,
-    assertEqual, assertTrue */
+/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph traversal class
@@ -34,21 +29,229 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+
 var console = require("console");
-var internal = require("internal");
+var arangodb = require("org/arangodb");
 var traversal = require("org/arangodb/graph/traversal");
+var graph = require("org/arangodb/graph");
+
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            graph traversal module
+// --SECTION--                                                   graph traversal
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Graph tree traversal
+/// @brief test: in-memory graph traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphTreeTraversalSuite () {
-  //var vertices;
-  //var edges;
+function GraphTraversalSuite () {
+  var gn = "UnitTestsGraphTraversal";
+  var vn = "UnitTestsGraphTraversalVertices";
+  var en = "UnitTestsGraphTraversalEdges";
+
+  var g;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      try {
+        g = new graph.Graph(gn);
+        if (g != null) {
+          g.drop();
+          g = null;
+        }
+      }
+      catch (e) {
+      }
+
+      g = new graph.Graph(gn, vn, en);
+
+      var v1 = g.addVertex("v1");
+      var v2 = g.addVertex("v2");
+      var v3 = g.addVertex("v3");
+      var v4 = g.addVertex("v4");
+      var e1 = g.addEdge(v1, v2, "v1v2");
+      var e3 = g.addEdge(v2, v3, "v2v3");
+      var e4 = g.addEdge(v1, v4, "v1v4");
+      var e5 = g.addEdge(v4, v3, "v4v3");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      if (g != null) {
+        g.drop();
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test outbound traversal using Graph object
+////////////////////////////////////////////////////////////////////////////////
+
+    testOutboundTraversal1 : function () {
+      var config = {
+        datasource: traversal.GraphDatasourceFactory(gn),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        expander: traversal.OutboundExpander,
+        visitor: function (config, result, vertex, path) {
+          result.visited.push(vertex._id);
+        }
+      }
+
+      var result = { visited: [ ] };
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, g.getVertex("v1"));
+
+      var expected = [
+        vn + "/v1", 
+        vn + "/v2", 
+        vn + "/v3", 
+        vn + "/v4", 
+        vn + "/v3" 
+      ];
+
+      assertEqual(expected, result.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test outbound traversal using Graph object
+////////////////////////////////////////////////////////////////////////////////
+
+    testOutboundTraversal2 : function () {
+      var config = {
+        datasource: traversal.GraphDatasourceFactory(gn),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        expander: traversal.OutboundExpander,
+        visitor: function (config, result, vertex, path) {
+          result.visited.push(vertex._id);
+        }
+      }
+
+      var result = { visited: [ ] };
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, g.getVertex("v4"));
+
+      var expected = [
+        vn + "/v4",
+        vn + "/v3"
+      ];
+
+      assertEqual(expected, result.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test outbound traversal using Graph object
+////////////////////////////////////////////////////////////////////////////////
+
+    testOutboundTraversalBreadthFirst : function () {
+      var config = {
+        datasource: traversal.GraphDatasourceFactory(gn),
+        strategy: traversal.Traverser.BREADTH_FIRST,
+        expander: traversal.OutboundExpander,
+        visitor: function (config, result, vertex, path) {
+          result.visited.push(vertex._id);
+        }
+      }
+
+      var result = { visited: [ ] };
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, g.getVertex("v1"));
+
+      var expected = [
+        vn + "/v1", 
+        vn + "/v2", 
+        vn + "/v4", 
+        vn + "/v3", 
+        vn + "/v3" 
+      ];
+
+      assertEqual(expected, result.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test inbound traversal using Graph object
+////////////////////////////////////////////////////////////////////////////////
+
+    testInboundTraversal : function () {
+      var config = {
+        datasource: traversal.GraphDatasourceFactory(gn),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        expander: traversal.InboundExpander,
+        visitor: function (config, result, vertex, path) {
+          result.visited.push(vertex._id);
+        }
+      }
+
+      var result = { visited: [ ] };
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, g.getVertex("v3"));
+
+      var expected = [
+        vn + "/v3", 
+        vn + "/v2", 
+        vn + "/v1", 
+        vn + "/v4", 
+        vn + "/v1" 
+      ];
+
+      assertEqual(expected, result.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test any traversal using Graph object
+////////////////////////////////////////////////////////////////////////////////
+
+    testAnyTraversal : function () {
+      var config = {
+        datasource: traversal.GraphDatasourceFactory(gn),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        expander: traversal.AnyExpander,
+        visitor: function (config, result, vertex, path) {
+          result.visited.push(vertex._id);
+        },
+        uniqueness: {
+          vertices: traversal.UNIQUE_GLOBAL
+        }
+      }
+
+      var result = { visited: [ ] };
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, g.getVertex("v3"));
+
+      var expected = [
+        vn + "/v3", 
+        vn + "/v2", 
+        vn + "/v1", 
+        vn + "/v4" 
+      ];
+
+      assertEqual(expected, result.visited);
+    }
+
+  };
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              in memory traversals
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: in-memory graph traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function MemoryTraversalSuite () {
   var datasourceWorld;
   var datasourcePeople;
    
@@ -752,9 +955,9 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test minimal depth filter with depth 0
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minimal depth filter with depth 0
+////////////////////////////////////////////////////////////////////////////////
 
     testMinDepthFilterWithDepth0 : function () {
       var config = {
@@ -813,12 +1016,11 @@ function GraphTreeTraversalSuite () {
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-
     },
     
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test minimal depth filter with depth 1
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minimal depth filter with depth 1
+////////////////////////////////////////////////////////////////////////////////
 
     testMinDepthFilterWithDepth1 : function () {
       var config = {
@@ -876,13 +1078,11 @@ function GraphTreeTraversalSuite () {
       
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-
     },
     
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test minimal depth filter with depth 2
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test minimal depth filter with depth 2
+////////////////////////////////////////////////////////////////////////////////
 
     testMinDepthFilterWithDepth2 : function () {
       var config = {
@@ -927,12 +1127,11 @@ function GraphTreeTraversalSuite () {
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-
     },
     
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test maximal depth filter with depth 0
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test maximal depth filter with depth 0
+////////////////////////////////////////////////////////////////////////////////
 
     testMaxDepthFilterWithDepth0 : function () {
       var config = {
@@ -957,12 +1156,11 @@ function GraphTreeTraversalSuite () {
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test maximal depth filter with depth 1
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test maximal depth filter with depth 1
+////////////////////////////////////////////////////////////////////////////////
 
     testMaxDepthFilterWithDepth1 : function () {
       var config = {
@@ -999,12 +1197,11 @@ function GraphTreeTraversalSuite () {
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test maximal depth filter with depth 2
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test maximal depth filter with depth 2
+////////////////////////////////////////////////////////////////////////////////
 
     testMaxDepthFilterWithDepth2 : function () {
       var config = {
@@ -1063,16 +1260,14 @@ function GraphTreeTraversalSuite () {
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-
     },
     
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test filter by given key value pairs
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test filter by given key value pairs
+////////////////////////////////////////////////////////////////////////////////
     
     testIncludeMatchingAttributesFilter : function () {
-      
-      // Can be removed as soon as all expanders user datasource
+      // Can be removed as soon as all expanders use datasource
       var anyExp = function (config, vertex, path) {
         var result = [ ];
     
@@ -1111,17 +1306,11 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
     
-
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                    combineFilters
-    // -----------------------------------------------------------------------------
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test combination of filters
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test combination of filters
+////////////////////////////////////////////////////////////////////////////////
   
     testCombineFilters : function () {
-      
       var excluder1 = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.exclude1) return "exclude";
       };
@@ -1190,13 +1379,11 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
     
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test if exclude or prune can be overridden in combined filters
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if exclude or prune can be overridden in combined filters
+////////////////////////////////////////////////////////////////////////////////
   
     testOverrideExcludeAndPruneOfCombinedFilters : function () {
-      
       var excludeAndPrune = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.excludeAndPrune) return ["prune", "exclude"];
       };
@@ -1223,11 +1410,10 @@ function GraphTreeTraversalSuite () {
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-
     
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test if all edges with one label are followed
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if all edges with one label are followed
+////////////////////////////////////////////////////////////////////////////////
     
     testFollowEdgesWithLabels : function () {
       var config = {
@@ -1269,9 +1455,9 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
     
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test if all and only inbound edges with one label are followed
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if all and only inbound edges with one label are followed
+////////////////////////////////////////////////////////////////////////////////
     
     testFollowInEdgesWithLabels : function () {
       var config = {
@@ -1309,9 +1495,9 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
     
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test if all and only outbound edges with one label are followed
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if all and only outbound edges with one label are followed
+////////////////////////////////////////////////////////////////////////////////
     
     testFollowOutEdgesWithLabels : function () {
       var config = {
@@ -1424,7 +1610,7 @@ function CollectionTraversalSuite () {
         datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
-      var expander = traversal.CollectionOutboundExpander;
+      var expander = traversal.OutboundExpander;
       var connected;
       
       connected = [ ];
@@ -1459,7 +1645,7 @@ function CollectionTraversalSuite () {
         datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
-      var expander = traversal.CollectionInboundExpander;
+      var expander = traversal.InboundExpander;
       var connected;
       
       connected = [ ];
@@ -1490,12 +1676,12 @@ function CollectionTraversalSuite () {
 
     testIterateFullOutbound : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1529,12 +1715,12 @@ function CollectionTraversalSuite () {
 
     testIterateInbound : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionInboundExpander,
+        expander: traversal.InboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1561,7 +1747,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueGlobalVertices : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1570,7 +1756,7 @@ function CollectionTraversalSuite () {
           edges: traversal.Traverser.UNIQUE_NONE
         }, 
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1600,7 +1786,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniquePathVertices : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1609,7 +1795,7 @@ function CollectionTraversalSuite () {
           edges: traversal.Traverser.UNIQUE_NONE
         }, 
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1643,7 +1829,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueEdges : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
+        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1652,7 +1838,7 @@ function CollectionTraversalSuite () {
           edges: traversal.Traverser.UNIQUE_GLOBAL
         }, 
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1680,7 +1866,6 @@ function CollectionTraversalSuite () {
   };
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
@@ -1689,7 +1874,8 @@ function CollectionTraversalSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(GraphTreeTraversalSuite);
+jsunity.run(GraphTraversalSuite);
+jsunity.run(MemoryTraversalSuite);
 jsunity.run(CollectionTraversalSuite);
 
 return jsunity.done();

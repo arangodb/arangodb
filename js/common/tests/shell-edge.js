@@ -26,8 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
+
+var arangodb = require("org/arangodb");
 var console = require("console");
+
+var ArangoCollection = arangodb.ArangoCollection;
+var db = arangodb.db;
+var ERRORS = arangodb.errors;
+var wait = require("internal").wait;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -38,8 +44,6 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuiteErrorHandling () {
-  var ERRORS = internal.errors;
-
   var vn = "UnitTestsCollectionVertex";
   var vertex = null;
 
@@ -56,11 +60,11 @@ function CollectionEdgeSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(en);
-      edge = internal.db._createEdgeCollection(en, { waitForSync : false });
+      db._drop(en);
+      edge = db._createEdgeCollection(en, { waitForSync : false });
 
-      internal.db._drop(vn);
-      vertex = internal.db._create(vn, { waitForSync : false });
+      db._drop(vn);
+      vertex = db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -74,12 +78,12 @@ function CollectionEdgeSuiteErrorHandling () {
       edge.unload();
       edge.drop();
       edge = null;
-      internal.wait(0.0);
+      wait(0.0);
 
       vertex.unload();
       vertex.drop();
       vertex = null;
-      internal.wait(0.0);
+      wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,8 +123,6 @@ function CollectionEdgeSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuite () {
-  var ERRORS = require("internal").errors;
-
   var vn = "UnitTestsCollectionVertex";
   var vertex = null;
 
@@ -137,12 +139,12 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(en);
-      edge = internal.db._createEdgeCollection(en, { waitForSync : false });
+      db._drop(en);
+      edge = db._createEdgeCollection(en, { waitForSync : false });
       assertEqual(ArangoCollection.TYPE_EDGE, edge.type());
 
-      internal.db._drop(vn);
-      vertex = internal.db._create(vn, { waitForSync : false });
+      db._drop(vn);
+      vertex = db._create(vn, { waitForSync : false });
 
       v1 = vertex.save({ a : 1 });
       v2 = vertex.save({ a : 2 });
@@ -157,7 +159,126 @@ function CollectionEdgeSuite () {
       vertex.drop();
       edge = null;
       vertex = null;
-      internal.wait(0.0);
+      wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge referring to a vertex documents by keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeKeys : function () {
+      var k1 = vertex.save({ _key: "vx1", vx: 1 });
+      var k2 = vertex.save({ _key: "vx2", vx: 2 });
+      var k3 = vertex.save({ _key: "vx3", vx: 3 });
+
+      var d1 = vertex.document(k1._key);
+      assertEqual("vx1", k1._key);
+      assertEqual(vn + "/vx1", k1._id);
+      assertEqual("vx1", d1._key);
+      assertEqual(1, d1.vx);
+      assertEqual(vn + "/vx1", d1._id);
+
+      var d2 = vertex.document(k2._key);
+      assertEqual("vx2", k2._key);
+      assertEqual(vn + "/vx2", k2._id);
+      assertEqual("vx2", d2._key);
+      assertEqual(2, d2.vx);
+      assertEqual(vn + "/vx2", d2._id);
+      
+      var d3 = vertex.document(vn + "/vx3");
+      assertEqual("vx3", k3._key);
+      assertEqual(vn + "/vx3", k3._id);
+      assertEqual("vx3", d3._key);
+      assertEqual(3, d3.vx);
+      assertEqual(vn + "/vx3", d3._id);
+
+      var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
+      var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
+      var e3 = edge.save(vn + "/vx3", vn + "/vx1", { _key: "ex3", connect: "vx3->vx1" });
+
+      d1 = edge.document("ex1");
+      assertEqual("ex1", d1._key);
+      assertEqual(en + "/ex1", d1._id);
+      assertEqual(vn + "/vx1", d1._from);
+      assertEqual(vn + "/vx2", d1._to);
+      assertEqual("vx1->vx2", d1.connect);
+      assertEqual("ex1", e1._key);
+      assertEqual(en + "/ex1", e1._id);
+
+      d2 = edge.document("ex2");
+      assertEqual("ex2", d2._key);
+      assertEqual(en + "/ex2", d2._id);
+      assertEqual(vn + "/vx2", d2._from);
+      assertEqual(vn + "/vx1", d2._to);
+      assertEqual("vx2->vx1", d2.connect);
+      assertEqual("ex2", e2._key);
+      assertEqual(en + "/ex2", e2._id);
+     
+      d3 = edge.document(en + "/ex3");
+      assertEqual("ex3", d3._key);
+      assertEqual(en + "/ex3", d3._id);
+      assertEqual(vn + "/vx3", d3._from);
+      assertEqual(vn + "/vx1", d3._to);
+      assertEqual("vx3->vx1", d3.connect);
+      assertEqual("ex3", e3._key);
+      assertEqual(en + "/ex3", e3._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge referring to an unloaded vertex collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeUnloaded : function () {
+      var k1 = vertex.save({ _key: "vx1", vx: 1 });
+      var k2 = vertex.save({ _key: "vx2", vx: 2 });
+
+      assertEqual("vx1", k1._key);
+      assertEqual(vn + "/vx1", k1._id);
+      assertEqual("vx2", k2._key);
+      assertEqual(vn + "/vx2", k2._id);
+
+      vertex.unload();
+      edge.unload();
+
+      console.log("waiting for collections to unload"); 
+      wait(4);
+
+      var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
+      var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
+      
+      vertex.unload();
+      edge.unload();
+
+      console.log("waiting for collections to unload"); 
+      wait(4);
+      var e3 = edge.save(k1, k2, { _key: "ex3", connect: "vx1->vx2" });
+      
+      d1 = edge.document("ex1");
+      assertEqual("ex1", d1._key);
+      assertEqual(en + "/ex1", d1._id);
+      assertEqual(vn + "/vx1", d1._from);
+      assertEqual(vn + "/vx2", d1._to);
+      assertEqual("vx1->vx2", d1.connect);
+      assertEqual("ex1", e1._key);
+      assertEqual(en + "/ex1", e1._id);
+
+      d2 = edge.document("ex2");
+      assertEqual("ex2", d2._key);
+      assertEqual(en + "/ex2", d2._id);
+      assertEqual(vn + "/vx2", d2._from);
+      assertEqual(vn + "/vx1", d2._to);
+      assertEqual("vx2->vx1", d2.connect);
+      assertEqual("ex2", e2._key);
+      assertEqual(en + "/ex2", e2._id);
+      
+      d3 = edge.document("ex3");
+      assertEqual("ex3", d3._key);
+      assertEqual(en + "/ex3", d3._id);
+      assertEqual(vn + "/vx1", d3._from);
+      assertEqual(vn + "/vx2", d3._to);
+      assertEqual("vx1->vx2", d3.connect);
+      assertEqual("ex3", e3._key);
+      assertEqual(en + "/ex3", e3._id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +289,7 @@ function CollectionEdgeSuite () {
       var doc = edge.save(v1, v2, { "Hallo" : "World" });
 
       assertTypeOf("string", doc._id);
-      assertTypeOf("number", doc._rev);
+      assertTypeOf("string", doc._rev);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,8 +559,8 @@ function CollectionEdgeSuite () {
     testEdgesCollectionTypeInvalid : function () {
       var dn = "UnitTestsCollectionInvalid";
 
-      internal.db._drop(dn);
-      var c = internal.db._create(dn);
+      db._drop(dn);
+      var c = db._create(dn);
       
       try {
         var e = c.edges("the fox");
@@ -448,7 +569,7 @@ function CollectionEdgeSuite () {
         assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
       }
 
-      internal.db._drop(dn);
+      db._drop(dn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,73 +613,6 @@ function CollectionEdgeSuite () {
       assertEqual(3, edge.edges(d).length);
       assertEqual(2, edge.edges(e).length);
       assertEqual(2, edge.edges(f).length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read edges of a small graph
-////////////////////////////////////////////////////////////////////////////////
-
-    testEdgesGraphBi : function () {
-      var a = vertex.save( {"name" : "a" });
-      var b = vertex.save( {"name" : "b" });
-      var c = vertex.save( {"name" : "c" });
-      var d = vertex.save( {"name" : "d" });
-      var e = vertex.save( {"name" : "e" });
-      var f = vertex.save( {"name" : "f" });
-      var g = vertex.save( {"name" : "g" });
-      var h = vertex.save( {"name" : "h" });
-      var i = vertex.save( {"name" : "i" });
-      var j = vertex.save( {"name" : "j" });
-
-      edge.save(a, a, { "what" : "a->a", "_bidirectional" : false });
-      edge.save(a, b, { "what" : "a<->b", "_bidirectional" : true });
-      edge.save(a, c, { "what" : "a->c", "_bidirectional" : false });
-      edge.save(d, a, { "what" : "d->a", "_bidirectional" : false });
-      edge.save(c, d, { "what" : "c->d", "_bidirectional" : false });
-      edge.save(d, f, { "what" : "d<->f", "_bidirectional" : true });
-      edge.save(f, e, { "what" : "f->e", "_bidirectional" : false });
-      edge.save(e, e, { "what" : "e->e", "_bidirectional" : false });
-      edge.save(g, g, { "what" : "g->g", "_bidirectional" : false });
-      edge.save(g, h, { "what" : "g<->h", "_bidirectional" : true });
-      edge.save(h, g, { "what" : "h<->g", "_bidirectional" : true });
-      edge.save(h, i, { "what" : "h<->i", "_bidirectional" : true });
-      edge.save(i, i, { "what" : "i<->i", "_bidirectional" : true });
-      edge.save(j, j, { "what" : "j->j", "_bidirectional" : false });
-
-      assertEqual(3, edge.outEdges(a).length);
-      assertEqual(1, edge.outEdges(b).length);
-      assertEqual(1, edge.outEdges(c).length);
-      assertEqual(2, edge.outEdges(d).length);
-      assertEqual(1, edge.outEdges(e).length);
-      assertEqual(2, edge.outEdges(f).length);
-      assertEqual(3, edge.outEdges(g).length);
-      assertEqual(3, edge.outEdges(h).length);
-      assertEqual(2, edge.outEdges(i).length);
-      assertEqual(1, edge.outEdges(j).length);
-
-      assertEqual(3, edge.inEdges(a).length);
-      assertEqual(1, edge.inEdges(b).length);
-      assertEqual(1, edge.inEdges(c).length);
-      assertEqual(2, edge.inEdges(d).length);
-      assertEqual(3, edge.inEdges(a).length);
-      assertEqual(2, edge.inEdges(e).length);
-      assertEqual(1, edge.inEdges(f).length);
-      assertEqual(3, edge.inEdges(g).length);
-      assertEqual(3, edge.inEdges(a).length);
-      assertEqual(3, edge.inEdges(h).length);
-      assertEqual(2, edge.inEdges(i).length);
-      assertEqual(1, edge.inEdges(j).length);
-      
-      assertEqual(4, edge.edges(a).length);
-      assertEqual(1, edge.edges(b).length);
-      assertEqual(2, edge.edges(c).length);
-      assertEqual(3, edge.edges(d).length);
-      assertEqual(2, edge.edges(e).length);
-      assertEqual(2, edge.edges(f).length);
-      assertEqual(3, edge.edges(g).length);
-      assertEqual(3, edge.edges(h).length);
-      assertEqual(2, edge.edges(i).length);
-      assertEqual(1, edge.edges(j).length);
     }
 
   };

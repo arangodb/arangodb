@@ -920,6 +920,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   voc_shaper_t* shaper;
   TRI_shape_collection_t* collection;
   TRI_col_info_t parameter;
+  int res;
   bool ok;
 
   TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE, 0);
@@ -951,6 +952,13 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
     TRI_FreeVocShaper(&shaper->base);
     return NULL;
   }
+  
+  res = TRI_SaveCollectionInfo(collection->base._directory, &parameter);
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->base._directory, TRI_last_error());
+    TRI_FreeVocShaper(&shaper->base);
+    return NULL;
+  } 
 
   // and return
   return &shaper->base;

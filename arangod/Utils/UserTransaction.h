@@ -30,8 +30,7 @@
 
 #include "Utils/Transaction.h"
 
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
@@ -58,7 +57,7 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        UserTransaction (TRI_vocbase_t* const vocbase, 
+        UserTransaction (struct TRI_vocbase_s* const vocbase, 
                          const vector<string>& readCollections, 
                          const vector<string>& writeCollections) : 
           Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, readCollections, writeCollections)) { 
