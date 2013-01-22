@@ -1093,6 +1093,36 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function indexed access
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionIndexedAccess1 : function () {
+      var expected = [ "Fred" ];
+      var actual = getQueryResults("RETURN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])[0]", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function indexed access
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionIndexedAccess2 : function () {
+      var expected = [ "John" ];
+      var actual = getQueryResults("RETURN UNION([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"])[1]", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union function indexed access
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnionIndexedAccess3 : function () {
+      var expected = [ "bar" ];
+      var actual = getQueryResults("RETURN UNION([ { title : \"foo\" } ], [ { title : \"bar\" } ])[1].title", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -1199,6 +1229,26 @@ function ahuacatlFunctionsTestSuite () {
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"thefoxdoesnotexist/99999999999\")", false);
       assertEqual(expected, actual);
 
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document indexed access function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDocumentIndexedAccess : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      var d1 = cx.save({ "title" : "123", "value" : 456 });
+
+      var expected, actual;
+
+      expected = [ "123" ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", [ \"" + d1._id + "\" ])[0].title", true);
+      assertEqual(expected, actual);
+      
       internal.db._drop(cn);
     },
 
