@@ -75,6 +75,11 @@
 ///      <li>@ref SimpleQueryCount "query.count"</li>
 ///     </ul>
 ///    </li>
+///    <li>@ref SimpleQueriesModify
+///     <ul>
+///      <li>@ref SimpleQueryRemoveByExample "collection.removeByExample"</li>
+///     </ul>
+///    </li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -298,6 +303,22 @@
 /// @CLEARPAGE
 /// @anchor SimpleQueryCount
 /// @copydetails JSF_SimpleQuery_prototype_count
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @CLEARPAGE
+/// @section SimpleQueriesModify Modification Queries
+/////////////////////////////////////////////////////
+///
+/// ArangoDB also allows removing documents based on an example document. 
+/// Every document in the collection will be compared against the specified 
+/// example document and be deleted if all attributes match. 
+///
+/// This method should be used with caution as it intended to remove lots of 
+/// documents from a collection.
+///
+/// @CLEARPAGE
+/// @anchor SimpleQueryRemoveByExample
+/// @copydetails JSF_ArangoCollection_prototype_removeByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

@@ -1090,6 +1090,26 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+  var data = { 
+    collection: this._name,
+    example: example, 
+    waitForSync: waitForSync 
+  };
+
+  var requestResult = this._database._connection.PUT(
+    "/_api/simple/remove-by-example",
+    JSON.stringify(data));
+  
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.deleted;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

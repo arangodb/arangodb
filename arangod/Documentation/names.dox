@@ -57,7 +57,7 @@
 /// required, provided that the values conform to the following restrictions:
 /// * the key must be at most 254 bytes long
 /// * it must consist of the letters a-z (lower or upper case), the digits 0-9,
-///   the underscore (_) or dash (-) characters only
+///   the underscore (_), dash (-), or colon (:) characters only
 ///  * any other characters, especially multi-byte sequences, whitespace or
 ///    punctuation characters cannot be used inside key values
 /// * the key must be unique within the collection it is used
