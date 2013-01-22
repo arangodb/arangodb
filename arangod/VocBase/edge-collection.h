@@ -70,13 +70,6 @@ extern "C" {
 #define TRI_EDGE_BIT_REFLEXIVE     ((TRI_edge_flags_t) (1 << 3))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief special bit that can be set within edge flags
-/// this bit will be set if the edge is bidirectional
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_EDGE_BIT_BIDIRECTIONAL ((TRI_edge_flags_t) (1 << 4))
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief combination of the two directional bits
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -114,7 +107,6 @@ typedef struct TRI_document_edge_s {
 
   TRI_voc_cid_t _toCid;
   TRI_voc_key_t _toKey;
-  bool          _isBidirectional;
 }
 TRI_document_edge_t;
 
@@ -169,8 +161,7 @@ TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e, 
-                                const bool, 
-                                const bool);
+                                const bool); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges

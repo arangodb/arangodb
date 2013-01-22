@@ -1,2 +1,2 @@
-arango> output("Hallo", " ", "World", "\n");
-Hallo World
+arango> output("Hello", " ", "World", "\n");
+Hello World

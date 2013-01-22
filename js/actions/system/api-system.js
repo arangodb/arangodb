@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,12 +28,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+
+var db = arangodb.db;
+
 var internal = require("internal");
 var console = require("console");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  standard routing
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +49,7 @@ var console = require("console");
 /// @brief routing function
 ////////////////////////////////////////////////////////////////////////////////
 
-function Routing (req, res) {
+function routing (req, res) {
   var action;
   var execute;
   var next;
@@ -95,14 +93,17 @@ function Routing (req, res) {
 
     var func = action.route.callback.controller;
     if (func === null || typeof func !== 'function') {
-      func = actions.errorFunction(action.route, 'Invalid callback definition found for route ' + JSON.stringify(action.route));
+      func = actions.errorFunction(action.route,
+                                   'Invalid callback definition found for route ' 
+                                   + JSON.stringify(action.route));
     }
 
     try {
       func(req, res, action.route.callback.options, next);
     }
     catch (err) {
-      var msg = 'A runtime error occurred while executing an action: ' + String(err) + " " + String(err.stack);
+      var msg = 'A runtime error occurred while executing an action: '
+                + String(err) + " " + String(err.stack);
 
       actions.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
     }
@@ -116,11 +117,28 @@ function Routing (req, res) {
   execute();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main routing action
+////////////////////////////////////////////////////////////////////////////////
+
 actions.defineHttp({
   url : "",
   prefix : true,
   context : "admin",
-  callback : Routing
+  callback : routing
 });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +150,7 @@ actions.defineHttp({
     context : "admin",
     prefix : false,
     callback : function (req, res) {
-      RELOAD_AUTH();
+      internal.RELOAD_AUTH();
       actions.resultOk(req, res, actions.HTTP_OK);
     }
   });
@@ -164,19 +182,6 @@ actions.defineHttp({
     actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
   }
 });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            administration actions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes the modules cache
@@ -301,94 +306,10 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   session actions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_admin_session (req, res) {
-  var result;
-  var realm;
-
-  if (req.user === null) {
-    realm = "basic realm=\"arangodb\"";
-
-    res.responseCode = actions.HTTP_UNAUTHORIZED;
-    res.headers = { "www-authenticate" : realm };
-  }
-  else {
-    var user = internal.db._collection("_users").firstExample({ user : req.user });
-
-    if (user === null) {
-      actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "unknown user '" + req.user + "'");
-    }
-    else {
-      result = {
-	user : user.user,
-	permissions : user.permissions || []
-      };
-
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-  }
-}
-
-function POST_admin_session (req, res) {
-  actions.resultUnsupported(req, res);
-}
-
-function PUT_admin_session (req, res) {
-  actions.resultUnsupported(req, res);
-}
-
-function DELETE_admin_session (req, res) {
-  actions.resultUnsupported(req, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief session call dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/session",
-  context : "admin",
-  prefix : false,
-  callback : function (req, res) {
-    try {
-      if (req.requestType === actions.GET) {
-	GET_admin_session(req, res);
-      }
-      else if (req.requestType === actions.DELETE) {
-	DELETE_admin_session(req, res);
-      }
-      else if (req.requestType === actions.POST) {
-	POST_admin_session(req, res);
-      }
-      else if (req.requestType === actions.PUT) {
-	PUT_admin_session(req, res);
-      }
-      else {
-	actions.resultUnsupported(req, res);
-      }
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
 // End:

@@ -31,7 +31,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 
 #include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
@@ -61,7 +62,7 @@ namespace triagens {
 /// that only allows read operations. Write operations are not supported.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (TRI_vocbase_t* const vocbase,
+        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
                                              const string& name) : 
           SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_READ) {
         }

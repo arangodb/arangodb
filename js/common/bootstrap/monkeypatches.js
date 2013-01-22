@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Monkeypatches to built-in prototypes
+/// @brief monkey-patches to built-in prototypes
 ///
 /// @file
 ///
@@ -32,13 +32,17 @@
 // --SECTION--                                                    monkey-patches
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove last occurrence of element from an array
+/// @brief removes last occurrence of element from an array
 ////////////////////////////////////////////////////////////////////////////////
 
 Object.defineProperty(Array.prototype, "removeLastOccurrenceOf", {
@@ -48,7 +52,7 @@ Object.defineProperty(Array.prototype, "removeLastOccurrenceOf", {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the union with another array
+/// @brief returns the union with another array
 ////////////////////////////////////////////////////////////////////////////////
 
 Object.defineProperty(Array.prototype, "unite", {
@@ -60,7 +64,7 @@ Object.defineProperty(Array.prototype, "unite", {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the intersection with another array
+/// @brief returns the intersection with another array
 ////////////////////////////////////////////////////////////////////////////////
 
 Object.defineProperty(Array.prototype, "intersect", {
@@ -72,7 +76,7 @@ Object.defineProperty(Array.prototype, "intersect", {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copy properties
+/// @brief shallow copies properties
 ////////////////////////////////////////////////////////////////////////////////
 
 Object.defineProperty(Object.prototype, "shallowCopy", {
@@ -87,7 +91,7 @@ Object.defineProperty(Object.prototype, "shallowCopy", {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief property keys
+/// @brief returns the property keys
 ////////////////////////////////////////////////////////////////////////////////
 
 Object.defineProperty(Object.prototype, "propertyKeys", {
@@ -108,5 +112,5 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:

@@ -84,8 +84,7 @@
 ///   document's handle, @LIT{_key} is used to contain a document's user-defined key, 
 ///   and @LIT{_rev} is used to contain the document's revision number. In edge
 ///   collections, the @LIT{_from} and @LIT{_to} attributes are used to
-///   reference other documents. Edges may also have other attributes such as 
-///   @LIT{_bidirectional} or @LIT{_vertices}.
+///   reference other documents.
 ///
 ///   More system attributes may be added in the future without further notice
 ///   so end users should not use attribute names starting with an underscore

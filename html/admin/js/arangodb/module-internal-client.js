@@ -1,0 +1,1 @@
+../../../../js/client/bootstrap/module-internal.js

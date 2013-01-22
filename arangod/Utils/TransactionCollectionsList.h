@@ -30,7 +30,6 @@
 
 #include "Basics/Common.h"
 
-#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -40,17 +39,62 @@
 namespace triagens {
   namespace arango {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                  class TransactionCollectionsList
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          typedefs
+// -----------------------------------------------------------------------------
+
     class TransactionCollectionsList {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for contained collections list
+////////////////////////////////////////////////////////////////////////////////
+
       typedef map<string, TransactionCollection*> ListType;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TransactionCollectionsList copy ctor
+////////////////////////////////////////////////////////////////////////////////
+
         TransactionCollectionsList& operator= (const TransactionCollectionsList&);
         TransactionCollectionsList (const TransactionCollectionsList&);
-      
+
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an empty list
+////////////////////////////////////////////////////////////////////////////////
+
         TransactionCollectionsList () : 
           _collections() {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list with a single collection
+////////////////////////////////////////////////////////////////////////////////
 
         TransactionCollectionsList (TRI_vocbase_t* const vocbase, 
                                     const string& name, 
@@ -58,43 +102,33 @@ namespace triagens {
           _vocbase(vocbase),
           _collections(),
           _error(TRI_ERROR_NO_ERROR) {
-          addCollection(name, accessType, false);
+
+          addCollection(name, accessType);
         }
-        
-        TransactionCollectionsList (TRI_vocbase_t* const vocbase, 
-                                    const string& name, 
-                                    TRI_transaction_type_e accessType, 
-                                    const TRI_col_type_e createType) : 
-          _vocbase(vocbase),
-          _collections(),
-          _error(TRI_ERROR_NO_ERROR) {
-          addCollection(name, accessType, true, createType);
-        }
-        
-        TransactionCollectionsList (TRI_vocbase_t* const vocbase, 
-                                    const string& name, 
-                                    TRI_transaction_type_e accessType, 
-                                    const bool create,
-                                    const TRI_col_type_e createType) : 
-          _vocbase(vocbase),
-          _collections(),
-          _error(TRI_ERROR_NO_ERROR) {
-          addCollection(name, accessType, create, createType);
-        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list with multiple collections
+////////////////////////////////////////////////////////////////////////////////
         
         TransactionCollectionsList (TRI_vocbase_t* const vocbase,
                                     const vector<string>& readCollections,
                                     const vector<string>& writeCollections) : 
           _vocbase(vocbase),
-          _collections() {
+          _collections(),
+          _error(TRI_ERROR_NO_ERROR) {
+
           for (size_t i = 0; i < readCollections.size(); ++i) {
-            addCollection(readCollections[i], TRI_TRANSACTION_READ, false);
+            addCollection(readCollections[i], TRI_TRANSACTION_READ);
           }
 
           for (size_t i = 0; i < writeCollections.size(); ++i) {
-            addCollection(writeCollections[i], TRI_TRANSACTION_WRITE, false);
+            addCollection(writeCollections[i], TRI_TRANSACTION_WRITE);
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a collections list
+////////////////////////////////////////////////////////////////////////////////
 
         ~TransactionCollectionsList () {
           ListType::iterator it;
@@ -106,9 +140,32 @@ namespace triagens {
           _collections.clear();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get potential raised during list setup
+////////////////////////////////////////////////////////////////////////////////
+
         inline int getError () const {
           return _error;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all collections
+////////////////////////////////////////////////////////////////////////////////
 
         const vector<TransactionCollection*> getCollections () {
           ListType::iterator it;
@@ -121,10 +178,27 @@ namespace triagens {
           return collections; 
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the list
+////////////////////////////////////////////////////////////////////////////////
+
         void addCollection (const string& name, 
-                            TRI_transaction_type_e type, 
-                            bool create, 
-                            TRI_col_type_e createType = TRI_COL_TYPE_DOCUMENT) {
+                            TRI_transaction_type_e type) { 
           ListType::iterator it;
           string realName;
           
@@ -133,8 +207,9 @@ namespace triagens {
             return;
           }
           
-          if (isdigit(name[0])) {
-            // name is passed as a string with the collection id
+          const char c = name[0];
+          if (c >= '0' && c <= '9') {
+            // name is passed as a string with the collection id inside
 
             // look up the collection name for the id
             TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(name);
@@ -153,34 +228,61 @@ namespace triagens {
             realName = name;
           }
 
+          // check if we already have the collection in our list
           it = _collections.find(realName);
           if (it != _collections.end()) {
+            // yes, now update the collection in the list
             TransactionCollection* c = (*it).second;
 
             if (type == TRI_TRANSACTION_WRITE && type != c->getAccessType()) {
               // upgrade the type
               c->setAccessType(type);
             }
+
+            // TODO: we probably prefer raising an error here
           }
           else {
-
-            // check whether the collection exists. if not, create it            
-            if ((  create && TRI_FindCollectionByNameOrBearVocBase(_vocbase, realName.c_str(), createType) == NULL) ||
-                (! create && TRI_LookupCollectionByNameVocBase(_vocbase, realName.c_str()) == NULL)) {
-              _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-              return;
-            }
-
+            // collection not yet contained in our list
             _collections[realName] = new TransactionCollection(realName, type);
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+      
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vocbase
+////////////////////////////////////////////////////////////////////////////////
+
         TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the list of collections
+////////////////////////////////////////////////////////////////////////////////
 
         ListType _collections;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error number
+////////////////////////////////////////////////////////////////////////////////
+
         int _error;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
     };
 

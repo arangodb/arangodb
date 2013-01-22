@@ -1,11 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true,
-         stupid: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +152,7 @@ function post_api_collection (req, res) {
 
   if (! body.hasOwnProperty("name")) {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-		      "name must be non-empty");
+                      "name must be non-empty");
     return;
   }
 
@@ -269,7 +262,7 @@ function get_api_collections (req, res) {
 /// @REST{GET /_api/collection/@FA{collection-name}}
 //////////////////////////////////////////////////////////
 ///
-/// The result is an objects describing the collection with the following
+/// The result is an object describing the collection with the following
 /// attributes:
 ///
 /// - @LIT{id}: The identifier of the collection.
@@ -347,6 +340,16 @@ function get_api_collections (req, res) {
 ///
 /// Note: the filesizes of shapes and compactor files are not reported.
 ///
+/// @REST{GET /_api/collection/@FA{collection-name}/revision}
+/////////////////////////////////////////////////////////////
+///
+/// In addition to the above, the result will also contain the
+/// collection's revision id. The revision id is a server-generated
+/// string that clients can use to check whether data in a collection
+/// has changed since the last revision check.
+///
+/// - @LIT{revision}: The collection revision id as a string.
+///
 /// @EXAMPLES
 /////////////
 ///
@@ -376,7 +379,7 @@ function get_api_collection (req, res) {
   // /_api/collection
   // .............................................................................
     
-  if (req.suffix.length === 0 && req.parameters.id == undefined) {
+  if (req.suffix.length === 0 && req.parameters.id === undefined) {
     get_api_collections(req, res);
     return;
   }
@@ -406,11 +409,12 @@ function get_api_collection (req, res) {
   // .............................................................................
 
   if (req.suffix.length === 1) {
-    var result = collectionRepresentation(collection, false, false, false);
+    result = collectionRepresentation(collection, false, false, false);
     actions.resultOk(req, res, actions.HTTP_OK, result);
+    return;
   }
 
-  else if (req.suffix.length === 2) {
+  if (req.suffix.length === 2) {
     sub = decodeURIComponent(req.suffix[1]);
 
     // .............................................................................
@@ -448,10 +452,21 @@ function get_api_collection (req, res) {
       result = collectionRepresentation(collection, true, false, false);
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
+    
+    // .............................................................................
+    // /_api/collection/<identifier>/revision
+    // .............................................................................
+
+    else if (sub === "revision") {
+      result = collectionRepresentation(collection, false, false, false);
+      result.revision = collection.revision();
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
 
     else {
       actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND,
-                             "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
+                             "expecting one of the resources 'count',"
+                             +" 'figures', 'properties', 'parameter'");
     }
   }
   else {
@@ -467,14 +482,24 @@ function get_api_collection (req, res) {
 ///
 /// @REST{PUT /_api/collection/@FA{collection-name}/load}
 ///
-/// Loads a collection into memory. On success an object with the following
-/// attributes is returned:
+/// Loads a collection into memory. Returns the collection on success.
+///
+/// The request might optionally contain the following attribute:
+///
+/// - @LIT{count}: If set, this controls whether the return value should include
+///   the number of documents in the collection. Setting @LIT{count} to 
+///   @LIT{false} may speed up loading a collection. The default value for 
+///   @LIT{count} is @LIT{true}.
+///
+/// On success an object with the following attributes is returned:
 ///
 /// - @LIT{id}: The identifier of the collection.
 ///
 /// - @LIT{name}: The name of the collection.
 ///
-/// - @LIT{count}: The number of documents inside the collection.
+/// - @LIT{count}: The number of documents inside the collection. This is only
+///   returned if the @LIT{count} input parameters is set to @LIT{true} or has
+///   not been specified.
 ///
 /// - @LIT{status}: The status of the collection as number.
 ///
@@ -495,7 +520,14 @@ function put_api_collection_load (req, res, collection) {
   try {
     collection.load();
 
-    var result = collectionRepresentation(collection, false, true, false);
+    var showCount = true;
+    var body = actions.getJsonBody(req, res);
+
+    if (body && body.hasOwnProperty("count")) {
+      showCount = body.count;
+    }
+
+    var result = collectionRepresentation(collection, false, showCount, false);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
@@ -671,7 +703,7 @@ function put_api_collection_rename (req, res, collection) {
 
   if (! body.hasOwnProperty("name")) {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
-		      "name must be non-empty");
+                      "name must be non-empty");
     return;
   }
 
@@ -696,7 +728,7 @@ function put_api_collection_rename (req, res, collection) {
 function put_api_collection (req, res) {
   if (req.suffix.length !== 2) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-		      "expected PUT /" + API + "/<collection-name>/<action>");
+                      "expected PUT /" + API + "/<collection-name>/<action>");
     return;
   }
 
@@ -727,7 +759,8 @@ function put_api_collection (req, res) {
   }
   else {
     actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,
-			   "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
+                           "expecting one of the actions 'load', 'unload',"
+                           + " 'truncate', 'properties', 'rename'");
   }
 }
 
@@ -765,7 +798,7 @@ function put_api_collection (req, res) {
 function delete_api_collection (req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-		      "expected DELETE /" + API + "/<collection-name>");
+                      "expected DELETE /" + API + "/<collection-name>");
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
@@ -776,16 +809,16 @@ function delete_api_collection (req, res) {
     }
     else {
       try {
-	var result = {
-	  id : collection._id
-	};
+        var result = {
+          id : collection._id
+        };
 
-	collection.drop();
+        collection.drop();
 
-	actions.resultOk(req, res, actions.HTTP_OK, result);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-	actions.resultException(req, res, err);
+        actions.resultException(req, res, err);
       }
     }
   }
@@ -802,19 +835,19 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       if (req.requestType === actions.GET) {
-	get_api_collection(req, res);
+        get_api_collection(req, res);
       }
       else if (req.requestType === actions.DELETE) {
-	delete_api_collection(req, res);
+        delete_api_collection(req, res);
       }
       else if (req.requestType === actions.POST) {
-	post_api_collection(req, res);
+        post_api_collection(req, res);
       }
       else if (req.requestType === actions.PUT) {
-	put_api_collection(req, res);
+        put_api_collection(req, res);
       }
       else {
-	actions.resultUnsupported(req, res);
+        actions.resultUnsupported(req, res);
       }
     }
     catch (err) {
@@ -833,5 +866,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
 // End:

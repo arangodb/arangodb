@@ -8,8 +8,7 @@
     print,
     PRINT_OBJECT,
     console,
-    AvocadoCollection, AvocadoEdgesCollection,
-    processCsvFile */
+    AvocadoCollection, AvocadoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class

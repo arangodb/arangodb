@@ -645,13 +645,13 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   files.push_back("common/bootstrap/modules.js");
   files.push_back("common/bootstrap/module-internal.js");
   files.push_back("common/bootstrap/module-fs.js");
-  files.push_back("common/bootstrap/module-console.js");
-  files.push_back("common/bootstrap/monkeypatches.js");
+  files.push_back("common/bootstrap/module-console.js"); // needs internal
   files.push_back("common/bootstrap/errors.js");
+  files.push_back("common/bootstrap/monkeypatches.js");
+
+  files.push_back("server/bootstrap/module-internal.js");
   files.push_back("server/ahuacatl.js");
-  files.push_back("server/server.js");
-  files.push_back("server/ArangoCollection.js");
-  files.push_back("server/ArangoStructure.js");
+  files.push_back("server/server.js"); // needs internal
 
   LOGGER_TRACE << "initialising V8 context #" << i;
 
@@ -694,6 +694,12 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8Utils(context->_context, _startupModules);
   TRI_InitV8Shell(context->_context);
 
+  // set global flag before loading system files
+  if (i == 0 && ! _skipUpgrade) {
+    v8::HandleScope scope;
+    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+  }
+
   // load all init files
   for (size_t j = 0;  j < files.size();  ++j) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
@@ -709,14 +715,12 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     }
   }
 
-
+  // run upgrade script
   if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG << "running database version check";
 
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
-    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
-
     v8::Handle<v8::Value> result = _startupLoader.executeGlobalScript(context->_context, "server/version-check.js");
   
     if (! TRI_ObjectToBoolean(result)) {

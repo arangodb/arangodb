@@ -2,10 +2,11 @@
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ,
   SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, SYS_GETLINE,
-  SYS_PARSE, ARANGO_QUIET, MODULES_PATH, COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT,
-  COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE, COLOR_BOLD_GREEN,
-  COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE, COLOR_YELLOW,
-  COLOR_BOLD_YELLOW, PRETTY_PRINT  */
+  SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_PROCESS_CSV_FILE,
+  SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, COLOR_OUTPUT_RESET, 
+  COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE,
+  COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE,
+  COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, UPGRADE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -39,16 +40,16 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal module
-////////////////////////////////////////////////////////////////////////////////
-
 (function () {
-  var internal = Module.prototype.ModuleCache["/internal"].exports;
+  var internal = require("internal");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hide global variables
+////////////////////////////////////////////////////////////////////////////////
 
   // system functions
   if (typeof SYS_EXECUTE !== "undefined") {
@@ -96,6 +97,11 @@
     delete SYS_READ;
   }
 
+  if (typeof SYS_SAVE !== "undefined") {
+    internal.write = SYS_SAVE;
+    delete SYS_SAVE;
+  }
+
   if (typeof SYS_SHA256 !== "undefined") {
     internal.sha256 = SYS_SHA256;
     delete SYS_SHA256;
@@ -141,6 +147,26 @@
     delete FS_REMOVE;
   }
 
+  if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {
+    internal.importCsvFile = SYS_IMPORT_CSV_FILE;
+    delete SYS_IMPORT_CSV_FILE;
+  }
+
+  if (typeof SYS_IMPORT_JSON_FILE !== "undefined") {
+    internal.importJsonFile = SYS_IMPORT_JSON_FILE;
+    delete SYS_IMPORT_JSON_FILE;
+  }
+
+  if (typeof SYS_PROCESS_CSV_FILE !== "undefined") {
+    internal.processCsvFile = SYS_PROCESS_CSV_FILE;
+    delete SYS_PROCESS_CSV_FILE;
+  }
+
+  if (typeof SYS_PROCESS_JSON_FILE !== "undefined") {
+    internal.processJsonFile = SYS_PROCESS_JSON_FILE;
+    delete SYS_PROCESS_JSON_FILE;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +176,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,6 +196,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.ARANGO_QUIET = false;
+
+  if (typeof ARANGO_QUIET !== "undefined") {
+    internal.ARANGO_QUIET = ARANGO_QUIET;
+    delete ARANGO_QUIET;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pretty print flag
@@ -193,21 +224,28 @@
     delete COLORS;
   }
   else {
-    [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW', 'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
-      internal.COLORS[color] = '';
-    });
+    [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
+      'COLOR_YELLOW', 'COLOR_BOLD_YELLOW', 'COLOR_WHITE', 'COLOR_BOLD_WHITE',
+      'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT',
+      'COLOR_RESET' ].forEach(function(color) {
+        internal.COLORS[color] = '';
+      });
   }
 
   internal.COLORS.COLOR_PUNCTUATION = internal.COLORS.COLOR_RESET;
-  internal.COLORS.COLOR_STRING = internal.COLORS.COLOR_WHITE;
+  internal.COLORS.COLOR_STRING = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_NUMBER = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_INDEX = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_TRUE = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_FALSE = internal.COLORS.COLOR_BOLD_WHITE;
   internal.COLORS.COLOR_NULL = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_UNDEFINED = internal.COLORS.COLOR_BOLD_WHITE;
 
   internal.NOCOLORS = { };
-  for (var i in internal.COLORS) {
+
+  var i;
+
+  for (i in internal.COLORS) {
     if (internal.COLORS.hasOwnProperty(i)) {
       internal.NOCOLORS[i] = '';
     }
@@ -223,6 +261,64 @@
   internal.colors = (internal.COLOR_OUTPUT ? internal.COLORS : internal.NOCOLORS);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief valgrind flag
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.VALGRIND = false;
+
+  if (typeof VALGRIND !== "undefined") {
+    internal.VALGRIND = VALGRIND;
+    delete VALGRIND;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version number
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.VERSION = "unknown";
+
+  if (typeof VERSION !== "undefined") {
+    internal.VERSION = VERSION;
+    delete VERSION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrade number
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.UPGRADE = "unknown";
+
+  if (typeof UPGRADE !== "undefined") {
+    internal.UPGRADE = UPGRADE;
+    delete UPGRADE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief icu flag
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.HAS_ICU = false;
+
+  if (typeof HAS_ICU !== "undefined") {
+    internal.HAS_ICU = HAS_ICU;
+    delete HAS_ICU;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quote cache
+////////////////////////////////////////////////////////////////////////////////
+
+  var characterQuoteCache = {
+    '\b': '\\b', // ASCII 8, Backspace
+    '\t': '\\t', // ASCII 9, Tab
+    '\n': '\\n', // ASCII 10, Newline
+    '\f': '\\f', // ASCII 12, Formfeed
+    '\r': '\\r', // ASCII 13, Carriage Return
+    '\"': '\\"',
+    '\\': '\\\\'
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,9 +327,16 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+    var output = internal.output;
+
+    var printArray;
+    var printIndent;
+    var printObject;
+    var printRecursive;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output
@@ -254,41 +357,27 @@
 
     for (i = 0;  i < arguments.length;  ++i) {
       if (0 < i) {
-        internal.output(" ");
+        output(" ");
       }
 
       if (typeof(arguments[i]) === "string") {
-        internal.output(arguments[i]);
+        output(arguments[i]);
       }
       else {
-        internal.printRecursive(arguments[i], [], "~", [], 0);
+        printRecursive(arguments[i], [], "~", [], 0);
       }
     }
     
-    internal.output("\n");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quote cache
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.characterQuoteCache = {
-    '\b': '\\b', // ASCII 8, Backspace
-    '\t': '\\t', // ASCII 9, Tab
-    '\n': '\\n', // ASCII 10, Newline
-    '\f': '\\f', // ASCII 12, Formfeed
-    '\r': '\\r', // ASCII 13, Carriage Return
-    '\"': '\\"',
-    '\\': '\\\\'
+    output("\n");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a single character
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.quoteSingleJsonCharacter = function (c) {
-    if (internal.characterQuoteCache.hasOwnProperty[c]) {
-      return internal.characterQuoteCache[c];
+  var quoteSingleJsonCharacter = function (c) {
+    if (characterQuoteCache.hasOwnProperty[c]) {
+      return characterQuoteCache[c];
     }
 
     var charCode = c.charCodeAt(0);
@@ -308,7 +397,7 @@
     }
 
     result += charCode.toString(16);
-    internal.characterQuoteCache[c] = result;
+    characterQuoteCache[c] = result;
 
     return result;
   };
@@ -317,16 +406,17 @@
 /// @brief quotes a string character
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.quoteJsonString = function (str) {
-    var quotable = /[\\\"\x00-\x1f]/g;
-    return '"' + str.replace(quotable, internal.quoteSingleJsonCharacter) + '"';
+  var quotable = /[\\\"\x00-\x1f]/g;
+
+  var quoteJsonString = function (str) {
+    return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printRecursive = function (value, seen, path, names, level) {
+  printRecursive = function (value, seen, path, names, level) {
     var p;
 
     if (seen === undefined) {
@@ -337,7 +427,7 @@
     p = seen.indexOf(value);
 
     if (0 <= p) {
-      internal.output(names[p]);
+      output(names[p]);
     }
     else {
       if (value instanceof Object) {
@@ -350,93 +440,93 @@
           value._PRINT(seen, path, names, level);
         }
         else if (value instanceof Array) {
-          internal.printArray(value, seen, path, names, level);
+          printArray(value, seen, path, names, level);
         }
         else if (value.__proto__ === Object.prototype) {
-          internal.printObject(value, seen, path, names, level);
+          printObject(value, seen, path, names, level);
         }
-	else if (typeof value.toString === "function") {
-          internal.output(value.toString());
+        else if (typeof value.toString === "function") {
+          output(value.toString());
         }
         else {
-          internal.printObject(value, seen, path, names, level);
+          printObject(value, seen, path, names, level);
         }
       }
       else if (value === undefined) {
-        internal.output("undefined");
+        output(internal.colors.COLOR_UNDEFINED);
+        output("undefined");
+        output(internal.colors.COLOR_RESET);
       }
       else {
         if (typeof(value) === "string") {
-          internal.output(internal.colors.COLOR_STRING);
-          internal.output(internal.quoteJsonString(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(internal.colors.COLOR_STRING);
+          output(quoteJsonString(value));
+          output(internal.colors.COLOR_RESET);
         }
         else if (typeof(value) === "boolean") {
-          internal.output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
-          internal.output(String(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
         else if (typeof(value) === "number") {
-          internal.output(internal.colors.COLOR_NUMBER);
-          internal.output(String(value));
-          internal.output(internal.colors.COLOR_RESET);
+          output(internal.colors.COLOR_NUMBER);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
-        else if (value == null) {
-          internal.output(internal.colors.COLOR_NULL);
-          internal.output(String(value));
-          internal.output(internal.colors.COLOR_RESET);
+        else if (value === null) {
+          output(internal.colors.COLOR_NULL);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
         else {
-          internal.output(String(value));
+          output(String(value));
         }
       }
     }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an array
+/// @brief prints the JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printArray = function (object, seen, path, names, level) {
+  printArray = function (object, seen, path, names, level) {
     if (object.length === 0) {
-      internal.output(internal.colors.COLOR_PUNCTUATION);
-      internal.output("[ ]");
-      internal.output(internal.colors.COLOR_RESET);
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("[ ]");
+      output(internal.colors.COLOR_RESET);
     }
     else {
       var i;
       var sep = " ";
 
-      internal.output(internal.colors.COLOR_PUNCTUATION);
-      internal.output("[");
-      internal.output(internal.colors.COLOR_RESET);
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("[");
+      output(internal.colors.COLOR_RESET);
 
       var newLevel = level + 1;
 
       for (i = 0;  i < object.length;  i++) {
-        internal.output(internal.colors.COLOR_PUNCTUATION);
-        internal.output(sep);
-        internal.output(internal.colors.COLOR_RESET);
+        output(internal.colors.COLOR_PUNCTUATION);
+        output(sep);
+        output(internal.colors.COLOR_RESET);
 
-        internal.printIndent(newLevel);
+        printIndent(newLevel);
 
-        internal.printRecursive(object[i],
-                                seen,
-                                path + "[" + i + "]",
-                                names,
-                                newLevel);
+        printRecursive(object[i],
+                       seen,
+                       path + "[" + i + "]",
+                       names,
+                       newLevel);
         sep = ", ";
       }
 
-      if (object.length > 1) {
-        internal.output(" ");
-      }
+      output(" ");
 
-      internal.printIndent(level);
+      printIndent(level);
 
-      internal.output(internal.colors.COLOR_PUNCTUATION);
-      internal.output("]");
-      internal.output(internal.colors.COLOR_RESET);
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("]");
+      output(internal.colors.COLOR_RESET);
     }
   };
 
@@ -444,13 +534,13 @@
 /// @brief prints an object
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printObject = function (object, seen, path, names, level) {
+  printObject = function (object, seen, path, names, level) {
     var sep = " ";
     var k;
 
-    internal.output(internal.colors.COLOR_PUNCTUATION);
-    internal.output("{");
-    internal.output(internal.colors.COLOR_RESET);
+    output(internal.colors.COLOR_PUNCTUATION);
+    output("{");
+    output(internal.colors.COLOR_RESET);
 
     var newLevel = level + 1;
 
@@ -458,49 +548,49 @@
       if (object.hasOwnProperty(k)) {
         var val = object[k];
 
-        internal.output(internal.colors.COLOR_PUNCTUATION);
-        internal.output(sep);
-        internal.output(internal.colors.COLOR_RESET);
+        output(internal.colors.COLOR_PUNCTUATION);
+        output(sep);
+        output(internal.colors.COLOR_RESET);
 
-        internal.printIndent(newLevel);
+        printIndent(newLevel);
 
-        internal.output(internal.colors.COLOR_INDEX);
-        internal.output(internal.quoteJsonString(k));
-        internal.output(internal.colors.COLOR_RESET);
-        internal.output(" : ");
+        output(internal.colors.COLOR_INDEX);
+        output(quoteJsonString(k));
+        output(internal.colors.COLOR_RESET);
+        output(" : ");
 
-        internal.printRecursive(val,
-                                seen,
-                                path + "[" + k + "]",
-                                names,
-                                newLevel);
+        printRecursive(val,
+                       seen,
+                       path + "[" + k + "]",
+                       names,
+                       newLevel);
         sep = ", ";
       }
     }
 
-    if (sep === ", ") {
-      internal.output(" ");
-    }
+    output(" ");
 
-    internal.printIndent(level);
+    printIndent(level);
 
-    internal.output(internal.colors.COLOR_PUNCTUATION);
-    internal.output("}");
-    internal.output(internal.colors.COLOR_RESET);
+    output(internal.colors.COLOR_PUNCTUATION);
+    output("}");
+    output(internal.colors.COLOR_RESET);
   };
+
+  internal.printObject = printObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the ident for pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printIndent = function (level) {
+  printIndent = function (level) {
     var j;
 
     if (internal.PRETTY_PRINT) {
-      internal.output("\n");
+      output("\n");
 
       for (j = 0; j < level; ++j) {
-        internal.output("  ");
+        output("  ");
       }
     }
   };
@@ -518,11 +608,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleInternal
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -537,22 +627,23 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global print
+/// @brief global printf
 ////////////////////////////////////////////////////////////////////////////////
 
+  var sprintf = internal.sprintf;
+
   internal.printf = function () {
-    var text = internal.sprintf.apply(internal.springf, arguments);
-    internal.output(text);
-  }
+    output(sprintf.apply(sprintf, arguments));
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start pager
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.start_pager = function () {};
+  internal.startPager = function () {};
 
   if (typeof SYS_START_PAGER !== "undefined") {
-    internal.start_pager = SYS_START_PAGER;
+    internal.startPager = SYS_START_PAGER;
     delete SYS_START_PAGER;
   }
 
@@ -560,10 +651,10 @@
 /// @brief stop pager
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stop_pager = function () {};
+  internal.stopPager = function () {};
 
   if (typeof SYS_STOP_PAGER !== "undefined") {
-    internal.stop_pager = SYS_STOP_PAGER;
+    internal.stopPager = SYS_STOP_PAGER;
     delete SYS_STOP_PAGER;
   }
 
@@ -575,6 +666,7 @@
     if (! internal.PRETTY_PRINT && ! silent) {
       internal.print("using pretty printing");
     }
+
     internal.PRETTY_PRINT = true;
   };
 
@@ -586,6 +678,7 @@
     if (internal.PRETTY_PRINT && ! silent) {
       internal.print("disabled pretty printing");
     }
+
     internal.PRETTY_PRINT = false;
   };
 
@@ -597,6 +690,7 @@
     if (! internal.COLOR_OUTPUT && ! silent) {
       internal.print("starting color printing"); 
     }
+
     internal.colors = internal.COLORS;
     internal.COLOR_OUTPUT = true;
   };
@@ -609,6 +703,7 @@
     if (internal.COLOR_OUTPUT && ! silent) {
       internal.print("disabled color printing");
     }
+
     internal.COLOR_OUTPUT = false;
     internal.colors = internal.NOCOLORS;
   };
@@ -618,13 +713,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.dump = function () { 
+    var i;
     var oldPretty = internal.PRETTY_PRINT; 
     var oldColor = internal.COLOR_OUTPUT; 
 
     internal.startPrettyPrint(true); 
     internal.startColorPrint(true); 
 
-    for (var i = 0; i < arguments.length; ++i) {
+    for (i = 0; i < arguments.length; ++i) {
       internal.print(arguments[i]); 
     }
 
@@ -660,7 +756,7 @@
     Object.getOwnPropertyNames(source)
       .forEach(function(propName) {
         Object.defineProperty(target, propName,
-			      Object.getOwnPropertyDescriptor(source, propName));
+                              Object.getOwnPropertyDescriptor(source, propName));
       });
 
     return target;
@@ -689,7 +785,7 @@
       }
 
       if (internal.exists(n)) {
-        Module.prototype.ModuleExistsCache[path] = true;
+        module.ModuleExistsCache[path] = true;
         return { path : n, content : internal.read(n) };
       }
     }
@@ -699,23 +795,23 @@
       mc = internal.db._collection("_modules");
 
       if (mc !== null && typeof mc.firstExample === "function") {
-	n = mc.firstExample({ path: path });
+        n = mc.firstExample({ path: path });
 
-	if (n !== null) {
+        if (n !== null) {
           if (n.hasOwnProperty('content')) {
-            Module.prototype.ModuleExistsCache[path] = true;
+            module.ModuleExistsCache[path] = true;
             return { path : "_collection/" + path, content : n.content };
           }
 
-	  if (Module.prototype.ModuleExistsCache.hasOwnProperty("/console")) {
-	    var console = Module.prototype.ModuleExistsCache["/console"];
-	    console.error("found empty content in '%s'", JSON.stringify(n));
-	  }
-	}
+          if (module.ModuleExistsCache.hasOwnProperty("/console")) {
+            var console = module.ModuleExistsCache["/console"];
+            console.error("found empty content in '%s'", JSON.stringify(n));
+          }
+        }
       }
     }
 
-    Module.prototype.ModuleExistsCache[path] = false;
+    module.ModuleExistsCache[path] = false;
 
     throw "cannot find a file named '"
         + path
@@ -795,5 +891,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:

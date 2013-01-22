@@ -3,11 +3,11 @@ FOR u IN users
   LIMIT 0, 5
   RETURN u
 
-[ { "_id" : "9259836/10505020", "_rev" : 10505020, "active" : true, "id" : 100, "age" : 37, "name" : "John", "gender" : "m" }, 
-  { "_id" : "9259836/11553596", "_rev" : 11553596, "active" : true, "id" : 107, "age" : 30, "gender" : "m", "name" : "Anthony" }, 
-  { "_id" : "9259836/11094844", "_rev" : 11094844, "active" : true, "id" : 101, "age" : 36, "name" : "Fred", "gender" : "m" }, 
-  { "_id" : "9259836/11619132", "_rev" : 11619132, "active" : true, "id" : 108, "age" : 29, "name" : "Jim", "gender" : "m" }, 
-  { "_id" : "9259836/11160380", "_rev" : 11160380, "active" : false, "id" : 102, "age" : 35, "name" : "Jacob", "gender" : "m" } ]
+[ { "_id" : "9259836/10505020", "_rev" : "10505020", "active" : true, "id" : 100, "age" : 37, "name" : "John", "gender" : "m" }, 
+  { "_id" : "9259836/11553596", "_rev" : "11553596", "active" : true, "id" : 107, "age" : 30, "gender" : "m", "name" : "Anthony" }, 
+  { "_id" : "9259836/11094844", "_rev" : "11094844", "active" : true, "id" : 101, "age" : 36, "name" : "Fred", "gender" : "m" }, 
+  { "_id" : "9259836/11619132", "_rev" : "11619132", "active" : true, "id" : 108, "age" : 29, "name" : "Jim", "gender" : "m" }, 
+  { "_id" : "9259836/11160380", "_rev" : "11160380", "active" : false, "id" : 102, "age" : 35, "name" : "Jacob", "gender" : "m" } ]
 
 
 /* return a projection from a users collection */

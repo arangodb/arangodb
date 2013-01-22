@@ -72,7 +72,6 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "text" ], index.fields);
-        assertEqual(false, index.indexSubstrings);
         return;
       }
 
@@ -84,7 +83,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexExisting : function () {
-      var idx = c.ensureFulltextIndex("textattr", false);
+      var idx = c.ensureFulltextIndex("textattr");
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -96,9 +95,8 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "textattr" ], index.fields);
-        assertEqual(false, index.indexSubstrings);
        
-        assertEqual(idx.id, c.ensureFulltextIndex("textattr", false).id);
+        assertEqual(idx.id, c.ensureFulltextIndex("textattr").id);
         return;
       }
 
@@ -110,7 +108,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexSubstrings : function () {
-      var idx = c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE", true);
+      var idx = c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE");
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -122,7 +120,6 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "iam-an-indexed-ATTRIBUTE" ], index.fields);
-        assertEqual(true, index.indexSubstrings);
         return;
       }
 
@@ -134,7 +131,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexSubstringsExisting : function () {
-      var idx = c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE", true);
+      var idx = c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE");
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -146,9 +143,8 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "iam-an-indexed-ATTRIBUTE" ], index.fields);
-        assertEqual(true, index.indexSubstrings);
       
-        assertEqual(idx.id, c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE", true).id);
+        assertEqual(idx.id, c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE").id);
         return;
       }
 
@@ -160,9 +156,9 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateMultipleIndexes : function () {
-      var idx1 = c.ensureFulltextIndex("attr1", false);
-      var idx2 = c.ensureFulltextIndex("attr1", true);
-      var idx3 = c.ensureFulltextIndex("attr2", true);
+      var idx1 = c.ensureFulltextIndex("attr1");
+      var idx2 = c.ensureFulltextIndex("attr1");
+      var idx3 = c.ensureFulltextIndex("attr2");
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -174,17 +170,14 @@ function fulltextCreateSuite () {
         if (index.id == idx1.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr1" ], index.fields);
-          assertEqual(false, index.indexSubstrings);
         }
         else if (index.id == idx2.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr1" ], index.fields);
-          assertEqual(true, index.indexSubstrings);
         }
         else if (index.id == idx3.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr2" ], index.fields);
-          assertEqual(true, index.indexSubstrings);
         }
         else {
           fail();
@@ -197,7 +190,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexMinLength1 : function () {
-      var idx = c.ensureFulltextIndex("test", true, 5);
+      var idx = c.ensureFulltextIndex("test", 5);
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -209,7 +202,6 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "test" ], index.fields);
-        assertEqual(true, index.indexSubstrings);
         assertEqual(5, index.minLength);
         return;
       }
@@ -222,7 +214,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexMinLength2 : function () {
-      var idx = c.ensureFulltextIndex("test", true, 1);
+      var idx = c.ensureFulltextIndex("test", 1);
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -234,7 +226,6 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "test" ], index.fields);
-        assertEqual(true, index.indexSubstrings);
         assertEqual(1, index.minLength);
         return;
       }
@@ -247,12 +238,12 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDropIndexes : function () {
-      var idx1 = c.ensureFulltextIndex("attr1", false);
-      var idx2 = c.ensureFulltextIndex("attr1", true);
-      var idx3 = c.ensureFulltextIndex("attr2", true);
+      var idx1 = c.ensureFulltextIndex("attr1");
+      var idx2 = c.ensureFulltextIndex("attr1");
+      var idx3 = c.ensureFulltextIndex("attr2");
 
       assertTrue(c.dropIndex(idx1));
-      assertTrue(c.dropIndex(idx2));
+      assertFalse(c.dropIndex(idx2)); // already deleted
       assertTrue(c.dropIndex(idx3));
     }
 
@@ -282,7 +273,7 @@ function fulltextQuerySuite () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      idx = collection.ensureFulltextIndex("text", false).id;
+      idx = collection.ensureFulltextIndex("text").id;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1298,7 +1289,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnicodeSearches: function () {
-      idx = collection.ensureFulltextIndex("text", false, 1).id;
+      idx = collection.ensureFulltextIndex("text", 1).id;
 
       var texts = [
         "\u30e3\u30f3\u30da\u30fc\u30f3\u304a\u3088\u3073\u8ffd\u52a0\u60c5\u5831 \u3010\u697d\u5668\u6b73\u672b\u30bb\u30fc\u30eb\u3011\uff1a\u304a\u597d\u304d\u306aCD\u30fbDVD\u3068\u540c\u6642\u8cfc\u5165\u3067\u304a\u5f97\u306a\u30ad\u30e3\u30f3\u30da\u30fc\u30f3 \u3001 \u7279\u5178\u4ed8\u30a8\u30ec\u30ad\u30ae\u30bf\u30fc \u307b\u304b\u3001\u4eca\u5e74\u6700\u5f8c\u306e\u304a\u8cb7\u3044\u5f97\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\uff0112\/16\u307e\u3067\u3002\u306a\u304a\u3001CD\u30fbDVD\u540c\u6642\u8cfc\u5165\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\u306fAmazon\u30de\u30fc\u30b1\u30c3\u30c8\u30d7\u30ec\u30a4\u30b9\u306e\u5546\u54c1\u306f\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\u5bfe\u8c61\u5916\u3067\u3059\u3002 \u300c\u697d\u5668\u6b73\u672b\u30bb\u30fc\u30eb\u300d\u3078 \u2605\u2606\u3010\u304a\u3059\u3059\u3081\u60c5\u5831\u3011\u30a6\u30a3\u30f3\u30bf\u30fc\u30bb\u30fc\u30eb\u30002013\/1\/4\u307e\u3067\u958b\u50ac\u4e2d\u2606\u2605\u2606 \u30bb\u30fc\u30eb\u5bfe\u8c61\u5546\u54c1\u306f\u5404\u30da\u30fc\u30b8\u304b\u3089\u30c1\u30a7\u30c3\u30af\uff1a \u6700\u592770\uff05OFF\uff01\u56fd\u5185\u76e4\u30d0\u30fc\u30b2\u30f3\uff5c \u3010ALL1,000\u5186\u3011\u4eba\u6c17\u8f38\u5165\u76e4\u30ed\u30c3\u30af\u30fb\u30dd\u30c3\u30d7\u30b9\uff5c \u3010\u8f38\u5165\u76e4\u671f\u9593\u9650\u5b9a1,000\u5186\u3011\u30af\u30ea\u30b9\u30de\u30b9CD\u30bb\u30fc\u30eb\uff5c \u3010\u4eba\u6c17\u306e\u8f38\u5165\u76e41,200\u5186\u3011\u7652\u3057\u306e\u97f3\u697d\uff5c \u3010ALL991\u5186\u3011\u58f2\u308c\u7b4b\u8f38\u5165\u76e4\uff5c",
@@ -1368,7 +1359,7 @@ function fulltextQuerySubstringSuite () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      idx = collection.ensureFulltextIndex("text", true).id;
+      idx = collection.ensureFulltextIndex("text").id;
     },
 
 ////////////////////////////////////////////////////////////////////////////////

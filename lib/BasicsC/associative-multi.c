@@ -800,7 +800,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // we use this flag to speed up initial insertion into the index, i.e. when the
   // index is built for a collection and we know for sure no duplicate elements 
   // will be inserted
-  while (array->_table[i] != NULL && (checkEquality && ! array->isEqualElementElement(array, element, array->_table[i]))) {
+  while (array->_table[i] != NULL && (! checkEquality || ! array->isEqualElementElement(array, element, array->_table[i]))) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;

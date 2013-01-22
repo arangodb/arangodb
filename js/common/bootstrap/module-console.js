@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global Module */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -32,18 +32,25 @@
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleConsole
+/// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief console module
-////////////////////////////////////////////////////////////////////////////////
-
 (function () {
-  var internal = Module.prototype.ModuleCache["/internal"].exports;
-  var console = Module.prototype.ModuleCache["/console"].exports;
+  var internal = require("internal");
+  var console = require("console");
+
+  var sprintf = internal.sprintf;
+  var log = internal.log;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a line from standard input
+////////////////////////////////////////////////////////////////////////////////
 
   console.getline = internal.getline;
 
@@ -67,13 +74,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("debug", msg);
+    log("debug", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,13 +96,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("error", msg);
+    log("error", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,13 +118,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("info", msg);
+    log("info", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,13 +140,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("info", msg);
+    log("info", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,13 +162,13 @@
     var msg;
 
     try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
+      msg = sprintf.apply(sprintf, arguments);
     }
     catch (err) {
       msg = err + ": " + arguments;
     }
 
-    internal.log("warning", msg);
+    log("warning", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,5 +183,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:

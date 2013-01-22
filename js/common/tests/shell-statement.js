@@ -1,10 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*jslint indent: 2, nomen: true, maxlen: 80 */
+/*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -34,7 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
+
+var arangodb = require("org/arangodb");
+var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           statement-related tests
@@ -66,7 +64,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseError : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in" });
+      var st = new ArangoStatement(db, { query : "for u in" });
 
       try {
         st.parse();
@@ -81,7 +79,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseOk1 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in users return u" });
+      var st = new ArangoStatement(db, { query : "for u in users return u" });
       var result = st.parse();
 
       assertEqual([ "users" ], result.collections);
@@ -93,7 +91,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseOk2 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in users for f in friends return u" });
+      var st = new ArangoStatement(db, { query : "for u in users for f in friends return u" });
       var result = st.parse();
 
       assertEqual([ "users", "friends" ], result.collections);
@@ -105,7 +103,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseBind1 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in @@users filter u.name == @name return u" });
+      var st = new ArangoStatement(db, { query : "for u in @@users filter u.name == @name return u" });
       var result = st.parse();
 
       assertEqual([ ], result.collections);
@@ -117,7 +115,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseBind2 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u" });
+      var st = new ArangoStatement(db, { query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u" });
       var result = st.parse();
 
       assertEqual([ "friends" ], result.collections);
@@ -129,7 +127,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainError : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in" });
+      var st = new ArangoStatement(db, { query : "for u in" });
       try {
         st.explain();
       }
@@ -143,7 +141,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainOk1 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1, 2, 3 ] return 1" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return 1" });
       var result = st.explain();
 
       assertEqual(2, result.length);
@@ -162,7 +160,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainOk2 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return 1" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return 1" });
       var result = st.explain();
 
       assertEqual(4, result.length);
@@ -189,7 +187,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteError : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in" });
+      var st = new ArangoStatement(db, { query : "for u in" });
       try {
         result = st.execute();
       }
@@ -203,7 +201,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteOk1 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1, 2, 3 ] return u" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return u" });
       var result = st.execute();
 
       var docs = [ ];
@@ -219,7 +217,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteOk2 : function () {
-      var st = new ArangoStatement(internal.db, { query : "return 1" });
+      var st = new ArangoStatement(db, { query : "return 1" });
       st.setCount(true);
       st.setBatchSize(1);
       st.setQuery("for u in [ 1, 2, 3 ] return u");
@@ -238,7 +236,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBind : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in @list return @value" });
+      var st = new ArangoStatement(db, { query : "for u in @list return @value" });
       st.bind("list", [ 1, 2, 3 ]);
       st.bind("value", 25);
       var result = st.execute();
@@ -256,7 +254,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindVariables1 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in @list return @value + @something" });
+      var st = new ArangoStatement(db, { query : "for u in @list return @value + @something" });
       var result = st.getBindVariables();
 
       assertEqual({ }, result);
@@ -267,7 +265,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindVariables2 : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in @list return @value + @something" });
+      var st = new ArangoStatement(db, { query : "for u in @list return @value + @something" });
       st.bind("list", [ 1, 2 ]);
       st.bind("value", "something");
       st.bind("something", "something else");
@@ -282,7 +280,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindInvalid : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1 ] return @value" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return @value" });
       st.bind("list", [ 1, 2, 3 ]);
       try {
         var result = st.execute();
@@ -298,7 +296,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindRedeclare : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1 ] return @value" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return @value" });
       st.bind("value", 1);
       try {
         st.bind("value", 1);
@@ -313,7 +311,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testQuery : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1 ] return 1" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1" });
 
       assertEqual("for u in [ 1 ] return 1", st.getQuery());
 
@@ -326,7 +324,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCount : function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1 ] return 1" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1" });
 
       assertEqual(false, st.getCount());
 
@@ -342,7 +340,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBatchSize: function () {
-      var st = new ArangoStatement(internal.db, { query : "for u in [ 1 ] return 1" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1" });
 
       assertEqual(null, st.getBatchSize());
 

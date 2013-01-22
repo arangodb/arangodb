@@ -128,7 +128,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
               // "version" value is a string
               if (vs->_type == TRI_JSON_STRING) {
-                _version = string(vs->_value._string.data, vs->_value._string.length);
+                _version = string(vs->_value._string.data, vs->_value._string.length - 1);
               }
             }
           }

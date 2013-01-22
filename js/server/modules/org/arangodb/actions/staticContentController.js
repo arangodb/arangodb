@@ -44,7 +44,7 @@ var actions = require("org/arangodb/actions");
 /// @brief locate content from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function locateContent (req, options) {
+function locateContentFromCollection (req, options) {
   var path;
   var collection;
 
@@ -86,7 +86,7 @@ function locateContent (req, options) {
 exports.head = function (req, res, options, next) {
   var content;
 
-  content = locateContent(req, options);
+  content = locateContentFromCollection(req, options);
   
   if (content === null) {
     res.responseCode = actions.HTTP_NOT_IMPLEMENTED;
@@ -107,7 +107,7 @@ exports.head = function (req, res, options, next) {
 exports.get = function (req, res, options, next) {
   var content;
 
-  content = locateContent(req, options);
+  content = locateContentFromCollection(req, options);
   
   if (content === null) {
     res.responseCode = actions.HTTP_NOT_IMPLEMENTED;

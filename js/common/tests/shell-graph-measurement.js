@@ -7,8 +7,7 @@
     assertEqual, assertTrue, assertException,
     print,
     PRINT_OBJECT,
-    AvocadoCollection, AvocadoEdgesCollection,
-    processCsvFile */
+    AvocadoCollection, AvocadoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -38,7 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity"),
-  Helper = require("test-helper").Helper,
+  Helper = require("org/arangodb/test-helper").Helper,
   console = require("console");
 
 // -----------------------------------------------------------------------------

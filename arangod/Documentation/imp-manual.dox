@@ -80,7 +80,12 @@
 /// @LIT{./arangoimp \-\-file "data.json" \-\-type json \-\-collection "users"}
 ///
 /// This will transfer the data to the server, import the records, and print a
-/// status summary. 
+/// status summary. To show the intermediate progress during the import process,
+/// the option @LIT{\-\-progress} can be added. This option will show the
+/// percentage of the input file that has been sent to the server. This will only
+/// be useful for big import files.
+///
+/// @LIT{./arangoimp \-\-file "data.json" \-\-type json \-\-collection "users" \-\-progress true}
 ///
 /// By default, the endpoint @LIT{tcp://127.0.0.1:8529} will be used. 
 /// If you want to specify a different endpoint, you can use the \-\-server.endpoint

@@ -1,9 +1,73 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
-* added fulltext queries via AQL FULLTEXT() function. substring queries not supported
+* added --progress option for arangoimp. This will show the percentage of the input
+  file that has been processed by arangoimp while the import is still running. It can
+  be used as a rough indicator of progress for the entire import.
 
-* added collection.revision() method to determine whether a collection has changed
+* make the server log documents that cannot be imported via /_api/import into the
+  logfile using the warning log level. This may help finding illegal documents in big
+  import runs.
+
+* check on server startup whether the database directory and all collection directories
+  are writable. if not, the server startup will be aborted. this prevents serious
+  problems with collections being non-writable and this being detected at some pointer
+  after the server has been started
+
+* allow the following AQL constructs: FUNC(...)[...], FUNC(...).attribute
+
+* fixed issue #361: Bug in Admin Interface. Header disappears when clicking new collection
+
+* Added in-memory only collections
+
+  Added collection creation parameter "isVolatile": 
+  if set to true, the collection is created as an in-memory only collection, 
+  meaning that all document data of that collection will reside in memory only, 
+  and will not be stored permanently to disk. 
+  This means that all collection data will be lost when the collection is unloaded 
+  or the server is shut down.
+  As this collection type does not have datafile disk overhead for the regular 
+  document operations, it may be faster than normal disk-backed collections. The
+  actual performance gains strongly depend on the underlying OS, filesystem, and 
+  settings though.
+  This collection type should be used for caches only and not for any sensible data
+  that cannot be re-created otherwise.
+  Some platforms, namely Windows, currently do not support this collection type.
+  When creating an in-memory collection on such platform, an error message will be
+  returned by ArangoDB telling the user the platform does not support it.
+
+* fixed issue #353: Please include "pretty print" in Emergency Console
+
+* fixed issue #352: "pretty print" console.log
+  This was achieved by adding the dump() function for the "internal" object
+
+* reduced memory usage and insertion time for edges index
+  Inserting into the edges index now avoids costly comparisons in case of a hash 
+  collision, reducing the prefilling/loading timer for bigger edge collections
+
+* added fulltext queries to AQL via FULLTEXT() function. This allows search 
+  fulltext indexes from an AQL query to find matching documents
+
+* added fulltext index type. This index type allows indexing words and prefixes of
+  words from a specific document attribute. The index can be queries using a
+  SimpleQueryFull object, the HTTP REST API at /_api/simple/fulltext, or via AQL
+
+* when documents are returned from ArangoDB, the document _revision id was previously
+  returned as a (potentially very big) integer value. This causes problems (clipping,
+  precision loss) for clients that did not support big integers natively and store such
+  values internally in doubles. Javascript and 32 bit-PHP are examples for clients
+  that could encounter such problems. 
+  Therefore, revision ids are now returned by ArangoDB as strings, with the string
+  content being the integer value as previously. Example:
+  - Document returned by ArangoDB 1.1: { "_rev": 1234, ... } 
+  - Document returned by ArangoDB 1.2: { "_rev": "1234", ... } 
+
+* added collection.revision() method to determine whether a collection has changed. 
+  The revision method returns a revision string that can be used by client programs
+  for equality/inequality comparisons. The value returned by the revision method
+  should be treated by clients as an opaque string and clients should not try to
+  figure out the sense of the revision id. This is still useful enough to check
+  whether data in a collection has changed.
 
 * issue #346: adaptively determine NUMBER_HEADERS_PER_BLOCK
 
@@ -122,28 +186,20 @@ v1.2.alpha (XXXX-XX-XX)
   Returning the location header has become unnecessary in ArangoDB 1.2 because users
   can access collections by name and do not need to care about collection ids.
 
-* edges in edge collections can optionally be undirected
-  Edges now have a `_bidirectional` attribute that determines whether the edge is to be
-  treated as directed (unidirectional) or undirected (bidirectional). The attribute
-  can be set when an edge is created. If ommitted, the default is to create unidirectional
-  edges (i.e. `_bidirectional: false`).
-  Unidirectional edges are handled as in previous versions of ArangoDB, that is they
-  have a `_from` and `_to` attribute that indicate the source and target vertices
-  of the edge. Additionally, they now return the `_bidirectional` attribute with a
-  value of `false`.
-  Bidirectional edges do not have unambigious sources and targets (the roles of the connected
-  vertices are unclear), so they return the connected vertices in a `_vertices` list.
-  This list contains the two vertices that the edge connects. It is up to the user to
-  figure out these edges' roles. Additionally, bidirectional edges return the
-  `_bidirectional` attribute with a value of `true`.
-
 
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #357: Some spelling and grammar errors
+
+* fixed issue #355: fix quotes in pdf manual
+ 
+* fixed issue #351: Strange arangosh error message for long running query 
+
 * fixed randomly hanging connections in arangosh on MacOS
 
-* added any query
+* added "any" query method: this returns a random document from a collection. It
+  is also available via REST HTTP at /_api/simple/any.
 
 * added deployment tool
 
@@ -155,8 +211,10 @@ v1.1.2 (XXXX-XX-XX)
 * fixed truncation of human-readable log messages for web interface: the trailing \0
   byte was not appended for messages longer than 256 bytes
 
-* reduce memory usage for the case when there are lots of small collections with few 
-  documents each
+* fixed issue #341: ArangoDB crashes when stressed with Batch jobs
+  Contrary to the issue title, this did not have anything to do with batch jobs but
+  with too high memory usage. The memory usage of ArangoDB is now reduced for cases
+   when there are lots of small collections with few documents each
 
 * started with issue #317: Feature Request (from Google Groups): DATE handling
 
@@ -165,13 +223,11 @@ v1.1.2 (XXXX-XX-XX)
 
 * fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
 
-* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
-
-* fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
-
 * fixed issue #336: Collections REST API docs
 
 * fixed issue #335: mmap errors due to wrong memory address calculation 
+
+* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
 
 * added option '--server.disable-authentication' for arangosh as well. No more passwd
   prompts if not needed
@@ -685,7 +741,7 @@ v1.0.beta1 (2012-07-29)
   - tcp://[host]:port or http@tcp://[host]:port (HTTP over IPv6)
   - ssl://host:port or http@tcp://host:port (HTTP over SSL-encrypted IPv4)
   - ssl://[host]:port or http@tcp://[host]:port (HTTP over SSL-encrypted IPv6)
-  - unix://path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
+  - unix:///path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
 
   If no port is specified, the default port of 8529 will be used.
 

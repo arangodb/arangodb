@@ -39,8 +39,6 @@
 
 #include "build.h"
 
-#include "3rdParty/valgrind/valgrind.h"
-
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -179,7 +177,6 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
-    _runningOnValgrind(false),
     _binaryPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
@@ -199,10 +196,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
-
-  if ((RUNNING_ON_VALGRIND) > 0) {
-    _runningOnValgrind = true;
-  }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
@@ -722,10 +715,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
         
-    context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-    context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
-    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
-
     ok = true;
 
     switch (mode) {

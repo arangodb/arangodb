@@ -32,6 +32,8 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
+#include "BasicsC/random.h"
+
 #include "Logger/Logger.h"
 #include "Utils/CollectionReadLock.h"
 #include "Utils/CollectionWriteLock.h"
@@ -316,6 +318,39 @@ namespace triagens {
 
         void addHint (const TRI_transaction_hint_e hint) {
           this->_hints |= (TRI_transaction_hint_t) hint;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read any (random) document
+////////////////////////////////////////////////////////////////////////////////
+        
+        int readCollectionAny (TRI_primary_collection_t* const primary, 
+                               TRI_doc_mptr_t** mptr,
+                               TRI_barrier_t** barrier) {
+          *mptr = 0;
+          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          if (*barrier == 0) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+          
+          CollectionReadLock lock(primary);
+          if (primary->_primaryIndex._nrUsed == 0) {
+            TRI_FreeBarrier(*barrier);
+            *barrier = 0;
+          }
+          else {
+            size_t total = primary->_primaryIndex._nrAlloc;
+            size_t pos = TRI_UInt32Random() % total;
+            void** beg = primary->_primaryIndex._table;
+
+            while (beg[pos] == 0 || (((TRI_doc_mptr_t*) beg[pos])->_validTo != 0)) {
+              pos = (pos + 1) % total;
+            }
+
+            *mptr = (TRI_doc_mptr_t*) beg[pos];
+          }
+
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -107,7 +107,7 @@ int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value>);
 /// @brief converts an V8 object to a uint64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value>);
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value>, const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a double

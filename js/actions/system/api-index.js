@@ -467,14 +467,12 @@ function POST_api_index_skiplist (req, res, collection, body) {
 /// - @LIT{type}: must be equal to @LIT{"fulltext"}.
 ///
 /// - @LIT{fields}: A list of attribute names. Currently, the list is limited 
-///   to exactly one attribute.
-///
-/// - @LIT{indexSubstrings}: If @LIT{true}, then substrings are also indexes. 
-///   This will enable substring searching via the index but will make the index
-///   consume more memory.
+///   to exactly one attribute, so the value of @LIT{fields} should look like
+///   this for example: @LIT{[ "text" ]}.
 ///
 /// - @LIT{minLength}: Minimum character length of words to index. Will default
-///   to a server-defined value if unspecified.
+///   to a server-defined value if unspecified. It is thus recommended to set
+///   this value explicitly when creating the index.
 ///
 /// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
@@ -502,7 +500,7 @@ function POST_api_index_fulltext (req, res, collection, body) {
                       "fields must contain exactly one attribute name");
   }
 
-  var index = collection.ensureFulltextIndex.call(collection, fields, body.indexSubstrings || false, body.minLength || undefined);
+  var index = collection.ensureFulltextIndex.call(collection, fields, body.minLength || undefined);
 
   if (index.isNewlyCreated) {
     actions.resultOk(req, res, actions.HTTP_CREATED, index);

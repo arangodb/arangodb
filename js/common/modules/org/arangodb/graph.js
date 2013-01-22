@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
-/*global require, WeakDictionary, exports */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, white: true, plusplus: true */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -28,27 +28,31 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
+
+var db = arangodb.db;
+var ArangoCollection = arangodb.ArangoCollection;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       module "org/arangodb/graph"
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoGraph
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"),
-  db = internal.db,
-  ArangoCollection = internal.ArangoCollection,
-  findOrCreateCollectionByName,
-  findOrCreateEdgeCollectionByName;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-findOrCreateCollectionByName = function (name) {
-  var col = internal.db._collection(name);
+var findOrCreateCollectionByName = function (name) {
+  var col = db._collection(name);
 
   if (col === null) {
-    col = internal.db._create(name);
-  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_DOCUMENT) {
+    col = db._create(name);
+  } 
+  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -63,12 +67,13 @@ findOrCreateCollectionByName = function (name) {
 /// @brief find or create an edge collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-findOrCreateEdgeCollectionByName = function (name) {
-  var col = internal.db._collection(name);
+var findOrCreateEdgeCollectionByName = function (name) {
+  var col = db._collection(name);
 
   if (col === null) {
-    col = internal.db._createEdgeCollection(name);
-  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_EDGE) {
+    col = db._createEdgeCollection(name);
+  }
+  else if (!(col instanceof ArangoCollection) || col.type() !== ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 
@@ -215,11 +220,11 @@ Edge.prototype.getOutVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPeerVertex = function (vertex) {
-  if (vertex._id == this._properties._to) {
+  if (vertex._id === this._properties._to) {
     return this._graph.constructVertex(this._properties._from);
   }
 
-  if (vertex._id == this._properties._from) {
+  if (vertex._id === this._properties._from) {
     return this._graph.constructVertex(this._properties._to);
   }
 
@@ -325,15 +330,15 @@ Edge.prototype._PRINT = function (seen, path, names) {
   seen = path = names = null;
 
   if (!this._id) {
-    internal.output("[deleted Edge]");
+    arangodb.output("[deleted Edge]");
   } else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      internal.output("Edge(\"", this._properties._key, "\")");
+      arangodb.output("Edge(\"", this._properties._key, "\")");
     } else {
-      internal.output("Edge(", this._properties._key, ")");
+      arangodb.output("Edge(", this._properties._key, ")");
     }
   } else {
-    internal.output("Edge(<", this._id, ">)");
+    arangodb.output("Edge(<", this._id, ">)");
   }
 };
 
@@ -666,7 +671,7 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
     return neighbor.id;
   };
 
-  if (typeof(target_vertex) != 'object') {
+  if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be a vertex object";
   }
 
@@ -677,10 +682,12 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
 
   if ((options.listed !== undefined) && (options.listed === true)) {
     return_value = common_neighbors;
-  } else if ((options.normalized !== undefined) && (options.normalized === true)) {
+  }
+  else if ((options.normalized !== undefined) && (options.normalized === true)) {
     all_neighbors = neighbor_set_one.unite(neighbor_set_two);
     return_value = (common_neighbors.length / all_neighbors.length);
-  } else {
+  }
+  else {
     return_value = common_neighbors.length;
   }
 
@@ -733,7 +740,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
-  if (typeof(target_vertex) != 'object') {
+  if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be an object";
   }
   var predecessors = target_vertex.determinePredecessors(this, options || {});
@@ -1069,15 +1076,15 @@ Vertex.prototype._PRINT = function (seen, path, names) {
   seen = path = names = null;
 
   if (!this._id) {
-    internal.output("[deleted Vertex]");
+    arangodb.output("[deleted Vertex]");
   } else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      internal.output("Vertex(\"", this._properties._key, "\")");
+      arangodb.output("Vertex(\"", this._properties._key, "\")");
     } else {
-      internal.output("Vertex(", this._properties._key, ")");
+      arangodb.output("Vertex(", this._properties._key, ")");
     }
   } else {
-    internal.output("Vertex(<", this._id, ">)");
+    arangodb.output("Vertex(<", this._id, ">)");
   }
 };
 
@@ -1118,7 +1125,7 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Graph(name, vertices, edges) {
-  var gdb = internal.db._collection("_graphs"),
+  var gdb = db._collection("_graphs"),
     graphProperties,
     graphPropertiesId;
 
@@ -1143,13 +1150,13 @@ function Graph(name, vertices, edges) {
       throw "no graph named '" + name + "' found";
     }
 
-    vertices = internal.db._collection(graphProperties.vertices);
+    vertices = db._collection(graphProperties.vertices);
 
     if (vertices === null) {
       throw "vertex collection '" + graphProperties.vertices + "' has vanished";
     }
 
-    edges = internal.db._collection(graphProperties.edges);
+    edges = db._collection(graphProperties.edges);
 
     if (edges === null) {
       throw "edge collection '" + graphProperties.edges + "' has vanished";
@@ -1166,7 +1173,8 @@ function Graph(name, vertices, edges) {
 
     try {
       graphProperties = gdb.document(name);
-    } catch (e) {
+    }
+    catch (e1) {
       graphProperties = null;
     }
 
@@ -1175,19 +1183,19 @@ function Graph(name, vertices, edges) {
 
       // check if know that graph
       graphProperties = gdb.firstExample('vertices',
-        vertices._id,
+        vertices.name(),
         'edges',
-        edges._id
+        edges.name()
         );
 
       if (graphProperties === null) {
         
          // check if edge is used in a graph
-        graphProperties = gdb.firstExample('edges', edges._id);
+        graphProperties = gdb.firstExample('edges', edges.name());
 
         if (graphProperties === null) {      
-          graphPropertiesId = gdb.save({ 'vertices' : vertices._id,
-                       'edges' : edges._id,
+          graphPropertiesId = gdb.save({ 'vertices' : vertices.name(),
+                       'edges' : edges.name(),
                        '_key' : name });
 
           graphProperties = gdb.document(graphPropertiesId);
@@ -1198,11 +1206,11 @@ function Graph(name, vertices, edges) {
         throw "found graph but has different <name>";
       }
     } else {
-      if (graphProperties.vertices !== vertices._id) {
+      if (graphProperties.vertices !== vertices.name()) {
         throw "found graph but has different <vertices>";
       }
 
-      if (graphProperties.edges !== edges._id) {
+      if (graphProperties.edges !== edges.name()) {
         throw "found graph but has different <edges>";
       }
     }
@@ -1214,9 +1222,9 @@ function Graph(name, vertices, edges) {
   this._vertices = vertices;
   this._edges = edges;
 
-  // and weak dictionary for vertices and edges
-  this._weakVertices = new WeakDictionary();
-  this._weakEdges = new WeakDictionary();
+  // and dictionary for vertices and edges
+  this._verticesCache = {};
+  this._edgesCache = {};
 
   // and store the cashes
   this.predecessors = {};
@@ -1245,7 +1253,7 @@ function Graph(name, vertices, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function () {
-  var gdb = internal.db._collection("_graphs");
+  var gdb = db._collection("_graphs");
 
   gdb.remove(this._properties);
 
@@ -1378,16 +1386,19 @@ Graph.prototype.getVertex = function (id) {
 
   try {
     ref = this._vertices.document(id);
-  } catch (e) {
+  }
+  catch (e) {
     ref = null;
   }
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
-  } else {
+  }
+  else {
     try {
       vertex = this.constructVertex(id);
-    } catch (e) {
+    }
+    catch (e1) {
       vertex = null;
     }
   }
@@ -1447,7 +1458,7 @@ Graph.prototype.getVertices = function () {
       // Ignores the standard arguments
       seen = path = names = null;
 
-      internal.output("[vertex iterator]");
+      arangodb.output("[vertex iterator]");
     };
   };
 
@@ -1481,7 +1492,7 @@ Graph.prototype.getEdge = function (id) {
   } else {
     try {
       edge = this.constructEdge(id);
-    } catch (e) {
+    } catch (e1) {
       edge = null;
     }
   }
@@ -1527,7 +1538,7 @@ Graph.prototype.getEdges = function () {
       // Ignores the standard arguments
       seen = path = names = null;
 
-      internal.output("[edge iterator]");
+      arangodb.output("[edge iterator]");
     };
   };
 
@@ -1808,10 +1819,10 @@ Graph.prototype.normalizedMeasurement = function (measurement) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructVertex = function (id) {
-  var vertex = this._weakVertices[id];
+  var vertex = this._verticesCache[id];
 
   if (vertex === undefined) {
-    this._weakVertices[id] = vertex = new Vertex(this, id);
+    this._verticesCache[id] = vertex = new Vertex(this, id);
   }
 
   return vertex;
@@ -1822,10 +1833,10 @@ Graph.prototype.constructVertex = function (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.constructEdge = function (id) {
-  var edge = this._weakEdges[id];
+  var edge = this._edgesCache[id];
 
   if (edge === undefined) {
-    this._weakEdges[id] = edge = new Edge(this, id);
+    this._edgesCache[id] = edge = new Edge(this, id);
   }
 
   return edge;
@@ -1844,7 +1855,7 @@ Graph.prototype._PRINT = function (seen, path, names) {
   output = "Graph(\"";
   output += this._properties._key;
   output += "\")";
-  internal.output(output);
+  arangodb.output(output);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1860,7 +1871,6 @@ Graph.prototype._PRINT = function (seen, path, names) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoCollection = ArangoCollection;
 exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;

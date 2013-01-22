@@ -58,6 +58,7 @@
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/properties"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/count"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/figures"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/revision"</li>
 ///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name"</li>
 ///    <li>@ref HttpCollectionReadAll "GET /_api/collection/"</li>
 ///   </ul>

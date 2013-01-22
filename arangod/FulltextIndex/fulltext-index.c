@@ -1619,7 +1619,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
         list = GetSubNodeHandles(node);
       }
       else {
-        LOG_ERROR("SUBSTRING MATCHING IS NOT IMPLEMENTED");
+        LOG_WARNING("invalid matching option for fulltext index query");
         list = TRI_CreateListFulltextIndex(0);
       }
     }

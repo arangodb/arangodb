@@ -8,9 +8,8 @@ content-type: application/json; charset=utf-8
   "result": [
     {
       "_id": "98636735/101520319",
-      "_rev": 101520319,
+      "_rev": "101520319",
       "_key": "101520319",
-      "_bidirectional": false,
       "_from": "97850303/100996031",
       "_to": "97850303/101192639",
       "$label": null,

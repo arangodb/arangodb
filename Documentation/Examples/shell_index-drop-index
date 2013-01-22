@@ -1,9 +1,9 @@
 arango> db.example.ensureSkiplist("a", "b");
-{ "id" : "73650/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+{ "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
 
 arango> i = db.example.getIndexes();
-[{ "id" : "73650/0", "type" : "primary", "fields" : ["_id"] },
- { "id" : "73650/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
+[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+ { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
 
 arango> db.example.dropIndex(i[0])
 false
@@ -12,4 +12,4 @@ arango> db.example.dropIndex(i[1].id)
 true
 
 arango> i = db.example.getIndexes();
-[{ "id" : "73650/0", "type" : "primary", "fields" : ["_id"] }]
+[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]

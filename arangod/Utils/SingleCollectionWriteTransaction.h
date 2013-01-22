@@ -60,13 +60,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection object
 ///
-/// A single collection write transaction must at most execute one write operation
-/// on the underlying collection. Whenever it tries to execute more than one
-/// write operation, an error is returned. Executing only one operation is
+/// A single collection write transaction executes write operations on the
+/// underlying collection. It can be limited to at most one write operation.
+/// If so, whenever it tries to execute more than one write operation, an error 
+/// can be raised automatically. Executing only one write operation is
 /// sufficient for the basic CRUD operations and allows using the transaction
-/// API even for the single CRUD operations. However, much of the transaction 
-/// overhead can be avoided if the transaction only consists of a single 
-/// operation on a single collection. 
+/// API even efficiently for single CRUD operations. This optimisation will
+/// allow avoiding a lot of the general transaction overhead.
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
@@ -80,31 +80,6 @@ namespace triagens {
           }
         }
         
-        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          const string& name,
-                                          const TRI_col_type_e createType) :
-          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE, createType),
-          _numWrites(0), 
-          _synchronous(false) {
-
-          if (N == 1) {
-            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
-          }
-        }
-        
-        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          const string& name,
-                                          const bool create,
-                                          const TRI_col_type_e createType) :
-          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE, create, createType),
-          _numWrites(0), 
-          _synchronous(false) {
-
-          if (N == 1) {
-            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
-          }
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////

@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

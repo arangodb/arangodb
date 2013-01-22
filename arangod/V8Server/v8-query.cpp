@@ -1731,11 +1731,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   TRI_voc_size_t limit;
   ExtractSkipAndLimit(argv, 0, skip, limit);
   
-  // setup result
-  v8::Handle<v8::Object> result = v8::Object::New();
-  v8::Handle<v8::Array> documents = v8::Array::New();
-  result->Set(v8::String::New("documents"), documents);
-
   TRI_barrier_t* barrier = 0;
   uint32_t total = 0;
   vector<TRI_doc_mptr_t*> docs;
@@ -1744,14 +1739,24 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
   }
 
   res = trx.read(docs, &barrier, skip, limit, &total);
   res = trx.finish(res);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
+  }
 
   const size_t n = docs.size();
   uint32_t count = 0;
+  
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Array> documents = v8::Array::New(n);
+  // reserver full capacity in one go
+  result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> document = TRI_WrapShapedJson(col, docs[i], barrier);
@@ -1761,8 +1766,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
     }
     else {
-      documents->Set(count, document);
-      ++count;
+      documents->Set(count++, document);
     }
   }
 
@@ -1783,69 +1787,42 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @code
-/// arangosh> db.example.any()
-/// { "_id" : "222186062247/222716379559", "_rev" : 222716379559, "Hallo" : "World" }
+/// arangod> db.example.any()
+/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+  }
+  
+  TRI_barrier_t* barrier = 0;
+  TRI_doc_mptr_t* doc = 0;
 
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* document;
-
-  document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-
-  if (document == 0) {
-    return scope.Close(v8::ThrowException(err));
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
+  }
+  
+  res = trx.read(&doc, &barrier);
+  res = trx.finish(res);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
 
-  v8::Handle<v8::Value> result;
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-  
-  TRI_primary_collection_t* primary = &document->base;
-  TRI_doc_operation_context_t context;
-
-  TRI_InitReadContextPrimaryCollection(&context, primary);
-
-  primary->beginRead(primary);
-
-  result = v8::Null();
-
-  if (primary->_primaryIndex._nrUsed != 0) {
-    size_t total = primary->_primaryIndex._nrAlloc;
-    size_t pos = TRI_UInt32Random() % total;
-    void** beg = primary->_primaryIndex._table;
-
-    while (beg[pos] == 0) {
-      pos = (pos + 1) % total;
-    }
-
-    TRI_doc_mptr_t document = * (TRI_doc_mptr_t*) beg[pos];
-
-    if (document._data != 0) {
-      TRI_barrier_t* barrier;
-
-      barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-      result = TRI_WrapShapedJson(collection, &document, barrier);
-    }
+  if (doc == 0) {
+    return scope.Close(v8::Null());
   }
-
-  primary->endRead(primary);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
-  TRI_ReleaseCollection(collection);
-  
-  return scope.Close(result);
+  else {
+    return scope.Close(TRI_WrapShapedJson(col, doc, barrier));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

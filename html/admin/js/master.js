@@ -640,9 +640,9 @@ var logTable = $('#logTableID').dataTable({
       highlightNavButton("#AvocSH"); 
       $('#avocshContent').focus();
       if (printedHelp === false) {
-        print(welcomeMSG + require("arangosh").HELP);
+        print(welcomeMSG + require("org/arangodb/arangosh").HELP);
         printedHelp = true; 
-        start_pretty_print(); 
+        require("internal").startPrettyPrint(); 
       }
       $("#avocshContent").autocomplete({
         source: shArray
@@ -1169,7 +1169,7 @@ var lastFormatQuestion = true;
 
     var command;
     if (data == "help") {
-      command = "require(\"arangosh\").HELP";
+      command = "require(\"org/arangodb/arangosh\").HELP";
     }
     else if (data == "reset") {
       command = "$('#avocshWindow').html(\"\");undefined;";
@@ -1178,11 +1178,11 @@ var lastFormatQuestion = true;
       formatQuestion = JSON.parse($('input:radio[name=formatshellJSONyesno]:checked').val());
       if (formatQuestion != lastFormatQuestion) {
         if (formatQuestion == true) {
-          start_pretty_print();
+          require("internal").startPrettyPrint(); 
           lastFormatQuestion = true;
         } 
         if (formatQuestion == false) {
-          stop_pretty_print(); 
+          require("internal").stopPrettyPrint(); 
           lastFormatQuestion = false;
         }
       }
@@ -1432,6 +1432,8 @@ var lastFormatQuestion = true;
   $('#centerView button').live('click', function () {
     if (this.id == "createCollection") {
       window.location.href = "#createCollection";
+      $('#footerSlideContainer').animate({ 'height': '25px' });
+      $('#footerSlideContent').animate({ 'height': '25px' });
       return false; 
     }
     if (this.id == "refreshCollections") {
@@ -1821,7 +1823,6 @@ $(function() {
       open = false;
       $('#movetologinButton').text("Login");
     }
-    $('body').resizeAll();
   });
 
   $('#movetologinButton').click(function() {
