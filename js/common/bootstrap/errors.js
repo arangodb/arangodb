@@ -77,6 +77,7 @@
     "ERROR_ARANGO_DOCUMENT_KEY_BAD" : { "code" : 1221, "message" : "illegal document key" }, 
     "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" }, 
     "ERROR_ARANGO_INDEX_NEEDS_RESIZE" : { "code" : 1223, "message" : "index needs resizing" }, 
+    "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "database directory not writable" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 

@@ -2580,6 +2580,49 @@ function AHUACATL_MERGE_RECURSIVE () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare an object against a list of examples and return whether the
+/// object matches at least one of the examples 
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MATCHES () {
+  var element = arguments[0];
+
+  if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+    return false;
+  }
+
+  var examples = arguments[1];
+  if (! Array.isArray(examples)) {
+    examples = [ examples ];
+  }
+
+  for (var i = 0; i < examples.length; ++i) {
+    var example = examples[i];
+    var result = true;
+
+    if (AHUACATL_TYPEWEIGHT(example) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
+    }
+
+    var keys = AHUACATL_KEYS(example);
+    for (var j = 0; j < keys.length; ++j) {
+      var key = keys[j];
+
+      if (! AHUACATL_RELATIONAL_EQUAL(element[key], example[key])) {
+        result = false;
+        break;
+      }
+    }
+
+    if (result) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief passthru the argument
 ///
 /// this function is marked as non-deterministic so its argument withstands
