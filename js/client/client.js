@@ -93,6 +93,14 @@ function clear () {
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
 
+  if (internal.db !== undefined) {
+    try {
+      internal.db._collections();
+    }
+    catch (err) {
+    }
+  }
+
   if (internal.arango !== undefined) {
     if (typeof internal.arango.isConnected !== "undefined") {
       if (internal.arango.isConnected()) {
