@@ -130,7 +130,6 @@ describe ArangoDB do
         "\\\\invalid",
         "\\\\\\\\invalid",
         ";invalid",
-        ":invalid",
         ".invalid",
         ",invalid",
         "!invalid",

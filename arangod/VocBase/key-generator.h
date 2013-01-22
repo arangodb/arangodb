@@ -62,7 +62,7 @@ struct TRI_primary_collection_s;
 /// UTF-8 validation. this is done in TRI_IsAllowedKey()
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_KEY_REGEX "[a-zA-Z0-9_-]+"
+#define TRI_VOC_KEY_REGEX "[a-zA-Z0-9_:-]+"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of a key in a collection
