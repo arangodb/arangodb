@@ -159,7 +159,7 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
   } 
-  printf("oreste:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
+  printf("oreste:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
   /* end oreste -debug */
   //abort();
   // TODO: use the wcstombs_s function to convert wchar to char - since all the above
@@ -234,6 +234,15 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
       return 0;
     }
 
+    case TRI_WIN_INITIAL_SET_MAX_STD_IO: {
+      int* newMax = (int*)(data);
+      int result = _setmaxstdio(*newMax);
+      if (result != *newMax) {
+        return -1;
+      }
+      return 0;  
+    }
+
     case TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL: {
       int errorCode;
       WSADATA wsaData;
@@ -273,7 +282,6 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int    fileDescriptor;
 
-
   fileHandle = CreateFileA(filename, 
                           GENERIC_READ | GENERIC_WRITE, 
                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -282,6 +290,7 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
                           0,
                           NULL);
 
+  
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
