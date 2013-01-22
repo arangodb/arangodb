@@ -92,7 +92,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -111,7 +111,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -130,7 +130,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
@@ -147,7 +147,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>

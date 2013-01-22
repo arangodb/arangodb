@@ -420,11 +420,61 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to write lock a read-write lock
-/// TODO: not yet implemented
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
-#error implement me!  
+
+  BOOL result;
+  // ...........................................................................
+  // Here we use TryEnterCriticalSection instead of EnterCriticalSection
+  // There could already be a write lock - which will actuall block from this
+  // point on.
+  // ...........................................................................
+  
+  result = TryEnterCriticalSection(&lock->_lockWriter);
+
+  if (result == 0) {
+    // appears some other writer is writing
+    return false;
+  }
+
+
+  // ...........................................................................
+  // Wait until the lock->_writerEvent is in a 'signalled' state
+  // This might fail because a reader is just about to read
+  // ...........................................................................
+  
+  if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
+    LeaveCriticalSection(&lock->_lockWriter);
+    return false;
+  }
+  
+  // ...........................................................................
+  // Set _writeEvent as nonsignalled -- this will block other read/write 
+  // lockers
+  // ...........................................................................
+
+  ResetEvent(lock->_writerEvent); 
+
+  
+  // ...........................................................................
+  // If there are ANY read locks outstanding, leave
+  // ...........................................................................
+  
+  if (WaitForSingleObject(lock->_readersEvent, 0) != WAIT_OBJECT_0) {
+    LeaveCriticalSection(&lock->_lockWriter);
+    SetEvent(lock->_writerEvent);
+    return false;
+  }
+
+  
+  // ...........................................................................
+  // Allow other threads to access this function
+  // ...........................................................................
+
+  LeaveCriticalSection(&lock->_lockWriter);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

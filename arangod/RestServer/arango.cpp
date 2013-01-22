@@ -48,10 +48,11 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  int res;
+  int res = 0;
 
 #ifdef _WIN32
 
+  int maxOpenFiles = 1024; 
   // ...........................................................................
   // Call this function to do various initialistions for windows only
   // ...........................................................................
@@ -67,6 +68,12 @@ int main (int argc, char* argv[]) {
   if (res != 0) {
     _exit(1);
   }
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  if (res != 0) {
+    _exit(1);
+  }
+
   res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
   if (res != 0) {
     _exit(1);

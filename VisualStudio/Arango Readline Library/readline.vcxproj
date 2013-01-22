@@ -84,7 +84,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -106,7 +106,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -128,7 +128,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -148,7 +148,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION=1;_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>

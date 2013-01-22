@@ -364,9 +364,6 @@
     <ClInclude Include="..\..\lib\Rest\HttpResponse.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\Rest\JsonContainer.h">
-      <Filter>RestHeader</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Rest\LineRequest.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
@@ -413,6 +410,9 @@
       <Filter>ProgramOptionsHeader</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\BasicsC\messages.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\utf8-helper.h">
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
   </ItemGroup>
@@ -666,9 +666,6 @@
     <ClCompile Include="..\..\lib\Rest\HttpResponse.cpp">
       <Filter>RestSource</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\Rest\JsonContainer.cpp">
-      <Filter>RestSource</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\Rest\SslInterface.cpp">
       <Filter>RestSource</Filter>
     </ClCompile>
@@ -707,6 +704,9 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\Utilities\LineEditor.cpp">
       <Filter>UtilitiesSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\utf8-helper.c">
+      <Filter>BasicsCSource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

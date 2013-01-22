@@ -79,6 +79,9 @@
     <Filter Include="RestServer Header">
       <UniqueIdentifier>{ffdc7aa7-dde3-4974-b707-8407b0e92965}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Utils Header">
+      <UniqueIdentifier>{e9fb58cc-8cec-41be-94ad-6ec0870d48fb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -226,9 +229,6 @@
       <Filter>V8 Server Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\V8Server\v8-actions.cpp">
-      <Filter>V8 Server Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\V8Server\v8-objects.cpp">
       <Filter>V8 Server Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\V8Server\v8-query.cpp">
@@ -434,9 +434,6 @@
     <ClInclude Include="..\..\arangod\V8Server\v8-actions.h">
       <Filter>V8 Server Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\V8Server\v8-objects.h">
-      <Filter>V8 Server Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\V8Server\v8-query.h">
       <Filter>V8 Server Header</Filter>
     </ClInclude>
@@ -490,6 +487,63 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\VocBase\voc-shaper.h">
       <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\AhuacatlGuard.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\AqlTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\Barrier.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\CollectionReadLock.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\CollectionWriteLock.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\DocumentHelper.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\EmbeddableTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\ImportTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\RestTransactionContext.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\SelfContainedWriteTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\SingleCollectionReadOnlyTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\SingleCollectionTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\SingleCollectionWriteTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\StandaloneTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\Transaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\TransactionCollection.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\TransactionCollectionsList.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\UserTransaction.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\V8TransactionContext.h">
+      <Filter>Utils Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
