@@ -395,6 +395,146 @@ describe ArangoDB do
     end
 
 ################################################################################
+## remove-by-example query
+################################################################################
+
+    context "remove-by-example query:" do
+      before do
+	@cn = "UnitTestsCollectionByExample"
+	ArangoDB.drop_collection(@cn)
+	@cid = ArangoDB.create_collection(@cn, false)
+	
+        (0...20).each{|i|
+	  ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"value\" : #{i} }")
+	}
+      end
+
+      after do
+	ArangoDB.drop_collection(@cn)
+      end
+
+      it "removes the examples" do
+	cmd = api + "/remove-by-example"
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 1 } }"
+	doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+
+        # remove first
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(1)
+	
+        # remove again
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(0)
+
+
+        # remove other doc
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 2 } }"
+	doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+
+        # remove first
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(1)
+        
+        # remove again
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(0)
+       
+        
+        # remove others
+        (3...8).each{|i|
+  	  body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : #{i} } }"
+    	  doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+
+	  doc.code.should eq(200)
+  	  doc.headers['content-type'].should eq("application/json; charset=utf-8")
+  	  doc.parsed_response['error'].should eq(false)
+	  doc.parsed_response['code'].should eq(200)
+	  doc.parsed_response['deleted'].should eq(1)
+    	  
+          doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	  doc.parsed_response['deleted'].should eq(0)
+        }
+
+        # remove non-existing values
+        [ 21, 22, 100, 101, 99, "\"meow\"", "\"\"", "\"null\"" ].each{|value|
+    	  body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : " + value.to_s + " } }"
+          doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	  doc.code.should eq(200)
+	  doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	  doc.parsed_response['error'].should eq(false)
+	  doc.parsed_response['code'].should eq(200)
+	  doc.parsed_response['deleted'].should eq(0)
+        }
+
+        # remove non-existing attributes
+        [ "value2", "value3", "fox", "meow" ].each{|value|
+	  body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"" + value + "\" : 1 } }"
+  	  doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+
+	  doc.code.should eq(200)
+	  doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	  doc.parsed_response['error'].should eq(false)
+	  doc.parsed_response['code'].should eq(200)
+  	  doc.parsed_response['deleted'].should eq(0)
+        }
+        
+        # insert 10 identical documents
+        (0...10).each{|i|
+	  ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"value99\" : 7, \"value98\" : 1 }")
+	}
+
+        # miss them
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value99\" : 7, \"value98\" : 2} }"
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(0)
+        
+        # miss them again
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value99\" : 70, \"value98\" : 1} }"
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(0)
+        
+        # now remove them
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value99\" : 7, \"value98\" : 1} }"
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(10)
+
+        # remove again
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['deleted'].should eq(0)
+      end
+    end
+
+################################################################################
 ## range query
 ################################################################################
 

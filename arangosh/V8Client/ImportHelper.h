@@ -240,7 +240,7 @@ namespace triagens {
       bool _hasError;
       string _errorMessage;
 
-      static const double ProgressStep = 2.0;
+      static const double ProgressStep;
     };
   }
 }
