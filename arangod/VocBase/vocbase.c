@@ -582,7 +582,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     file = TRI_Concatenate2File(path, name);
 
-    if (!file) {
+    if (file == NULL) {
       LOG_FATAL("out of memory");
       regfree(&re);
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -590,6 +590,15 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;
+  
+      if (! TRI_IsWritable(file)) {
+        // the collection directory we found is not writable for the current user
+        // this can cause serious trouble so we will abort the server start if we 
+        // encounter this situation
+        LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
+
+        return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
+      }
 
       // no need to lock as we are scanning
       res = TRI_LoadCollectionInfo(file, &info);
@@ -1116,6 +1125,14 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     LOG_ERROR("database path '%s' is not a directory", path);
 
     TRI_set_errno(TRI_ERROR_ARANGO_WRONG_VOCBASE_PATH);
+    return NULL;
+  }
+
+  if (! TRI_IsWritable(path)) {
+    // database directory is not writable for the current user... bad luck
+    LOG_ERROR("database directory '%s' is not writable for current user", path);
+
+    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
     return NULL;
   }
 
