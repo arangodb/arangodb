@@ -810,6 +810,73 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_remove_by_example
+/// @brief removes all documents of a collection that match an example
+///
+/// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
+///
+/// @REST{PUT /_api/simple/remove-by-example}
+///
+/// This will find all documents in the collection that match the specified 
+/// example object. 
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{collection}: The name of the collection to remove from.
+///
+/// - @LIT{example}: An example object that all collection objects are compared
+///   against.
+///
+/// - @LIT{waitForSync}: if set to true, then all removal operations will 
+///   instantly be synchronised to disk. If this is not specified, then the
+///   collection's default sync behavior will be applied.
+///
+/// Returns the number of documents that were deleted
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-simple-remove-by-example
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "remove-by-example",
+  context : "api",
+
+  callback : function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+  
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
+      }
+      else {
+        var example = body.example;
+        var name = body.collection;
+        var collection = db._collection(name);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (typeof example !== "object") {
+          actions.badParameter(req, res, "example");
+        }
+        else {
+          var result = collection.removeByExample(example, body.waitForSync);
+          actions.resultOk(req, res, actions.HTTP_OK, { deleted: result });
+        }
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

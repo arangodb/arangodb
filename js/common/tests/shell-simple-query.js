@@ -381,6 +381,93 @@ function SimpleQueryByExampleSuite () {
 
       s = collection.firstExample("i", 2, "a.k", 27);
       assertEqual(null, s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: removeByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveByExample : function () {
+      var deleted;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : i });
+      }
+
+      deleted = collection.removeByExample({ value : 2 });
+      assertEqual(1, deleted);
+
+      deleted = collection.removeByExample({ value : 2 });
+      assertEqual(0, deleted);
+
+      deleted = collection.removeByExample({ value : 20 });
+      assertEqual(1, deleted);
+      
+      deleted = collection.removeByExample({ value : 20 });
+      assertEqual(0, deleted);
+
+      deleted = collection.removeByExample({ value : 1 });
+      assertEqual(1, deleted);
+      
+      // not existing documents
+      deleted = collection.removeByExample({ value : 50 });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ value : null });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ value : "5" });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ peter : "meow" });
+      assertEqual(0, deleted);
+
+      collection.truncate();
+      deleted = collection.removeByExample({ value : 4 });
+      assertEqual(0, deleted);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: removeByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveByExampleMult : function () {
+      var deleted;
+
+      for (var i = 0; i < 5; ++i) {
+        for (var j = 0; j < 5; ++j) {
+          collection.save({ value1 : i, value2: j });
+        }
+      }
+
+      deleted = collection.removeByExample({ value2 : 2 });
+      assertEqual(5, deleted);
+
+      deleted = collection.removeByExample({ value2 : 2 });
+      assertEqual(0, deleted);
+
+      deleted = collection.removeByExample({ value1 : 4 });
+      assertEqual(4, deleted);
+      
+      deleted = collection.removeByExample({ value1 : 4 });
+      assertEqual(0, deleted);
+
+      // not existing documents
+      deleted = collection.removeByExample({ value1 : 99 });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ value1 : "0" });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ meow : 1 });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ meow : "peter" });
+      assertEqual(0, deleted);
+
+      collection.truncate();
+      deleted = collection.removeByExample({ value1: 3 });
+      assertEqual(0, deleted);
     }
   };
 }
@@ -516,7 +603,8 @@ function SimpleQueryAnySuite () {
       collectionEmpty = db._create(name, { waitForSync : false });
 
       name = cn + "One";
-      collectionOne = db._create(cn, { waitForSync : false });
+      db._drop(name);
+      collectionOne = db._create(name, { waitForSync : false });
       collectionOne.save({ age : 1 });
     },
 
