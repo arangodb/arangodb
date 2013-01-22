@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added documentation and tests for db.collection.removeByExample
+
 * added --progress option for arangoimp. This will show the percentage of the input
   file that has been processed by arangoimp while the import is still running. It can
   be used as a rough indicator of progress for the entire import.
