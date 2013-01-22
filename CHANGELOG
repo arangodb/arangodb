@@ -1,6 +1,13 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* check on server startup whether the database directory and all collection directories
+  are writable. if not, the server startup will be aborted. this prevents serious
+  problems with collections being non-writable and this being detected at some pointer
+  after the server has been started
+
+* allow the following AQL constructs: FUNC(...)[...], FUNC(...).attribute
+
 * fixed issue #361: Bug in Admin Interface. Header disappears when clicking new collection
 
 * Added in-memory only collections
