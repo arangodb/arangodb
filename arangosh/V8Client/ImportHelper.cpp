@@ -39,8 +39,10 @@
 #include "ImportHelper.h"
 
 #include <sstream>
+#include <iomanip>
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/files.h"
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
@@ -68,6 +70,7 @@ namespace triagens {
       _separator = ",";
       _eol = "\\n";
       _createCollection = false;
+      _progress = false;
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_EXTENDED);
       regcomp(&_intRegex, "^[-+]?([0-9]+)$", REG_EXTENDED);
       _hasError = false;
@@ -101,11 +104,16 @@ namespace triagens {
 
       // read and convert
       int fd;
+      int64_t totalLength;
       
       if (fileName == "-") {
+        // we don't have a filesize
+        totalLength = 0;
         fd = STDIN_FILENO;
       }
       else {
+        // read filesize
+        totalLength = TRI_SizeFile(fileName.c_str());
         fd = TRI_OPEN(fileName.c_str(), O_RDONLY);        
       }      
 
@@ -113,6 +121,10 @@ namespace triagens {
         _errorMessage = TRI_LAST_ERROR_STR;
         return false;
       }
+      
+      // progress display control variables
+      int64_t totalRead = 0;
+      double nextProgress = ProgressStep;
      
       size_t separatorLength;
       char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
@@ -149,11 +161,9 @@ namespace triagens {
       }
       parser._dataAdd = this;
 
-      char buffer[16384];
+      char buffer[32768];
 
       while (! _hasError) {
-        v8::HandleScope scope;
-
         ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
         if (n < 0) {
@@ -166,7 +176,10 @@ namespace triagens {
         else if (n == 0) {
           break;
         }
-
+        
+        totalRead += (int64_t) n;
+        reportProgress(totalLength, totalRead, nextProgress); 
+        
         TRI_ParseCsvString2(&parser, buffer, n);
       }
 
@@ -198,12 +211,17 @@ namespace triagens {
 
       // read and convert
       int fd;
+      int64_t totalLength;
       
       if (fileName == "-") {
+        // we don't have a filesize
+        totalLength = 0;
         fd = STDIN_FILENO;
       }
       else {
-        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);        
+        // read filesize
+        totalLength = TRI_SizeFile(fileName.c_str());
+        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
       }      
 
       if (fd < 0) {
@@ -211,8 +229,13 @@ namespace triagens {
         return false;
       }
 
-      char buffer[16384];
+      char buffer[32768];
       bool isArray = false;
+      bool checkedFront = false;
+
+      // progress display control variables
+      int64_t totalRead = 0;
+      double nextProgress = ProgressStep;
 
       while (! _hasError) {
         ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
@@ -222,17 +245,22 @@ namespace triagens {
           return false;
         }
         else if (n == 0) {
+          // we're done
           break;
         }
-
-        if (_outputBuffer.length() == 0) {
+          
+        if (! checkedFront) {
           // detect the import file format (single lines with individual JSON objects
           // or a JSON array with all documents)
           const string firstChar = StringUtils::lTrim(string(buffer, n), "\r\n\t\f\b ").substr(0, 1);
           isArray = (firstChar == "[");
+          checkedFront = true;
         }
 
         _outputBuffer.appendText(buffer, n);
+           
+        totalRead += (int64_t) n;
+        reportProgress(totalLength, totalRead, nextProgress); 
 
         if (_outputBuffer.length() > _maxUploadSize) {
           if (isArray) {
@@ -249,7 +277,6 @@ namespace triagens {
             sendJsonBuffer(first, len, isArray);
             _outputBuffer.erase_front(len);
           }
-
         }
       }
 
@@ -271,6 +298,20 @@ namespace triagens {
     ////////////////////////////////////////////////////////////////////////////////
     /// private functions
     ////////////////////////////////////////////////////////////////////////////////
+
+    void ImportHelper::reportProgress (const int64_t totalLength, 
+                                       const int64_t totalRead, 
+                                       double& nextProgress) { 
+      if (! _progress || totalLength == 0) {
+        return;
+      }
+
+      double pct = 100.0 * ((double) totalRead / (double) totalLength);
+      if (pct >= nextProgress) {
+        LOGGER_INFO << "processed " << totalRead << " bytes (" << std::fixed << std::setprecision(2) << pct << " %) of input file";
+        nextProgress = pct + ProgressStep;
+      }
+    }
     
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief return the collection-related URL part
@@ -293,7 +334,9 @@ namespace triagens {
     void ImportHelper::ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
 
-      if (ih) ih->beginLine(row);
+      if (ih) {
+        ih->beginLine(row);
+      }
     }
 
     void ImportHelper::beginLine(size_t row) {
@@ -373,7 +416,9 @@ namespace triagens {
     void ImportHelper::ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
 
-      if (ih) ih->addLastField(field, row, column, escaped);
+      if (ih) {
+       ih->addLastField(field, row, column, escaped);
+      }
     }
 
     void ImportHelper::addLastField (char const* field, size_t row, size_t column, bool escaped) {

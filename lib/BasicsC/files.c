@@ -271,6 +271,22 @@ int64_t TRI_SizeFile (char const* path) {
   return (int64_t) stbuf.st_size;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if file or directory is writable
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+bool TRI_IsWritable (char const* path) {
+#error "TRI_IsWritable needs to be implemented for Windows"
+  // implementation for seems to be non-trivial
+  return true;
+}
+#else
+bool TRI_IsWritable (char const* path) {
+  // we can use POSIX access() from unistd.h to check for write permissions
+  return (access(path, W_OK) == 0);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if path is a directory

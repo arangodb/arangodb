@@ -151,6 +151,14 @@ namespace triagens {
       }
       
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief set the progress indicator
+      ////////////////////////////////////////////////////////////////////////////////
+      
+      void setProgress (const bool value) {
+        _progress = value;
+      }
+      
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the number of read lines
       ///
       /// @return size_t       number of read lines
@@ -194,6 +202,8 @@ namespace triagens {
       static void ProcessCsvBegin (TRI_csv_parser_t* , size_t );
       static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);
       static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);      
+    
+      void reportProgress (const int64_t, const int64_t, double&);
       
       string getCollectionUrlPart ();
       void beginLine (size_t row);
@@ -213,7 +223,7 @@ namespace triagens {
       string _eol;
 
       bool _createCollection; 
-      bool _useIds; 
+      bool _progress; 
       
       size_t _numberLines;
       size_t _numberOk;
@@ -229,6 +239,8 @@ namespace triagens {
       
       bool _hasError;
       string _errorMessage;
+
+      static const double ProgressStep = 2.0;
     };
   }
 }
