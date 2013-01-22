@@ -1,6 +1,14 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added --progress option for arangoimp. This will show the percentage of the input
+  file that has been processed by arangoimp while the import is still running. It can
+  be used as a rough indicator of progress for the entire import.
+
+* make the server log documents that cannot be imported via /_api/import into the
+  logfile using the warning log level. This may help finding illegal documents in big
+  import runs.
+
 * check on server startup whether the database directory and all collection directories
   are writable. if not, the server startup will be aborted. this prevents serious
   problems with collections being non-writable and this being detected at some pointer
