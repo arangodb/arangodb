@@ -1687,22 +1687,22 @@ function ahuacatlFunctionsTestSuite () {
     testMatches : function () {
       var tests = [
         {
-          doc: { test1: 1, test2: 2 },
-          examples: [ ],
+          doc: { },
+          examples: [ { } ],
           flag: true,
-          expected: [ -1 ]
+          expected: [ 0 ]
         },
         {
-          doc: { test1: 1, test2: 2 },
-          examples: [ ],
+          doc: { },
+          examples: [ { } ],
           flag: false,
-          expected: [ false ]
+          expected: [ true ]
         },
         {
-          doc: { test1: 1, test2: 2 },
-          examples: [ ],
+          doc: { },
+          examples: [ { } ],
           flag: null,
-          expected: [ false ]
+          expected: [ true ]
         },
         {
           doc: { test1: 1, test2: 2 },

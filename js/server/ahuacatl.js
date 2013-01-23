@@ -2318,6 +2318,14 @@ function AHUACATL_TRAVERSE_VISITOR (config, result, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief expander callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TRAVERSE_FILTER (config, vertex, edge, path) {
+  return AHUACATL_MATCHES(edge, config.expandEdgeExamples);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2327,6 +2335,21 @@ function AHUACATL_GRAPH_TRAVERSE () {
   var startVertex      = arguments[2];
   var direction        = arguments[3];
   var params           = arguments[4];
+
+  // check followEdges property
+  if (params.followEdges) {
+    if (AHUACATL_TYPEWEIGHT(params.followEdges) !== AHUACATL_TYPEWEIGHT_LIST) {
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+    }
+    if (params.followEdges.length == 0) {
+      AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+    }
+    params.followEdges.forEach(function (example) {
+      if (AHUACATL_TYPEWEIGHT(example) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+        AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+      }
+    });
+  }
 
   function validate (value, map) {
     if (value == null || value == undefined) {
@@ -2402,6 +2425,11 @@ function AHUACATL_GRAPH_TRAVERSE () {
       'any': TRAVERSAL.AnyExpander
     })
   };
+
+  if (params.followEdges) {
+    config.expandFilter = AHUACATL_TRAVERSE_FILTER;
+    config.expandEdgeExamples = params.followEdges;
+  }
 
   if (params._sort) {
     config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
@@ -2595,6 +2623,9 @@ function AHUACATL_MATCHES () {
   var examples = arguments[1];
   if (! Array.isArray(examples)) {
     examples = [ examples ];
+  }
+  if (examples.length == 0) {
+    AHUACATL_THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
   }
 
   var returnIndex = arguments[2] || false;

@@ -867,7 +867,7 @@
 ///   comparison stops and the result is returned. If there is a mismatch, the function will
 ///   continue the comparison with the next example until there are no more examples left.
 ///
-///   The @FA{examples} must be a list of 0..n example documents, with any number of attributes
+///   The @FA{examples} must be a list of 1..n example documents, with any number of attributes
 ///   each. 
 ///   Example usage:
 ///   @code
@@ -1062,6 +1062,10 @@
 ///       - @LIT{global}: an edge may be visited at most once. This is the default.
 ///       - @LIT{path}: an edge is visited only if not already contained in the current
 ///         traversal path
+///   - @LIT{followEdges}: an optional list of example edge documents that the traversal will
+///     expand into. If no examples are given, the traversal will follow all edges. If one
+///     or many edge examples are given. The traversal will only follow an edge if it matches
+///     at least one of the specified examples.
 ///
 ///   The result of the TRAVERSE function is a list of traversed points. Each point is a 
 ///   document consisting of the following properties:
