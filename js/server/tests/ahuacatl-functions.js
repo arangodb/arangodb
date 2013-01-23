@@ -1681,6 +1681,111 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test matches
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMatches : function () {
+      var tests = [
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ ],
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ ],
+          flag: false,
+          expected: [ false ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ ],
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 1 } ],
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 1 } ],
+          flag: false,
+          expected: [ false ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 2 } ],
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 2 } ],
+          flag: false,
+          expected: [ true ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 3 }, { test1: 1, test2: 2 } ],
+          flag: true,
+          expected: [ 1 ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 3 }, { test1: 1, test2: 2 } ],
+          flag: false,
+          expected: [ true ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { test1: 1, test2: 3 }, { test1: 1, test2: 2 } ],
+          flag: null,
+          expected: [ true ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { } ],
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { } ],
+          flag: false,
+          expected: [ true ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { fox: true }, { fox: false}, { test1: "something" }, { test99: 1, test2: 2 }, { test1: "1", test2: "2" } ],
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
+          doc: { test1: 1, test2: 2 },
+          examples: [ { fox: true }, { fox: false}, { test1: "something" }, { test99: 1, test2: 2 }, { test1: "1", test2: "2" }, { } ],
+          flag: true,
+          expected: [ 5 ]
+        }
+      ]
+
+      tests.forEach(function (data) {
+        var query = "RETURN MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
+        if (data.flag != null) {
+          query += ", " + JSON.stringify(data.flag) + ")";
+        }
+        else {
+          query += ")";
+        }
+        var actual = getQueryResults(query, true);
+        assertEqual(data.expected, actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test to_bool
 ////////////////////////////////////////////////////////////////////////////////
     

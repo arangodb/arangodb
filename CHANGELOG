@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added AQL function MATCHES() to check a document against a list of examples
+
 * added documentation and tests for db.collection.removeByExample
 
 * added --progress option for arangoimp. This will show the percentage of the input

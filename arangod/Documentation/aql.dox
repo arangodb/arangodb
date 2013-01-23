@@ -854,6 +854,32 @@
 ///
 /// AQL supports the following functions to operate on document values:
 ///
+/// - @FN{MATCHES(@FA{document}\, @FA{examples}\, @FA{return-index})}: compares the document
+///   @FA{document} against each example document provided in the list @FA{examples}. 
+///   If @FA{document} matches one of the examples, @LIT{true} is returned, and if there is
+///   no match @LIT{false} will be returned. The default return value type can be changed by
+///   passing @LIT{true} as the third function parameter @FA{return-index}. Setting this
+///   flag will return the index of the example that matched (starting at offset 0), or 
+///   @LIT{\-1} if there was no match.
+///
+///   The comparisons will be started with the first example. All attributes of the example
+///   will be compared against the attributes of @FA{document}. If all attributes match, the 
+///   comparison stops and the result is returned. If there is a mismatch, the function will
+///   continue the comparison with the next example until there are no more examples left.
+///
+///   The @FA{examples} must be a list of 0..n example documents, with any number of attributes
+///   each. 
+///   Example usage:
+///   @code
+///   RETURN MATCHES({ "test" : 1 }, [ 
+///     { "test" : 1, "foo" : "bar" }, 
+///     { "foo" : 1 }, 
+///     { "test : 1 } 
+///   ], true)
+///   @endcode
+///   This will return @LIT{2}, because the third example matches, and because the 
+///   @LIT{return-index} flag is set to @LIT{true}.
+///
 /// - @FN{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
 ///   in @FA{document1} to @FA{documentn} into a single document. If document attribute
 ///   keys are ambiguous, the merged result will contain the values of the documents 
