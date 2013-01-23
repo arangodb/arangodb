@@ -2581,7 +2581,8 @@ function AHUACATL_MERGE_RECURSIVE () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare an object against a list of examples and return whether the
-/// object matches at least one of the examples 
+/// object matches any of the examples. returns the example index or a bool,
+/// depending on the value of the control flag (3rd) parameter
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_MATCHES () {
@@ -2595,6 +2596,8 @@ function AHUACATL_MATCHES () {
   if (! Array.isArray(examples)) {
     examples = [ examples ];
   }
+
+  var returnIndex = arguments[2] || false;
 
   for (var i = 0; i < examples.length; ++i) {
     var example = examples[i];
@@ -2615,11 +2618,12 @@ function AHUACATL_MATCHES () {
     }
 
     if (result) {
-      return true;
+      // 3rd parameter determines whether we return the index or a bool flag
+      return (returnIndex ? i : true);
     }
   }
 
-  return false;
+  return (returnIndex ? -1 : false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
