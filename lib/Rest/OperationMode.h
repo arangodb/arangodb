@@ -66,7 +66,7 @@ namespace triagens {
 #ifdef TRI_ENABLE_MRUBY
           MODE_RUBY_CONSOLE,
 #endif
-          MODE_SERVER,
+          MODE_SERVER
         }
         server_operation_mode_e;
 
