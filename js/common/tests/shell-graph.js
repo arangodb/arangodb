@@ -417,6 +417,7 @@ function VertexSuite() {
       assertEqual([], v2.getOutEdges());
       assertEqual(edge.getId(), v1.edges()[0].getId());
       assertEqual(edge.getId(), v2.edges()[0].getId());
+      assertEqual(1, v1.getEdges().length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
