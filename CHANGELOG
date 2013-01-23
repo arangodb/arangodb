@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #366: Edges index returns strange description
+
 * added AQL function MATCHES() to check a document against a list of examples
 
 * added documentation and tests for db.collection.removeByExample
