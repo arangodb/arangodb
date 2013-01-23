@@ -479,7 +479,9 @@ function OutboundExpander (config, vertex, path) {
   outEdges.forEach(function (edge) {
     try {
       var v = config.datasource.getVertex(edge._to);
-      connections.push({ edge: edge, vertex: v });    
+      if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
+        connections.push({ edge: edge, vertex: v });    
+      }
     }
     catch (e) {
       // continue even in the face of non-existing documents
@@ -504,7 +506,9 @@ function InboundExpander (config, vertex, path) {
   inEdges.forEach(function (edge) {
     try {
       var v = config.datasource.getVertex(edge._from);
-      connections.push({ edge: edge, vertex: v });    
+      if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
+        connections.push({ edge: edge, vertex: v });    
+      }
     }
     catch (e) {
       // continue even in the face of non-existing documents
@@ -529,7 +533,9 @@ function AnyExpander (config, vertex, path) {
   edges.forEach(function (edge) {
     try {
       var v = config.datasource.getVertex(edge._from === vertex._id ? edge._to : edge._from);
-      connections.push({ edge: edge, vertex: v });    
+      if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
+        connections.push({ edge: edge, vertex: v });    
+      }
     }
     catch (e) {
       // continue even in the face of non-existing documents
