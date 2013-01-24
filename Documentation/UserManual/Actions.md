@@ -126,6 +126,17 @@ The following definition is a short-cut for an exact match.
 
     { url: "/hello/world" }
 
+
+Please note that while the two definitions will result in the same URL
+matching, there is a subtle difference between them:
+
+The former definition (defining `url` as an object with a `match` attribute)
+will result in the URL being accessible via all supported HTTP methods (e.g.
+`GET`, `POST`, `PUT`, `DELETE`, ...), whereas the latter definition (providing a string
+`url` attribute) will result in the URL being accessible via HTTP `GET` and 
+HTTP `HEAD` only, with all other HTTP methods being disabled. Calling a URL
+with an unsupported or disabled HTTP method will result in an HTTP 501 error.
+
 Prefix Match {#UserManualActionsMatchesPrefix}
 ----------------------------------------------
 
@@ -208,13 +219,21 @@ because it is more specific than the prefix match.
 Method Restriction {#UserManualActionsMatchesMethod}
 ----------------------------------------------------
 
-You can restrict the match to specific methods.
+You can restrict the match to specific HTTP methods.
 
 If the definition is
 
     { url: { match: "/hello/world", methods: [ "post", "put" ] }
 
-then only `POST` and `PUT` requests will match.
+then only HTTP `POST` and `PUT` requests will match.
+Calling with a different HTTP method will result in an HTTP 501 error.
+
+Please note that if `url` is defined as a simple string, then only the
+HTTP methods `GET` and `HEAD` will be allowed, an all other methods will be
+disabled:
+
+    { url: "/hello/world" }
+
 
 More on Matching {#UserManualActionsMatching}
 ---------------------------------------------
