@@ -49,7 +49,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define REGISTER_FUNCTION(internalName, externalName, deterministic, group, argPattern, optimiseCallback) \
-  result &= TRI_RegisterFunctionAql(functions, internalName, "AHUACATL_" externalName, deterministic, group, argPattern, optimiseCallback)
+  result &= TRI_RegisterFunctionAql(functions, internalName, externalName, deterministic, group, argPattern, optimiseCallback)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shorthand to check an argument and return an error if it is invalid

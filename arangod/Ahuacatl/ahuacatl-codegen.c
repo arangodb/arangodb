@@ -561,7 +561,7 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
     ScopeOutput(generator, ";\n");
 
     scope->_prefix = NULL;
-    ScopeOutput(generator, "res = aql.AHUACATL_RELATIONAL_CMP(lhs, rhs);\n");
+    ScopeOutput(generator, "res = aql.RELATIONAL_CMP(lhs, rhs);\n");
     ScopeOutput(generator, "if (res) {\n");
     if (elementIndex || TRI_AQL_NODE_BOOL(element)) {
       // ascending
@@ -739,14 +739,14 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 
   if (sourceIsList) {
     // the source register we're using definitely is a list
-    // we can therefore get rid of the function call to AHUACATL_LIST()
+    // we can therefore get rid of the function call to LIST()
     ScopeOutput(generator, " = ");
     ScopeOutputRegister(generator, sourceRegister);
     ScopeOutput(generator, ";\n");
   }
   else {
     // we're not sure whether the source is a list, so we need to force it to be a list
-    ScopeOutput(generator, " = aql.AHUACATL_LIST(");
+    ScopeOutput(generator, " = aql.LIST(");
     ScopeOutputRegister(generator, sourceRegister);
     ScopeOutput(generator, ");\n");
   }
@@ -989,10 +989,10 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
           fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
 
   if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-    ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_PRIMARY_LIST('");
+    ScopeOutput(generator, "aql.GET_DOCUMENTS_PRIMARY_LIST('");
   }
   else {
-    ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_PRIMARY('");
+    ScopeOutput(generator, "aql.GET_DOCUMENTS_PRIMARY('");
   }
 
   ScopeOutput(generator, collectionName);
@@ -1033,7 +1033,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 
     if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-      ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_HASH_LIST('");
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_HASH_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
@@ -1047,7 +1047,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
     // fall through to exact access
   }
 
-  ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_HASH('");
+  ScopeOutput(generator, "aql.GET_DOCUMENTS_HASH('");
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
   ScopeOutputIndexId(generator, collectionName, idx);
@@ -1107,10 +1107,10 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
           fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
 
   if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-    ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_EDGE_LIST('");
+    ScopeOutput(generator, "aql.GET_DOCUMENTS_EDGE_LIST('");
   }
   else {
-    ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_EDGE('");
+    ScopeOutput(generator, "aql.GET_DOCUMENTS_EDGE('");
   }
 
   ScopeOutput(generator, collectionName);
@@ -1152,7 +1152,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 
     if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-      ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST('");
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_SKIPLIST_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
@@ -1166,7 +1166,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
     // fall through to other access types
   }
 
-  ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_SKIPLIST('");
+  ScopeOutput(generator, "aql.GET_DOCUMENTS_SKIPLIST('");
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
   ScopeOutputIndexId(generator, collectionName, idx);
@@ -1254,7 +1254,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
 
     if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
       assert(false);
-      ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_BITARRAY_LIST('");
+      ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
       ScopeOutputIndexId(generator, collectionName, idx);
@@ -1268,7 +1268,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
     // fall through to other access types
   }
 
-  ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS_BITARRAY('");
+  ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY('");
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
   ScopeOutputIndexId(generator, collectionName, idx);
@@ -1451,7 +1451,7 @@ static void ProcessAttribute (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  ScopeOutput(generator, "aql.AHUACATL_DOCUMENT_MEMBER(");
+  ScopeOutput(generator, "aql.DOCUMENT_MEMBER(");
   ScopeOutputRegister(generator, scope->_ownRegister);
   ScopeOutput(generator, ", ");
   ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(node));
@@ -1464,7 +1464,7 @@ static void ProcessAttribute (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const generator,
                                     const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_DOCUMENT_MEMBER(");
+  ScopeOutput(generator, "aql.DOCUMENT_MEMBER(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(node));
@@ -1477,7 +1477,7 @@ static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_GET_INDEX(");
+  ScopeOutput(generator, "aql.GET_INDEX(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1495,7 +1495,7 @@ static void ProcessCollectionFull (TRI_aql_codegen_js_t* const generator,
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
-  ScopeOutput(generator, "aql.AHUACATL_GET_DOCUMENTS(");
+  ScopeOutput(generator, "aql.GET_DOCUMENTS(");
   ProcessNode(generator, nameNode);
   
   if (hint != NULL && hint->_limit._status == TRI_AQL_LIMIT_USE) {
@@ -1628,7 +1628,7 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessUnaryNot (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_LOGICAL_NOT(");
+  ScopeOutput(generator, "aql.LOGICAL_NOT(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
@@ -1639,7 +1639,7 @@ static void ProcessUnaryNot (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessUnaryMinus (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_UNARY_MINUS(");
+  ScopeOutput(generator, "aql.UNARY_MINUS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
@@ -1650,7 +1650,7 @@ static void ProcessUnaryMinus (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessUnaryPlus (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_UNARY_PLUS(");
+  ScopeOutput(generator, "aql.UNARY_PLUS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
@@ -1661,7 +1661,7 @@ static void ProcessUnaryPlus (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_LOGICAL_AND(");
+  ScopeOutput(generator, "aql.LOGICAL_AND(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1674,7 +1674,7 @@ static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_LOGICAL_OR(");
+  ScopeOutput(generator, "aql.LOGICAL_OR(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1687,7 +1687,7 @@ static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryPlus (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_ARITHMETIC_PLUS(");
+  ScopeOutput(generator, "aql.ARITHMETIC_PLUS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1700,7 +1700,7 @@ static void ProcessBinaryPlus (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryMinus (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_ARITHMETIC_MINUS(");
+  ScopeOutput(generator, "aql.ARITHMETIC_MINUS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1713,7 +1713,7 @@ static void ProcessBinaryMinus (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryTimes (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_ARITHMETIC_TIMES(");
+  ScopeOutput(generator, "aql.ARITHMETIC_TIMES(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1726,7 +1726,7 @@ static void ProcessBinaryTimes (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryDivide (TRI_aql_codegen_js_t* const generator,
                                  const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_ARITHMETIC_DIVIDE(");
+  ScopeOutput(generator, "aql.ARITHMETIC_DIVIDE(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1739,7 +1739,7 @@ static void ProcessBinaryDivide (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryModulus(TRI_aql_codegen_js_t* const generator,
                                  const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_ARITHMETIC_MODULUS(");
+  ScopeOutput(generator, "aql.ARITHMETIC_MODULUS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1752,7 +1752,7 @@ static void ProcessBinaryModulus(TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryEqual (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_EQUAL(");
+  ScopeOutput(generator, "aql.RELATIONAL_EQUAL(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1765,7 +1765,7 @@ static void ProcessBinaryEqual (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryUnequal (TRI_aql_codegen_js_t* const generator,
                                   const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_UNEQUAL(");
+  ScopeOutput(generator, "aql.RELATIONAL_UNEQUAL(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1778,7 +1778,7 @@ static void ProcessBinaryUnequal (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryLessEqual (TRI_aql_codegen_js_t* const generator,
                                     const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_LESSEQUAL(");
+  ScopeOutput(generator, "aql.RELATIONAL_LESSEQUAL(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1791,7 +1791,7 @@ static void ProcessBinaryLessEqual (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryLess (TRI_aql_codegen_js_t* const generator,
                                const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_LESS(");
+  ScopeOutput(generator, "aql.RELATIONAL_LESS(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1804,7 +1804,7 @@ static void ProcessBinaryLess (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryGreaterEqual (TRI_aql_codegen_js_t* const generator,
                                        const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_GREATEREQUAL(");
+  ScopeOutput(generator, "aql.RELATIONAL_GREATEREQUAL(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1817,7 +1817,7 @@ static void ProcessBinaryGreaterEqual (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryGreater (TRI_aql_codegen_js_t* const generator,
                                  const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_GREATER(");
+  ScopeOutput(generator, "aql.RELATIONAL_GREATER(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1830,7 +1830,7 @@ static void ProcessBinaryGreater (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
                              const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_RELATIONAL_IN(");
+  ScopeOutput(generator, "aql.RELATIONAL_IN(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1843,7 +1843,7 @@ static void ProcessBinaryIn (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessTernary (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_TERNARY_OPERATOR(");
+  ScopeOutput(generator, "aql.TERNARY_OPERATOR(");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
@@ -1884,7 +1884,7 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
                           const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.AHUACATL_FCALL(aql.");
+  ScopeOutput(generator, "aql.FCALL(aql.");
   ScopeOutput(generator, TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
   ScopeOutput(generator, ", ");
   ProcessArgList(generator, (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node), TRI_AQL_NODE_MEMBER(node, 0));
@@ -1992,7 +1992,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   functionIndex = CreateSortFunction(generator, node, 0);
 
   // now apply actual sorting
-  ScopeOutput(generator, "aql.AHUACATL_SORT(");
+  ScopeOutput(generator, "aql.SORT(");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, ", ");
   ScopeOutputFunction(generator, functionIndex);
@@ -2054,7 +2054,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   // now apply actual grouping
   ScopeOutputRegister(generator, groupRegister);
   ScopeOutput(generator, " = ");
-  ScopeOutput(generator, "aql.AHUACATL_GROUP(");
+  ScopeOutput(generator, "aql.GROUP(");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, ", ");
   ScopeOutputFunction(generator, sortFunctionIndex);
@@ -2141,7 +2141,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   limitRegister = IncRegister(generator);
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, limitRegister);
-  ScopeOutput(generator, " = aql.AHUACATL_LIMIT(");
+  ScopeOutput(generator, " = aql.LIMIT(");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, ", ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));

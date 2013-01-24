@@ -546,7 +546,7 @@ static TRI_string_buffer_t* RelationCode (const char* const name,
     return NULL;
   }
   
-  if (TRI_AppendStringStringBuffer(buffer, "(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.AHUACATL_RELATIONAL_") != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, "(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.RELATIONAL_") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -598,7 +598,7 @@ static TRI_string_buffer_t* FcallCode (const char* const name,
     return NULL;
   }
   
-  if (TRI_AppendStringStringBuffer(buffer, "(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.AHUACATL_FCALL(aql.") != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, "(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.FCALL(aql.") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
