@@ -249,28 +249,6 @@ function FIX (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name for a type
-////////////////////////////////////////////////////////////////////////////////
-
-function TYPENAME (value) {
-  switch (value) {
-    case AHUCATL_TYPEWEIGHT_BOOL:
-      return 'boolean';
-    case AHUCATL_TYPEWEIGHT_NUMBER:
-      return 'number';
-    case AHUCATL_TYPEWEIGHT_STRING:
-      return 'string';
-    case AHUCATL_TYPEWEIGHT_LIST:
-      return 'list';
-    case AHUCATL_TYPEWEIGHT_DOCUMENT:
-      return 'document';
-    case AHUCATL_TYPEWEIGHT_NULL:
-    default:
-      return 'null';
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the sort type of an operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2723,7 +2701,6 @@ exports.ARG_CHECK = ARG_CHECK;
 exports.FCALL = FCALL;
 exports.NUMERIC_VALUE = NUMERIC_VALUE;
 exports.FIX = FIX;
-exports.TYPENAME = TYPENAME;
 exports.TYPEWEIGHT = TYPEWEIGHT;
 exports.VALUES = VALUES;
 exports.KEYS = KEYS;
