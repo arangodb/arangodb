@@ -923,6 +923,12 @@
 /// - @FN{HAS(@FA{document}\, @FA{attributename})}: returns @LIT{true} if @FA{document} has an
 ///   attribute named @FA{attributename}, and @LIT{false} otherwise.
 ///
+/// - @FN{ATTRIBUTES(@FA{document}\, @FA{removeInternal}\, @FA{sort})}: returns the attribute
+///   names of the document @FA{document} as a list. 
+///   If @FA{removeInternal} is set to @LIT{true}, then all internal attributes (such as @LIT{_id}, 
+///   @LIT{_key} etc.) are removed from the result. If @FA{sort} is set to @LIT{true}, then the
+///   attribute names in the result will be sorted. Otherwise they will be returned in any order.
+///
 /// @subsubsection AqlFunctionsGeo Geo functions
 ///
 /// AQL offers the following functions to filter data based on geo indexes:
