@@ -2532,10 +2532,41 @@ function TRAVERSE_VISITOR (config, result, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for tree traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TREE_VISITOR (config, result, vertex, path) {
+  if (result.length === 0) {
+    result.push({ }); 
+  }
+  
+  var current = result[0], connector = config.connect, i;
+
+  for (i = 0; i < path.vertices.length; ++i) {
+    var v = path.vertices[i];
+    if (typeof current[connector] === "undefined") {
+      current[connector] = [ ];
+    }
+    var found = false, j;
+    for (j = 0; j < current[connector].length; ++j) {
+      if (current[connector][j]._id === v._id) {
+        current = current[connector][j];
+        found = true;
+        break;
+      }
+    }
+    if (! found) {
+      current[connector].push(CLONE(v));
+      current = current[connector][current[connector].length - 1];
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief expander callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSE_FILTER (config, vertex, edge, path) {
+function TRAVERSAL_FILTER (config, vertex, edge, path) {
   return MATCHES(edge, config.expandEdgeExamples);
 }
 
@@ -2543,21 +2574,21 @@ function TRAVERSE_FILTER (config, vertex, edge, path) {
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, direction, params) {
+function GRAPH_TRAVERSAL (func, vertexCollection, edgeCollection, startVertex, direction, params) {
   vertexCollection = COLLECTION(vertexCollection);
   edgeCollection   = COLLECTION(edgeCollection);
 
   // check followEdges property
   if (params.followEdges) {
     if (TYPEWEIGHT(params.followEdges) !== TYPEWEIGHT_LIST) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
     }
     if (params.followEdges.length === 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
     }
     params.followEdges.forEach(function (example) {
       if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
       }
     });
   }
@@ -2580,7 +2611,11 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
       }
     }
 
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+
+  if (typeof params.visitor !== "function") {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
   }
 
   if (params.maxDepth === undefined) {
@@ -2601,6 +2636,7 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
   }
 
   var config = {
+    connect: params.connect,
     datasource: TRAVERSAL.CollectionDatasourceFactory(edgeCollection),
     strategy: validate(params.strategy, {
       'depthfirst': TRAVERSAL.Traverser.DEPTH_FIRST,
@@ -2615,7 +2651,7 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
       'backward': TRAVERSAL.Traverser.BACKWARD
     }),
     trackPaths: params.paths || false,
-    visitor: TRAVERSE_VISITOR,
+    visitor: params.visitor,
     maxDepth: params.maxDepth,
     minDepth: params.minDepth,
     filter: filter,
@@ -2639,7 +2675,7 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
   };
 
   if (params.followEdges) {
-    config.expandFilter = TRAVERSE_FILTER;
+    config.expandFilter = TRAVERSAL_FILTER;
     config.expandEdgeExamples = params.followEdges;
   }
 
@@ -2662,6 +2698,50 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
 
   return result;
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, direction, params) {
+  params.visitor  = TRAVERSE_VISITOR;
+
+  return GRAPH_TRAVERSAL("TRAVERSE", 
+                         vertexCollection, 
+                         edgeCollection, 
+                         startVertex, 
+                         direction, 
+                         params);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse a graph and create a hierarchical result
+/// this function uses the same setup as the TRAVERSE() function but will use
+/// a different visitor to create the result
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_TREE (vertexCollection, edgeCollection, startVertex, direction, connectName, params) {
+  if (connectName === "") {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TREE");
+  }
+
+  params.strategy = "depthfirst";
+  params.order    = "preorder";
+  params.visitor  = TREE_VISITOR;
+  params.connect  = connectName;
+
+  var result = GRAPH_TRAVERSAL("TREE", 
+                               vertexCollection, 
+                               edgeCollection, 
+                               startVertex, 
+                               direction, 
+                               params);
+
+  if (result.length === 0) {
+    return [ ];
+  }
+  return [ result[0][params.connect] ];
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -2675,21 +2755,6 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-/* the following functions probably do not need to be exposed as part of the API
-//exports.THROW = THROW;
-//exports.INDEX_FULLTEXT = INDEX_FULLTEXT;
-//exports.INDEX = INDEX;
-//exports.COLLECTION = COLLECTION;
-//exports.NORMALIZE = NORMALIZE;
-//exports.CLONE = CLONE;
-//exports.ARG_CHECK = ARG_CHECK;
-//exports.NUMERIC_VALUE = NUMERIC_VALUE;
-//exports.FIX = FIX;
-//exports.TYPEWEIGHT = TYPEWEIGHT;
-//exports.VALUES = VALUES;
-//exports.KEYLIST = KEYLIST;
-*/
 
 exports.FCALL = FCALL;
 exports.KEYS = KEYS;
@@ -2767,9 +2832,8 @@ exports.GEO_WITHIN = GEO_WITHIN;
 exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_SUBNODES = GRAPH_SUBNODES;
-exports.TRAVERSE_VISITOR = TRAVERSE_VISITOR;
-exports.TRAVERSE_FILTER = TRAVERSE_FILTER;
 exports.GRAPH_TRAVERSE = GRAPH_TRAVERSE;
+exports.GRAPH_TREE = GRAPH_TREE;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;

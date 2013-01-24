@@ -7,7 +7,7 @@ TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
 })
 
 TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
-  order: "breadthfirst",
+  strategy: "breadthfirst",
   order: "preorder",
   itemOrder: "forward",
   followEdges: [ { type: "knows" }, { state: "FL" } ]

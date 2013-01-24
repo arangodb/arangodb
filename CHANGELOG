@@ -1,6 +1,10 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added experimental AQL TREE() function to return a hierchical result from a
+  traversal. the function name, signature, and behavior are likely to change
+  later.
+
 * added AQL function ATTRIBUTES() to return the attribute names of a document
 
 * removed internal AQL helper functions from global scope. Now the AQL internal
