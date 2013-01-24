@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+.label {
+  fill: #777;
+}
+
+.yearlabel {
+  font: 500 196px "Helvetica Neue";
+  fill: #ddd;
+}
+
+
+.node {
+  stroke: #000; 
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+.button {
+  text-align: center;
+  color: white;
+  background: gray;
+  border-color: black;
+  border-style: solid;
+  border-width: 1px;
+  padding: 2px;
+  width:350px;
+  cursor: pointer;
+  display: inline;
+}  
+#button {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+#force, #cluster {
+  float: right;
+  width: 130px;
+}
+svg {
+  width: 960px;
+  height: 700px;
+}
+.nav {
+  height: 22px;
+  width: 962px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+div#view {
+  width: 960px;
+  height: 700px;
+  border-color: #aaa;
+  border-style: solid;
+  border-width: 1px;
+}
+</style>
+</head>
+<body>
+  <div class="nav">
+     <div class="button" id="force">Force Layout</div>
+     <div class="button" id="cluster">Cluster Layout</div>
+     <div id="button" class="button"></div> 
+     <div id="backward" class="button"> &lt;&lt; </div>
+     <div id="play" class="button"> &gt; </div> 
+     <div id="forward" class="button"> &gt;&gt; </div>
+  </div>
+  <div id="view"></div>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var config = {
+  width: 960,
+  height: 700,
+  animationSpeed: 1500,
+  layout: "force",
+};
+
+var app = { 
+  year: 2001,
+  graph: null,
+  counter: 0,
+  linksTillYear: null,
+  temp: null,
+  svg: d3.select("#view").append("svg")
+   .attr("width", config.width)
+   .attr("height", config.height),
+  force: d3.layout.force()
+    .charge(-130)
+    .linkDistance(30 + Math.random() * 70)
+    .size([config.width, config.height]),
+  cluster: d3.layout.cluster()
+    .size([config.width, config.height]),
+  layout: force,
+    
+  render: function () {
+    this.svg.text(null);
+    var graph = this.graph;
+    
+    // das ist das Textlabel für die Jahreszahl
+    var label = this.svg.append("text")
+	    .attr("class", "yearlabel")
+	    .attr("text-anchor", "end")
+	    .attr("y", config.height - 24)
+	    .attr("x", config.width)
+	    .text(this.year);
+    
+    this.counter=0;
+    this.linksTillYear= graph.links.filter(function(a,b,c){ 
+                                           a.source = a.from;
+                                           a.target = a.to;
+                                           return a.year < app.year; });
+   // if (config.layout === "force"){
+	    this.force
+		.nodes(graph.vertices)
+		.links(this.linksTillYear)
+		.start();
+	    var link = this.svg.selectAll("line.link")
+		  .data(this.linksTillYear);
+		link.enter().append("line")
+		  .attr("class", function(d) { app.counter++; return "link"; })
+		  .style("stroke-width", 2);
+		link.exit().remove();
+	    var node = this.svg.selectAll("circle.node")
+		  .data(graph.vertices);
+		node.enter().append("circle")
+                  .on("click", function(d) { 
+                      console.log("circle clicked "+d.name);
+	              d3.json("/fosdem/coauthor.json?start="+node.name, function(graph) {
+		         app.graph = graph;
+                         app.render();
+                      });
+                   })
+		  .attr("class", "node")
+		  .attr("r", 5)
+		  .style("fill", function(node) { if(graph.start.name === node.name) {
+                                                     return "#ff0000";
+                                                } else return "#00ff00"; })
+
+		  .call(this.force.drag);
+		node.exit().remove();
+
+	    node.append("title")
+		.text(function(d) { return d.name; });
+	   
+	    this.force.on("tick", function() {
+	      link.attr("x1", function(d) { return d.source.x; })
+		  .attr("y1", function(d) { return d.source.y; })
+		  .attr("x2", function(d) { return d.target.x; })
+		  .attr("y2", function(d) { return d.target.y; });
+
+	      node.attr("cx", function(d) { return d.x; })
+		  .attr("cy", function(d) { return d.y; });
+	    });
+/*    } else if (config.layout === "cluster"){
+            this.force.stop();
+            this.cluster.
+            var diagonal = d3.svg.diagonal.radial()
+                 .projection(function(d) { return [d.y, d.x / 180 * Math.PI]; });
+            var node = vis.selectAll("g.node")
+		 .data(nodes)
+		 .enter().append("svg:g")
+		 .attr("transform", function(d) { 
+                        return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; 
+                  })
+		 .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
+    }*/
+     $("div#button").text("" + app.counter + " cumulated connections until " + (this.year));
+  }
+};
+
+$(document).ready(function(){
+ $("div#button, div#forward").click(function(event) {
+     app.year++;
+     if(app.year > 2011) app.year=2001;
+     app.render();
+ });
+ $("div#play").click(function(event) {
+        app.year=2002;
+        app.render();
+        app.year++;
+	function myLoop () { 
+	   setTimeout(function () { 
+	      app.render();
+	      app.year++;        
+	      if (app.year <= 2011) {
+		 myLoop();  
+	      }     
+	   }, config.animationSpeed)
+	}
+        myLoop();
+ });
+ $("div#backward").click(function(event) {
+     app.year = 2001;
+     app.render();
+ });
+});
+    
+d3.json("/fosdem/coauthor.json", function(graph) {
+  app.graph = graph;
+  app.render();
+});
+
+</script>
+</body>
+</html>

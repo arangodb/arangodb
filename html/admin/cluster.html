@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node {
+  font: 10px sans-serif;
+}
+
+.link {
+  stroke: steelblue;
+  stroke-opacity: .4;
+  fill: none;
+}
+
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+
+<script>
+
+var diameter = 960,
+    radius = diameter / 2,
+    innerRadius = radius - 120;
+
+var cluster = d3.layout.cluster()
+    .size([360, innerRadius])
+    .sort(null)
+    .value(function(d) { return d.size; });
+
+var bundle = d3.layout.bundle();
+
+var line = d3.svg.line.radial()
+    .interpolate("bundle")
+    .tension(.85)
+    .radius(function(d) { return d.y; })
+    .angle(function(d) { return d.x / 180 * Math.PI; });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", diameter)
+    .attr("height", diameter)
+  .append("g")
+    .attr("transform", "translate(" + radius + "," + radius + ")");
+$.get("http://192.168.173.13:8529/_api/version");
+
+$.ajax({
+     url:"http://192.168.173.13:8529/_api/version",
+     dataType: 'jsonp', // Notice! JSONP <-- P (lowercase)
+     success:function(json){
+         // do stuff with json (in this case an array)
+         alert("Success");
+     },
+     error:function(){
+         alert("Error");
+     },
+});
+/*d3.json("http://192.168.173.5:8529/fosdem/coauthor.json", function(error, authors) {
+
+var root = {
+  name: "",
+  children: [ ]
+}; 
+
+var nodes = { };
+
+var index = 0;
+authors.vertices.forEach(function (author) {
+  var node = {
+    name: author.name,
+    parent: root,
+    key: author.name,
+    children: [ ],
+    size: Math.random() * 5000 // currently not used
+  };
+ 
+  root.children.push(node);
+  nodes[index++] = node;
+});
+
+var edges = [ ];
+authors.links.forEach(function (link) {
+  edges.push({ source: nodes[link.from], target: nodes[link.to] });
+});
+
+var nodes = cluster.nodes(root), links = edges;
+
+  svg.selectAll(".link")
+      .data(bundle(links))
+    .enter().append("path")
+      .attr("class", "link")
+      .attr("d", line);
+
+  svg.selectAll(".node")
+      .data(nodes.filter(function(n) { return true;  }))
+    .enter().append("g")
+      .attr("class", "node")
+      .attr("transform", function(d) {  return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+    .append("text")
+      .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
+      .attr("dy", ".31em")
+      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+      .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
+      .text(function(d) { return d.key; });
+});
+
+d3.select(self.frameElement).style("height", diameter + "px");
+
+*/
+</script>
+
