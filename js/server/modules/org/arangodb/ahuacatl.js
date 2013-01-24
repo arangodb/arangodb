@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*global require, exports, COMPARE_STRING */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions 
 ///
@@ -85,9 +88,9 @@ function THROW (error, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function INDEX_FULLTEXT (collection, attribute) {
-  var indexes = collection.getIndexesNL();
+  var indexes = collection.getIndexesNL(), i;
 
-  for (var i = 0; i < indexes.length; ++i) {
+  for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
     if (index.type === "fulltext" && index.fields && index.fields[0] === attribute) {
       return index.id;
@@ -102,12 +105,12 @@ function INDEX_FULLTEXT (collection, attribute) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function INDEX (collection, indexTypes) {
-  var indexes = collection.getIndexesNL();
+  var indexes = collection.getIndexesNL(), i, j;
 
-  for (var i = 0; i < indexes.length; ++i) {
+  for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
 
-    for (var j = 0; j < indexTypes.length; ++j) {
+    for (j = 0; j < indexTypes.length; ++j) {
       if (index.type === indexTypes[j]) {
         return index.id;
       }
@@ -148,33 +151,30 @@ function NORMALIZE (value) {
     return value;
   }
 
+  var result;
+
   if (Array.isArray(value)) {
-    var result = [ ];
-    var length = value.length;
-    for (var i = 0; i < length; ++i) {
-      result.push(NORMALIZE(value[i]));
-    }
-  
-    return result;
+    result = [ ];
+    value.forEach(function (v) {
+      result.push(NORMALIZE(v));
+    });
   } 
   else {
-    var attributes = [ ];
-    for (var attribute in value) {
-      if (! value.hasOwnProperty(attribute)) {
-        continue;
+    var attributes = [ ], a;
+    for (a in value) {
+      if (value.hasOwnProperty(a)) {
+        attributes.push(a);
       }
-      attributes.push(attribute);
     }
     attributes.sort();
 
-    var result = { };
-    var length = attributes.length;
-    for (var i = 0; i < length; ++i) {
-      result[attributes[i]] = NORMALIZE(value[attributes[i]]);
-    }
-
-    return result;
+    result = { };
+    attributes.forEach(function (a) {
+      result[a] = NORMALIZE(value[a]);
+    });
   }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,28 +182,58 @@ function NORMALIZE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CLONE (obj) {
-  if (obj == null || typeof(obj) != "object") {
+  if (obj === null || typeof(obj) !== "object") {
     return obj;
   }
-
+ 
+  var copy, a; 
   if (Array.isArray(obj)) {
-    var copy = [];
-    var length = obj.length;
-    for (var i = 0; i < length; ++i) {
-      copy[i] = CLONE(obj[i]);
-    }
-    return copy;
+    copy = [ ];
+    obj.forEach(function (i) {
+      copy.push(CLONE(i));
+    });
   }
-
-  if (obj instanceof Object) {
-    var copy = {};
-    for (var attr in obj) {
-      if (obj.hasOwnProperty(attr)) {
-        copy[attr] = CLONE(obj[attr]);
+  else if (obj instanceof Object) {
+    copy = { };
+    for (a in obj) {
+      if (obj.hasOwnProperty(a)) {
+        copy[a] = CLONE(obj[a]);
       }
     }
-    return copy;
   }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the sort type of an operand
+////////////////////////////////////////////////////////////////////////////////
+
+function TYPEWEIGHT (value) {
+  if (value === undefined || value === null) {
+    return TYPEWEIGHT_NULL;
+  }
+
+  if (Array.isArray(value)) {
+    return TYPEWEIGHT_LIST;
+  }
+
+  switch (typeof(value)) {
+    case 'boolean':
+      return TYPEWEIGHT_BOOL;
+    case 'number':
+      if (isNaN(value) || ! isFinite(value)) {
+        // not a number => undefined
+        return TYPEWEIGHT_NULL; 
+      }
+      return TYPEWEIGHT_NUMBER;
+    case 'string':
+      return TYPEWEIGHT_STRING;
+    case 'object':
+      return TYPEWEIGHT_DOCUMENT;
+  }
+
+  return TYPEWEIGHT_NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,46 +279,15 @@ function FIX (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the sort type of an operand
-////////////////////////////////////////////////////////////////////////////////
-
-function TYPEWEIGHT (value) {
-  if (value === undefined || value === null) {
-    return TYPEWEIGHT_NULL;
-  }
-
-  if (Array.isArray(value)) {
-    return TYPEWEIGHT_LIST;
-  }
-
-  switch (typeof(value)) {
-    case 'boolean':
-      return TYPEWEIGHT_BOOL;
-    case 'number':
-      if (isNaN(value) || ! isFinite(value)) {
-        // not a number => undefined
-        return TYPEWEIGHT_NULL; 
-      }
-      return TYPEWEIGHT_NUMBER;
-    case 'string':
-      return TYPEWEIGHT_STRING;
-    case 'object':
-      return TYPEWEIGHT_DOCUMENT;
-  }
-
-  return TYPEWEIGHT_NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the values of an object in the order that they are defined
 ////////////////////////////////////////////////////////////////////////////////
 
 function VALUES (value) {
-  var values = [];
+  var values = [ ], a;
   
-  for (var k in value) {
-    if (value.hasOwnProperty(k)) {
-      values.push(value[k]);
+  for (a in value) {
+    if (value.hasOwnProperty(a)) {
+      values.push(value[a]);
     }
   }
 
@@ -300,18 +299,19 @@ function VALUES (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function KEYS (value, doSort) {
-  var keys = [];
+  var keys = [ ];
   
   if (Array.isArray(value)) {
-    var n = value.length;
-    for (var j = 0; j < n; ++j) {
-      keys.push(j);
+    var n = value.length, i;
+    for (i = 0; i < n; ++i) {
+      keys.push(i);
     }
   }
   else {
-    for (var k in value) {
-      if (value.hasOwnProperty(k)) {
-        keys.push(k);
+    var a;
+    for (a in value) {
+      if (value.hasOwnProperty(a)) {
+        keys.push(a);
       }
     }
 
@@ -329,33 +329,34 @@ function KEYS (value, doSort) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function KEYLIST (lhs, rhs) {
-  var keys = [];
+  var keys = [ ];
   
   if (Array.isArray(lhs)) {
     // lhs & rhs are lists
-    var n;
+    var i, n;
     if (lhs.length > rhs.length) {
       n = lhs.length;
     }
     else {
       n = rhs.length;
     }
-    for (var j = 0; j < n; ++j) {
-      keys.push(j);
+    for (i = 0; i < n; ++i) {
+      keys.push(i);
     }
     return keys;
   }
 
   // lhs & rhs are arrays
-  var k;
-  for (k in lhs) {
-    keys.push(k);
-  }
-  for (k in rhs) {
-    if (lhs.hasOwnProperty(k)) {
-      continue;
+  var a;
+  for (a in lhs) {
+    if (lhs.hasOwnProperty(a)) {
+      keys.push(a);
     }
-    keys.push(k);
+  }
+  for (a in rhs) {
+    if (rhs.hasOwnProperty(a) && ! lhs.hasOwnProperty(a)) {
+      keys.push(a);
+    }
   }
 
   // object keys need to be sorted by names
@@ -369,12 +370,12 @@ function KEYLIST (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_INDEX (value, index) {
-  if (TYPEWEIGHT(value) == TYPEWEIGHT_NULL) {
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
     return null;
   }
   
-  if (TYPEWEIGHT(value) != TYPEWEIGHT_LIST &&
-      TYPEWEIGHT(value) != TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST &&
+      TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
@@ -392,11 +393,11 @@ function GET_INDEX (value, index) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENT_MEMBER (value, attributeName) {
-  if (TYPEWEIGHT(value) == TYPEWEIGHT_NULL) {
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
     return null;
   }
 
-  if (TYPEWEIGHT(value) != TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
     return null;
   }
 
@@ -429,12 +430,12 @@ function DOCUMENT (collection, id) {
   if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
     var c = COLLECTION(collection);
 
-    var result = [ ];
-    for (var i = 0; i < id.length; ++i) {
+    var result = [ ], i;
+    for (i = 0; i < id.length; ++i) {
       try {
         result.push(c.document(id[i]));
       }
-      catch (e) {
+      catch (e1) {
       }
     }
     return result;
@@ -443,7 +444,7 @@ function DOCUMENT (collection, id) {
   try {
     return COLLECTION(collection).document(id);
   }
-  catch (e) {
+  catch (e2) {
     return undefined;
   }
 }
@@ -453,10 +454,10 @@ function DOCUMENT (collection, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS (collection, offset, limit) {
-  if (offset == undefined) {
+  if (offset === undefined) {
     offset = 0;
   }
-  if (limit == undefined) {
+  if (limit === undefined) {
     limit = null;
   }
   return COLLECTION(collection).ALL(offset, limit).documents;
@@ -482,17 +483,17 @@ function GET_DOCUMENTS_PRIMARY (collection, idx, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
-  var result = [ ];
+  var result = [ ], c;
 
-  for (var i in values) {
-    var id = values[i];
+  c = COLLECTION(collection);
+
+  values.forEach (function (id) {
     try {
-      var d = COLLECTION(collection).document(id);
-      result.push(d);
+      result.push(c.document(id));
     }
     catch (e) {
     }
-  }
+  });
 
   return result;
 }
@@ -512,19 +513,20 @@ function GET_DOCUMENTS_HASH (collection, idx, example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
-  var result = [ ];
+  var result = [ ], c;
+  
+  c = COLLECTION(collection);
 
-  for (var i in values) {
-    var value = values[i];
-    var example = { };
+  values.forEach(function (value) {
+    var example = { }, documents;
 
     example[attribute] = value;
 
-    var documents = COLLECTION(collection).BY_EXAMPLE_HASH(idx, example).documents;
-    for (var j in documents) {
-      result.push(documents[j]);
-    }
-  }
+    documents = c.BY_EXAMPLE_HASH(idx, example).documents;
+    documents.forEach(function (doc) {
+      result.push(doc);
+    });
+  });
 
   return result;
 }
@@ -535,18 +537,21 @@ function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_EDGE (collection, att, id) {
+  var result;
+
   try {
     if (att === '_from') {
-      return COLLECTION(collection).outEdges(id);
+      result = COLLECTION(collection).outEdges(id);
     }
     else {
-      return COLLECTION(collection).inEdges(id);
+      result = COLLECTION(collection).inEdges(id);
     }
   }
   catch (e) {
+    result = [ ];
   }
 
-  return [ ];
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,30 +560,31 @@ function GET_DOCUMENTS_EDGE (collection, att, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
-  var docs = { };
+  var docs = { }, result = [ ], c, a;
 
-  for (var i in values) {
+  c = COLLECTION(collection);
+
+  values.forEach(function (value) {
     try {
       var parts;
       if (att === '_from') {
-        parts = COLLECTION(collection).outEdges(values[i]);
+        parts = c.outEdges(value);
       }
       else {
-        parts = COLLECTION(collection).inEdges(values[i]);
+        parts = c.inEdges(value);
       }
 
-      for (var p in parts) {
-        docs[parts[p]._id] = parts[p];
-      }
+      parts.forEach(function (e) {
+        docs[e._id] = e;
+      });
     }
     catch (e) {
     }
-  }
+  });
 
-  var result = [ ];
-  for (var p in docs) {
-    if (docs.hasOwnProperty(p)) {
-      result.push(docs[p]);
+  for (a in docs) {
+    if (docs.hasOwnProperty(a)) {
+      result.push(docs[a]);
     }
   }
 
@@ -599,25 +605,23 @@ function GET_DOCUMENTS_BITARRAY (collection, idx, example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
-  var result = [ ];
+  var result = [ ], c;
 
-  for (var i in values) {
-    var value = values[i];
-    var example = { };
+  c = COLLECTION(collection);
+
+  values.forEach(function (value) {
+    var example = { }, documents;
 
     example[attribute] = value;
 
-    var documents = COLLECTION(collection).BY_EXAMPLE_BITARRAY(idx, example).documents;
-    for (var j in documents) {
-      result.push(documents[j]);
-    }
-  }
+    documents = c.BY_EXAMPLE_BITARRAY(idx, example).documents;
+    documents.forEach(function (doc) {
+      result.push(doc);
+    });
+  });
 
   return result;
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get documents from the specified collection using a skiplist
@@ -633,19 +637,19 @@ function GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
-  var result = [ ];
+  var result = [ ], c;
 
-  for (var i in values) {
-    var value = values[i];
-    var example = { };
+  c = COLLECTION(collection);
+
+  values.forEach(function (value) {
+    var example = { }, documents;
 
     example[attribute] = value;
-
-    var documents = COLLECTION(collection).BY_EXAMPLE_SKIPLIST(idx, example).documents;
-    for (var j in documents) {
-      result.push(documents[j]);
-    }
-  }
+    documents = c.BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    documents.forEach(function (doc) {
+      result.push(doc);
+    });
+  });
 
   return result;
 }
@@ -655,12 +659,11 @@ function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function COLLECTIONS () {
-  var collections = INTERNAL.db._collections();
-  var result = [ ];
+  var result = [ ], collections = INTERNAL.db._collections();
 
-  for (var i = 0; i < collections.length; ++i) {
-    result.push({ "_id" : collections[i]._id, "name" : collections[i].name() });
-  }
+  collections.forEach(function (c) {
+    result.push({ "_id" : c._id, "name" : c.name() });
+  });
 
   return result;
 }
@@ -773,7 +776,7 @@ function RELATIONAL_EQUAL (lhs, rhs) {
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
 
-  if (leftWeight != rightWeight) {
+  if (leftWeight !== rightWeight) {
     return false;
   }
 
@@ -781,13 +784,11 @@ function RELATIONAL_EQUAL (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_EQUAL(lhs[key], rhs[key]);
-      if (result === false) {
-        return result;
+    var keys = KEYLIST(lhs, rhs), key, i;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      if (RELATIONAL_EQUAL(lhs[key], rhs[key]) === false) {
+        return false;
       }
     }
     return true;
@@ -802,7 +803,7 @@ function RELATIONAL_EQUAL (lhs, rhs) {
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
-    return COMPARE_STRING(lhs, rhs) == 0;
+    return COMPARE_STRING(lhs, rhs) === 0;
   }
 
   return (lhs === rhs);
@@ -818,7 +819,7 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
   
-  if (leftWeight != rightWeight) {
+  if (leftWeight !== rightWeight) {
     return true;
   }
 
@@ -826,13 +827,11 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_UNEQUAL(lhs[key], rhs[key]);
-      if (result === true) {
-        return result;
+    var keys = KEYLIST(lhs, rhs), key, i;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      if (RELATIONAL_UNEQUAL(lhs[key], rhs[key]) === true) {
+        return true;
       }
     }
 
@@ -848,7 +847,7 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
-    return COMPARE_STRING(lhs, rhs) != 0;
+    return COMPARE_STRING(lhs, rhs) !== 0;
   }
 
   return (lhs !== rhs);
@@ -873,11 +872,10 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), key, i, result;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      result = RELATIONAL_GREATER_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -940,11 +938,10 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), key, i, result;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      result = RELATIONAL_GREATEREQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1007,11 +1004,10 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_LESS_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), key, i, result;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      result = RELATIONAL_LESS_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1074,11 +1070,10 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), key, i, result;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      result = RELATIONAL_LESSEQUAL_REC(lhs[key], rhs[key]);
       if (result !== null) {
         return result;
       }
@@ -1144,11 +1139,10 @@ function RELATIONAL_CMP (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs);
-
-    for (var i in keys) {
-      var key = keys[i];
-      var result = RELATIONAL_CMP(lhs[key], rhs[key]);
+    var keys = KEYLIST(lhs, rhs), key, i, result;
+    for (i = 0; i < keys.length; ++i) {
+      key = keys[i];
+      result = RELATIONAL_CMP(lhs[key], rhs[key]);
       if (result !== 0) {
         return result;
       }
@@ -1194,8 +1188,8 @@ function RELATIONAL_IN (lhs, rhs) {
     THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
 
-  var numRight = rhs.length;
-  for (var i = 0; i < numRight; ++i) {
+  var numRight = rhs.length, i;
+  for (i = 0; i < numRight; ++i) {
     if (RELATIONAL_EQUAL(lhs, rhs[i])) {
       return true;
     }
@@ -1327,7 +1321,7 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
   
-  if (rhs == 0) {
+  if (rhs === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
@@ -1351,11 +1345,11 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
 
-  if (rhs == 0) {
+  if (rhs === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
 
-  var result  = NUMERIC_VALUE(lhs % rhs);
+  var result = NUMERIC_VALUE(lhs % rhs);
   if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
   }
@@ -1383,18 +1377,17 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_CONCAT () {
-  var result = '';
+  var result = '', i;
 
-  for (var i in arguments) {
-    var element = arguments[i];
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
 
-    if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
-      continue;
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_NULL) {
+        ARG_CHECK(element, TYPEWEIGHT_STRING, "CONCAT");
+        result += element;
+      }
     }
-
-    ARG_CHECK(element, TYPEWEIGHT_STRING, "CONCAT");
-
-    result += element;
   }
 
   return result; 
@@ -1407,30 +1400,29 @@ function STRING_CONCAT () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function STRING_CONCAT_SEPARATOR () {
-  var separator;
-  var found = false;
-  var result = '';
+  var separator, found = false, result = '', i;
 
-  for (var i in arguments) {
-    var element = arguments[i];
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
 
-    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
-      continue;
+      if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+        continue;
+      }
+
+      ARG_CHECK(element, TYPEWEIGHT_STRING, "CONCAT_SEPARATOR");
+
+      if (i === 0 || i === "0") {
+        separator = element;
+        continue;
+      }
+      else if (found) {
+        result += separator;
+      }
+
+      found = true;
+      result += element;
     }
-    
-    ARG_CHECK(element, TYPEWEIGHT_STRING, "CONCAT_SEPARATOR");
-
-    if (i == 0) {
-      separator = element;
-      continue;
-    }
-    else if (found) {
-      result += separator;
-    }
-
-    found = true;
-
-    result += element;
   }
 
   return result; 
@@ -1495,11 +1487,11 @@ function STRING_CONTAINS (value, search) {
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CONTAINS");
   ARG_CHECK(search, TYPEWEIGHT_STRING, "CONTAINS");
 
-  if (search.length == 0) {
+  if (search.length === 0) {
     return false;
   }
 
-  return value.indexOf(search) != -1;
+  return value.indexOf(search) !== -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1528,7 +1520,7 @@ function CAST_BOOL (value) {
     case TYPEWEIGHT_BOOL:
       return value;
     case TYPEWEIGHT_NUMBER:
-      return (value != 0);
+      return (value !== 0);
     case TYPEWEIGHT_STRING: 
       return (value !== '');
     case TYPEWEIGHT_LIST:
@@ -1780,17 +1772,15 @@ function GROUP (value, sortFunction, groupFunction, into) {
   LIST(value);
 
   var n = value.length;
-  if (n == 0) {
+  if (n === 0) {
     return [ ];
   }
 
   SORT(value, sortFunction);
 
-  var result = [ ];
-  var currentGroup = undefined;
-  var oldGroup = undefined;
+  var result = [ ], currentGroup, oldGroup, i;
   
-  for (var i = 0; i < n; ++i) {
+  for (i = 0; i < n; ++i) {
     var row = value[i];
     var groupValue = groupFunction(row);
 
@@ -1850,30 +1840,30 @@ function LIMIT (value, offset, count) {
 /// @brief get the length of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function LENGTH () {
-  var value = arguments[0];
+function LENGTH (value) {
+  var result;
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
-    return value.length;
+    result = value.length;
   }
   else if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
-    return KEYS(value, false).length;
+    result = KEYS(value, false).length;
   }
   else {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LENGTH");
   }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the first element of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function FIRST () {
-  var value = arguments[0];
-
+function FIRST (value) {
   LIST(value);
 
-  if (value.length == 0) {
+  if (value.length === 0) {
     return null;
   }
 
@@ -1884,12 +1874,10 @@ function FIRST () {
 /// @brief get the last element of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function LAST () {
-  var value = arguments[0];
-
+function LAST (value) {
   LIST(value);
 
-  if (value.length == 0) {
+  if (value.length === 0) {
     return null;
   }
 
@@ -1900,9 +1888,7 @@ function LAST () {
 /// @brief reverse the elements in a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function REVERSE () {
-  var value = arguments[0];
-
+function REVERSE (value) {
   LIST(value);
 
   return value.reverse();
@@ -1912,21 +1898,19 @@ function REVERSE () {
 /// @brief return a list of unique elements from the list
 ////////////////////////////////////////////////////////////////////////////////
 
-function UNIQUE () {
-  var value = arguments[0];
+function UNIQUE (values) {
+  LIST(values);
 
-  LIST(value);
+  var keys = { }, result = [ ], a;
 
-  var length = value.length;
-  var keys = { };
-  for (var i = 0; i < length; ++i) {
-    var normalized = NORMALIZE(value[i]);
+  values.forEach(function (value) {
+    var normalized = NORMALIZE(value);
     keys[JSON.stringify(normalized)] = normalized;
-  }
-
-  var result = [];
-  for (var i in keys) {
-    result.push(keys[i]);
+  });
+  for (a in keys) {
+    if (keys.hasOwnProperty(a)) {
+      result.push(keys[a]);
+    }
   }
 
   return result;
@@ -1937,21 +1921,21 @@ function UNIQUE () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNION () {
-  var result = [ ];
+  var result = [ ], i, a;
 
-  for (var i in arguments) {
-    var element = arguments[i];
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
 
-    if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
-    }
-
-    for (var k in element) {
-      if (! element.hasOwnProperty(k)) {
-        continue;
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
       }
 
-      result.push(element[k]);
+      for (a in element) {
+        if (element.hasOwnProperty(a)) {
+          result.push(element[a]);
+        }
+      }
     }
   }
 
@@ -1962,23 +1946,18 @@ function UNION () {
 /// @brief maximum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function MAX () {
+function MAX (values) {
   var result = null;
-  var value = arguments[0];
 
-  LIST(value);
+  LIST(values);
 
-  for (var i in value) {
-    var currentValue = value[i];
-    
-    if (TYPEWEIGHT(currentValue) === TYPEWEIGHT_NULL) {
-      continue;
+  values.forEach(function (value) {
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
+      if (result === null || RELATIONAL_GREATER(value, result)) {
+        result = value;
+      }
     }
-
-    if (result === null || RELATIONAL_GREATER(currentValue, result)) {
-      result = currentValue;
-    }
-  }
+  });
 
   return result;
 }
@@ -1987,23 +1966,18 @@ function MAX () {
 /// @brief minimum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function MIN () {
+function MIN (values) {
   var result = null;
-  var value = arguments[0];
 
-  LIST(value);
-
-  for (var i in value) {
-    var currentValue = value[i];
-    
-    if (TYPEWEIGHT(currentValue) === TYPEWEIGHT_NULL) {
-      continue;
+  LIST(values);
+  
+  values.forEach(function (value) {
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
+      if (result === null || RELATIONAL_LESS(value, result)) {
+        result = value;
+      }
     }
-    
-    if (result === null || RELATIONAL_LESS(currentValue, result)) {
-      result = currentValue;
-    }
-  }
+  });
 
   return result;
 }
@@ -2012,30 +1986,25 @@ function MIN () {
 /// @brief sum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function SUM () {
+function SUM (values) {
   var result = null;
-  var value = arguments[0];
 
-  LIST(value);
+  LIST(values);
 
-  for (var i in value) {
-    var currentValue = value[i];
-    
-    if (TYPEWEIGHT(currentValue) === TYPEWEIGHT_NULL) {
-      continue;
-    }
+  values.forEach(function (value) {
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
+      if (TYPEWEIGHT(value) !== TYPEWEIGHT_NUMBER) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
+      }
 
-    if (TYPEWEIGHT(currentValue) !== TYPEWEIGHT_NUMBER) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
+      if (result === null) {
+        result = value;
+      }
+      else {
+        result += value;
+      }
     }
-    
-    if (result === null) {
-      result = currentValue;
-    }
-    else {
-      result += currentValue;
-    }
-  }
+  });
 
   return NUMERIC_VALUE(result);
 }
@@ -2057,28 +2026,22 @@ function SUM () {
 /// @brief return at most <limit> documents near a certain point
 ////////////////////////////////////////////////////////////////////////////////
 
-function GEO_NEAR () {
-  var collection = arguments[0];
-  var latitude = arguments[1];
-  var longitude = arguments[2];
-  var limit = arguments[3];
-  var distanceAttribute = arguments[4];
-
+function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
-  if (idx == null) {
+  if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
-  if (distanceAttribute == null) {
+  if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
   }
 
   // inject distances
   var documents = result.documents;
   var distances = result.distances;
-  var n = documents.length;
-  for (var i = 0; i < n; ++i) {
+  var n = documents.length, i;
+  for (i = 0; i < n; ++i) {
     documents[i][distanceAttribute] = distances[i];
   }
 
@@ -2089,28 +2052,22 @@ function GEO_NEAR () {
 /// @brief return documents within <radius> around a certain point
 ////////////////////////////////////////////////////////////////////////////////
 
-function GEO_WITHIN () {
-  var collection = arguments[0];
-  var latitude = arguments[1];
-  var longitude = arguments[2];
-  var radius = arguments[3];
-  var distanceAttribute = arguments[4];
-
+function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
-  if (idx == null) {
+  if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = COLLECTION(collection).WITHIN(idx, latitude, longitude, radius);
-  if (distanceAttribute == null) {
+  if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
   }
 
   // inject distances
   var documents = result.documents;
   var distances = result.distances;
-  var n = documents.length;
-  for (var i = 0; i < n; ++i) {
+  var n = documents.length, i;
+  for (i = 0; i < n; ++i) {
     documents[i][distanceAttribute] = distances[i];
   }
 
@@ -2134,18 +2091,276 @@ function GEO_WITHIN () {
 /// @brief return documents that match a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-function FULLTEXT () {
-  var collection = arguments[0];
-  var attribute  = arguments[1];
-  var query = arguments[2];
-
+function FULLTEXT (collection, attribute, query) {
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
-  if (idx == null) {
+  if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
   var result = COLLECTION(collection).FULLTEXT(idx, query);
   return result.documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    misc functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first alternative that's not null until there are no more 
+/// alternatives. if neither of the alternatives is a value other than null, 
+/// then null will be returned
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function NOT_NULL () {
+  var i;
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+  
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_NULL) {
+        return element;
+      }
+    }
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first alternative that's a list until there are no more
+/// alternatives. if neither of the alternatives is a list, then null will be
+/// returned
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function FIRST_LIST () {
+  var i;
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_LIST) {
+        return element;
+      }
+    }
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first alternative that's a document until there are no 
+/// more alternatives. if neither of the alternatives is a document, then null 
+/// will be returned
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function FIRST_DOCUMENT () {
+  var i;
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+  
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_DOCUMENT) {
+        return element;
+      }
+    }
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a document has a specific attribute
+////////////////////////////////////////////////////////////////////////////////
+
+function HAS (element, name) {
+  if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    return false;
+  }
+
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+  }
+
+  return element.hasOwnProperty(name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the attribute names of a document as a list
+////////////////////////////////////////////////////////////////////////////////
+
+function ATTRIBUTES (element, removeInternal, sort) {
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ATTRIBUTES");
+  }
+
+  var result = [ ], a;
+    
+  for (a in element) {
+    if (element.hasOwnProperty(a)) {
+      if (! removeInternal || a.substring(0, 1) !== '_') {
+        result.push(a);
+      }
+    }
+  }
+
+  if (sort) {
+    result.sort();
+  }
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments
+////////////////////////////////////////////////////////////////////////////////
+
+function MERGE () {
+  var result = { }, i, a;
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
+      }
+
+      for (a in element) {
+        if (element.hasOwnProperty(a)) {
+          result[a] = element[a];
+        }
+      }
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function MERGE_RECURSIVE () {
+  var result = { }, i, recurse;
+      
+  recurse = function (old, element) {
+    var r = CLONE(old), a;
+
+    for (a in element) {
+      if (element.hasOwnProperty(a)) {
+        if (r.hasOwnProperty(a) && TYPEWEIGHT(element[a]) === TYPEWEIGHT_DOCUMENT) {
+          r[a] = recurse(r[a], element[a]);
+        }
+        else {
+          r[a] = element[a];
+        }
+      }
+    }
+    return r;
+ };
+
+  for (i in arguments) {
+    if (arguments.hasOwnProperty(i)) {
+      var element = arguments[i];
+
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
+      }
+
+      result = recurse(result, element);
+    }
+  }
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare an object against a list of examples and return whether the
+/// object matches any of the examples. returns the example index or a bool,
+/// depending on the value of the control flag (3rd) parameter
+////////////////////////////////////////////////////////////////////////////////
+
+function MATCHES (element, examples, returnIndex) {
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+    return false;
+  }
+
+  if (! Array.isArray(examples)) {
+    examples = [ examples ];
+  }
+  if (examples.length === 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
+  }
+
+  returnIndex = returnIndex || false;
+  var i;
+
+  for (i = 0; i < examples.length; ++i) {
+    var example = examples[i];
+    var result = true;
+
+    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
+    }
+
+    var keys = KEYS(example), key, j;
+    for (j = 0; j < keys.length; ++j) {
+      key = keys[j];
+
+      if (! RELATIONAL_EQUAL(element[key], example[key])) {
+        result = false;
+        break;
+      }
+    }
+
+    if (result) {
+      // 3rd parameter determines whether we return the index or a bool flag
+      return (returnIndex ? i : true);
+    }
+  }
+
+  return (returnIndex ? -1 : false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief passthru the argument
+///
+/// this function is marked as non-deterministic so its argument withstands
+/// query optimisation. this function can be used for testing
+////////////////////////////////////////////////////////////////////////////////
+
+function PASSTHRU (value) {
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief always fail
+///
+/// this function is non-deterministic so it is not executed at query 
+/// optimisation time. this function can be used for testing
+////////////////////////////////////////////////////////////////////////////////
+
+function FAIL (message) {
+  if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
+  }
+
+  THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2162,28 +2377,113 @@ function FULLTEXT () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph, INTERNAL part called recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
+  var result = [ ];
+
+  if (level >= searchAttributes.minLength) {
+    result.push({ 
+      vertices : vertices, 
+      edges : edges,
+      source : vertices[0],
+      destination : vertices[vertices.length - 1]
+    });
+  }
+
+  if (level + 1 > searchAttributes.maxLength) {
+    return result;
+  }
+        
+        
+  var subEdges;
+
+  if (searchAttributes.direction === 1) {
+    subEdges = searchAttributes.edgeCollection.outEdges(vertexId);
+  }
+  else if (searchAttributes.direction === 2) {
+    subEdges = searchAttributes.edgeCollection.inEdges(vertexId);
+  }
+  else if (searchAttributes.direction === 3) {
+    subEdges = searchAttributes.edgeCollection.edges(vertexId);
+  }
+
+  var i, j, k;
+  for (i = 0; i < subEdges.length; ++i) {
+    var subEdge = subEdges[i];
+    var targets = [ ];
+
+    if ((searchAttributes.direction === 1 || searchAttributes.direction === 3) && 
+        (subEdge._to !== vertexId)) {
+      targets.push(subEdge._to);
+    }
+    if ((searchAttributes.direction === 2 || searchAttributes.direction === 3) && 
+        (subEdge._from !== vertexId)) {
+      targets.push(subEdge._from);
+    }
+
+    for (j = 0; j < targets.length; ++j) {
+      var targetId = targets[j];
+      
+      if (! searchAttributes.followCycles) {
+        if (visited[targetId]) {
+          continue;
+        }
+        visited[targetId] = true;
+      }
+
+      var clonedEdges = CLONE(edges);
+      var clonedVertices = CLONE(vertices);
+      try { 
+        clonedVertices.push(INTERNAL.db._document(targetId));
+        clonedEdges.push(subEdge);
+      }
+      catch (e) {
+        // avoid "document not found error" in case referenced vertices were deleted
+      }
+      
+      var connected = GRAPH_SUBNODES(searchAttributes, 
+                                     targetId, 
+                                     CLONE(visited), 
+                                     clonedEdges, 
+                                     clonedVertices, 
+                                     level + 1);
+      for (k = 0; k < connected.length; ++k) {
+        result.push(connected[k]);
+      }
+
+      if (! searchAttributes.followCycles) {
+        delete visited[targetId];
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_PATHS () {
-  var vertices       = arguments[0];
-  var edgeCollection = arguments[1];
-  var direction      = arguments[2] || "outbound";
-  var followCycles   = arguments[3] || false;
-  var minLength      = arguments[4] || 0;
-  var maxLength      = arguments[5] != undefined ? arguments[5] : 10;
+function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
   var searchDirection;
+
+  direction      = direction || "outbound";
+  followCycles   = followCycles || false;
+  minLength      = minLength || 0;
+  maxLength      = maxLength !== undefined ? maxLength : 10;
   
   LIST(vertices);
 
   // validate arguments
-  if (direction == "outbound") {
+  if (direction === "outbound") {
     searchDirection = 1;
   }
-  else if (direction == "inbound") {
+  else if (direction === "inbound") {
     searchDirection = 2;
   }
-  else if (direction == "any") {
+  else if (direction === "any") {
     searchDirection = 3;
   }
   else {
@@ -2203,8 +2503,8 @@ function GRAPH_PATHS () {
   };
 
   var result = [ ];
-  var n = vertices.length;
-  for (var i = 0; i < n; ++i) {
+  var n = vertices.length, i, j;
+  for (i = 0; i < n; ++i) {
     var vertex = vertices[i];
     var visited = { };
 
@@ -2212,83 +2512,6 @@ function GRAPH_PATHS () {
     var connected = GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
     for (j = 0; j < connected.length; ++j) {
       result.push(connected[j]);
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph, INTERNAL part called recursively
-////////////////////////////////////////////////////////////////////////////////
-
-function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
-  var result = [ ];
-
-  if (level >= searchAttributes.minLength) {
-    result.push({ 
-        vertices : vertices, 
-        edges : edges,
-        source : vertices[0],
-        destination : vertices[vertices.length - 1]
-        });
-  }
-
-  if (level + 1 > searchAttributes.maxLength) {
-    return result;
-  }
-
-  var subEdges;
-
-  if (searchAttributes.direction == 1) {
-    subEdges = searchAttributes.edgeCollection.outEdges(vertexId);
-  }
-  else if (searchAttributes.direction == 2) {
-    subEdges = searchAttributes.edgeCollection.inEdges(vertexId);
-  }
-  else if (searchAttributes.direction == 3) {
-    subEdges = searchAttributes.edgeCollection.edges(vertexId);
-  }
-
-  for (var i = 0; i < subEdges.length; ++i) {
-    var subEdge = subEdges[i];
-    var targets = [ ];
-
-    if ((searchAttributes.direction & 1) && (subEdge._to !== vertexId)) {
-      targets.push(subEdge._to);
-    }
-    if ((searchAttributes.direction & 2) && (subEdge._from !== vertexId)) {
-      targets.push(subEdge._from);
-    }
-
-    for (var j = 0; j < targets.length; ++j) {
-      var targetId = targets[j];
-      
-      if (! searchAttributes.followCycles) {
-        if (visited[targetId]) {
-          continue;
-        }
-        visited[targetId] = true;
-      }
-
-      var clonedEdges = CLONE(edges);
-      var clonedVertices = CLONE(vertices);
-      try {
-        clonedVertices.push(INTERNAL.db._document(targetId));
-        clonedEdges.push(subEdge);
-      }
-      catch (e) {
-        // avoid "document not found error" in case referenced vertices were deleted
-      }
-      
-      var connected = GRAPH_SUBNODES(searchAttributes, targetId, CLONE(visited), clonedEdges, clonedVertices, level + 1);
-      for (k = 0; k < connected.length; ++k) {
-        result.push(connected[k]);
-      }
-
-      if (! searchAttributes.followCycles) {
-        delete visited[targetId];
-      }
     }
   }
 
@@ -2320,19 +2543,16 @@ function TRAVERSE_FILTER (config, vertex, edge, path) {
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSE () {
-  var vertexCollection = COLLECTION(arguments[0]);
-  var edgeCollection   = COLLECTION(arguments[1]);
-  var startVertex      = arguments[2];
-  var direction        = arguments[3];
-  var params           = arguments[4];
+function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, direction, params) {
+  vertexCollection = COLLECTION(vertexCollection);
+  edgeCollection   = COLLECTION(edgeCollection);
 
   // check followEdges property
   if (params.followEdges) {
     if (TYPEWEIGHT(params.followEdges) !== TYPEWEIGHT_LIST) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
     }
-    if (params.followEdges.length == 0) {
+    if (params.followEdges.length === 0) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
     }
     params.followEdges.forEach(function (example) {
@@ -2343,9 +2563,10 @@ function GRAPH_TRAVERSE () {
   }
 
   function validate (value, map) {
-    if (value == null || value == undefined) {
+    if (value === null || value === undefined) {
+      var m;
       // use first key from map
-      for (var m in map) {
+      for (m in map) {
         if (map.hasOwnProperty(m)) {
           value = m;
           break;
@@ -2354,7 +2575,7 @@ function GRAPH_TRAVERSE () {
     }
     if (typeof value === 'string') {
       value = value.toLowerCase().replace(/-/, "");
-      if (map[value] != null) {
+      if (map[value] !== null) {
         return map[value];
       }
     }
@@ -2369,13 +2590,13 @@ function GRAPH_TRAVERSE () {
 
   // prepare an array of filters
   var filter = [ ];
-  if (params.minDepth != undefined) {
+  if (params.minDepth !== undefined) {
     filter.push(TRAVERSAL.MinDepthFilter);
   }
-  if (params.maxDepth != undefined) {
+  if (params.maxDepth !== undefined) {
     filter.push(TRAVERSAL.MaxDepthFilter);
   }
-  if (filter.length == 0) {
+  if (filter.length === 0) {
     filter.push(TRAVERSAL.VisitAllFilter);
   }
 
@@ -2408,7 +2629,7 @@ function GRAPH_TRAVERSE () {
         'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
         'none': TRAVERSAL.Traverser.UNIQUE_NONE,
         'path': TRAVERSAL.Traverser.UNIQUE_PATH
-      }),
+      })
     },
     expander: validate(direction, {
       'outbound': TRAVERSAL.OutboundExpander,
@@ -2423,7 +2644,7 @@ function GRAPH_TRAVERSE () {
   }
 
   if (params._sort) {
-    config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
+    config.sort = function (l, r) { return l._key < r._key ? -1 : 1; };
   }
 
   var v = null;
@@ -2434,248 +2655,12 @@ function GRAPH_TRAVERSE () {
   catch (err) {
   }
 
-  if (v != null) {
+  if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
     traverser.traverse(result, v);
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    misc functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's not null until there are no more 
-/// alternatives. if neither of the alternatives is a value other than null, 
-/// then null will be returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
-
-function NOT_NULL () {
-  for (var i in arguments) {
-    var element = arguments[i];
-  
-    if (TYPEWEIGHT(element) !== TYPEWEIGHT_NULL) {
-      return element;
-    }
-  }
-
-  return null;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a list until there are no more
-/// alternatives. if neither of the alternatives is a list, then null will be
-/// returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
-
-function FIRST_LIST () {
-  for (var i in arguments) {
-    var element = arguments[i];
-  
-    if (TYPEWEIGHT(element) === TYPEWEIGHT_LIST) {
-      return element;
-    }
-  }
-
-  return null;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a document until there are no 
-/// more alternatives. if neither of the alternatives is a document, then null 
-/// will be returned
-///
-/// the operands can have any type
-////////////////////////////////////////////////////////////////////////////////
-
-function FIRST_DOCUMENT () {
-  for (var i in arguments) {
-    var element = arguments[i];
-  
-    if (TYPEWEIGHT(element) === TYPEWEIGHT_DOCUMENT) {
-      return element;
-    }
-  }
-
-  return null;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a document has a specific attribute
-////////////////////////////////////////////////////////////////////////////////
-
-function HAS () {
-  var element = arguments[0];
-  var name = arguments[1];
-  
-  if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
-    return false;
-  }
-
-  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
-  }
-
-  return element.hasOwnProperty(name);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments
-////////////////////////////////////////////////////////////////////////////////
-
-function MERGE () {
-  var result = { };
-
-  for (var i in arguments) {
-    var element = arguments[i];
-
-    if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
-    }
-
-    for (var k in element) {
-      if (! element.hasOwnProperty(k)) {
-        continue;
-      }
-
-      result[k] = element[k];
-    }
-  }
-
-  return result; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge all arguments recursively
-////////////////////////////////////////////////////////////////////////////////
-
-function MERGE_RECURSIVE () {
-  var result = { };
-
-  for (var i in arguments) {
-    var element = arguments[i];
-
-    if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
-    }
-
-    recurse = function (old, element) {
-      var r = CLONE(old);
-
-      for (var k in element) {
-        if (! element.hasOwnProperty(k)) {
-          continue;
-        }
-
-        if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_DOCUMENT) {
-          r[k] = recurse(r[k], element[k]);
-        }
-        else {
-          r[k] = element[k];
-        }
-      }
-      return r;
-    }
-
-    result = recurse(result, element);
-  }
-
-  return result; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare an object against a list of examples and return whether the
-/// object matches any of the examples. returns the example index or a bool,
-/// depending on the value of the control flag (3rd) parameter
-////////////////////////////////////////////////////////////////////////////////
-
-function MATCHES () {
-  var element = arguments[0];
-
-  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-    return false;
-  }
-
-  var examples = arguments[1];
-  if (! Array.isArray(examples)) {
-    examples = [ examples ];
-  }
-  if (examples.length == 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
-  }
-
-  var returnIndex = arguments[2] || false;
-
-  for (var i = 0; i < examples.length; ++i) {
-    var example = examples[i];
-    var result = true;
-
-    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
-    }
-
-    var keys = KEYS(example);
-    for (var j = 0; j < keys.length; ++j) {
-      var key = keys[j];
-
-      if (! RELATIONAL_EQUAL(element[key], example[key])) {
-        result = false;
-        break;
-      }
-    }
-
-    if (result) {
-      // 3rd parameter determines whether we return the index or a bool flag
-      return (returnIndex ? i : true);
-    }
-  }
-
-  return (returnIndex ? -1 : false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief passthru the argument
-///
-/// this function is marked as non-deterministic so its argument withstands
-/// query optimisation. this function can be used for testing
-////////////////////////////////////////////////////////////////////////////////
-
-function PASSTHRU () {
-  var value = arguments[0];
-
-  return value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief always fail
-///
-/// this function is non-deterministic so it is not executed at query 
-/// optimisation time. this function can be used for testing
-////////////////////////////////////////////////////////////////////////////////
-
-function FAIL () {
-  var message = arguments[0];
-
-  if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
-  }
-
-  THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2691,20 +2676,23 @@ function FAIL () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.THROW = THROW;
-exports.INDEX_FULLTEXT = INDEX_FULLTEXT;
-exports.INDEX = INDEX;
-exports.COLLECTION = COLLECTION;
-exports.NORMALIZE = NORMALIZE;
-exports.CLONE = CLONE;
-exports.ARG_CHECK = ARG_CHECK;
+/* the following functions probably do not need to be exposed as part of the API
+//exports.THROW = THROW;
+//exports.INDEX_FULLTEXT = INDEX_FULLTEXT;
+//exports.INDEX = INDEX;
+//exports.COLLECTION = COLLECTION;
+//exports.NORMALIZE = NORMALIZE;
+//exports.CLONE = CLONE;
+//exports.ARG_CHECK = ARG_CHECK;
+//exports.NUMERIC_VALUE = NUMERIC_VALUE;
+//exports.FIX = FIX;
+//exports.TYPEWEIGHT = TYPEWEIGHT;
+//exports.VALUES = VALUES;
+//exports.KEYLIST = KEYLIST;
+*/
+
 exports.FCALL = FCALL;
-exports.NUMERIC_VALUE = NUMERIC_VALUE;
-exports.FIX = FIX;
-exports.TYPEWEIGHT = TYPEWEIGHT;
-exports.VALUES = VALUES;
 exports.KEYS = KEYS;
-exports.KEYLIST = KEYLIST;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.LIST = LIST;
@@ -2727,13 +2715,9 @@ exports.LOGICAL_OR = LOGICAL_OR;
 exports.LOGICAL_NOT = LOGICAL_NOT;
 exports.RELATIONAL_EQUAL = RELATIONAL_EQUAL;
 exports.RELATIONAL_UNEQUAL = RELATIONAL_UNEQUAL;
-exports.RELATIONAL_GREATER_REC = RELATIONAL_GREATER_REC;
 exports.RELATIONAL_GREATER = RELATIONAL_GREATER;
-exports.RELATIONAL_GREATEREQUAL_REC = RELATIONAL_GREATEREQUAL_REC;
 exports.RELATIONAL_GREATEREQUAL = RELATIONAL_GREATEREQUAL;
-exports.RELATIONAL_LESS_REC = RELATIONAL_LESS_REC;
 exports.RELATIONAL_LESS = RELATIONAL_LESS;
-exports.RELATIONAL_LESSEQUAL_REC = RELATIONAL_LESSEQUAL_REC;
 exports.RELATIONAL_LESSEQUAL = RELATIONAL_LESSEQUAL;
 exports.RELATIONAL_CMP = RELATIONAL_CMP;
 exports.RELATIONAL_IN = RELATIONAL_IN;
@@ -2790,6 +2774,7 @@ exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
 exports.HAS = HAS;
+exports.ATTRIBUTES = ATTRIBUTES;
 exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;

@@ -1,6 +1,12 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added AQL function ATTRIBUTES() to return the attribute names of a document
+
+* removed internal AQL helper functions from global scope. Now the AQL internal
+  functions can only be accessed via the exports of the ahuacatl modules, to be
+  included via ```require("org/arangodb/ahuacatl")```
+
 * fixed issue #366: Edges index returns strange description
 
 * added AQL function MATCHES() to check a document against a list of examples

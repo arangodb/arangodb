@@ -612,6 +612,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   
   // document functions
   REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s", NULL); 
+  REGISTER_FUNCTION("ATTRIBUTES", "ATTRIBUTES", true, false, "a|b,b", NULL); 
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h,sl", NULL);

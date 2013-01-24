@@ -1381,6 +1381,46 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test attributes function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributes1 : function () {
+      var expected = [ [ "foo", "bar", "meow", "_id" ], [ "foo" ] ];
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test attributes function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributes2 : function () {
+      var expected = [ [ "foo", "bar", "meow" ], [ "foo" ] ];
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test attributes function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributes3 : function () {
+      var expected = [ [ "_id", "bar", "foo", "meow" ], [ "foo" ] ];
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, false, true)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test attributes function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributes4 : function () {
+      var expected = [ [ "bar", "foo", "meow" ], [ "foo" ] ];
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true, true)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test not_null
 ////////////////////////////////////////////////////////////////////////////////
     
