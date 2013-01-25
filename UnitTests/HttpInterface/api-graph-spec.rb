@@ -557,6 +557,13 @@ describe ArangoDB do
 	      doc.parsed_response['code'].should eq(201)
 	      doc.parsed_response['result'].count.should eq(5)
 
+      	body = "{\"batchSize\" : 100, \"limit\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+
       	body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 3 } ] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
       	doc.code.should eq(201)
@@ -580,6 +587,13 @@ describe ArangoDB do
       	doc.parsed_response['error'].should eq(false)
 	      doc.parsed_response['code'].should eq(201)
 	      doc.parsed_response['result'].count.should eq(5)
+
+      	body = "{\"batchSize\" : 100, \"limit\" : 2 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(2)
 
       	body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 3 } ] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
@@ -679,6 +693,15 @@ describe ArangoDB do
       	doc.parsed_response['error'].should eq(false)
 	      doc.parsed_response['code'].should eq(201)
 	      doc.parsed_response['result'].count.should eq(2)
+
+      	body = "{\"batchSize\" : 100, \"limit\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+
       end
 
       it "checks list of all edges" do

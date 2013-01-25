@@ -498,6 +498,8 @@ function process_labels_filter (data, labels) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -528,12 +530,17 @@ function post_graph_all_vertices (req, res, g) {
       'bindVars': { '@vertexColl' : g._vertices.name() }
     };
 
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
+
     if (json.filter !== undefined && json.filter.properties !== undefined) {
       process_properties_filter(data, json.filter.properties, "v");
     }
 
     // build aql query
-    var query = "FOR v IN @@vertexColl" + data.filter + " RETURN v";
+    var query = "FOR v IN @@vertexColl" + data.filter + limit + " RETURN v";
 
     var cursor = QUERY(query,
                           data.bindVars,
@@ -568,6 +575,8 @@ function post_graph_all_vertices (req, res, g) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -609,6 +618,11 @@ function post_graph_vertex_vertices (req, res, g) {
       }
     };
 
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
+
     var direction = "all";
     if (json.filter !== undefined && json.filter.direction !== undefined) {
       if (json.filter.direction === "in") {
@@ -645,7 +659,8 @@ function post_graph_vertex_vertices (req, res, g) {
 
     // build aql query
     var query = "FOR e IN @@edgeColl " + data.edgeFilter 
-              + " FOR v IN @@vertexColl " + data.filter + " RETURN v";
+              + " FOR v IN @@vertexColl " + data.filter + 
+              limit + " RETURN v";
 
     var cursor = QUERY(query,
                           data.bindVars,
@@ -831,6 +846,8 @@ function put_graph_edge(req, res, g) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -866,6 +883,11 @@ function post_graph_all_edges (req, res, g) {
       }
     };
 
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
+
     if (json.filter !== undefined && json.filter.properties !== undefined) {
       process_properties_filter(data, json.filter.properties, "e");
       data.edgeFilter = data.filter;
@@ -875,7 +897,7 @@ function post_graph_all_edges (req, res, g) {
       process_labels_filter(data, json.filter.labels);
     }
 
-    var query = "FOR e IN @@edgeColl" + data.edgeFilter + " RETURN e";
+    var query = "FOR e IN @@edgeColl" + data.edgeFilter + limit + " RETURN e";
 
     var cursor = QUERY(query,
                           data.bindVars,
@@ -913,6 +935,8 @@ function post_graph_all_edges (req, res, g) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -952,6 +976,11 @@ function post_graph_vertex_edges (req, res, g) {
       }
     };
 
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
+
     var direction = "all";
     if (json.filter !== undefined && json.filter.direction !== undefined) {
       if (json.filter.direction === "in") {
@@ -985,7 +1014,7 @@ function post_graph_vertex_edges (req, res, g) {
       process_labels_filter(data, json.filter.labels);
     }
 
-    var query = "FOR e IN @@edgeColl " + data.edgeFilter + " RETURN e";
+    var query = "FOR e IN @@edgeColl " + data.edgeFilter + limit + " RETURN e";
 
     var cursor = QUERY(query,
                        data.bindVars,
