@@ -59,7 +59,7 @@ function ArangoDatabase (connection) {
 
   // private function to store a collection in both "db" and "edges" at the 
   // same time
-  this.registerCollection = function (name, obj) {
+  this._registerCollection = function (name, obj) {
     // store the collection in our own list
     this[name] = obj;
     
@@ -237,7 +237,7 @@ ArangoDatabase.prototype._collections = function () {
       //   continue;
       // }
       var collection = new this._collectionConstructor(this, collections[i]);
-      this.registerCollection(collection._name, collection);
+      this._registerCollection(collection._name, collection);
       result.push(collection);
     }
 
@@ -276,7 +276,7 @@ ArangoDatabase.prototype._collection = function (id) {
   var name = requestResult.name;
 
   if (name !== undefined) {
-    this.registerCollection(name, new this._collectionConstructor(this, requestResult));
+    this._registerCollection(name, new this._collectionConstructor(this, requestResult));
     return this[name];
   }
 
@@ -329,7 +329,7 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
   var nname = requestResult.name;
 
   if (nname !== undefined) {
-    this.registerCollection(nname, new this._collectionConstructor(this, requestResult));
+    this._registerCollection(nname, new this._collectionConstructor(this, requestResult));
     return this[nname];
   }
 
