@@ -30,6 +30,7 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var graph = require("org/arangodb/graph");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var QUERY = require("internal").AQL_QUERY;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -656,11 +657,11 @@ function POST_blueprints_vertices (req, res) {
     // build aql query
     var query = selectEdge + edgeFilter + " FOR v IN @@vertexColl" + vertexFilter + " RETURN v";
 
-    var cursor = AHUACATL_RUN(query, 
-			  bindVars, 
-			  (json.count != undefined ? json.count : false),
-			  json.batchSize, 
-			  (json.batchSize == undefined));  
+    var cursor = QUERY(query, 
+		       bindVars, 
+		       (json.count != undefined ? json.count : false),
+		       json.batchSize, 
+		       (json.batchSize == undefined));  
 
     // error occurred
     if (cursor instanceof ArangoError) {
@@ -1030,11 +1031,11 @@ function POST_blueprints_edges (req, res) {
 
     var query = "FOR e IN @@edgeColl" + filter + " RETURN e";
 
-    var cursor = AHUACATL_RUN(query, 
-			  bindVars, 
-			  (json.count != undefined ? json.count : false),
-			  json.batchSize, 
-			  (json.batchSize == undefined));  
+    var cursor = QUERY(query, 
+                       bindVars, 
+		       (json.count != undefined ? json.count : false),
+		       json.batchSize, 
+		       (json.batchSize == undefined));  
 
     // error occurred
     if (cursor instanceof ArangoError) {
