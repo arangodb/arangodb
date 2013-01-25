@@ -163,6 +163,21 @@ HttpHandler::status_e RestImportHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief log an error document 
+////////////////////////////////////////////////////////////////////////////////
+
+void RestImportHandler::logDocument (const TRI_json_t* const json) const {
+  TRI_string_buffer_t buffer;
+
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  int res = TRI_StringifyJson(&buffer, json);
+  if (res == TRI_ERROR_NO_ERROR) {
+    LOGGER_WARNING << "offending document" << buffer._buffer;
+  }
+  TRI_DestroyStringBuffer(&buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
 /// @REST{POST /_api/import?type=documents&collection=@FA{collection-name}}
@@ -251,6 +266,8 @@ bool RestImportHandler::createByDocumentsLines () {
         ++numCreated;
       }
       else {
+        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        logDocument(values);
         ++numError;
       }
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
@@ -366,6 +383,7 @@ bool RestImportHandler::createByDocumentsList () {
     TRI_json_t* values = (TRI_json_t*) TRI_AtVector(&documents->_value._objects, i);
 
     if (values == 0 || values->_type != TRI_JSON_ARRAY) {
+      LOGGER_WARNING << "invalid JSON type (expecting array) at position " << i;
       ++numError;
     }
     else {
@@ -377,6 +395,8 @@ bool RestImportHandler::createByDocumentsList () {
         ++numCreated;
       }
       else {
+        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        logDocument(values);
         ++numError;
       }
     }
@@ -556,6 +576,8 @@ bool RestImportHandler::createByKeyValueList () {
         ++numCreated;
       }
       else {
+        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        logDocument(json);
         ++numError;
       }
       

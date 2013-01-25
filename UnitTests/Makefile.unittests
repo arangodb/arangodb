@@ -165,6 +165,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/mersenne-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
+	UnitTests/Philadelphia/associative-synced-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -267,7 +268,7 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
 			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
 			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
-			@top_srcdir@/js/server/tests/ahuacatl-paths.js \
+			@top_srcdir@/js/server/tests/ahuacatl-graph.js \
 			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \

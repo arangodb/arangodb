@@ -185,7 +185,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #ifdef TRI_ENABLE_ZONE_DEBUG
   // warn in the case of very big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
-    LOG_WARNING("big malloc action: %zu bytes in %s:%d", (size_t) n, file, line);
+    LOG_WARNING("big malloc action: %llu bytes in %s:%d", (unsigned long long) n, file, line);
   }
 
   m = malloc((size_t) n + sizeof(uintptr_t));
@@ -200,8 +200,8 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 
     if (CoreReserve == NULL) {
       fprintf(stderr, 
-              "FATAL: failed to allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!", 
-              (size_t) n, 
+              "FATAL: failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!", 
+              (unsigned long long) n, 
               (int) zone->_zid
               ZONE_DEBUG_PARAMS); 
       exit(EXIT_FAILURE);
@@ -210,8 +210,8 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL("failed to allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
-              (size_t) n, 
+    LOG_FATAL("failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+              (unsigned long long) n, 
               (int) zone->_zid
               ZONE_DEBUG_PARAMS); 
 
@@ -288,8 +288,8 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
     if (CoreReserve == NULL) {
       fprintf(stderr, 
-              "FATAL: failed to re-allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!", 
-              (size_t) n, 
+              "FATAL: failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!", 
+              (unsigned long long) n, 
               zone->_zid
               ZONE_DEBUG_PARAMS); 
       exit(EXIT_FAILURE);
@@ -298,8 +298,8 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL("failed to re-allocate %zu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
-              (size_t) n, 
+    LOG_FATAL("failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+              (unsigned long long) n, 
               (int) zone->_zid
               ZONE_DEBUG_PARAMS);
 
@@ -395,8 +395,8 @@ void TRI_InitialiseMemory () {
 
     if (CoreReserve == NULL) {
       fprintf(stderr, 
-              "FATAL: cannot allocate initial core reserve of size %zu, giving up!\n", 
-              (size_t) reserveSize);
+              "FATAL: cannot allocate initial core reserve of size %llu, giving up!\n", 
+              (unsigned long long) reserveSize);
     }
   }
 }

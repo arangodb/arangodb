@@ -125,6 +125,12 @@ static string TypeImport = "json";
 static bool CreateCollection = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief progress
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Progress = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,6 +159,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("quote", &Quote, "quote character(s)")
     ("eol", &Eol, "end of line character(s)")
     ("separator", &Separator, "separator")
+    ("progress", &Progress, "show progress")
   ;
 
   BaseClient.setupGeneral(description);
@@ -322,6 +329,11 @@ int main (int argc, char* argv[]) {
   if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
     cerr << "file '" << FileName << "' is not a regular file." << endl;
     return EXIT_FAILURE;      
+  }
+
+  // progress
+  if (Progress) {
+    ih.setProgress(true);
   }
 
   // import type

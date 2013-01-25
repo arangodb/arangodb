@@ -336,6 +336,9 @@ function get_api_collections (req, res) {
 /// - @LIT{figures.journals.count}: The number of journal files.
 /// - @LIT{figures.journals.fileSize}: The total filesize of journal files.
 ///
+/// - @LIT{figures.shapes.count}: The total number of shapes used in the 
+///   collection (this includes shapes that are not in use anymore) 
+///
 /// - @LIT{journalSize}: The maximal size of the journal in bytes.
 ///
 /// Note: the filesizes of shapes and compactor files are not reported.

@@ -74,6 +74,7 @@
 ///       <li>@ref JSModuleGraphVertexGetId "Vertex.getId"</li>
 ///       <li>@ref JSModuleGraphVertexGetInEdges "Vertex.getInEdges"</li>
 ///       <li>@ref JSModuleGraphVertexGetOutEdges "Vertex.getOutEdges"</li>
+///       <li>@ref JSModuleGraphVertexGetEdges "Vertex.getEdges"</li>
 ///       <li>@ref JSModuleGraphVertexGetProperty "Vertex.getProperty"</li>
 ///       <li>@ref JSModuleGraphVertexGetPropertyKeys "Vertex.getPropertyKeys"</li>
 ///       <li>@ref JSModuleGraphVertexProperties "Vertex.properties"</li>
@@ -171,6 +172,10 @@
 ///
 /// @anchor JSModuleGraphVertexGetOutEdges
 /// @copydetails JSF_Vertex_prototype_getOutEdges
+/// <hr>
+///
+/// @anchor JSModuleGraphVertexGetEdges
+/// @copydetails JSF_Vertex_prototype_getEdges
 /// <hr>
 ///
 /// @anchor JSModuleGraphVertexGetProperty

@@ -239,6 +239,27 @@ ArangoCollection.prototype.firstExample = function (example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+  var deleted = 0;
+  var documents;
+
+  documents = this.byExample(example);
+
+  while (documents.hasNext()) {
+    var document = documents.next();
+
+    if (this.remove(document, true, waitForSync)) {
+      deleted++;
+    }
+  }
+
+  return deleted;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

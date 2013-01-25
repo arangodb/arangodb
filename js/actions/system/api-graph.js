@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, module, AHUACATL_RUN */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief graph api
@@ -33,6 +33,7 @@ var actions = require("org/arangodb/actions");
 var graph = require("org/arangodb/graph");
 
 var ArangoError = require("org/arangodb").ArangoError;
+var QUERY = require("internal").AQL_QUERY;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -534,7 +535,7 @@ function post_graph_all_vertices (req, res, g) {
     // build aql query
     var query = "FOR v IN @@vertexColl" + data.filter + " RETURN v";
 
-    var cursor = AHUACATL_RUN(query,
+    var cursor = QUERY(query,
                           data.bindVars,
                           (json.count !== undefined ? json.count : false),
                           json.batchSize,
@@ -646,7 +647,7 @@ function post_graph_vertex_vertices (req, res, g) {
     var query = "FOR e IN @@edgeColl " + data.edgeFilter 
               + " FOR v IN @@vertexColl " + data.filter + " RETURN v";
 
-    var cursor = AHUACATL_RUN(query,
+    var cursor = QUERY(query,
                           data.bindVars,
                           (json.count !== undefined ? json.count : false),
                           json.batchSize,
@@ -876,7 +877,7 @@ function post_graph_all_edges (req, res, g) {
 
     var query = "FOR e IN @@edgeColl" + data.edgeFilter + " RETURN e";
 
-    var cursor = AHUACATL_RUN(query,
+    var cursor = QUERY(query,
                           data.bindVars,
                           (json.count !== undefined ? json.count : false),
                           json.batchSize,
@@ -986,11 +987,11 @@ function post_graph_vertex_edges (req, res, g) {
 
     var query = "FOR e IN @@edgeColl " + data.edgeFilter + " RETURN e";
 
-    var cursor = AHUACATL_RUN(query,
-                          data.bindVars,
-                          (json.count !== undefined ? json.count : false),
-                          json.batchSize,
-                          (json.batchSize === undefined));
+    var cursor = QUERY(query,
+                       data.bindVars,
+                       (json.count !== undefined ? json.count : false),
+                       json.batchSize,
+                       (json.batchSize === undefined));
 
     // error occurred
     if (cursor instanceof ArangoError) {
