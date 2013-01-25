@@ -94,6 +94,23 @@ require("org/arangodb/arango-collection-common");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append the waitForSync parameter to a URL
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._appendSyncParameter = function (url, waitForSync) {
+  if (waitForSync) {
+    if (url.indexOf('?') === -1) {
+      url += '?';
+    }
+    else {
+      url += '&';
+    }
+    url += 'waitForSync=true';
+  }
+  return url;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the base url for collection usage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -827,7 +844,7 @@ ArangoCollection.prototype.document = function (id) {
   }
   else {
     requestResult = this._database._connection.GET(this._documenturl(id),
-      {'if-match' : '"' + rev + '"' });
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null
@@ -897,11 +914,14 @@ ArangoCollection.prototype.firstExample = function (example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a document in the collection
+/// note: this method is used to save documents and edges, but save() has a
+/// different signature for both. For document collections, the signature is
+/// save(<data>, <waitForSync>), whereas for edge collections, the signature is
+/// save(<from>, <to>, <data>, <waitForSync>)
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.save = function (from, to, data) {
-  var requestResult;
-  var type = this.type();
+ArangoCollection.prototype.save = function (from, to, data, waitForSync) {
+  var type = this.type(), url;
 
   if (type === undefined) {
     type = ArangoCollection.TYPE_DOCUMENT;
@@ -909,10 +929,8 @@ ArangoCollection.prototype.save = function (from, to, data) {
 
   if (type === ArangoCollection.TYPE_DOCUMENT) { 
     data = from;
-
-    requestResult = this._database._connection.POST(
-      "/_api/document?collection=" + encodeURIComponent(this.name()),
-      JSON.stringify(data));
+    waitForSync = to;
+    url = "/_api/document?collection=" + encodeURIComponent(this.name());
   }
   else if (type === ArangoCollection.TYPE_EDGE) {
     if (typeof from === 'object' && from.hasOwnProperty("_id")) {
@@ -923,14 +941,14 @@ ArangoCollection.prototype.save = function (from, to, data) {
       to = to._id;
     }
 
-    var url = "/_api/edge?collection=" + encodeURIComponent(this.name())
-            + "&from=" + encodeURIComponent(from)
-            + "&to=" + encodeURIComponent(to);
-
-    requestResult = this._database._connection.POST(
-      url,
-      JSON.stringify(data));
+    url = "/_api/edge?collection=" + encodeURIComponent(this.name())
+        + "&from=" + encodeURIComponent(from)
+        + "&to=" + encodeURIComponent(to);
   }
+
+  url = this._appendSyncParameter(url, waitForSync);
+
+  var requestResult = this._database._connection.POST(url, JSON.stringify(data));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -941,7 +959,7 @@ ArangoCollection.prototype.save = function (from, to, data) {
 /// @brief removes a document in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.remove = function (id, overwrite) {
+ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   var rev = null;
   var requestResult;
 
@@ -959,12 +977,15 @@ ArangoCollection.prototype.remove = function (id, overwrite) {
     policy = "?policy=last";
   }
 
+  var url = this._documenturl(id) + policy;
+  url = this._appendSyncParameter(url, waitForSync);
+
   if (rev === null) {
-    requestResult = this._database._connection.DELETE(this._documenturl(id) + policy);
+    requestResult = this._database._connection.DELETE(url); 
   }
   else {
-    requestResult = this._database._connection.DELETE(this._documenturl(id) + policy,
-      {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.DELETE(url, 
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -986,7 +1007,7 @@ ArangoCollection.prototype.remove = function (id, overwrite) {
 /// @brief replaces a document in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.replace = function (id, data, overwrite) { 
+ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync) { 
   var rev = null;
   var requestResult;
 
@@ -1004,14 +1025,15 @@ ArangoCollection.prototype.replace = function (id, data, overwrite) {
     policy = "?policy=last";
   }
 
+  var url = this._documenturl(id) + policy;
+  url = this._appendSyncParameter(url, waitForSync);
+
   if (rev === null) {
-    requestResult = this._database._connection.PUT(this._documenturl(id) + policy,
-      JSON.stringify(data));
+    requestResult = this._database._connection.PUT(url, JSON.stringify(data));
   }
   else {
-    requestResult = this._database._connection.PUT(this._documenturl(id) + policy,
-      JSON.stringify(data),
-      {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.PUT(url, JSON.stringify(data),
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -1027,7 +1049,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite) {
 /// @brief update a document in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.update = function (id, data, overwrite, keepNull) { 
+ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, waitForSync) { 
   var rev = null;
   var requestResult;
 
@@ -1047,14 +1069,15 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull) {
     params += "&policy=last";
   }
 
+  var url = this._documenturl(id) + params;
+  url = this._appendSyncParameter(url, waitForSync);
+
   if (rev === null) {
-    requestResult = this._database._connection.PATCH(this._documenturl(id) + params,
-      JSON.stringify(data));
+    requestResult = this._database._connection.PATCH(url, JSON.stringify(data));
   }
   else {
-    requestResult = this._database._connection.PATCH(this._documenturl(id) + params,
-      JSON.stringify(data),
-      {'if-match' : '"' + rev + '"' });
+    requestResult = this._database._connection.PATCH(url, JSON.stringify(data),
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {

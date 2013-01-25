@@ -1,6 +1,11 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* honor optional waitForSync property for document removal, replace, update, and
+  save operations in arangosh. The waitForSync parameter for these operations
+  was previously honored by the REST API and on the server-side, but not when
+  the waitForSync parameter was specified for a document operation in arangosh.
+
 * calls to db.collection.figures() and /_api/collection/<collection>/figures now 
   additionally return the number of shapes used in the collection in the
   extra attribute "shapes.count"

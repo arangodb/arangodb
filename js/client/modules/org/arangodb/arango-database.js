@@ -91,6 +91,23 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append the waitForSync parameter to a URL
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._appendSyncParameter = function (url, waitForSync) {
+  if (waitForSync) {
+    if (url.indexOf('?') === -1) {
+      url += '?';
+    }
+    else {
+      url += '&';
+    }
+    url += 'waitForSync=true';
+  }
+  return url;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the base url for collection usage
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -480,7 +497,7 @@ ArangoDatabase.prototype._document = function (id) {
   }
   else {
     requestResult = this._connection.GET(this._documenturl(id),
-      {'if-match' : '"' + rev + '"' });
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null
@@ -498,7 +515,7 @@ ArangoDatabase.prototype._document = function (id) {
 /// @brief delete a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._remove = function (id, overwrite) {
+ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   var rev = null;
   var requestResult;
 
@@ -516,12 +533,15 @@ ArangoDatabase.prototype._remove = function (id, overwrite) {
     policy = "?policy=last";
   }
 
+  var url = this._documenturl(id) + policy;
+  url = this._appendSyncParameter(url, waitForSync);
+
   if (rev === null) {
-    requestResult = this._connection.DELETE(this._documenturl(id) + policy);
+    requestResult = this._connection.DELETE(url);
   }
   else {
-    requestResult = this._connection.DELETE(this._documenturl(id) + policy,
-      {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.DELETE(url, 
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -543,7 +563,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite) {
 /// @brief replace a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._replace = function (id, data, overwrite) { 
+ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) { 
   var rev = null;
   var requestResult;
 
@@ -560,15 +580,16 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite) {
   if (overwrite) {
     policy = "?policy=last";
   }
+  
+  var url = this._documenturl(id) + policy;
+  url = this._appendSyncParameter(url, waitForSync);
 
   if (rev === null) {
-    requestResult = this._connection.PUT(this._documenturl(id) + policy,
-      JSON.stringify(data));
+    requestResult = this._connection.PUT(url, JSON.stringify(data));
   }
   else {
-    requestResult = this._connection.PUT(this._documenturl(id) + policy,
-      JSON.stringify(data),
-      {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.PUT(url, JSON.stringify(data),
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -584,7 +605,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite) {
 /// @brief update a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull) { 
+ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, waitForSync) { 
   var rev = null;
   var requestResult;
 
@@ -604,14 +625,15 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull) {
     params += "&policy=last";
   }
 
+  var url = this._documenturl(id) + params;
+  url = this._appendSyncParameter(url, waitForSync);
+
   if (rev === null) {
-    requestResult = this._connection.PATCH(this._documenturl(id) + params,
-      JSON.stringify(data));
+    requestResult = this._connection.PATCH(url, JSON.stringify(data));
   }
   else {
-    requestResult = this._connection.PATCH(this._documenturl(id) + params,
-      JSON.stringify(data),
-      {'if-match' : '"' + rev + '"' });
+    requestResult = this._connection.PATCH(url, JSON.stringify(data),
+      {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
