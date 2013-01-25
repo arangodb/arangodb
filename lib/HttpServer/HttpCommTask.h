@@ -201,12 +201,14 @@ namespace triagens {
                 case HttpRequest::HTTP_REQUEST_GET:
                 case HttpRequest::HTTP_REQUEST_DELETE:
                 case HttpRequest::HTTP_REQUEST_HEAD:
+                case HttpRequest::HTTP_REQUEST_OPTIONS:
                 case HttpRequest::HTTP_REQUEST_POST:
                 case HttpRequest::HTTP_REQUEST_PUT:
                 case HttpRequest::HTTP_REQUEST_PATCH: {
                   const bool expectContentLength = (this->_requestType == HttpRequest::HTTP_REQUEST_POST ||
                                                     this->_requestType == HttpRequest::HTTP_REQUEST_PUT ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_PATCH);
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_PATCH ||
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
 
                   if (! checkContentLength(expectContentLength)) {
                     return true;

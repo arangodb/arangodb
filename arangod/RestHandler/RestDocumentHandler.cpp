@@ -107,6 +107,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   static LoggerData::Task const logUpdate(DOCUMENT_PATH + " [update]");
   static LoggerData::Task const logDelete(DOCUMENT_PATH + " [delete]");
   static LoggerData::Task const logHead(DOCUMENT_PATH + " [head]");
+  static LoggerData::Task const logOptions(DOCUMENT_PATH + " [options]");
   static LoggerData::Task const logPatch(DOCUMENT_PATH + " [patch]");
   static LoggerData::Task const logIllegal(DOCUMENT_PATH + " [illegal]");
 
@@ -117,6 +118,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: task = &logRead; break;
     case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
+    case HttpRequest::HTTP_REQUEST_OPTIONS: task = &logOptions; break;
     case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
     case HttpRequest::HTTP_REQUEST_PUT: task = &logUpdate; break;
     case HttpRequest::HTTP_REQUEST_PATCH: task = &logUpdate; break;

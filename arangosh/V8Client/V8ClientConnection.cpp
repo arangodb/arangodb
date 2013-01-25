@@ -242,7 +242,17 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& locatio
 v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
                                                     map<string, string> const& headerFields) {
   return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
-}    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do an "OPTIONS" request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::optionsData (std::string const& location,
+                                                       std::string const& body,
+                                                       map<string, string> const& headerFields) {
+  return requestData(HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "POST" request

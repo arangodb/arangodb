@@ -371,11 +371,15 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
-    
+
     case HttpRequest::HTTP_REQUEST_PATCH:
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
       break;
-
+    
+    case HttpRequest::HTTP_REQUEST_OPTIONS:
+      req->Set(v8g->RequestTypeKey, v8g->OptionsConstant);
+      break;
+    
     case HttpRequest::HTTP_REQUEST_DELETE:
       req->Set(v8g->RequestTypeKey, v8g->DeleteConstant);
       break;
@@ -730,6 +734,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("DELETE"));
   v8g->GetConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("GET"));
   v8g->HeadConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("HEAD"));
+  v8g->OptionsConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("OPTIONS"));
   v8g->PatchConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("PATCH"));
   v8g->PostConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("POST"));
   v8g->PutConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("PUT"));

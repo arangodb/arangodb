@@ -208,6 +208,20 @@ namespace triagens {
 
         v8::Handle<v8::Value> headData (std::string const& location,
                                         map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do an "OPTIONS" request
+///
+/// @param string location                     the request location
+/// @param string body                         the request body
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> optionsData (std::string const& location,
+                                           std::string const& body,
+                                           map<string, string> const& headerFields);
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "POST" request
