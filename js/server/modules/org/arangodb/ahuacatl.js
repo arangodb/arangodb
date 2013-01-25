@@ -2703,7 +2703,11 @@ function GRAPH_TRAVERSAL (func, vertexCollection, edgeCollection, startVertex, d
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, direction, params) {
+function GRAPH_TRAVERSE (vertexCollection, 
+                         edgeCollection, 
+                         startVertex, 
+                         direction, 
+                         params) {
   params.visitor  = TRAVERSE_VISITOR;
 
   return GRAPH_TRAVERSAL("TRAVERSE", 
@@ -2720,7 +2724,12 @@ function GRAPH_TRAVERSE (vertexCollection, edgeCollection, startVertex, directio
 /// a different visitor to create the result
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TREE (vertexCollection, edgeCollection, startVertex, direction, connectName, params) {
+function GRAPH_TREE (vertexCollection, 
+                     edgeCollection, 
+                     startVertex, 
+                     direction, 
+                     connectName, 
+                     params) {
   if (connectName === "") {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TREE");
   }
