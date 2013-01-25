@@ -394,12 +394,19 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.unloadAll = function () {
+    var i;
     var path;
+    var unload = [];
 
     for (path in ModuleCache) {
       if (ModuleCache.hasOwnProperty(path)) {
-        this.unload(path);
+        unload.push(path);
+        ModuleCache[path]._normalized = {};
       }
+    }
+
+    for (i = 0;  i < unload.length;  ++i) {
+      this.unload(unload[i]);
     }
   };
 

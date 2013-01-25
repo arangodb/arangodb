@@ -564,6 +564,13 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     output->appendText("content-length: ", 16);
     
     if (_isHeadResponse) {
+      // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
+      //
+      // 14.13 Content-Length
+      //
+      // The Content-Length entity-header field indicates the size of the entity-body, 
+      // in decimal number of OCTETs, sent to the recipient or, in the case of the HEAD method, 
+      // the size of the entity-body that would have been sent had the request been a GET. 
       output->appendInteger(_bodySize);
     }
     else {

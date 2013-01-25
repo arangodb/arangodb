@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var QUERY = internal.AQL_QUERY;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,7 +42,7 @@ function ahuacatlComplexTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query, bindVars) {
-    var cursor = AHUACATL_RUN(query, bindVars, false, 3000);
+    var cursor = QUERY(query, bindVars, false, 3000);
     return cursor;
   }
 

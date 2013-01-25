@@ -1499,6 +1499,20 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
   TRI_WriteUnlockReadWriteLock(&array->_lock);
   return old;
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of elements from the array
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const array) {
+  uint32_t result;
+
+  TRI_ReadLockReadWriteLock(&array->_lock);
+  result = array->_nrUsed;
+  TRI_ReadUnlockReadWriteLock(&array->_lock);
+
+  return (size_t) result; 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

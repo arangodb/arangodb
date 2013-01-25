@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, paths
+/// @brief tests for query language, graph functions
 ///
 /// @file
 ///
@@ -28,6 +28,7 @@
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var QUERY = require("internal").AQL_QUERY;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +45,7 @@ function ahuacatlQueryPathsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AHUACATL_RUN(query, undefined);
+    var cursor = QUERY(query, undefined);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -292,7 +293,7 @@ function ahuacatlQueryTraverseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query, params) {
-    var cursor = AHUACATL_RUN(query, params);
+    var cursor = QUERY(query, params);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }

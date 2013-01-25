@@ -172,6 +172,8 @@ typedef struct TRI_doc_collection_info_s {
   TRI_voc_ssize_t _numberDeletion;
   TRI_voc_ssize_t _datafileSize;
   TRI_voc_ssize_t _journalfileSize;
+  
+  TRI_voc_ssize_t _numberShapes;
 }
 TRI_doc_collection_info_t;
 

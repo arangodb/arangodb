@@ -538,6 +538,28 @@ Vertex.prototype.getOutEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief in- or outbound edges with given label
+///
+/// @FUN{@FA{vertex}.getEdges(@FA{label}, ...)}
+///
+/// Returns a list of in- or outbound edges of the @FA{vertex} with given
+/// label(s).
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.getEdges = function () {
+  var labels = Array.prototype.slice.call(arguments),
+    result = this.anybound();
+
+  if (labels.length > 0) {
+    result = result.filter(function (edge) {
+      return (labels.lastIndexOf(edge.getLabel()) > -1);
+    });
+  }
+
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a property of a vertex
 ///
 /// @FUN{@FA{vertex}.getProperty(@FA{name})}
@@ -605,6 +627,22 @@ Vertex.prototype.outbound = function () {
   var graph = this._graph;
 
   return graph._edges.outEdges(this._id).map(function (result) {
+    return graph.constructEdge(result._id);
+  });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief in- or outbound edges
+///
+/// @FUN{@FA{vertex}.anybound()}
+///
+/// Returns a list of in- or outbound edges of the @FA{vertex}.
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.anybound = function () {
+  var graph = this._graph;
+
+  return graph._edges.edges(this._id).map(function (result) {
     return graph.constructEdge(result._id);
   });
 };

@@ -854,6 +854,32 @@
 ///
 /// AQL supports the following functions to operate on document values:
 ///
+/// - @FN{MATCHES(@FA{document}\, @FA{examples}\, @FA{return-index})}: compares the document
+///   @FA{document} against each example document provided in the list @FA{examples}. 
+///   If @FA{document} matches one of the examples, @LIT{true} is returned, and if there is
+///   no match @LIT{false} will be returned. The default return value type can be changed by
+///   passing @LIT{true} as the third function parameter @FA{return-index}. Setting this
+///   flag will return the index of the example that matched (starting at offset 0), or 
+///   @LIT{\-1} if there was no match.
+///
+///   The comparisons will be started with the first example. All attributes of the example
+///   will be compared against the attributes of @FA{document}. If all attributes match, the 
+///   comparison stops and the result is returned. If there is a mismatch, the function will
+///   continue the comparison with the next example until there are no more examples left.
+///
+///   The @FA{examples} must be a list of 1..n example documents, with any number of attributes
+///   each. 
+///   Example usage:
+///   @code
+///   RETURN MATCHES({ "test" : 1 }, [ 
+///     { "test" : 1, "foo" : "bar" }, 
+///     { "foo" : 1 }, 
+///     { "test : 1 } 
+///   ], true)
+///   @endcode
+///   This will return @LIT{2}, because the third example matches, and because the 
+///   @LIT{return-index} flag is set to @LIT{true}.
+///
 /// - @FN{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
 ///   in @FA{document1} to @FA{documentn} into a single document. If document attribute
 ///   keys are ambiguous, the merged result will contain the values of the documents 
@@ -896,6 +922,12 @@
 ///
 /// - @FN{HAS(@FA{document}\, @FA{attributename})}: returns @LIT{true} if @FA{document} has an
 ///   attribute named @FA{attributename}, and @LIT{false} otherwise.
+///
+/// - @FN{ATTRIBUTES(@FA{document}\, @FA{removeInternal}\, @FA{sort})}: returns the attribute
+///   names of the document @FA{document} as a list. 
+///   If @FA{removeInternal} is set to @LIT{true}, then all internal attributes (such as @LIT{_id}, 
+///   @LIT{_key} etc.) are removed from the result. If @FA{sort} is set to @LIT{true}, then the
+///   attribute names in the result will be sorted. Otherwise they will be returned in any order.
 ///
 /// @subsubsection AqlFunctionsGeo Geo functions
 ///
@@ -1036,6 +1068,10 @@
 ///       - @LIT{global}: an edge may be visited at most once. This is the default.
 ///       - @LIT{path}: an edge is visited only if not already contained in the current
 ///         traversal path
+///   - @LIT{followEdges}: an optional list of example edge documents that the traversal will
+///     expand into. If no examples are given, the traversal will follow all edges. If one
+///     or many edge examples are given. The traversal will only follow an edge if it matches
+///     at least one of the specified examples.
 ///
 ///   The result of the TRAVERSE function is a list of traversed points. Each point is a 
 ///   document consisting of the following properties:
@@ -1046,6 +1082,24 @@
 /// Example calls:
 ///
 /// @verbinclude aqltraversal
+///
+/// - @FN{TREE(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{connectName}\, @FA{options})}: 
+///   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
+///   starting at the vertex identified by id @FA{startVertex} and creates a hierchical result.
+///   Vertex connectivity is establish by inserted an attribute which has the name specified via
+///   the @FA{connectName} parameter. Connected vertices will be placed in this attribute as a 
+///   list.
+///
+///   The @FA{options} are the same as for the @LIT{TRAVERSE} function, except that the result will
+///   be set up in a way that resembles a depth-first, pre-order visitation result. Thus, the
+///   @LIT{strategy} and @LIT{order} attributes of the @FA{options} attribute will be ignored.
+///
+/// Example calls:
+/// 
+/// @verbinclude aqltree
+///
+/// NOTE: the @LIT{TREE} function is still experimental. Its name, signature, and behavior might 
+/// change. 
 ///
 /// @subsubsection AqlFunctionsControl Control flow functions
 ///

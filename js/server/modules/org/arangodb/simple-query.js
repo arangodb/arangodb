@@ -141,7 +141,7 @@ function byExample (collection, example, skip, limit) {
       console.debug("found unique constraint %s", idx.id);
     }
   }
-  else {
+  else if (idx !== null) {
     console.debug("found hash index %s", idx.id);
   }
 

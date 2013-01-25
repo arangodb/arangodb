@@ -29,6 +29,7 @@ var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 var ERRORS = require("org/arangodb").errors;
+var QUERY = require("internal").AQL_QUERY;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -43,7 +44,7 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AHUACATL_RUN(query, undefined);
+    var cursor = QUERY(query, undefined);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -169,9 +170,9 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonIndexed : function () {
-      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); } ));
-      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); } ));
-      assertEqual(ERRORS.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { AHUACATL_RUN("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); } ));
+      assertEqual(ERRORS.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
     }
 
   }

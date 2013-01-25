@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, AHUACATL_PARSE, AHUACATL_EXPLAIN, AHUACATL_RUN */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
@@ -30,6 +30,9 @@
 
 var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
 var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArrayCursor;
+var QUERY = require("internal").AQL_QUERY;
+var PARSE = require("internal").AQL_PARSE;
+var EXPLAIN = require("internal").AQL_EXPLAIN;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
@@ -49,7 +52,7 @@ var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArra
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.parse = function () {
-  var result = AHUACATL_PARSE(this._query); 
+  var result = PARSE(this._query); 
 
   return { "bindVars" : result.parameters, "collections" : result.collections };
 };
@@ -59,7 +62,7 @@ ArangoStatement.prototype.parse = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function () {
-  return AHUACATL_EXPLAIN(this._query); 
+  return EXPLAIN(this._query); 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,11 +72,11 @@ ArangoStatement.prototype.explain = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.execute = function () {
-  var result = AHUACATL_RUN(this._query, 
-                            this._bindVars, 
-                            this._doCount !== undefined ? this._doCount : false, 
-                            null, 
-                            true);  
+  var result = QUERY(this._query, 
+                     this._bindVars, 
+                     this._doCount !== undefined ? this._doCount : false, 
+                     null, 
+                     true);  
   return new GeneralArrayCursor(result, 0, null);
 };
 

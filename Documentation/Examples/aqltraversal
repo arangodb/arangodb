@@ -6,3 +6,11 @@ TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
   trackPaths: true
 })
 
+TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
+  strategy: "breadthfirst",
+  order: "preorder",
+  itemOrder: "forward",
+  followEdges: [ { type: "knows" }, { state: "FL" } ]
+})
+
+

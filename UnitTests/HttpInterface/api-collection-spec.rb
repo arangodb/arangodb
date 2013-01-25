@@ -259,9 +259,74 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(0)
+	doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['dead']['count'].should eq(0)
 	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
-	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
+	doc.parsed_response['figures']['alive']['count'].should eq(0)
+	doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['shapes']['count'].should eq(6)
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
+        
+        # create a few documents, this should increase counts and number of shapes
+	(0...10).each{|i|
+	  body = "{ \"test\" : " + i.to_s + " }"
+          doc = ArangoDB.log_post("#{prefix}-get-collection-figures", "/_api/document/?collection=" + @cn, :body => body)
+        }
+        
+        doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(10)
+	doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['dead']['count'].should eq(0)
+	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['alive']['count'].should eq(10)
+	doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['shapes']['count'].should eq(7)
+
+        # create a few different documents, this should increase counts and number of shapes
+	(0...10).each{|i|
+	  body = "{ \"test" + i.to_s + "\" : 1 }"
+          doc = ArangoDB.log_post("#{prefix}-get-collection-figures", "/_api/document/?collection=" + @cn, :body => body)
+        }
+        
+        doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(20)
+	doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['dead']['count'].should eq(0)
+	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['alive']['count'].should eq(20)
+	doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['shapes']['count'].should eq(17)
+        
+        # delete a few documents, this should change counts
+        body = "{ \"collection\" : \"" + @cn + "\", \"example\": { \"test\" : 5 } }"
+        doc = ArangoDB.log_put("#{prefix}-get-collection-figures", "/_api/simple/remove-by-example", :body => body)
+        body = "{ \"collection\" : \"" + @cn + "\", \"example\": { \"test3\" : 1 } }"
+        doc = ArangoDB.log_put("#{prefix}-get-collection-figures", "/_api/simple/remove-by-example", :body => body)
+        
+        doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(18)
+	doc.parsed_response['figures']['dead']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['dead']['count'].should eq(2)
+	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['alive']['count'].should eq(18)
+	doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
+	doc.parsed_response['figures']['shapes']['count'].should eq(17)
       end
       
       # get revision id

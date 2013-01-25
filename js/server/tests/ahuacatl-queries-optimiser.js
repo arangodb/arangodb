@@ -27,6 +27,8 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var QUERY = internal.AQL_QUERY;
+var EXPLAIN = internal.AQL_EXPLAIN;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,8 +42,8 @@ function ahuacatlOptimiserTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query) {
-    var result = AHUACATL_RUN(query).getRows();
-    var explain = AHUACATL_EXPLAIN(query);
+    var result = QUERY(query).getRows();
+    var explain = EXPLAIN(query);
 
     return { result : result, explain : explain };
   }
