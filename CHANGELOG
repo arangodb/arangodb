@@ -7,9 +7,25 @@ v1.2.alpha (XXXX-XX-XX)
 
 * added AQL function ATTRIBUTES() to return the attribute names of a document
 
-* removed internal AQL helper functions from global scope. Now the AQL internal
-  functions can only be accessed via the exports of the ahuacatl modules, to be
-  included via ```require("org/arangodb/ahuacatl")```
+* removed internal server-side AQL functions from global scope. 
+
+  Now the AQL internal functions can only be accessed via the exports of the 
+  ahuacatl module, which can be included via ```require("org/arangodb/ahuacatl")```.
+  It shouldn't be necessary for clients to access this module at all, but 
+  internal code may use this module.
+
+  The previously global AQL-related server-side functions were moved to the 
+  internal namespace. This produced the following function name changes on 
+  the server:
+
+     old name              new name
+     ------------------------------------------------------
+     AHUACATL_RUN       => require("internal").AQL_QUERY
+     AHUACATL_EXPLAIN   => require("internal").AQL_EXPLAIN
+     AHUACATL_PARSE     => require("internal").AQL_PARSE
+
+  Again, clients shouldn't have used these functions at all as there is the
+  ArangoStatement object to execute AQL queries.
 
 * fixed issue #366: Edges index returns strange description
 
