@@ -573,7 +573,7 @@ function post_graph_all_vertices (req, res, g) {
 /// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out")
 ///   neighbors. Default value is "any".
 /// - @LIT{labels}: filter by an array of edge labels
-/// - @LIT{properties}: filter neighbors by an array of properties
+/// - @LIT{properties}: filter neighbors by an array of edge properties
 ///
 /// The attributes of a property filter
 /// - @LIT{key}: filter the result vertices by a key value pair
@@ -635,7 +635,7 @@ function post_graph_vertex_vertices (req, res, g) {
     }
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
-      process_properties_filter(data, json.filter.properties, "v");
+      process_properties_filter(data, json.filter.properties, "e");
     }
 
     if (json.filter !== undefined && json.filter.labels !== undefined) {
