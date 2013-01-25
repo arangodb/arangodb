@@ -526,7 +526,6 @@ static int64_t LookupAttributeWeight (TRI_shaper_t* shaper, TRI_shape_aid_t aid)
   return item->_weight;    
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the shapes
 ////////////////////////////////////////////////////////////////////////////////
@@ -619,6 +618,20 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   TRI_UnlockMutex(&s->_shapeLock);
   return l;
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of shapes
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t NumShapes (TRI_shaper_t* shaper) {
+  voc_shaper_t* s;
+  size_t n;
+
+  s = (voc_shaper_t*) shaper;
+  n = (size_t) TRI_GetLengthAssociativeSynced(&s->_shapeIds);
+
+  return n;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -824,6 +837,7 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
   shaper->base.lookupAttributeId = LookupAttributeId;
   shaper->base.findShape = FindShape;
   shaper->base.lookupShapeId = LookupShapeId;
+  shaper->base.numShapes = NumShapes;
 
   TRI_InitAssociativeSynced(&shaper->_attributeNames,
                             TRI_UNKNOWN_MEM_ZONE, 

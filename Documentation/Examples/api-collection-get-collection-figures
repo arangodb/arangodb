@@ -22,7 +22,10 @@ content-type: application/json
     "dead": {
       "size": 2384,
       "count": 149
-    }
+    },
+    "shapes": {
+      "count": 59
+    },
   },
   "waitForSync": true,
   "isVolatile": false,

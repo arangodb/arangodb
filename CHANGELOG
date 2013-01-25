@@ -1,6 +1,10 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* calls to db.collection.figures() and /_api/collection/<collection>/figures now 
+  additionally return the number of shapes used in the collection in the
+  extra attribute "shapes.count"
+
 * added experimental AQL TREE() function to return a hierchical result from a
   traversal. the function name, signature, and behavior are likely to change
   later.
