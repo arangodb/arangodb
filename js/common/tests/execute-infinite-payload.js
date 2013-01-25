@@ -47,6 +47,7 @@ function main(args) {
     console = require("console"),
     Helper = require("test-helper").Helper,
     query,
+    QUERY = require("internal").AQL_QUERY,
     i;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +93,7 @@ function main(args) {
 
   start_time = new Date();
     while (true) {
-      AHUACATL_RUN(query).getRows();
+      QUERY(query).getRows();
     }
   end_time = new Date();
   console.log((end_time - start_time) + " ms");
