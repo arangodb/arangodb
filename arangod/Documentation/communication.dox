@@ -71,18 +71,22 @@
 ///   (Request Header Fields Too Large).
 ///
 /// - if clients request a HTTP method that is not supported by the server, ArangoDB
-///   will return with @LIT{HTTP 405} (Method Not Allowed). Generally supported methods 
-///   are:
+///   will return with @LIT{HTTP 405} (Method Not Allowed). ArangoDB offers general
+///   support for the following HTTP methods:
 ///   - GET
 ///   - POST
 ///   - PUT
 ///   - DELETE
 ///   - HEAD
 ///   - PATCH
+///   - OPTIONS
 ///   
 ///   Please note that not all server actions allow using all of these HTTP methods. 
 ///   You should look up up the supported methods for each method you intend to use 
 ///   in the manual.
+///
+///   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
+///   will be rejected by ArangoDB.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

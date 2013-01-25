@@ -116,6 +116,7 @@ HttpHandler::status_e RestActionHandler::execute () {
   static LoggerData::Task const logGet("ACTION [get]");
   static LoggerData::Task const logHead("ACTION [head]");
   static LoggerData::Task const logIllegal("ACTION [illegal]");
+  static LoggerData::Task const logOptions("ACTION [options]");
   static LoggerData::Task const logPost("ACTION [post]");
   static LoggerData::Task const logPut("ACTION [put]");
   static LoggerData::Task const logPatch("ACTION [patch]");
@@ -147,6 +148,7 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_POST: task = &logPost; break;
       case HttpRequest::HTTP_REQUEST_PUT: task = &logPut; break;
       case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
+      case HttpRequest::HTTP_REQUEST_OPTIONS: task = &logOptions; break;
       case HttpRequest::HTTP_REQUEST_PATCH: task = &logPatch; break;
       case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     }
@@ -157,14 +159,18 @@ HttpHandler::status_e RestActionHandler::execute () {
     LOGGER_REQUEST_IN_START_I(_timing);
 #endif
 
-    // execute one of the CRUD methods
+    // execute one of the HTTP methods
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_GET: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_POST: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
-      case HttpRequest::HTTP_REQUEST_PATCH: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_GET: 
+      case HttpRequest::HTTP_REQUEST_POST: 
+      case HttpRequest::HTTP_REQUEST_PUT: 
+      case HttpRequest::HTTP_REQUEST_DELETE:
+      case HttpRequest::HTTP_REQUEST_HEAD: 
+      case HttpRequest::HTTP_REQUEST_OPTIONS:
+      case HttpRequest::HTTP_REQUEST_PATCH: {
+        res = executeAction(); 
+        break;
+      }
 
       default:
         res = false;
