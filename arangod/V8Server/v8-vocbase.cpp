@@ -4283,6 +4283,8 @@ static v8::Handle<v8::Value> JS_LookupFulltextIndexVocbaseCol (v8::Arguments con
 /// - @LIT{datafiles.fileSize}: The total filesize of the active datafiles.
 /// - @LIT{journals.count}: The number of journal files.
 /// - @LIT{journals.fileSize}: The total filesize of the journal files.
+/// - @LIT{shapes.count}: The total number of shapes used in the collection 
+///   (this includes shapes that are not in use anymore) 
 ///
 /// @EXAMPLES
 ///
@@ -4351,6 +4353,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   result->Set(v8::String::New("journals"), js);
   js->Set(v8::String::New("count"), v8::Number::New(info->_numberJournalfiles));
   js->Set(v8::String::New("fileSize"), v8::Number::New(info->_journalfileSize));
+
+  // shape info
+  v8::Handle<v8::Object> shapes = v8::Object::New();
+  result->Set(v8::String::New("shapes"), shapes);
+  shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 

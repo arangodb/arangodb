@@ -389,6 +389,8 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     info->_journalfileSize += df->_maximalSize;
     ++info->_numberJournalfiles;
   }
+
+  info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
   
   primary->endRead(primary);
 
