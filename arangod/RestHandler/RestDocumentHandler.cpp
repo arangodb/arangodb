@@ -36,6 +36,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
+#include "Utils/UserTransaction.h"
 #include "Utilities/ResourceHolder.h"
 
 using namespace std;
@@ -132,15 +133,17 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 
   switch (type) {
     case HttpRequest::HTTP_REQUEST_DELETE: res = deleteDocument(); break;
-    case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
-    case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
-    case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT: res = replaceDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PATCH: res = updateDocument(); break;
+    case HttpRequest::HTTP_REQUEST_GET:    res = readDocument(); break;
+    case HttpRequest::HTTP_REQUEST_HEAD:   res = checkDocument(); break;
+    case HttpRequest::HTTP_REQUEST_POST:   res = createDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT:    res = replaceDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PATCH:  res = updateDocument(); break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
+    default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
+    }
   }
 
   _timingResult = res ? RES_ERR : RES_OK;
@@ -732,9 +735,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
+    string msg("expecting ");
+    msg.append(isPatch ? "PATCH" : "PUT");
+    msg.append(" /_api/document/<document-handle>");
+
     generateError(HttpResponse::BAD, 
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting UPDATE /_api/document/<document-handle>");
+                  msg);
     return false;
   }
 
@@ -760,7 +767,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
   
   TRI_doc_mptr_t* document = 0;
-  TRI_voc_rid_t rid = 0;
   
   // .............................................................................
   // inside write transaction
@@ -771,6 +777,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     generateTransactionError(collection, res);
     return false;
   }
+
+  TRI_voc_rid_t rid = 0;
 
   if (isPatch) {
     // patching an existing document
@@ -902,8 +910,6 @@ bool RestDocumentHandler::deleteDocument () {
   string collection = suffix[0];
   string key = suffix[1];
 
-  // extract document identifier
-
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
@@ -917,9 +923,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  // find and load collection given by name or identifier
   SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
-  TRI_voc_rid_t rid = 0;
   
   // .............................................................................
   // inside write transaction
@@ -931,6 +935,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
+  TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, extractWaitForSync(), revision, &rid);
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
