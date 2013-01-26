@@ -9,16 +9,33 @@ describe ArangoDB do
   context "dealing with HTTP methods:" do
 
 ################################################################################
+## checking invalid body sizes
+################################################################################
+
+    context "invalid sizes of body:" do
+      it "checks negative content-length" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_post("#{prefix}-content-length", cmd, { :headers => { "Content-Length" => "-1" } })
+
+	doc.code.should eq(411)
+        doc.response.body.should eq("")
+      end
+      
+      it "checks too big content-length" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_post("#{prefix}-content-length", cmd, { :headers => { "Content-Length" => "9999999999" } })
+
+	doc.code.should eq(413)
+        doc.response.body.should eq("")
+      end
+
+    end
+
+################################################################################
 ## checking HTTP HEAD responses
 ################################################################################
 
-    context "head requests" do
-      before do
-      end
-
-      after do
-      end
-      
+    context "head requests:" do
       it "checks whether HEAD returns a body on 2xx" do
 	cmd = "/_api/version"
         doc = ArangoDB.log_head("#{prefix}-head-supported-method", cmd)
@@ -119,6 +136,116 @@ describe ArangoDB do
 	doc.parsed_response['errorNum'].should eq(9)
 	doc.parsed_response['code'].should eq(501)
       end
+    end
+
+################################################################################
+## checking HTTP OPTIONS 
+################################################################################
+
+    context "options requests" do
+      it "checks handling of an OPTIONS request, without body" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_options("#{prefix}-options-supported-method", cmd)
+
+	doc.code.should eq(200)
+        doc.response.body.should be_nil
+      end
+
+      it "checks handling of an OPTIONS request, with body" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_options("#{prefix}-options-supported-method", cmd, { :body => "some stuff" })
+
+	doc.code.should eq(200)
+        doc.response.body.should be_nil
+      end
+    end
+
+################################################################################
+## checking CORS requests
+################################################################################
+
+    context "CORS requests" do
+      it "checks handling of a non-CORS GET request" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_get("#{prefix}-cors", cmd )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should be_nil
+	doc.headers['access-control-allow-methods'].should be_nil
+      end
+
+      it "checks handling of a CORS GET request, with null origin" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_get("#{prefix}-cors", cmd, { :headers => { "Origin" => "null" } } )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should eq("null")
+	doc.headers['access-control-allow-methods'].should be_nil
+	doc.headers['access-control-allow-headers'].should be_nil
+	doc.headers['access-control-max-age'].should be_nil
+      end
+
+      it "checks handling of a CORS GET request" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_get("#{prefix}-cors", cmd, { :headers => { "Origin" => "http://127.0.0.1" } } )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should eq("http://127.0.0.1")
+	doc.headers['access-control-allow-methods'].should be_nil
+	doc.headers['access-control-allow-headers'].should be_nil
+	doc.headers['access-control-max-age'].should be_nil
+      end
+
+      it "checks handling of a CORS POST request" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_get("#{prefix}-cors", cmd, { :headers => { "Origin" => "http://www.some-url.com/" } } )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should eq("http://www.some-url.com/")
+	doc.headers['access-control-allow-methods'].should be_nil
+	doc.headers['access-control-allow-headers'].should be_nil
+	doc.headers['access-control-max-age'].should be_nil
+      end
+
+      it "checks handling of a CORS OPTIONS preflight request, no headers" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_options("#{prefix}-cors", cmd, { :headers => { "origin" => "http://from.here.we.come/really/really", "access-control-request-method" => "delete" } } )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should eq("http://from.here.we.come/really/really")
+	doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+	doc.headers['access-control-allow-headers'].should be_nil
+	doc.headers['access-control-max-age'].should eq("86400")
+	doc.headers['content-length'].should eq("0")
+        doc.response.body.should be_nil
+      end
+
+      it "checks handling of a CORS OPTIONS preflight request, empty headers" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_options("#{prefix}-cors", cmd, { :headers => { "oRiGiN" => "HTTPS://this.is.our/site-yes", "access-control-request-method" => "delete", "access-control-request-headers" => "   " } } )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should eq("HTTPS://this.is.our/site-yes")
+	doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+	doc.headers['access-control-allow-headers'].should be_nil
+	doc.headers['access-control-max-age'].should eq("86400")
+	doc.headers['content-length'].should eq("0")
+        doc.response.body.should be_nil
+      end
+
+      it "checks handling of a CORS OPTIONS preflight request, populated headers" do
+	cmd = "/_api/version"
+        doc = ArangoDB.log_options("#{prefix}-cors", cmd, { :headers => { "ORIGIN" => "https://mysite.org", "Access-Control-Request-Method" => "put", "ACCESS-CONTROL-request-headers" => "foo,bar,baz" } } )
+
+	doc.code.should eq(200)
+	doc.headers['access-control-allow-origin'].should eq("https://mysite.org")
+	doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+	doc.headers['access-control-allow-headers'].should eq("foo,bar,baz")
+	doc.headers['access-control-max-age'].should eq("86400")
+	doc.headers['content-length'].should eq("0")
+        doc.response.body.should be_nil
+      end
+
     end
 
   end
