@@ -191,10 +191,14 @@ namespace triagens {
 
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
+              
+              // keep track of the original value of the "origin" request header (if any)
+              this->_origin = this->_request->header("origin");
 
               // store the original request's type. we need it later when responding
               // (original request objects gets deleted before responding)
               this->_requestType = this->_request->requestType();
+              
 
               // handle different HTTP methods
               switch (this->_requestType) {
@@ -361,6 +365,37 @@ namespace triagens {
             // authenticated
             if (auth) {
 
+              // CORS handling
+              // if this a CORS-preflight request (typically indicated by an Origin header in an
+              // HTTP OPTIONS request)
+              if (this->_origin.size() > 0 && this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
+                LOGGER_DEBUG << "got CORS preflight request";
+                const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
+
+                HttpResponse response(HttpResponse::OK);
+
+                // send back which HTTP methods are allowed for the resource
+                // we'll allow all
+                response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), "DELETE,GET,HEAD,PATCH,POST,PUT");
+                if (allowHeaders.size() > 0) {
+                  // allow all extra headers the client requested
+                  // we don't verify them here. the worst that can happen is that the client
+                  // sends some broken headers and then later cannot access the data on the
+                  // server. that's a client problem.
+                  response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
+                  LOGGER_DEBUG << "client requested validation of the following headers " << allowHeaders;
+                }
+                // set caching time (hard-coded to 1 day)
+                response.setHeader("access-control-max-age", strlen("access-control-max-age"), "86400");
+              
+                this->handleResponse(&response);
+
+                // we're done
+                return true;
+              }
+              // End of CORS handling
+
+
               HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
               bool ok = false;
 
@@ -409,6 +444,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addResponse (HttpResponse* response) {
+
+          // CORS response handling
+          if (this->_origin.size() > 0) {
+            // the request contained an Origin header. We have to send back the
+            // access-control-allow-origin header now
+            LOGGER_DEBUG << "handling CORS response";
+
+            // send back original value of "Origin header"
+            response->setHeader("access-control-allow-origin", strlen("access-control-allow-origin"), this->_origin);
+          }
+          // CORS request handling EOF
+
 
           if (this->_closeRequested) {
             response->setHeader("connection", strlen("connection"), "Close");
@@ -506,7 +553,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of request (GET, POST, ...)
+////////////////////////////////////////////////////////////////////////////////
+
         HttpRequest::HttpRequestType _requestType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief value of the HTTP origin header the client sent (if any).
+/// this is only used for CORS
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _origin;
+
     };
   }
 }

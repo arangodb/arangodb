@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #358: added support for CORS
+
 * honor optional waitForSync property for document removal, replace, update, and
   save operations in arangosh. The waitForSync parameter for these operations
   was previously honored by the REST API and on the server-side, but not when
