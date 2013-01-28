@@ -1,6 +1,22 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* global variables are not automatically available anymore when starting the 
+  arangod Javascript emergency console (i.e. ```arangod --console```). 
+  
+  Especially, the variables `db`, `edges`, and `internal` are not available 
+  anymore. `db` and `internal` can be made available in 1.2 by
+  ```var db = require("org/arangodb").db;``` and
+  ```var internal = require("internal");```, respectively.
+  The reason for this change is to get rid of global variables in the server
+  because this will allow more specific inclusion of functionality.
+
+  For convenience, the global variable `db` is still available by default in 
+  arangosh. The global variable `edges`, which since ArangoDB 1.1 was kind of
+  a redundant wrapper of `db`, has been removed in 1.2 completely.
+  Please use `db` instead, and if creating an edge collection, use the explicit
+  ```db._createEdgeCollection()``` command.
+
 * issue #374: prevent endless redirects when calling admin interface with 
   unexpected URLs
 
