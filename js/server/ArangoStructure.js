@@ -157,38 +157,38 @@
     // parse the input
     if (info.hasOwnProperty("parser")) {
       if (info.parser.hasOwnProperty(lang)) {
-	value = parse(lang, info.parser[lang], value);
+        value = parse(lang, info.parser[lang], value);
       }
       else if (info.parser.hasOwnProperty('default')) {
-	value = parse(lang, info.parser['default'], value);
+        value = parse(lang, info.parser['default'], value);
       }
     }
     else if (info.hasOwnProperty("type")) {
       type = info.type;
 
       if (type === "number") {
-	value = parseFloat(value);
+        value = parseFloat(value);
       }
       else if (type === "string") {
-	value = String(value);
+        value = String(value);
       }
       else if (type === "boolean") {
-	if (value === 1 || value === "1" || (/^true$/i).test(value)) {
-	  value = true;
-	}
-	else {
-	  value = false;
-	}
+        if (value === 1 || value === "1" || (/^true$/i).test(value)) {
+          value = true;
+        }
+        else {
+         value = false;
+        }
       }
     }
 
     // validate the input
     if (info.hasOwnProperty("validator")) {
       if (info.validator.hasOwnProperty(lang)) {
-	validate(lang, info.validator[lang], value);
+        validate(lang, info.validator[lang], value);
       }
       else if (info.validator.hasOwnProperty('default')) {
-	validate(lang, info.validator['default'], value);
+        validate(lang, info.validator['default'], value);
       }
     }
 
@@ -216,9 +216,9 @@
       result = {};
 
       for (k in value) {
-	if (value.hasOwnProperty(k)) {
-	  result[k] = parseStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
-	}
+        if (value.hasOwnProperty(k)) {
+          result[k] = parseStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
+        }
       }
 
       return result;
@@ -246,7 +246,7 @@
 
     for (key in data) {
       if (data.hasOwnProperty(key)) {
-	validated[key] = parseStructureInformationRecursive(lang, info, key, key, data[key]);
+        validated[key] = parseStructureInformationRecursive(lang, info, key, key, data[key]);
       }
     }
 
@@ -285,10 +285,10 @@
     // parse the input
     if (info.hasOwnProperty("formatter")) {
       if (info.formatter.hasOwnProperty(lang)) {
-	value = format(lang, info.formatter[lang], value);
+        value = format(lang, info.formatter[lang], value);
       }
       else if (info.formatter.hasOwnProperty('default')) {
-	value = format(lang, info.formatter['default'], value);
+        value = format(lang, info.formatter['default'], value);
       }
     }
 
@@ -316,9 +316,9 @@
       result = {};
 
       for (k in value) {
-	if (value.hasOwnProperty(k)) {
-	  result[k] = formatStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
-	}
+        if (value.hasOwnProperty(k)) {
+          result[k] = formatStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
+        }
       }
 
       return result;
@@ -346,7 +346,7 @@
 
     for (key in data) {
       if (data.hasOwnProperty(key)) {
-	formatted[key] = formatStructureInformationRecursive(lang, info, key, key, data[key]);
+        formatted[key] = formatStructureInformationRecursive(lang, info, key, key, data[key]);
       }
     }
 
