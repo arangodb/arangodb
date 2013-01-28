@@ -20,7 +20,7 @@ v1.2.alpha (XXXX-XX-XX)
 * issue #374: prevent endless redirects when calling admin interface with 
   unexpected URLs
 
-* issue #373: TRAVERSE() `trackPaths` option does not work. Instead `paths` does work
+* issue #373: TRAVERSAL() `trackPaths` option does not work. Instead `paths` does work
 
 * issue #358: added support for CORS
 
@@ -33,9 +33,9 @@ v1.2.alpha (XXXX-XX-XX)
   additionally return the number of shapes used in the collection in the
   extra attribute "shapes.count"
 
-* added experimental AQL TREE() function to return a hierchical result from a
-  traversal. the function name, signature, and behavior are likely to change
-  later.
+* added AQL TRAVERSAL_TREE() function to return a hierchical result from a traversal
+
+* added AQL TRAVERSAL() function to return the results from a traversal
 
 * added AQL function ATTRIBUTES() to return the attribute names of a document
 

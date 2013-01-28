@@ -1098,9 +1098,6 @@
 /// 
 /// @verbinclude aqltree
 ///
-/// NOTE: the @LIT{TRAVERSAL_TREE} function is still experimental. Its name, signature, and behavior might 
-/// change. 
-///
 /// @subsubsection AqlFunctionsControl Control flow functions
 ///
 /// AQL offers the following functions to let the user control the flow of operations:
