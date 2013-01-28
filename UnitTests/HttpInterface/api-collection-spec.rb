@@ -445,7 +445,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(Integer)
+        doc.parsed_response['id'].should be_kind_of(String) 
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(false)
 
@@ -466,7 +466,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(Integer)
+        doc.parsed_response['id'].should be_kind_of(String)
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(true)
 
@@ -487,7 +487,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(Integer)
+        doc.parsed_response['id'].should be_kind_of(String)
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(true)

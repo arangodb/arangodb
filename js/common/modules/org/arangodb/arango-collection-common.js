@@ -146,7 +146,7 @@ ArangoCollection.prototype._PRINT = function () {
   }
 
   output("[ArangoCollection ", 
-         colors.COLOR_NUMBER, this._id, colors.COLOR_RESET,
+         colors.COLOR_STRING, this._id, colors.COLOR_RESET,
          ", \"", 
          colors.COLOR_STRING, this.name(), colors.COLOR_RESET, 
          "\" (type ", type, ", status ", status, ")]");
