@@ -169,6 +169,11 @@ ArangoCollection.prototype.index = function (id) {
     id = id.id;
   }
 
+    // stringify the id
+  if (typeof id !== "string") {
+    id += "";
+  }
+
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
 
