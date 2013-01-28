@@ -125,8 +125,9 @@
 ///   - @LIT{access-control-max-age}: will return a cache lifetime for the preflight
 ///     response as determined by ArangoDB.
 /// - any @LIT{access-control-allow-credentials} header sent by the client is 
-///   ignored by ArangoDB. That means client-side cookies and authentication cannot 
-///   be used for CORS requests directed to ArangoDB.
+///   ignored by ArangoDB its value is not @LIT{true}. If a client sends a header
+///   value of @LIT{true}, ArangoDB will return the header 
+///   @LIT{access-control-allow-credentials: true}, too.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
