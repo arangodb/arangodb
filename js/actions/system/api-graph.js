@@ -101,7 +101,9 @@ function vertex_by_request (req, g) {
 
   var vertex = g.getVertex(key);
 
-  if (vertex === undefined || vertex._properties === undefined) {
+  if (vertex === undefined || 
+      vertex === null ||
+      vertex._properties === undefined) {
     throw "no vertex found for: " + key;
   }
 
@@ -123,7 +125,9 @@ function edge_by_request (req, g) {
   }
   var edge = g.getEdge(key);
 
-  if (edge === undefined || edge._properties === undefined) {
+  if (edge === undefined || 
+      edge === null ||
+      edge._properties === undefined) {
     throw "no edge found for: " + key;
   }
 
@@ -297,7 +301,9 @@ function post_graph_vertex (req, res, g) {
 
     var v = g.addVertex(id, json);
 
-    if (v === undefined || v._properties === undefined) {
+    if (v === undefined || 
+        v === null ||
+        v._properties === undefined) {
       throw "could not create vertex";
     }
 
@@ -728,7 +734,9 @@ function post_graph_edge (req, res, g) {
 
     var e = g.addEdge(out, ine, id, label, json);
 
-    if (e === undefined || e._properties === undefined) {
+    if (e === undefined || 
+        e === null || 
+        e._properties === undefined) {
       throw "could not create edge";
     }
 
