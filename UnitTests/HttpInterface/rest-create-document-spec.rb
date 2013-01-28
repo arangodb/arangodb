@@ -67,7 +67,6 @@ describe ArangoDB do
         id = ArangoDB.create_collection(cn)
 
         id.should be_kind_of(String)
-        id.should_not be_zero
 
         cmd = "/_api/document?collection=#{id}"
         body = "{ 1 : 2 }"

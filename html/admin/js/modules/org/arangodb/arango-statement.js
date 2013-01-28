@@ -110,7 +110,7 @@ ArangoStatement.prototype._help = function () {
 
 ArangoStatement.prototype.parse = function () {
   var body = {
-    "query" : this._query
+    query: this._query
   };
 
   var requestResult = this._database._connection.POST(
@@ -119,7 +119,7 @@ ArangoStatement.prototype.parse = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  var result = { "bindVars" : requestResult.bindVars, "collections" : requestResult.collections };
+  var result = { bindVars: requestResult.bindVars, collections: requestResult.collections };
   return result;
 };
 
@@ -129,7 +129,7 @@ ArangoStatement.prototype.parse = function () {
 
 ArangoStatement.prototype.explain = function () {
   var body = {
-    "query" : this._query
+    query: this._query
   };
 
   var requestResult = this._database._connection.POST(
@@ -151,9 +151,9 @@ ArangoStatement.prototype.explain = function () {
 
 ArangoStatement.prototype.execute = function () {
   var body = {
-    "query" : this._query,
-    "count" : this._doCount,
-    "bindVars" : this._bindVars
+    query: this._query,
+    count: this._doCount,
+    bindVars: this._bindVars
   };
 
   if (this._batchSize) {

@@ -165,13 +165,12 @@ ArangoCollection.prototype.index = function (id) {
       id = this.name() + "/" + id;
     }
   }
-  else if (id.hasOwnProperty("id")) {
+  else if (id && id.hasOwnProperty("id")) {
     id = id.id;
   }
-
+  else if (typeof id === "number") {
     // stringify the id
-  if (typeof id !== "string") {
-    id += "";
+    id = this.name() + "/" + id;
   }
 
   for (i = 0;  i < indexes.length;  ++i) {

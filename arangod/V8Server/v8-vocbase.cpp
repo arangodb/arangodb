@@ -162,17 +162,25 @@ static int32_t const WRP_TRANSACTION_TYPE = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 string value from an internal uint64_t id value
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> V8StringId (const uint64_t id) {
+  v8::HandleScope scope;
+
+  const string idStr = StringUtils::itoa(id);
+
+  v8::Handle<v8::Value> result = v8::String::New(idStr.c_str(), idStr.size());
+
+  return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 collection id value from the internal collection id
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8CollectionId (const uint64_t cid) {
-  v8::HandleScope scope;
-
-  const string id = StringUtils::itoa(cid);
-
-  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
-
-  return scope.Close(result); 
+  return V8StringId(cid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,13 +188,7 @@ static inline v8::Handle<v8::Value> V8CollectionId (const uint64_t cid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8RevisionId (const uint64_t rid) {
-  v8::HandleScope scope;
-
-  const string id = StringUtils::itoa(rid);
-
-  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
-
-  return scope.Close(result); 
+  return V8StringId(rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1319,7 +1321,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   }
 
   // expecting at least one arguments
-  if (argv.Length() < 1 || argv.Length() > 3) {
+  if (argv.Length() < 1 || argv.Length() > 2) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: _create(<name>, <properties>)")));
@@ -2041,7 +2043,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   if (id != 0) {
-    return scope.Close(v8::Number::New((double) id));
+    return scope.Close(V8StringId(id));
   }
 
   return scope.Close(v8::ThrowException(
@@ -5397,6 +5399,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   uint32_t n = (uint32_t) colls._length;
+  // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(n);
 
   for (uint32_t i = 0;  i < n;  ++i) {
@@ -5428,9 +5431,16 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   uint32_t n = (uint32_t) colls._length;
   uint32_t j = 0;  
 
-  // prepare result size. this does not need to have the correct size, but the
-  // closer the initial size to the actual size, the less re-allocations we need
-  v8::Handle<v8::Array> result = v8::Array::New(10 + n);
+  v8::Handle<v8::Array> result = v8::Array::New();
+  // add collection names
+  for (uint32_t i = 0;  i < n;  ++i) {
+    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
+    
+    result->Set(j++, v8::String::New(collection->_name));
+  }
+
+  TRI_DestroyVectorPointer(&colls);
+  
   // add function names. these are hard coded
   result->Set(j++, v8::String::New("_collection()"));
   result->Set(j++, v8::String::New("_collections()"));
@@ -5442,15 +5452,6 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
   result->Set(j++, v8::String::New("_version()"));
-
-  // add collection names
-  for (uint32_t i = 0;  i < n;  ++i) {
-    TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
-    
-    result->Set(j++, v8::String::New(collection->_name));
-  }
-
-  TRI_DestroyVectorPointer(&colls);
 
   return scope.Close(result);
 }
