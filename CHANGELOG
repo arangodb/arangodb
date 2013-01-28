@@ -230,8 +230,12 @@ v1.2.alpha (XXXX-XX-XX)
   can access collections by name and do not need to care about collection ids.
 
 
-v1.1.2 (XXXX-XX-XX)
+v1.1.2 (2013-01-20)
 -------------------
+
+* fixed issue #372: Command-Line Options for the Authentication and Authorisation
+
+* upgraded to mruby 2013-01-20 583983385b81c21f82704b116eab52d606a609f4
 
 * fixed issue #357: Some spelling and grammar errors
 
