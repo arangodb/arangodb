@@ -2522,7 +2522,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// @brief visitor callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSE_VISITOR (config, result, vertex, path) {
+function TRAVERSAL_VISITOR (config, result, vertex, path) {
   if (config.trackPaths) {
     result.push(CLONE({ vertex: vertex, path: path }));
   }
@@ -2535,7 +2535,7 @@ function TRAVERSE_VISITOR (config, result, vertex, path) {
 /// @brief visitor callback function for tree traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function TREE_VISITOR (config, result, vertex, path) {
+function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
   if (result.length === 0) {
     result.push({ }); 
   }
@@ -2574,7 +2574,7 @@ function TRAVERSAL_FILTER (config, vertex, edge, path) {
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSAL (func, vertexCollection, edgeCollection, startVertex, direction, params) {
+function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, direction, params) {
   vertexCollection = COLLECTION(vertexCollection);
   edgeCollection   = COLLECTION(edgeCollection);
 
@@ -2703,19 +2703,19 @@ function GRAPH_TRAVERSAL (func, vertexCollection, edgeCollection, startVertex, d
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSE (vertexCollection, 
-                         edgeCollection, 
-                         startVertex, 
-                         direction, 
-                         params) {
-  params.visitor  = TRAVERSE_VISITOR;
+function GRAPH_TRAVERSAL (vertexCollection, 
+                          edgeCollection, 
+                          startVertex, 
+                          direction, 
+                          params) {
+  params.visitor  = TRAVERSAL_VISITOR;
 
-  return GRAPH_TRAVERSAL("TRAVERSE", 
-                         vertexCollection, 
-                         edgeCollection, 
-                         startVertex, 
-                         direction, 
-                         params);
+  return TRAVERSAL_FUNC("TRAVERSAL", 
+                        vertexCollection, 
+                        edgeCollection, 
+                        startVertex, 
+                        direction, 
+                        params);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2724,27 +2724,27 @@ function GRAPH_TRAVERSE (vertexCollection,
 /// a different visitor to create the result
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TREE (vertexCollection, 
-                     edgeCollection, 
-                     startVertex, 
-                     direction, 
-                     connectName, 
-                     params) {
+function GRAPH_TRAVERSAL_TREE (vertexCollection, 
+                               edgeCollection, 
+                               startVertex, 
+                               direction, 
+                               connectName, 
+                               params) {
   if (connectName === "") {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TREE");
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSAL_TREE");
   }
 
   params.strategy = "depthfirst";
   params.order    = "preorder";
-  params.visitor  = TREE_VISITOR;
+  params.visitor  = TRAVERSAL_TREE_VISITOR;
   params.connect  = connectName;
 
-  var result = GRAPH_TRAVERSAL("TREE", 
-                               vertexCollection, 
-                               edgeCollection, 
-                               startVertex, 
-                               direction, 
-                               params);
+  var result = TRAVERSAL_FUNC("TRAVERSAL_TREE", 
+                              vertexCollection, 
+                              edgeCollection, 
+                              startVertex, 
+                              direction, 
+                              params);
 
   if (result.length === 0) {
     return [ ];
@@ -2840,9 +2840,8 @@ exports.GEO_NEAR = GEO_NEAR;
 exports.GEO_WITHIN = GEO_WITHIN;
 exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
-exports.GRAPH_SUBNODES = GRAPH_SUBNODES;
-exports.GRAPH_TRAVERSE = GRAPH_TRAVERSE;
-exports.GRAPH_TREE = GRAPH_TREE;
+exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
+exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;

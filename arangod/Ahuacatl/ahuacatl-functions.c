@@ -627,8 +627,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 
   // graph functions
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
-  REGISTER_FUNCTION("TRAVERSE", "GRAPH_TRAVERSE", false, false, "h,h,s,s,a", NULL);
-  REGISTER_FUNCTION("TREE", "GRAPH_TREE", false, false, "h,h,s,s,s,a", NULL);
+  REGISTER_FUNCTION("TRAVERSAL", "GRAPH_TRAVERSAL", false, false, "h,h,s,s,a", NULL);
+  REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s,a", NULL);
   
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!

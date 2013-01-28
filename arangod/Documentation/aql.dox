@@ -1028,7 +1028,7 @@
 ///
 /// @verbinclude aqlpaths
 ///
-/// - @FN{TRAVERSE(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{options})}: 
+/// - @FN{TRAVERSAL(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{options})}: 
 ///   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
 ///   starting at the vertex identified by id @FA{startVertex}. Vertex connectivity is
 ///   specified by the @FA{direction} parameter:
@@ -1073,7 +1073,7 @@
 ///     or many edge examples are given. The traversal will only follow an edge if it matches
 ///     at least one of the specified examples.
 ///
-///   The result of the TRAVERSE function is a list of traversed points. Each point is a 
+///   The result of the TRAVERSAL function is a list of traversed points. Each point is a 
 ///   document consisting of the following properties:
 ///   - @LIT{vertex}: the vertex at the traversal point
 ///   - @LIT{path}: The path history for the traversal point. The path is a document with the
@@ -1083,14 +1083,14 @@
 ///
 /// @verbinclude aqltraversal
 ///
-/// - @FN{TREE(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{connectName}\, @FA{options})}: 
+/// - @FN{TRAVERSAL_TREE(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{connectName}\, @FA{options})}: 
 ///   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
 ///   starting at the vertex identified by id @FA{startVertex} and creates a hierchical result.
 ///   Vertex connectivity is establish by inserted an attribute which has the name specified via
 ///   the @FA{connectName} parameter. Connected vertices will be placed in this attribute as a 
 ///   list.
 ///
-///   The @FA{options} are the same as for the @LIT{TRAVERSE} function, except that the result will
+///   The @FA{options} are the same as for the @LIT{TRAVERSAL} function, except that the result will
 ///   be set up in a way that resembles a depth-first, pre-order visitation result. Thus, the
 ///   @LIT{strategy} and @LIT{order} attributes of the @FA{options} attribute will be ignored.
 ///
@@ -1098,7 +1098,7 @@
 /// 
 /// @verbinclude aqltree
 ///
-/// NOTE: the @LIT{TREE} function is still experimental. Its name, signature, and behavior might 
+/// NOTE: the @LIT{TRAVERSAL_TREE} function is still experimental. Its name, signature, and behavior might 
 /// change. 
 ///
 /// @subsubsection AqlFunctionsControl Control flow functions
