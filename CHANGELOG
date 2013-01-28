@@ -1,6 +1,9 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #374: prevent endless redirects when calling admin interface with 
+  unexpected URLs
+
 * issue #373: TRAVERSE() `trackPaths` option does not work. Instead `paths` does work
 
 * issue #358: added support for CORS
