@@ -198,7 +198,7 @@ TRI_col_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_header_marker_s {
-  TRI_df_marker_t base;			// 24 bytes
+  TRI_df_marker_t base;                 // 24 bytes
 
   TRI_col_type_t _type;                 //  4 bytes
 
