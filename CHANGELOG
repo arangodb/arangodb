@@ -1,6 +1,31 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* collection ids, index ids, cursor ids, and document revision ids created and 
+  returned by ArangoDB are now returned as strings with numeric content inside. 
+  This is done to prevent some value overrun/truncation in any part of the
+  complete client/server workflow. 
+  In ArangoDB 1.1 and before, these values were previously returned as 
+  (potentially very big) integer values. This may cause problems (clipping, overrun,
+  precision loss) for clients that do not support big integers natively and store 
+  such values in IEEE754 doubles internally. This type loses precision after about
+  52 bits and is thus not safe to hold an id.
+  Javascript and 32 bit-PHP are examples for clients that may cause such problems. 
+  Therefore, ids are now returned by ArangoDB as strings, with the string
+  content being the integer value as before. 
+
+  Example for documents ("_rev" attribute):
+  - Document returned by ArangoDB 1.1: { "_rev": 1234, ... } 
+  - Document returned by ArangoDB 1.2: { "_rev": "1234", ... } 
+  
+  Example for collections ("id" attribute / "_id" property):
+  - Collection returned by ArangoDB 1.1: { "id": 9327643, "name": "test", ... } 
+  - Collection returned by ArangoDB 1.2: { "id": "9327643", "name": "test", ... }
+
+  Example for cursors ("id" attribute):
+  - Collection returned by ArangoDB 1.1: { "id": 11734292, "hasMore": true, ... } 
+  - Collection returned by ArangoDB 1.2: { "id": "11734292", "hasMore": true, ... }
+
 * global variables are not automatically available anymore when starting the 
   arangod Javascript emergency console (i.e. ```arangod --console```). 
   
@@ -115,16 +140,6 @@ v1.2.alpha (XXXX-XX-XX)
 * added fulltext index type. This index type allows indexing words and prefixes of
   words from a specific document attribute. The index can be queries using a
   SimpleQueryFull object, the HTTP REST API at /_api/simple/fulltext, or via AQL
-
-* when documents are returned from ArangoDB, the document _revision id was previously
-  returned as a (potentially very big) integer value. This causes problems (clipping,
-  precision loss) for clients that did not support big integers natively and store such
-  values internally in doubles. Javascript and 32 bit-PHP are examples for clients
-  that could encounter such problems. 
-  Therefore, revision ids are now returned by ArangoDB as strings, with the string
-  content being the integer value as previously. Example:
-  - Document returned by ArangoDB 1.1: { "_rev": 1234, ... } 
-  - Document returned by ArangoDB 1.2: { "_rev": "1234", ... } 
 
 * added collection.revision() method to determine whether a collection has changed. 
   The revision method returns a revision string that can be used by client programs
