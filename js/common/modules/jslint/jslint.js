@@ -358,12 +358,12 @@ var JSLINT = (function () {
             newcap    : true,
             node      : true,
             nomen     : true,
-	    nonpropdel: true,
+            nonpropdel: true,
             on        : true,
             passfail  : true,
             plusplus  : true,
             properties: true,
-   	    proto     : true,
+            proto     : true,
             regexp    : true,
             rhino     : true,
             undef     : true,
@@ -1227,7 +1227,7 @@ var JSLINT = (function () {
                 } else if (value === '__proto__') {
                     if (!option.proto) {
                       stop_at('reserved_a', line, from, value);
-		    }
+                  }
                 } else if (!option.nomen &&
                         (value.charAt(0) === '_' ||
                         value.charAt(value.length - 1) === '_')) {
@@ -3430,7 +3430,7 @@ klass:              do {
         if (!option.nonpropdel) {
             if (!p || (p.id !== '.' && p.id !== '[')) {
                 warn('deleted');
-	    }
+            }
         }
         this.first = p;
         return this;
