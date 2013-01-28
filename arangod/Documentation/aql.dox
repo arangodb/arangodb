@@ -1098,6 +1098,13 @@
 /// 
 /// @verbinclude aqltree
 ///
+/// When using one of AQL's graph functions please make sure that the graph does not contain cycles,
+/// or that you at least specify some maximum depth or uniqueness criteria for a traversal. 
+///
+/// If no bounds are set, a traversal might run into an endless loop in a cyclic graph or sub-graph,
+/// and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
+/// time and memory for the result set.
+///
 /// @subsubsection AqlFunctionsControl Control flow functions
 ///
 /// AQL offers the following functions to let the user control the flow of operations:
