@@ -90,7 +90,9 @@ namespace triagens {
                       double keepAliveTimeout) 
         : Task("HttpCommTask"),
           GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout),
-          _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL) {
+          _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
+          _origin(),
+          _allowCredentials(false) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -192,8 +194,18 @@ namespace triagens {
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
               
+
               // keep track of the original value of the "origin" request header (if any)
+              // we need this value to handle CORS requests
               this->_origin = this->_request->header("origin");
+              if (this->_origin.size() > 0) {
+                // check for Access-Control-Allow-Credentials header
+                bool found;
+                string const& allowCredentials = this->_request->header("access-control-allow-credentials", found);
+                if (found) {
+                  this->_allowCredentials = triagens::basics::StringUtils::boolean(allowCredentials);
+                }
+              }
 
               // store the original request's type. we need it later when responding
               // (original request objects gets deleted before responding)
@@ -386,7 +398,7 @@ namespace triagens {
                   LOGGER_DEBUG << "client requested validation of the following headers " << allowHeaders;
                 }
                 // set caching time (hard-coded to 1 day)
-                response.setHeader("access-control-max-age", strlen("access-control-max-age"), "86400");
+                response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
               
                 this->handleResponse(&response);
 
@@ -451,8 +463,13 @@ namespace triagens {
             // access-control-allow-origin header now
             LOGGER_DEBUG << "handling CORS response";
 
-            // send back original value of "Origin header"
+            // send back original value of "Origin" header
             response->setHeader("access-control-allow-origin", strlen("access-control-allow-origin"), this->_origin);
+
+            if (this->_allowCredentials) {
+              // send back "Access-Control-Allow-Credentials" header
+              response->setHeader("access-control-allow-credentials", "true");
+            }
           }
           // CORS request handling EOF
 
@@ -566,6 +583,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _origin;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to allow credentialed requests 
+/// this is only used for CORS
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _allowCredentials;
 
     };
   }
