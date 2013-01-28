@@ -1054,7 +1054,7 @@
 ///     with the chance of this value being non-sensical. For several graphs, a much lower
 ///     maximum depth is sensible, whereas for other, more list-oriented graphs a higher
 ///     depth should be used.
-///   - @LIT{trackPaths}: if @LIT{true}, the paths encountered during the traversal will
+///   - @LIT{paths}: if @LIT{true}, the paths encountered during the traversal will
 ///     also be returned along with each traversed vertex. If @LIT{false}, only the 
 ///     encountered vertices will be returned.
 ///   - @LIT{uniqueness}: an optional document with the following properties:
