@@ -342,7 +342,7 @@ TRI_df_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_header_marker_s {
-  TRI_df_marker_t base;			// 24 bytes
+  TRI_df_marker_t base;                 // 24 bytes
 
   TRI_df_version_t _version;            //  4 bytes
   TRI_voc_size_t _maximalSize;          //  4 bytes
@@ -377,7 +377,7 @@ TRI_df_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_footer_marker_s {
-  TRI_df_marker_t base;			// 24 bytes
+  TRI_df_marker_t base;                 // 24 bytes
 
   TRI_voc_size_t _maximalSize;          //  4 bytes
   TRI_voc_size_t _totalSize;            //  4 bytes
@@ -389,7 +389,7 @@ TRI_df_footer_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_document_marker_s {
-  TRI_df_marker_t base;			// 24 bytes
+  TRI_df_marker_t base;   // 24 bytes
 }
 TRI_df_document_marker_t;
 
@@ -398,7 +398,7 @@ TRI_df_document_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_skip_marker_s {
-  TRI_df_marker_t base;			// 24 bytes
+  TRI_df_marker_t base;   // 24 bytes
 }
 TRI_df_skip_marker_t;
 
