@@ -1,4 +1,4 @@
-TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
+TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
   strategy: "depthfirst",
   order: "postorder",
   itemOrder: "backward",
@@ -6,7 +6,7 @@ TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
   trackPaths: true
 })
 
-TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
+TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
   strategy: "breadthfirst",
   order: "preorder",
   itemOrder: "forward",
