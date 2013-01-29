@@ -419,7 +419,8 @@ namespace triagens {
             bool auth = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
 
             // authenticated
-            if (auth) {
+            // or an HTTP OPTIONS request. OPTIONS requests currently go unauthenticated
+            if (auth || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
               
               // handle HTTP OPTIONS requests directly
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
