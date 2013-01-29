@@ -84,8 +84,8 @@ function GraphCreationSuite() {
       graph2 = new Graph(graph_name);
 
       assertEqual(graph1._properties.name, graph2._properties.name);
-      assertEqual(graph1._vertices, graph2._vertices);
-      assertEqual(graph1._edges, graph2._edges);
+      assertEqual(graph1._vertices._id, graph2._vertices._id);
+      assertEqual(graph1._edges._id, graph2._edges._id);
 
       graph1.drop();
     },
@@ -447,7 +447,7 @@ function VertexSuite() {
     testProperties : function () {
       var v1;
 
-      v1 = graph.addVertex(graph);
+      v1 = graph.addVertex();
 
       v1.setProperty("myProperty", "myValue");
       assertEqual("myValue", v1.getProperty("myProperty"));

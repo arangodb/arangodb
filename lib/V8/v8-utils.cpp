@@ -183,7 +183,6 @@ static bool LoadJavaScriptDirectory (char const* path,
 
     full = TRI_Concatenate2File(path, filename);
 
-
     ok = LoadJavaScriptFile(full, execute, useGlobalContext);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 

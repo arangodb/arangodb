@@ -44,6 +44,99 @@ var Vertex = graph.Vertex;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the identifier of an edge
+///
+/// @FUN{@FA{edge}.getId()}
+///
+/// Returns the identifier of the @FA{edge}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-edge-get-id
+////////////////////////////////////////////////////////////////////////////////
+
+Edge.prototype.getId = function () {
+  return this._properties._key;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief label of an edge
+///
+/// @FUN{@FA{edge}.getLabel()}
+///
+/// Returns the label of the @FA{edge}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-edge-get-label
+////////////////////////////////////////////////////////////////////////////////
+
+Edge.prototype.getLabel = function () {
+  return this._properties.$label;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a property of an edge
+///
+/// @FUN{@FA{edge}.getProperty(@FA{name})}
+///
+/// Returns the property @FA{name} an @FA{edge}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-edge-get-property
+////////////////////////////////////////////////////////////////////////////////
+
+Edge.prototype.getProperty = function (name) {
+  return this._properties[name];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets all property names of an edge
+///
+/// @FUN{@FA{edge}.getPropertyKeys()}
+///
+/// Returns all propety names an @FA{edge}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-edge-get-property-keys
+////////////////////////////////////////////////////////////////////////////////
+
+Edge.prototype.getPropertyKeys = function () {
+  return this._properties.propertyKeys;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all properties of an edge
+///
+/// @FUN{@FA{edge}.properties()}
+///
+/// Returns all properties and their values of an @FA{edge}
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-edge-properties
+////////////////////////////////////////////////////////////////////////////////
+
+Edge.prototype.properties = function () {
+  return this._properties.shallowCopy;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -85,6 +178,144 @@ Edge.prototype._PRINT = function (seen, path, names) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an inbound edge
+///
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id})}
+///
+/// Creates a new edge from @FA{peer} to @FA{vertex} and returns the edge
+/// object. The identifier @FA{id} must be a unique identifier or null.
+///
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label})}
+///
+/// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
+/// returns the edge object.
+///
+/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
+/// properties defined in @FA{data}. Returns the edge object.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-vertex-add-in-edge
+///
+/// @verbinclude graph-vertex-add-in-edge2
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.addInEdge = function (out, id, label, data) {
+  return this._graph.addEdge(out, this, id, label, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an outbound edge
+///
+/// @FUN{@FA{vertex}.addOutEdge(@FA{peer})}
+///
+/// Creates a new edge from @FA{vertex} to @FA{peer} and returns the edge
+/// object.
+///
+/// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label})}
+///
+/// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
+/// returns the edge object.
+///
+/// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label}, @FA{data})}
+///
+/// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
+/// properties defined in @FA{data}. Returns the edge object.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-vertex-add-out-edge
+///
+/// @verbinclude graph-vertex-add-out-edge2
+///
+/// @verbinclude graph-vertex-add-out-edge3
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.addOutEdge = function (ine, id, label, data) {
+  return this._graph.addEdge(this, ine, id, label, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the identifier of a vertex
+///
+/// @FUN{@FA{vertex}.getId()}
+///
+/// Returns the identifier of the @FA{vertex}. If the vertex was deleted, then
+/// @LIT{undefined} is returned.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-vertex-get-id
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.getId = function () {
+  return this._properties._key;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a property of a vertex
+///
+/// @FUN{@FA{vertex}.getProperty(@FA{name})}
+///
+/// Returns the property @FA{name} a @FA{vertex}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-vertex-get-property
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.getProperty = function (name) {
+  return this._properties[name];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets all property names of a vertex
+///
+/// @FUN{@FA{vertex}.getPropertyKeys()}
+///
+/// Returns all propety names a @FA{vertex}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-vertex-get-property-keys
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.getPropertyKeys = function () {
+  return this._properties.propertyKeys;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all properties of a vertex
+///
+/// @FUN{@FA{vertex}.properties()}
+///
+/// Returns all properties and their values of a @FA{vertex}
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-vertex-properties
+////////////////////////////////////////////////////////////////////////////////
+
+Vertex.prototype.properties = function () {
+  return this._properties.shallowCopy;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -101,7 +332,7 @@ Vertex.prototype._PRINT = function (seen, path, names) {
   // Ignores the standard arguments
   seen = path = names = null;
 
-  if (!this._id) {
+  if (! this._id) {
     arangodb.output("[deleted Vertex]");
   }
   else if (this._properties._key !== undefined) {
@@ -124,6 +355,33 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Graph
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a vertex from the graph, create it if it doesn't exist
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getOrAddVertex = function (id) {
+  var v = this.getVertex(id);
+
+  if (v === null) {
+    v = this.addVertex(id);
+  }
+
+  return v;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
