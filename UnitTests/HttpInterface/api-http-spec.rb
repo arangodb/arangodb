@@ -143,9 +143,14 @@ describe ArangoDB do
 ################################################################################
 
     context "options requests" do
+      before do
+        @headers = "DELETE, GET, HEAD, PATCH, POST, PUT"
+      end
+
       it "checks handling of an OPTIONS request, without body" do
         cmd = "/_api/version"
-        doc = ArangoDB.log_options("#{prefix}-options-supported-method", cmd)
+        doc = ArangoDB.log_options("#{prefix}-options", cmd)
+        doc.headers['allow'].should eq(@headers)
 
         doc.code.should eq(200)
         doc.response.body.should be_nil
@@ -153,7 +158,8 @@ describe ArangoDB do
 
       it "checks handling of an OPTIONS request, with body" do
         cmd = "/_api/version"
-        doc = ArangoDB.log_options("#{prefix}-options-supported-method", cmd, { :body => "some stuff" })
+        doc = ArangoDB.log_options("#{prefix}-options", cmd, { :body => "some stuff" })
+        doc.headers['allow'].should eq(@headers)
 
         doc.code.should eq(200)
         doc.response.body.should be_nil
@@ -165,6 +171,10 @@ describe ArangoDB do
 ################################################################################
 
     context "CORS requests" do
+      before do
+        @headers = "DELETE, GET, HEAD, PATCH, POST, PUT"
+      end
+
       it "checks handling of a non-CORS GET request" do
         cmd = "/_api/version"
         doc = ArangoDB.log_get("#{prefix}-cors", cmd )
@@ -217,10 +227,11 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.headers['access-control-allow-origin'].should eq("http://from.here.we.come/really/really")
-        doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+        doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-headers'].should be_nil
         doc.headers['access-control-allow-credentials'].should be_nil
         doc.headers['access-control-max-age'].should eq("1800")
+        doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
         doc.response.body.should be_nil
       end
@@ -231,10 +242,11 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.headers['access-control-allow-origin'].should eq("HTTPS://this.is.our/site-yes")
-        doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+        doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-headers'].should be_nil
         doc.headers['access-control-allow-credentials'].should be_nil
         doc.headers['access-control-max-age'].should eq("1800")
+        doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
         doc.response.body.should be_nil
       end
@@ -245,10 +257,11 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.headers['access-control-allow-origin'].should eq("https://mysite.org")
-        doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+        doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-headers'].should eq("foo,bar,baz")
         doc.headers['access-control-allow-credentials'].should be_nil
         doc.headers['access-control-max-age'].should eq("1800")
+        doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
         doc.response.body.should be_nil
       end
@@ -283,9 +296,10 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.headers['access-control-allow-origin'].should eq("https://mysite.org")
-        doc.headers['access-control-allow-methods'].should eq("DELETE,GET,HEAD,PATCH,POST,PUT")
+        doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should eq("1800")
+        doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
         doc.response.body.should be_nil
       end
