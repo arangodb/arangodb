@@ -100,21 +100,21 @@
 ///    </li>
 ///   </ul>
 ///   <ul>
-///    <li>@ref HttpBlueprints
+///    <li>@ref HttpGraph
 ///     <ul>
-///      <li>@ref A_JSF_POST_blueprints_graph   "POST /_api/blueprints/graph"</li>
-///      <li>@ref A_JSF_GET_blueprints_graph    "GET /_api/blueprints/graph"</li>
-///      <li>@ref A_JSF_DELETE_blueprints_graph "DELETE /_api/blueprints/graph"</li>
-///      <li>@ref A_JSF_POST_blueprints_vertex   "POST /_api/blueprints/vertex"</li>
-///      <li>@ref A_JSF_GET_blueprints_vertex    "GET /_api/blueprints/vertex"</li>
-///      <li>@ref A_JSF_PUT_blueprints_vertex    "PUT /_api/blueprints/vertex"</li>
-///      <li>@ref A_JSF_DELETE_blueprints_vertex "DELETE /_api/blueprints/vertex"</li>
-///      <li>@ref A_JSF_POST_blueprints_vertices  "POST /_api/blueprints/vertices"</li>
-///      <li>@ref A_JSF_POST_blueprints_edge   "POST /_api/blueprints/edge"</li>
-///      <li>@ref A_JSF_GET_blueprints_edge    "GET /_api/blueprints/edge"</li>
-///      <li>@ref A_JSF_PUT_blueprints_edge    "PUT /_api/blueprints/edge"</li>
-///      <li>@ref A_JSF_DELETE_blueprints_edge "DELETE /_api/blueprints/edge"</li>
-///      <li>@ref A_JSF_POST_blueprints_edges   "POST /_api/blueprints/edges"</li>
+///      <li>@ref A_JSF_POST_graph_graph   "POST /_api/graph"</li>
+///      <li>@ref A_JSF_GET_graph_graph    "GET /_api/graph"</li>
+///      <li>@ref A_JSF_DELETE_graph_graph "DELETE /_api/graph"</li>
+///      <li>@ref A_JSF_POST_graph_vertex   "POST /_api/graph/graph-name/vertex"</li>
+///      <li>@ref A_JSF_GET_graph_vertex    "GET /_api/graph/graph-name/vertex"</li>
+///      <li>@ref A_JSF_PUT_graph_vertex    "PUT /_api/graph/graph-name/vertex"</li>
+///      <li>@ref A_JSF_DELETE_graph_vertex "DELETE /_api/graph/graph-name/vertex"</li>
+///      <li>@ref A_JSF_POST_graph_vertices  "POST /_api/graph/graph-name/vertices"</li>
+///      <li>@ref A_JSF_POST_graph_edge   "POST /_api/graph/graph-name/edge"</li>
+///      <li>@ref A_JSF_GET_graph_edge    "GET /_api/graph/graph-name/edge"</li>
+///      <li>@ref A_JSF_PUT_graph_edge    "PUT /_api/graph/graph-name/edge"</li>
+///      <li>@ref A_JSF_DELETE_graph_edge "DELETE /_api/graph/graph-nam}/edge"</li>
+///      <li>@ref A_JSF_POST_graph_edges   "POST /_api/graph/graph-name/edges"</li>
 ///     </ul>
 ///    </li>
 ///   </ul>

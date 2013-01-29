@@ -92,7 +92,7 @@ namespace triagens {
           GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
           _origin(),
-          _allowCredentials(false) {
+          _denyCredentials(false) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -106,6 +106,40 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~HttpCommTask () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the internal state
+/// this method can be called to clean up when the request handling aborts
+/// prematurely
+////////////////////////////////////////////////////////////////////////////////
+        
+        void resetState () {
+          if (this->_request != 0) {
+            delete this->_request;
+            this->_request       = 0;
+          }
+
+          this->_readPosition    = 0;
+          this->_bodyPosition    = 0;
+          this->_bodyLength      = 0;
+          this->_readRequestBody = false;
+          this->_requestPending  = false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,6 +217,8 @@ namespace triagens {
                 HttpResponse response(HttpResponse::SERVER_ERROR);
                 this->handleResponse(&response);
 
+                this->resetState();
+
                 return false;
               }
 
@@ -203,7 +239,7 @@ namespace triagens {
                 bool found;
                 string const& allowCredentials = this->_request->header("access-control-allow-credentials", found);
                 if (found) {
-                  this->_allowCredentials = triagens::basics::StringUtils::boolean(allowCredentials);
+                  this->_denyCredentials = ! triagens::basics::StringUtils::boolean(allowCredentials);
                 }
               }
 
@@ -221,10 +257,12 @@ namespace triagens {
                 case HttpRequest::HTTP_REQUEST_POST:
                 case HttpRequest::HTTP_REQUEST_PUT:
                 case HttpRequest::HTTP_REQUEST_PATCH: {
+                  // technically, sending a body for an HTTP DELETE request is not forbidden, but it is not explicitly supported
                   const bool expectContentLength = (this->_requestType == HttpRequest::HTTP_REQUEST_POST ||
                                                     this->_requestType == HttpRequest::HTTP_REQUEST_PUT ||
                                                     this->_requestType == HttpRequest::HTTP_REQUEST_PATCH ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS ||
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_DELETE);
 
                   if (! checkContentLength(expectContentLength)) {
                     return true;
@@ -241,6 +279,8 @@ namespace triagens {
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
                   this->handleResponse(&response);
+                
+                  this->resetState();
 
                   return true;
                 }
@@ -281,6 +321,8 @@ namespace triagens {
               // request entity too large
               HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
               this->handleResponse(&response);
+              
+              this->resetState();
 
               return true;
             }
@@ -332,6 +374,8 @@ namespace triagens {
               
                   HttpResponse response(HttpResponse::BAD);
                   this->handleResponse(&response);
+                
+                  this->resetState();
 
                   return true;
                 }
@@ -375,7 +419,8 @@ namespace triagens {
             bool auth = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
 
             // authenticated
-            if (auth) {
+            // or an HTTP OPTIONS request. OPTIONS requests currently go unauthenticated
+            if (auth || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
               
               // handle HTTP OPTIONS requests directly
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
@@ -386,10 +431,7 @@ namespace triagens {
                 response.setHeader("allow", strlen("allow"), allowedMethods);
               
                 if (this->_origin.size() > 0) {
-                  // we must forcefully close the connection. otherwise clients might choke.
-                  this->_closeRequested = true;
-
-                  LOGGER_DEBUG << "got CORS preflight request";
+                  LOGGER_TRACE << "got CORS preflight request";
                   const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
 
                   // send back which HTTP methods are allowed for the resource
@@ -402,7 +444,7 @@ namespace triagens {
                     // sends some broken headers and then later cannot access the data on the
                     // server. that's a client problem.
                     response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
-                    LOGGER_DEBUG << "client requested validation of the following headers " << allowHeaders;
+                    LOGGER_TRACE << "client requested validation of the following headers " << allowHeaders;
                   }
                   // set caching time (hard-coded to 1 day)
                   response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
@@ -410,7 +452,9 @@ namespace triagens {
                 // End of CORS handling
                 
                 this->handleResponse(&response);
-             
+                
+                this->resetState();
+                
                 // we're done
                 return true;
               }
@@ -422,11 +466,10 @@ namespace triagens {
 
               if (handler == 0) {
                 LOGGER_TRACE << "no handler is known, giving up";
-                delete this->_request;
-                this->_request = 0;
-
                 HttpResponse response(HttpResponse::NOT_FOUND);
                 this->handleResponse(&response);
+                
+                this->resetState();
               }
               else {
                 this->RequestStatisticsAgent::transfer(handler);
@@ -470,13 +513,16 @@ namespace triagens {
           if (this->_origin.size() > 0) {
             // the request contained an Origin header. We have to send back the
             // access-control-allow-origin header now
-            LOGGER_DEBUG << "handling CORS response";
+            LOGGER_TRACE << "handling CORS response";
 
             // send back original value of "Origin" header
             response->setHeader("access-control-allow-origin", strlen("access-control-allow-origin"), this->_origin);
 
-            if (this->_allowCredentials) {
-              // send back "Access-Control-Allow-Credentials" header
+            // send back "Access-Control-Allow-Credentials" header
+            if (this->_denyCredentials) {
+              response->setHeader("access-control-allow-credentials", "false");
+            }
+            else {
               response->setHeader("access-control-allow-credentials", "true");
             }
           }
@@ -541,7 +587,7 @@ namespace triagens {
           if (! expectContentLength && bodyLength > 0) {
             // content-length header was sent but the request method does not support that
             // we'll warn but read the body anyway
-            LOGGER_WARNING << "received HTTP GET/DELETE/HEAD request with content-length, this should not happen";
+            LOGGER_WARNING << "received HTTP GET/HEAD request with content-length, this should not happen";
           }
 
           if ((size_t) bodyLength > this->_maximalBodySize) {
@@ -598,7 +644,7 @@ namespace triagens {
 /// this is only used for CORS
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _allowCredentials;
+        bool _denyCredentials;
 
     };
   }
