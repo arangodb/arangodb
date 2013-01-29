@@ -103,7 +103,7 @@ function clear () {
 
   if (internal.arango !== undefined) {
     if (typeof internal.arango.isConnected !== "undefined") {
-      if (internal.arango.isConnected()) {
+      if (internal.arango.isConnected() && typeof SYS_UNIT_TESTS !== "undefined") {
         internal.print(arangosh.HELP);
       }
     }

@@ -101,7 +101,7 @@ function vertex_by_request (req, g) {
 
   var vertex = g.getVertex(key);
 
-  if (vertex === undefined || vertex._properties === undefined) {
+  if (vertex === null || vertex._properties === undefined) {
     throw "no vertex found for: " + key;
   }
 
@@ -123,7 +123,7 @@ function edge_by_request (req, g) {
   }
   var edge = g.getEdge(key);
 
-  if (edge === undefined || edge._properties === undefined) {
+  if (edge === null || edge._properties === undefined) {
     throw "no edge found for: " + key;
   }
 
@@ -297,7 +297,7 @@ function post_graph_vertex (req, res, g) {
 
     var v = g.addVertex(id, json);
 
-    if (v === undefined || v._properties === undefined) {
+    if (v === null || v._properties === undefined) {
       throw "could not create vertex";
     }
 
@@ -309,7 +309,7 @@ function post_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vertex properties
+/// @brief gets the vertex properties
 ///
 /// @RESTHEADER{GET /_api/graph/@FA{graph-name}/vertex,get vertex}
 ///
@@ -476,18 +476,17 @@ function process_properties_filter (data, properties, collname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function process_labels_filter (data, labels) {
-  if (labels instanceof Array) {
-    // filter edge labels
-    if (labels !== undefined && labels instanceof Array) {
-      if (data.edgeFilter === "") { data.edgeFilter = " FILTER"; } else { data.edgeFilter += " &&";}
-      data.edgeFilter += ' e["$label"] IN @labels';
-      data.bindVars.labels = labels;
-    }
+
+  // filter edge labels
+  if (labels !== undefined && labels instanceof Array && labels.length > 0) {
+    if (data.edgeFilter === "") { data.edgeFilter = " FILTER"; } else { data.edgeFilter += " &&";}
+    data.edgeFilter += ' e["$label"] IN @labels';
+    data.bindVars.labels = labels;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vertices of a graph
+/// @brief gets the vertices of a graph
 ///
 /// @RESTHEADER{POST /_api/graph/@FA{graph-name}/vertices,get vertices}
 ///
@@ -582,7 +581,7 @@ function post_graph_all_vertices (req, res, g) {
 /// The attributes of filter
 /// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out")
 ///   neighbors. Default value is "any".
-/// - @LIT{labels}: filter by an array of edge labels
+/// - @LIT{labels}: filter by an array of edge labels (empty array means no restriction)
 /// - @LIT{properties}: filter neighbors by an array of edge properties
 ///
 /// The attributes of a property filter
@@ -614,7 +613,7 @@ function post_graph_vertex_vertices (req, res, g) {
       'bindVars' : {
          '@vertexColl' : g._vertices.name(),
          '@edgeColl' : g._edges.name(),
-         'id' : v._id
+         'id' : v._properties._id
       }
     };
 
@@ -728,7 +727,7 @@ function post_graph_edge (req, res, g) {
 
     var e = g.addEdge(out, ine, id, label, json);
 
-    if (e === undefined || e._properties === undefined) {
+    if (e === null || e._properties === undefined) {
       throw "could not create edge";
     }
 
@@ -811,7 +810,7 @@ function delete_graph_edge (req, res, g) {
 /// @verbinclude api-graph-change-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-function put_graph_edge(req, res, g) {
+function put_graph_edge (req, res, g) {
   try {
     var e = edge_by_request(req, g);
 
@@ -972,7 +971,7 @@ function post_graph_vertex_edges (req, res, g) {
       'edgeFilter' : '',
       'bindVars' : {
          '@edgeColl' : g._edges.name(),
-         'id' : v._id
+         'id' : v._properties._id
       }
     };
 
