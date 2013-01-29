@@ -1346,11 +1346,11 @@ static void ProcessValue (TRI_aql_codegen_js_t* const generator,
                           const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!scope->_buffer) {
+  if (! scope->_buffer) {
     return;
   }
 
-  if (!TRI_ValueJavascriptAql(scope->_buffer, &node->_value, node->_value._type)) {
+  if (! TRI_ValueJavascriptAql(scope->_buffer, &node->_value, node->_value._type)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -1401,7 +1401,7 @@ static void ProcessArrayElement (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!scope->_buffer) {
+  if (! scope->_buffer) {
     return;
   }
 

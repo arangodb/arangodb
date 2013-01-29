@@ -752,7 +752,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testListIndexes: function () {
-      var actual, expected;
+      var actual;
       
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[0]");
       assertEqual([ 1 ], actual);
@@ -814,7 +814,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNaming: function () {
-      var actual, expected;
+      var actual;
       
       actual = getQueryResults("LET a = [ 1 ] RETURN a[0]");
       assertEqual([ 1 ], actual);
@@ -832,6 +832,14 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual([ 1 ], actual);
       
       assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, getErrorCode(function() { QUERY("LET a = 1 RETURN `a b c`"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric overflow
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverflow: function () {
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l"); }));
     }
   };
 }
