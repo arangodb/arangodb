@@ -221,6 +221,7 @@ function PUT_api_cursor (req, res) {
   catch (e) {
   }
 
+  // unuse the cursor and garbage-collect it
   cursor.unuse();
   cursor = null;
   internal.wait(0.0);
@@ -267,7 +268,7 @@ function DELETE_api_cursor(req, res) {
     return;
   }
 
-  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });
+  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { id : cursorId });
 
   // we want the garbage collection to clean unused cursors immediately
   internal.wait(0.0);

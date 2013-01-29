@@ -162,17 +162,33 @@ static int32_t const WRP_TRANSACTION_TYPE = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 string value from an internal uint64_t id value
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> V8StringId (const uint64_t id) {
+  v8::HandleScope scope;
+
+  const string idStr = StringUtils::itoa(id);
+
+  v8::Handle<v8::Value> result = v8::String::New(idStr.c_str(), idStr.size());
+
+  return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 collection id value from the internal collection id
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> V8CollectionId (const uint64_t cid) {
+  return V8StringId(cid);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> V8RevisionId (const uint64_t rid) {
-  v8::HandleScope scope;
-
-  const string id = StringUtils::itoa(rid);
-
-  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
-
-  return scope.Close(result); 
+  return V8StringId(rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1305,7 +1321,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   }
 
   // expecting at least one arguments
-  if (argv.Length() < 1 || argv.Length() > 3) {
+  if (argv.Length() < 1 || argv.Length() > 2) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: _create(<name>, <properties>)")));
@@ -2027,7 +2043,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   TRI_shadow_id id = TRI_GetIdDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   if (id != 0) {
-    return scope.Close(v8::Number::New((double) id));
+    return scope.Close(V8StringId(id));
   }
 
   return scope.Close(v8::ThrowException(
@@ -5380,10 +5396,11 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  v8::Handle<v8::Array> result = v8::Array::New();
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   uint32_t n = (uint32_t) colls._length;
+  // already create an array of the correct size
+  v8::Handle<v8::Array> result = v8::Array::New(n);
 
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
@@ -5402,30 +5419,39 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  v8::Handle<v8::Array> result = v8::Array::New();
 
   TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
-
-  // get the collection type (document/edge)
-  //const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
 
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   uint32_t n = (uint32_t) colls._length;
+  uint32_t j = 0;  
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+  // add collection names
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
-
-    // only include collections of the right type, currently disabled
-    // if (collectionType == collection->_type) {
-    result->Set(i, v8::String::New(collection->_name));
-    // }
+    
+    result->Set(j++, v8::String::New(collection->_name));
   }
 
   TRI_DestroyVectorPointer(&colls);
+  
+  // add function names. these are hard coded
+  result->Set(j++, v8::String::New("_collection()"));
+  result->Set(j++, v8::String::New("_collections()"));
+  result->Set(j++, v8::String::New("_create()"));
+  result->Set(j++, v8::String::New("_createDocumentCollection()"));
+  result->Set(j++, v8::String::New("_createEdgeCollection()"));
+  result->Set(j++, v8::String::New("_document()"));
+  result->Set(j++, v8::String::New("_remove()"));
+  result->Set(j++, v8::String::New("_replace()"));
+  result->Set(j++, v8::String::New("_update()"));
+  result->Set(j++, v8::String::New("_version()"));
 
   return scope.Close(result);
 }
@@ -6273,10 +6299,9 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
 
 v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database, 
                                         TRI_col_type_e type) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl,
                                             WRP_VOCBASE_TYPE,
                                             const_cast<TRI_vocbase_t*>(database));
@@ -6292,15 +6317,14 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseColTempl,
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(v8g->DidKey, v8::Number::New(collection->_cid), v8::ReadOnly);
+  result->Set(v8g->DidKey, V8CollectionId(collection->_cid), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6480,6 +6504,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   rt->SetInternalFieldCount(2);
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
+  // for any database function added here, be sure to add it to in function 
+  // JS_CompletionsVocbase, too for the auto-completion
   TRI_AddMethodVocbase(rt, "_collection", JS_CollectionVocbase);
   TRI_AddMethodVocbase(rt, "_collections", JS_CollectionsVocbase);
   TRI_AddMethodVocbase(rt, "_COMPLETIONS", JS_CompletionsVocbase, true);

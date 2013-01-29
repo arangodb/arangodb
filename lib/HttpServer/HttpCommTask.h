@@ -376,36 +376,45 @@ namespace triagens {
 
             // authenticated
             if (auth) {
-
-              // CORS handling
-              // if this a CORS-preflight request (typically indicated by an Origin header in an
-              // HTTP OPTIONS request)
-              if (this->_origin.size() > 0 && this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
-                LOGGER_DEBUG << "got CORS preflight request";
-                const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
-
-                HttpResponse response(HttpResponse::OK);
-
-                // send back which HTTP methods are allowed for the resource
-                // we'll allow all
-                response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), "DELETE,GET,HEAD,PATCH,POST,PUT");
-                if (allowHeaders.size() > 0) {
-                  // allow all extra headers the client requested
-                  // we don't verify them here. the worst that can happen is that the client
-                  // sends some broken headers and then later cannot access the data on the
-                  // server. that's a client problem.
-                  response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
-                  LOGGER_DEBUG << "client requested validation of the following headers " << allowHeaders;
-                }
-                // set caching time (hard-coded to 1 day)
-                response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
               
-                this->handleResponse(&response);
+              // handle HTTP OPTIONS requests directly
+              if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
+                const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+                
+                HttpResponse response(HttpResponse::OK);
+                
+                response.setHeader("allow", strlen("allow"), allowedMethods);
+              
+                if (this->_origin.size() > 0) {
+                  // we must forcefully close the connection. otherwise clients might choke.
+                  this->_closeRequested = true;
 
+                  LOGGER_DEBUG << "got CORS preflight request";
+                  const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
+
+                  // send back which HTTP methods are allowed for the resource
+                  // we'll allow all
+                  response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), allowedMethods);
+
+                  if (allowHeaders.size() > 0) {
+                    // allow all extra headers the client requested
+                    // we don't verify them here. the worst that can happen is that the client
+                    // sends some broken headers and then later cannot access the data on the
+                    // server. that's a client problem.
+                    response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
+                    LOGGER_DEBUG << "client requested validation of the following headers " << allowHeaders;
+                  }
+                  // set caching time (hard-coded to 1 day)
+                  response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
+                }
+                // End of CORS handling
+                
+                this->handleResponse(&response);
+             
                 // we're done
                 return true;
               }
-              // End of CORS handling
+              // end HTTP OPTIONS handling
 
 
               HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);

@@ -863,7 +863,7 @@ ArangoCollection.prototype.document = function (id) {
 
 ArangoCollection.prototype.any = function () {
   var requestResult = this._database._connection.PUT("/_api/simple/any",
-    JSON.stringify({collection: this._id}));
+    JSON.stringify({collection: this._name}));
 
   arangosh.checkRequestResult(requestResult);
 

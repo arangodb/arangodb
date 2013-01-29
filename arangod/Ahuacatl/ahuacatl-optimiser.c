@@ -973,7 +973,26 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_UNARY_MINUS) {
     // - number => eval!
-    node = TRI_CreateNodeValueDoubleAql(context, - TRI_GetNumericNodeValueAql(operand));
+    double value = - TRI_GetNumericNodeValueAql(operand);
+    
+    // check for result validity
+#ifdef isnan
+    if (isnan(value)) {
+      LOG_TRACE("nan value detected after arithmetic optimisation");
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+      return NULL;
+    }
+#endif
+
+#ifdef isinf
+    if (isinf(value)) {
+      LOG_TRACE("inf value detected after arithmetic optimisation");
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+      return NULL;
+    }
+#endif
+
+    node = TRI_CreateNodeValueDoubleAql(context, value);
     if (node == NULL) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
@@ -1230,6 +1249,24 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else {
     value = 0.0;
   }
+
+  // check for result validity
+
+#ifdef isnan
+  if (isnan(value)) {
+    LOG_TRACE("nan value detected after arithmetic optimisation");
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    return NULL;
+  }
+#endif
+
+#ifdef isinf
+  if (isinf(value)) {
+    LOG_TRACE("inf value detected after arithmetic optimisation");
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    return NULL;
+  }
+#endif
   
   node = TRI_CreateNodeValueDoubleAql(context, value);
 
