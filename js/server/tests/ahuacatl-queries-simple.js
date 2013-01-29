@@ -28,6 +28,7 @@
 var jsunity = require("jsunity");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 var QUERY = require("internal").AQL_QUERY;
+var errors = require("internal").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -35,7 +36,7 @@ var QUERY = require("internal").AQL_QUERY;
 
 function ahuacatlQuerySimpleTestSuite () {
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,6 +66,19 @@ function ahuacatlQuerySimpleTestSuite () {
     }
 
     return results;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 
@@ -731,8 +745,102 @@ function ahuacatlQuerySimpleTestSuite () {
 
       var actual = getQueryResults("/* for u in [1,2,3] */ return 1");
       assertEqual(expected, actual);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list index access 
+////////////////////////////////////////////////////////////////////////////////
+
+    testListIndexes: function () {
+      var actual;
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[1]");
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[2]");
+      assertEqual([ 3 ], actual);
+
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[3]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-1]");
+      assertEqual([ 3 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-2]");
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-3]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-4]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l['a']");
+      assertEqual([ null ], actual);
+  
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l['0']");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[0]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[1]");
+      assertEqual([ '1' ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[-1]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['0']");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['1']");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['2']");
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['24']");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['-1']");
+      assertEqual([ null ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief naming
+////////////////////////////////////////////////////////////////////////////////
+
+    testNaming: function () {
+      var actual;
+      
+      actual = getQueryResults("LET a = [ 1 ] RETURN a[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET `a` = [ 1 ] RETURN `a`[0]");
+      assertEqual([ 1 ], actual);
+    
+      actual = getQueryResults("LET `a b` = [ 1 ] RETURN `a b`[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET `a b c` = [ 1 ] RETURN `a b c`[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET `a b c` = { `d e f`: 1 } RETURN `a b c`['d e f']");
+      assertEqual([ 1 ], actual);
+      
+      assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, getErrorCode(function() { QUERY("LET a = 1 RETURN `a b c`"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric overflow
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverflow: function () {
+      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l"); }));
+    }
   };
 }
 

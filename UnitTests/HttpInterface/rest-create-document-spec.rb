@@ -66,8 +66,7 @@ describe ArangoDB do
         cn = "UnitTestsCollectionBasics"
         id = ArangoDB.create_collection(cn)
 
-        id.should be_kind_of(Integer)
-        id.should_not be_zero
+        id.should be_kind_of(String)
 
         cmd = "/_api/document?collection=#{id}"
         body = "{ 1 : 2 }"

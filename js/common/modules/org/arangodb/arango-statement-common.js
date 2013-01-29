@@ -59,6 +59,10 @@ function ArangoStatement (database, data) {
     throw "ArangoStatement needs a valid query attribute";
   }
   this.setQuery(data.query);
+  
+  if (data.bindVars instanceof Object) {
+    this.bind(data.bindVars);
+  }
 
   if (data.count !== undefined) {
     this.setCount(data.count);

@@ -15,10 +15,10 @@ ArangoDB currently uses 64bit unsigned integer values to maintain
 document revisions internally. When returning document revisions to 
 clients, ArangoDB will put them into a string to ensure the revision id
 is not clipped by clients that do not support big integers.
-Clients should rather treat the revision returned by ArangoDB as an 
-opaque string when they store or use it locally. This will ArangoDB to
-change the format of revision ids later if this should be required.
-Clients can thus use Revisions ids to perform simple equality/non-equality 
+Clients should treat the revision id returned by ArangoDB as an 
+opaque string when they store or use it locally. This will allow ArangoDB 
+to change the format of revision ids later if this should be required.
+Clients can use revisions ids to perform simple equality/non-equality 
 comparisons (e.g. to check whether a document has changed or not), but 
 they should not use revision ids to perform greater/less than comparisions
 with them to check if a document revision is older than one another,
