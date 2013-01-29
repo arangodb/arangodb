@@ -193,7 +193,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("null")
         doc.headers['access-control-allow-methods'].should be_nil
         doc.headers['access-control-allow-headers'].should be_nil
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should be_nil
       end
 
@@ -205,7 +205,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("http://127.0.0.1")
         doc.headers['access-control-allow-methods'].should be_nil
         doc.headers['access-control-allow-headers'].should be_nil
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should be_nil
       end
 
@@ -217,7 +217,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("http://www.some-url.com/")
         doc.headers['access-control-allow-methods'].should be_nil
         doc.headers['access-control-allow-headers'].should be_nil
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should be_nil
       end
 
@@ -229,7 +229,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("http://from.here.we.come/really/really")
         doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-headers'].should be_nil
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
@@ -244,7 +244,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("HTTPS://this.is.our/site-yes")
         doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-headers'].should be_nil
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
@@ -259,7 +259,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("https://mysite.org")
         doc.headers['access-control-allow-methods'].should eq(@headers)
         doc.headers['access-control-allow-headers'].should eq("foo,bar,baz")
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("true")
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
@@ -286,7 +286,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-origin'].should eq("http://127.0.0.1")
         doc.headers['access-control-allow-methods'].should be_nil
         doc.headers['access-control-allow-headers'].should be_nil
-        doc.headers['access-control-allow-credentials'].should be_nil
+        doc.headers['access-control-allow-credentials'].should eq("false")
         doc.headers['access-control-max-age'].should be_nil
       end
 
