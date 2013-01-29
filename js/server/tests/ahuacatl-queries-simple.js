@@ -28,6 +28,7 @@
 var jsunity = require("jsunity");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 var QUERY = require("internal").AQL_QUERY;
+var errors = require("internal").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -35,7 +36,7 @@ var QUERY = require("internal").AQL_QUERY;
 
 function ahuacatlQuerySimpleTestSuite () {
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,6 +66,19 @@ function ahuacatlQuerySimpleTestSuite () {
     }
 
     return results;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
   }
 
 
@@ -793,8 +807,32 @@ function ahuacatlQuerySimpleTestSuite () {
       
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['-1']");
       assertEqual([ null ], actual);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief naming
+////////////////////////////////////////////////////////////////////////////////
+
+    testNaming: function () {
+      var actual, expected;
+      
+      actual = getQueryResults("LET a = [ 1 ] RETURN a[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET `a` = [ 1 ] RETURN `a`[0]");
+      assertEqual([ 1 ], actual);
+    
+      actual = getQueryResults("LET `a b` = [ 1 ] RETURN `a b`[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET `a b c` = [ 1 ] RETURN `a b c`[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET `a b c` = { `d e f`: 1 } RETURN `a b c`['d e f']");
+      assertEqual([ 1 ], actual);
+      
+      assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, getErrorCode(function() { QUERY("LET a = 1 RETURN `a b c`"); } ));
+    }
   };
 }
 
