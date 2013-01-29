@@ -420,7 +420,11 @@
 ///
 /// Individual list values can later be accesses by their positions using the
 /// @LIT{[]} accessor. The position of the accessed element must be a numeric
-/// value. Positions start at 0.
+/// value. Positions start at 0. 
+/// It is also possible to use negative index values to access list values
+/// starting from the end of the list. This is convenient if the length of 
+/// the list is unknown and access to elements at the end of the list is
+/// required.
 ///
 /// @verbinclude aqllistaccess
 ///

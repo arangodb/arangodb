@@ -374,12 +374,23 @@ function GET_INDEX (value, index) {
     return null;
   }
   
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST &&
-      TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
+  var result = null;
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
+    result = value[index];
+  }
+  else if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+    if (index < 0) {
+      // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1];
+      index = value.length + index;
+    }
+
+    if (index >= 0) {
+      result = value[index];
+    }
+  }
+  else {
     THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
-
-  var result = value[index];
 
   if (TYPEWEIGHT(result) === TYPEWEIGHT_NULL) {
     return null;
