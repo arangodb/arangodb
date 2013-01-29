@@ -8,6 +8,9 @@ describe ArangoDB do
   prefix = "api-index"
 
   context "dealing with indexes:" do
+    before do
+      @reFull = Regexp.new('^[a-zA-Z0-9_\-]+/\d+$')
+    end
 
 ################################################################################
 ## error handling
@@ -71,9 +74,11 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("cap")
         doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        iid = doc.parsed_response['id']
 
         doc = ArangoDB.log_post("#{prefix}-create-old-cap-constraint", cmd, :body => body)
   
@@ -81,7 +86,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("cap")
         doc.parsed_response['isNewlyCreated'].should eq(false)
       end
@@ -111,7 +117,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
 
@@ -136,6 +142,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("cap")
         doc.parsed_response['size'].should eq(10)
@@ -166,7 +173,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo1")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
@@ -178,7 +185,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo1")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
@@ -194,7 +201,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo1")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "b" ])
@@ -210,7 +217,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo1")
         doc.parsed_response['geoJson'].should eq(true)
         doc.parsed_response['fields'].should eq([ "c" ])
@@ -226,7 +233,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo1")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "d" ])
@@ -242,7 +249,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("geo2")
         doc.parsed_response['fields'].should eq([ "e", "f" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
@@ -273,7 +280,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
 
@@ -298,6 +305,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("geo1")
         doc.parsed_response['geoJson'].should eq(false)
@@ -329,11 +337,13 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+        
+        iid = doc.parsed_response['id']
 
         doc = ArangoDB.log_post("#{prefix}-create-old-unique-constraint", cmd, :body => body)
   
@@ -341,7 +351,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
@@ -373,7 +384,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
 
@@ -398,6 +409,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
@@ -429,11 +441,13 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        iid = doc.parsed_response['id']
 
         doc = ArangoDB.log_post("#{prefix}-create-old-hash-index", cmd, :body => body)
   
@@ -441,7 +455,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
@@ -473,7 +488,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
 
@@ -498,6 +513,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(false)
@@ -529,11 +545,13 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        iid = doc.parsed_response['id']
 
         doc = ArangoDB.log_post("#{prefix}-create-old-skiplist", cmd, :body => body)
         
@@ -541,7 +559,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
@@ -573,7 +592,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
 
@@ -598,6 +617,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(false)
@@ -629,11 +649,13 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
+
+        iid = doc.parsed_response['id']
 
         doc = ArangoDB.log_post("#{prefix}-create-old-unique-skiplist", cmd, :body => body)
         
@@ -641,7 +663,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
+        doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
@@ -698,6 +721,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(true)
@@ -733,6 +757,7 @@ describe ArangoDB do
         identifiers = doc.parsed_response['identifiers']
 
         for index in indexes do
+          index['id'].should match(@reFull)
           identifiers[index['id']].should eq(index)
         end
       end
@@ -750,6 +775,7 @@ describe ArangoDB do
         identifiers = doc.parsed_response['identifiers']
 
         for index in indexes do
+          index['id'].should match(@reFull)
           identifiers[index['id']].should eq(index)
         end
       end
@@ -819,7 +845,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should_not eq(0)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['type'].should eq("skiplist")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['fields'].should eq([ "a", "b" ])
@@ -834,6 +860,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
 
         cmd = api + "/#{iid}"
