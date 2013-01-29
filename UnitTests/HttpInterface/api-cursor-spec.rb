@@ -8,6 +8,9 @@ describe ArangoDB do
   prefix = "api-cursor"
 
   context "dealing with cursors:" do
+    before do
+      @reId = Regexp.new('^\d+$')
+    end
 
 ################################################################################
 ## error handling
@@ -89,6 +92,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(2)
         doc.parsed_response['result'].length.should eq(2)
@@ -103,6 +107,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(nil)
         doc.parsed_response['result'].length.should eq(2)
@@ -117,6 +122,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(2)
         doc.parsed_response['result'].length.should eq(2)
@@ -132,6 +138,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
@@ -145,6 +152,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['id'].should eq(id)
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
@@ -156,6 +166,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
@@ -180,6 +191,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
@@ -193,6 +205,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['id'].should eq(id)
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
@@ -204,6 +219,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
       end
 
       it "deleting a cursor" do
@@ -216,6 +233,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
@@ -229,6 +247,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
       end
 
       it "deleting a deleted cursor" do
@@ -241,6 +261,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(2)
@@ -254,17 +275,20 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
         
-              doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
+        doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
 
         doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorNum'].should eq(1600);
         doc.parsed_response['code'].should eq(404)
-            end
+        doc.parsed_response['id'].should be_nil
+      end
 
-            it "deleting an invalid cursor" do
+    it "deleting an invalid cursor" do
         cmd = api
         cmd = api + "/999999" # we assume this cursor id is invalid
         doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
@@ -274,6 +298,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true);
         doc.parsed_response['errorNum'].should eq(1600);
         doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['id'].should be_nil
       end
     end
 
