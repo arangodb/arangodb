@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
-/*global require, assertEqual, assertTrue */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph traversal class
@@ -36,13 +36,14 @@ var traversal = require("org/arangodb/graph/traversal");
 var graph = require("org/arangodb/graph");
 
 var db = arangodb.db;
+var Traverser = traversal.Traverser;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   graph traversal
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: in-memory graph traversal
+/// @brief test: graph traversal
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphTraversalSuite () {
@@ -61,7 +62,7 @@ function GraphTraversalSuite () {
     setUp : function () {
       try {
         g = new graph.Graph(gn);
-        if (g != null) {
+        if (g !== null) {
           g.drop();
           g = null;
         }
@@ -86,7 +87,7 @@ function GraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      if (g != null) {
+      if (g !== null) {
         g.drop();
       }
     },
@@ -97,26 +98,20 @@ function GraphTraversalSuite () {
 
     testOutboundTraversal1 : function () {
       var config = {
-        datasource: traversal.GraphDatasourceFactory(gn),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        expander: traversal.OutboundExpander,
+        datasource: traversal.graphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        expander: traversal.outboundExpander,
         visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex._id);
+          result.visited.push(vertex.getId());
         }
-      }
+      };
 
       var result = { visited: [ ] };
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, g.getVertex("v1"));
 
-      var expected = [
-        vn + "/v1", 
-        vn + "/v2", 
-        vn + "/v3", 
-        vn + "/v4", 
-        vn + "/v3" 
-      ];
+      var expected = ["v1", "v2", "v3", "v4", "v3" ];
 
       assertEqual(expected, result.visited);
     },
@@ -127,23 +122,20 @@ function GraphTraversalSuite () {
 
     testOutboundTraversal2 : function () {
       var config = {
-        datasource: traversal.GraphDatasourceFactory(gn),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        expander: traversal.OutboundExpander,
+        datasource: traversal.graphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        expander: traversal.outboundExpander,
         visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex._id);
+          result.visited.push(vertex.getId());
         }
-      }
+      };
 
       var result = { visited: [ ] };
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, g.getVertex("v4"));
 
-      var expected = [
-        vn + "/v4",
-        vn + "/v3"
-      ];
+      var expected = [ "v4", "v3" ];
 
       assertEqual(expected, result.visited);
     },
@@ -154,26 +146,20 @@ function GraphTraversalSuite () {
 
     testOutboundTraversalBreadthFirst : function () {
       var config = {
-        datasource: traversal.GraphDatasourceFactory(gn),
-        strategy: traversal.Traverser.BREADTH_FIRST,
-        expander: traversal.OutboundExpander,
+        datasource: traversal.graphDatasourceFactory(gn),
+        strategy: Traverser.BREADTH_FIRST,
+        expander: traversal.outboundExpander,
         visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex._id);
+          result.visited.push(vertex.getId());
         }
-      }
+      };
 
       var result = { visited: [ ] };
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, g.getVertex("v1"));
 
-      var expected = [
-        vn + "/v1", 
-        vn + "/v2", 
-        vn + "/v4", 
-        vn + "/v3", 
-        vn + "/v3" 
-      ];
+      var expected = [ "v1", "v2", "v4", "v3", "v3" ];
 
       assertEqual(expected, result.visited);
     },
@@ -184,26 +170,20 @@ function GraphTraversalSuite () {
 
     testInboundTraversal : function () {
       var config = {
-        datasource: traversal.GraphDatasourceFactory(gn),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        expander: traversal.InboundExpander,
+        datasource: traversal.graphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        expander: traversal.inboundExpander,
         visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex._id);
+          result.visited.push(vertex.getId());
         }
-      }
+      };
 
       var result = { visited: [ ] };
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, g.getVertex("v3"));
 
-      var expected = [
-        vn + "/v3", 
-        vn + "/v2", 
-        vn + "/v1", 
-        vn + "/v4", 
-        vn + "/v1" 
-      ];
+      var expected = [ "v3", "v2", "v1", "v4", "v1" ];
 
       assertEqual(expected, result.visited);
     },
@@ -214,38 +194,136 @@ function GraphTraversalSuite () {
 
     testAnyTraversal : function () {
       var config = {
-        datasource: traversal.GraphDatasourceFactory(gn),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        expander: traversal.AnyExpander,
+        datasource: traversal.graphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        expander: traversal.anyExpander,
         visitor: function (config, result, vertex, path) {
-          result.visited.push(vertex._id);
+          result.visited.push(vertex.getId());
         },
         uniqueness: {
-          vertices: traversal.UNIQUE_GLOBAL
+          vertices: Traverser.UNIQUE_GLOBAL
         }
-      }
+      };
 
       var result = { visited: [ ] };
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, g.getVertex("v3"));
 
-      var expected = [
-        vn + "/v3", 
-        vn + "/v2", 
-        vn + "/v1", 
-        vn + "/v4" 
-      ];
+      var expected = [ "v3", "v2", "v1", "v4" ];
 
       assertEqual(expected, result.visited);
     }
 
   };
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              in memory traversals
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create in-memory data-source
+////////////////////////////////////////////////////////////////////////////////
+
+function memoryDatasource (nodes, connections) {
+  var vertices = { };
+  var inEdges  = { };
+  var outEdges = { };
+
+  // create vertices
+  nodes.forEach(function (key) {
+    vertices["vertices/" + key] = {
+      _id: "vertices/" + key,
+      _key: key,
+      name: key
+    };
+  });
+
+  // create connections
+  var connect = function (from, to, label) {
+    var key = from + "x" + to;
+
+    var edge = {
+      _id : "edges/" + key,
+      _key : key, 
+      _from : "vertices/" + from,
+      _to : "vertices/" + to,
+      what : from + "->" + to
+    };
+
+    if (typeof label !== "undefined") {
+      edge.label = label;
+    }
+    
+    if (outEdges[edge._from] === undefined) {
+      outEdges[edge._from] = [];
+    }
+
+    outEdges[edge._from].push(edge);
+
+    if (inEdges[edge._to] === undefined) {
+      inEdges[edge._to] = [];
+    }
+
+    inEdges[edge._to].push(edge);
+  };
+
+  connections.forEach(function (c) {
+    connect(c[0], c[1], c[2]);
+  });
+
+  // return the datasource
+  return {
+    inEdges: inEdges,
+    outEdges: outEdges,
+    vertices: vertices,
+    
+    getVertexId: function (vertex) {
+      return vertex._id;
+    },
+
+    getPeerVertex: function (edge, vertex) {
+      if (edge._from === vertex._id) {
+	return this.getInVertex(edge);
+      }
+
+      if (edge._to === vertex._id) {
+	return this.getOutVertex(edge);
+      }
+
+      return null;
+    },
+
+    getInVertex: function (edge) {
+      return this.vertices[edge._to];
+    },
+
+    getOutVertex: function (edge) {
+      return this.vertices[edge._from];
+    },
+
+    getEdgeId: function (edge) {
+      return edge._id;
+    },
+
+    getLabel: function (edge) {
+      return edge.label;
+    },
+
+    getAllEdges: function (vertex) {
+      return this.inEdges[vertex._id].concat(outEdges[vertex._id]);
+    },
+    
+    getInEdges: function (vertex) {
+      return this.inEdges[vertex._id];
+    },
+    
+    getOutEdges: function (vertex) {
+      return this.outEdges[vertex._id];
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: in-memory graph traversal
@@ -256,178 +334,83 @@ function MemoryTraversalSuite () {
   var datasourcePeople;
    
   var setUpSourceWorld = function () {
-    var vertices = { };
-    var inEdges  = { };
-    var outEdges = { };
-      
-    [ "World", "Nothing",
-      "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
-      "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA", "AN",
-      "London", "Paris", "Lyon", "Cologne", "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney" 
-    ].forEach(function (item) {
-      var key = item;
-      var vertex = {
-        _id : "vertices/" + key,
-        _key : key,
-        name : item
-      };
-      vertices[vertex._id] = vertex;
-    });
+    var nodes = [
+      "World", "Nothing", "Europe", "Asia", "America", "Australia", "Antarctica",
+      "Africa", "Blackhole", "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US",
+      "MX", "AU", "EG", "ZA", "AN", "London", "Paris", "Lyon", "Cologne",
+      "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth",
+      "Sydney" 
+    ];
     
-    var connect = function (from, to) {
-      var key = from + "x" + to;
-      var edge = {
-        _id : "edges/" + key,
-        _key : key, 
-        _from : "vertices/" + from,
-        _to : "vertices/" + to,
-        what : from + "->" + to,
-      };
-    
-      if (outEdges[edge._from] == undefined) {
-        outEdges[edge._from] = [ ];
-      }
-      outEdges[edge._from].push(edge);
-      if (inEdges[edge._to] == undefined) {
-        inEdges[edge._to] = [ ];
-      }
-      inEdges[edge._to].push(edge);
-    };
-    
-    connect("World", "Europe");
-    connect("World", "Asia");
-    connect("World", "America");
-    connect("World", "Australia");
-    connect("World", "Africa");
-    connect("World", "Antarctica");
-    connect("Europe", "DE"); 
-    connect("Europe", "FR"); 
-    connect("Europe", "GB"); 
-    connect("Europe", "IE"); 
-    connect("Asia", "CN"); 
-    connect("Asia", "JP"); 
-    connect("Asia", "TW"); 
-    connect("America", "US"); 
-    connect("America", "MX"); 
-    connect("Australia", "AU"); 
-    connect("Antarctica", "AN");
+    var connections = [
+      ["World", "Europe"],
+      ["World", "Asia"],
+      ["World", "America"],
+      ["World", "Australia"],
+      ["World", "Africa"],
+      ["World", "Antarctica"],
+      ["Europe", "DE"],
+      ["Europe", "FR"],
+      ["Europe", "GB"],
+      ["Europe", "IE"],
+      ["Asia", "CN"],
+      ["Asia", "JP"],
+      ["Asia", "TW"],
+      ["America", "US"],
+      ["America", "MX"],
+      ["Australia", "AU"],
+      ["Antarctica", "AN"]
+    ];
        
-    datasourceWorld = {
-      inEdges: inEdges,
-      outEdges: outEdges,
-      vertices: vertices,
-    
-      getAllEdges: function (vertexId) {
-        return this.inEdges[vertexId].concat(outEdges[vertexId]);
-      },
-    
-      getInEdges: function (vertexId) {
-        return this.inEdges[vertexId];
-      },
-    
-      getOutEdges: function (vertexId) {
-        return this.outEdges[vertexId];
-      }
-    };
+    datasourceWorld = memoryDatasource(nodes, connections);
   };
     
   var setUpSourcePeople = function () {
-    var vertices = { };
-    var inEdges = { };
-    var outEdges = { };
+    var nodes = [
+      "Alice", "Bob", "Charly", "Diana", "Eric", "Frank"
+    ];
   
-    ["Alice",
-    "Bob",
-    "Charly",
-    "Diana",
-    "Eric",
-    "Frank"].forEach( function (person){
-      var key = person;
-      var vertex = {
-        _id : "vertices/" + key,
-        _key : key,
-        name : person
-      };
-      vertices[vertex._id] = vertex;
-    });
-      
-    var connect = function (from, to, label) {
-      var key = from + "x" + to;
-      var edge = {
-        _id : "edges/" + key,
-        _key : key, 
-        _from : "vertices/" + from,
-        _to : "vertices/" + to,
-        what : from + "->" + to,
-        label : label
-      };
-
-      if (outEdges[edge._from] == undefined) {
-        outEdges[edge._from] = [ ];
-      }
-      if (inEdges[edge._to] == undefined) {
-        inEdges[edge._to] = [ ];
-      }
-      outEdges[edge._from].push(edge);
-      inEdges[edge._to].push(edge);
-    
-    };
+    var connections = [
+      ["Alice", "Bob", "likes"],
+      ["Bob", "Alice", "likes"],
+      ["Alice", "Diana", "hates"],
+      ["Alice", "Eric", "hates"],
+      ["Eric", "Alice","hates"],
+      ["Bob", "Charly", "likes"],
+      ["Charly", "Diana", "hates"],
+      ["Diana", "Charly", "hates"],
+      ["Diana", "Alice", "likes"],
+      ["Diana", "Eric", "likes"],
+      ["Alice", "Frank", "l"],
+      ["Frank", "Bob", "likes"]
+    ];
   
-    var connectBoth = function (first, second, label) {
-      connect(first, second, label);
-      connect(second, first, label);
-    };
-  
-    connectBoth("Alice", "Bob", "likes");
-    connect("Alice", "Diana", "hates");
-    connectBoth("Alice", "Eric", "hates");
-    connect("Bob", "Charly", "likes");
-    connectBoth("Charly", "Diana", "hates");
-    connect("Diana", "Alice", "likes");
-    connect("Diana", "Eric", "likes");
-    connect("Alice", "Frank", "l");
-    connect("Frank", "Bob", "likes");
-  
-    // SetUp Data source
-  
-    datasourcePeople = {
-      inEdges: inEdges,
-      outEdges: outEdges,
-      vertices: vertices,
-    
-      getAllEdges: function (vertex_id) {
-        return inEdges[vertex_id].concat(outEdges[vertex_id]);
-      },
-    
-      getInEdges: function (vertex_id) {
-        return inEdges[vertex_id];
-      },
-    
-      getOutEdges: function (vertex_id) {
-        return outEdges[vertex_id]
-      }
-    };
+    datasourcePeople = memoryDatasource(nodes, connections);
   };
    
       
-  var visitor = traversal.TrackingVisitor;
+  var visitor = traversal.trackingVisitor;
 
   var filter = function (config, vertex, path) {
     var r = [ ];
+
     if (config.noVisit && config.noVisit[vertex._id]) {
-      r.push(traversal.Traverser.EXCLUDE);
+      r.push(Traverser.EXCLUDE);
     }
+
     if (config.noExpand && config.noExpand[vertex._id]) {
-      r.push(traversal.Traverser.PRUNE);
+      r.push(Traverser.PRUNE);
     }
+
     return r;
   };
 
   var expander = function (config, vertex, path) {
     var r = [ ];
-    
-    var edgesList = config.datasource.getOutEdges(vertex._id);
-    if (edgesList != undefined) {
+    var edgesList = config.datasource.getOutEdges(vertex);
+    var i;
+
+    if (edgesList !== undefined) {
       for (i = 0; i < edgesList.length; ++i) {
         r.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
       }
@@ -437,17 +420,21 @@ function MemoryTraversalSuite () {
 
   var getIds = function (data) {
     var r = [ ];
+
     data.forEach(function (item) {
       r.push(item._id);
     });
+
     return r;
   };
   
   var getVisitedPaths = function (data) {
     var r = [ ];
+
     data.forEach(function (item) {
       r.push(getIds(item.vertices));
     });
+
     return r;
   };
   
@@ -463,9 +450,10 @@ function MemoryTraversalSuite () {
   var getConfig = function () {
     return {
       uniqueness: {
-        vertices: traversal.Traverser.UNIQUE_NONE,
-        edges: traversal.Traverser.UNIQUE_NONE
+        vertices: Traverser.UNIQUE_NONE,
+        edges: Traverser.UNIQUE_NONE
       }, 
+
       visitor: visitor,
       filter: filter,
       expander: expander,
@@ -475,6 +463,7 @@ function MemoryTraversalSuite () {
         "vertices/Antarctica" : true,
         "vertices/IE": true
       },
+
       noExpand: {
         "vertices/Africa": true
       }
@@ -505,12 +494,13 @@ function MemoryTraversalSuite () {
 
     testDepthFirstPreOrderForward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.DEPTH_FIRST;
-      config.order = traversal.Traverser.PRE_ORDER;
-      config.itemOrder = traversal.Traverser.FORWARD;
+      config.strategy = Traverser.DEPTH_FIRST;
+      config.order = Traverser.PRE_ORDER;
+      config.itemOrder = Traverser.FORWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
+
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -529,7 +519,7 @@ function MemoryTraversalSuite () {
         "vertices/Australia",
         "vertices/AU",
         "vertices/Africa",
-        "vertices/AN",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -562,12 +552,12 @@ function MemoryTraversalSuite () {
 
     testDepthFirstPreOrderBackward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.DEPTH_FIRST;
-      config.order = traversal.Traverser.PRE_ORDER;
-      config.itemOrder = traversal.Traverser.BACKWARD;
+      config.strategy = Traverser.DEPTH_FIRST;
+      config.order = Traverser.PRE_ORDER;
+      config.itemOrder = Traverser.BACKWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
@@ -619,12 +609,12 @@ function MemoryTraversalSuite () {
 
     testDepthFirstPostOrderForward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.DEPTH_FIRST;
-      config.order = traversal.Traverser.POST_ORDER;
-      config.itemOrder = traversal.Traverser.FORWARD;
+      config.strategy = Traverser.DEPTH_FIRST;
+      config.order = Traverser.POST_ORDER;
+      config.itemOrder = Traverser.FORWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
@@ -676,12 +666,12 @@ function MemoryTraversalSuite () {
 
     testDepthFirstPostOrderBackward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.DEPTH_FIRST;
-      config.order = traversal.Traverser.POST_ORDER;
-      config.itemOrder = traversal.Traverser.BACKWARD;
+      config.strategy = Traverser.DEPTH_FIRST;
+      config.order = Traverser.POST_ORDER;
+      config.itemOrder = Traverser.BACKWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
@@ -733,12 +723,12 @@ function MemoryTraversalSuite () {
 
     testBreadthFirstPreOrderForward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.BREADTH_FIRST;
-      config.order = traversal.Traverser.PRE_ORDER;
-      config.itemOrder = traversal.Traverser.FORWARD;
+      config.strategy = Traverser.BREADTH_FIRST;
+      config.order = Traverser.PRE_ORDER;
+      config.itemOrder = Traverser.FORWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
@@ -790,12 +780,12 @@ function MemoryTraversalSuite () {
 
     testBreadthFirstPreOrderBackward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.BREADTH_FIRST;
-      config.order = traversal.Traverser.PRE_ORDER;
-      config.itemOrder = traversal.Traverser.BACKWARD;
+      config.strategy = Traverser.BREADTH_FIRST;
+      config.order = Traverser.PRE_ORDER;
+      config.itemOrder = Traverser.BACKWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -847,12 +837,12 @@ function MemoryTraversalSuite () {
 
     testBreadthFirstPostOrderForward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.BREADTH_FIRST;
-      config.order = traversal.Traverser.POST_ORDER;
-      config.itemOrder = traversal.Traverser.FORWARD;
+      config.strategy = Traverser.BREADTH_FIRST;
+      config.order = Traverser.POST_ORDER;
+      config.itemOrder = Traverser.FORWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
@@ -904,12 +894,12 @@ function MemoryTraversalSuite () {
 
     testBreadthFirstPostOrderBackward : function () {
       var config = getConfig();
-      config.strategy = traversal.Traverser.BREADTH_FIRST;
-      config.order = traversal.Traverser.POST_ORDER;
-      config.itemOrder = traversal.Traverser.BACKWARD;
+      config.strategy = Traverser.BREADTH_FIRST;
+      config.order = Traverser.POST_ORDER;
+      config.itemOrder = Traverser.BACKWARD;
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
@@ -963,12 +953,12 @@ function MemoryTraversalSuite () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
-        filter: traversal.MinDepthFilter,
+        filter: traversal.minDepthFilter,
         minDepth: 0
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -989,7 +979,7 @@ function MemoryTraversalSuite () {
         "vertices/AU",
         "vertices/Africa",
         "vertices/Antarctica",
-        "vertices/AN",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1026,12 +1016,12 @@ function MemoryTraversalSuite () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
-        filter: traversal.MinDepthFilter,
+        filter: traversal.minDepthFilter,
         minDepth: 1
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -1051,7 +1041,7 @@ function MemoryTraversalSuite () {
         "vertices/AU",
         "vertices/Africa",
         "vertices/Antarctica",
-        "vertices/AN",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1088,12 +1078,12 @@ function MemoryTraversalSuite () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
-        filter: traversal.MinDepthFilter,
+        filter: traversal.minDepthFilter,
         minDepth: 2
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -1107,7 +1097,7 @@ function MemoryTraversalSuite () {
         "vertices/US",
         "vertices/MX",
         "vertices/AU",
-        "vertices/AN",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1137,16 +1127,16 @@ function MemoryTraversalSuite () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
-        filter: traversal.MaxDepthFilter,
+        filter: traversal.maxDepthFilter,
         maxDepth: 0
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
-        "vertices/World",
+        "vertices/World"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1166,12 +1156,12 @@ function MemoryTraversalSuite () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
-        filter: traversal.MaxDepthFilter,
+        filter: traversal.maxDepthFilter,
         maxDepth: 1
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -1181,7 +1171,7 @@ function MemoryTraversalSuite () {
         "vertices/America",
         "vertices/Australia",
         "vertices/Africa",
-        "vertices/Antarctica",
+        "vertices/Antarctica"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1207,12 +1197,12 @@ function MemoryTraversalSuite () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
-        filter: traversal.MaxDepthFilter,
+        filter: traversal.maxDepthFilter,
         maxDepth: 2
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -1233,7 +1223,7 @@ function MemoryTraversalSuite () {
         "vertices/AU",
         "vertices/Africa",
         "vertices/Antarctica",
-        "vertices/AN",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1270,9 +1260,11 @@ function MemoryTraversalSuite () {
       // Can be removed as soon as all expanders use datasource
       var anyExp = function (config, vertex, path) {
         var result = [ ];
-    
-        var edgesList = config.datasource.getAllEdges(vertex._id);
-        if (edgesList != undefined) {
+        var edgesList = config.datasource.getAllEdges(vertex);
+
+        if (edgesList !== undefined) {
+	  var i;
+
           for (i = 0; i < edgesList.length; ++i) {
             result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
           }
@@ -1282,18 +1274,18 @@ function MemoryTraversalSuite () {
       
       var config = {
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_GLOBAL,
-          edges: traversal.Traverser.UNIQUE_NONE
+          vertices: Traverser.UNIQUE_GLOBAL,
+          edges: Traverser.UNIQUE_NONE
         },  
         matchingAttributes: [{"name": "Alice"}, {"name": "Frank"}, {"name": "Diana", "key": "FAIL"}, {"_id": "vertices/Bob"}],
         visitor: visitor,
         expander: anyExp,
-        filter: traversal.IncludeMatchingAttributesFilter,
+        filter: traversal.includeMatchingAttributesFilter,
         datasource: datasourcePeople
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
       
@@ -1312,23 +1304,23 @@ function MemoryTraversalSuite () {
   
     testCombineFilters : function () {
       var excluder1 = function(config, vertex, path) {
-        if (vertex.name && vertex.name === config.exclude1) return "exclude";
+        if (vertex.name && vertex.name === config.exclude1) { return "exclude"; }
       };
       
       var excluder2 = function(config, vertex, path) {
-        if (vertex.name && vertex.name === config.exclude2) return "exclude";
+        if (vertex.name && vertex.name === config.exclude2) { return "exclude"; }
       };
       
       var excluder3 = function(config, vertex, path) {
-        if (vertex.name && vertex.name === config.exclude3) return "exclude";
+        if (vertex.name && vertex.name === config.exclude3) { return "exclude"; }
       };
       
       var pruner1 = function(config, vertex, path) {
-        if (vertex.name && vertex.name === config.prune1) return "prune";
+        if (vertex.name && vertex.name === config.prune1) { return "prune"; }
       };
       
       var pruner2 = function(config, vertex, path) {
-        if (vertex.name && vertex.name === config.prune2) return "prune";
+        if (vertex.name && vertex.name === config.prune2) { return "prune"; }
       };
       
       var config = {
@@ -1349,7 +1341,7 @@ function MemoryTraversalSuite () {
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
@@ -1360,7 +1352,7 @@ function MemoryTraversalSuite () {
         "vertices/Australia",
         "vertices/Africa",
         "vertices/Antarctica",
-        "vertices/AN",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1385,21 +1377,21 @@ function MemoryTraversalSuite () {
   
     testOverrideExcludeAndPruneOfCombinedFilters : function () {
       var excludeAndPrune = function(config, vertex, path) {
-        if (vertex.name && vertex.name === config.excludeAndPrune) return ["prune", "exclude"];
+        if (vertex.name && vertex.name === config.excludeAndPrune) { return ["prune", "exclude"]; }
       };
       
       var config = {
         expander: expander,
         filter: [
           excludeAndPrune,
-          traversal.VisitAllFilter
+          traversal.visitAllFilter
         ],
         excludeAndPrune: "World",
         datasource: datasourceWorld
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [];
@@ -1418,17 +1410,17 @@ function MemoryTraversalSuite () {
     testFollowEdgesWithLabels : function () {
       var config = {
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_GLOBAL,
-          edges: traversal.Traverser.UNIQUE_NONE
+          vertices: Traverser.UNIQUE_GLOBAL,
+          edges: Traverser.UNIQUE_NONE
         },  
         labels: "likes",
         visitor: visitor,
-        expander: traversal.ExpandEdgesWithLabels,
+        expander: traversal.expandEdgesWithLabels,
         datasource: datasourcePeople
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
       
@@ -1438,7 +1430,7 @@ function MemoryTraversalSuite () {
         "vertices/Frank",
         "vertices/Charly",
         "vertices/Diana",
-        "vertices/Eric",
+        "vertices/Eric"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1462,17 +1454,17 @@ function MemoryTraversalSuite () {
     testFollowInEdgesWithLabels : function () {
       var config = {
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_GLOBAL,
-          edges: traversal.Traverser.UNIQUE_NONE
+          vertices: Traverser.UNIQUE_GLOBAL,
+          edges: Traverser.UNIQUE_NONE
         },  
         labels: "likes",
         visitor: visitor,
-        expander: traversal.ExpandInEdgesWithLabels,
+        expander: traversal.expandInEdgesWithLabels,
         datasource: datasourcePeople
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
       
@@ -1502,17 +1494,17 @@ function MemoryTraversalSuite () {
     testFollowOutEdgesWithLabels : function () {
       var config = {
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_GLOBAL,
-          edges: traversal.Traverser.UNIQUE_NONE
+          vertices: Traverser.UNIQUE_GLOBAL,
+          edges: Traverser.UNIQUE_NONE
         },  
         labels: "likes",
         visitor: visitor,
-        expander: traversal.ExpandOutEdgesWithLabels,
+        expander: traversal.expandOutEdgesWithLabels,
         datasource: datasourcePeople
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
 
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
       
@@ -1606,11 +1598,11 @@ function CollectionTraversalSuite () {
 
     testOutboundExpander : function () {
       var config = {
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 },
-        datasource: traversal.CollectionDatasourceFactory(edgeCollection)
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        datasource: traversal.collectionDatasourceFactory(edgeCollection)
       }; 
 
-      var expander = traversal.OutboundExpander;
+      var expander = traversal.outboundExpander;
       var connected;
       
       connected = [ ];
@@ -1641,11 +1633,11 @@ function CollectionTraversalSuite () {
 
     testInboundExpander : function () {
       var config = {
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 },
-        datasource: traversal.CollectionDatasourceFactory(edgeCollection)
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        datasource: traversal.collectionDatasourceFactory(edgeCollection)
       }; 
 
-      var expander = traversal.InboundExpander;
+      var expander = traversal.inboundExpander;
       var connected;
       
       connected = [ ];
@@ -1676,17 +1668,17 @@ function CollectionTraversalSuite () {
 
     testIterateFullOutbound : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        order: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        filter: traversal.VisitAllFilter,
-        expander: traversal.OutboundExpander,
+        datasource: traversal.collectionDatasourceFactory(db._collection(en)),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
       
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       var result = getResult();
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
@@ -1715,18 +1707,18 @@ function CollectionTraversalSuite () {
 
     testIterateInbound : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        order: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        filter: traversal.VisitAllFilter,
-        expander: traversal.InboundExpander,
+        datasource: traversal.collectionDatasourceFactory(db._collection(en)),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        filter: traversal.visitAllFilter,
+        expander: traversal.inboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
      
       var result = getResult(); 
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/F"));
 
       var expectedVisits = [
@@ -1747,22 +1739,22 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueGlobalVertices : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        order: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
+        datasource: traversal.collectionDatasourceFactory(db._collection(en)),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_GLOBAL,
-          edges: traversal.Traverser.UNIQUE_NONE
+          vertices: Traverser.UNIQUE_GLOBAL,
+          edges: Traverser.UNIQUE_NONE
         }, 
-        filter: traversal.VisitAllFilter,
-        expander: traversal.OutboundExpander,
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
@@ -1786,22 +1778,22 @@ function CollectionTraversalSuite () {
 
     testIterateUniquePathVertices : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        order: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
+        datasource: traversal.collectionDatasourceFactory(db._collection(en)),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_PATH,
-          edges: traversal.Traverser.UNIQUE_NONE
+          vertices: Traverser.UNIQUE_PATH,
+          edges: Traverser.UNIQUE_NONE
         }, 
-        filter: traversal.VisitAllFilter,
-        expander: traversal.OutboundExpander,
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
@@ -1829,22 +1821,22 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueEdges : function () {
       var config = { 
-        datasource: traversal.CollectionDatasourceFactory(db._collection(en)),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        order: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
+        datasource: traversal.collectionDatasourceFactory(db._collection(en)),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
         uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_GLOBAL
+          vertices: Traverser.UNIQUE_NONE,
+          edges: Traverser.UNIQUE_GLOBAL
         }, 
-        filter: traversal.VisitAllFilter,
-        expander: traversal.OutboundExpander,
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
       
       var result = getResult();
-      var traverser = new traversal.Traverser(config);
+      var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [

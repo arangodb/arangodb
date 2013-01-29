@@ -241,7 +241,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('function')) {
-    defn = "func = (function() {" + action['function'] + "})();";
+    defn = "func = (function() { var callback = " + action['function'] + "; return callback;})();";
     env = {};
 
     try {

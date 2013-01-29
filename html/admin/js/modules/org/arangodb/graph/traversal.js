@@ -9,7 +9,7 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2011-2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var graph = require("org/arangodb/graph");
@@ -35,7 +35,107 @@ var arangodb = require("org/arangodb");
 var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       datasources
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoTraverser
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default ArangoCollection datasource
+///
+/// This is a factory function that creates a datasource that operates on the
+/// specified edge collection. The vertices and edges are the documents in the
+/// corresponding collections.
+////////////////////////////////////////////////////////////////////////////////
+
+function collectionDatasourceFactory (edgeCollection) {
+  return {
+    edgeCollection: edgeCollection,
+
+    getPeerVertex: function (edge, vertex) {
+      if (edge._from === vertex._id) {
+	return db._document(edge._to);
+      }
+
+      if (edge._to === vertex._id) {
+	return db._document(edge._from);
+      }
+
+      return null;
+    },
+
+    getInVertex: function (edge) {
+      return db._document(edge._to);
+    },
+
+    getOutVertex: function (edge) {
+      return db._document(edge._from);
+    },
+
+    getAllEdges: function (vertex) {
+      return this.edgeCollection.edges(vertex._id);
+    },
+    
+    getInEdges: function (vertex) {
+      return this.edgeCollection.inEdges(vertex._id);
+    },
+    
+    getOutEdges: function (vertex) {
+      return this.edgeCollection.outEdges(vertex._id);
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default Graph datasource
+///
+/// This is a datasource that operates on the specified graph. The vertices
+/// are from type Vertex, the edges from type Edge.
+////////////////////////////////////////////////////////////////////////////////
+
+function graphDatasourceFactory (name) {
+  return {
+    graph: new graph.Graph(name),
+
+    getPeerVertex: function (edge, vertex) {
+      return edge.getPeerVertex(vertex);
+    },
+
+    getInVertex: function (edge) {
+      return edge.getInVertex();
+    },
+
+    getOutVertex: function (edge) {
+      return edge.getOutVertex();
+    },
+
+    getAllEdges: function (vertex) {
+      return vertex.edges();
+    },
+    
+    getInEdges: function (vertex) {
+      return vertex.inbound();
+    },
+    
+    getOutEdges: function (vertex) {
+      return vertex.outbound();
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       datasources
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,9 +147,10 @@ var db = arangodb.db;
 /// @brief default outbound expander function
 ////////////////////////////////////////////////////////////////////////////////
 
-function OutboundExpander (config, vertex, path) {
+function outboundExpander (config, vertex, path) {
+  var datasource = config.datasource;
   var connections = [ ];
-  var outEdges = config.datasource.getOutEdges(vertex._id);
+  var outEdges = datasource.getOutEdges(vertex);
       
   if (outEdges.length > 1 && config.sort) {
     outEdges.sort(config.sort);
@@ -57,7 +158,8 @@ function OutboundExpander (config, vertex, path) {
 
   outEdges.forEach(function (edge) {
     try {
-      var v = config.datasource.getVertex(edge._to);
+      var v = datasource.getInVertex(edge);
+
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
         connections.push({ edge: edge, vertex: v });    
       }
@@ -74,9 +176,10 @@ function OutboundExpander (config, vertex, path) {
 /// @brief default inbound expander function 
 ////////////////////////////////////////////////////////////////////////////////
 
-function InboundExpander (config, vertex, path) {
+function inboundExpander (config, vertex, path) {
+  var datasource = config.datasource;
   var connections = [ ];
-  var inEdges = config.datasource.getInEdges(vertex._id);
+  var inEdges = datasource.getInEdges(vertex);
       
   if (inEdges.length > 1 && config.sort) {
     inEdges.sort(config.sort);
@@ -84,7 +187,8 @@ function InboundExpander (config, vertex, path) {
 
   inEdges.forEach(function (edge) {
     try {
-      var v = config.datasource.getVertex(edge._from);
+      var v = datasource.getOutVertex(edge);
+
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
         connections.push({ edge: edge, vertex: v });    
       }
@@ -101,9 +205,10 @@ function InboundExpander (config, vertex, path) {
 /// @brief default "any" expander function 
 ////////////////////////////////////////////////////////////////////////////////
 
-function AnyExpander (config, vertex, path) {
+function anyExpander (config, vertex, path) {
+  var datasource = config.datasource;
   var connections = [ ];
-  var edges = config.datasource.getAllEdges(vertex._id);
+  var edges = datasource.getAllEdges(vertex);
       
   if (edges.length > 1 && config.sort) {
     edges.sort(config.sort);
@@ -111,7 +216,8 @@ function AnyExpander (config, vertex, path) {
 
   edges.forEach(function (edge) {
     try {
-      var v = config.datasource.getVertex(edge._from === vertex._id ? edge._to : edge._from);
+      var v = datasource.getPeerVertex(edge, vertex);
+
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
         connections.push({ edge: edge, vertex: v });    
       }
@@ -124,99 +230,6 @@ function AnyExpander (config, vertex, path) {
   return connections;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default ArangoCollection datasource
-///
-/// this is a factory function that creates a datasource that operates on the
-/// specified edge collection
-////////////////////////////////////////////////////////////////////////////////
-
-function CollectionDatasourceFactory (edgeCollection) {
-  return {
-    edgeCollection: edgeCollection,
-
-    getAllEdges: function (vertexId) {
-      return this.edgeCollection.edges(vertexId);
-    },
-    
-    getInEdges: function (vertexId) {
-      return this.edgeCollection.inEdges(vertexId);
-    },
-    
-    getOutEdges: function (vertexId) {
-      return this.edgeCollection.outEdges(vertexId);
-    },
-
-    getVertex: function (vertexId) {
-      return db._document(vertexId);
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default Graph datasource
-///
-/// this is a datasource that operates on the specified graph
-////////////////////////////////////////////////////////////////////////////////
-
-function GraphDatasourceFactory (name) {
-  return {
-    graph: new graph.Graph(name),
-
-    getAllEdges: function (vertexId) {
-      var r = [ ];
-      var that = this;
-      this.graph.getVertex(vertexId).edges().forEach(function (edge) {
-        var vertexIn = edge.getInVertex();
-        var vertexOut = edge.getOutVertex();
-        r.push({ 
-          _id: edge._id, 
-          _to: vertexIn._id.split("/")[1], 
-          _from: vertexOut._id.split("/")[1] 
-        });
-      });
-
-      return r;
-    },
-    
-    getInEdges: function (vertexId) {
-      var r = [ ];
-      var that = this;
-      this.graph.getVertex(vertexId).getInEdges().forEach(function (edge) {
-        var vertexIn = edge.getInVertex();
-        var vertexOut = edge.getOutVertex();
-        r.push({ 
-          _id: edge._id, 
-          _to: vertexIn._id.split("/")[1], 
-          _from: vertexOut._id.split("/")[1] 
-        });
-      });
-
-      return r;
-    },
-    
-    getOutEdges: function (vertexId) {
-      var r = [ ];
-      var that = this;
-      this.graph.getVertex(vertexId).getOutEdges().forEach(function (edge) {
-        var vertexIn = edge.getInVertex();
-        var vertexOut = edge.getOutVertex();
-        r.push({ 
-          _id: edge._id, 
-          _to: vertexIn._id.split("/")[1], 
-          _from: vertexOut._id.split("/")[1] 
-        });
-      });
-
-      return r;
-    },
-
-    getVertex: function (vertexId) {
-      return this.graph.getVertex(vertexId);
-    }
-  };
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 /// @brief default expander that expands all outbound edges labeled with one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -226,7 +239,7 @@ function ExpandOutEdgesWithLabels (config, vertex, path) {
   if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = config.datasource.getOutEdges(vertex._id);
+  var edgesList = config.datasource.getOutEdges(vertex._properties._id);
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
       if (!!~config.labels.indexOf(edgesList[i].label)) {
@@ -246,7 +259,7 @@ function ExpandInEdgesWithLabels (config, vertex, path) {
   if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = config.datasource.getInEdges(vertex._id);
+  var edgesList = config.datasource.getInEdges(vertex._properties._id);
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
       if (!!~config.labels.indexOf(edgesList[i].label)) {
@@ -266,7 +279,7 @@ function ExpandEdgesWithLabels (config, vertex, path) {
   if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = config.datasource.getInEdges(vertex._id);
+  var edgesList = config.datasource.getInEdges(vertex._properties._id);
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
       if (!!~config.labels.indexOf(edgesList[i].label)) {
@@ -274,7 +287,7 @@ function ExpandEdgesWithLabels (config, vertex, path) {
       }
     }
   }
-  edgesList = config.datasource.getOutEdges(vertex._id);
+  edgesList = config.datasource.getOutEdges(vertex._properties._id);
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
       if (!!~config.labels.indexOf(edgesList[i].label)) {
@@ -459,19 +472,19 @@ function parseFilterResult (args) {
 
 function checkUniqueness (uniqueness, visited, vertex, edge) {
   if (uniqueness.vertices !== ArangoTraverser.UNIQUE_NONE) {
-    if (visited.vertices[vertex._id] === true) {
+    if (visited.vertices[vertex._properties._id] === true) {
       return false;
     }
 
-    visited.vertices[vertex._id] = true;
+    visited.vertices[vertex._properties._id] = true;
   }
 
   if (edge !== null && uniqueness.edges !== ArangoTraverser.UNIQUE_NONE) {
-    if (visited.edges[edge._id] === true) {
+    if (visited.edges[edge._properties._id] === true) {
       return false;
     }
 
-    visited.edges[edge._id] = true;
+    visited.edges[edge._properties._id] = true;
   }
 
   return true;
@@ -517,7 +530,7 @@ function breadthFirstSearch () {
       
       items.forEach(function (item, i) {
         if (i !== ignore) {
-          visited[item._id] = true;
+          visited[item._properties._id] = true;
         }
       });
 
@@ -637,7 +650,7 @@ function depthFirstSearch () {
     getPathItems: function (items) {
       var visited = { };
       items.forEach(function (item) {
-        visited[item._id] = true;
+        visited[item._properties._id] = true;
       });
       return visited;
     },
@@ -752,7 +765,7 @@ function ArangoTraverser (config) {
     },
     visitor: TrackingVisitor,
     filter: VisitAllFilter,
-    expander: OutboundExpander,
+    expander: outboundExpander,
     datasource: null
   }, d;
 
@@ -942,12 +955,14 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.collectionDatasourceFactory     = collectionDatasourceFactory;
+exports.graphDatasourceFactory          = graphDatasourceFactory;
+
+exports.outboundExpander                = outboundExpander;
+exports.inboundExpander                 = inboundExpander;
+exports.anyExpander                     = anyExpander;
+
 exports.Traverser                       = ArangoTraverser;
-exports.OutboundExpander                = OutboundExpander;
-exports.InboundExpander                 = InboundExpander;
-exports.AnyExpander                     = AnyExpander;
-exports.CollectionDatasourceFactory     = CollectionDatasourceFactory;
-exports.GraphDatasourceFactory          = GraphDatasourceFactory;
 exports.VisitAllFilter                  = VisitAllFilter;
 exports.IncludeMatchingAttributesFilter = IncludeMatchingAttributesFilter;
 exports.TrackingVisitor                 = TrackingVisitor;
