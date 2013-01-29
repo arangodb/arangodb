@@ -731,6 +731,68 @@ function ahuacatlQuerySimpleTestSuite () {
 
       var actual = getQueryResults("/* for u in [1,2,3] */ return 1");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list index access 
+////////////////////////////////////////////////////////////////////////////////
+
+    testListIndexes: function () {
+      var actual, expected;
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[0]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[1]");
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[2]");
+      assertEqual([ 3 ], actual);
+
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[3]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-1]");
+      assertEqual([ 3 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-2]");
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-3]");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-4]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l['a']");
+      assertEqual([ null ], actual);
+  
+      actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l['0']");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[0]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[1]");
+      assertEqual([ '1' ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[-1]");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['0']");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['1']");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['2']");
+      assertEqual([ 2 ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['24']");
+      assertEqual([ null ], actual);
+      
+      actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['-1']");
+      assertEqual([ null ], actual);
     }
 
   };

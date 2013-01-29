@@ -1,6 +1,9 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* allow negative list indexes in AQL to access elements from the end of a list,
+  e.g. ```RETURN values[-1]``` will return the last element of the `values` list.
+
 * collection ids, index ids, cursor ids, and document revision ids created and 
   returned by ArangoDB are now returned as strings with numeric content inside. 
   This is done to prevent some value overrun/truncation in any part of the
