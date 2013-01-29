@@ -537,7 +537,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   
   V8ClientConnection* connection = CreateConnection();
   
-  if (connection->isConnected()) {
+  if (connection->isConnected() && connection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() 
          << "' Version " << connection->getVersion() << endl; 
   }
@@ -1401,7 +1401,7 @@ int main (int argc, char* argv[]) {
     BaseClient.printWelcomeInfo();
 
     if (useServer) {
-      if (ClientConnection->isConnected()) {
+      if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
         cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
              << "' version " << ClientConnection->getVersion() << endl; 
       }

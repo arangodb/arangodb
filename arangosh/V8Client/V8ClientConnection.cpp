@@ -138,7 +138,15 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
-    }        
+    }
+    else {
+      // initial request for /_api/version return some non-HTTP 200 response.
+      // now set up an error message
+      _lastErrorMessage = _client->getErrorMessage();
+      if (result) {
+        _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
+      }
+    }
   }
  
   if (result) { 
