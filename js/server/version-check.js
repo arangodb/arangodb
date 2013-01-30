@@ -370,7 +370,22 @@
 
     console.log("Upgrade successfully finished");
 
+    // successfully finished
     return true;
+  }
+
+
+  function applyFixes () {
+    // fixes we'll apply every time we start the server after an upgrade can go here...
+    try {
+      var users = db._collection("_users");
+      if (users) {
+        users.ensureUniqueConstraint("user");
+      }
+    }
+    catch (e) {
+
+    }
   }
 
   var lastVersion = null;
@@ -405,6 +420,7 @@
 
   if (lastVersion === currentVersion) {
     // version match!
+    applyFixes();
     return true;
   }
 
