@@ -1,5 +1,5 @@
 module.define("org/arangodb/graph/traversal", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +33,8 @@ var graph = require("org/arangodb/graph");
 var arangodb = require("org/arangodb");
 
 var db = arangodb.db;
+
+var ArangoTraverser;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -380,10 +382,12 @@ function trackingVisitor (config, result, vertex, path) {
     else if (obj instanceof Object) {
       copy = { };
 
-      for (i in obj) {
-        if (obj.hasOwnProperty && obj.hasOwnProperty(i)) {
-          copy[i] = clone(obj[i]);
-        }
+      if (obj.hasOwnProperty) {
+	for (i in obj) {
+          if (obj.hasOwnProperty(i)) {
+            copy[i] = clone(obj[i]);
+          }
+	}
       }
     }
 
@@ -565,9 +569,10 @@ function parseFilterResult (args) {
 function checkUniqueness (config, visited, vertex, edge) {
   var uniqueness = config.uniqueness;
   var datasource = config.datasource;
+  var id;
 
   if (uniqueness.vertices !== ArangoTraverser.UNIQUE_NONE) {
-    var id = datasource.getVertexId(vertex);
+    id = datasource.getVertexId(vertex);
 
     if (visited.vertices[id] === true) {
       return false;
@@ -577,7 +582,7 @@ function checkUniqueness (config, visited, vertex, edge) {
   }
 
   if (edge !== null && uniqueness.edges !== ArangoTraverser.UNIQUE_NONE) {
-    var id = datasource.getEdgeId(edge);
+    id = datasource.getEdgeId(edge);
 
     if (visited.edges[id] === true) {
       return false;
@@ -852,7 +857,7 @@ function depthFirstSearch () {
 /// @brief traversal constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function ArangoTraverser (config) {
+ArangoTraverser = function (config) {
   var defaults = {
     order: ArangoTraverser.PRE_ORDER,
     itemOrder: ArangoTraverser.FORWARD,
@@ -913,7 +918,7 @@ function ArangoTraverser (config) {
   }
 
   this.config = config;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
