@@ -95,6 +95,7 @@ typedef struct TRI_aql_scope_s {
   TRI_aql_limit_t            _limit;         // scope limit, used for optimisation
   TRI_vector_pointer_t       _sorts;         // scope sort criteria, used for optimisation
   TRI_aql_scope_e            _type;          // type of scope
+  size_t                     _level;         // level (start at 0)
   bool                       _selfContained; // means: scope doesn't refer the exterior variables
 }
 TRI_aql_scope_t;
