@@ -987,7 +987,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
     // test for infinity 
     if (value == HUGE_VAL || value == -HUGE_VAL) {
       LOG_TRACE("inf value detected after arithmetic optimisation");
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
       return NULL;
     }
 
@@ -1250,26 +1250,25 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   }
 
   // check for result validity
-
-#ifdef isnan
-  if (isnan(value)) {
+  if (value != value) {
+    // IEEE754 NaN values have an interesting property that we can exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't do
+    // any harm either
     LOG_TRACE("nan value detected after arithmetic optimisation");
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return NULL;
   }
-#endif
-
-#ifdef isinf
-  if (isinf(value)) {
+   
+  // test for infinity 
+  if (value == HUGE_VAL || value == -HUGE_VAL) {
     LOG_TRACE("inf value detected after arithmetic optimisation");
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return NULL;
   }
-#endif
-  
+
   node = TRI_CreateNodeValueDoubleAql(context, value);
 
-  if (! node) {
+  if (node == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }

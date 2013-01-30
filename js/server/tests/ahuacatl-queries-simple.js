@@ -835,12 +835,37 @@ function ahuacatlQuerySimpleTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric overflow
+/// @brief numeric overflow at compile time
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOverflow: function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, getErrorCode(function() { QUERY("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l"); }));
+    testOverflowCompile: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric underflow at compile time
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnderflowCompile: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric overflow at execution time
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverflowExecution: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric underflow at execution time
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnderflowExecution: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
     }
+
   };
 }
 
