@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #381: _users user should have a unique constraint
+
 * allow negative list indexes in AQL to access elements from the end of a list,
   e.g. ```RETURN values[-1]``` will return the last element of the `values` list.
 
