@@ -1,9 +1,15 @@
-v1.1.2 (2013-01-20)
+v1.1.3 (2013-XX-XX)
 -------------------
 
+* fixed issue #381:  db._collection("_users").getIndexes();
+
 * fixed issue #379: arango-password fatal issue javscript.startup-directory 
- 
+
 * fixed issue #372: Command-Line Options for the Authentication and Authorisation
+
+
+v1.1.2 (2013-01-20)
+-------------------
 
 * upgraded to mruby 2013-01-20 583983385b81c21f82704b116eab52d606a609f4
 
