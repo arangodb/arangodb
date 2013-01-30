@@ -124,16 +124,16 @@
       return createSystemCollection("_users", { waitForSync : true });
     });
 
-    // create a unique index on username attribute in _users
+    // create a unique index on "user" attribute in _users
     addTask("createUsersIndex", 
-            "create index on username attribute in _users collection",
+            "create index on 'user' attribute in _users collection",
       function () {
         var users = getCollection("_users");
         if (! users) {
           return false;
         }
 
-        users.ensureUniqueConstraint("username");
+        users.ensureUniqueConstraint("user");
 
         return true;
       });

@@ -29,10 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var arangodb = require("org/arangodb");
+var ERRORS = arangodb.errors;
+var db = arangodb.db;
 
 var users = require("org/arangodb/users");
-
-var db = require("org/arangodb").db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            users management tests
@@ -106,6 +107,25 @@ function UsersSuite () {
 
         users.save(username, passwd);
         assertEqual(username, c.firstExample({ user: username }).user);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test save with duplicate name
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDuplicateName : function () {
+      var username = "users-1";
+      var passwd = "passwd";
+
+      users.save(username, passwd);
+      assertEqual(username, c.firstExample({ user: username }).user);
+     
+      try { 
+        users.save(username, passwd);
+        fail();
+      }
+      catch (err) {
       }
     },
 
