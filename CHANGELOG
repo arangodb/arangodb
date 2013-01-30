@@ -1,6 +1,11 @@
 v1.1.3 (2013-XX-XX)
 -------------------
 
+* fix case when an error message was looked up for an error code but no error
+  message was found. In this case a NULL ptr was returned and not checked everywhere.
+  The place this error popped up was when inserting into a non-unique hash index
+  failed with a specific, invalid error code.
+
 * fixed issue #381:  db._collection("_users").getIndexes();
 
 * fixed issue #379: arango-password fatal issue javscript.startup-directory 
