@@ -35,7 +35,8 @@ unittests-brief: \
 	unittests-ssl-server \
 	unittests-shell-client \
 	unittests-arangob \
-	unittests-import 
+	unittests-import \
+	unittests-dfdb
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -165,6 +166,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/mersenne-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
+	UnitTests/Philadelphia/associative-synced-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
@@ -209,7 +211,6 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
                @top_srcdir@/js/common/tests/shell-compactor.js \
-               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-users.js \
@@ -218,11 +219,12 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-cap-constraint.js \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
-               @top_srcdir@/js/common/tests/shell-fulltext.js
+               @top_srcdir@/js/common/tests/shell-fulltext.js \
+               @top_srcdir@/js/common/tests/shell-graph.js
 
 SHELL_SERVER = $(SHELL_COMMON) \
                @top_srcdir@/js/common/tests/shell-frank.js \
-               @top_srcdir@/js/common/tests/shell-graph.js \
+               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js
 
@@ -267,7 +269,7 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
 			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
 			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
-			@top_srcdir@/js/server/tests/ahuacatl-paths.js \
+			@top_srcdir@/js/server/tests/ahuacatl-graph.js \
 			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
@@ -323,7 +325,8 @@ unittests-shell-server-ahuacatl:
 ### @brief SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON) @top_srcdir@/js/client/tests/client.js
+SHELL_CLIENT = $(SHELL_COMMON) \
+	       @top_srcdir@/js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 
@@ -428,6 +431,23 @@ unittests-import:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
+
+
+################################################################################
+### @brief DATAFILE DEBUGGER TESTS
+###
+### this test just checks whether the dfdb starts.
+### we will send an EOT signal to the dfdb process to stop it right away.
+################################################################################
+
+.PHONY: unittests-dfdb
+
+unittests-dfdb:
+	@mkdir -p "$(VOCDIR)"
+	@test -d "$(VOCDIR)"
+
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+
 
 ################################################################################
 ### @brief BITARRAY INDEXES TESTS

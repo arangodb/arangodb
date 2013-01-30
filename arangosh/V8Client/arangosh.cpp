@@ -538,7 +538,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   
   V8ClientConnection* connection = CreateConnection();
   
-  if (connection->isConnected()) {
+  if (connection->isConnected() && connection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() 
          << "' Version " << connection->getVersion() << endl; 
   }
@@ -566,7 +566,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
   }
   
   // check params
-  if (argv.Length() < 1 || argv.Length() > 2 || !argv[0]->IsString()) {
+  if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: get(<url>[, <headers>])")));
   }
 
@@ -580,6 +580,37 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
   }
 
   return scope.Close(connection->getData(*url, headerFields));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "httpHead"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpHead (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  // check params
+  if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: head(<url>[, <headers>])")));
+  }
+
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  // check header fields
+  map<string, string> headerFields;
+
+  if (argv.Length() > 1) {
+    objectToMap(headerFields, argv[1]);
+  }
+
+  return scope.Close(connection->headData(*url, headerFields));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -597,7 +628,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
   }
   
   // check params
-  if (argv.Length() < 1 || argv.Length() > 2 || !argv[0]->IsString()) {
+  if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<url>[, <headers>])")));
   }
 
@@ -610,6 +641,37 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
   }
 
   return scope.Close(connection->deleteData(*url, headerFields));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "httpOptions"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpOptions (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  // check params
+  if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: options(<url>, <body>[, <headers>])")));
+  }
+
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  v8::String::Utf8Value body(argv[1]);
+
+  // check header fields
+  map<string, string> headerFields;
+  if (argv.Length() > 2) {
+    objectToMap(headerFields, argv[2]);
+  }
+
+  return scope.Close(connection->optionsData(*url, *body, headerFields));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +689,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& arg
   }
   
   // check params
-  if (argv.Length() < 2 || argv.Length() > 3 || !argv[0]->IsString() || !argv[1]->IsString()) {
+  if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: post(<url>, <body>[, <headers>])")));
   }
 
@@ -658,7 +720,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
   }
   
   // check params
-  if (argv.Length() < 2 || argv.Length() > 3 || !argv[0]->IsString() || !argv[1]->IsString()) {
+  if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: put(<url>, <body>[, <headers>])")));
   }
 
@@ -689,7 +751,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& ar
   }
   
   // check params
-  if (argv.Length() < 2 || argv.Length() > 3 || !argv[0]->IsString() || !argv[1]->IsString()) {
+  if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
   }
 
@@ -1231,9 +1293,11 @@ int main (int argc, char* argv[]) {
     v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
     
     connection_proto->Set("GET", v8::FunctionTemplate::New(ClientConnection_httpGet));
+    connection_proto->Set("HEAD", v8::FunctionTemplate::New(ClientConnection_httpHead));
     connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
     connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
+    connection_proto->Set("OPTIONS", v8::FunctionTemplate::New(ClientConnection_httpOptions));
     connection_proto->Set("PATCH", v8::FunctionTemplate::New(ClientConnection_httpPatch));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
@@ -1396,7 +1460,7 @@ int main (int argc, char* argv[]) {
     BaseClient.printWelcomeInfo();
 
     if (useServer) {
-      if (ClientConnection->isConnected()) {
+      if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
         cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
              << "' version " << ClientConnection->getVersion() << endl; 
       }

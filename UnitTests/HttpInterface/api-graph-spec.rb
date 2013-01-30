@@ -20,7 +20,7 @@ describe ArangoDB do
 
   def create_graph (prefix, name, vertices, edges) 
     cmd = "/_api/graph"
-   	body = "{\"_key\" : \"#{name}\", \"vertices\" : \"#{vertices}\", \"edges\" : \"#{edges}\"}"
+     body = "{\"_key\" : \"#{name}\", \"vertices\" : \"#{vertices}\", \"edges\" : \"#{edges}\"}"
     doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
     return doc
   end
@@ -33,7 +33,7 @@ describe ArangoDB do
 
   def create_simple_vertex (prefix, graphName, name) 
     cmd = "/_api/graph/#{graphName}/vertex"
-   	body = "{\"_key\" : \"#{name}\"}"
+     body = "{\"_key\" : \"#{name}\"}"
     doc = ArangoDB.post(cmd, :body => body)
     return doc
   end
@@ -74,84 +74,84 @@ describe ArangoDB do
       it "checks create graph" do
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
 
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['graph']['_key'].should eq("#{graph_name}")
       end
 
       it "checks create graph with wrong characters" do
         doc = create_graph( prefix, "hjü/$", vertex_collection, edge_collection )
 
-      	doc.code.should eq(400)
-      	doc.parsed_response['error'].should eq(true)
-	      doc.parsed_response['code'].should eq(400)
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
       end
 
       it "checks create graph with wrong edges collection" do
         ArangoDB.create_collection( edge_collection , 0, 2)
         doc = create_graph( prefix, "wrong_edge_collection", vertex_collection, edge_collection )
 
-      	doc.code.should eq(400)
-      	doc.parsed_response['error'].should eq(true)
-	      doc.parsed_response['code'].should eq(400)
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
       end
 
       it "checks create graph with same edges collection" do
         doc = create_graph( prefix, "with_same_edge_colection1", vertex_collection, edge_collection )
-      	doc.code.should eq(201)
+        doc.code.should eq(201)
 
         doc = create_graph( prefix, "with_same_edge_colection2", "vertex33", edge_collection )
 
-      	doc.code.should eq(400)
-      	doc.parsed_response['error'].should eq(true)
-	      doc.parsed_response['code'].should eq(400)
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
       end
 
       it "checks (re)create graph same name" do
         doc1 = create_graph( prefix, "recreate", vertex_collection, edge_collection )
-      	doc1.code.should eq(201)
+        doc1.code.should eq(201)
 
         doc2 = create_graph( prefix, "recreate", vertex_collection, edge_collection )
-      	doc2.code.should eq(201)
+        doc2.code.should eq(201)
       end
 
       it "checks (re)create graph different name" do
         doc1 = create_graph( prefix, "recreate_1", vertex_collection, edge_collection )
-      	doc1.code.should eq(201)
+        doc1.code.should eq(201)
 
         doc2 = create_graph( prefix, "recreate_2", vertex_collection, edge_collection )
-      	doc2.code.should eq(400)
-      	doc2.parsed_response['error'].should eq(true)
+        doc2.code.should eq(400)
+        doc2.parsed_response['error'].should eq(true)
       end
 
       it "checks create and get graph" do
         doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
-      	doc1.code.should eq(201)
+        doc1.code.should eq(201)
 
         doc1.parsed_response['graph']['_key'].should eq(graph_name)
 
         cmd = "/_api/graph/#{graph_name}"
         doc2 = ArangoDB.log_get("#{prefix}", cmd)
 
-      	doc2.code.should eq(200)
+        doc2.code.should eq(200)
         doc2.parsed_response['graph']['_key'].should eq(graph_name)
       end
 
       it "checks create and delete graph" do
         # create
         doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
-      	doc1.code.should eq(201)
+        doc1.code.should eq(201)
 
         # delete
         cmd = "/_api/graph/#{graph_name}"
         doc2 = ArangoDB.log_delete("#{prefix}", cmd)
-      	doc2.code.should eq(200)
+        doc2.code.should eq(200)
         doc2.parsed_response['deleted'].should eq(true)
 
         # check
         doc3 = ArangoDB.log_get("#{prefix}", cmd)
-      	doc3.code.should eq(400)
+        doc3.code.should eq(400)
       end
 
     end
@@ -174,153 +174,153 @@ describe ArangoDB do
       
       it "checks create vertex with _key" do
 
-      	body = "{\"\_key\" : \"vertexTest1\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        body = "{\"\_key\" : \"vertexTest1\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest1")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
       end
 
       it "checks create second vertex with same _key" do
-      	body = "{\"\_key\" : \"vertexTest2\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        body = "{\"\_key\" : \"vertexTest2\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
 
         doc2 = create_vertex( prefix, graph_name, body )
-      	doc2.code.should eq(400)
-      	doc2.parsed_response['error'].should eq(true)
-	      doc2.parsed_response['code'].should eq(400)
+        doc2.code.should eq(400)
+        doc2.parsed_response['error'].should eq(true)
+        doc2.parsed_response['code'].should eq(400)
       end
 
       it "checks get vertex by _key" do
-      	body = "{\"\_key\" : \"vertexTest3\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        body = "{\"\_key\" : \"vertexTest3\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest3")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
 
         doc2 = get_vertex( prefix, graph_name, "vertexTest3")
-      	doc2.code.should eq(200)
-      	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(200)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
         doc2.parsed_response['vertex']['optional1'].should eq(doc.parsed_response['vertex']['optional1'])
       end
 
       it "checks get vertex by _id" do
-      	body = "{\"\_key\" : \"vertexTest_id\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        body = "{\"\_key\" : \"vertexTest_id\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
         _id = doc.parsed_response['vertex']['_id'];
 
         doc2 = get_vertex( prefix, graph_name, _id)
-      	doc2.code.should eq(200)
-      	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(200)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
         doc2.parsed_response['vertex']['optional1'].should eq(doc.parsed_response['vertex']['optional1'])
       end
 
       it "checks get vertex by wrong _key" do
         doc = get_vertex( prefix, graph_name, "vvv111")
-      	doc.code.should eq(400)
-      	doc.parsed_response['error'].should eq(true)
-	      doc.parsed_response['code'].should eq(400)
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
       end
 
       it "checks update vertex by _key" do
-      	body = "{\"\_key\" : \"vertexTest5\", \"optional1\" : \"val1\"}"
+        body = "{\"\_key\" : \"vertexTest5\", \"optional1\" : \"val1\"}"
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest5")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
 
         doc1 = get_vertex( prefix, graph_name, "vertexTest5")
-      	doc1.code.should eq(200)
+        doc1.code.should eq(200)
         doc1.parsed_response['vertex']['optional1'].should eq("val1")
 
         cmd = "/_api/graph/#{graph_name}/vertex/vertexTest5"
-      	body = "{\"optional1\" : \"val2\"}"
+        body = "{\"optional1\" : \"val2\"}"
         doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
-      	doc3.code.should eq(200)
-      	doc3.parsed_response['error'].should eq(false)
-	      doc3.parsed_response['code'].should eq(200)
+        doc3.code.should eq(200)
+        doc3.parsed_response['error'].should eq(false)
+        doc3.parsed_response['code'].should eq(200)
         doc3.parsed_response['vertex']['optional1'].should eq("val2")
 
         doc2 = get_vertex( prefix, graph_name, "vertexTest5")
-      	doc2.code.should eq(200)
+        doc2.code.should eq(200)
         doc2.parsed_response['vertex']['optional1'].should eq("val2")
       end
 
       it "checks update vertex" do
-      	body = "{\"optional1\" : \"val1\", \"optional2\" : \"val2\"}"
+        body = "{\"optional1\" : \"val1\", \"optional2\" : \"val2\"}"
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
         doc.parsed_response['vertex']['optional1'].should eq("val1")
         doc.parsed_response['vertex']['optional2'].should eq("val2")
         _key = doc.parsed_response['vertex']['_key'];
 
         doc2 = get_vertex( prefix, graph_name, _key)
-      	doc2.code.should eq(200)
-      	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(200)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
         doc2.parsed_response['vertex']['optional1'].should eq(doc.parsed_response['vertex']['optional1'])
 
         cmd = "/_api/graph/#{graph_name}/vertex/#{_key}"
-      	body = "{\"optional1\" : \"val2\"}"
+        body = "{\"optional1\" : \"val2\"}"
         doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
-      	doc3.code.should eq(200)
-      	doc3.parsed_response['error'].should eq(false)
-	      doc3.parsed_response['code'].should eq(200)
+        doc3.code.should eq(200)
+        doc3.parsed_response['error'].should eq(false)
+        doc3.parsed_response['code'].should eq(200)
         doc3.parsed_response['vertex']['optional1'].should eq("val2")
         doc3.parsed_response['vertex']['optional2'].should eq(nil)
 
         doc4 = get_vertex( prefix, graph_name, _key)
-      	doc4.code.should eq(200)
-      	doc4.parsed_response['error'].should eq(false)
-	      doc4.parsed_response['code'].should eq(200)
+        doc4.code.should eq(200)
+        doc4.parsed_response['error'].should eq(false)
+        doc4.parsed_response['code'].should eq(200)
         doc4.parsed_response['vertex']['optional1'].should eq("val2")
         doc4.parsed_response['vertex']['optional2'].should eq(nil)
       end
 
       it "checks delete vertex" do
-      	body = "{\"optional1\" : \"vertexDelete1\"}"
+        body = "{\"optional1\" : \"vertexDelete1\"}"
         doc = create_vertex( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
         _key = doc.parsed_response['vertex']['_key'];
 
         doc3 = get_vertex( prefix, graph_name, _key)
-      	doc3.code.should eq(200)
-      	doc3.parsed_response['error'].should eq(false)
+        doc3.code.should eq(200)
+        doc3.parsed_response['error'].should eq(false)
 
         cmd = "/_api/graph/#{graph_name}/vertex/#{_key}"
         doc2 = ArangoDB.log_delete("#{prefix}", cmd)
-      	doc2.code.should eq(200)
-      	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(200)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
         doc2.parsed_response['deleted'].should eq(true)
 
         doc4 = get_vertex( prefix, graph_name, _key)
-      	doc4.code.should eq(400)
-      	doc4.parsed_response['error'].should eq(true)
-	      doc4.parsed_response['code'].should eq(400)
+        doc4.code.should eq(400)
+        doc4.parsed_response['error'].should eq(true)
+        doc4.parsed_response['code'].should eq(400)
       end
 
     end
@@ -345,52 +345,52 @@ describe ArangoDB do
       end
       
       it "checks create edge" do
-      	body = "{\"_key\" : \"edgeTest1\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest1\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['_key'].should eq("edgeTest1")
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['$label'].should eq(nil)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest1")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq(nil)
       end
 
       it "checks create second edge with same \_key" do
-      	body = "{\"_key\" : \"edgeTest2\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest2\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['_key'].should eq("edgeTest2")
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['$label'].should eq(nil)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest2")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq(nil)
 
         doc1 = create_edge( prefix, graph_name, body )
-      	doc1.code.should eq(400)
-      	doc1.parsed_response['error'].should eq(true)
-	      doc1.parsed_response['code'].should eq(400)
+        doc1.code.should eq(400)
+        doc1.parsed_response['error'].should eq(true)
+        doc1.parsed_response['code'].should eq(400)
       end
 
       it "checks create edge with unknown vertex" do
-      	body = "{\"_key\" : \"edgeTest3\", \"_from\" : \"unknownVertex\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest3\", \"_from\" : \"unknownVertex\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-      	doc.code.should eq(400)
-      	doc.parsed_response['error'].should eq(true)
-	      doc.parsed_response['code'].should eq(400)
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
       end
 
       it "checks create edge with \$label" do
-      	body = "{\"_key\" : \"edgeTest4\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest4\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['_key'].should eq("edgeTest4")
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['$label'].should eq("label1")
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest4")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq("label1")
       end
 
       it "checks create edge with _id of vertex" do
@@ -400,116 +400,116 @@ describe ArangoDB do
         doc = create_simple_vertex( prefix, graph_name, "vert2a" )
         v_id2 = doc.parsed_response['vertex']['_id']
 
-      	body = "{\"_key\" : \"edgeTest5\", \"_from\" : \"#{v_id1}\", \"_to\" : \"#{v_id2}\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest5\", \"_from\" : \"#{v_id1}\", \"_to\" : \"#{v_id2}\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['_key'].should eq("edgeTest5")
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['_from'].should eq(v_id1)
-	      doc.parsed_response['edge']['_to'].should eq(v_id2)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest5")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['_from'].should eq(v_id1)
+        doc.parsed_response['edge']['_to'].should eq(v_id2)
       end
 
       it "checks get edge by _id" do
-      	body = "{\"_key\" : \"edgeTest6\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest6\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['_key'].should eq("edgeTest6")
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['$label'].should eq("label1")
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest6")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq("label1")
 
         e_key = doc.parsed_response['edge']['_key']
         e_id  = doc.parsed_response['edge']['_id']
 
         doc1 = get_edge( prefix, graph_name, e_key )
 
-      	doc1.code.should eq(200)
-      	doc1.parsed_response['error'].should eq(false)
-	      doc1.parsed_response['code'].should eq(200)
-	      doc1.parsed_response['edge']['_id'].should eq(e_id)
+        doc1.code.should eq(200)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(200)
+        doc1.parsed_response['edge']['_id'].should eq(e_id)
 
         doc2 = get_edge( prefix, graph_name, e_id )
 
-      	doc2.code.should eq(200)
-      	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(200)
-	      doc2.parsed_response['edge']['_id'].should eq(e_id)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
+        doc2.parsed_response['edge']['_id'].should eq(e_id)
       end
 
       it "checks replace edge properties by _id" do
-      	body = "{\"_key\" : \"edgeTest7\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest7\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['optional2'].should eq(nil)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
 
         e_key = doc.parsed_response['edge']['_key']
         e_id = doc.parsed_response['edge']['_id']
         e_to = doc.parsed_response['edge']['_to']
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_id}"
-      	body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
         doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
-      	doc1.code.should eq(200)
-      	doc1.parsed_response['error'].should eq(false)
-	      doc1.parsed_response['code'].should eq(200)
-	      doc1.parsed_response['edge']['_key'].should eq(e_key)
-	      doc1.parsed_response['edge']['_id'].should eq(e_id)
-	      doc1.parsed_response['edge']['_to'].should eq(e_to)
-	      doc1.parsed_response['edge']['optional1'].should eq(nil)
-	      doc1.parsed_response['edge']['optional2'].should eq("val2")
-	      doc1.parsed_response['edge']['$label'].should eq("label1")
+        doc1.code.should eq(200)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(200)
+        doc1.parsed_response['edge']['_key'].should eq(e_key)
+        doc1.parsed_response['edge']['_id'].should eq(e_id)
+        doc1.parsed_response['edge']['_to'].should eq(e_to)
+        doc1.parsed_response['edge']['optional1'].should eq(nil)
+        doc1.parsed_response['edge']['optional2'].should eq("val2")
+        doc1.parsed_response['edge']['$label'].should eq("label1")
       end
 
       it "checks delete edge by _id" do
-      	body = "{\"_key\" : \"edgeTest8\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest8\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['optional2'].should eq(nil)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
 
         e_id = doc.parsed_response['edge']['_id']
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_id}"
         doc1 = ArangoDB.log_delete("#{prefix}", cmd)
-      	doc1.code.should eq(200)
-      	doc1.parsed_response['error'].should eq(false)
-	      doc1.parsed_response['code'].should eq(200)
+        doc1.code.should eq(200)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(200)
 
         doc2 = get_edge( prefix, graph_name, e_id )
-      	doc2.code.should eq(400)
-      	doc2.parsed_response['error'].should eq(true)
-	      doc2.parsed_response['code'].should eq(400)
+        doc2.code.should eq(400)
+        doc2.parsed_response['error'].should eq(true)
+        doc2.parsed_response['code'].should eq(400)
       end
 
       it "checks delete edge by _key" do
-      	body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-      	doc.code.should eq(200)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edge']['optional1'].should eq("val1")
-	      doc.parsed_response['edge']['optional2'].should eq(nil)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
 
         cmd = "/_api/graph/#{graph_name}/edge/edgeTest9"
         doc1 = ArangoDB.log_delete("#{prefix}", cmd)
-      	doc1.code.should eq(200)
-      	doc1.parsed_response['error'].should eq(false)
-	      doc1.parsed_response['code'].should eq(200)
+        doc1.code.should eq(200)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(200)
 
         doc2 = get_edge( prefix, graph_name, "edgeTest9" )
-      	doc2.code.should eq(400)
-      	doc2.parsed_response['error'].should eq(true)
-	      doc2.parsed_response['code'].should eq(400)
+        doc2.code.should eq(400)
+        doc2.parsed_response['error'].should eq(true)
+        doc2.parsed_response['code'].should eq(400)
 
       end
 
@@ -524,21 +524,21 @@ describe ArangoDB do
         truncate_collection(prefix, "_graphs")
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
         cmd = "/_api/graph/#{graph_name}/vertex"
-      	body = "{\"_key\" : \"id1\", \"optional1\" : \"val1\", \"optional2\" : 1}"
+        body = "{\"_key\" : \"id1\", \"optional1\" : \"val1\", \"optional2\" : 1}"
         ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"id2\", \"optional1\" : \"val1\", \"optional2\" : 2}"
+        body = "{\"_key\" : \"id2\", \"optional1\" : \"val1\", \"optional2\" : 2}"
         ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"id3\", \"optional1\" : \"val1\", \"optional2\" : 2}"
+        body = "{\"_key\" : \"id3\", \"optional1\" : \"val1\", \"optional2\" : 2}"
         ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"id4\", \"optional1\" : \"val1\", \"optional2\" : 3}"
+        body = "{\"_key\" : \"id4\", \"optional1\" : \"val1\", \"optional2\" : 3}"
         ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"id5\", \"optional2\" : \"val2\"}"
+        body = "{\"_key\" : \"id5\", \"optional2\" : \"val2\"}"
         ArangoDB.post(cmd, :body => body)
 
         cmd = "/_api/graph/#{graph_name}/edge"
-      	body = "{\"_key\" : \"edge1\", \"_from\" : \"id1\", \"_to\" : \"id2\", \"$label\" : \"l1\"}"
+        body = "{\"_key\" : \"edge1\", \"_from\" : \"id1\", \"_to\" : \"id2\", \"$label\" : \"l1\"}"
         doc = ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"edge2\", \"_from\" : \"id2\", \"_to\" : \"id3\", \"$label\" : \"l2\"}"
+        body = "{\"_key\" : \"edge2\", \"_from\" : \"id2\", \"_to\" : \"id3\", \"$label\" : \"l2\"}"
         doc = ArangoDB.post(cmd, :body => body)
       end
 
@@ -550,93 +550,107 @@ describe ArangoDB do
       
       it "checks list of vertices of a graph" do
         cmd = "/_api/graph/#{graph_name}/vertices"
-      	body = "{\"batchSize\" : 100 }"
+        body = "{\"batchSize\" : 100 }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(5)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(5)
 
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 3 } ] } }"
+        body = "{\"batchSize\" : 100, \"limit\" : 1 }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
 
-      	body = "{\"batchSize\" : 100,  \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 2 } ] } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 3 } ] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(2)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+
+        body = "{\"batchSize\" : 100,  \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 2 } ] } }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(2)
       end
 
       it "checks list of vertices of a vertex" do
         cmd = "/_api/graph/#{graph_name}/vertices"
-      	body = "{\"batchSize\" : 100 }"
+        body = "{\"batchSize\" : 100 }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(5)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(5)
 
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 3 } ] } }"
+        body = "{\"batchSize\" : 100, \"limit\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(2)
 
-      	body = "{\"batchSize\" : 100,  \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 2 } ] } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 3 } ] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(2)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+
+        body = "{\"batchSize\" : 100,  \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 2 } ] } }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(2)
         
         cmd = "/_api/graph/#{graph_name}/vertices/id2"
-      	body = "{\"batchSize\" : 100 }"
+        body = "{\"batchSize\" : 100 }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(2)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(2)
         
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"in\" } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"in\" } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
-	      doc.parsed_response['result'][0]['_key'].should eq("id1")
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+        doc.parsed_response['result'][0]['_key'].should eq("id1")
 
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"out\" } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"out\" } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
-	      doc.parsed_response['result'][0]['_key'].should eq("id3")
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+        doc.parsed_response['result'][0]['_key'].should eq("id3")
 
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"labels\" : [\"l2\"] } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"labels\" : [\"l2\"] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
-	      doc.parsed_response['result'][0]['_key'].should eq("id3")
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+        doc.parsed_response['result'][0]['_key'].should eq("id3")
 
       end
 
       it "checks list of vertices of a vertex with compare" do
         cmd = "/_api/graph/#{graph_name}/vertices"
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 100 , \"compare\" : \"<\" } ] } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"properties\" : [ { \"key\" : \"optional2\", \"value\" : 100 , \"compare\" : \"<\" } ] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(4)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(4)
       end
 
     end
@@ -650,17 +664,17 @@ describe ArangoDB do
         truncate_collection(prefix, "_graphs")
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
         cmd = "/_api/graph/#{graph_name}/vertex"
-      	body = "{\"_key\" : \"id1\", \"optional1\" : \"val1a\", \"optional2\" : \"val2a\"}"
+        body = "{\"_key\" : \"id1\", \"optional1\" : \"val1a\", \"optional2\" : \"val2a\"}"
         ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"id2\", \"optional1\" : \"val1b\", \"optional2\" : \"val2b\"}"
+        body = "{\"_key\" : \"id2\", \"optional1\" : \"val1b\", \"optional2\" : \"val2b\"}"
         ArangoDB.post(cmd, :body => body)
-      	body = "{\"_key\" : \"id3\", \"optional1\" : \"val1c\", \"optional2\" : \"val2c\"}"
+        body = "{\"_key\" : \"id3\", \"optional1\" : \"val1c\", \"optional2\" : \"val2c\"}"
         ArangoDB.post(cmd, :body => body)
 
         cmd = "/_api/graph/#{graph_name}/edge"
-      	body1 = "{\"_key\" : \"edge1\", \"_from\" : \"id1\", \"_to\" : \"id2\", \"optional1\" : \"val1a\"}"
+        body1 = "{\"_key\" : \"edge1\", \"_from\" : \"id1\", \"_to\" : \"id2\", \"optional1\" : \"val1a\"}"
         ArangoDB.post(cmd, :body => body1)
-      	body2 = "{\"_key\" : \"edge2\", \"_from\" : \"id2\", \"_to\" : \"id3\", \"optional1\" : \"val1b\"}"
+        body2 = "{\"_key\" : \"edge2\", \"_from\" : \"id2\", \"_to\" : \"id3\", \"optional1\" : \"val1b\"}"
         ArangoDB.post(cmd, :body => body2)
       end
 
@@ -672,69 +686,78 @@ describe ArangoDB do
       
       it "checks list of all edges" do
         cmd = "/_api/graph/#{graph_name}/edges"
-      	body = "{\"batchSize\" : 100}"
+        body = "{\"batchSize\" : 100}"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(2)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(2)
+
+        body = "{\"batchSize\" : 100, \"limit\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+
       end
 
       it "checks list of all edges" do
         cmd = "/_api/graph/#{graph_name}/edges"
-      	body = "{\"batchSize\" : 100,  \"filter\" : { \"properties\" : [ { \"key\" : \"optional1\", \"value\" : \"val1a\" } ] } }"
+        body = "{\"batchSize\" : 100,  \"filter\" : { \"properties\" : [ { \"key\" : \"optional1\", \"value\" : \"val1a\" } ] } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
       end
 
       it "checks list of all edges of one vertex" do
         cmd = "/_api/graph/#{graph_name}/edges/id1"
-      	body = "{\"batchSize\" : 100 }"
+        body = "{\"batchSize\" : 100 }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
-	      doc.parsed_response['result'][0]['_key'].should eq("edge1")
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+        doc.parsed_response['result'][0]['_key'].should eq("edge1")
 
         cmd = "/_api/graph/#{graph_name}/edges/id2"
-      	body = "{\"batchSize\" : 100 }"
+        body = "{\"batchSize\" : 100 }"
         doc2 = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc2.code.should eq(201)
-      	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(201)
-	      doc2.parsed_response['result'].count.should eq(2)
+        doc2.code.should eq(201)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(201)
+        doc2.parsed_response['result'].count.should eq(2)
       end
 
       it "checks list of all in edges of one vertex" do
         cmd = "/_api/graph/#{graph_name}/edges/id2"
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"in\" } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"in\" } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
-	      doc.parsed_response['result'][0]['_key'].should eq("edge1")
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+        doc.parsed_response['result'][0]['_key'].should eq("edge1")
       end
 
       it "checks list of all out edges of one vertex" do
         cmd = "/_api/graph/#{graph_name}/edges/id2"
-      	body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"out\" } }"
+        body = "{\"batchSize\" : 100, \"filter\" : { \"direction\" : \"out\" } }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(201)
-      	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(201)
-	      doc.parsed_response['result'].count.should eq(1)
-	      doc.parsed_response['result'][0]['_key'].should eq("edge2")
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['result'].count.should eq(1)
+        doc.parsed_response['result'][0]['_key'].should eq("edge2")
       end
 
     end

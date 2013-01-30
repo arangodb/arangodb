@@ -224,6 +224,7 @@ function lookupCallbackAction (route, action) {
     'put': exports.PUT,
     'post': exports.POST,
     'delete': exports.DELETE,
+    'options': exports.OPTIONS,
     'patch': exports.PATCH
   };
 
@@ -240,7 +241,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('function')) {
-    defn = "func = (function() {" + action['function'] + "})();";
+    defn = "func = (function() { var callback = " + action['function'] + "; return callback;})();";
     env = {};
 
     try {
@@ -1623,11 +1624,12 @@ exports.NUMBER                   = "number";
 exports.DELETE                   = "DELETE";
 exports.GET                      = "GET";
 exports.HEAD                     = "HEAD";
+exports.OPTIONS                  = "OPTIONS";
 exports.POST                     = "POST";
 exports.PUT                      = "PUT";
 exports.PATCH                    = "PATCH";
 
-exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "POST", "PUT", "PATCH" ];
+exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;

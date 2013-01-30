@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, module, AHUACATL_RUN */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief graph api
@@ -33,6 +33,7 @@ var actions = require("org/arangodb/actions");
 var graph = require("org/arangodb/graph");
 
 var ArangoError = require("org/arangodb").ArangoError;
+var QUERY = require("internal").AQL_QUERY;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -100,7 +101,7 @@ function vertex_by_request (req, g) {
 
   var vertex = g.getVertex(key);
 
-  if (vertex === undefined || vertex._properties === undefined) {
+  if (vertex === null || vertex._properties === undefined) {
     throw "no vertex found for: " + key;
   }
 
@@ -122,7 +123,7 @@ function edge_by_request (req, g) {
   }
   var edge = g.getEdge(key);
 
-  if (edge === undefined || edge._properties === undefined) {
+  if (edge === null || edge._properties === undefined) {
     throw "no edge found for: " + key;
   }
 
@@ -296,7 +297,7 @@ function post_graph_vertex (req, res, g) {
 
     var v = g.addVertex(id, json);
 
-    if (v === undefined || v._properties === undefined) {
+    if (v === null || v._properties === undefined) {
       throw "could not create vertex";
     }
 
@@ -308,7 +309,7 @@ function post_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vertex properties
+/// @brief gets the vertex properties
 ///
 /// @RESTHEADER{GET /_api/graph/@FA{graph-name}/vertex,get vertex}
 ///
@@ -475,18 +476,17 @@ function process_properties_filter (data, properties, collname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function process_labels_filter (data, labels) {
-  if (labels instanceof Array) {
-    // filter edge labels
-    if (labels !== undefined && labels instanceof Array) {
-      if (data.edgeFilter === "") { data.edgeFilter = " FILTER"; } else { data.edgeFilter += " &&";}
-      data.edgeFilter += ' e["$label"] IN @labels';
-      data.bindVars.labels = labels;
-    }
+
+  // filter edge labels
+  if (labels !== undefined && labels instanceof Array && labels.length > 0) {
+    if (data.edgeFilter === "") { data.edgeFilter = " FILTER"; } else { data.edgeFilter += " &&";}
+    data.edgeFilter += ' e["$label"] IN @labels';
+    data.bindVars.labels = labels;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vertices of a graph
+/// @brief gets the vertices of a graph
 ///
 /// @RESTHEADER{POST /_api/graph/@FA{graph-name}/vertices,get vertices}
 ///
@@ -497,6 +497,8 @@ function process_labels_filter (data, labels) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -527,14 +529,19 @@ function post_graph_all_vertices (req, res, g) {
       'bindVars': { '@vertexColl' : g._vertices.name() }
     };
 
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
+
     if (json.filter !== undefined && json.filter.properties !== undefined) {
       process_properties_filter(data, json.filter.properties, "v");
     }
 
     // build aql query
-    var query = "FOR v IN @@vertexColl" + data.filter + " RETURN v";
+    var query = "FOR v IN @@vertexColl" + data.filter + limit + " RETURN v";
 
-    var cursor = AHUACATL_RUN(query,
+    var cursor = QUERY(query,
                           data.bindVars,
                           (json.count !== undefined ? json.count : false),
                           json.batchSize,
@@ -567,13 +574,15 @@ function post_graph_all_vertices (req, res, g) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
 /// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out")
 ///   neighbors. Default value is "any".
-/// - @LIT{labels}: filter by an array of edge labels
-/// - @LIT{properties}: filter neighbors by an array of properties
+/// - @LIT{labels}: filter by an array of edge labels (empty array means no restriction)
+/// - @LIT{properties}: filter neighbors by an array of edge properties
 ///
 /// The attributes of a property filter
 /// - @LIT{key}: filter the result vertices by a key value pair
@@ -604,9 +613,14 @@ function post_graph_vertex_vertices (req, res, g) {
       'bindVars' : {
          '@vertexColl' : g._vertices.name(),
          '@edgeColl' : g._edges.name(),
-         'id' : v._id
+         'id' : v._properties._id
       }
     };
+
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
 
     var direction = "all";
     if (json.filter !== undefined && json.filter.direction !== undefined) {
@@ -635,7 +649,7 @@ function post_graph_vertex_vertices (req, res, g) {
     }
 
     if (json.filter !== undefined && json.filter.properties !== undefined) {
-      process_properties_filter(data, json.filter.properties, "v");
+      process_properties_filter(data, json.filter.properties, "e");
     }
 
     if (json.filter !== undefined && json.filter.labels !== undefined) {
@@ -644,9 +658,10 @@ function post_graph_vertex_vertices (req, res, g) {
 
     // build aql query
     var query = "FOR e IN @@edgeColl " + data.edgeFilter 
-              + " FOR v IN @@vertexColl " + data.filter + " RETURN v";
+              + " FOR v IN @@vertexColl " + data.filter + 
+              limit + " RETURN v";
 
-    var cursor = AHUACATL_RUN(query,
+    var cursor = QUERY(query,
                           data.bindVars,
                           (json.count !== undefined ? json.count : false),
                           json.batchSize,
@@ -712,7 +727,7 @@ function post_graph_edge (req, res, g) {
 
     var e = g.addEdge(out, ine, id, label, json);
 
-    if (e === undefined || e._properties === undefined) {
+    if (e === null || e._properties === undefined) {
       throw "could not create edge";
     }
 
@@ -795,7 +810,7 @@ function delete_graph_edge (req, res, g) {
 /// @verbinclude api-graph-change-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-function put_graph_edge(req, res, g) {
+function put_graph_edge (req, res, g) {
   try {
     var e = edge_by_request(req, g);
 
@@ -830,6 +845,8 @@ function put_graph_edge(req, res, g) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -865,6 +882,11 @@ function post_graph_all_edges (req, res, g) {
       }
     };
 
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
+
     if (json.filter !== undefined && json.filter.properties !== undefined) {
       process_properties_filter(data, json.filter.properties, "e");
       data.edgeFilter = data.filter;
@@ -874,9 +896,9 @@ function post_graph_all_edges (req, res, g) {
       process_labels_filter(data, json.filter.labels);
     }
 
-    var query = "FOR e IN @@edgeColl" + data.edgeFilter + " RETURN e";
+    var query = "FOR e IN @@edgeColl" + data.edgeFilter + limit + " RETURN e";
 
-    var cursor = AHUACATL_RUN(query,
+    var cursor = QUERY(query,
                           data.bindVars,
                           (json.count !== undefined ? json.count : false),
                           json.batchSize,
@@ -912,6 +934,8 @@ function post_graph_all_edges (req, res, g) {
 /// The call expects a JSON hash array as body to filter the result:
 ///
 /// - @LIT{batchSize}: the batch size of the returned cursor
+/// - @LIT{limit}: limit the result size
+/// - @LIT{count}: return the total number of results (default "false")
 /// - @LIT{filter}: a optional filter
 ///
 /// The attributes of filter
@@ -947,9 +971,14 @@ function post_graph_vertex_edges (req, res, g) {
       'edgeFilter' : '',
       'bindVars' : {
          '@edgeColl' : g._edges.name(),
-         'id' : v._id
+         'id' : v._properties._id
       }
     };
+
+    var limit = "";
+    if (json.limit !== undefined) {
+      limit = " LIMIT " + parseInt(json.limit);
+    }
 
     var direction = "all";
     if (json.filter !== undefined && json.filter.direction !== undefined) {
@@ -984,13 +1013,13 @@ function post_graph_vertex_edges (req, res, g) {
       process_labels_filter(data, json.filter.labels);
     }
 
-    var query = "FOR e IN @@edgeColl " + data.edgeFilter + " RETURN e";
+    var query = "FOR e IN @@edgeColl " + data.edgeFilter + limit + " RETURN e";
 
-    var cursor = AHUACATL_RUN(query,
-                          data.bindVars,
-                          (json.count !== undefined ? json.count : false),
-                          json.batchSize,
-                          (json.batchSize === undefined));
+    var cursor = QUERY(query,
+                       data.bindVars,
+                       (json.count !== undefined ? json.count : false),
+                       json.batchSize,
+                       (json.batchSize === undefined));
 
     // error occurred
     if (cursor instanceof ArangoError) {

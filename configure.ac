@@ -171,23 +171,6 @@ else
   m4_include([m4/external.icu])
 fi
 
-dnl ----------------------------------------------------------------------------
-dnl TRANSACTION SUPPORT (highly experimental)
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(trx,
-  AS_HELP_STRING([--enable-trx], [enable transaction support (default: no)]),
-  [tr_TRX="${enableval:-yes}"],
-  [tr_TRX="no"]
-)
-
-
-if test "x$tr_TRX" = "xyes";  then
-  AC_DEFINE_UNQUOTED(TRI_ENABLE_TRX, 1, [true if trx support is enabled])
-fi
-
-AM_CONDITIONAL(ENABLE_TRX, test "x$tr_TRX" = "xyes")
-
 
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES

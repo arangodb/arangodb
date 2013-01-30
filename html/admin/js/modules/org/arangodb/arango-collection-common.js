@@ -147,7 +147,7 @@ ArangoCollection.prototype._PRINT = function () {
   }
 
   output("[ArangoCollection ", 
-         colors.COLOR_NUMBER, this._id, colors.COLOR_RESET,
+         colors.COLOR_STRING, this._id, colors.COLOR_RESET,
          ", \"", 
          colors.COLOR_STRING, this.name(), colors.COLOR_RESET, 
          "\" (type ", type, ", status ", status, ")]");
@@ -569,15 +569,15 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO this is not optiomal for the client, there should a HTTP call handling
-//      everything on the server
-
 ArangoCollection.prototype.iterate = function (iterator, options) {
   var probability = 1.0;
   var limit = null;
   var stmt;
   var cursor;
   var pos;
+
+  // TODO: this is not optimal for the client, there should be an HTTP call handling
+  // everything on the server
 
   if (options !== undefined) {
     if (options.hasOwnProperty("probability")) {
@@ -658,7 +658,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ///
 /// @FUN{@FA{collection}.removeByExample(@FA{example})}
 ///
-/// Removes all document matching an example.
+/// Removes all documents matching an example.
 ///
 /// @FUN{@FA{collection}.removeByExample(@FA{document}, @FA{waitForSync})}
 ///
@@ -681,18 +681,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
-  var documents;
-
-// TODO this is not optiomal for the client, there should be an HTTP call handling
-//      everything on the server
-
-  documents = this.byExample(example);
-
-  while (documents.hasNext()) {
-    var document = documents.next();
-
-    this.remove(document, true, waitForSync);
-  }
+  throw "cannot call abstract removeByExample function";
 };
 
 ////////////////////////////////////////////////////////////////////////////////

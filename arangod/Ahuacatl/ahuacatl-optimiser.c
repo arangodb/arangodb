@@ -546,7 +546,7 @@ static TRI_string_buffer_t* RelationCode (const char* const name,
     return NULL;
   }
   
-  if (TRI_AppendStringStringBuffer(buffer, "(function(){return AHUACATL_RELATIONAL_") != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, "(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.RELATIONAL_") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -598,7 +598,7 @@ static TRI_string_buffer_t* FcallCode (const char* const name,
     return NULL;
   }
   
-  if (TRI_AppendStringStringBuffer(buffer, "(function(){return AHUACATL_FCALL(") != TRI_ERROR_NO_ERROR) {
+  if (TRI_AppendStringStringBuffer(buffer, "(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.FCALL(aql.") != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -805,7 +805,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
   }
 
   // we will not optimise in the main scope, e.g. LIMIT 5 RETURN 1
-  if (scope->_type == TRI_AQL_SCOPE_MAIN) {
+  if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_FOR_NESTED) {
     return node;
   }
       
@@ -818,7 +818,6 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     if (++scope->_limit._found == 1) {
       // we can push the limit up, into the for loop or the collection access
       LOG_TRACE("pushed up limit");
-
       return TRI_GetDummyNopNodeAql();
     }
   }
@@ -973,7 +972,26 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
   }
   else if (node->_type == TRI_AQL_NODE_OPERATOR_UNARY_MINUS) {
     // - number => eval!
-    node = TRI_CreateNodeValueDoubleAql(context, - TRI_GetNumericNodeValueAql(operand));
+    double value = - TRI_GetNumericNodeValueAql(operand);
+    
+    // check for result validity
+#ifdef isnan
+    if (isnan(value)) {
+      LOG_TRACE("nan value detected after arithmetic optimisation");
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+      return NULL;
+    }
+#endif
+
+#ifdef isinf
+    if (isinf(value)) {
+      LOG_TRACE("inf value detected after arithmetic optimisation");
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+      return NULL;
+    }
+#endif
+
+    node = TRI_CreateNodeValueDoubleAql(context, value);
     if (node == NULL) {
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     }
@@ -1230,6 +1248,24 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   else {
     value = 0.0;
   }
+
+  // check for result validity
+
+#ifdef isnan
+  if (isnan(value)) {
+    LOG_TRACE("nan value detected after arithmetic optimisation");
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    return NULL;
+  }
+#endif
+
+#ifdef isinf
+  if (isinf(value)) {
+    LOG_TRACE("inf value detected after arithmetic optimisation");
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
+    return NULL;
+  }
+#endif
   
   node = TRI_CreateNodeValueDoubleAql(context, value);
 

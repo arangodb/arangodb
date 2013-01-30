@@ -165,8 +165,12 @@ ArangoCollection.prototype.index = function (id) {
       id = this.name() + "/" + id;
     }
   }
-  else if (id.hasOwnProperty("id")) {
+  else if (id && id.hasOwnProperty("id")) {
     id = id.id;
+  }
+  else if (typeof id === "number") {
+    // stringify the id
+    id = this.name() + "/" + id;
   }
 
   for (i = 0;  i < indexes.length;  ++i) {
@@ -236,6 +240,27 @@ ArangoCollection.prototype.firstExample = function (example) {
   }
 
   return null;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+  var deleted = 0;
+  var documents;
+
+  documents = this.byExample(example);
+
+  while (documents.hasNext()) {
+    var document = documents.next();
+
+    if (this.remove(document, true, waitForSync)) {
+      deleted++;
+    }
+  }
+
+  return deleted;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

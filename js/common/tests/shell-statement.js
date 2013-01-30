@@ -60,6 +60,60 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructNoQuery : function () {
+      try {
+        var st = new ArangoStatement(db);
+        fail();
+      }
+      catch (e) {
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructQueryOnly : function () {
+      var query = "for u in users return u";
+      var st = new ArangoStatement(db, { query: query });
+
+      assertEqual(query, st.getQuery());
+      assertEqual([ ], st.getBindVariables());
+      assertEqual(false, st.getCount());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructWithBind : function () {
+      var query = "for v in @values return v"; 
+      var bind = { values: [ 1, 2, 3 ] };
+      var st = new ArangoStatement(db, { query: query, bindVars: bind });
+
+      assertEqual(query, st.getQuery());
+      assertEqual(bind, st.getBindVariables());
+      assertEqual(false, st.getCount());
+      assertEqual(null, st.getBatchSize());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructWithBindExecute : function () {
+      var query = "for v in @values return v"; 
+      var bind = { values: [ 1, 2, 3 ] };
+      var st = new ArangoStatement(db, { query: query, bindVars: bind, count: true });
+
+      var result = st.execute().toArray();
+      assertEqual(3, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test parse method
 ////////////////////////////////////////////////////////////////////////////////
 

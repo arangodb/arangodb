@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*global require, SYS_UNIT_TESTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -93,9 +93,17 @@ function clear () {
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
 
+  if (internal.db !== undefined) {
+    try {
+      internal.db._collections();
+    }
+    catch (err) {
+    }
+  }
+
   if (internal.arango !== undefined) {
     if (typeof internal.arango.isConnected !== "undefined") {
-      if (internal.arango.isConnected()) {
+      if (internal.arango.isConnected() && typeof SYS_UNIT_TESTS !== "undefined") {
         internal.print(arangosh.HELP);
       }
     }

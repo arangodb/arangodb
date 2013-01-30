@@ -301,7 +301,7 @@ int main (int argc, char* argv[]) {
                                             ArangoClient::DEFAULT_RETRIES,
                                             false);
 
-  if (!ClientConnection->isConnected()) {
+  if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != SimpleHttpResult::HTTP_STATUS_OK) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);

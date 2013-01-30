@@ -32,7 +32,7 @@ describe ArangoDB do
       doc.parsed_response['code'].should eq(400)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
     end
-	
+  
     it "returns an error if _key is a bool" do
       cmd = "/_api/document?collection=#{@cn}"
       body = "{ \"_key\" : true }"
@@ -130,7 +130,6 @@ describe ArangoDB do
         "\\\\invalid",
         "\\\\\\\\invalid",
         ";invalid",
-        ":invalid",
         ".invalid",
         ",invalid",
         "!invalid",

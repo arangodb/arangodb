@@ -184,7 +184,7 @@ class LineEditor {
     typedef enum {
       STATE_NONE = 0,
       STATE_OPENED,
-      STATE_CLOSED,
+      STATE_CLOSED
     }
     console_state_e;
 

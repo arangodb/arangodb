@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, paths
+/// @brief tests for query language, graph functions
 ///
 /// @file
 ///
@@ -28,10 +28,11 @@
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var QUERY = require("internal").AQL_QUERY;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief test suite for PATHS() function
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryPathsTestSuite () {
@@ -44,7 +45,7 @@ function ahuacatlQueryPathsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AHUACATL_RUN(query, undefined);
+    var cursor = QUERY(query, undefined);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -277,10 +278,10 @@ function ahuacatlQueryPathsTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief test suite for TRAVERSAL() function
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryTraverseTestSuite () {
+function ahuacatlQueryTraversalTestSuite () {
   var vn = "UnitTestsTraverseVertices";
   var en = "UnitTestsTraverseEdges";
 
@@ -292,7 +293,7 @@ function ahuacatlQueryTraverseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query, params) {
-    var cursor = AHUACATL_RUN(query, params);
+    var cursor = QUERY(query, params);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -350,7 +351,7 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "B", "C", "D" ], actual);
     },
@@ -372,7 +373,7 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "D", "C" ], actual);
     },
@@ -394,7 +395,7 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "A", "D", "C", "A" ], actual);
     },
@@ -417,7 +418,7 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "B", "C", "A", "D", "C", "A" ], actual);
     },
@@ -438,7 +439,7 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "D" ], actual);
     },
@@ -459,9 +460,30 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "D", "C" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstUniqueEdgePath : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "none", 
+          edges: "path"
+        },
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "A", "D", "C", "D", "C", "A", "B", "C" ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,9 +503,31 @@ function ahuacatlQueryTraverseTestSuite () {
         _sort: true
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "A", "C", "D", "A", "C", "C", "B", "A", "D" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test paths
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalPaths : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 2,
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        paths: true,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN { p: p.path.vertices[*]._key, v: p.vertex._key }", { "@v" : vn, "@e" : en }).getRows();
+      assertEqual([ { p: [ "A" ], v: "A" }, { p: [ "A", "B" ], v: "B" }, { p: [ "A", "B", "C" ], v:  "C" }, { p: [ "A", "D" ], v: "D" } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,7 +538,7 @@ function ahuacatlQueryTraverseTestSuite () {
       var config = {
       };
 
-      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/FOX', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/FOX', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ ], actual);
     }
@@ -503,11 +547,108 @@ function ahuacatlQueryTraverseTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for TRAVERSAL_TREE() function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryTraversalTreeTestSuite () {
+  var vn = "UnitTestsTraverseVertices";
+  var en = "UnitTestsTraverseEdges";
+
+  var vertices;
+  var edges;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a given query
+////////////////////////////////////////////////////////////////////////////////
+
+  function executeQuery (query, params) {
+    var cursor = QUERY(query, params);
+    if (cursor instanceof ArangoError) {
+      print(query, cursor.errorMessage);
+    }
+    assertFalse(cursor instanceof ArangoError);
+    return cursor;
+  }
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalTree : function () {
+      var config = {
+        minDepth: 1,
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSAL_TREE(@@v, @@e, '" + vn + "/A', 'outbound', 'connected', " + JSON.stringify(config) + ") RETURN p", { "@v" : vn, "@e" : en }).getRows(); 
+      assertEqual(1, actual.length);
+
+      var root = actual[0];
+      var nodeA = root[0];
+
+      assertEqual("A", nodeA.name);
+      assertEqual(2, nodeA.connected.length);
+
+      var nodeB= nodeA.connected[0];
+      assertEqual("B", nodeB.name);
+      assertEqual(1, nodeB.connected.length);
+
+      var nodeC = nodeB.connected[0];
+      assertEqual("C", nodeC.name);
+      assertEqual(undefined, nodeC.connected);
+
+      var nodeD = nodeA.connected[1];
+      assertEqual("D", nodeD.name);
+      assertEqual(undefined, nodeD.connected);
+    },
+
+  };
+
+}  
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryPathsTestSuite);
-jsunity.run(ahuacatlQueryTraverseTestSuite);
+jsunity.run(ahuacatlQueryTraversalTestSuite);
+jsunity.run(ahuacatlQueryTraversalTreeTestSuite);
 
 return jsunity.done();
 
