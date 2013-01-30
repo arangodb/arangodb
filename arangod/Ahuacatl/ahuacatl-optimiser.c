@@ -805,7 +805,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
   }
 
   // we will not optimise in the main scope, e.g. LIMIT 5 RETURN 1
-  if (scope->_type == TRI_AQL_SCOPE_MAIN) {
+  if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_FOR_NESTED) {
     return node;
   }
       
@@ -818,7 +818,6 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     if (++scope->_limit._found == 1) {
       // we can push the limit up, into the for loop or the collection access
       LOG_TRACE("pushed up limit");
-
       return TRI_GetDummyNopNodeAql();
     }
   }
