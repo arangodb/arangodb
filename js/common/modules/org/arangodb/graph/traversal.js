@@ -771,7 +771,7 @@ function depthFirstSearch () {
             visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
           }
           if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
-            visited.edges = this.getPathItems(config.datasource,getEdgeId, path.edges);
+            visited.edges = this.getPathItems(config.datasource.getEdgeId, path.edges);
           }
 
           if (! checkUniqueness(config, visited, vertex, edge)) {
