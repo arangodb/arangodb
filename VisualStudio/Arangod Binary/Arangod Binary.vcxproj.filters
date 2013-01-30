@@ -288,6 +288,30 @@
     <ClCompile Include="..\..\arangod\VocBase\edge-collection.c">
       <Filter>VocBase Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\transaction.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\key-generator.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-handles.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-index.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-list.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-query.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-result.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-wordlist.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h">
@@ -544,6 +568,30 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\V8TransactionContext.h">
       <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\transaction.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\key-generator.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-handles.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-index.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-list.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-query.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-result.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-wordlist.h">
+      <Filter>VocBase Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

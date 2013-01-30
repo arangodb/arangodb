@@ -1869,6 +1869,11 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
   v8::String::Value left(argv[0]);
   v8::String::Value right(argv[1]);
   
+  // ..........................................................................
+  // Take note here: we are assuming that the ICU type UChar is two bytes.
+  // There is no guarantee that this will be the case on all platforms and
+  // compilers. 
+  // ..........................................................................
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
   
   return scope.Close(v8::Integer::New(result));
@@ -2833,7 +2838,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       TRI_DestroyVectorPointer(&files);
       TRI_ReleaseCollection(collection);
   
-      close(fd);
+      TRI_CLOSE(fd);
       return scope.Close(v8::False());
     }
 
@@ -2843,7 +2848,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
     while (true) {
       // read marker header
-      ssize_t bytesRead = ::read(fd, &marker, sizeof(marker));
+      ssize_t bytesRead = TRI_READ(fd, &marker, sizeof(marker));
 
       if (bytesRead == 0) {
         // eof
@@ -2872,16 +2877,15 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
         
         off_t paddedSize = TRI_DF_ALIGN_BLOCK(marker._size);
         
-        char payload[paddedSize];
-        char* p = (char*) &payload;
+        char* payload = new char[paddedSize];
       
         // copy header
                 
-        memcpy(&payload, &marker, sizeof(marker));
+        memcpy(payload, &marker, sizeof(marker));
         
         if (marker._size > sizeof(marker)) {
           //int r = ::read(fd, p + sizeof(marker), marker._size - sizeof(marker));
-          int r = ::read(fd, p + sizeof(marker), paddedSize - sizeof(marker));
+          int r = TRI_READ(fd, payload + sizeof(marker), paddedSize - sizeof(marker));
           if (r < (int) (paddedSize - sizeof(marker))) {
             LOG_WARNING("read less than paddedSize - sizeof(marker) = %d", r);
             break;
@@ -2895,7 +2899,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
         switch (marker._type) {
           case TRI_DOC_MARKER_DOCUMENT: {
-            doc_document_marker_t_deprecated* oldMarker = (doc_document_marker_t_deprecated*) &payload;
+            doc_document_marker_t_deprecated* oldMarker = (doc_document_marker_t_deprecated*) payload;
             TRI_doc_document_key_marker_t newMarker;
             TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_document_key_marker_t);
 
@@ -2928,12 +2932,9 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._size = newMarkerSize + keyBodySize + bodySize;
             TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
-            writeResult = write(fdout, &newMarker, sizeof(newMarker));
-            (void) writeResult;
-            writeResult = write(fdout, keyBody, keyBodySize);
-            (void) writeResult;
-            writeResult = write(fdout, body, bodySizePadded);
-            (void) writeResult;
+            writeResult = TRI_WRITE(fdout, &newMarker, sizeof(newMarker));
+            writeResult = TRI_WRITE(fdout, keyBody, keyBodySize);
+            writeResult = TRI_WRITE(fdout, body, bodySizePadded);
 
             //LOG_INFO("found doc marker, type: '%d', did: '%d', rid: '%d', size: '%d', crc: '%d'", marker._type, oldMarker->_did, oldMarker->_rid,newMarker.base._size,newMarker.base._crc);
 
@@ -2944,7 +2945,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
           }
             
           case TRI_DOC_MARKER_EDGE: {
-            doc_edge_marker_t_deprecated* oldMarker = (doc_edge_marker_t_deprecated*) &payload;            
+            doc_edge_marker_t_deprecated* oldMarker = (doc_edge_marker_t_deprecated*) payload;            
             TRI_doc_edge_key_marker_t newMarker;
             TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_edge_key_marker_t);
             
@@ -2996,11 +2997,11 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base.base._tick = oldMarker->base.base._tick;
             TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
-            writeResult = write(fdout, &newMarker, newMarkerSize);
+            writeResult = TRI_WRITE(fdout, &newMarker, newMarkerSize);
             (void) writeResult;
-            writeResult = write(fdout, keyBody, keyBodySize);
+            writeResult = TRI_WRITE(fdout, keyBody, keyBodySize);
             (void) writeResult;
-            writeResult = write(fdout, body, bodySizePadded);
+            writeResult = TRI_WRITE(fdout, body, bodySizePadded);
             (void) writeResult;
 
             //LOG_INFO("found edge marker, type: '%d', did: '%d', rid: '%d', size: '%d', crc: '%d'", marker._type, oldMarker->base._did, oldMarker->base._rid,newMarker.base.base._size,newMarker.base.base._crc);
@@ -3012,7 +3013,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
           }
 
           case TRI_DOC_MARKER_DELETION: {
-            doc_deletion_marker_t_deprecated* oldMarker = (doc_deletion_marker_t_deprecated*) &payload;                        
+            doc_deletion_marker_t_deprecated* oldMarker = (doc_deletion_marker_t_deprecated*) payload;                        
             TRI_doc_deletion_key_marker_t newMarker;
             TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_deletion_key_marker_t);
             
@@ -3038,9 +3039,9 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._tick = oldMarker->base._tick;
             TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
 
-            writeResult = write(fdout, &newMarker, newMarkerSize);
+            writeResult = TRI_WRITE(fdout, &newMarker, newMarkerSize);
             (void) writeResult;
-            writeResult = write(fdout, (char*) keyBody, keyBodySize);
+            writeResult = TRI_WRITE(fdout, (char*) keyBody, keyBodySize);
             (void) writeResult;
 
             //LOG_INFO("found deletion marker, type: '%d', did: '%d', rid: '%d'", marker._type, oldMarker->_did, oldMarker->_rid);
@@ -3053,14 +3054,15 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
           default: {
             // copy other types without modification
-            writeResult = write(fdout, &payload, sizeof(payload));
+            writeResult = TRI_WRITE(fdout, payload, paddedSize);
             (void) writeResult;
-            writtenSize += sizeof(payload);
+            writtenSize += paddedSize;
             //LOG_INFO("found marker, type: '%d'", marker._type);
 
           }
         }
 
+        delete [] payload;
       }
       else if (bytesRead == 0) {
         // eof
@@ -3069,8 +3071,8 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       else {
         LOG_ERROR("Could not read data from file '%s' while upgrading collection '%s'.", df->_filename, name);
         LOG_ERROR("Remove collection manually.");
-        close(fd);
-        close(fdout);
+        TRI_CLOSE(fd);
+        TRI_CLOSE(fdout);
 
         TRI_DestroyVectorPointer(&files);
         TRI_ReleaseCollection(collection);
@@ -3086,20 +3088,20 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       memset(b, 0, max); 
       
       while (writtenSize + max < fileSize) {
-        writeResult = write(fdout, b, max);
+        writeResult = TRI_WRITE(fdout, b, max);
         (void) writeResult;
         writtenSize += max;
       }
       
       if (writtenSize < fileSize) {
-        writeResult = write(fdout, b, fileSize - writtenSize);
+        writeResult = TRI_WRITE(fdout, b, fileSize - writtenSize);
         (void) writeResult;
       }
     }
 
     // file converted!
-    close(fd);
-    close(fdout);
+    TRI_CLOSE(fd);
+    TRI_CLOSE(fdout);
   }
 
 

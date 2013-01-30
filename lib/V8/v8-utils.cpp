@@ -1473,15 +1473,20 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
       //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
       return scope.Close(v8::String::New(*str, str_len)); 
     }
-    
-    UnicodeString result = normalizer->normalize(UnicodeString(*str, str_len), erroCode);
+
+    UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), erroCode);
 
     if (U_FAILURE(erroCode)) {
       //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
       return scope.Close(v8::String::New(*str, str_len)); 
     }
     
-    return scope.Close(v8::String::New(result.getBuffer(), result.length())); 
+    // ..........................................................................
+    // Take note here: we are assuming that the ICU type UChar is two bytes.
+    // There is no guarantee that this will be the case on all platforms and
+    // compilers. v8 expects uint16_t (2 bytes)
+    // ..........................................................................
+    return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length())); 
 #else
     return scope.Close(v8::String::New(*str, str_len)); 
 #endif

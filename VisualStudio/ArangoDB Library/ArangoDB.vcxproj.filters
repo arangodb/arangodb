@@ -415,6 +415,12 @@
     <ClInclude Include="..\..\lib\BasicsC\utf8-helper.h">
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\local-configuration.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\application-exit.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">
@@ -706,6 +712,9 @@
       <Filter>UtilitiesSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\utf8-helper.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\application-exit.c">
       <Filter>BasicsCSource</Filter>
     </ClCompile>
   </ItemGroup>
