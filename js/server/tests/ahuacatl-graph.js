@@ -469,6 +469,27 @@ function ahuacatlQueryTraversalTestSuite () {
 /// @brief test max-depth filtering
 ////////////////////////////////////////////////////////////////////////////////
 
+    testTraversalDepthFirstUniqueEdgePath : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "none", 
+          edges: "path"
+        },
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "A", "D", "C", "D", "C", "A", "B", "C" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
     testTraversalDepthFirstAny : function () {
       var config = {
         strategy: "depthfirst",
@@ -485,6 +506,28 @@ function ahuacatlQueryTraversalTestSuite () {
       var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "A", "C", "D", "A", "C", "C", "B", "A", "D" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test paths
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalPaths : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 2,
+        uniqueness: {
+          vertices: "global", 
+          edges: "none"
+        },
+        paths: true,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSAL(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN { p: p.path.vertices[*]._key, v: p.vertex._key }", { "@v" : vn, "@e" : en }).getRows();
+      assertEqual([ { p: [ "A" ], v: "A" }, { p: [ "A", "B" ], v: "B" }, { p: [ "A", "B", "C" ], v:  "C" }, { p: [ "A", "D" ], v: "D" } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
