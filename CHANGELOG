@@ -1,6 +1,8 @@
 v1.1.2 (2013-01-20)
 -------------------
 
+* fixed issue #379: arango-password fatal issue javscript.startup-directory 
+ 
 * fixed issue #372: Command-Line Options for the Authentication and Authorisation
 
 * upgraded to mruby 2013-01-20 583983385b81c21f82704b116eab52d606a609f4
