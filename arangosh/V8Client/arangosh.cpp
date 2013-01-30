@@ -1,4 +1,4 @@
-/// @brief V8 shell
+﻿/// @brief V8 shell
 ///
 /// @file
 ///
@@ -34,6 +34,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 #include "ArangoShell/ArangoClient.h"
+#include "BasicsC/messages.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -843,6 +844,15 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
   // we will therefore disable colorful prompts for MacOS.
   goodPrompt = badPrompt = string("arangosh> ");
+  
+#elif _WIN32
+  // ........................................................................................
+  // Windows console is not coloured by escape sequences. So the method given below will not
+  // work. For now we simply ignore the colours until we move the windows version into 
+  // a GUI Window.
+  // ........................................................................................
+  goodPrompt = string("arangosh> ");
+  badPrompt = string("arangosh> ");
 #else
   if (BaseClient.colors()) {
     goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
@@ -1056,6 +1066,76 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup and exit functions
+////////////////////////////////////////////////////////////////////////////////
+
+void* arangoshResourcesAllocated = NULL;
+static void arangoshEntryFunction ();
+static void arangoshExitFunction (int, void*);
+
+#ifdef _WIN32
+
+// .............................................................................
+// Call this function to do various initialistions for windows only
+// .............................................................................
+void arangoshEntryFunction() {
+  int maxOpenFiles = 1024; 
+  int res = 0;
+
+  // ...........................................................................
+  // Uncomment this to call this for extended debug information.
+  // If you familiar with valgrind ... then this is not like that, however
+  // you do get some similar functionality.
+  // ...........................................................................
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  if (res != 0) {
+    _exit(1);
+  }
+
+  TRI_Application_Exit_SetExit(arangoshExitFunction);
+
+}
+
+static void arangoshExitFunction(int exitCode, void* data) {
+  int res = 0;
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // ...........................................................................
+
+  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  
+  if (res != 0) {
+    _exit(1);
+  }
+
+  _exit(exitCode);
+}
+#else
+
+static void arangoshEntryFunction() {
+}
+
+static void arangoshExitFunction(int exitCode, void* data) {
+}
+
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main
 ////////////////////////////////////////////////////////////////////////////////
@@ -1064,29 +1144,7 @@ int main (int argc, char* argv[]) {
 
   int ret = EXIT_SUCCESS;
 
-#ifdef _WIN32
-
-  // ...........................................................................
-  // Call this function to do various initialistions for windows only
-  // ...........................................................................
-  
-  // ...........................................................................
-  // Uncomment this to call this for extended debug information.
-  // If you familiar with valgrind ... then this is not like that, however
-  // you do get some similar functionality.
-  // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
-
-  ret = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-  if (ret != 0) {
-    _exit(1);
-  }
-  ret = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
-  if (ret != 0) {
-    _exit(1);
-  }
-
-#endif
+  arangoshEntryFunction();
 
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
@@ -1119,7 +1177,7 @@ int main (int argc, char* argv[]) {
 
     if (BaseClient.endpointServer() == 0) {
       cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
     }
 
 
@@ -1140,7 +1198,7 @@ int main (int argc, char* argv[]) {
 
   if (context.IsEmpty()) {
     cerr << "cannot initialize V8 engine" << endl;
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   context->Enter();
@@ -1253,7 +1311,8 @@ int main (int argc, char* argv[]) {
         defaultColour = csbiInfo.wAttributes;
       }
 
-      SetConsoleOutputCP(65001);
+      // not sure about the code page
+      //SetConsoleOutputCP(65001);
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
       printf("                                  ");
       SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
@@ -1361,7 +1420,7 @@ int main (int argc, char* argv[]) {
   if (StartupPath.empty()) {
     LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
@@ -1394,7 +1453,7 @@ int main (int argc, char* argv[]) {
     }
     else {
       LOGGER_ERROR << "cannot load JavaScript file '" << files[i] << "'";
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
     }
   }
 
@@ -1452,16 +1511,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-#ifdef _WIN32
-
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
-  ret = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-  
-#endif  
+  arangoshExitFunction(ret, NULL);
 
   return ret;
 }

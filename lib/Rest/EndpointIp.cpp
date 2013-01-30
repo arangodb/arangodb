@@ -136,7 +136,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
       LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 
-      TRI_CLOSE(listenSocket);
+      TRI_CLOSE_SOCKET(listenSocket);
 
       return 0;
     }

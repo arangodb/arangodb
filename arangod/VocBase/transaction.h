@@ -219,14 +219,15 @@ TRI_transaction_collection_global_t;
 /// @brief create the global transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_context_t* TRI_CreateTransactionContext (struct TRI_vocbase_s*,
+TRI_transaction_context_t* TRI_CreateTransactionContext (struct TRI_vocbase_s* const,
                                                          TRI_transaction_server_id_t);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the global transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransactionContext (TRI_transaction_context_t*);
+void TRI_FreeTransactionContext (TRI_transaction_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

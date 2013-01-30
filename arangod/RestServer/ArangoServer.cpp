@@ -463,7 +463,7 @@ void ArangoServer::buildApplicationServer () {
     int res = executeConsole(mode);
 
     TRI_FlushLogging();
-    exit(res);
+    TRI_EXIT_FUNCTION(res,NULL);
   }
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
