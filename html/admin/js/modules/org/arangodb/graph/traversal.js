@@ -1,6 +1,6 @@
 module.define("org/arangodb/graph/traversal", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
-/*global require, exports, ArangoTraverser */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
@@ -59,6 +59,10 @@ function collectionDatasourceFactory (edgeCollection) {
   return {
     edgeCollection: edgeCollection,
 
+    getVertexId: function (vertex) {
+      return vertex._id;
+    },
+
     getPeerVertex: function (edge, vertex) {
       if (edge._from === vertex._id) {
 	return db._document(edge._to);
@@ -77,6 +81,14 @@ function collectionDatasourceFactory (edgeCollection) {
 
     getOutVertex: function (edge) {
       return db._document(edge._from);
+    },
+
+    getEdgeId: function (edge) {
+      return edge._id;
+    },
+
+    getLabel: function (edge) {
+      return edge.$label;
     },
 
     getAllEdges: function (vertex) {
@@ -104,6 +116,10 @@ function graphDatasourceFactory (name) {
   return {
     graph: new graph.Graph(name),
 
+    getVertexId: function (vertex) {
+      return vertex.getId();
+    },
+
     getPeerVertex: function (edge, vertex) {
       return edge.getPeerVertex(vertex);
     },
@@ -114,6 +130,14 @@ function graphDatasourceFactory (name) {
 
     getOutVertex: function (edge) {
       return edge.getOutVertex();
+    },
+
+    getEdgeId: function (edge) {
+      return edge.getId();
+    },
+
+    getLabel: function (edge) {
+      return edge.getLabel();
     },
 
     getAllEdges: function (vertex) {
@@ -135,7 +159,7 @@ function graphDatasourceFactory (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       datasources
+// --SECTION--                                                         expanders
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,78 +255,110 @@ function anyExpander (config, vertex, path) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief default expander that expands all outbound edges labeled with one label in config.labels 
+/// @brief expands all outbound edges labeled with at least one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-function ExpandOutEdgesWithLabels (config, vertex, path) {
-  var result = [ ], i;
+function expandOutEdgesWithLabels (config, vertex, path) {
+  var datasource = config.datasource;
+  var result = [ ];
+  var i;
+
   if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = config.datasource.getOutEdges(vertex._properties._id);
+
+  var edgesList = datasource.getOutEdges(vertex);
+
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
-      if (!!~config.labels.indexOf(edgesList[i].label)) {
-        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+      var edge = edgesList[i];
+      var label = datasource.getLabel(edge);
+
+      if (config.labels.indexOf(label) >= 0) {
+        result.push({ edge: edge, vertex: datasource.getInVertex(edge) });
       }
     }
   }
+
   return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief default expander that expands all inbound edges labeled with one label in config.labels 
+/// @brief expands all inbound edges labeled with at least one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
   
-function ExpandInEdgesWithLabels (config, vertex, path) {
-  var result = [ ], i;
+function expandInEdgesWithLabels (config, vertex, path) {
+  var datasource = config.datasource;
+  var result = [ ];
+  var i;
+
   if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = config.datasource.getInEdges(vertex._properties._id);
+
+  var edgesList = config.datasource.getInEdges(vertex);
+
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
-      if (!!~config.labels.indexOf(edgesList[i].label)) {
-        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._from] });
+      var edge = edgesList[i];
+      var label = datasource.getLabel(edge);
+
+      if (config.labels.indexOf(label) >= 0) {
+        result.push({ edge: edge, vertex: datasource.getOutVertex(edge) });
       }
     }
   }
+
   return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief default expander that expands all edges labeled with one label in config.labels 
+/// @brief expands all edges labeled with at least one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////  
   
-function ExpandEdgesWithLabels (config, vertex, path) {
-  var result = [ ], i;
+function expandEdgesWithLabels (config, vertex, path) {
+  var datasource = config.datasource;
+  var result = [ ];
+  var i;
+
   if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = config.datasource.getInEdges(vertex._properties._id);
+
+  var edgesList = config.datasource.getAllEdges(vertex);
+
   if (edgesList !== undefined) {
     for (i = 0; i < edgesList.length; ++i) {
-      if (!!~config.labels.indexOf(edgesList[i].label)) {
-        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._from] });
+      var edge = edgesList[i];
+      var label = datasource.getLabel(edge);
+
+      if (config.labels.indexOf(label) >= 0) {
+        result.push({ edge: edge, vertex: datasource.getPeerVertex(edge, vertex) });
       }
     }
   }
-  edgesList = config.datasource.getOutEdges(vertex._properties._id);
-  if (edgesList !== undefined) {
-    for (i = 0; i < edgesList.length; ++i) {
-      if (!!~config.labels.indexOf(edgesList[i].label)) {
-        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
-      }
-    }
-  }
+
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          visitors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoTraverser
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default visitor that just tracks every visit
 ////////////////////////////////////////////////////////////////////////////////
 
-function TrackingVisitor (config, result, vertex, path) {
+function trackingVisitor (config, result, vertex, path) {
   if (! result || ! result.visited) {
     return;
   }
@@ -316,12 +372,14 @@ function TrackingVisitor (config, result, vertex, path) {
 
     if (Array.isArray(obj)) {
       copy = [ ];
+
       for (i = 0; i < obj.length; ++i) {
         copy[i] = clone(obj[i]);
       }
     }
     else if (obj instanceof Object) {
       copy = { };
+
       for (i in obj) {
         if (obj.hasOwnProperty && obj.hasOwnProperty(i)) {
           copy[i] = clone(obj[i]);
@@ -335,69 +393,100 @@ function TrackingVisitor (config, result, vertex, path) {
   if (result.visited.vertices) {
     result.visited.vertices.push(clone(vertex));
   }
+
   if (result.visited.paths) {
     result.visited.paths.push(clone(path));
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           filters
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoTraverser
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief default filter to visit & expand all vertices
 ////////////////////////////////////////////////////////////////////////////////
 
-function VisitAllFilter () {
+function visitAllFilter () {
   return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default filter to visit & expand all vertices up to a given depth
+/// @brief filter to visit & expand all vertices up to a given depth
 ////////////////////////////////////////////////////////////////////////////////
 
-function MaxDepthFilter (config, vertex, path) {
+function maxDepthFilter (config, vertex, path) {
   if (path.vertices.length > config.maxDepth) {
     return ArangoTraverser.PRUNE;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default filter to exclude all vertices up to a given depth
+/// @brief exclude all vertices up to a given depth
 ////////////////////////////////////////////////////////////////////////////////
 
-function MinDepthFilter (config, vertex, path) {
+function minDepthFilter (config, vertex, path) {
   if (path.vertices.length <= config.minDepth) {
     return ArangoTraverser.EXCLUDE;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default filter to include all vertices matching one of the given 
-/// attribute sets
+/// @brief include all vertices matching one of the given attribute sets
 ////////////////////////////////////////////////////////////////////////////////
 
-function IncludeMatchingAttributesFilter (config, vertex, path) {
+function includeMatchingAttributesFilter (config, vertex, path) {
   if (! Array.isArray(config.matchingAttributes)) {
     config.matchingAttributes = [config.matchingAttributes];
   }
 
   var include = false;
-  config.matchingAttributes.forEach( function(example) {
+
+  config.matchingAttributes.forEach(function(example) {
     var count = 0;
-    Object.keys(example).forEach( function (key) {
+    var keys = Object.keys(example);
+
+    keys.forEach(function (key) {
       if (vertex[key] && vertex[key] === example[key]) {
         count++;
       }
     });
-    if (count > 0 && count === Object.keys(example).length) {
+
+    if (count > 0 && count === keys.length) {
       include = true;
-      return;
     }
   });
 
   var result;
+
   if (! include) {
     result = "exclude";
   } 
+
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoTraverser
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief combine an array of filters
@@ -405,11 +494,14 @@ function IncludeMatchingAttributesFilter (config, vertex, path) {
 
 function combineFilters (filters, config, vertex, path) {
   var result = [ ];
-  filters.forEach( function (f) {
+
+  filters.forEach(function (f) {
     var tmp = f(config, vertex, path);
+
     if (! Array.isArray(tmp)) {
       tmp = [ tmp ];
     }
+
     result = result.concat(tmp);
   });
 
@@ -470,21 +562,28 @@ function parseFilterResult (args) {
 /// @brief apply the uniqueness checks
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkUniqueness (uniqueness, visited, vertex, edge) {
+function checkUniqueness (config, visited, vertex, edge) {
+  var uniqueness = config.uniqueness;
+  var datasource = config.datasource;
+
   if (uniqueness.vertices !== ArangoTraverser.UNIQUE_NONE) {
-    if (visited.vertices[vertex._properties._id] === true) {
+    var id = datasource.getVertexId(vertex);
+
+    if (visited.vertices[id] === true) {
       return false;
     }
 
-    visited.vertices[vertex._properties._id] = true;
+    visited.vertices[id] = true;
   }
 
   if (edge !== null && uniqueness.edges !== ArangoTraverser.UNIQUE_NONE) {
-    if (visited.edges[edge._properties._id] === true) {
+    var id = datasource.getEdgeId(edge);
+
+    if (visited.edges[id] === true) {
       return false;
     }
 
-    visited.edges[edge._properties._id] = true;
+    visited.edges[id] = true;
   }
 
   return true;
@@ -524,13 +623,13 @@ function checkReverse (config) {
 
 function breadthFirstSearch () {
   return {
-    getPathItems: function (items) {
+    getPathItems: function (id, items) {
       var visited = { };
       var ignore = items.length - 1;
       
       items.forEach(function (item, i) {
         if (i !== ignore) {
-          visited[item._properties._id] = true;
+          visited[id(item)] = true;
         }
       });
 
@@ -578,13 +677,13 @@ function breadthFirstSearch () {
           
           // first apply uniqueness check
           if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
-            visited.vertices = this.getPathItems(path.vertices);
+            visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
           }
           if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
-            visited.edges = this.getPathItems(path.edges);
+            visited.edges = this.getPathItems(config.datasource.getEdgeId, path.edges);
           }
 
-          if (! checkUniqueness(config.uniqueness, visited, vertex, edge)) {
+          if (! checkUniqueness(config, visited, vertex, edge)) {
             if (index < toVisit.length - 1) {
               index += step;
             }
@@ -632,12 +731,9 @@ function breadthFirstSearch () {
             config.visitor(config, result, vertex, path);
           }
           index += step;
-          
         }
-
       }
     }
-
   };
 }
 
@@ -647,10 +743,10 @@ function breadthFirstSearch () {
 
 function depthFirstSearch () {
   return {
-    getPathItems: function (items) {
+    getPathItems: function (id, items) {
       var visited = { };
       items.forEach(function (item) {
-        visited[item._properties._id] = true;
+        visited[id(item)] = true;
       });
       return visited;
     },
@@ -673,13 +769,13 @@ function depthFirstSearch () {
 
           // first apply uniqueness check
           if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
-            visited.vertices = this.getPathItems(path.vertices);
+            visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
           }
           if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
-            visited.edges = this.getPathItems(path.edges);
+            visited.edges = this.getPathItems(config.datasource.getEdgeId, path.edges);
           }
 
-          if (! checkUniqueness(config.uniqueness, visited, vertex, edge)) {
+          if (! checkUniqueness(config, visited, vertex, edge)) {
             // skip element if not unique
             toVisit.pop();
             continue;
@@ -729,10 +825,8 @@ function depthFirstSearch () {
           }
           path.vertices.pop();
         }
-
       }
     }
-  
   };
 }
 
@@ -740,6 +834,10 @@ function depthFirstSearch () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   ArangoTraverser
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -763,8 +861,8 @@ function ArangoTraverser (config) {
       vertices: ArangoTraverser.UNIQUE_NONE,
       edges: ArangoTraverser.UNIQUE_NONE
     },
-    visitor: TrackingVisitor,
-    filter: VisitAllFilter,
+    visitor: trackingVisitor,
+    filter: visitAllFilter,
     expander: outboundExpander,
     datasource: null
   }, d;
@@ -792,10 +890,13 @@ function ArangoTraverser (config) {
         throw "invalid filter";
       }
     });
+
     var innerFilters = config.filter.slice();
+
     var combinedFilter = function (config, vertex, path) {
       return combineFilters(innerFilters, config, vertex, path);
     };
+
     config.filter = combinedFilter;
   }
   
@@ -849,19 +950,6 @@ ArangoTraverser.prototype.traverse = function (result, startVertex) {
   // run the traversal
   strategy.run(this.config, result, startVertex);
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoTraverser
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -961,16 +1049,18 @@ exports.graphDatasourceFactory          = graphDatasourceFactory;
 exports.outboundExpander                = outboundExpander;
 exports.inboundExpander                 = inboundExpander;
 exports.anyExpander                     = anyExpander;
+exports.expandOutEdgesWithLabels        = expandOutEdgesWithLabels;
+exports.expandInEdgesWithLabels         = expandInEdgesWithLabels;
+exports.expandEdgesWithLabels           = expandEdgesWithLabels;
+
+exports.trackingVisitor                 = trackingVisitor;
+
+exports.visitAllFilter                  = visitAllFilter;
+exports.maxDepthFilter                  = maxDepthFilter;
+exports.minDepthFilter                  = minDepthFilter;
+exports.includeMatchingAttributesFilter = includeMatchingAttributesFilter;
 
 exports.Traverser                       = ArangoTraverser;
-exports.VisitAllFilter                  = VisitAllFilter;
-exports.IncludeMatchingAttributesFilter = IncludeMatchingAttributesFilter;
-exports.TrackingVisitor                 = TrackingVisitor;
-exports.MinDepthFilter                  = MinDepthFilter;
-exports.MaxDepthFilter                  = MaxDepthFilter;
-exports.ExpandEdgesWithLabels           = ExpandEdgesWithLabels;
-exports.ExpandInEdgesWithLabels         = ExpandInEdgesWithLabels;
-exports.ExpandOutEdgesWithLabels        = ExpandOutEdgesWithLabels;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -615,9 +615,75 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       var explain = explainQuery(query);
       assertEqual("for", explain[0].type);
       assertEqual(undefined, explain[0].limit);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit in nested loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitNested1 : function () {
+      var query = "FOR o IN [ 1, 2, 3 ] FOR i IN [ 5, 6, 7 ] LIMIT 2 RETURN { o: o, i: i }";
+
+      var actual = getQueryResults(query, false);
+      assertEqual([ { i: 5, o: 1 }, { i: 6, o: 1 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit in nested loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitNested2 : function () {
+      var query = "FOR o IN [ 1, 2, 3 ] FOR i IN [ 5, 6, 7 ] LIMIT 0, 1 RETURN { o: o, i: i }";
+
+      var actual = getQueryResults(query, false);
+      assertEqual([ { i: 5, o: 1 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit in nested loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitNested3 : function () {
+      var query = "FOR o IN [ 1, 2, 3 ] FOR i IN [ 5, 6, 7 ] LIMIT 1, 1 RETURN { o: o, i: i }";
+
+      var actual = getQueryResults(query, false);
+      assertEqual([ { i: 6, o: 2 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit in nested loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitNested4 : function () {
+      var query = "FOR o IN [ 1, 2, 3 ] LIMIT 1 FOR i IN [ 5, 6, 7 ] RETURN { o: o, i: i }";
+
+      var actual = getQueryResults(query, false);
+      assertEqual([ { i: 5, o: 1 }, { i: 6, o: 1 }, { i: 7, o: 1 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit in nested loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitNested5 : function () {
+      var query = "FOR o IN [ 1, 2, 3 ] LIMIT 1, 1 FOR i IN [ 5, 6, 7 ] RETURN { o: o, i: i }";
+
+      var actual = getQueryResults(query, false);
+      assertEqual([ { i: 5, o: 2 }, { i: 6, o: 2 }, { i: 7, o: 2 } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit in nested loops
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitNested6 : function () {
+      var query = "FOR o IN [ 1, 2, 3 ] LIMIT 1 FOR i IN [ 5, 6, 7 ] LIMIT 2 RETURN { o: o, i: i }";
+
+      var actual = getQueryResults(query, false);
+      assertEqual([ { i: 5, o: 1 }, { i: 6, o: 1 } ], actual);
     }
 
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

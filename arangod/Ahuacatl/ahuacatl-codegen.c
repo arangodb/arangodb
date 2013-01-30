@@ -439,7 +439,7 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   limitRegister  = 0;
   if (hint != NULL && hint->_limit._status == TRI_AQL_LIMIT_USE) {
     if (hint->_limit._hasFilter) {
-      // delegate limit handling to following a filter condition
+      // delegate limit handling to following filter condition
       if (hint->_limit._offset > 0) {
         // only use offset if > 0
         offsetRegister = IncRegister(generator);

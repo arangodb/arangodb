@@ -112,6 +112,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_type             = NextType(context, type);
   scope->_ranges           = NULL;
   scope->_selfContained    = true;
+  scope->_level            = 0; // init with a dummy value
 
   scope->_limit._offset    = 0;
   scope->_limit._limit     = INT64_MAX;
@@ -283,6 +284,9 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
   if (scope == NULL) {
     return false;
   }
+
+  // set real scope level
+  scope->_level = (size_t) context->_memory._scopes._length;
   
   LOG_TRACE("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
