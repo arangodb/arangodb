@@ -49,6 +49,7 @@ function main(args) {
     start_time,
     end_time,
     query,
+    QUERY = require("internal").AQL_QUERY,
     i,
     times = parseInt(args[2], 10);
 
@@ -90,7 +91,7 @@ function main(args) {
 
   query = function(filter) {
     for (i = 0; i < times; i += 1) {
-      rows = AHUACATL_RUN(
+      rows = QUERY(
         "for x in " + vertex +
         " filter " + filter +
         "return x.name"

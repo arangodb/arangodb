@@ -446,7 +446,12 @@
           printObject(value, seen, path, names, level);
         }
         else if (typeof value.toString === "function") {
-          output(value.toString());
+          // it's possible that toString() throws, and this looks quite ugly
+          try {
+            output(value.toString());
+          }
+          catch (e) {
+          }
         }
         else {
           printObject(value, seen, path, names, level);

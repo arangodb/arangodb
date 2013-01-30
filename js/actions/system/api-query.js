@@ -28,6 +28,7 @@
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var PARSE = require("internal").AQL_PARSE;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -82,14 +83,14 @@ function POST_api_query (req, res) {
     return;
   }
 
-  var result = AHUACATL_PARSE(json.query);
+  var result = PARSE(json.query);
 
   if (result instanceof ArangoError) {
     actions.resultBad(req, res, result.errorNum, result.errorMessage);
     return;
   }
 
-  result = { "bindVars" : result.parameters, "collections" : result.collections };
+  result = { bindVars: result.parameters, collections: result.collections };
 
   actions.resultOk(req, res, actions.HTTP_OK, result);
 }

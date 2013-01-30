@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+var QUERY = internal.AQL_QUERY;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -70,7 +71,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare1 : function () {
-      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 LET a = 1 RETURN 0"); }));
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { QUERY("LET a = 1 LET a = 1 RETURN 0"); }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +79,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare2 : function () {
-      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); }));
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { QUERY("LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +87,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare3 : function () {
-      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 FOR a IN [ 1 ] RETURN 0"); }));
+      assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { QUERY("LET a = 1 FOR a IN [ 1 ] RETURN 0"); }));
     }
 
   };

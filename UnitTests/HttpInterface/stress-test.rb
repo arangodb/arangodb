@@ -162,7 +162,7 @@ def reader (i)
   while true
     $doc_mutex.synchronize {
       while $documents.length <= 10
-	$doc_cv.wait($doc_mutex)
+  $doc_cv.wait($doc_mutex)
       end
     }
 
@@ -182,7 +182,7 @@ def writer (i)
   while true
     $doc_mutex.synchronize {
       while $maximal_size <= $documents.length 
-	$doc_cv.wait($doc_mutex)
+  $doc_cv.wait($doc_mutex)
       end
     }
 
@@ -204,7 +204,7 @@ def deleter (i)
   while true
     $doc_mutex.synchronize {
       while $documents.length < $maximal_size
-	$doc_cv.wait($doc_mutex)
+  $doc_cv.wait($doc_mutex)
       end
     }
 

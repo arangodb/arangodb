@@ -230,7 +230,7 @@ function CollectionDocumentSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
-
+      
       assertTypeOf("string", d1._id);
       assertTypeOf("string", d1._key);
       assertTypeOf("string", d1._rev);
@@ -262,7 +262,7 @@ function CollectionDocumentSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
-
+      
       assertTypeOf("string", d1._id);
       assertTypeOf("string", d1._key);
       assertTypeOf("string", d1._rev);
@@ -293,11 +293,15 @@ function CollectionDocumentSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
+      
+      d1 = null;
+      d2 = null;
 
       collection.unload();
       while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
         wait(1);
       }
+      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
 
       collection.load();
 
@@ -327,10 +331,14 @@ function CollectionDocumentSuite () {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
+      d1 = null;
+      d2 = null;
+
       collection.unload();
       while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
         wait(1);
       }
+      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
 
       collection.load();
 
@@ -341,6 +349,122 @@ function CollectionDocumentSuite () {
       assertEqual(1, doc.value2);
       
       assertEqual(1, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document insert/delete w/ reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicates : function () {
+      var d, i;
+
+      for (i = 0; i < 10; ++i) {
+        d = collection.save({ _key: "test", value: i }); 
+        collection.remove(d);
+      }
+      d = null;
+
+      assertEqual(0, collection.count());
+
+      collection.unload();
+      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+        wait(1);
+      }
+      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+
+      collection.load();
+
+      assertEqual(0, collection.count());
+        
+      var d = collection.save({ _key: "test", value: 200 }); 
+      assertTypeOf("string", d._id);
+      assertTypeOf("string", d._key);
+      assertTypeOf("string", d._rev);
+      assertEqual("UnitTestsCollectionBasics/test", d._id);
+      assertEqual("test", d._key);
+
+      var doc = collection.document("test");
+      assertEqual("UnitTestsCollectionBasics/test", doc._id);
+      assertEqual("test", doc._key);
+      assertEqual(200, doc.value);
+
+      assertEqual(1, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document insert/delete w/ reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicatesSurvive : function () {
+      var i;
+
+      for (i = 0; i < 10; ++i) {
+        var d = collection.save({ _key: "test", value: i }); 
+        collection.remove(d);
+      }
+      collection.save({ _key: "test", value: 99 });
+
+      assertEqual(1, collection.count());
+
+      collection.unload();
+      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+        wait(1);
+      }
+      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+
+      collection.load();
+
+      assertEqual(1, collection.count());
+        
+      var doc = collection.document("test");
+      assertEqual("UnitTestsCollectionBasics/test", doc._id);
+      assertEqual("test", doc._key);
+      assertEqual(99, doc.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document insert/delete w/ reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentDuplicatesViolationSurvive : function () {
+      var i;
+        
+      try {
+        collection.remove("test");
+        fail("whoops");
+      }
+      catch (e1) {
+      }
+
+      for (i = 0; i < 10; ++i) {
+        try {
+          collection.save({ _key: "test", value: i }); 
+        }
+        catch (e2) {
+        }
+      }
+
+      assertEqual(1, collection.count());
+      var doc = collection.document("test");
+      assertEqual("UnitTestsCollectionBasics/test", doc._id);
+      assertEqual("test", doc._key);
+      assertEqual(0, doc.value);
+      doc = null;
+
+      collection.unload();
+      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+        wait(1);
+      }
+      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+
+      collection.load();
+
+      assertEqual(1, collection.count());
+        
+      var doc = collection.document("test");
+      assertEqual("UnitTestsCollectionBasics/test", doc._id);
+      assertEqual("test", doc._key);
+      assertEqual(0, doc.value);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

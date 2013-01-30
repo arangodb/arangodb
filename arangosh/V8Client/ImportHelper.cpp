@@ -56,6 +56,12 @@ using namespace std;
 
 namespace triagens {
   namespace v8client {
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// initialise step value for progress reports
+    ////////////////////////////////////////////////////////////////////////////////
+
+    const double ImportHelper::ProgressStep = 2.0;
 
     const double ImportHelper::ProgressStep = 2.0;
 
@@ -547,3 +553,4 @@ namespace triagens {
 
   }
 }
+      

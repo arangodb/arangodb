@@ -40,7 +40,7 @@ namespace triagens {
     class MaintenanceCallback {
       public:
         virtual void completed () = 0;
-				virtual ~MaintenanceCallback(){}
+        virtual ~MaintenanceCallback(){}
     };
   }
 }

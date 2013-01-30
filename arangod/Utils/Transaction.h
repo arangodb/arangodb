@@ -40,12 +40,7 @@
 #include "Utils/TransactionCollectionsList.h"
 #include "Utils/TransactionCollection.h"
 
-#if TRI_ENABLE_TRX
-//#define TRX_LOG LOGGER_INFO << __FUNCTION__ << ":" << __LINE__ << " " 
 #define TRX_LOG if (false) std::cout 
-#else
-#define TRX_LOG if (false) std::cout 
-#endif
 
 
 namespace triagens {

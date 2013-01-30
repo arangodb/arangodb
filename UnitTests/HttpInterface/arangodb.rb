@@ -3,7 +3,6 @@
 require 'rubygems'
 require 'httparty'
 require 'json'
-require 'json'
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 
@@ -66,7 +65,7 @@ class ArangoDB
   end
 
 ################################################################################
-## issues a get
+## issues a get request
 ################################################################################
 
   def self.log_get (output, url, args = {})
@@ -76,7 +75,7 @@ class ArangoDB
   end
 
 ################################################################################
-## issues a head
+## issues a head request
 ################################################################################
 
   def self.log_head (output, url, args = {})
@@ -86,7 +85,17 @@ class ArangoDB
   end
 
 ################################################################################
-## issues a post
+## issues an options request
+################################################################################
+
+  def self.log_options (output, url, args = {})
+    doc = self.options(url, args);
+    self.log(:method => :options, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
+    return doc
+  end
+
+################################################################################
+## issues a post request
 ################################################################################
 
   def self.log_post (output, url, args = {})
@@ -96,7 +105,7 @@ class ArangoDB
   end
 
 ################################################################################
-## issues a put
+## issues a put request
 ################################################################################
 
   def self.log_put (output, url, args = {})
@@ -106,7 +115,7 @@ class ArangoDB
   end
 
 ################################################################################
-## issues a delete
+## issues a delete request
 ################################################################################
 
   def self.log_delete (output, url, args = {})
@@ -116,7 +125,7 @@ class ArangoDB
   end
 
 ################################################################################
-## issues a patch
+## issues a patch request
 ################################################################################
 
   def self.log_patch (output, url, args = {})
@@ -150,45 +159,45 @@ class ArangoDB
 
     if headers
       for k in [ "if-match", "if-none-match" ] do
-	if headers.key?(k)
-	  h_option = h_option + h_sep + "'-H #{k}: #{headers[k]}'"
-	  h_sep = " "
-	end
+        if headers.key?(k)
+          h_option = h_option + h_sep + "'-H #{k}: #{headers[k]}'"
+          h_sep = " "
+        end
       end
       h_option = h_option + h_sep
     end
 
     if method == :get
       logfile.puts "> curl -X GET #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts
+      logfile.puts
     elsif method == :head
       logfile.puts "> curl -X HEAD #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts
+      logfile.puts
     elsif method == :delete
       logfile.puts "> curl -X DELETE #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts
+      logfile.puts
     elsif method == :post
       if body == nil
-	logfile.puts "> curl -X POST #{h_option}--dump - http://localhost:8529#{url}"
+        logfile.puts "> curl -X POST #{h_option}--dump - http://localhost:8529#{url}"
       else
-	logfile.puts "> curl --data @- -X POST #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts body
+        logfile.puts "> curl --data @- -X POST #{h_option}--dump - http://localhost:8529#{url}"
+        logfile.puts body
       end
       logfile.puts
     elsif method == :put
       if body == nil
-	logfile.puts "> curl -X PUT #{h_option}--dump - http://localhost:8529#{url}"
+        logfile.puts "> curl -X PUT #{h_option}--dump - http://localhost:8529#{url}"
       else
-	logfile.puts "> curl --data @- -X PUT #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts body
+        logfile.puts "> curl --data @- -X PUT #{h_option}--dump - http://localhost:8529#{url}"
+        logfile.puts body
       end
       logfile.puts
     elsif method == :patch
       if body == nil
-	logfile.puts "> curl -X PATCH #{h_option}--dump - http://localhost:8529#{url}"
+        logfile.puts "> curl -X PATCH #{h_option}--dump - http://localhost:8529#{url}"
       else
-	logfile.puts "> curl --data @- -X PATCH #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts body
+        logfile.puts "> curl --data @- -X PATCH #{h_option}--dump - http://localhost:8529#{url}"
+        logfile.puts body
       end
       logfile.puts
     else

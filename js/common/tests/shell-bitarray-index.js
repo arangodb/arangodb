@@ -166,8 +166,8 @@ function BitarrayIndexSuite() {
     // .........................................................................
     // Attempt to create the index again this time we are going to change 
     // the list of values 
-	// The database should pick up the existing bitarray index with the 
-	// original attribute/values.
+    // The database should pick up the existing bitarray index with the 
+    // original attribute/values.
     // .........................................................................
 
     idx = collection.ensureBitarray("a",["a","b","c","d",0,1,2,3,4,5,6,7,8,9,[]]);
@@ -205,17 +205,17 @@ function BitarrayIndexSuite() {
     assertEqual(true, idx.isNewlyCreated);
 
     
-	// .........................................................................
-	// Remove the index
+ // .........................................................................
+ // Remove the index
     // .........................................................................
-	
+ 
     result = collection.dropIndex(idx.id);         
     assertEqual(true,result);
     
     // .........................................................................
     // Attempt to create the index again this time we are going to change 
     // the list of values.
-    // This time the index should show the new attribute/values	
+    // This time the index should show the new attribute/values 
     // .........................................................................
 
     idx = collection.ensureBitarray("a",["a","b","c","d",0,1,2,3,4,5,6,7,8,9,[]]);
@@ -235,7 +235,7 @@ function BitarrayIndexSuite() {
        
     // .........................................................................
     // Create a bit array index with one attribute, with different types of
-	// json objects and with 3 attributes and their corresponding values.
+    // json objects and with 3 attributes and their corresponding values.
     // .........................................................................
     
     idx = collection.ensureBitarray("x",["male","female","other"],"y",[0,1,3,[]],"z",[{"z1":0},{"z2":1},[[["hello","goodbye"]],0,1,2,3,["4","4a","4b"],5,6,7,8,9],[]]);
@@ -291,7 +291,7 @@ function BitarrayIndexSuite() {
   testCreationBitarrayIndex_3b : function () {
     var idx;
     var n = 10000;   
-	
+ 
     // .........................................................................
     // Create a bit array index with one attribute
     // .........................................................................
@@ -299,7 +299,7 @@ function BitarrayIndexSuite() {
     idx = collection.ensureBitarray("x",[0,1,2,3,4,5,6,7,8,9,[]]);
     
     /* print("Start writing",n," documents into index"); */
-	
+ 
     // .........................................................................
     // Save n random records. The values of the attribute x will be in the 
     // range 0-19. Later our expections will approx half of these records

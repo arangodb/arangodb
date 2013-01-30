@@ -164,8 +164,8 @@
 /// collections and queries to certain users, given them either read
 /// or write access.
 ///
-/// Currently, you can only secure the access to the HTTP client and
-/// admin port in a all-or-nothing fashion.
+/// Currently, you can only secure the access to ArangoDB in an all-or-nothing
+/// fashion.
 /// The collection @LIT{_users} contains all user and the SHA256 of
 /// their passwords. A user can be active or inactive. A typical document
 /// of this collection is
@@ -173,7 +173,9 @@
 /// @verbinclude user-document
 ///
 /// @section DbaManualAuthenticationCommandLine Command-Line Options for the Authentication and Authorisation
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      DBA MANUAL DATAFILE DEBUGGER

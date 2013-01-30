@@ -28,6 +28,7 @@
 var actions = require("org/arangodb/actions");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 var ERRORS = require("internal").errors;
+var EXPLAIN = require("internal").AQL_EXPLAIN;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -132,7 +133,7 @@ function POST_api_explain (req, res) {
     return;
   }
 
-  var result = AHUACATL_EXPLAIN(json.query, json.bindVars);
+  var result = EXPLAIN(json.query, json.bindVars);
 
   if (result instanceof ArangoError) {
     actions.resultBad(req, res, result.errorNum, result.errorMessage);

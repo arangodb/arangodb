@@ -30,6 +30,7 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var QUERY = internal.AQL_QUERY;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -139,11 +140,11 @@ function POST_api_cursor(req, res) {
   var cursor;
 
   if (json.query != undefined) {
-    cursor = AHUACATL_RUN(json.query, 
-                          json.bindVars, 
-                          (json.count != undefined ? json.count : false),
-                          json.batchSize, 
-                          (json.batchSize == undefined));  
+    cursor = QUERY(json.query, 
+                   json.bindVars, 
+                   (json.count != undefined ? json.count : false),
+                   json.batchSize, 
+                   (json.batchSize == undefined));  
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
@@ -220,6 +221,7 @@ function PUT_api_cursor (req, res) {
   catch (e) {
   }
 
+  // unuse the cursor and garbage-collect it
   cursor.unuse();
   cursor = null;
   internal.wait(0.0);
@@ -266,7 +268,7 @@ function DELETE_api_cursor(req, res) {
     return;
   }
 
-  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });
+  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { id : cursorId });
 
   // we want the garbage collection to clean unused cursors immediately
   internal.wait(0.0);

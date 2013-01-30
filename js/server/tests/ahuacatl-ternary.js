@@ -28,6 +28,7 @@
 var internal = require("internal");
 var jsunity = require("jsunity");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var QUERY = internal.AQL_QUERY;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,7 +42,7 @@ function ahuacatlTernaryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AHUACATL_RUN(query, undefined);
+    var cursor = QUERY(query, undefined);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -179,13 +180,13 @@ function ahuacatlTernaryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testTernaryInvalid : function () {
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN 1 ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN null ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN (4) ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN (4 - 3) ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN \"true\" ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN [ ] ? 2 : 3"); } ));
-      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { AHUACATL_RUN("RETURN { } ? 2 : 3"); }));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN 1 ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN null ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN (4) ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN (4 - 3) ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN \"true\" ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN [ ] ? 2 : 3"); } ));
+      assertEqual(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, getErrorCode(function() { QUERY("RETURN { } ? 2 : 3"); }));
     }
 
   };

@@ -138,7 +138,15 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
-    }        
+    }
+    else {
+      // initial request for /_api/version return some non-HTTP 200 response.
+      // now set up an error message
+      _lastErrorMessage = _client->getErrorMessage();
+      if (result) {
+        _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
+      }
+    }
   }
  
   if (result) { 
@@ -242,7 +250,17 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& locatio
 v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
                                                     map<string, string> const& headerFields) {
   return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
-}    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do an "OPTIONS" request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::optionsData (std::string const& location,
+                                                       std::string const& body,
+                                                       map<string, string> const& headerFields) {
+  return requestData(HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "POST" request

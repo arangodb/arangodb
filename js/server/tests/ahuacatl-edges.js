@@ -28,6 +28,8 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+var EXPLAIN = internal.AQL_EXPLAIN; 
+var QUERY = internal.AQL_QUERY; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -43,7 +45,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function executeQuery (query) {
-    var cursor = AHUACATL_RUN(query, undefined);
+    var cursor = QUERY(query, undefined);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -136,7 +138,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromQueryExplain : function () {
-      var actual = AHUACATL_EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
+      var actual = EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
       assertEqual("index", actual[0].expression.extra.accessType);
       assertEqual("edge", actual[0].expression.extra.index.type);
     },
@@ -146,7 +148,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testToQueryExplain : function () {
-      var actual = AHUACATL_EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Fred"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
+      var actual = EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Fred"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
       assertEqual("index", actual[0].expression.extra.accessType);
       assertEqual("edge", actual[0].expression.extra.index.type);
     },
@@ -156,7 +158,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromToQueryExplain : function () {
-      var actual = AHUACATL_EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Fred"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
+      var actual = EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Fred"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
       assertEqual("index", actual[0].expression.extra.accessType);
       assertEqual("edge", actual[0].expression.extra.index.type);
     },
@@ -166,7 +168,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromToQuerySelfExplain : function () {
-      var actual = AHUACATL_EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
+      var actual = EXPLAIN("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
       assertEqual("index", actual[0].expression.extra.accessType);
       assertEqual("edge", actual[0].expression.extra.index.type);
     },

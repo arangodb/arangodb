@@ -167,6 +167,10 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     case HTTP_REQUEST_HEAD:
       TRI_AppendString2StringBuffer(buffer, "HEAD ", 5);
       break;
+
+    case HTTP_REQUEST_OPTIONS:
+      TRI_AppendString2StringBuffer(buffer, "OPTIONS ", 8);
+      break;
     
     case HTTP_REQUEST_PATCH:
       TRI_AppendString2StringBuffer(buffer, "PATCH ", 6);
@@ -516,6 +520,12 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr, const
     case 6:
       if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' && ptr[4] == 't' && ptr[5] == 'e') { 
         return HTTP_REQUEST_DELETE;
+      }
+      break;
+
+    case 7:
+      if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' && ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') { 
+        return HTTP_REQUEST_OPTIONS;
       }
       break;
   }
@@ -1052,6 +1062,9 @@ void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
       break;
     case HTTP_REQUEST_DELETE:
       buffer->appendText("DELETE ");
+      break;
+    case HTTP_REQUEST_OPTIONS:
+      buffer->appendText("OPTIONS ");
       break;
     case HTTP_REQUEST_PATCH:
       buffer->appendText("PATCH ");

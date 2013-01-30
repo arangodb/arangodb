@@ -1,1 +1,11 @@
+// access 1st list element (element start at index 0)
+u.friends[0]
+
+// access 3rd list element
 u.friends[2]
+
+// access last list element 
+u.friends[-1]
+
+// access second last list element 
+u.friends[-2]

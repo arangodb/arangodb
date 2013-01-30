@@ -255,12 +255,12 @@ describe ArangoDB do
     context "checking batch document creation:" do
 
       before do
-	@cn = "UnitTestsBatch"
-	ArangoDB.drop_collection(@cn)
+        @cn = "UnitTestsBatch"
+        ArangoDB.drop_collection(@cn)
       end
 
       after do
-	ArangoDB.drop_collection(@cn)
+        ArangoDB.drop_collection(@cn)
       end
       
       it "checks batch document creation" do
@@ -291,15 +291,15 @@ describe ArangoDB do
           partNumber = partNumber + 1
         end
 
-        # check number of documents in collection	
+        # check number of documents in collection  
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", "/_api/collection/#{@cn}/figures")
 
-	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(false)
-	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['status'].should eq(3)
-	doc.parsed_response['count'].should eq(10)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['status'].should eq(3)
+        doc.parsed_response['count'].should eq(10)
       end
     
     end
@@ -311,18 +311,18 @@ describe ArangoDB do
     context "checking batch document creation with some errors:" do
 
       before do
-	@cn = "UnitTestsBatch"
-	@cn2 = "UnitTestsBatch2"
-	ArangoDB.drop_collection(@cn)
-	ArangoDB.drop_collection(@cn2)
-	cid = ArangoDB.create_collection(@cn)
+        @cn = "UnitTestsBatch"
+        @cn2 = "UnitTestsBatch2"
+        ArangoDB.drop_collection(@cn)
+        ArangoDB.drop_collection(@cn2)
+        cid = ArangoDB.create_collection(@cn)
       end
       
       after do
-	@cn = "UnitTestsBatch"
-	@cn2 = "UnitTestsBatch2"
-	ArangoDB.drop_collection(@cn)
-	ArangoDB.drop_collection(@cn2)
+        @cn = "UnitTestsBatch"
+        @cn2 = "UnitTestsBatch2"
+        ArangoDB.drop_collection(@cn)
+        ArangoDB.drop_collection(@cn2)
       end
 
       it "checks batch document creation" do
@@ -359,15 +359,15 @@ describe ArangoDB do
           partNumber = partNumber + 1
         end
 
-        # check number of documents in collection	
+        # check number of documents in collection  
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", "/_api/collection/#{@cn}/figures")
 
-	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(false)
-	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['status'].should eq(3)
-	doc.parsed_response['count'].should eq(n / 2)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['status'].should eq(3)
+        doc.parsed_response['count'].should eq(n / 2)
       end
     
     end
@@ -379,8 +379,8 @@ describe ArangoDB do
     context "checking batch document creation with non-existing collection:" do
 
       before do
-	@cn = "UnitTestsBatch"
-	ArangoDB.drop_collection(@cn)
+        @cn = "UnitTestsBatch"
+        ArangoDB.drop_collection(@cn)
       end
 
       it "checks batch document creation" do
@@ -402,14 +402,14 @@ describe ArangoDB do
           part[:status].should eq(404)
         end
 
-        # check number of documents in collection	
+        # check number of documents in collection  
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", "/_api/collection/#{@cn}/figures")
 
-	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['code'].should eq(404)
-	doc.parsed_response['errorNum'].should eq(1203)
+        doc.code.should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+        doc.parsed_response['errorNum'].should eq(1203)
       end
     
     end

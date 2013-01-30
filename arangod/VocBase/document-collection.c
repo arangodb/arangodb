@@ -1476,7 +1476,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_doc_mptr_t const* found;
   TRI_doc_datafile_info_t* dfi;
   TRI_voc_key_t key = NULL;
-  
+   
   primary = &collection->base;
 
   CollectionRevisionUpdate(collection, marker);
@@ -1543,23 +1543,18 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_numberAlive += 1;
         dfi->_sizeAlive += LengthDataMasterPointer(header);
       }
-
+      
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
-    }
-
-    // it is a delete
-    else if (found->_validTo != 0) {
-      // TODO: fix for trx: check if delete was committed or not
-      LOG_TRACE("skipping already deleted document: %s", key);
     }
 
     // it is an update, but only if found has a smaller revision identifier
     else if (found->_rid < d->_rid || (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
       TRI_doc_mptr_t update;
-
+      
       // update the header info
       UpdateHeader(datafile, marker, found, &update);
+      update._validTo = 0;
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
@@ -1584,6 +1579,12 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       // update immediate indexes
       UpdateImmediateIndexes(collection, found, &update);
     }
+    
+    // it is a delete
+    else if (found->_validTo != 0) {
+      // TODO: fix for trx: check if delete was committed or not
+      LOG_TRACE("skipping already deleted document: %s", key);
+    }
 
     // it is a stale update
     else {
@@ -1598,10 +1599,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     TRI_doc_deletion_key_marker_t const* d;
-
+      
     d = (TRI_doc_deletion_key_marker_t const*) marker;
     key = ((char*) d) + d->_offsetKey;
-
+      
     LOG_TRACE("deletion: fid %lu, key %s, rid %llu, deletion %lu",
               (unsigned long) datafile->_fid,
               (char*) key,
@@ -1613,7 +1614,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // it is a new entry, so we missed the create
     if (found == NULL) {
       TRI_doc_mptr_t* header;
-
+    
       header = collection->_headers->request(collection->_headers);
       // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
@@ -1623,7 +1624,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header->_validTo   = marker->_tick; // TODO: fix for trx
       header->_data = 0;
       header->_key = key;
-
+      
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
 
@@ -1638,7 +1639,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // it is a real delete
     else if (found->_validTo == 0) {
       union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
-
+      
       // mark element as deleted
       change.c = found;
       change.v->_validFrom = marker->_tick;

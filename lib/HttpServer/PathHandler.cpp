@@ -71,10 +71,11 @@ namespace triagens {
 
       if (names.empty() && ! defaultFile.empty()) {
         string url = _request->requestPath();
-
+       
         if (! url.empty() && url[url.size() - 1] != '/') {
-          url += "/" + defaultFile;
+          url += '/';
         }
+        url += defaultFile;
 
         _response = createResponse(HttpResponse::MOVED_PERMANENTLY);
 

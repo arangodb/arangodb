@@ -1,6 +1,98 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* allow negative list indexes in AQL to access elements from the end of a list,
+  e.g. ```RETURN values[-1]``` will return the last element of the `values` list.
+
+* collection ids, index ids, cursor ids, and document revision ids created and 
+  returned by ArangoDB are now returned as strings with numeric content inside. 
+  This is done to prevent some value overrun/truncation in any part of the
+  complete client/server workflow. 
+  In ArangoDB 1.1 and before, these values were previously returned as 
+  (potentially very big) integer values. This may cause problems (clipping, overrun,
+  precision loss) for clients that do not support big integers natively and store 
+  such values in IEEE754 doubles internally. This type loses precision after about
+  52 bits and is thus not safe to hold an id.
+  Javascript and 32 bit-PHP are examples for clients that may cause such problems. 
+  Therefore, ids are now returned by ArangoDB as strings, with the string
+  content being the integer value as before. 
+
+  Example for documents ("_rev" attribute):
+  - Document returned by ArangoDB 1.1: { "_rev": 1234, ... } 
+  - Document returned by ArangoDB 1.2: { "_rev": "1234", ... } 
+  
+  Example for collections ("id" attribute / "_id" property):
+  - Collection returned by ArangoDB 1.1: { "id": 9327643, "name": "test", ... } 
+  - Collection returned by ArangoDB 1.2: { "id": "9327643", "name": "test", ... }
+
+  Example for cursors ("id" attribute):
+  - Collection returned by ArangoDB 1.1: { "id": 11734292, "hasMore": true, ... } 
+  - Collection returned by ArangoDB 1.2: { "id": "11734292", "hasMore": true, ... }
+
+* global variables are not automatically available anymore when starting the 
+  arangod Javascript emergency console (i.e. ```arangod --console```). 
+  
+  Especially, the variables `db`, `edges`, and `internal` are not available 
+  anymore. `db` and `internal` can be made available in 1.2 by
+  ```var db = require("org/arangodb").db;``` and
+  ```var internal = require("internal");```, respectively.
+  The reason for this change is to get rid of global variables in the server
+  because this will allow more specific inclusion of functionality.
+
+  For convenience, the global variable `db` is still available by default in 
+  arangosh. The global variable `edges`, which since ArangoDB 1.1 was kind of
+  a redundant wrapper of `db`, has been removed in 1.2 completely.
+  Please use `db` instead, and if creating an edge collection, use the explicit
+  ```db._createEdgeCollection()``` command.
+
+* issue #374: prevent endless redirects when calling admin interface with 
+  unexpected URLs
+
+* issue #373: TRAVERSAL() `trackPaths` option does not work. Instead `paths` does work
+
+* issue #358: added support for CORS
+
+* honor optional waitForSync property for document removal, replace, update, and
+  save operations in arangosh. The waitForSync parameter for these operations
+  was previously honored by the REST API and on the server-side, but not when
+  the waitForSync parameter was specified for a document operation in arangosh.
+
+* calls to db.collection.figures() and /_api/collection/<collection>/figures now 
+  additionally return the number of shapes used in the collection in the
+  extra attribute "shapes.count"
+
+* added AQL TRAVERSAL_TREE() function to return a hierchical result from a traversal
+
+* added AQL TRAVERSAL() function to return the results from a traversal
+
+* added AQL function ATTRIBUTES() to return the attribute names of a document
+
+* removed internal server-side AQL functions from global scope. 
+
+  Now the AQL internal functions can only be accessed via the exports of the 
+  ahuacatl module, which can be included via ```require("org/arangodb/ahuacatl")```.
+  It shouldn't be necessary for clients to access this module at all, but 
+  internal code may use this module.
+
+  The previously global AQL-related server-side functions were moved to the 
+  internal namespace. This produced the following function name changes on 
+  the server:
+
+     old name              new name
+     ------------------------------------------------------
+     AHUACATL_RUN       => require("internal").AQL_QUERY
+     AHUACATL_EXPLAIN   => require("internal").AQL_EXPLAIN
+     AHUACATL_PARSE     => require("internal").AQL_PARSE
+
+  Again, clients shouldn't have used these functions at all as there is the
+  ArangoStatement object to execute AQL queries.
+
+* fixed issue #366: Edges index returns strange description
+
+* added AQL function MATCHES() to check a document against a list of examples
+
+* added documentation and tests for db.collection.removeByExample
+
 * added --progress option for arangoimp. This will show the percentage of the input
   file that has been processed by arangoimp while the import is still running. It can
   be used as a rough indicator of progress for the entire import.
@@ -36,6 +128,9 @@ v1.2.alpha (XXXX-XX-XX)
   When creating an in-memory collection on such platform, an error message will be
   returned by ArangoDB telling the user the platform does not support it.
 
+  Note: in-memory collections are an experimental feature. The feature might
+  change drastically or even be removed altogether in a future version of ArangoDB.
+
 * fixed issue #353: Please include "pretty print" in Emergency Console
 
 * fixed issue #352: "pretty print" console.log
@@ -51,16 +146,6 @@ v1.2.alpha (XXXX-XX-XX)
 * added fulltext index type. This index type allows indexing words and prefixes of
   words from a specific document attribute. The index can be queries using a
   SimpleQueryFull object, the HTTP REST API at /_api/simple/fulltext, or via AQL
-
-* when documents are returned from ArangoDB, the document _revision id was previously
-  returned as a (potentially very big) integer value. This causes problems (clipping,
-  precision loss) for clients that did not support big integers natively and store such
-  values internally in doubles. Javascript and 32 bit-PHP are examples for clients
-  that could encounter such problems. 
-  Therefore, revision ids are now returned by ArangoDB as strings, with the string
-  content being the integer value as previously. Example:
-  - Document returned by ArangoDB 1.1: { "_rev": 1234, ... } 
-  - Document returned by ArangoDB 1.2: { "_rev": "1234", ... } 
 
 * added collection.revision() method to determine whether a collection has changed. 
   The revision method returns a revision string that can be used by client programs
@@ -187,8 +272,12 @@ v1.2.alpha (XXXX-XX-XX)
   can access collections by name and do not need to care about collection ids.
 
 
-v1.1.2 (XXXX-XX-XX)
+v1.1.2 (2013-01-20)
 -------------------
+
+* fixed issue #372: Command-Line Options for the Authentication and Authorisation
+
+* upgraded to mruby 2013-01-20 583983385b81c21f82704b116eab52d606a609f4
 
 * fixed issue #357: Some spelling and grammar errors
 
