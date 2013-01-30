@@ -2635,20 +2635,20 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   }
 
   // prepare an array of filters
-  var filter = [ ];
+  var filters = [ ];
   if (params.minDepth !== undefined) {
-    filter.push(TRAVERSAL.MinDepthFilter);
+    filters.push(TRAVERSAL.minDepthFilter);
   }
   if (params.maxDepth !== undefined) {
-    filter.push(TRAVERSAL.MaxDepthFilter);
+    filters.push(TRAVERSAL.maxDepthFilter);
   }
-  if (filter.length === 0) {
-    filter.push(TRAVERSAL.VisitAllFilter);
+  if (filters.length === 0) {
+    filters.push(TRAVERSAL.visitAllFilter);
   }
 
   var config = {
     connect: params.connect,
-    datasource: TRAVERSAL.CollectionDatasourceFactory(edgeCollection),
+    datasource: TRAVERSAL.collectionDatasourceFactory(edgeCollection),
     strategy: validate(params.strategy, {
       'depthfirst': TRAVERSAL.Traverser.DEPTH_FIRST,
       'breadthfirst': TRAVERSAL.Traverser.BREADTH_FIRST
@@ -2665,7 +2665,7 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
     visitor: params.visitor,
     maxDepth: params.maxDepth,
     minDepth: params.minDepth,
-    filter: filter,
+    filter: filters,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
         'global': TRAVERSAL.Traverser.UNIQUE_GLOBAL,
@@ -2679,9 +2679,9 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
       })
     },
     expander: validate(direction, {
-      'outbound': TRAVERSAL.OutboundExpander,
-      'inbound': TRAVERSAL.InboundExpander,
-      'any': TRAVERSAL.AnyExpander
+      'outbound': TRAVERSAL.outboundExpander,
+      'inbound': TRAVERSAL.inboundExpander,
+      'any': TRAVERSAL.anyExpander
     })
   };
 
