@@ -384,7 +384,7 @@ int main (int argc, char* argv[]) {
   }
 
   // import type
-  bool ok;
+  bool ok = false;
 
   if (TypeImport == "csv") {
     cout << "Starting CSV import..." << endl;
