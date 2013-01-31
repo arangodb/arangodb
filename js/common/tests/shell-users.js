@@ -53,8 +53,14 @@ function UsersSuite () {
       try {
         users.remove(username);
       }
-      catch (err) {
+      catch (e1) {
       }
+    }
+
+    try {
+      users.remove("hackera@arangodb.org");
+    }
+    catch (e2) {
     }
   };
 
@@ -151,6 +157,18 @@ function UsersSuite () {
       var username = "users-1";
 
       users.save(username);
+      assertEqual(username, c.firstExample({ user: username }).user);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test save w/ email address pattern
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveWithEmailAddressName : function () {
+      var username = "hackers@arangodb.org";
+      var passwd = "arangodb-loves-you";
+
+      users.save(username, passwd);
       assertEqual(username, c.firstExample({ user: username }).user);
     },
 
