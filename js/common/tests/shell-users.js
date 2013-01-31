@@ -58,7 +58,7 @@ function UsersSuite () {
     }
 
     try {
-      users.remove("hackera@arangodb.org");
+      users.remove("hackers@arangodb.org");
     }
     catch (e2) {
     }
