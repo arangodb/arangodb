@@ -12,16 +12,26 @@
   fill: #ddd;
 }
 
+.node-cluster {
+  font: 10px sans-serif;
+}
 
-.node {
+.link-cluster {
+  stroke: steelblue;
+  stroke-opacity: .4;
+  fill: none;
+}
+
+.node-force {
   stroke: #000; 
   stroke-width: 1.5px;
 }
 
-.link {
+.link-force {
   stroke: #999;
   stroke-opacity: .6;
 }
+
 .button {
   text-align: center;
   color: white;
@@ -67,7 +77,7 @@ div#view {
      <div class="button" id="cluster">Cluster Layout</div>
      <div id="button" class="button"></div> 
      <div id="backward" class="button"> &lt;&lt; </div>
-     <div id="play" class="button"> &gt; </div> 
+     <div id="play" class="button">play</div> 
      <div id="forward" class="button"> &gt;&gt; </div>
   </div>
   <div id="view"></div>
@@ -79,11 +89,15 @@ var config = {
   width: 960,
   height: 700,
   animationSpeed: 1500,
-  layout: "force",
+  layout: "force",  
+  maxCount: 100
 };
 
 var app = { 
-  year: 2001,
+  minYear: null,
+  maxYear: null,
+  play: false,
+  year: null,
   graph: null,
   counter: 0,
   linksTillYear: null,
@@ -116,7 +130,7 @@ var app = {
                                            a.source = a.from;
                                            a.target = a.to;
                                            return a.year < app.year; });
-   // if (config.layout === "force"){
+   if (config.layout === "force"){
 	    this.force
 		.nodes(graph.vertices)
 		.links(this.linksTillYear)
@@ -124,20 +138,24 @@ var app = {
 	    var link = this.svg.selectAll("line.link")
 		  .data(this.linksTillYear);
 		link.enter().append("line")
-		  .attr("class", function(d) { app.counter++; return "link"; })
-		  .style("stroke-width", 2);
+		  .attr("class", function(d) { app.counter++; return "link-force"; })
+		  .style("stroke-width", function(link) { return link.count;});
 		link.exit().remove();
 	    var node = this.svg.selectAll("circle.node")
 		  .data(graph.vertices);
 		node.enter().append("circle")
                   .on("click", function(d) { 
                       console.log("circle clicked "+d.name);
-	              d3.json("/fosdem/coauthor.json?start="+node.name, function(graph) {
+                      var url = "/fosdem/coauthor.json?maxlen=" + config.maxCount +
+                                "&start="+encodeURIComponent(d._id);
+	              d3.json(url, function(graph) {
+  			 app.minYear = app.year = +graph.minYear;
+  			 app.maxYear = +graph.maxYear;
 		         app.graph = graph;
                          app.render();
                       });
                    })
-		  .attr("class", "node")
+		  .attr("class", "node-force")
 		  .attr("r", 5)
 		  .style("fill", function(node) { if(graph.start.name === node.name) {
                                                      return "#ff0000";
@@ -158,51 +176,139 @@ var app = {
 	      node.attr("cx", function(d) { return d.x; })
 		  .attr("cy", function(d) { return d.y; });
 	    });
-/*    } else if (config.layout === "cluster"){
-            this.force.stop();
-            this.cluster.
-            var diagonal = d3.svg.diagonal.radial()
-                 .projection(function(d) { return [d.y, d.x / 180 * Math.PI]; });
-            var node = vis.selectAll("g.node")
-		 .data(nodes)
-		 .enter().append("svg:g")
-		 .attr("transform", function(d) { 
-                        return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; 
-                  })
-		 .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
-    }*/
-     $("div#button").text("" + app.counter + " cumulated connections until " + (this.year));
+
+
+    } else if (config.layout === "cluster"){
+	var diameter = 700,
+	    radius = diameter / 2,
+	    innerRadius = radius - 120;
+
+	var cluster = d3.layout.cluster()
+	    .size([360, innerRadius ])
+	    .sort(null)
+	    .value(function(d) { return d.size; });
+
+	var bundle = d3.layout.bundle();
+
+	var line = d3.svg.line.radial()
+	    .interpolate("bundle")
+	    .tension(.85)
+	    .radius(function(d) { return d.y; })
+	    .angle(function(d) { return d.x / 180 * Math.PI; });
+        var svg = this.svg;
+
+        svg.attr("width", diameter);
+        svg.attr("height", diameter);
+ 
+        // re-assign svg to g element
+        svg = svg
+	  .append("g")
+	    .attr("transform", "translate(" + radius + "," + radius + ")");
+
+
+	var root = {
+	  name: "",
+	  children: [ ]
+	}; 
+
+	var nodes = { };
+        var authors = graph;
+	var index = 0;
+	authors.vertices.forEach(function (author) {
+	  var node = {
+	    name: author.name,
+	    parent: root,
+	    key: author.name,
+	    children: [ ],
+	    size: Math.random() * 5000 // currently not used
+	  };
+	 
+	  root.children.push(node);
+	  nodes[index++] = node;
+	});
+
+	var edges = [ ];
+	authors.links.forEach(function (link) {
+          if(link.year < app.year) {
+	    edges.push({ source: nodes[link.from], target: nodes[link.to] });
+          }
+	});
+
+	var nodes = cluster.nodes(root), links = edges;
+
+	  svg.selectAll(".link")
+	      .data(bundle(links))
+	    .enter().append("path")
+	      .attr("class", "link-cluster")
+	      .attr("d", line);
+
+	  svg.selectAll(".node")
+	      .data(nodes.filter(function(n) { return true;  }))
+	    .enter().append("g")
+	      .attr("class", "node-cluster")
+	      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+	    .append("text")
+	      .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
+	      .attr("dy", ".31em")
+	      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+	      .attr("transform", function(d) { return (d.x < 180 ? null : "rotate(180)"); })
+	      .text(function(d) { return d.key; });
+
+//	d3.select(self.frameElement).style("height", diameter + "px");
+  } 
+     $("div#button").text(app.graph.start.name + " " + app.counter + " cumulated connections until " + (this.year) + " ("+this.minYear+"-"+this.maxYear+")");
   }
 };
 
 $(document).ready(function(){
  $("div#button, div#forward").click(function(event) {
+     app.play = false;
+     $("div#play:contains('pause')").text("play");
      app.year++;
-     if(app.year > 2011) app.year=2001;
+     if(app.year > app.maxYear) app.year=app.minYear;
      app.render();
  });
  $("div#play").click(function(event) {
-        app.year=2002;
+     if(app.play === false) {
+        app.play = true;
+        $(this).text("pause");
+        app.year=app.minYear+1;
         app.render();
         app.year++;
 	function myLoop () { 
 	   setTimeout(function () { 
 	      app.render();
 	      app.year++;        
-	      if (app.year <= 2011) {
+	      if (app.play && app.year <= app.maxYear) {
 		 myLoop();  
 	      }     
 	   }, config.animationSpeed)
 	}
         myLoop();
+    } else {
+      app.play = false;
+      $(this).text("play");
+    }
  });
  $("div#backward").click(function(event) {
-     app.year = 2001;
+     app.play = false;
+     $("div#play:contains('pause')").text("play");
+     app.year = app.minYear;
      app.render();
  });
+ $("#cluster").click(function(event) {
+     config.layout = "cluster";
+     app.render();
+ });
+ $("#force").click(function(event) {
+     config.layout = "force";
+     app.render();
+ }); 
 });
     
-d3.json("/fosdem/coauthor.json", function(graph) {
+d3.json("/fosdem/coauthor.json?maxlen=" + config.maxCount, function(graph) {
+  app.minYear = app.year = +graph.minYear;
+  app.maxYear = +graph.maxYear;
   app.graph = graph;
   app.render();
 });
