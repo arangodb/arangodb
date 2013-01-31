@@ -56,6 +56,9 @@ svg {
   width: 960px;
   height: 700px;
 }
+svg text, svg circle {
+  cursor: pointer;
+}
 .nav {
   height: 22px;
   width: 962px;
@@ -112,6 +115,18 @@ var app = {
   cluster: d3.layout.cluster()
     .size([config.width, config.height]),
   layout: force,
+
+  pull_coauthors: function(startnode) { 
+                      console.log("node clicked "+startnode.name);
+                      var url = "/fosdem/coauthor.json?maxlen=" + config.maxCount +
+                                "&start="+encodeURIComponent(startnode._id);
+	              d3.json(url, function(graph) {
+  			 app.minYear = app.year = +graph.minYear;
+  			 app.maxYear = +graph.maxYear;
+		         app.graph = graph;
+                         app.render();
+                      });
+                   },
     
   render: function () {
     this.svg.text(null);
@@ -144,17 +159,7 @@ var app = {
 	    var node = this.svg.selectAll("circle.node")
 		  .data(graph.vertices);
 		node.enter().append("circle")
-                  .on("click", function(d) { 
-                      console.log("circle clicked "+d.name);
-                      var url = "/fosdem/coauthor.json?maxlen=" + config.maxCount +
-                                "&start="+encodeURIComponent(d._id);
-	              d3.json(url, function(graph) {
-  			 app.minYear = app.year = +graph.minYear;
-  			 app.maxYear = +graph.maxYear;
-		         app.graph = graph;
-                         app.render();
-                      });
-                   })
+                  .on("click", this.pull_coauthors)
 		  .attr("class", "node-force")
 		  .attr("r", 5)
 		  .style("fill", function(node) { if(graph.start.name === node.name) {
@@ -163,7 +168,7 @@ var app = {
 
 		  .call(this.force.drag);
 		node.exit().remove();
-
+            // hintext
 	    node.append("title")
 		.text(function(d) { return d.name; });
 	   
@@ -217,6 +222,7 @@ var app = {
 	authors.vertices.forEach(function (author) {
 	  var node = {
 	    name: author.name,
+            _id: author._id,
 	    parent: root,
 	    key: author.name,
 	    children: [ ],
@@ -236,23 +242,27 @@ var app = {
 
 	var nodes = cluster.nodes(root), links = edges;
 
-	  svg.selectAll(".link")
-	      .data(bundle(links))
-	    .enter().append("path")
+	var link =  svg.selectAll(".link")
+	      .data(bundle(links));
+	    link.enter().append("path")
 	      .attr("class", "link-cluster")
 	      .attr("d", line);
+            link.exit().remove();
 
-	  svg.selectAll(".node")
-	      .data(nodes.filter(function(n) { return true;  }))
-	    .enter().append("g")
+	var node =  svg.selectAll(".node")
+	      .data(nodes.filter(function(n) { return true;  }));
+	    node.enter().append("g")
+              .on("click", this.pull_coauthors)
 	      .attr("class", "node-cluster")
 	      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+           
 	    .append("text")
 	      .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
 	      .attr("dy", ".31em")
 	      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
 	      .attr("transform", function(d) { return (d.x < 180 ? null : "rotate(180)"); })
 	      .text(function(d) { return d.key; });
+            node.exit().remove();
 
 //	d3.select(self.frameElement).style("height", diameter + "px");
   } 
