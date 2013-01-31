@@ -1,6 +1,13 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* unified history file locations for arangod, arangosh, and arangoirb.
+  - The readline history for arangod (emergency console) is now stored in file
+    $HOME/.arangod. It was stored in $HOME/.arangod before.
+  - The readline history for arangosh is still stored in $HOME/.arangosh.
+  - The readline history for arangoirb is now stored in $HOME/.arangoirb. It was
+    stored in $HOME/.arango-mrb before.
+
 * fixed issue #381: _users user should have a unique constraint
 
 * allow negative list indexes in AQL to access elements from the end of a list,

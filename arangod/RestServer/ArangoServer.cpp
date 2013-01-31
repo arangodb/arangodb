@@ -228,7 +228,9 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setSystemConfigFile("arangod.conf");
-  _applicationServer->setUserConfigFile(string(".arango") + string(1,TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
+
+  // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
+  _applicationServer->setUserConfigFile(string(".arango") + string(1, TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
   // .............................................................................
   // multi-threading scheduler 
@@ -840,7 +842,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        V8LineEditor console(context->_context, ".arango");
+        V8LineEditor console(context->_context, ".arangod");
 
         console.open(true);
 
@@ -1015,7 +1017,7 @@ int ArangoServer::executeRubyConsole () {
   // create a line editor
   printf("ArangoDB MRuby emergency console [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor console(context->_mrb, ".arango-mrb");
+  MRLineEditor console(context->_mrb, ".arangod");
 
   console.open(false);
 
