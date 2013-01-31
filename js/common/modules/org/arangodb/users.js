@@ -32,10 +32,9 @@ var internal = require("internal"); // OK: encodePassword, reloadAuth
 
 var encodePassword = internal.encodePassword;
 var reloadAuth = internal.reloadAuth;
-
 var arangodb = require("org/arangodb");
-
 var db = arangodb.db;
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/users"
@@ -55,8 +54,12 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (username) {
-  if (typeof username !== 'string' || ! username.match(/^[a-zA-Z0-9\-_]+$/)) {
-    throw "username must be a string";
+  if (typeof username !== 'string' || username === '') {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_INVALID_NAME.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_INVALID_NAME.message;
+
+    throw err;
   }
 };
 
@@ -66,7 +69,11 @@ var validateName = function (username) {
 
 var validatePassword = function (passwd) {
   if (typeof passwd !== 'string') {
-    throw "password must be a string";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_INVALID_PASSWORD.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_INVALID_PASSWORD.message;
+
+    throw err;
   }
 };
 
@@ -78,7 +85,11 @@ var getStorage = function () {
   var users = db._collection("_users");
 
   if (users === null) {
-    throw "collection _users does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+    err.errorMessage = "collection _users not found";
+
+    throw err;
   }
 
   return users;
@@ -124,6 +135,10 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.save = function (username, passwd) {
+  if (passwd === null || passwd === undefined) {
+    passwd = "";
+  }
+
   // validate input
   validateName(username);
   validatePassword(passwd);
@@ -135,8 +150,12 @@ exports.save = function (username, passwd) {
     var hash = encodePassword(passwd);
     return users.save({ user: username, password: hash, active: true });
   }
+    
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_USER_DUPLICATE.code;
+  err.errorMessage = arangodb.errors.ERROR_USER_DUPLICATE.message;
 
-  throw "cannot create user: user already exists.";
+  throw err;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +188,10 @@ exports.save = function (username, passwd) {
   
 exports.replace =
 exports.update = function (username, passwd) {
+  if (passwd === null || passwd === undefined) {
+    passwd = "";
+  }
+
   // validate input
   validateName(username);
   validatePassword(passwd);
@@ -177,7 +200,11 @@ exports.update = function (username, passwd) {
   var user = users.firstExample({ user: username });
 
   if (user === null) {
-    throw "cannot update user: user does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+
+    throw err;
   }
 
   var hash = encodePassword(passwd);
@@ -217,7 +244,11 @@ exports.remove = function (username) {
   var user = users.firstExample({ user: username });
 
   if (user === null) {
-    throw "cannot delete: user does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+
+    throw err;
   }
 
   return users.remove(user._id);
