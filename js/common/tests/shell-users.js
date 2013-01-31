@@ -81,7 +81,7 @@ function UsersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNames : function () {
-      var usernames = [ " ", "", "******", "#", "'", "\"", "d d", "d " ];
+      var usernames = [ null, 1, 2, 3, [ ], { }, false, true, "" ];
 
       for (var i = 0; i < usernames.length; ++i) {
         var username = usernames[i];
@@ -92,6 +92,7 @@ function UsersSuite () {
           fail();
         }
         catch (err) {
+          assertEqual(ERRORS.ERROR_USER_INVALID_NAME.code, err.errorNum);
         }
       }
     },
@@ -126,7 +127,31 @@ function UsersSuite () {
         fail();
       }
       catch (err) {
+        assertEqual(ERRORS.ERROR_USER_DUPLICATE.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test save no passwd
+////////////////////////////////////////////////////////////////////////////////
+
+    testSavePasswdEmpty : function () {
+      var username = "users-1";
+      var passwd = "";
+
+      users.save(username, passwd);
+      assertEqual(username, c.firstExample({ user: username }).user);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test save no passwd
+////////////////////////////////////////////////////////////////////////////////
+
+    testSavePasswdMissing : function () {
+      var username = "users-1";
+
+      users.save(username);
+      assertEqual(username, c.firstExample({ user: username }).user);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,6 +181,7 @@ function UsersSuite () {
         fail();
       }
       catch (err) {
+        assertEqual(ERRORS.ERROR_USER_NOT_FOUND.code, err.errorNum);
       }
     },
 
@@ -184,6 +210,7 @@ function UsersSuite () {
         fail();
       }
       catch (err) {
+        assertEqual(ERRORS.ERROR_USER_NOT_FOUND.code, err.errorNum);
       }
     },
 

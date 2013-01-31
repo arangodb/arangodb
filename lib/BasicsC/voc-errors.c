@@ -107,6 +107,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
+  REG_ERROR(ERROR_USER_INVALID_NAME, "invalid user name");
+  REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
+  REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
+  REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
