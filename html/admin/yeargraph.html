@@ -99,6 +99,7 @@ var config = {
 var app = { 
   minYear: null,
   maxYear: null,
+  startnode_id: null,
   play: false,
   year: null,
   graph: null,
@@ -124,6 +125,7 @@ var app = {
   			 app.minYear = app.year = +graph.minYear;
   			 app.maxYear = +graph.maxYear;
 		         app.graph = graph;
+                         app.startnode_id = graph.start._id;
                          app.render();
                       });
                    },
@@ -257,7 +259,13 @@ var app = {
 	      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
            
 	    .append("text")
-	      .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
+	      .style("fill", function(d) { 
+                                            if ( d._id === app.startnode_id ) 
+                                              return "red";
+                                            else 
+                                              return "black";
+                                         })
+	      .attr("dx", function(d) { return d.x < 180 ? 0 : -8; })
 	      .attr("dy", ".31em")
 	      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
 	      .attr("transform", function(d) { return (d.x < 180 ? null : "rotate(180)"); })
@@ -320,6 +328,7 @@ d3.json("/fosdem/coauthor.json?maxlen=" + config.maxCount, function(graph) {
   app.minYear = app.year = +graph.minYear;
   app.maxYear = +graph.maxYear;
   app.graph = graph;
+  app.startnode_id = graph.start._id;
   app.render();
 });
 
