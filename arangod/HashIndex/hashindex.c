@@ -357,9 +357,12 @@ int MultiHashIndex_add (HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
   result = TRI_InsertElementHashArrayMulti(hashIndex->hashArray, element, false);
   if (result) {
-    return 0;
-  }    
-  return -1;
+    return TRI_ERROR_NO_ERROR;
+  }  
+
+  // we'll not be getting here if just the same value gets inserted into the index, 
+  // but if it is the exact same element!
+  return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
 }
 
 // ...............................................................................

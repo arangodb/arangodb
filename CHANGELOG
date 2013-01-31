@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #381: _users user should have a unique constraint
+
 * allow negative list indexes in AQL to access elements from the end of a list,
   e.g. ```RETURN values[-1]``` will return the last element of the `values` list.
 
@@ -272,10 +274,23 @@ v1.2.alpha (XXXX-XX-XX)
   can access collections by name and do not need to care about collection ids.
 
 
-v1.1.2 (2013-01-20)
+v1.1.3 (2013-XX-XX)
 -------------------
 
+* fix case when an error message was looked up for an error code but no error
+  message was found. In this case a NULL ptr was returned and not checked everywhere.
+  The place this error popped up was when inserting into a non-unique hash index
+  failed with a specific, invalid error code.
+
+* fixed issue #381:  db._collection("_users").getIndexes();
+
+* fixed issue #379: arango-password fatal issue javscript.startup-directory 
+
 * fixed issue #372: Command-Line Options for the Authentication and Authorisation
+
+
+v1.1.2 (2013-01-20)
+-------------------
 
 * upgraded to mruby 2013-01-20 583983385b81c21f82704b116eab52d606a609f4
 
