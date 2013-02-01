@@ -232,7 +232,7 @@ namespace triagens {
       _writeBuffer.appendText("User-Agent: VOC-Client/1.0\r\n");
 
       // do basic authorization
-      if (_pathToBasicAuth.size() > 0) {
+      if (! _pathToBasicAuth.empty()) {
         string foundPrefix;
         string foundValue;
         std::vector< std::pair<std::string, std::string> >::iterator i = _pathToBasicAuth.begin();
