@@ -153,6 +153,15 @@ ERROR_TRANSACTION_INTERNAL,1653,"internal transaction error","Will be raised whe
 ERROR_TRANSACTION_UNREGISTERED_COLLECTION,1654,"unregistered collection used in transaction","Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start."
 
 ################################################################################
+## User management
+################################################################################
+
+ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used"
+ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used"
+ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists"
+ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist"
+
+################################################################################
 ## Key value access
 ################################################################################
 
