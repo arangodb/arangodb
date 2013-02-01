@@ -67,11 +67,11 @@ function collectionDatasourceFactory (edgeCollection) {
 
     getPeerVertex: function (edge, vertex) {
       if (edge._from === vertex._id) {
-	return db._document(edge._to);
+        return db._document(edge._to);
       }
 
       if (edge._to === vertex._id) {
-	return db._document(edge._from);
+        return db._document(edge._from);
       }
 
       return null;
@@ -383,11 +383,11 @@ function trackingVisitor (config, result, vertex, path) {
       copy = { };
 
       if (obj.hasOwnProperty) {
-	for (i in obj) {
+        for (i in obj) {
           if (obj.hasOwnProperty(i)) {
             copy[i] = clone(obj[i]);
           }
-	}
+        }
       }
     }
 
@@ -776,6 +776,7 @@ function depthFirstSearch () {
           if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
             visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
           }
+
           if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
             visited.edges = this.getPathItems(config.datasource.getEdgeId, path.edges);
           }
@@ -790,6 +791,7 @@ function depthFirstSearch () {
           if (edge !== null) {
             path.edges.push(edge);
           }
+
           path.vertices.push(vertex);
 
           var filterResult = parseFilterResult(config.filter(config, vertex, path));
