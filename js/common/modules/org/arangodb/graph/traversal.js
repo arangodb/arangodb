@@ -66,11 +66,11 @@ function collectionDatasourceFactory (edgeCollection) {
 
     getPeerVertex: function (edge, vertex) {
       if (edge._from === vertex._id) {
-	return db._document(edge._to);
+        return db._document(edge._to);
       }
 
       if (edge._to === vertex._id) {
-	return db._document(edge._from);
+        return db._document(edge._from);
       }
 
       return null;
@@ -382,11 +382,11 @@ function trackingVisitor (config, result, vertex, path) {
       copy = { };
 
       if (obj.hasOwnProperty) {
-	for (i in obj) {
+        for (i in obj) {
           if (obj.hasOwnProperty(i)) {
             copy[i] = clone(obj[i]);
           }
-	}
+        }
       }
     }
 
