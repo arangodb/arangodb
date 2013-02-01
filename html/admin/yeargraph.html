@@ -48,6 +48,10 @@
   padding-left: 20px;
   padding-right: 20px;
 }
+#play {
+  margin-left: 5px;
+}
+
 #force, #cluster {
   float: right;
   width: 130px;
@@ -78,12 +82,13 @@ div#view {
   <div class="nav">
      <div class="button" id="force">Force Layout</div>
      <div class="button" id="cluster">Cluster Layout</div>
-     <div id="button" class="button"></div> 
-     <div id="backward" class="button"> &lt;&lt; </div>
+     <div id="button" class="button">next year</div> 
+     <div id="backward" class="button"> &lt;&lt; </div> 
      <div id="play" class="button">play</div> 
      <div id="forward" class="button"> &gt;&gt; </div>
   </div>
   <div id="view"></div>
+  <div id="description"></div>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
@@ -247,7 +252,7 @@ var app = {
 	var link =  svg.selectAll(".link")
 	      .data(bundle(links));
 	    link.enter().append("path")
-	      .attr("class", "link-cluster")
+	      .attr("class", function(d) { app.counter++; return "link-cluster";})
 	      .attr("d", line);
             link.exit().remove();
 
@@ -274,16 +279,22 @@ var app = {
 
 //	d3.select(self.frameElement).style("height", diameter + "px");
   } 
-     $("div#button").text(app.graph.start.name + " " + app.counter + " cumulated connections until " + (this.year) + " ("+this.minYear+"-"+this.maxYear+")");
+     $("div#description").text(app.graph.start.name + " " + app.counter + " cumulated connections until " + (this.year) + " ("+this.minYear+"-"+this.maxYear+")");
   }
 };
 
 $(document).ready(function(){
- $("div#button, div#forward").click(function(event) {
+ $("div#button").click(function(event) {
      app.play = false;
      $("div#play:contains('pause')").text("play");
      app.year++;
      if(app.year > app.maxYear) app.year=app.minYear;
+     app.render();
+ });
+ $("div#forward").click(function(event) {
+     app.play = false;
+     $("div#play:contains('pause')").text("play");
+     app.year=app.maxYear;
      app.render();
  });
  $("div#play").click(function(event) {

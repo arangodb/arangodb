@@ -41,6 +41,7 @@ var svg = d3.select("body").append("svg")
     .attr("height", diameter)
   .append("g")
     .attr("transform", "translate(" + radius + "," + radius + ")");
+/*
 $.get("http://192.168.173.13:8529/_api/version");
 
 $.ajax({
@@ -54,7 +55,8 @@ $.ajax({
          alert("Error");
      },
 });
-/*d3.json("http://192.168.173.5:8529/fosdem/coauthor.json", function(error, authors) {
+*/
+d3.json("http://192.168.173.10:8529/fosdem/coauthor.json", function(error, authors) {
 
 var root = {
   name: "",
@@ -103,8 +105,7 @@ var nodes = cluster.nodes(root), links = edges;
       .text(function(d) { return d.key; });
 });
 
-d3.select(self.frameElement).style("height", diameter + "px");
+//d3.select(self.frameElement).style("height", diameter + "px");
 
-*/
 </script>
 
