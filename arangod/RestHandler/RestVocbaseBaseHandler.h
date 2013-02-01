@@ -35,9 +35,10 @@
 
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/RestTransactionContext.h"
-#include "Utils/SelfContainedWriteTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransaction.h"
 
 // -----------------------------------------------------------------------------
@@ -173,7 +174,9 @@ namespace triagens {
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool checkCreateCollection (const string&, const TRI_col_type_e);
+        bool checkCreateCollection (const triagens::arango::CollectionNameResolver&,
+                                    const string&, 
+                                    const TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 201 or 202 response
@@ -256,9 +259,9 @@ namespace triagens {
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocument (const string&,
+        void generateDocument (const triagens::arango::CollectionNameResolver&,
+                               const string&,
                                TRI_doc_mptr_t const*,
-                               TRI_vocbase_t* const,
                                TRI_shaper_t*,
                                const bool);
 

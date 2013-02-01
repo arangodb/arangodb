@@ -36,6 +36,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var console = require("console");
+var errors = internal.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -133,7 +134,60 @@ function indexSuite() {
 
       res = internal.db._dropIndex(id);
       assertEqual(false, res);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access a non-existing index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetNonExistingIndexes : function () {
+      tests = [ "yippie", "9999999999999", -1 ].forEach(function (id) {
+        var idx = collection.index(id);
+
+        assertEqual(null, idx);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access an existing index of an unloaded collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetIndexUnloaded : function () {
+      var idx = collection.ensureHashIndex("test");
+
+      collection.unload();
+      internal.wait(4);
+
+      assertEqual(idx.id, collection.index(idx.id).id);
+      assertEqual(idx.id, collection.getIndexes()[1].id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access an existing index of a dropped collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetIndexDropped : function () {
+      var idx = collection.ensureHashIndex("test");
+
+      collection.drop();
+
+      try {
+        collection.index(idx.id).id;
+        fail();
+      }
+      catch (e1) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e1.errorNum);
+      }
+      
+      try {
+        collection.getIndexes();
+        fail();
+      }
+      catch (e2) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e2.errorNum);
+      }
     }
+
   };
 }
 

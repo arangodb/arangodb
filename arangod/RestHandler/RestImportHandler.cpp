@@ -31,7 +31,6 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/ImportTransaction.h"
 #include "Utilities/ResourceHolder.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
@@ -215,12 +214,13 @@ bool RestImportHandler::createByDocumentsLines () {
     return false;
   }
   
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+  CollectionNameResolver resolver(_vocbase);
+  if (! checkCreateCollection(resolver, collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction
@@ -362,12 +362,13 @@ bool RestImportHandler::createByDocumentsList () {
     return false;
   }
   
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+  CollectionNameResolver resolver(_vocbase);
+  if (! checkCreateCollection(resolver, collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection); 
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction
@@ -513,12 +514,13 @@ bool RestImportHandler::createByKeyValueList () {
     return false;      
   }        
   
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+  CollectionNameResolver resolver(_vocbase);
+  if (! checkCreateCollection(resolver, collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection); 
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction

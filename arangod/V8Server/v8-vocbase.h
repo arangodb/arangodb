@@ -30,6 +30,7 @@
 
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
@@ -71,18 +72,18 @@ void TRI_ReleaseCollection (TRI_vocbase_col_t const*);
 /// @brief parse document or document handle
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t*,
+v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const triagens::arango::CollectionNameResolver&,
                                                          TRI_vocbase_col_t const*&,
                                                          TRI_voc_key_t&,
                                                          TRI_voc_rid_t&,
-                                                         const bool,
                                                          v8::Handle<v8::Value>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t*,
+TRI_index_t* TRI_LookupIndexByHandle (const triagens::arango::CollectionNameResolver&,
+                                      TRI_vocbase_t*,
                                       TRI_vocbase_col_t const*&,
                                       v8::Handle<v8::Value>,
                                       bool,
@@ -104,7 +105,8 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const*);
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const*,
+v8::Handle<v8::Value> TRI_WrapShapedJson (const triagens::arango::CollectionNameResolver&,
+                                          TRI_vocbase_col_t const*,
                                           TRI_doc_mptr_t const*,
                                           TRI_barrier_t*);
 

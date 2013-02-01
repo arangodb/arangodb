@@ -66,18 +66,16 @@ namespace triagens {
 /// @brief create the transaction, using a collection object
 ///
 /// A single collection transaction operates on a single collection (you guessed
-/// it), and may execute at most one write operation if it is a write 
-/// transaction. It may execute multiple reads, though.
+/// it)
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const string& name,
+                                     const TRI_transaction_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType)),
-          _name(name),
-          _collection(0) {
+          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, cid, accessType)),
+          _cid(cid) {
         }
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,26 +99,24 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name of the underlying collection
-////////////////////////////////////////////////////////////////////////////////
-
-        const string collectionName () const {
-          return _name;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_primary_collection_t* primaryCollection () {
-          if (_collection == 0) {
-            const vector<TransactionCollection*> collections = this->_collections->getCollections();
-            _collection = TRI_GetCollectionTransaction(this->_trx, collections[0]->getName().c_str());
-          }
+          assert(this->_cid > 0);
+          TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(this->_vocbase, this->_cid); 
 
-          assert(_collection != 0);
-          assert(_collection->_collection != 0);
-          return _collection->_collection;
+          assert(collection != 0);
+          assert(collection->_collection != 0);
+          return collection->_collection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying collection's id
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_voc_cid_t cid () {
+          return this->_cid;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,19 +133,6 @@ namespace triagens {
         
         inline TRI_barrier_list_t* barrierList () {
           return &primaryCollection()->_barrierList;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying collection's id
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_voc_cid_t cid () {
-          if (_collection == 0) {
-            _collection = TRI_GetCollectionTransaction(this->_trx, this->collectionName().c_str());
-          }
-
-          assert(_collection != 0);
-          return _collection->_cid;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,17 +194,7 @@ namespace triagens {
 
       private:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the collection used
-////////////////////////////////////////////////////////////////////////////////
-
-        string _name;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief data structure for the single collection used
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vocbase_col_t* _collection;
+        TRI_transaction_cid_t _cid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

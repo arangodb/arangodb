@@ -263,14 +263,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the "vocbase"
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_vocbase_t* vocbase () const {
-          return this->_vocbase;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the status of the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -653,7 +645,7 @@ namespace triagens {
 
           for (size_t i = 0; i < collections.size(); ++i) {
             TransactionCollection* c = collections[i];
-            TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->_trx, c->getName().c_str(), c->getAccessType());
+            TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->_trx, c->getId(), c->getAccessType());
 
             if (collection == 0) {
               return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
@@ -681,8 +673,8 @@ namespace triagens {
           for (size_t i = 0; i < collections.size(); ++i) {
             TransactionCollection* c = collections[i];
 
-            TRX_LOG << "adding collection " << c->getName();
-            int res = TRI_AddCollectionTransaction(this->_trx, c->getName().c_str(), c->getAccessType());
+            TRX_LOG << "adding collection " << c->getId();
+            int res = TRI_AddCollectionTransaction(this->_trx, c->getId(), c->getAccessType());
 
             if (res != TRI_ERROR_NO_ERROR) {
               return res;

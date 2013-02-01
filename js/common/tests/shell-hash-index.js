@@ -36,6 +36,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var console = require("console");
+var errors = internal.errors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -204,7 +205,37 @@ function HashIndexSuite() {
       assertEqual(2, s.total);
       assertEqual(2, s.count);
       assertEqual([d11,d12], s.documents.map(fun));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents of an unloaded collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadDocumentsUnloaded : function () {
+      var idx = collection.ensureHashIndex("a");
+
+      var d1 = collection.save({ a : 1, b : 1 })._id;
+      var d2 = collection.save({ a : 2, b : 1 })._id;
+      var d3 = collection.save({ a : 3, b : 1 })._id;
+
+      collection.unload();
+      internal.wait(4);
+
+      var s = collection.BY_EXAMPLE_HASH(idx.id, { a : 2, b : 1 });
+      assertEqual(1, s.total);
+      assertEqual(d2, s.documents[0]._id);
+
+      collection.drop();
+
+      try {
+        s = collection.BY_EXAMPLE_HASH(idx.id, { a : 2, b : 1 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
     }
+
   };
 }
 
