@@ -531,7 +531,7 @@ Graph.prototype.getVertices = function () {
   Iterator = function () {
     this.next = function next() {
       if (cursor.hasNext()) {
-	return new Vertex(that, cursor.next());
+        return new Vertex(that, cursor.next());
       }
 
       return undefined;
@@ -599,7 +599,7 @@ Graph.prototype.getEdges = function () {
   Iterator = function () {
     this.next = function next() {
       if (cursor.hasNext()) {
-	return new Edge(that, cursor.next());
+        return new Edge(that, cursor.next());
       }
 
       return undefined;

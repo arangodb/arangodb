@@ -285,11 +285,11 @@ function memoryDatasource (nodes, connections) {
 
     getPeerVertex: function (edge, vertex) {
       if (edge._from === vertex._id) {
-	return this.getInVertex(edge);
+        return this.getInVertex(edge);
       }
 
       if (edge._to === vertex._id) {
-	return this.getOutVertex(edge);
+        return this.getOutVertex(edge);
       }
 
       return null;
@@ -1263,7 +1263,7 @@ function MemoryTraversalSuite () {
         var edgesList = config.datasource.getAllEdges(vertex);
 
         if (edgesList !== undefined) {
-	  var i;
+          var i;
 
           for (i = 0; i < edgesList.length; ++i) {
             result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
