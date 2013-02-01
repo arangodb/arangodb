@@ -3455,7 +3455,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: dropIndex(<index-handle>)")));
   }
 
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection->_vocbase, collection, argv[0], true, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], true, &err);
 
   if (idx == 0) {
     if (err.IsEmpty()) {
@@ -6215,8 +6215,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (const CollectionNameRes
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
-                                      TRI_vocbase_t* vocbase,
-                                      TRI_vocbase_col_t const*& collection,
+                                      TRI_vocbase_col_t const* collection,
                                       v8::Handle<v8::Value> val,
                                       bool ignoreNotFound,
                                       v8::Handle<v8::Object>* err) {

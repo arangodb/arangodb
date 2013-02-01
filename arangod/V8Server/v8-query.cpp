@@ -995,7 +995,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   // extract the index
   CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, document->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, &err);
 
   if (idx == 0) {
     primary->endRead(primary); 
@@ -1215,7 +1215,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // .............................................................................
   
   CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, document->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, &err);
 
   if (idx == 0) {
     primary->endRead(primary);
@@ -1967,7 +1967,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   
   // extract the index
   CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, document->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2180,7 +2180,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
 
   // extract the index
   CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, document->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2313,7 +2313,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
 
   // extract the index
   CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, document->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2432,7 +2432,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
 
   // extract the index
   CollectionNameResolver resolver(collection->_vocbase);
-  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, document->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
