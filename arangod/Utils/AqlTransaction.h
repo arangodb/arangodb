@@ -28,10 +28,15 @@
 #ifndef TRIAGENS_UTILS_AQL_TRANSACTION_H
 #define TRIAGENS_UTILS_AQL_TRANSACTION_H 1
 
+#include "Utils/Transaction.h"
+
+struct TRI_vocbase_s;
+
 namespace triagens {
   namespace arango {
 
-    class Transaction {
+    template<typename T>
+    class AqlTransaction : public Transaction<T> {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class AqlTransaction
@@ -52,8 +57,9 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlTransaction (const TRI_vocbase_col_t* vocbase, const vector<string>& collectionNames) : 
-          Transaction(vocbase), _trx(0), _collectionNames(collectionNames) {
+        AqlTransaction (struct TRI_vocbase_s* const vocbase, 
+                        const vector<string>& collectionNames) : 
+          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, collectionNames)) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,73 +67,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~AqlTransaction () {
-          if (_trx != 0) {
-            if (_trx->_status == TRI_TRANSACTION_RUNNING) {
-              // auto abort
-              this->abort();
-            }
-
-            TRI_FreeTransaction(_trx);
-            _trx = 0;
-          }
         }
-
-      public:
-
-        int begin () {
-          if (_trx != 0) {
-            // already started
-            return TRI_ERROR_TRANSACTION_INVALD_STATE;
-          }
-
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, 0);
-          if (_trx == 0) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-  
-          for (size_t i = 0; i < _collectionNames.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(_trx, _collectionNames[i].c_str(), TRI_TRANSACTION_READ)) {
-              return TRI_ERROR_INTERNAL;
-            }
-          }
-
-          if (_trx->_status != TRI_TRANSACTION_CREATED) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res = TRI_StartTransaction(_trx);
-          return res;
-        }
-
-        int commit () {
-          if (_trx == 0 || _trx->_status != TRI_TRANSACTION_RUNNING) {
-            // not created or not running
-            return TRI_ERROR_TRANSACTION_INVALD_STATE;
-          }
-
-          int res = TRI_FinishTransaction(_trx);
-          
-          return res;
-        }
-
-        int abort () {
-          if (_trx == 0) {
-            // transaction already ended or not created
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (_trx->_status != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res = TRI_AbortTransaction(_trx);
-
-          return res;
-        }
-
-      private:
-
-        vector<string> _collectionNames;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
