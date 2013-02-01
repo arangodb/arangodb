@@ -6038,36 +6038,6 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the collection, but doesn't lock it
-///
-/// it is the caller's responsibility to acquire and release the required locks
-/// the collection must also have the correct status already. don't use this
-/// function if you're unsure about it!
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_document_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
-                                                        TRI_vocbase_col_t const*& collection,
-                                                        v8::Handle<v8::Object>* err) {
-  // extract the collection
-  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (col == 0 || col->_collection == 0) {
-    return 0;
-  }
-
-  collection = col;
-
-  // handle various collection types
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type");
-    return 0;
-  }
-
-  return (TRI_document_collection_t*) primary;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts and locks the collection
 ////////////////////////////////////////////////////////////////////////////////
 
