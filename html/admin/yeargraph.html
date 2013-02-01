@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <style>
-.label {
-  fill: #777;
+body {
+  font-family: "Super Font", Helvetica, sans-serif;
 }
-
 .yearlabel {
-  font: 500 196px "Helvetica Neue";
+  font: 500 126px "Helvetica Neue";
   fill: #ddd;
 }
 
@@ -34,42 +33,36 @@
 
 .button {
   text-align: center;
-  color: white;
-  background: gray;
+  color: black;
+  background: #ddd;
   border-color: black;
   border-style: solid;
   border-width: 1px;
-  padding: 2px;
-  width:350px;
   cursor: pointer;
-  display: inline;
+  padding: 10px;
+  float: left;
 }  
-#button {
-  padding-left: 20px;
-  padding-right: 20px;
-}
-#play {
-  margin-left: 5px;
-}
 
 #force, #cluster {
   float: right;
   width: 130px;
 }
+
 svg {
   width: 960px;
   height: 700px;
 }
+
 svg text, svg circle {
   cursor: pointer;
 }
+
 .nav {
-  height: 22px;
   width: 962px;
-  padding-top: 0;
-  padding-bottom: 0;
+  height: 40px;
 }
-div#view {
+
+#view {
   width: 960px;
   height: 700px;
   border-color: #aaa;
@@ -80,12 +73,12 @@ div#view {
 </head>
 <body>
   <div class="nav">
-     <div class="button" id="force">Force Layout</div>
-     <div class="button" id="cluster">Cluster Layout</div>
      <div id="button" class="button">next year</div> 
      <div id="backward" class="button"> &lt;&lt; </div> 
      <div id="play" class="button">play</div> 
      <div id="forward" class="button"> &gt;&gt; </div>
+     <div class="button" id="force">Force Layout</div>
+     <div class="button" id="cluster">Cluster Layout</div>
   </div>
   <div id="view"></div>
   <div id="description"></div>
@@ -98,7 +91,7 @@ var config = {
   height: 700,
   animationSpeed: 1500,
   layout: "force",  
-  maxCount: 100
+  maxCount: 150
 };
 
 var app = { 
@@ -116,14 +109,14 @@ var app = {
    .attr("height", config.height),
   force: d3.layout.force()
     .charge(-130)
-    .linkDistance(30 + Math.random() * 70)
+    .linkDistance(30 + Math.random() * 30)
     .size([config.width, config.height]),
   cluster: d3.layout.cluster()
     .size([config.width, config.height]),
   layout: force,
 
   pull_coauthors: function(startnode) { 
-                      console.log("node clicked "+startnode.name);
+                      $("div#description").text("loading node "+startnode.name + "...");
                       var url = "/fosdem/coauthor.json?maxlen=" + config.maxCount +
                                 "&start="+encodeURIComponent(startnode._id);
 	              d3.json(url, function(graph) {
@@ -197,7 +190,10 @@ var app = {
 
 	var cluster = d3.layout.cluster()
 	    .size([360, innerRadius ])
-	    .sort(null)
+	    .sort(function(a,b){ 
+                                 return a.name.split(' ').slice(-1)[0] > 
+                                        b.name.split(' ').slice(-1)[0]; 
+                               })
 	    .value(function(d) { return d.size; });
 
 	var bundle = d3.layout.bundle();
@@ -257,29 +253,32 @@ var app = {
             link.exit().remove();
 
 	var node =  svg.selectAll(".node")
-	      .data(nodes.filter(function(n) { return true;  }));
-	    node.enter().append("g")
-              .on("click", this.pull_coauthors)
-	      .attr("class", "node-cluster")
-	      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
-           
-	    .append("text")
-	      .style("fill", function(d) { 
+	      .data(nodes);
+	      //.data(nodes.filter(function(n) { return true;  }));
+	    node.enter()
+              .append("g")
+                .on("click", this.pull_coauthors)
+	        .attr("class", "node-cluster")
+	        .attr("transform", function(d) { return "rotate(" + (d.x - 90) + 
+                                                      ")translate(" + d.y + ")"; 
+                                             })
+	      .append("text")
+	        .style("fill", function(d) { 
                                             if ( d._id === app.startnode_id ) 
                                               return "red";
                                             else 
                                               return "black";
                                          })
-	      .attr("dx", function(d) { return d.x < 180 ? 0 : -8; })
-	      .attr("dy", ".31em")
-	      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
-	      .attr("transform", function(d) { return (d.x < 180 ? null : "rotate(180)"); })
-	      .text(function(d) { return d.key; });
+	        .attr("dx", function(d) { return d.x < 180 ? 0 : -8; })
+	        .attr("dy", ".31em")
+	        .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+	        .attr("transform", function(d) { return (d.x < 180 ? null : "rotate(180)"); })
+	        .text(function(d) { return d.key; });
             node.exit().remove();
 
 //	d3.select(self.frameElement).style("height", diameter + "px");
   } 
-     $("div#description").text(app.graph.start.name + " " + app.counter + " cumulated connections until " + (this.year) + " ("+this.minYear+"-"+this.maxYear+")");
+     $("div#description").html("In coauthor-network of <b>" + app.graph.start.name + "</b> " + app.counter + " cumulated connections until " + (this.year) + " ("+this.minYear+"-"+this.maxYear+")");
   }
 };
 
@@ -301,7 +300,6 @@ $(document).ready(function(){
      if(app.play === false) {
         app.play = true;
         $(this).text("pause");
-        app.year=app.minYear+1;
         app.render();
         app.year++;
 	function myLoop () { 
