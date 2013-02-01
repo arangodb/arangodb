@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ArangoShellHeader">
+      <UniqueIdentifier>{64b1519d-7bd3-435f-9ca0-01a3bcd1d9e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ArangoShellSource">
+      <UniqueIdentifier>{d45abe7c-a118-42e2-b65a-051c6f3c3d93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="V8ClientHeader">
+      <UniqueIdentifier>{5bb83475-9254-4ec4-be3b-b2f50c5863bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="V8ClientSource">
+      <UniqueIdentifier>{3866748e-56e4-49fa-883f-1e533a2da63c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\arangosh\V8Client\ImportHelper.cpp">
+      <Filter>V8ClientSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangosh\V8Client\V8ClientConnection.cpp">
+      <Filter>V8ClientSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangosh\V8Client\arangoimp.cpp">
+      <Filter>V8ClientSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangosh\ArangoShell\ArangoClient.cpp">
+      <Filter>ArangoShellSource</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\arangosh\V8Client\ImportHelper.h">
+      <Filter>V8ClientHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangosh\V8Client\V8ClientConnection.h">
+      <Filter>V8ClientHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangosh\ArangoShell\ArangoClient.h">
+      <Filter>ArangoShellHeader</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -237,6 +237,14 @@ extern "C" {
 /// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
+/// - 1700: @LIT{invalid user name}
+///   Will be raised when an invalid user name is used
+/// - 1701: @LIT{invalid password}
+///   Will be raised when an invalid password is used
+/// - 1702: @LIT{duplicate user}
+///   Will be raised when a user name already exists
+/// - 1703: @LIT{user not found}
+///   Will be raised when a user name is updated that does not exist
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -1341,6 +1349,46 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1700: ERROR_USER_INVALID_NAME
+///
+/// invalid user name
+///
+/// Will be raised when an invalid user name is used
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_USER_INVALID_NAME                                       (1700)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1701: ERROR_USER_INVALID_PASSWORD
+///
+/// invalid password
+///
+/// Will be raised when an invalid password is used
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_USER_INVALID_PASSWORD                                   (1701)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1702: ERROR_USER_DUPLICATE
+///
+/// duplicate user
+///
+/// Will be raised when a user name already exists
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_USER_DUPLICATE                                          (1702)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1703: ERROR_USER_NOT_FOUND
+///
+/// user not found
+///
+/// Will be raised when a user name is updated that does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_USER_NOT_FOUND                                          (1703)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

@@ -101,7 +101,11 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
     
     return result;    
   }
-  
+  // ..........................................................................
+  // Take note here: we are assuming that the ICU type UChar is two bytes.
+  // There is no guarantee that this will be the case on all platforms and
+  // compilers. 
+  // ..........................................................................
   return _coll->compare((const UChar *)left, leftLength, (const UChar *)right, rightLength);
 }
 

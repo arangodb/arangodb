@@ -277,7 +277,13 @@ int64_t TRI_SizeFile (char const* path) {
 
 #ifdef _WIN32
 bool TRI_IsWritable (char const* path) {
-#error "TRI_IsWritable needs to be implemented for Windows"
+  // ..........................................................................
+  // will attempt the following:
+  //   if path is a directory, then attempt to create temporary file
+  //   if path is a file, then attempt to open it in read/write mode
+  // ..........................................................................
+
+// #error "TRI_IsWritable needs to be implemented for Windows"
   // implementation for seems to be non-trivial
   return true;
 }

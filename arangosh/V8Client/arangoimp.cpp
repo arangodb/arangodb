@@ -189,6 +189,76 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startup and exit functions
+////////////////////////////////////////////////////////////////////////////////
+
+void* arangoimpResourcesAllocated = NULL;
+static void arangoimpEntryFunction ();
+static void arangoimpExitFunction (int, void*);
+
+#ifdef _WIN32
+
+// .............................................................................
+// Call this function to do various initialistions for windows only
+// .............................................................................
+void arangoimpEntryFunction() {
+  int maxOpenFiles = 1024; 
+  int res = 0;
+
+  // ...........................................................................
+  // Uncomment this to call this for extended debug information.
+  // If you familiar with valgrind ... then this is not like that, however
+  // you do get some similar functionality.
+  // ...........................................................................
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  if (res != 0) {
+    _exit(1);
+  }
+
+  TRI_Application_Exit_SetExit(arangoimpExitFunction);
+
+}
+
+static void arangoimpExitFunction(int exitCode, void* data) {
+  int res = 0;
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // ...........................................................................
+
+  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  
+  if (res != 0) {
+    _exit(1);
+  }
+
+  _exit(exitCode);
+}
+#else
+
+static void arangoimpEntryFunction() {
+}
+
+static void arangoimpExitFunction(int exitCode, void* data) {
+}
+
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,29 +267,7 @@ int main (int argc, char* argv[]) {
 
   int ret = EXIT_SUCCESS;
 
-#ifdef _WIN32
-
-  // ...........................................................................
-  // Call this function to do various initialistions for windows only
-  // ...........................................................................
-  
-  // ...........................................................................
-  // Uncomment this to call this for extended debug information.
-  // If you familiar with valgrind ... then this is not like that, however
-  // you do get some similar functionality.
-  // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
-
-  ret = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-  if (ret != 0) {
-    _exit(1);
-  }
-  ret = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
-  if (ret != 0) {
-    _exit(1);
-  }
-
-#endif
+  arangoimpEntryFunction();
 
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
@@ -242,7 +290,7 @@ int main (int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == 0) {
     cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   ClientConnection = new V8ClientConnection(BaseClient.endpointServer(),
@@ -256,8 +304,7 @@ int main (int argc, char* argv[]) {
   if (! ClientConnection->isConnected() || ClientConnection->getLastHttpReturnCode() != SimpleHttpResult::HTTP_STATUS_OK) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
-
-    return EXIT_FAILURE;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   // successfully connected
@@ -293,7 +340,7 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Wrong length of quote character." << endl;
-    return EXIT_FAILURE;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
   
   // eol
@@ -302,7 +349,7 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Wrong length of eol character." << endl;
-    return EXIT_FAILURE;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   // separator
@@ -311,24 +358,24 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Separator must be at least one character." << endl;
-    return EXIT_FAILURE;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   // collection name
   if (CollectionName == "") {
     cerr << "collection name is missing." << endl;
-    return EXIT_FAILURE;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   // filename
   if (FileName == "") {
     cerr << "file name is missing." << endl;
-    return EXIT_FAILURE;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
     cerr << "file '" << FileName << "' is not a regular file." << endl;
-    return EXIT_FAILURE;      
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   // progress
@@ -337,7 +384,7 @@ int main (int argc, char* argv[]) {
   }
 
   // import type
-  bool ok;
+  bool ok = false;
 
   if (TypeImport == "csv") {
     cout << "Starting CSV import..." << endl;
@@ -358,7 +405,7 @@ int main (int argc, char* argv[]) {
   
   else {
     cerr << "Wrong type '" << TypeImport << "'." << endl;
-    return EXIT_FAILURE;      
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
   cout << endl;
@@ -378,16 +425,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-#ifdef _WIN32
-
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
-  ret = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-  
-#endif  
+  arangoimpExitFunction(ret, NULL);
 
   return ret;
 }

@@ -118,7 +118,7 @@ int TRI_CreateKeyGenerator (const struct TRI_json_s* const,
 /// @brief free a key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeKeyGenerator (TRI_key_generator_t* const);
+void TRI_FreeKeyGenerator (TRI_key_generator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a key is allowed

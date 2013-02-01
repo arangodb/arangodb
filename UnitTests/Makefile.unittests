@@ -434,7 +434,7 @@ unittests-import:
 
 
 ################################################################################
-### @brief DATAFILE DEBUGGER TESTS
+### @brief DATAFILE DEBUGGER TESTS      
 ###
 ### this test just checks whether the dfdb starts.
 ### we will send an EOT signal to the dfdb process to stop it right away.
@@ -526,7 +526,7 @@ cppcheck:
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
-
+  
 ## Local Variables:
 ## mode: outline-minor
 ## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"

@@ -33,6 +33,9 @@
     <ClCompile Include="..\..\lib\V8\V8LineEditor.cpp">
       <Filter>V8 Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-globals.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\lib\V8\JSLoader.h">
