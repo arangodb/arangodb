@@ -85,14 +85,6 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an empty list
-////////////////////////////////////////////////////////////////////////////////
-
-        TransactionCollectionsList () : 
-          _collections() {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a list with a single collection, based on the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,47 +93,14 @@ namespace triagens {
                                     TRI_transaction_type_e accessType) : 
           _vocbase(vocbase),
           _collections(),
+          _readOnly(true),
           _error(TRI_ERROR_NO_ERROR) {
 
           addCollection(cid, accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list with a single collection, based on the collection name
-////////////////////////////////////////////////////////////////////////////////
-        
-        TransactionCollectionsList (TRI_vocbase_t* const vocbase, 
-                                    const string& name,
-                                    TRI_transaction_type_e accessType) : 
-          _vocbase(vocbase),
-          _collections(),
-          _error(TRI_ERROR_NO_ERROR) {
-
-          addCollection(name, accessType);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list from multiple collection ids
-////////////////////////////////////////////////////////////////////////////////
-        
-        TransactionCollectionsList (TRI_vocbase_t* const vocbase,
-                                    const vector<TRI_transaction_cid_t>& readCollections,
-                                    const vector<TRI_transaction_cid_t>& writeCollections) : 
-          _vocbase(vocbase),
-          _collections(),
-          _error(TRI_ERROR_NO_ERROR) {
-
-          for (size_t i = 0; i < readCollections.size(); ++i) {
-            addCollection(readCollections[i], TRI_TRANSACTION_READ);
-          }
-
-          for (size_t i = 0; i < writeCollections.size(); ++i) {
-            addCollection(writeCollections[i], TRI_TRANSACTION_WRITE);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list with multiple collection names
+/// @brief create a list with multiple collection names, read/write
 ////////////////////////////////////////////////////////////////////////////////
         
         TransactionCollectionsList (TRI_vocbase_t* const vocbase,
@@ -149,6 +108,7 @@ namespace triagens {
                                     const vector<string>& writeCollections) : 
           _vocbase(vocbase),
           _collections(),
+          _readOnly(true),
           _error(TRI_ERROR_NO_ERROR) {
 
           for (size_t i = 0; i < readCollections.size(); ++i) {
@@ -157,6 +117,22 @@ namespace triagens {
 
           for (size_t i = 0; i < writeCollections.size(); ++i) {
             addCollection(writeCollections[i], TRI_TRANSACTION_WRITE);
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list with multiple collection names, read-only
+////////////////////////////////////////////////////////////////////////////////
+        
+        TransactionCollectionsList (TRI_vocbase_t* const vocbase,
+                                    const vector<string>& readCollections) :
+          _vocbase(vocbase),
+          _collections(),
+          _readOnly(true),
+          _error(TRI_ERROR_NO_ERROR) {
+
+          for (size_t i = 0; i < readCollections.size(); ++i) {
+            addCollection(readCollections[i], TRI_TRANSACTION_READ);
           }
         }
 
@@ -190,7 +166,15 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get potential raised during list setup
+/// @brief whether or not the transaction is read-only
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isReadOnly () const {
+          return _readOnly;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get potential error raised during list setup
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int getError () const {
@@ -241,6 +225,10 @@ namespace triagens {
 
         TransactionCollection* addCollection (const TRI_transaction_cid_t cid, 
                                               TRI_transaction_type_e type) { 
+          if (type == TRI_TRANSACTION_WRITE) {
+            _readOnly = false;
+          }
+
           ListType::iterator it;
           
           // check if we already have the collection in our list
@@ -334,6 +322,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ListType _collections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is read-only
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _readOnly;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error number
