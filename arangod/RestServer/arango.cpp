@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "BasicsC/messages.h"
 
 #include "RestServer/ArangoServer.h"
 #include "ResultGenerator/InitialiseGenerator.h"
@@ -43,19 +44,25 @@ using namespace triagens::arango;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an application server
+/// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-int main (int argc, char* argv[]) {
-  int res;
+void* arangodResourcesAllocated = NULL;
+static void arangodEntryFunction ();
+static void arangodExitFunction (int, void*);
 
 #ifdef _WIN32
 
-  // ...........................................................................
-  // Call this function to do various initialistions for windows only
-  // ...........................................................................
-  
+// .............................................................................
+// Call this function to do various initialistions for windows only
+// .............................................................................
+void arangodEntryFunction() {
+  int maxOpenFiles = 2048;  // upper hard limit for windows
+  int res = 0;
+
   // ...........................................................................
   // Uncomment this to call this for extended debug information.
   // If you familiar with valgrind ... then this is not like that, however
@@ -67,12 +74,55 @@ int main (int argc, char* argv[]) {
   if (res != 0) {
     _exit(1);
   }
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  if (res != 0) {
+    _exit(1);
+  }
+
   res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
   if (res != 0) {
     _exit(1);
   }
 
+  TRI_Application_Exit_SetExit(arangodExitFunction);
+
+}
+
+static void arangodExitFunction(int exitCode, void* data) {
+  int res = 0;
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // ...........................................................................
+
+  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  
+  if (res != 0) {
+    _exit(1);
+  }
+
+  _exit(exitCode);
+}
+#else
+
+static void arangodEntryFunction() {
+}
+
+static void arangodExitFunction(int exitCode, void* data) {
+}
+
 #endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an application server
+////////////////////////////////////////////////////////////////////////////////
+
+int main (int argc, char* argv[]) {
+  int res = 0;
+
+  arangodEntryFunction();
 
   TRIAGENS_RESULT_GENERATOR_INITIALISE(argc, argv);
 
@@ -84,16 +134,7 @@ int main (int argc, char* argv[]) {
   // shutdown
   TRIAGENS_RESULT_GENERATOR_SHUTDOWN;
 
-#ifdef _WIN32
-
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-
-#endif  
+  arangodExitFunction(res, NULL);
 
   return res;
 }

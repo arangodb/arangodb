@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
-#include "common.h"
+#include "BasicsC/common.h"
 
 #include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"

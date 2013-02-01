@@ -442,7 +442,7 @@ typedef int socket_t;
 #define TRI_ALIGNOF_VOIDP                   4
 #endif
 
-#undef  TRI_HAVE_ANONYMOUS_MMAP            
+#define TRI_HAVE_ANONYMOUS_MMAP             1
 
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
@@ -540,6 +540,7 @@ typedef SOCKET socket_t;
 #define STDIN_FILENO  0;
 #define STDOUT_FILENO 1;
 #define STDERR_FILENO 2;
+
 
 #endif
 

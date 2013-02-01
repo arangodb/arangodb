@@ -112,12 +112,24 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
 
   // ...........................................................................
   // Whenever we talk to the memory map functions, we require a file handle
-  // rather than a file descriptor. However, we only store file descriptors for 
-  // now - this may change.
+  // rather than a file descriptor. 
   // ...........................................................................
 
-  if (fileDescriptor < 0) { // an invalid file descriptor of course means an invalid handle
+
+
+  if (fileDescriptor < 0) { 
+    // .........................................................................
+    // An invalid file descriptor of course means an invalid handle.
+    // Having an invalid handle could mean (i) an error, or more likely,
+    // (ii) a request for an anonymous memory mapped file. Determine this below
+    // .........................................................................
     fileHandle = INVALID_HANDLE_VALUE;
+    if ((flags & MAP_ANONYMOUS) != MAP_ANONYMOUS) {
+      LOG_DEBUG("File descriptor is invalid however memory map flag is not anonymous");
+      LOG_TRACE("File descriptor is invalid however memory map flag is not anonymous");
+      return TRI_ERROR_SYS_ERROR;
+    }
+
   }
 
   else {
@@ -204,9 +216,8 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
   // TODO: determine the correct memory protection and then uncomment
   // ...........................................................................               
   // *mmHandle = CreateFileMapping(fileHandle, NULL, objectProtection, mmLength.HighPart, mmLength.LowPart, NULL);
-  
-  *mmHandle = CreateFileMapping(fileHandle, NULL, PAGE_READWRITE, mmLength.HighPart, mmLength.LowPart, NULL);
 
+  *mmHandle = CreateFileMapping(fileHandle, NULL, PAGE_READWRITE, mmLength.HighPart, mmLength.LowPart, NULL);
   
   // ...........................................................................               
   // If we have failed for some reason return system error for now.
