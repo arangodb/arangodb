@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #382: [Documentation error] Maschine... should be Machine...
+ 
 * unified history file locations for arangod, arangosh, and arangoirb.
   - The readline history for arangod (emergency console) is now stored in file
     $HOME/.arangod. It was stored in $HOME/.arangod before.

@@ -292,7 +292,7 @@
 /// @anchor CommandLineLoggingLogFilter
 /// @copydetails triagens::rest::ApplicationServer::_logFilter
 ///
-/// @subsection CommandLineLoggingMachine Maschine Readable Logging
+/// @subsection CommandLineLoggingMachine Machine Readable Logging
 ///
 /// @anchor CommandLineLoggingLogApplication
 /// @copydetails triagens::rest::ApplicationServer::_logApplicationName
