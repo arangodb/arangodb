@@ -1211,30 +1211,6 @@ int TRI_FinishTransaction (TRI_transaction_t* const trx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the pointer to a collection after it has been initialised
-////////////////////////////////////////////////////////////////////////////////
-  
-TRI_vocbase_col_t* TRI_GetCollectionTransaction (const TRI_transaction_t* const trx, 
-                                                 const TRI_transaction_cid_t cid) {
-  size_t i, n;
-
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
-  
-  n = trx->_collections._length;
-  
-  // process collections in forward order
-  for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* collection;
-
-    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
-    if (cid == collection->_cid) {
-      return collection->_collection;
-    }
-  }
-  return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
