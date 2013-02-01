@@ -40,6 +40,7 @@
 #define TRI_WITHIN_COMMON 1
 #include "BasicsC/operating-system.h"
 #include "BasicsC/local-configuration.h"
+#include "BasicsC/application-exit.h"
 #undef TRI_WITHIN_COMMON
 
 ////////////////////////////////////////////////////////////////////////////////

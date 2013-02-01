@@ -527,6 +527,56 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tst_doubles
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_doubles) {
+  TRI_string_buffer_t sb;
+  double value;
+  
+  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+
+  // + inf
+  value = HUGE_VAL;
+  TRI_AppendDoubleStringBuffer(&sb, value);
+  BOOST_CHECK_EQUAL("inf", sb._buffer);
+
+  // - inf
+  value = -HUGE_VAL;
+  TRI_ClearStringBuffer(&sb);
+  TRI_AppendDoubleStringBuffer(&sb, value);
+  BOOST_CHECK_EQUAL("-inf", sb._buffer);
+  
+  // div 0
+  value = 1.0 / 0.0;
+  TRI_ClearStringBuffer(&sb);
+  TRI_AppendDoubleStringBuffer(&sb, value);
+  BOOST_CHECK_EQUAL("inf", sb._buffer);
+  
+#ifdef NAN  
+  // NaN
+  value = NAN;
+  TRI_ClearStringBuffer(&sb);
+  TRI_AppendDoubleStringBuffer(&sb, value);
+  BOOST_CHECK_EQUAL("NaN", sb._buffer);
+#endif
+  
+  // big numbers, hopefully this is portable enough
+  double n = 244536.0;
+  value = n * n * n * n;
+  TRI_ClearStringBuffer(&sb);
+  TRI_AppendDoubleStringBuffer(&sb, value);
+  BOOST_CHECK_EQUAL("3575783498001355000000", sb._buffer);
+  
+  value *= -1.0;
+  TRI_ClearStringBuffer(&sb);
+  TRI_AppendDoubleStringBuffer(&sb, value);
+  BOOST_CHECK_EQUAL("-3575783498001355000000", sb._buffer);
+
+  TRI_DestroyStringBuffer(&sb);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 

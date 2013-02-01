@@ -41,7 +41,6 @@
 /// anonymous memory mapping may or may not work on Windows
 ////////////////////////////////////////////////////////////////////////////////
 
-#undef TRI_MMAP_ANONYMOUS
 
 ////////////////////////////////////////////////////////////////////////////////
 // Flags used when we create a memory map -- dummy flags for windows for now
@@ -53,6 +52,7 @@
 #define MAP_FIXED       0x10            /* Interpret addr exactly */
 #define MAP_ANONYMOUS   0x20            /* don't use a file */
 
+#define TRI_MMAP_ANONYMOUS MAP_ANONYMOUS
 
 ////////////////////////////////////////////////////////////////////////////////
 // Define some dummy flags which are ignored under windows.

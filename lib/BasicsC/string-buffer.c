@@ -882,32 +882,19 @@ int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
   int res;
 
-// TODO: before activating this check, make it portable
-// isnan and isinf macros are available in posix, and probably in C99 only
-//   // check for NaN
-// #ifdef isnan
-//   if (isnan(attr)) {
-//     res = Reserve(self, 3);
-//     if (res != TRI_ERROR_NO_ERROR) {
-//       return res;
-//     }
-//     TRI_AppendStringStringBuffer(self, "NaN");
-//     return TRI_ERROR_NO_ERROR;
-//   }
-// #endif 
-// 
-//   // check for infinity
-//   // if we do not enforce this check, one of the below loops might never terminate
-// #ifdef isinf
-//   if (isinf(attr)) {
-//     res = Reserve(self, 3);
-//     if (res != TRI_ERROR_NO_ERROR) {
-//       return res;
-//     }
-//     TRI_AppendStringStringBuffer(self, "inf");
-//     return TRI_ERROR_NO_ERROR;
-//   }
-// #endif
+  // IEEE754 NaN values have an interesting property that we can exploit...
+  // if the architecture does not use IEEE754 values then this shouldn't do
+  // any harm either
+  if (attr != attr) {
+    return TRI_AppendStringStringBuffer(self, "NaN");
+  }
+
+  if (attr == HUGE_VAL) {
+    return TRI_AppendStringStringBuffer(self, "inf");
+  }
+  if (attr == -HUGE_VAL) {
+    return TRI_AppendStringStringBuffer(self, "-inf");
+  }
 
   res = Reserve(self, 1);
 

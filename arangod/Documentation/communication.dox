@@ -49,8 +49,13 @@
 /// Client authentication is done by using the @LIT{Authorization} HTTP header. 
 /// ArangoDB supports Basic authentication.
 ///
-/// Authentication is optional if the server has been started with the option
-/// @LIT{\-\-server.disable-authentication}. 
+/// Authentication is optional. To enforce authentication for incoming requested, the
+/// server must be started with the option @LIT{\-\-server.disable-authentication}. 
+/// Please note that requests using the HTTP OPTIONS method will be answered by
+/// ArangoDB in any case, even if no authentication data is sent by the client or if
+/// the authentication data is wrong. This is required for handling CORS preflight
+/// requests (see @ref CommunicationCors). The response to an HTTP OPTIONS request
+/// will be generic and not expose any private data.
 ///
 /// @section CommunicationErrors Error Handling
 ///
@@ -128,6 +133,18 @@
 ///   ignored by ArangoDB its value is not @LIT{true}. If a client sends a header
 ///   value of @LIT{true}, ArangoDB will return the header 
 ///   @LIT{access-control-allow-credentials: true}, too.
+///
+/// Note that CORS preflight requests will probably not send any authentication
+/// data with them. One of the purposes of the preflight request is to check whether
+/// the server accepts authentication or not. 
+///
+/// A consequence of this is that ArangoDB will allow requests using the HTTP 
+/// OPTIONS method without credentials, even when the server is run with 
+/// authentication enabled. 
+///
+/// The response to the HTTP OPTIONS request will however be a generic response
+/// that will not expose any private data and thus can be considered "safe"
+/// even without credentials.
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
