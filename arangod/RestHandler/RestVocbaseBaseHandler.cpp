@@ -164,7 +164,8 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
+bool RestVocbaseBaseHandler::checkCreateCollection (const CollectionNameResolver& resolver,
+                                                    const string& name,
                                                     const TRI_col_type_e type) {
   bool found;
   char const* valueStr = _request->value("createCollection", found);
@@ -355,9 +356,9 @@ void RestVocbaseBaseHandler::generateNotModified (const string& etag) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
+void RestVocbaseBaseHandler::generateDocument (const triagens::arango::CollectionNameResolver& resolver,
+                                               const string& collectionName,
                                                TRI_doc_mptr_t const* document,
-                                               TRI_vocbase_t* const vocbase, 
                                                TRI_shaper_t* shaper,
                                                const bool generateBody) {
   if (document == 0) {
@@ -399,8 +400,8 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-    const string from = DocumentHelper::assembleDocumentId(vocbase, marker->_fromCid, string((char*) marker + marker->_offsetFromKey));
-    const string to = DocumentHelper::assembleDocumentId(vocbase, marker->_toCid, string((char*) marker +  marker->_offsetToKey));
+    const string from = DocumentHelper::assembleDocumentId(resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
+    const string to = DocumentHelper::assembleDocumentId(resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));

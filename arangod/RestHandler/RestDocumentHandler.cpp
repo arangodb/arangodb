@@ -280,12 +280,13 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (! checkCreateCollection(collection, getCollectionType())) {
+  CollectionNameResolver resolver(_vocbase);
+  if (! checkCreateCollection(resolver, collection, getCollectionType())) {
     return false;
   }
 
   // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction
@@ -407,7 +408,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   string key = suffix[1];
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection);
+  CollectionNameResolver resolver(_vocbase);
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside read transaction
@@ -445,7 +447,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(collection, document, trx.vocbase(), trx.shaper(), generateBody);
+      generateDocument(resolver, collection, document, trx.shaper(), generateBody);
     }
     else {
       generatePreconditionFailed(collection, document->_key, rid);
@@ -461,7 +463,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(collection, document, trx.vocbase(), trx.shaper(), generateBody);
+      generateDocument(resolver, collection, document, trx.shaper(), generateBody);
     }
     else {
       generatePreconditionFailed(collection, document->_key, rid);
@@ -491,7 +493,8 @@ bool RestDocumentHandler::readAllDocuments () {
   string collection = _request->value("collection", found);
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection);
+  CollectionNameResolver resolver(_vocbase);
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, resolver.getCollectionId(collection));
   
   vector<string> ids;
   
@@ -522,7 +525,7 @@ bool RestDocumentHandler::readAllDocuments () {
   string result("{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = '"' + DOCUMENT_PATH + '/' + trx.collectionName() + '/';
+  string prefix = '"' + DOCUMENT_PATH + '/' + collection + '/';
 
   for (vector<string>::iterator i = ids.begin();  i != ids.end();  ++i) {
     // collection names do not need to be JSON-escaped
@@ -764,11 +767,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
-
-  // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
   
   TRI_doc_mptr_t* document = 0;
+
+  // find and load collection given by name or identifier
+  CollectionNameResolver resolver(_vocbase);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction
@@ -915,7 +919,7 @@ bool RestDocumentHandler::deleteDocument () {
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
-  // extract or chose the update policy
+  // extract or choose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
@@ -925,7 +929,8 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
+  CollectionNameResolver resolver(_vocbase);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction

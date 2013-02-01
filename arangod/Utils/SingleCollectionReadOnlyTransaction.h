@@ -63,8 +63,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
-                                             const string& name) : 
-          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_READ) {
+                                             const TRI_transaction_cid_t cid) : 
+          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

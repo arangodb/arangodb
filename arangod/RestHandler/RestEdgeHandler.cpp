@@ -153,12 +153,13 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
   
-  if (! checkCreateCollection(collection, getCollectionType())) {
+  CollectionNameResolver resolver(_vocbase);
+  if (! checkCreateCollection(resolver, collection, getCollectionType())) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
   
   // .............................................................................
   // inside write transaction

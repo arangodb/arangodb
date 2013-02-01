@@ -70,8 +70,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          const string& name) :
-          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
+                                          const TRI_transaction_cid_t cid) :
+          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_WRITE),
           _numWrites(0), 
           _synchronous(false) {
 
@@ -182,6 +182,9 @@ namespace triagens {
           return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update (replace!) a single document within a transaction, 
+/// using json
 ////////////////////////////////////////////////////////////////////////////////
 
         int updateDocument (const string& key,

@@ -1886,6 +1886,38 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collect
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locks a (document) collection for usage by id
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const TRI_voc_cid_t cid) {
+  union { TRI_vocbase_col_t const* c; TRI_vocbase_col_t* v; } cnv;
+  TRI_vocbase_col_t const* collection;
+  int res;
+
+  // .............................................................................
+  // check that we have an existing name
+  // .............................................................................
+
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  collection = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &cid);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  if (collection == NULL) {
+    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return NULL;
+  }
+  
+  // .............................................................................
+  // try to load the collection
+  // .............................................................................
+
+  cnv.c = collection;
+  res = LoadCollectionVocBase(vocbase, cnv.v);
+
+  return res == TRI_ERROR_NO_ERROR ? cnv.v : NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by name
 ////////////////////////////////////////////////////////////////////////////////
 

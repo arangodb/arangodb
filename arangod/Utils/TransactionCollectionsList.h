@@ -58,7 +58,7 @@ namespace triagens {
 /// @brief typedef for contained collections list
 ////////////////////////////////////////////////////////////////////////////////
 
-      typedef map<string, TransactionCollection*> ListType;
+      typedef map<TRI_transaction_cid_t, TransactionCollection*> ListType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -93,11 +93,25 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list with a single collection
+/// @brief create a list with a single collection, based on the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
         TransactionCollectionsList (TRI_vocbase_t* const vocbase, 
-                                    const string& name, 
+                                    const TRI_transaction_cid_t cid,
+                                    TRI_transaction_type_e accessType) : 
+          _vocbase(vocbase),
+          _collections(),
+          _error(TRI_ERROR_NO_ERROR) {
+
+          addCollection(cid, accessType);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list with a single collection, based on the collection name
+////////////////////////////////////////////////////////////////////////////////
+        
+        TransactionCollectionsList (TRI_vocbase_t* const vocbase, 
+                                    const string& name,
                                     TRI_transaction_type_e accessType) : 
           _vocbase(vocbase),
           _collections(),
@@ -107,7 +121,27 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list with multiple collections
+/// @brief create a list from multiple collection ids
+////////////////////////////////////////////////////////////////////////////////
+        
+        TransactionCollectionsList (TRI_vocbase_t* const vocbase,
+                                    const vector<TRI_transaction_cid_t>& readCollections,
+                                    const vector<TRI_transaction_cid_t>& writeCollections) : 
+          _vocbase(vocbase),
+          _collections(),
+          _error(TRI_ERROR_NO_ERROR) {
+
+          for (size_t i = 0; i < readCollections.size(); ++i) {
+            addCollection(readCollections[i], TRI_TRANSACTION_READ);
+          }
+
+          for (size_t i = 0; i < writeCollections.size(); ++i) {
+            addCollection(writeCollections[i], TRI_TRANSACTION_WRITE);
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list with multiple collection names
 ////////////////////////////////////////////////////////////////////////////////
         
         TransactionCollectionsList (TRI_vocbase_t* const vocbase,
@@ -179,6 +213,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of collections
+////////////////////////////////////////////////////////////////////////////////
+
+        inline size_t size () const {
+          return _collections.size();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,42 +236,15 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a collection to the list
+/// @brief add a collection to the list, using the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addCollection (const string& name, 
-                            TRI_transaction_type_e type) { 
+        TransactionCollection* addCollection (const TRI_transaction_cid_t cid, 
+                                              TRI_transaction_type_e type) { 
           ListType::iterator it;
-          string realName;
           
-          if (name.empty()) {
-            _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-            return;
-          }
-          
-          const char c = name[0];
-          if (c >= '0' && c <= '9') {
-            // name is passed as a string with the collection id inside
-
-            // look up the collection name for the id
-            TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(name);
-
-            char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, id);
-            if (n == 0) {
-              _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-              return;
-            }
-
-            realName = string(n);
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-          }
-          else {
-            // name is passed as a "real" name
-            realName = name;
-          }
-
           // check if we already have the collection in our list
-          it = _collections.find(realName);
+          it = _collections.find(cid);
           if (it != _collections.end()) {
             // yes, now update the collection in the list
             TransactionCollection* c = (*it).second;
@@ -239,12 +254,58 @@ namespace triagens {
               c->setAccessType(type);
             }
 
-            // TODO: we probably prefer raising an error here
+            return c;
           }
           else {
-            // collection not yet contained in our list
-            _collections[realName] = new TransactionCollection(realName, type);
+            // collection not yet contained in the list
+            _collections[cid] = new TransactionCollection(cid, type);
+
+            return _collections[cid];
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the list, using the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        TransactionCollection* addCollection (const string& name,
+                                              TRI_transaction_type_e type) {
+
+          if (name.empty()) {
+            _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+            return 0;
+          }
+
+          TRI_transaction_cid_t cid;
+         
+          // look at the first character in the collection name 
+          const char first = name[0];
+          if (first >= '0' && first <= '9') {
+            // name is passed as a string with the collection id inside
+
+            // look up the collection name for the id
+            cid = triagens::basics::StringUtils::uint64(name);
+
+            char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+            if (n == 0) {
+              _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+              return 0;
+            }
+
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
+          }
+          else {
+            // name is passed as a "real" name
+            TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+            if (col == 0) {
+              _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+              return 0;
+            }
+
+            cid = col->_cid;
+          }
+
+          return addCollection(cid, type);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
