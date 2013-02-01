@@ -67,8 +67,14 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   tearDown : function () {
-    collection.unload();
-    collection.drop();
+    // try...catch is necessary as some tests delete the collection itself!
+    try {
+      collection.unload();
+      collection.drop();
+    }
+    catch (err) {
+    }
+
     collection = null;
     internal.wait(0.0);
   },

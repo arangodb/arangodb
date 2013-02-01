@@ -66,8 +66,13 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      collection.unload();
-      collection.drop();
+      // we need try...catch here because at least one test drops the collection itself!
+      try {
+        collection.unload();
+        collection.drop();
+      }
+      catch (err) {
+      }
       collection = null;
       internal.wait(0.0);
     },
@@ -141,10 +146,14 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetNonExistingIndexes : function () {
-      tests = [ "yippie", "9999999999999", -1 ].forEach(function (id) {
-        var idx = collection.index(id);
-
-        assertEqual(null, idx);
+      tests = [ "2444334000000", "9999999999999" ].forEach(function (id) {
+        try {
+          var idx = collection.index(id);
+          fail();
+        }
+        catch (err) {
+          assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+        }
       });
     },
 
