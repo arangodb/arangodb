@@ -5,6 +5,7 @@
 ARANGOD="@SBINDIR@/arangod"
 DATABASE="@DATABASEDIR@"
 MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules"
+STARTUPPATH="@PKGDATADIR@/js"
 SCRIPT="@PKGDATADIR@/js/server/arango-dfdb.js"
 
 if [ "$1" == "--database" ] || [ "$1" == "--database.directory" ] ;  then
@@ -27,5 +28,6 @@ $ARANGOD \
     -c none \
     --no-upgrade \
     --database.directory "$DATABASE" \
+    --javascript.startup-directory "$STARTUPPATH" \
     --javascript.modules-path "$MODULESPATH" \
     --javascript.script "$SCRIPT"

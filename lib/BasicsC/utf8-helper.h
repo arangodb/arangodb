@@ -79,7 +79,7 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
 
 char * TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, 
                                    const uint16_t* utf16, 
-                                   size_t inLength, 
+                                   const size_t inLength, 
                                    size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////

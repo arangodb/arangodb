@@ -324,8 +324,11 @@ char const* TRI_errno_string (int error) {
   entry = (TRI_error_t*) TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error);
 
   if (entry == NULL) {
-    return NULL;
+    // return a hard-coded string as not all callers check for NULL
+    return "unknown error";
   }
+
+  assert(entry->_message != NULL);
 
   return entry->_message;
 }
