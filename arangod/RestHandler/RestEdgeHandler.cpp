@@ -153,13 +153,12 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
   
-  CollectionNameResolver resolver(_vocbase);
-  if (! checkCreateCollection(resolver, collection, getCollectionType())) {
+  if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver, collection);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -227,10 +226,10 @@ bool RestEdgeHandler::createDocument () {
 
   // generate result
   if (trx.synchronous()) {
-    generateCreated(collection, document->_key, document->_rid);
+    generateCreated(cid, document->_key, document->_rid);
   }
   else {
-    generateAccepted(collection, document->_key, document->_rid);
+    generateAccepted(cid, document->_key, document->_rid);
   }
 
   return true;

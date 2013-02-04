@@ -214,13 +214,12 @@ bool RestImportHandler::createByDocumentsLines () {
     return false;
   }
   
-  CollectionNameResolver resolver(_vocbase);
-  if (! checkCreateCollection(resolver, collection, TRI_COL_TYPE_DOCUMENT)) {
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, collection);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -362,13 +361,12 @@ bool RestImportHandler::createByDocumentsList () {
     return false;
   }
   
-  CollectionNameResolver resolver(_vocbase);
-  if (! checkCreateCollection(resolver, collection, TRI_COL_TYPE_DOCUMENT)) {
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, collection);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -514,13 +512,12 @@ bool RestImportHandler::createByKeyValueList () {
     return false;      
   }        
   
-  CollectionNameResolver resolver(_vocbase);
-  if (! checkCreateCollection(resolver, collection, TRI_COL_TYPE_DOCUMENT)) {
+  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, collection);
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
   
   // .............................................................................
   // inside write transaction
