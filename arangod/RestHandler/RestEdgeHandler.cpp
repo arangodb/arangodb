@@ -159,7 +159,7 @@ bool RestEdgeHandler::createDocument () {
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction

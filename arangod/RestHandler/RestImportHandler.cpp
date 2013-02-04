@@ -220,7 +220,7 @@ bool RestImportHandler::createByDocumentsLines () {
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -368,7 +368,7 @@ bool RestImportHandler::createByDocumentsList () {
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -520,7 +520,7 @@ bool RestImportHandler::createByKeyValueList () {
   }
   
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction
