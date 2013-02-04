@@ -33,6 +33,7 @@
 
 #include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
+#include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-result.h"
@@ -48,6 +49,7 @@
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
+#include "Utils/AhuacatlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/EmbeddableTransaction.h"
@@ -72,6 +74,43 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection names from the AQL collections list into 
+/// a C++ vector
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> GetCollectionNames (const TRI_vector_pointer_t* const collections) {
+  size_t n = collections->_length;
+
+  vector<string> names;
+
+  for (size_t i = 0; i < n; ++i) {
+    char const* name = ((TRI_aql_collection_t*) collections->_buffer[i])->_name;
+    names.push_back(string(name));
+  }
+
+  return names;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -1568,18 +1607,47 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
   // parse & validate
   // bind values
-  // optimise
-  // lock
-  
-  if (!TRI_ValidateQueryContextAql(context) ||
-      !TRI_BindQueryContextAql(context, parameters) ||
-      !TRI_LockQueryContextAql(context) ||
-      !TRI_OptimiseQueryContextAql(context)) {
+  if (! TRI_ValidateQueryContextAql(context) ||
+      ! TRI_BindQueryContextAql(context, parameters) ||
+      ! TRI_SetupCollectionsContextAql(context)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
 
+  // note: a query is not necessarily collection-based. 
+  // this means that the _collections array might contain 0 collections!
+  CollectionNameResolver resolver(context->_vocbase);
+  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, GetCollectionNames(&context->_collections));
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute query", true)));
+  }
+  
+  // TODO: inject collection pointer into AQL collection->_collection
+  size_t n = context->_collections._length;
+  for (size_t i = 0; i < n; ++i) {
+    char const* name = ((TRI_aql_collection_t*) context->_collections._buffer[i])->_name;
+    TRI_transaction_cid_t cid = resolver.getCollectionId(name);
+
+    ((TRI_aql_collection_t*) context->_collections._buffer[i])->_collection = trx.getCollectionPointer(cid); 
+  }
+
+
+  // optimise
+  if (! TRI_OptimiseQueryContextAql(context)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+
+    return scope.Close(v8::ThrowException(errorObject));
+  }
+  
+  // add barriers for all collections used
+  if (! TRI_AddBarrierCollectionsAql(context)) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot add barrier", true)));
+  }
+ 
+  
   // generate code
   char* code = TRI_GenerateCodeAql(context);
   if (! code || context->_error._code != TRI_ERROR_NO_ERROR) {
@@ -1587,10 +1655,12 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
     return scope.Close(v8::ThrowException(errorObject));
   }
- 
+  
   // execute code
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
+  
+  trx.finish(TRI_ERROR_NO_ERROR);
 
   // return the result as a javascript array
   return scope.Close(result);
@@ -2513,12 +2583,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   const string queryString = TRI_ObjectToString(queryArg);
+
   // return number of total records in cursor?
-  bool doCount = false;
+  bool doCount             = false;
+
   // maximum number of results to return at once
-  uint32_t batchSize = 1000;
+  uint32_t batchSize       = 1000;
+
   // directly return the results as a javascript array instead of a cursor object (performance optimisation)
-  bool allowDirectReturn = false;
+  bool allowDirectReturn   = false;
+
   if (argc > 2) {
     doCount = TRI_ObjectToBoolean(argv[2]);
     if (argc > 3) {
@@ -2605,12 +2679,14 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
     holder.registerJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
-  AhuacatlGuard context(vocbase, queryString);
-  if (! context.valid()) {
+  AhuacatlGuard guard(vocbase, queryString);
+  if (! guard.valid()) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
+
+  TRI_aql_context_t* context = guard.ptr();
   
   bool performOptimisations = true;
   if (argc > 2) {
@@ -2620,21 +2696,49 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   TRI_json_t* explain = 0;
 
-  if (!TRI_ValidateQueryContextAql(context.ptr()) ||
-      !TRI_BindQueryContextAql(context.ptr(), parameters) ||
-      !TRI_LockQueryContextAql(context.ptr()) ||
-      (performOptimisations && !TRI_OptimiseQueryContextAql(context.ptr())) ||
-      !(explain = TRI_ExplainAql(context.ptr()))) {
-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
+  if (! TRI_ValidateQueryContextAql(context) ||
+      ! TRI_BindQueryContextAql(context, parameters) ||
+      ! TRI_SetupCollectionsContextAql(context)) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
     return scope.Close(v8::ThrowException(errorObject));
   }
+  
+  // note: a query is not necessarily collection-based. 
+  // this means that the _collections array might contain 0 collections!
+  CollectionNameResolver resolver(vocbase);
+  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, GetCollectionNames(&context->_collections));
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot explain query", true)));
+  }
+  
+
+  // TODO: inject collection pointer into AQL collection->_collection
+  size_t n = context->_collections._length;
+  for (size_t i = 0; i < n; ++i) {
+    char const* name = ((TRI_aql_collection_t*) context->_collections._buffer[i])->_name;
+    TRI_transaction_cid_t cid = resolver.getCollectionId(name);
+
+    ((TRI_aql_collection_t*) context->_collections._buffer[i])->_collection = trx.getCollectionPointer(cid); 
+  }
+ 
+
+
+  if ((performOptimisations && ! TRI_OptimiseQueryContextAql(context)) ||
+      ! (explain = TRI_ExplainAql(context))) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+    return scope.Close(v8::ThrowException(errorObject));
+  }
+
+  trx.finish(TRI_ERROR_NO_ERROR);
 
   assert(explain);
 
   v8::Handle<v8::Value> result;
   result = TRI_ObjectJson(explain);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, explain);
-  context.free();
+  guard.free();
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
@@ -2684,7 +2788,7 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   }
 
   // parse & validate
-  if (!TRI_ValidateQueryContextAql(context.ptr())) {
+  if (! TRI_ValidateQueryContextAql(context.ptr())) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -4382,24 +4486,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 /// it is the caller's responsibility to acquire and release all required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv, 
-                                                   const bool lock) {
+static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv) { 
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = 0;
   
-  if (lock) {
-    collection = UseCollection(argv.Holder(), &err);
-  }
-  else {
-    TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-    if (col == 0 || col->_collection == 0) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection"));;
-    }
-
-    collection = col;
-  }
+  collection = UseCollection(argv.Holder(), &err);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -4408,20 +4501,16 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv,
   TRI_primary_collection_t* primary = collection->_collection;
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    if (lock) {
-      TRI_ReleaseCollection(collection);
-    }
+    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   // get a list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, lock);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, true);
  
-  if (lock) { 
-    TRI_ReleaseCollection(collection);
-  }
+  TRI_ReleaseCollection(collection);
 
   if (! indexes) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
@@ -4458,17 +4547,7 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
-  return GetIndexesVocbaseCol(argv, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the indexes
-///
-/// it is the caller's responsibility to acquire and release all required locks
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_GetIndexesNLVocbaseCol (v8::Arguments const& argv) {
-  return GetIndexesVocbaseCol(argv, false);
+  return GetIndexesVocbaseCol(argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6528,7 +6607,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
-  TRI_AddMethodVocbase(rt, "getIndexesNL", JS_GetIndexesNLVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupFulltextIndex", JS_LookupFulltextIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupHashIndex", JS_LookupHashIndexVocbaseCol);

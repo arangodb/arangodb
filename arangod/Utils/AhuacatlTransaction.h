@@ -25,10 +25,12 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_AQL_TRANSACTION_H
-#define TRIAGENS_UTILS_AQL_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
+#define TRIAGENS_UTILS_AHUACATL_TRANSACTION_H 1
 
 #include "Utils/Transaction.h"
+
+#include "VocBase/transaction.h"
 
 struct TRI_vocbase_s;
 
@@ -36,10 +38,10 @@ namespace triagens {
   namespace arango {
 
     template<typename T>
-    class AqlTransaction : public Transaction<T> {
+    class AhuacatlTransaction : public Transaction<T> {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class AqlTransaction
+// --SECTION--                                         class AhuacatlTransaction
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -57,16 +59,18 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlTransaction (struct TRI_vocbase_s* const vocbase, 
-                        const vector<string>& collectionNames) : 
+        AhuacatlTransaction (struct TRI_vocbase_s* const vocbase, 
+                             const vector<string>& collectionNames) :
           Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, collectionNames)) {
+
+          this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~AqlTransaction () {
+        ~AhuacatlTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

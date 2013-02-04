@@ -30,6 +30,8 @@
 
 #include "Utils/Transaction.h"
 
+#include "VocBase/transaction.h"
+
 struct TRI_vocbase_s;
 
 namespace triagens {
@@ -61,6 +63,8 @@ namespace triagens {
                          const vector<string>& readCollections, 
                          const vector<string>& writeCollections) : 
           Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, readCollections, writeCollections)) { 
+            
+          this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
