@@ -346,6 +346,7 @@ static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the collection
+/// note: the collection lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
@@ -360,8 +361,6 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     return NULL;
   }
   
-  primary->beginRead(primary);
-
   for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
     TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
 
@@ -392,8 +391,6 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
 
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
   
-  primary->endRead(primary);
-
   return info;
 }
 
