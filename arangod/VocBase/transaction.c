@@ -534,6 +534,60 @@ static void FreeCollection (TRI_transaction_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lock a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int LockCollection (TRI_transaction_collection_t* collection,
+                          const TRI_transaction_type_e type) {
+  TRI_primary_collection_t* primary;
+
+  assert(collection != NULL);
+  assert(collection->_collection != NULL);
+  assert(collection->_collection->_collection != NULL);
+  assert(collection->_locked == false);
+
+  primary = collection->_collection->_collection;
+
+  if (type == TRI_TRANSACTION_READ) {
+    primary->beginRead(primary);
+  }
+  else {
+    primary->beginWrite(primary);
+  }
+
+  collection->_locked = true;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int UnlockCollection (TRI_transaction_collection_t* collection,
+                          const TRI_transaction_type_e type) {
+  TRI_primary_collection_t* primary;
+
+  assert(collection != NULL);
+  assert(collection->_collection != NULL);
+  assert(collection->_collection->_collection != NULL);
+  assert(collection->_locked == true);
+
+  primary = collection->_collection->_collection;
+
+  if (type == TRI_TRANSACTION_READ) {
+    primary->endRead(primary);
+  }
+  else {
+    primary->endWrite(primary);
+  }
+
+  collection->_locked = false;
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a global instance for the collection
 /// this function will create a global instance if it does not yet exist
 ////////////////////////////////////////////////////////////////////////////////
@@ -599,17 +653,12 @@ static int UseCollections (TRI_transaction_t* const trx) {
       collection->_globalLock = true;
     }
  
-    if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_MANAGE_LOCKS) != 0) {
-      TRI_primary_collection_t* primary = (TRI_primary_collection_t*) collection->_collection->_collection;
+    if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_IMPLICIT_LOCK) != 0) {
+      int res = LockCollection(collection, collection->_type);
 
-      if (collection->_type == TRI_TRANSACTION_WRITE) {
-        primary->beginWrite(primary);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
-      else if (collection->_type == TRI_TRANSACTION_READ) {
-        primary->beginRead(primary);
-      }
-
-      collection->_locked = true;
     }
   }
 
@@ -639,18 +688,8 @@ static int ReleaseCollections (TRI_transaction_t* const trx) {
       continue;
     }
     
-    if (collection->_locked && 
-        (trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_MANAGE_LOCKS) != 0) {
-      
-      TRI_primary_collection_t* primary = (TRI_primary_collection_t*) collection->_collection->_collection;
-      if (collection->_type == TRI_TRANSACTION_WRITE) {
-        primary->endWrite(primary);
-      }
-      else if (collection->_type == TRI_TRANSACTION_READ) {
-        primary->endRead(primary);
-      }
-
-      collection->_locked = false;
+    if (collection->_locked) { 
+      UnlockCollection(collection, collection->_type);
     }
 
     if (collection->_type == TRI_TRANSACTION_WRITE && collection->_globalLock) {
@@ -970,6 +1009,58 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request a lock for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LockCollectionTransaction (TRI_transaction_t* const trx,
+                                   const TRI_transaction_cid_t cid,
+                                   const TRI_transaction_type_e type) {
+  size_t i, n;
+
+  n = trx->_collections._length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
+
+    if (collection->_collection == NULL) {
+      continue;
+    }
+
+    if (collection->_cid == cid) {
+      return LockCollection(collection, type);
+    }
+  }
+
+  return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request an unlock for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
+                                     const TRI_transaction_cid_t cid,
+                                     const TRI_transaction_type_e type) {
+  size_t i, n;
+
+  n = trx->_collections._length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
+
+    if (collection->_collection == NULL) {
+      continue;
+    }
+
+    if (collection->_cid == cid) {
+      return UnlockCollection(collection, type);
+    }
+  }
+
+  return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the transaction consists only of a single operation

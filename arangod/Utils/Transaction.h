@@ -349,10 +349,7 @@ namespace triagens {
             return TRI_ERROR_INTERNAL;
           }
 
-          if ((this->status() == TRI_TRANSACTION_RUNNING && ! this->isEmbedded()) ||
-              this->status() == TRI_TRANSACTION_COMMITTED || 
-              this->status() == TRI_TRANSACTION_ABORTED || 
-              this->status() == TRI_TRANSACTION_FINISHED) {
+          if (this->status() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -361,14 +358,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          if (type == TRI_TRANSACTION_READ) {
-            primary->beginRead(primary);
-          }
-          else {
-            primary->beginWrite(primary);
-          }
-
-          return TRI_ERROR_NO_ERROR;
+          return TRI_LockCollectionTransaction(this->_trx, (TRI_transaction_cid_t) primary->base._info._cid, type);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,10 +371,7 @@ namespace triagens {
             return TRI_ERROR_INTERNAL;
           }
 
-          if ((this->status() == TRI_TRANSACTION_RUNNING && ! this->isEmbedded()) ||
-              this->status() == TRI_TRANSACTION_COMMITTED || 
-              this->status() == TRI_TRANSACTION_ABORTED || 
-              this->status() == TRI_TRANSACTION_FINISHED) {
+          if (this->status() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -392,15 +379,8 @@ namespace triagens {
             // locking is a no-op in embedded transactions
             return TRI_ERROR_NO_ERROR;
           }
-
-          if (type == TRI_TRANSACTION_READ) {
-            primary->endRead(primary);
-          }
-          else {
-            primary->endWrite(primary);
-          }
-
-          return TRI_ERROR_NO_ERROR;
+          
+          return TRI_UnlockCollectionTransaction(this->_trx, (TRI_transaction_cid_t) primary->base._info._cid, type);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

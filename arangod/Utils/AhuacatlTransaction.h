@@ -66,7 +66,7 @@ namespace triagens {
                              TRI_aql_context_t* const context) :
           Transaction<T>(vocbase, resolver) {
 
-          this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
+          this->addHint(TRI_TRANSACTION_HINT_IMPLICIT_LOCK);
 
           TRI_vector_pointer_t* collections = &context->_collections;
 
