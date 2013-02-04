@@ -33,6 +33,8 @@ var arangosh = require("org/arangodb/arangosh");
 
 var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
 
+var GraphArray;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/graph"
 // -----------------------------------------------------------------------------
@@ -187,7 +189,7 @@ Vertex.prototype.edges = function () {
   arangosh.checkRequestResult(requestResult);
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = [];
+  edges = new GraphArray();
 
   while (cursor.hasNext()) {
     var edge = new Edge(graph, cursor.next());
@@ -218,7 +220,7 @@ Vertex.prototype.getInEdges = function () {
   arangosh.checkRequestResult(requestResult);
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = [];
+  edges = new GraphArray();
 
   while (cursor.hasNext()) {
     var edge = new Edge(graph, cursor.next());
@@ -249,7 +251,7 @@ Vertex.prototype.getOutEdges = function () {
   arangosh.checkRequestResult(requestResult);
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = [];
+  edges = new GraphArray();
 
   while (cursor.hasNext()) {
     var edge = new Edge(graph, cursor.next());
@@ -280,7 +282,7 @@ Vertex.prototype.getEdges = function () {
   arangosh.checkRequestResult(requestResult);
 
   cursor = new ArangoQueryCursor(graph._vertices._database, requestResult);
-  edges = [];
+  edges = new GraphArray();
 
   while (cursor.hasNext()) {
     var edge = new Edge(graph, cursor.next());
@@ -690,8 +692,11 @@ Graph.prototype.size = function () {
 exports.Edge = Edge;
 exports.Graph = Graph;
 exports.Vertex = Vertex;
+exports.GraphArray = GraphArray;
 
-require("org/arangodb/graph-common");
+var common = require("org/arangodb/graph-common");
+
+exports.GraphArray = GraphArray = common.GraphArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
