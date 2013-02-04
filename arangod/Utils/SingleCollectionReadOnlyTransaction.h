@@ -69,6 +69,10 @@ namespace triagens {
           SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_READ) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same as above, but create using collection name
+////////////////////////////////////////////////////////////////////////////////
+
         SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
                                              const triagens::arango::CollectionNameResolver& resolver,
                                              const string& name) : 
