@@ -70,10 +70,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
+                                     const triagens::arango::CollectionNameResolver& resolver,
                                      const TRI_transaction_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, cid, accessType)),
+          Transaction<T>(vocbase, resolver), 
           _cid(cid) {
+
+          this->addCollection(cid, accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

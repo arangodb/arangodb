@@ -28,8 +28,8 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H 1
 
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-
 #include "Utils/CollectionWriteLock.h"
 
 #include "ShapedJson/shaped-json.h"
@@ -70,8 +70,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          const triagens::arango::CollectionNameResolver& resolver,
                                           const TRI_transaction_cid_t cid) :
-          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_WRITE),
+          SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_WRITE),
+          _numWrites(0), 
+          _synchronous(false) {
+
+          if (N == 1) {
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+          }
+        }
+
+        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          const triagens::arango::CollectionNameResolver& resolver,
+                                          const string& name) :
+          SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_WRITE),
           _numWrites(0), 
           _synchronous(false) {
 

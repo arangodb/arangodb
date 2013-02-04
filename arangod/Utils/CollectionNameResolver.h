@@ -86,7 +86,7 @@ namespace triagens {
 /// @brief look up a collection id for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCollectionId (const string& name) {
+        TRI_voc_cid_t getCollectionId (const string& name) const {
           const TRI_vocbase_col_t* collection = getCollectionStruct(name);
 
           if (collection != 0) {

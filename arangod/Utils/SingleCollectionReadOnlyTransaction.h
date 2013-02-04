@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
 
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include "VocBase/transaction.h"
@@ -63,8 +64,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
+                                             const triagens::arango::CollectionNameResolver& resolver,
                                              const TRI_transaction_cid_t cid) : 
-          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_READ) {
+          SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_READ) {
+        }
+
+        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
+                                             const triagens::arango::CollectionNameResolver& resolver,
+                                             const string& name) : 
+          SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

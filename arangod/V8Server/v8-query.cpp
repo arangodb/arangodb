@@ -1699,7 +1699,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   vector<TRI_doc_mptr_t*> docs;
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1769,7 +1769,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   TRI_doc_mptr_t* doc = 0;
 
   CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));

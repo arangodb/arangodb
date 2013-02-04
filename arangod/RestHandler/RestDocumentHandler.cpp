@@ -286,7 +286,7 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -409,7 +409,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // find and load collection given by name or identifier
   CollectionNameResolver resolver(_vocbase);
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside read transaction
@@ -494,7 +494,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   // find and load collection given by name or identifier
   CollectionNameResolver resolver(_vocbase);
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, resolver, collection);
   
   vector<string> ids;
   
@@ -772,7 +772,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // find and load collection given by name or identifier
   CollectionNameResolver resolver(_vocbase);
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction
@@ -930,7 +930,7 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   CollectionNameResolver resolver(_vocbase);
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver.getCollectionId(collection));
+  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, resolver, collection);
   
   // .............................................................................
   // inside write transaction

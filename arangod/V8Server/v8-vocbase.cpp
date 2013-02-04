@@ -823,7 +823,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   assert(key);
   
 
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
@@ -909,7 +909,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   assert(key);
 
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
@@ -1215,7 +1215,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   }
 
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
@@ -1317,7 +1317,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   assert(key);
 
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
@@ -1618,7 +1618,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   // note: a query is not necessarily collection-based. 
   // this means that the _collections array might contain 0 collections!
   CollectionNameResolver resolver(context->_vocbase);
-  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, GetCollectionNames(&context->_collections));
+  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, resolver, GetCollectionNames(&context->_collections));
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2706,7 +2706,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   // note: a query is not necessarily collection-based. 
   // this means that the _collections array might contain 0 collections!
   CollectionNameResolver resolver(vocbase);
-  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, GetCollectionNames(&context->_collections));
+  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, GetCollectionNames(&context->_collections));
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -5018,7 +5018,8 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_cid);
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
   
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -5168,7 +5169,8 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, col->_cid);
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));

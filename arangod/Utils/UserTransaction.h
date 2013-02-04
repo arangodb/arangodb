@@ -60,11 +60,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         UserTransaction (struct TRI_vocbase_s* const vocbase, 
+                         const triagens::arango::CollectionNameResolver& resolver,
                          const vector<string>& readCollections, 
                          const vector<string>& writeCollections) : 
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, readCollections, writeCollections)) { 
-            
+          Transaction<T>(vocbase, resolver) {
+
           this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
+
+          for (size_t i = 0; i < readCollections.size(); ++i) {
+            this->addCollection(readCollections[i], TRI_TRANSACTION_READ);
+          }
+
+          for (size_t i = 0; i < writeCollections.size(); ++i) {
+            this->addCollection(writeCollections[i], TRI_TRANSACTION_WRITE);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////

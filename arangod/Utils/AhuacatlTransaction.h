@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
 #define TRIAGENS_UTILS_AHUACATL_TRANSACTION_H 1
 
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 
 #include "VocBase/transaction.h"
@@ -60,10 +61,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AhuacatlTransaction (struct TRI_vocbase_s* const vocbase, 
-                             const vector<string>& collectionNames) :
-          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, collectionNames)) {
+                             const triagens::arango::CollectionNameResolver& resolver,
+                             const vector<string>& readCollections) :
+          Transaction<T>(vocbase, resolver) {
 
           this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
+
+          for (size_t i = 0; i < readCollections.size(); ++i) {
+            this->addCollection(readCollections[i], TRI_TRANSACTION_READ);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
