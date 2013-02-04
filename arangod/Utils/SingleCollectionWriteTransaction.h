@@ -81,6 +81,10 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same as above, but create using collection name
+////////////////////////////////////////////////////////////////////////////////
+
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
                                           const triagens::arango::CollectionNameResolver& resolver,
                                           const string& name) :
