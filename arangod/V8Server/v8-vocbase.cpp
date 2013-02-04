@@ -76,42 +76,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection names from the AQL collections list into 
-/// a C++ vector
-////////////////////////////////////////////////////////////////////////////////
-
-static vector<string> GetCollectionNames (const TRI_vector_pointer_t* const collections) {
-  size_t n = collections->_length;
-
-  vector<string> names;
-
-  for (size_t i = 0; i < n; ++i) {
-    char const* name = ((TRI_aql_collection_t*) collections->_buffer[i])->_name;
-    names.push_back(string(name));
-  }
-
-  return names;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -1618,23 +1582,13 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   // note: a query is not necessarily collection-based. 
   // this means that the _collections array might contain 0 collections!
   CollectionNameResolver resolver(context->_vocbase);
-  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, resolver, GetCollectionNames(&context->_collections));
+  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, resolver, context); 
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute query", true)));
   }
   
-  // TODO: inject collection pointer into AQL collection->_collection
-  size_t n = context->_collections._length;
-  for (size_t i = 0; i < n; ++i) {
-    char const* name = ((TRI_aql_collection_t*) context->_collections._buffer[i])->_name;
-    TRI_transaction_cid_t cid = resolver.getCollectionId(name);
-
-    ((TRI_aql_collection_t*) context->_collections._buffer[i])->_collection = trx.getCollectionPointer(cid); 
-  }
-
-
   // optimise
   if (! TRI_OptimiseQueryContextAql(context)) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
@@ -2706,25 +2660,13 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   // note: a query is not necessarily collection-based. 
   // this means that the _collections array might contain 0 collections!
   CollectionNameResolver resolver(vocbase);
-  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, GetCollectionNames(&context->_collections));
+  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, context);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot explain query", true)));
   }
   
-
-  // TODO: inject collection pointer into AQL collection->_collection
-  size_t n = context->_collections._length;
-  for (size_t i = 0; i < n; ++i) {
-    char const* name = ((TRI_aql_collection_t*) context->_collections._buffer[i])->_name;
-    TRI_transaction_cid_t cid = resolver.getCollectionId(name);
-
-    ((TRI_aql_collection_t*) context->_collections._buffer[i])->_collection = trx.getCollectionPointer(cid); 
-  }
- 
-
-
   if ((performOptimisations && ! TRI_OptimiseQueryContextAql(context)) ||
       ! (explain = TRI_ExplainAql(context))) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
