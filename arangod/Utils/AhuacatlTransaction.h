@@ -62,13 +62,28 @@ namespace triagens {
 
         AhuacatlTransaction (struct TRI_vocbase_s* const vocbase, 
                              const triagens::arango::CollectionNameResolver& resolver,
-                             const vector<string>& readCollections) :
+                             TRI_aql_context_t* const context) :
           Transaction<T>(vocbase, resolver) {
 
           this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
 
-          for (size_t i = 0; i < readCollections.size(); ++i) {
-            this->addCollection(readCollections[i], TRI_TRANSACTION_READ);
+          TRI_vector_pointer_t* collections = &context->_collections;
+
+          const size_t n = collections->_length;
+          
+          for (size_t i = 0; i < n; ++i) {
+            TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
+         
+            TRI_transaction_cid_t cid = 0; 
+            TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name); 
+            if (col != 0) {
+              cid = (TRI_transaction_cid_t) col->_cid;
+            }
+
+            int res = this->addCollection(cid, TRI_TRANSACTION_READ);
+            if (res == TRI_ERROR_NO_ERROR) {
+              collection->_collection = (TRI_vocbase_col_t*) col;
+            }
           }
         }
 
@@ -82,6 +97,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the internal pointer to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_t* getCollectionPointer (const TRI_transaction_cid_t cid) const {
+          if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
+            return 0; 
+          }
+
+          return TRI_CheckCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_READ);
+        }
 
     };
 
