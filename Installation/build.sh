@@ -139,7 +139,7 @@ case $TRI_OS_LONG in
 
 esac
 
-if [ ! -f configure ] ; then
+#if [ ! -f configure ] ; then
 echo "########################################################"
 echo "create configure script:"
 echo "   make setup"
@@ -147,7 +147,7 @@ echo "########################################################"
 echo
 
 make setup || exit 1
-fi
+#fi
 
 echo
 echo "########################################################"
