@@ -44,6 +44,7 @@ config/depcomp
 config/missing
 config/stamp-h1
 configure
+core
 TAGS
 
 Doxygen/*.doxy
