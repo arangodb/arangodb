@@ -163,7 +163,8 @@ namespace triagens {
             res = this->checkCollections();
             return res;
           }
-          
+        
+
           // ! this->isEmbedded()
           
           if (status() != TRI_TRANSACTION_CREATED) {
@@ -197,6 +198,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
+
           int res;
           
           if (this->_trx->_type == TRI_TRANSACTION_READ) {
@@ -219,12 +221,8 @@ namespace triagens {
 
         int abort () {
           TRX_LOG << "aborting transaction";
-          if (this->_trx == 0) {
-            // transaction not created
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
 
-          if (this->status() != TRI_TRANSACTION_RUNNING) {
+          if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -238,12 +236,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int finish (const int errorNumber) {
-          if (this->_trx == 0) {
-            // transaction already not created
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
+          TRX_LOG << "finishing transaction";
 
-          if (this->status() != TRI_TRANSACTION_RUNNING) {
+          if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -282,6 +277,18 @@ namespace triagens {
           if (this->_trx != 0) {
             TRI_DumpTransaction(this->_trx);
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the internal pointer to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_t* getCollectionPointer (const TRI_transaction_cid_t cid) const {
+          if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
+            return 0; 
+          }
+
+          return TRI_CheckCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_READ);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

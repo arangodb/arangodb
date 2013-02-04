@@ -93,6 +93,7 @@ namespace triagens {
                                     TRI_transaction_type_e accessType) : 
           _vocbase(vocbase),
           _collections(),
+          _names(),
           _readOnly(true),
           _error(TRI_ERROR_NO_ERROR) {
 
@@ -108,6 +109,7 @@ namespace triagens {
                                     const vector<string>& writeCollections) : 
           _vocbase(vocbase),
           _collections(),
+          _names(),
           _readOnly(true),
           _error(TRI_ERROR_NO_ERROR) {
 
@@ -128,6 +130,7 @@ namespace triagens {
                                     const vector<string>& readCollections) :
           _vocbase(vocbase),
           _collections(),
+          _names(),
           _readOnly(true),
           _error(TRI_ERROR_NO_ERROR) {
 
@@ -205,6 +208,20 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection id based on a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_cid_t getCidByName (const string& name) const {
+          map<string, TRI_transaction_cid_t>::const_iterator it = _names.find(name);
+
+          if (it == _names.end()) {
+            return 0;
+          }
+
+          return (*it).second;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -279,6 +296,9 @@ namespace triagens {
               _error = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
               return 0;
             }
+          
+            _names[name] = cid;
+            _names[string(n)] = cid;
 
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
           }
@@ -291,6 +311,8 @@ namespace triagens {
             }
 
             cid = col->_cid;
+            
+            _names[name] = cid;
           }
 
           return addCollection(cid, type);
@@ -322,6 +344,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ListType _collections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name to cid translator
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map<std::string, TRI_transaction_cid_t> _names;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction is read-only

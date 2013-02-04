@@ -30,6 +30,7 @@
 #include "BasicsC/logging.h" 
 #include "BasicsC/strings.h"
  
+#include "VocBase/primary-collection.h"
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
@@ -511,6 +512,7 @@ static TRI_transaction_collection_t* CreateCollection (const TRI_transaction_cid
   collection->_type           = type;
   collection->_collection     = NULL;
   collection->_globalInstance = NULL;
+  collection->_globalLock     = false;
   collection->_locked         = false;
 
   // initialise private copy of write transactions list
@@ -594,6 +596,19 @@ static int UseCollections (TRI_transaction_t* const trx) {
 
       // acquire write-lock on collection
       TRI_LockMutex(&collection->_globalInstance->_writeLock);
+      collection->_globalLock = true;
+    }
+ 
+    if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_MANAGE_LOCKS) != 0) {
+      TRI_primary_collection_t* primary = (TRI_primary_collection_t*) collection->_collection->_collection;
+
+      if (collection->_type == TRI_TRANSACTION_WRITE) {
+        primary->beginWrite(primary);
+      }
+      else if (collection->_type == TRI_TRANSACTION_READ) {
+        primary->beginRead(primary);
+      }
+
       collection->_locked = true;
     }
   }
@@ -623,14 +638,28 @@ static int ReleaseCollections (TRI_transaction_t* const trx) {
     if (collection->_collection == NULL) {
       continue;
     }
+    
+    if (collection->_locked && 
+        (trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_MANAGE_LOCKS) != 0) {
+      
+      TRI_primary_collection_t* primary = (TRI_primary_collection_t*) collection->_collection->_collection;
+      if (collection->_type == TRI_TRANSACTION_WRITE) {
+        primary->endWrite(primary);
+      }
+      else if (collection->_type == TRI_TRANSACTION_READ) {
+        primary->endRead(primary);
+      }
 
-    if (collection->_type == TRI_TRANSACTION_WRITE && collection->_locked) {
+      collection->_locked = false;
+    }
+
+    if (collection->_type == TRI_TRANSACTION_WRITE && collection->_globalLock) {
       LOG_DEBUG("releasing trx exclusive lock on collection %llu", (unsigned long long) collection->_cid);
 
       // release write-lock on collection
       TRI_UnlockMutex(&collection->_globalInstance->_writeLock);
 
-      collection->_locked = false;
+      collection->_globalLock = false;
     }
 
     // unuse collection

@@ -172,7 +172,7 @@ function ahuacatlFulltextTestSuite () {
     testNonIndexed : function () {
       assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); } ));
       assertEqual(ERRORS.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); } ));
-      assertEqual(ERRORS.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
+      assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, getErrorCode(function() { QUERY("RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); } ));
     }
 
   }

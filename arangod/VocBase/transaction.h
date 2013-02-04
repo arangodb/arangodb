@@ -285,7 +285,8 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_list_t               _writeTransactions;  // private copy of other write transactions at transaction start
   struct TRI_vocbase_col_s*            _collection;         // vocbase collection pointer
   TRI_transaction_collection_global_t* _globalInstance;     // pointer to the global instance of the collection in the trx system
-  bool                                 _locked;             // lock flag (used for write-transactions)
+  bool                                 _globalLock;         // global collection lock flag (used for write transactions)
+  bool                                 _locked;             // collection lock flag
 }
 TRI_transaction_collection_t;
 
@@ -300,8 +301,9 @@ typedef uint32_t TRI_transaction_hint_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_TRANSACTION_HINT_NONE = 0,
-  TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1
+  TRI_TRANSACTION_HINT_NONE             = 0,
+  TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1,
+  TRI_TRANSACTION_HINT_MANAGE_LOCKS     = 2
 }
 TRI_transaction_hint_e;
 
