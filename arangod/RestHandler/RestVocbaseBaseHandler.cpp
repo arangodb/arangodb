@@ -279,19 +279,6 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (const TRI_voc_cid_t cid,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates conflict message
-////////////////////////////////////////////////////////////////////////////////
-/*
-void RestVocbaseBaseHandler::generateConflict (const TRI_voc_cid_t cid, 
-                                               TRI_voc_key_t key) {
-  generateError(HttpResponse::CONFLICT, 
-                TRI_ERROR_ARANGO_CONFLICT,
-                "document " + DOCUMENT_PATH + "/" + 
-                DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key) + " has been altered");
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
 ////////////////////////////////////////////////////////////////////////////////
 

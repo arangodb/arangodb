@@ -37,8 +37,6 @@
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 
-#define TRX_LOG if (false) std::cout 
-
 
 namespace triagens {
   namespace arango {
@@ -104,8 +102,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~Transaction () {
-          TRX_LOG << "destroying transaction\n";
-
           if (this->_trx != 0 && ! this->isEmbedded()) {
             if (this->status() == TRI_TRANSACTION_RUNNING) {
               // auto abort
@@ -140,7 +136,6 @@ namespace triagens {
           }
 
           if (this->isEmbedded()) {
-            TRX_LOG << "beginning nested transaction\n";
             if (this->status() == TRI_TRANSACTION_RUNNING) {
               return TRI_ERROR_NO_ERROR;
             }
@@ -155,7 +150,6 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
           
-          TRX_LOG << "beginning transaction\n";
           return TRI_StartTransaction(this->_trx, _hints);
         }
 
@@ -164,11 +158,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int commit () {
-          TRX_LOG << "committing transaction\n";
-
           if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
-            TRX_LOG << "commit transaction failed 1\n";
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -182,12 +173,10 @@ namespace triagens {
           
           if (this->_trx->_type == TRI_TRANSACTION_READ) {
             // a read transaction just finishes
-            TRX_LOG << "commit - finishing read transaction\n";
             res = TRI_FinishTransaction(this->_trx);
           }
           else {
             // a write transaction commits
-            TRX_LOG << "commit - committing write transaction\n";
             res = TRI_CommitTransaction(this->_trx);
           }
 
@@ -199,10 +188,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int abort () {
-          TRX_LOG << "aborting transaction\n";
-
           if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
-            TRX_LOG << "abort transaction failed\n";
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -216,10 +202,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int finish (const int errorNumber) {
-          TRX_LOG << "finishing transaction\n";
-
           if (this->_trx == 0 || this->status() != TRI_TRANSACTION_RUNNING) {
-            TRX_LOG << "finish transaction failed\n";
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
@@ -770,18 +753,15 @@ namespace triagens {
               return TRI_ERROR_TRANSACTION_NESTED;
             }
 
-            TRX_LOG << "creating embedded transaction\n";
             this->_trx = this->getParent();
 
             if (this->_trx == 0) {
-              TRX_LOG << "creating embedded transaction failed\n";
               return TRI_ERROR_TRANSACTION_INVALID_STATE;
             }
 
             return TRI_ERROR_NO_ERROR;
           }
 
-          TRX_LOG << "creating standalone transaction\n";
           this->_trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE);
 
           if (this->_trx == 0) {
@@ -799,8 +779,6 @@ namespace triagens {
 
         int freeTransaction () {
           assert(! this->isEmbedded());
-
-          TRX_LOG << "freeing standalone transaction\n";
 
           if (this->_trx != 0) { 
             this->unregisterTransaction();

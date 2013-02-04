@@ -250,15 +250,11 @@ int RestEdgeHandler::parseDocumentId (string const& handle,
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, split[0].c_str());
-  if (collection == 0) {
-    // collection not found
+  cid = _resolver.getCollectionId(split[0]);
+  if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   
-  // collection found by name
-  cid = collection->_cid;
-
   key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
 
   return TRI_ERROR_NO_ERROR;
