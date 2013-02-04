@@ -159,7 +159,7 @@ bool OpenCollections (TRI_aql_context_t* const context) {
     LOG_TRACE("locking collection '%s'", collection->_name);
     collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, collection->_name);
     if (collection->_collection == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, collection->_name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collection->_name);
 
       return false;
     }
