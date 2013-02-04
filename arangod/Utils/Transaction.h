@@ -36,8 +36,6 @@
 
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/CollectionReadLock.h"
-#include "Utils/CollectionWriteLock.h"
 
 #define TRX_LOG if (false) std::cout 
 
@@ -342,6 +340,70 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read- or write-lock a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int lockExplicit (TRI_primary_collection_t* const primary,
+                          const TRI_transaction_type_e type) {
+          if (this->_trx == 0) {
+            return TRI_ERROR_INTERNAL;
+          }
+
+          if ((this->status() == TRI_TRANSACTION_RUNNING && ! this->isEmbedded()) ||
+              this->status() == TRI_TRANSACTION_COMMITTED || 
+              this->status() == TRI_TRANSACTION_ABORTED || 
+              this->status() == TRI_TRANSACTION_FINISHED) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          if (this->isEmbedded()) {
+            // locking is a no-op in embedded transactions
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (type == TRI_TRANSACTION_READ) {
+            primary->beginRead(primary);
+          }
+          else {
+            primary->beginWrite(primary);
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read- or write-unlock a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int unlockExplicit (TRI_primary_collection_t* const primary,
+                            const TRI_transaction_type_e type) {
+          if (this->_trx == 0) {
+            return TRI_ERROR_INTERNAL;
+          }
+
+          if ((this->status() == TRI_TRANSACTION_RUNNING && ! this->isEmbedded()) ||
+              this->status() == TRI_TRANSACTION_COMMITTED || 
+              this->status() == TRI_TRANSACTION_ABORTED || 
+              this->status() == TRI_TRANSACTION_FINISHED) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          if (this->isEmbedded()) {
+            // locking is a no-op in embedded transactions
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (type == TRI_TRANSACTION_READ) {
+            primary->endRead(primary);
+          }
+          else {
+            primary->endWrite(primary);
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -353,8 +415,10 @@ namespace triagens {
           if (*barrier == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
-          
-          CollectionReadLock lock(primary);
+           
+          // READ-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_READ);
+
           if (primary->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
             *barrier = 0;
@@ -370,6 +434,9 @@ namespace triagens {
 
             *mptr = (TRI_doc_mptr_t*) beg[pos];
           }
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          // READ-LOCK END
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -384,9 +451,15 @@ namespace triagens {
           TRI_doc_operation_context_t context;
           TRI_InitReadContextPrimaryCollection(&context, primary);
           
-          CollectionReadLock lock(primary);
+          // READ-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_READ);
 
-          return primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
+          int res = primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,7 +471,8 @@ namespace triagens {
           TRI_doc_operation_context_t context;
           TRI_InitReadContextPrimaryCollection(&context, primary);
           
-          CollectionReadLock lock(primary);
+          // READ-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_READ);
           
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
@@ -414,6 +488,9 @@ namespace triagens {
               }
             }
           }
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          // READ-LOCK END
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -436,10 +513,14 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          CollectionReadLock lock(primary);
+          // READ-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_READ);
           
           if (primary->_primaryIndex._nrUsed == 0) {
             // nothing to do
+          
+            this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+            // READ-LOCK END
             return TRI_ERROR_NO_ERROR;
           }
           
@@ -502,6 +583,9 @@ namespace triagens {
               }
             }
           }
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          // READ-LOCK END
 
           if (count == 0) {
             // barrier not needed, kill it
@@ -524,9 +608,15 @@ namespace triagens {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-          CollectionWriteLock lock(primary);
+          // WRITE-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
 
-          return primary->createJson(&context, markerType, mptr, json, data);
+          int res = primary->createJson(&context, markerType, mptr, json, data);
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          // WRITE-LOCK END
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -543,9 +633,15 @@ namespace triagens {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-          CollectionWriteLock lock(primary);
+          // WRITE-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
 
-          return primary->create(&context, markerType, mptr, shaped, data, key);
+          int res = primary->create(&context, markerType, mptr, shaped, data, key);
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          // WRITE-LOCK END
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,9 +661,15 @@ namespace triagens {
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
-          CollectionWriteLock lock(primary);
+          // WRITE-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
 
-          return primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
+          int res = primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          // WRITE-LOCK END
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,9 +689,15 @@ namespace triagens {
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
-          CollectionWriteLock lock(primary);
+          // WRITE-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
 
-          return primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
+          int res = primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          // WRITE-LOCK END
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,9 +715,15 @@ namespace triagens {
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
-          CollectionWriteLock lock(primary);
+          // WRITE-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          
+          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str());
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          // WRITE-LOCK END
 
-          return primary->destroy(&context, (TRI_voc_key_t) key.c_str());
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -632,7 +746,8 @@ namespace triagens {
 
           res = TRI_ERROR_NO_ERROR;
 
-          CollectionWriteLock lock(primary);
+          // WRITE-LOCK START
+          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
 
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
@@ -643,6 +758,9 @@ namespace triagens {
               break;
             }
           }
+          
+          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          // WRITE-LOCK END
 
           return res;
         }

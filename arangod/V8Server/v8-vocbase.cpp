@@ -879,8 +879,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
   }
   
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], trx.shaper());
-  if (! holder.registerShapedJson(trx.shaper(), shaped)) {
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
+  if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -968,8 +970,10 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
     }
   }
   
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], trx->shaper());
-  if (! holder.registerShapedJson(trx->shaper(), shaped)) {
+  TRI_primary_collection_t* primary = trx->primaryCollection();
+
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
+  if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -1085,10 +1089,12 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
     return scope.Close(v8::ThrowException(err));
   }
   edge._toCid = toCollection->_cid;
+  
+  TRI_primary_collection_t* primary = trx->primaryCollection();
 
   // extract shaped data
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], trx->shaper());
-  if (! holder.registerShapedJson(trx->shaper(), shaped)) {
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
+  if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -1191,13 +1197,15 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
   }
 
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+
   assert(document);
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->_data);
-  TRI_json_t* old = TRI_JsonShapedJson(trx.shaper(), &shaped);
+  TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
 
-  if (! holder.registerJson(trx.shaper()->_memoryZone, old)) {
+  if (! holder.registerJson(primary->_shaper->_memoryZone, old)) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
 
@@ -4351,7 +4359,7 @@ static v8::Handle<v8::Value> JS_LookupFulltextIndexVocbaseCol (v8::Arguments con
 
 static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-
+  
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
@@ -4360,25 +4368,23 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> result = v8::Object::New();
 
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  TRI_vocbase_col_status_e status = collection->_status;
-
-  if (status != TRI_VOC_COL_STATUS_LOADED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(result);
+  CollectionNameResolver resolver(collection->_vocbase); 
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
   }
-  
+
+  trx.lockRead();
+
   TRI_primary_collection_t* primary = collection->_collection;
-
-  if (primary == 0) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
-  }
-
   TRI_doc_collection_info_t* info = primary->figures(primary);
-  
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
+  res = trx.finish(res);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
+  }
+  
   if (info == NULL) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -5074,26 +5080,25 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
   
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
+  CollectionNameResolver resolver(collection->_vocbase);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch revision", true)));
+  }
+
+  trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
-  }
-  
-  primary->beginRead(primary);
   TRI_voc_rid_t rid = primary->base._info._rid;
-  primary->endRead(primary);
 
-  TRI_ReleaseCollection(collection);
-  
+  trx.finish(res);
+
   return scope.Close(V8RevisionId(rid));
 }
 

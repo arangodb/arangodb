@@ -425,8 +425,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   
   res = trx.read(&document, key);
 
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  assert(primary != 0);
+  TRI_shaper_t* shaper = primary->_shaper;
+  
   // register a barrier. will be destroyed automatically
-  Barrier barrier(trx.primaryCollection());
+  Barrier barrier(primary);
 
   res = trx.finish(res);
 
@@ -447,7 +451,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(resolver, collection, document, trx.shaper(), generateBody);
+      generateDocument(resolver, collection, document, shaper, generateBody);
     }
     else {
       generatePreconditionFailed(collection, document->_key, rid);
@@ -463,7 +467,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(resolver, collection, document, trx.shaper(), generateBody);
+      generateDocument(resolver, collection, document, shaper, generateBody);
     }
     else {
       generatePreconditionFailed(collection, document->_key, rid);
@@ -785,6 +789,9 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   TRI_voc_rid_t rid = 0;
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  assert(primary != 0);
+  TRI_shaper_t* shaper = primary->_shaper;
 
   if (isPatch) {
     // patching an existing document
@@ -813,7 +820,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
     assert(oldDocument);
 
-    TRI_shaper_t* shaper = trx.shaper();
     TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument->_data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);

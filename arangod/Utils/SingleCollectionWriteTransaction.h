@@ -30,7 +30,6 @@
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/CollectionWriteLock.h"
 
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/transaction.h"
@@ -125,6 +124,16 @@ namespace triagens {
 
         inline bool synchronous () const {
           return _synchronous;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explicitly lock the underlying collection for write access
+////////////////////////////////////////////////////////////////////////////////
+
+        int lockWrite () {
+          TRI_primary_collection_t* primary = this->primaryCollection();
+
+          return this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
