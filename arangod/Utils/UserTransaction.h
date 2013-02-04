@@ -65,7 +65,7 @@ namespace triagens {
                          const vector<string>& writeCollections) : 
           Transaction<T>(vocbase, resolver) {
 
-          this->addHint(TRI_TRANSACTION_HINT_MANAGE_LOCKS);
+          this->addHint(TRI_TRANSACTION_HINT_IMPLICIT_LOCK);
 
           for (size_t i = 0; i < readCollections.size(); ++i) {
             this->addCollection(readCollections[i], TRI_TRANSACTION_READ);

@@ -303,7 +303,7 @@ typedef uint32_t TRI_transaction_hint_t;
 typedef enum {
   TRI_TRANSACTION_HINT_NONE             = 0,
   TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1,
-  TRI_TRANSACTION_HINT_MANAGE_LOCKS     = 2
+  TRI_TRANSACTION_HINT_IMPLICIT_LOCK    = 2
 }
 TRI_transaction_hint_e;
 
@@ -400,6 +400,22 @@ struct TRI_vocbase_col_s* TRI_CheckCollectionTransaction (TRI_transaction_t* con
 int TRI_AddCollectionTransaction (TRI_transaction_t* const,
                                   const TRI_transaction_cid_t, 
                                   const TRI_transaction_type_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request a lock for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LockCollectionTransaction (TRI_transaction_t* const,
+                                   const TRI_transaction_cid_t,
+                                   const TRI_transaction_type_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request an unlock for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UnlockCollectionTransaction (TRI_transaction_t* const,
+                                     const TRI_transaction_cid_t,
+                                     const TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start a transaction
