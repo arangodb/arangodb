@@ -1,4 +1,4 @@
-﻿/// @brief V8 shell
+/// @brief V8 shell
 ///
 /// @file
 ///
