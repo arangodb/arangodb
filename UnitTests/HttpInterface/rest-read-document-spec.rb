@@ -7,6 +7,12 @@ describe ArangoDB do
   prefix = "rest-read-document"
 
   context "reading a document:" do
+ 
+  before do  
+    @rePath = Regexp.new('^/_api/document/[a-zA-Z0-9_\-]+/\d+$')
+    @reFull = Regexp.new('^[a-zA-Z0-9_\-]+/\d+$')
+    @reRev  = Regexp.new('^[0-9]+$')
+  end
 
 ################################################################################
 ## error handling
@@ -94,7 +100,12 @@ describe ArangoDB do
         location.should be_kind_of(String)
 
         did = doc.parsed_response['_id']
+        
+        did.should match(@reFull)
+        did.should start_with(@cn + "/")
+        
         rev = doc.parsed_response['_rev']
+        rev.should match(@reRev)
 
         # get document
         cmd = "/_api/document/#{did}"
@@ -105,10 +116,58 @@ describe ArangoDB do
 
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
+        did2.should match(@reFull)
+        did2.should start_with(@cn + "/")
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
+        rev2.should match(@reRev)
+        rev2.should eq(rev)
+
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
+
+        etag.should eq("\"#{rev}\"")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+
+      it "create a document and read it, using collection name" do
+        cmd = "/_api/document?collection=#{@cn}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        did.should match(@reFull)
+        did.should start_with(@cn + "/")
+
+        rev = doc.parsed_response['_rev']
+        rev.should match(@reRev)
+
+        # get document
+        cmd = "/_api/document/#{did}"
+        doc = ArangoDB.log_get("#{prefix}", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should match(@reFull)
+        did2.should start_with(@cn + "/")
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should match(@reRev)
         rev2.should eq(rev)
 
         etag = doc.headers['etag']
@@ -132,7 +191,11 @@ describe ArangoDB do
         location.should be_kind_of(String)
 
         did = doc.parsed_response['_id']
+        did.should match(@reFull)
+        did.should start_with(@cn + "/")
+
         rev = doc.parsed_response['_rev']
+        rev.should match(@reRev)
 
         # get document, if-none-match with same rev
         cmd = "/_api/document/#{did}"
@@ -161,10 +224,13 @@ describe ArangoDB do
 
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
+        did2.should match(@reFull)
+        did2.should start_with(@cn + "/")
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
+        rev2.should match(@reRev)
         rev2.should eq(rev)
 
         etag = doc.headers['etag']
@@ -188,7 +254,11 @@ describe ArangoDB do
         location.should be_kind_of(String)
 
         did = doc.parsed_response['_id']
+        did.should match(@reFull)
+        did.should start_with(@cn + "/")
+
         rev = doc.parsed_response['_rev']
+        rev.should match(@reRev)
 
         # get document, if-match with same rev
         cmd = "/_api/document/#{did}"
@@ -200,10 +270,13 @@ describe ArangoDB do
 
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
+        did2.should match(@reFull) 
+        did2.should start_with(@cn + "/")
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
+        rev2.should match(@reRev) 
         rev2.should eq(rev)
 
         etag = doc.headers['etag']
@@ -220,10 +293,13 @@ describe ArangoDB do
 
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
+        did2.should match(@reFull) 
+        did2.should start_with(@cn + "/")
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
+        rev2.should match(@reRev)
         rev2.should eq(rev)
 
         ArangoDB.delete(location)
@@ -288,6 +364,11 @@ describe ArangoDB do
         documents.should be_kind_of(Array)
         documents.length.should eq(3)
 
+        documents.each { |document|
+          document.should match(@rePath)
+          document.should start_with("/_api/document/" + @cn + "/")
+        }
+
         for l in location
           ArangoDB.delete(l)
         end
@@ -319,6 +400,11 @@ describe ArangoDB do
         documents = doc.parsed_response['documents']
         documents.should be_kind_of(Array)
         documents.length.should eq(3)
+        
+        documents.each { |document|
+          document.should match(@rePath)
+          document.should start_with("/_api/document/" + @cn + "/")
+        }
 
         for l in location
           ArangoDB.delete(l)
@@ -348,7 +434,6 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 
         doc.code.should eq(201)
-
         location = doc.headers['location']
         location.should be_kind_of(String)
 

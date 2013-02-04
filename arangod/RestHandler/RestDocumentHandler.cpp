@@ -512,6 +512,8 @@ bool RestDocumentHandler::readAllDocuments () {
     return false;
   }
 
+  const TRI_voc_cid_t cid = trx.cid();
+
   res = trx.read(ids);
 
   res = trx.finish(res);
@@ -529,9 +531,9 @@ bool RestDocumentHandler::readAllDocuments () {
   string result("{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = '"' + DOCUMENT_PATH + '/' + collection + '/';
+  string prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
 
-  for (vector<string>::iterator i = ids.begin();  i != ids.end();  ++i) {
+  for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
     // collection names do not need to be JSON-escaped
     // keys do not need to be JSON-escaped
     result += prefix + (*i) + '"';
