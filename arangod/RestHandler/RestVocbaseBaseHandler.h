@@ -174,8 +174,7 @@ namespace triagens {
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool checkCreateCollection (const triagens::arango::CollectionNameResolver&,
-                                    const string&, 
+        bool checkCreateCollection (const string&, 
                                     const TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,38 +196,48 @@ namespace triagens {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (const string&, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateCreated (const TRI_voc_cid_t, 
+                              TRI_voc_key_t, 
+                              TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateAccepted (const string&, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateAccepted (const TRI_voc_cid_t,
+                               TRI_voc_key_t, 
+                               TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (const string&, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateDeleted (const TRI_voc_cid_t,
+                              TRI_voc_key_t, 
+                              TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateUpdated (const string&, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateUpdated (const TRI_voc_cid_t,
+                              TRI_voc_key_t, 
+                              TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (const string&, TRI_voc_key_t);
+        void generateDocumentNotFound (const TRI_voc_cid_t,
+                                       TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message
 ////////////////////////////////////////////////////////////////////////////////
-
-        void generateConflict (const string&, TRI_voc_key_t);
-
+/*
+        void generateConflict (const TRI_voc_cid_t,
+                               TRI_voc_key_t);
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +254,7 @@ namespace triagens {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (const string&, 
+        void generatePreconditionFailed (const TRI_voc_cid_t, 
                                          TRI_voc_key_t, 
                                          TRI_voc_rid_t);
 
@@ -259,8 +268,7 @@ namespace triagens {
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocument (const triagens::arango::CollectionNameResolver&,
-                               const string&,
+        void generateDocument (const TRI_voc_cid_t,
                                TRI_doc_mptr_t const*,
                                TRI_shaper_t*,
                                const bool);
@@ -321,6 +329,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_vocbase_s* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief utility object to look up names for collection ids and vice versa
+////////////////////////////////////////////////////////////////////////////////
+  
+        triagens::arango::CollectionNameResolver _resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timing data structure

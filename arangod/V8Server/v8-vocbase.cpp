@@ -421,32 +421,6 @@ static void ReleaseCollection (TRI_vocbase_col_t const* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts and locks the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_document_collection_t* ExtractAndUseSimpleCollection (v8::Arguments const& argv,
-                                                                 TRI_vocbase_col_t const*& collection,
-                                                                 v8::Handle<v8::Object>* err) {
-  // extract the collection
-  collection = UseCollection(argv.Holder(), err);
-
-  if (collection == 0) {
-    return 0;
-  }
-
-  // handle various collection types
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type");
-    return 0;
-  }
-
-  return (TRI_document_collection_t*) primary;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the index representation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2866,15 +2840,24 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: upgrade()")));
   }
   
-  v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* document = ExtractAndUseSimpleCollection(argv, collection, &err);
-  
-  if (document == 0) {
+
+  // extract the collection
+  v8::Handle<v8::Object> err;
+  collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_collection_t* col = &document->base.base;
+  TRI_primary_collection_t* primary = collection->_collection;
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
+    ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  TRI_collection_t* col = &primary->base;
   const char* name = col->_info._name;
   TRI_col_version_t version = col->_info._version;
 
