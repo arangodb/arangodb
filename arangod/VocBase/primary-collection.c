@@ -396,6 +396,8 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of a primary collection
+///
+/// the caller must have read-locked the collection!
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
@@ -403,8 +405,6 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
   TRI_voc_size_t result;
   void** end;
   void** ptr;
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   ptr = primary->_primaryIndex._table;
   end = ptr + primary->_primaryIndex._nrAlloc;
@@ -419,8 +419,6 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
       }
     }
   }
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   return result;
 }
