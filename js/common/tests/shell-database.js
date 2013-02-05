@@ -44,7 +44,7 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testVersion : function () {
-      assertEqual("1.2.alpha", internal.db._version());
+      assertMatch(/^1\.2\./, internal.db._version());
     }
 
   };

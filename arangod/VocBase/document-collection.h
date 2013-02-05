@@ -300,10 +300,11 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a description of all indexes
+///
+/// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*, 
-                                                     const bool);
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index

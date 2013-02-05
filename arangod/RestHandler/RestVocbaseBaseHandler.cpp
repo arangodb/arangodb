@@ -129,8 +129,10 @@ string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
   : RestBaseHandler(request),
     _vocbase(vocbase),
+    _resolver(vocbase),
     _timing(),
     _timingResult(RES_FAIL) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,65 +229,53 @@ void RestVocbaseBaseHandler::generateOk () {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateCreated (const string& collectionName, 
+void RestVocbaseBaseHandler::generateCreated (const TRI_voc_cid_t cid,
                                               TRI_voc_key_t key, 
                                               TRI_voc_rid_t rid) {
 
-  generate20x(HttpResponse::CREATED, collectionName, key, rid);
+  generate20x(HttpResponse::CREATED, _resolver.getCollectionName(cid), key, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateAccepted (const string& collectionName,
+void RestVocbaseBaseHandler::generateAccepted (const TRI_voc_cid_t cid,
                                                TRI_voc_key_t key, 
                                                TRI_voc_rid_t rid) {
-  generate20x(HttpResponse::ACCEPTED, collectionName, key, rid);
+  generate20x(HttpResponse::ACCEPTED, _resolver.getCollectionName(cid), key, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDeleted (const string& collectionName,
+void RestVocbaseBaseHandler::generateDeleted (const TRI_voc_cid_t cid,
                                               TRI_voc_key_t key, 
                                               TRI_voc_rid_t rid) {
-  generate20x(HttpResponse::OK, collectionName, key, rid);
+  generate20x(HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateUpdated (const string& collectionName,
+void RestVocbaseBaseHandler::generateUpdated (const TRI_voc_cid_t cid,
                                               TRI_voc_key_t key, 
                                               TRI_voc_rid_t rid) {
-  generate20x(HttpResponse::OK, collectionName, key, rid);
+  generate20x(HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocumentNotFound (const string& collectionName,
+void RestVocbaseBaseHandler::generateDocumentNotFound (const TRI_voc_cid_t cid,
                                                        TRI_voc_key_t key) {
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                 "document " + DOCUMENT_PATH + "/" + 
-                DocumentHelper::assembleDocumentId(collectionName, key) + " not found");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates conflict message
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateConflict (const string& collectionName, 
-                                               TRI_voc_key_t key) {
-  generateError(HttpResponse::CONFLICT, 
-                TRI_ERROR_ARANGO_CONFLICT,
-                "document " + DOCUMENT_PATH + "/" + 
-                DocumentHelper::assembleDocumentId(collectionName, key) + " has been altered");
+                DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key) + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,7 +302,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectionName,
+void RestVocbaseBaseHandler::generatePreconditionFailed (const TRI_voc_cid_t cid,
                                                          TRI_voc_key_t key, 
                                                          TRI_voc_rid_t rid) {
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
@@ -323,7 +313,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectio
   result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
   result->add("errorMessage", new VariantString("precondition failed"));
   // _id is safe and does not need to be JSON-encoded
-  result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(collectionName, key)));
+  result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key)));
   // _rev is safe and does not need to be JSON-encoded
   result->add("_rev", new VariantString(StringUtils::itoa(rid)));
   // _key is safe and does not need to be JSON-encoded
@@ -355,9 +345,8 @@ void RestVocbaseBaseHandler::generateNotModified (const string& etag) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
+void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
                                                TRI_doc_mptr_t const* document,
-                                               TRI_vocbase_t* const vocbase, 
                                                TRI_shaper_t* shaper,
                                                const bool generateBody) {
   if (document == 0) {
@@ -370,7 +359,7 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
   // add document identifier to buffer
   TRI_string_buffer_t buffer;
 
-  string id = DocumentHelper::assembleDocumentId(collectionName, document->_key);
+  string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), document->_key);
 
   TRI_json_t augmented;
   TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
@@ -399,8 +388,8 @@ void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-    const string from = DocumentHelper::assembleDocumentId(vocbase, marker->_fromCid, string((char*) marker + marker->_offsetFromKey));
-    const string to = DocumentHelper::assembleDocumentId(vocbase, marker->_toCid, string((char*) marker +  marker->_offsetToKey));
+    const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
+    const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
@@ -483,11 +472,11 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       return;
     
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-      generateDocumentNotFound(collectionName, key);
+      generateDocumentNotFound(_resolver.getCollectionId(collectionName), key);
       return;
     
     case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(collectionName, key ? key : (TRI_voc_key_t) "unknown", rid);
+      generatePreconditionFailed(_resolver.getCollectionId(collectionName), key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
 
     default:

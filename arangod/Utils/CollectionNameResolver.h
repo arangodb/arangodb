@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction collection wrapper
+/// @brief collection name resolver
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,60 +22,49 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_TRANSACTION_COLLECTION_H
-#define TRIAGENS_UTILS_TRANSACTION_COLLECTION_H 1
+#ifndef TRIAGENS_ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H
+#define TRIAGENS_ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
-#include "Basics/Common.h"
+#include "BasicsC/common.h"
 
-#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       class TransactionCollection
+// --SECTION--                                      class CollectionNameResolver
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+    class CollectionNameResolver {
 
-    class TransactionCollection {
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy constructors
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        TransactionCollection (const TransactionCollection&);
-        TransactionCollection& operator= (const TransactionCollection&);
-      
+  
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a collection instance
+/// @brief create the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        TransactionCollection (const string& name, 
-                               TRI_transaction_type_e accessType) : 
-          _name(name), 
-          _accessType(accessType) {
+        CollectionNameResolver (TRI_vocbase_t* vocbase) :
+          _vocbase(vocbase), _resolvedNames(), _resolvedIds() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a collection instance
+/// @brief destroy the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~TransactionCollection () {
+        ~CollectionNameResolver () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,66 +79,104 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
+  
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of the collection
+/// @brief look up a collection id for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline const string getName () const {
-          return _name;
-        }
+        TRI_voc_cid_t getCollectionId (const string& name) const {
+          const TRI_vocbase_col_t* collection = getCollectionStruct(name);
+
+          if (collection != 0) {
+            return collection->_cid;
+          }
+
+          return 0;
+        } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the access type (read or write)
+/// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
-        
-        inline TRI_transaction_type_e getAccessType () const {
-          return _accessType;
-        }
+
+        const TRI_vocbase_col_t* getCollectionStruct (const string& name) const {
+          map<string, const TRI_vocbase_col_t*>::iterator it = _resolvedNames.find(name);
+
+          if (it != _resolvedNames.end()) {
+            return (*it).second;
+          }
+          
+          const TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+          if (collection != 0) {
+            _resolvedNames[name] = collection;
+          }
+
+          return collection;
+        } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief modify the access type (read or write)
+/// @brief look up a collection name for a collection id
 ////////////////////////////////////////////////////////////////////////////////
-        
-        inline void setAccessType (TRI_transaction_type_e accessType) {
-          _accessType = accessType;
-        }
+
+        string getCollectionName (const TRI_voc_cid_t cid) const {
+          map<TRI_voc_cid_t, string>::iterator it = _resolvedIds.find(cid);
+          
+          if (it != _resolvedIds.end()) {
+            return (*it).second;
+          } 
+
+          char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+          if (n == 0) {
+            return "_unknown";
+          }
+
+          string name(n);
+
+          _resolvedIds[cid] = name;
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
+
+          return name;
+        } 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-        
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name
+/// @brief vocbase base pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string _name;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection access type (read or write)
+/// @brief collection id => collection struct map
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_transaction_type_e _accessType;
+        mutable std::map<std::string, const TRI_vocbase_col_t*> _resolvedNames;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection id => collection name map
+////////////////////////////////////////////////////////////////////////////////
+
+        mutable std::map<TRI_voc_cid_t, std::string> _resolvedIds;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
     };
-
   }
 }
 
@@ -157,5 +184,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

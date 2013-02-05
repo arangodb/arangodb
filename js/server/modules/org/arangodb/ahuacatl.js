@@ -88,7 +88,7 @@ function THROW (error, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function INDEX_FULLTEXT (collection, attribute) {
-  var indexes = collection.getIndexesNL(), i;
+  var indexes = collection.getIndexes(), i;
 
   for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
@@ -105,7 +105,7 @@ function INDEX_FULLTEXT (collection, attribute) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function INDEX (collection, indexTypes) {
-  var indexes = collection.getIndexesNL(), i, j;
+  var indexes = collection.getIndexes(), i, j;
 
   for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
@@ -2697,7 +2697,7 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   var v = null;
   var result = [ ];
   try {
-    v = vertexCollection.document(startVertex);
+    v = INTERNAL.db._document(startVertex);
   }
   catch (err) {
   }

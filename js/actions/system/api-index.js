@@ -31,19 +31,6 @@ var actions = require("org/arangodb/actions");
 var API = "_api/index";
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -141,14 +128,21 @@ function GET_api_index (req, res) {
     }
 
     var iid = decodeURIComponent(req.suffix[1]);
-    var index = collection.index(name + "/" + iid);
-
-    if (index === null) {
-      actions.indexNotFound(req, res, collection, iid);
-      return;
+    try {
+      var index = collection.index(name + "/" + iid);
+      if (index !== null) {
+        actions.resultOk(req, res, actions.HTTP_OK, index);
+        return;
+      }
     }
-
-    actions.resultOk(req, res, actions.HTTP_OK, index);
+    catch (err) {
+      if (err.errorNum === arangodb.ERROR_ARANGO_INDEX_NOT_FOUND ||
+          err.errorNum === arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+        actions.indexNotFound(req, res, collection, iid);
+        return;
+      }
+      throw err;
+    }
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
