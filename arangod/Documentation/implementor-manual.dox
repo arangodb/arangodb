@@ -89,13 +89,13 @@
 ///  </li>
 ///  <li>Under Construction
 ///   <ul>
-///    <li>@ref Key-Value
+///    <li>@ref KeyValue
 ///     <ul>
-///      <li>@ref Key-ValuePost "POST /_api/key/collection-name/key"</li>
-///      <li>@ref Key-ValuePut "PUT /_api/key/collection-name/key"</li>
-///      <li>@ref Key-ValueGet "GET /_api/key/collection-name/key"</li>
-///      <li>@ref Key-ValueDelete "DELETE /_api/key/collection-name/key"</li>
-///      <li>@ref Key-ValueSearch "GET /_api/keys/collection-name/prefix"</li>
+///      <li>@ref KeyValuePost "POST /_api/key/collection-name/key"</li>
+///      <li>@ref KeyValuePut "PUT /_api/key/collection-name/key"</li>
+///      <li>@ref KeyValueGet "GET /_api/key/collection-name/key"</li>
+///      <li>@ref KeyValueDelete "DELETE /_api/key/collection-name/key"</li>
+///      <li>@ref KeyValueSearch "GET /_api/keys/collection-name/prefix"</li>
 ///     </ul>
 ///    </li>
 ///   </ul>
