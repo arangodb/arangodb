@@ -87,6 +87,7 @@ namespace triagens {
           _vocbase(vocbase), 
           _resolver(resolver),
           _setupError(TRI_ERROR_NO_ERROR),
+          _readOnly(true),
           _hints(0) {
 
           assert(_vocbase != 0);
@@ -137,6 +138,10 @@ namespace triagens {
 
           if (this->isEmbedded()) {
             if (this->status() == TRI_TRANSACTION_RUNNING) {
+              if (this->_setupError != TRI_ERROR_NO_ERROR) {
+                return this->_setupError;
+              }
+
               return TRI_ERROR_NO_ERROR;
             }
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
@@ -192,6 +197,11 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
+          if (this->isEmbedded() && this->isReadOnlyTransaction()) {
+            // return instantly if the transaction is embedded
+            return TRI_ERROR_NO_ERROR;
+          }
+
           int res = TRI_AbortTransaction(this->_trx);
 
           return res;
@@ -231,6 +241,14 @@ namespace triagens {
           }
           
           return TRI_TRANSACTION_UNDEFINED;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether or not the transaction is read-only
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isReadOnlyTransaction () const {
+          return _readOnly;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,6 +296,10 @@ namespace triagens {
           if (cid == 0) {
             // invalid cid
             return _setupError = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+          }
+          
+          if (type == TRI_TRANSACTION_WRITE) {
+            _readOnly = false;
           }
 
           if (this->isEmbedded()) {
@@ -837,6 +859,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is read-only
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _readOnly;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction hints
