@@ -9,7 +9,8 @@
 ################################################################################
 
 bin_SCRIPTS += \
-	bin/arango-dfdb 
+	bin/arango-dfdb \
+	bin/arango-password 
 
 CLEANUP += $(bin_SCRIPTS)
 
@@ -24,6 +25,17 @@ bin/arango-dfdb: utils/arango-dfdb.in
 		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
 		$< > $@
 	chmod 755 $@
+
+################################################################################
+### @brief arango password: this create a file with a warning message only
+### as arango-password is deprecated        
+################################################################################
+
+.PHONY: bin/arango-password
+
+bin/arango-password: 
+	@echo "echo \"arango-password is not part of this ArangoDB release.\"; exit 1" > $@
+	@chmod 755 $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

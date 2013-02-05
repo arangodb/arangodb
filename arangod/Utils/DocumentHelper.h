@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document utilitiy functions 
+/// @brief document utility functions 
 ///
 /// @file
 ///
@@ -27,8 +27,6 @@
 
 #ifndef TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H
 #define TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H 1
-
-#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -91,40 +89,6 @@ namespace triagens {
           }
 
           return assembleDocumentId(collectionName, string(key));
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a collection id and a string key
-////////////////////////////////////////////////////////////////////////////////
-
-        static string assembleDocumentId (TRI_vocbase_t* const vocbase,
-                                          const TRI_voc_cid_t cid,  
-                                          const string& key) {
-          static const string UnknownCollection = "_unknown";
-
-          TRI_vocbase_col_t const* collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
-          if (collection == 0) {
-            return assembleDocumentId(UnknownCollection, key);
-          }
-
-          // TODO: can the name be deleted while we're using it?
-          return assembleDocumentId(collection->_name, key);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a collection id and a char* key
-////////////////////////////////////////////////////////////////////////////////
-
-        static string assembleDocumentId (TRI_vocbase_t* const vocbase,
-                                          const TRI_voc_cid_t cid,  
-                                          const TRI_voc_key_t key) {
-          static const string UnknownKey = "_deleted";
-
-          if (key == 0) {
-            return assembleDocumentId(vocbase, cid, UnknownKey); 
-          }
-
-          return assembleDocumentId(vocbase, cid, string(key));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

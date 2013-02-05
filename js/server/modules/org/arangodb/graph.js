@@ -558,7 +558,7 @@ function Graph (name, vertices, edges) {
 
       // check if know that graph
       graphProperties = gdb.firstExample(
-	'vertices', vertices.name(),
+        'vertices', vertices.name(),
         'edges', edges.name()
       );
 
@@ -569,14 +569,14 @@ function Graph (name, vertices, edges) {
 
         if (graphProperties === null) {      
           graphPropertiesId = gdb.save({
-	    'vertices' : vertices.name(),
+            'vertices' : vertices.name(),
             'edges' : edges.name(),
             '_key' : name
-	  });
+          });
 
           graphProperties = gdb.document(graphPropertiesId);
         }
-	else {
+        else {
           throw "edge collection already used";
         }         
       }
@@ -807,7 +807,7 @@ Graph.prototype.getVertices = function () {
   Iterator = function () {
     this.next = function next() {
       if (all.hasNext()) {
-	return that.constructVertex(all.next());
+        return that.constructVertex(all.next());
       }
 
       return undefined;
@@ -888,7 +888,7 @@ Graph.prototype.getEdges = function () {
   Iterator = function () {
     this.next = function next() {
       if (all.hasNext()) {
-	return that.constructEdge(all.next());
+        return that.constructEdge(all.next());
       }
 
       return undefined;

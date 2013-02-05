@@ -255,12 +255,6 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   // remove barriers for all collections used
   TRI_RemoveBarrierCollectionsAql(context);
 
-  // read-unlock all collections used
-  TRI_ReadUnlockCollectionsAql(context);
-
-  // release all collections used
-  TRI_UnlockCollectionsAql(context);
-
   // release all scopes
   TRI_FreeScopesAql(context);
 
@@ -372,25 +366,15 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief acquire all locks necessary for the query
+/// @brief set up all collections used in the query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
+bool TRI_SetupCollectionsContextAql (TRI_aql_context_t* const context) {
   // mark all used collections as being used
-  if (! TRI_LockCollectionsAql(context)) {
+  if (! TRI_SetupCollectionsAql(context)) {
     return false;
   }
 
-  // acquire read locks on all collections used
-  if (! TRI_ReadLockCollectionsAql(context)) {
-    return false;
-  }
-  
-  // add barriers for all collections used
-  if (! TRI_AddBarrierCollectionsAql(context)) {
-    return false;
-  }
-  
   if (context->_error._code) {
     return false;
   }

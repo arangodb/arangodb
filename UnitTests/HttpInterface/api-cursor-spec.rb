@@ -37,7 +37,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(1520)
+        doc.parsed_response['errorNum'].should eq(1203)
       end
 
       it "returns an error if cursor identifier is missing" do

@@ -168,7 +168,7 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImport2 : function () {
-      assertEqual(errors.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
+      assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

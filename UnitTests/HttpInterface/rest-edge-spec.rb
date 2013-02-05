@@ -129,6 +129,8 @@ describe ArangoDB do
         @eid = ArangoDB.create_collection(@ce, true, 3) # type 3 = edge collection
         @cv = "UnitTestsCollectionVertex"
         @vid = ArangoDB.create_collection(@cv, true, 2) # type 2 = document collection
+    
+        @reFull = Regexp.new('^[a-zA-Z0-9_\-]+/\d+$')
       end
 
       after do
@@ -145,6 +147,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@cv + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id1 = doc.parsed_response['_id']
@@ -155,6 +159,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@cv + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id2 = doc.parsed_response['_id']
@@ -166,6 +172,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id3 = doc.parsed_response['_id']
@@ -197,8 +205,14 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.parsed_response['_id'].should eq(id4)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.parsed_response['_from'].should eq(id1)
+        doc.parsed_response['_from'].should match(@reFull)
+        doc.parsed_response['_from'].should start_with(@cv + "/")
         doc.parsed_response['_to'].should eq(id2)
+        doc.parsed_response['_to'].should match(@reFull)
+        doc.parsed_response['_to'].should start_with(@cv + "/")
         doc.parsed_response['e'].should eq(1)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -209,6 +223,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id5 = doc.parsed_response['_id']
@@ -219,8 +235,14 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.parsed_response['_id'].should eq(id5)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.parsed_response['_from'].should eq(id2)
+        doc.parsed_response['_from'].should match(@reFull)
+        doc.parsed_response['_from'].should start_with(@cv + "/")
         doc.parsed_response['_to'].should eq(id1)
+        doc.parsed_response['_to'].should match(@reFull)
+        doc.parsed_response['_to'].should start_with(@cv + "/")
         doc.parsed_response['e'].should eq(2)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -258,6 +280,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@cv + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id = doc.parsed_response['_id']
@@ -271,6 +295,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         # create edge, using collection names
@@ -280,6 +306,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
               
         # create edge, using mix of collection names and ids
@@ -289,6 +317,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
   
         # turn parameters around
@@ -298,6 +328,8 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
             
@@ -324,6 +356,35 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorNum'].should eq(1203)
         doc.parsed_response['code'].should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+
+      it "using collection ids in collection, from and to" do
+        cmd = "/_api/document?collection=#{@vid}"
+
+        # create a vertex
+        body = "{ \"a\" : 1 }"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-id", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@cv + "/")
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        id = doc.parsed_response['_id']
+        # replace collection name with collection id
+        translated = URI.escape(id.gsub /UnitTestsCollectionVertex/, @vid)
+  
+        # create edge, using collection id
+        cmd = "/_api/edge?collection=#{@eid}&from=#{id}&to=#{id}"
+        body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['_id'].should be_kind_of(String)
+        doc.parsed_response['_id'].should match(@reFull)
+        doc.parsed_response['_id'].should start_with(@ce + "/")
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
