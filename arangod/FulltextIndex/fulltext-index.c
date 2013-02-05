@@ -1745,6 +1745,14 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex (const TRI_fts_index_t* const ftx) {
     stats._handleDeletionGrade = TRI_DeletionGradeHandleFulltextIndex(idx->_handles);
     stats._shouldCompact       = TRI_ShouldCompactHandleFulltextIndex(idx->_handles);
   }
+  else {
+    stats._memoryHandles       = 0;
+    stats._numNodes            = 0;
+    stats._numDocuments        = 0;
+    stats._numDeleted          = 0;
+    stats._handleDeletionGrade = 0.0;
+    stats._shouldCompact       = false;
+  }
 
   TRI_ReadUnlockReadWriteLock(&idx->_lock);
 
