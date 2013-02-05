@@ -23,13 +23,15 @@ Glossary {#Glossary}
 
 @copydoc GlossaryEdgeCollection
 
-@copydoc GlossaryIndexGeo
-
-@copydoc GlossaryIndexHash
-
 @copydoc GlossaryIndex
 
 @copydoc GlossaryIndexHandle
+
+@copydoc GlossaryIndexEdge
+
+@copydoc GlossaryIndexGeo
+
+@copydoc GlossaryIndexHash
 
 @copydoc GlossaryIndexPrioQueue
 

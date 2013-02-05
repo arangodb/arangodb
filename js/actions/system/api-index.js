@@ -206,7 +206,7 @@ function POST_api_index_cap (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo index
 ///
-/// @RESTHEADER{GET /_api/index,creates a geo-spatial index}
+/// @RESTHEADER{POST /_api/index,creates a geo-spatial index}
 ///
 /// @REST{POST /_api/index?collection=@FA{collection-identifier}}
 ///
@@ -528,9 +528,10 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// an object containing the index details.
 ///
 /// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, and
-/// @ref IndexSkiplistHttp for details. By default, non-unique indexes will
-/// be created. To change this, use the @LIT{unique} attribute in the index details
-/// and set its value to @LIT{true}.
+/// @ref IndexSkiplistHttp for details. 
+///
+/// By default, non-unique indexes will be created. To change this, use the 
+/// @LIT{unique} attribute in the index details and set its value to @LIT{true}.
 ///
 /// If the index does not already exists and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
