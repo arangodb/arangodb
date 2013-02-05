@@ -279,12 +279,14 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_document_collection_t* document;
   TRI_vocbase_col_t* collection;
   TRI_vocbase_t* vocbase;
+  TRI_voc_cid_t cid;
   regmatch_t matches[3];
   regex_t re;
   int res;
   size_t i;
   
   collection = data;
+  cid = 0;
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -307,6 +309,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
       return false;
     }
+
+    cid = collection->_cid;
 
     document = (TRI_document_collection_t*) collection->_collection;
 
@@ -430,6 +434,10 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
     }
 
     regfree(&re);
+  }
+
+  if (cid > 0) {
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
   }
 
   return true;

@@ -2697,7 +2697,7 @@ function TRAVERSAL_FUNC (func, vertexCollection, edgeCollection, startVertex, di
   var v = null;
   var result = [ ];
   try {
-    v = vertexCollection.document(startVertex);
+    v = INTERNAL.db._document(startVertex);
   }
   catch (err) {
   }
