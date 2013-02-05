@@ -76,8 +76,8 @@
 ///  <li>@ref IndexHashHttp
 ///   <ul>
 ///    <li>@ref IndexHashHttpEnsureHash "POST /_api/index"</li>
-///    <li>@ref IndexHashHttpByExample "POST /_api/simple/by-example"</li>
-///    <li>@ref IndexHashHttpFirstExample "POST /_api/simple/first-example"</li>
+///    <li>@ref IndexHashHttpByExample "PUT /_api/simple/by-example"</li>
+///    <li>@ref IndexHashHttpFirstExample "PUT /_api/simple/first-example"</li>
 ///   </ul>
 ///  </li>
 /// </ul>
