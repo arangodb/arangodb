@@ -306,7 +306,19 @@ namespace triagens {
             TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->_trx, cid, type);
 
             if (collection == 0) {
-              return _setupError = TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+              // adding an unknown collection...
+              int res = TRI_ERROR_NO_ERROR;
+              
+              if (type == TRI_TRANSACTION_READ && this->isReadOnlyTransaction()) {
+                res = TRI_AddDelayedReadCollectionTransaction(this->_trx, cid);
+              }
+              else {
+                res = TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+              }
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                return _setupError = res;
+              }
             }
 
             return TRI_ERROR_NO_ERROR;

@@ -427,7 +427,7 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all data associated with a specific collection
-/// TODO: this function must be called for all collections that are dropped
+/// this function gets called for all collections that are dropped
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const context, 
@@ -1158,7 +1158,6 @@ TRI_vocbase_col_t* TRI_CheckCollectionTransaction (TRI_transaction_t* const trx,
   // the vector is sorted by collection names
   n = trx->_collections._length;
   for (i = 0; i < n; ++i) {
-    
     collection = TRI_AtVectorPointer(&trx->_collections, i);
 
     if (cid < collection->_cid) {
@@ -1238,6 +1237,48 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
   TRI_PushBackVectorPointer(&trx->_collections, collection);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to an already running transaction
+/// opens it and locks it in read-only mode
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AddDelayedReadCollectionTransaction (TRI_transaction_t* const trx,
+                                             const TRI_transaction_cid_t cid) {
+  TRI_transaction_collection_t* collection;
+  size_t i, n;
+  int res;
+
+  n = trx->_collections._length;
+  for (i = 0; i < n; ++i) {
+    collection = TRI_AtVectorPointer(&trx->_collections, i);
+
+    if (cid < collection->_cid) {
+      // collection is not contained in vector
+      collection = CreateCollection(cid, TRI_TRANSACTION_READ);
+      if (collection == NULL) {
+        // out of memory
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+
+      TRI_InsertVectorPointer(&trx->_collections, collection, i);
+
+      collection->_collection = TRI_UseCollectionByIdVocBase(trx->_context->_vocbase, collection->_cid);
+      if (collection->_collection == NULL) {
+        return TRI_errno();
+      }
+  
+      res = LockCollection(collection, TRI_TRANSACTION_READ);
+
+      return res;
+    }
+  }
+
+  // we should not get here. Otherwise this is a logic error
+  LOG_WARNING("logic error. should have inserted collection");
+
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
