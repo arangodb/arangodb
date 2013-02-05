@@ -114,7 +114,7 @@
 ///      <li>@ref A_JSF_POST_graph_edge   "POST /_api/graph/graph-name/edge"</li>
 ///      <li>@ref A_JSF_GET_graph_edge    "GET /_api/graph/graph-name/edge"</li>
 ///      <li>@ref A_JSF_PUT_graph_edge    "PUT /_api/graph/graph-name/edge"</li>
-///      <li>@ref A_JSF_DELETE_graph_edge "DELETE /_api/graph/graph-nam}/edge"</li>
+///      <li>@ref A_JSF_DELETE_graph_edge "DELETE /_api/graph/graph-name/edge"</li>
 ///      <li>@ref A_JSF_POST_graph_edges   "POST /_api/graph/graph-name/edges"</li>
 ///     </ul>
 ///    </li>
