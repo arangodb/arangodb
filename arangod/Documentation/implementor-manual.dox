@@ -83,6 +83,7 @@
 ///  <li>Advanced Topics
 ///   <ul>
 ///    <li>@ref Communication</li>
+///    <li>@ref CommunicationCors</li>
 ///    <li>@ref NamingConventions</li>
 ///    <li>@ref ArangoErrors</li>
 ///   </ul>

@@ -54,6 +54,7 @@ WIKI = \
 	CommandLine \
 	Compiling \
 	Communication \
+	CommunicationCors \
 	DbaManual \
 	DbaManualBasics \
 	DbaManualAuthentication \
