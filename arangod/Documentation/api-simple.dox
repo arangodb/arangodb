@@ -44,12 +44,12 @@
 /// @page HttpSimpleCallsTOC
 ///
 /// <ul>
-///  <li>@ref HttpSimpleAll "POST /_api/simple/all"</li>
-///  <li>@ref HttpSimpleByExample "POST /_api/simple/by-example"</li>
-///  <li>@ref HttpSimpleFirstExample "POST /_api/simple/first-example"</li>
-///  <li>@ref HttpSimpleRange "POST /_api/simple/range"</li>
-///  <li>@ref HttpSimpleNear "POST /_api/simple/near"</li>
-///  <li>@ref HttpSimpleWithin "POST /_api/simple/within"</li>
+///  <li>@ref HttpSimpleAll "PUT /_api/simple/all"</li>
+///  <li>@ref HttpSimpleByExample "PUT /_api/simple/by-example"</li>
+///  <li>@ref HttpSimpleFirstExample "PUT /_api/simple/first-example"</li>
+///  <li>@ref HttpSimpleRange "PUT /_api/simple/range"</li>
+///  <li>@ref HttpSimpleNear "PUT /_api/simple/near"</li>
+///  <li>@ref HttpSimpleWithin "PUT /_api/simple/within"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
