@@ -410,11 +410,11 @@ function VertexSuite() {
       v2 = graph.addVertex();
 
       edge = graph.addEdge(v1, v2);
-
+      
       assertEqual(edge.getId(), v1.getOutEdges()[0].getId());
       assertEqual(edge.getId(), v2.getInEdges()[0].getId());
-      assertEqual([], v1.getInEdges());
-      assertEqual([], v2.getOutEdges());
+      assertEqual(0, v1.getInEdges().length);
+      assertEqual(0, v2.getOutEdges().length);
       assertEqual(edge.getId(), v1.edges()[0].getId());
       assertEqual(edge.getId(), v2.edges()[0].getId());
       assertEqual(1, v1.getEdges().length);
