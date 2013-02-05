@@ -173,9 +173,6 @@ extern "C" {
 /// - 1512: @LIT{unknown variable '\%s'}
 ///   Will be raised when an unknown variable is used or the variable is
 ///   undefined the context it is used.
-/// - 1520: @LIT{unable to open collection '\%s'}
-///   Will be raised when one of the collections referenced in the query was
-///   not found.
 /// - 1521: @LIT{unable to read-lock collection \%s}
 ///   Will be raised when a read lock on the collection cannot be acquired.
 /// - 1522: @LIT{too many collections}
@@ -1095,17 +1092,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             (1512)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1520: ERROR_QUERY_COLLECTION_NOT_FOUND
-///
-/// unable to open collection '%s'
-///
-/// Will be raised when one of the collections referenced in the query was not
-/// found.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_COLLECTION_NOT_FOUND                              (1520)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1521: ERROR_QUERY_COLLECTION_LOCK_FAILED

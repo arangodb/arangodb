@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "safe" collection read lock
+/// @brief wrapper for Aql transactions
 ///
 /// @file
 ///
@@ -25,38 +25,25 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_COLLECTION_READ_LOCK_H
-#define TRIAGENS_UTILS_COLLECTION_READ_LOCK_H 1
+#ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
+#define TRIAGENS_UTILS_AHUACATL_TRANSACTION_H 1
 
-#include "VocBase/primary-collection.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/Transaction.h"
 
-using namespace std;
+#include "VocBase/transaction.h"
+
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
 
+    template<typename T>
+    class AhuacatlTransaction : public Transaction<T> {
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class CollectionReadLock
+// --SECTION--                                         class AhuacatlTransaction
 // -----------------------------------------------------------------------------
-
-    class CollectionReadLock {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CollectionReadLock
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-        CollectionReadLock (const CollectionReadLock&);
-        CollectionReadLock& operator= (const CollectionReadLock&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -70,41 +57,43 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the lock
+/// @brief create the transaction and add all collections from the query
+/// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionReadLock (TRI_primary_collection_t* primary) : _primary(primary) {
-          _primary->beginRead(_primary);
+        AhuacatlTransaction (struct TRI_vocbase_s* const vocbase, 
+                             const triagens::arango::CollectionNameResolver& resolver,
+                             TRI_aql_context_t* const context) :
+          Transaction<T>(vocbase, resolver) {
+
+          this->addHint(TRI_TRANSACTION_HINT_IMPLICIT_LOCK);
+
+          TRI_vector_pointer_t* collections = &context->_collections;
+
+          const size_t n = collections->_length;
+          
+          for (size_t i = 0; i < n; ++i) {
+            TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
+         
+            TRI_transaction_cid_t cid = 0; 
+            TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name); 
+            if (col != 0) {
+              cid = (TRI_transaction_cid_t) col->_cid;
+            }
+
+            int res = this->addCollection(cid, TRI_TRANSACTION_READ);
+            if (res == TRI_ERROR_NO_ERROR) {
+              collection->_collection = (TRI_vocbase_col_t*) col;
+            }
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the lock
+/// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~CollectionReadLock () {
-          _primary->endRead(_primary);
+        ~AhuacatlTransaction () {
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_primary_collection_t* _primary;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

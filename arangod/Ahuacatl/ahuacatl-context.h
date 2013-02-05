@@ -129,10 +129,10 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const,
 bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief acquire all locks necessary for the query
+/// @brief set up all collections used in the query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LockQueryContextAql (TRI_aql_context_t* const);
+bool TRI_SetupCollectionsContextAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string

@@ -346,6 +346,7 @@ static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the collection
+/// note: the collection lock must be held when calling this function
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
@@ -360,8 +361,6 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     return NULL;
   }
   
-  primary->beginRead(primary);
-
   for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
     TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
 
@@ -392,13 +391,13 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
 
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
   
-  primary->endRead(primary);
-
   return info;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of a primary collection
+///
+/// the caller must have read-locked the collection!
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
@@ -406,8 +405,6 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
   TRI_voc_size_t result;
   void** end;
   void** ptr;
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   ptr = primary->_primaryIndex._table;
   end = ptr + primary->_primaryIndex._nrAlloc;
@@ -422,8 +419,6 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
       }
     }
   }
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   return result;
 }

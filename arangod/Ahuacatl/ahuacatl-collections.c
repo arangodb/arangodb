@@ -93,7 +93,6 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
   collection->_name = (char*) name;
   collection->_collection = NULL;
   collection->_barrier = NULL; 
-  collection->_readLocked = false;
 
   return collection;
 }
@@ -156,12 +155,11 @@ bool OpenCollections (TRI_aql_context_t* const context) {
     assert(collection->_name);
     assert(! collection->_collection);
     assert(! collection->_barrier);
-    assert(! collection->_readLocked);
 
     LOG_TRACE("locking collection '%s'", collection->_name);
     collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, collection->_name);
     if (collection->_collection == NULL) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, collection->_name);
+      TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collection->_name);
 
       return false;
     }
@@ -347,133 +345,15 @@ TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* const conte
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unlock all collections used
+/// @brief init all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCollectionsAql (TRI_aql_context_t* const context) {
-  size_t i;
-  
-  // unlock in reverse order
-  i = context->_collections._length;
-  while (i--) {
-    TRI_aql_collection_t* collection = context->_collections._buffer[i];
-
-    assert(collection);
-    assert(collection->_name);
-
-    if (collection->_collection == NULL) {
-      // collection not yet opened
-      continue;
-    }
-  
-    LOG_TRACE("unlocking collection '%s'", collection->_name);
-    
-    TRI_ReleaseCollectionVocBase(context->_vocbase, collection->_collection);
-
-    collection->_collection = NULL;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock all collections used
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_LockCollectionsAql (TRI_aql_context_t* const context) {
+bool TRI_SetupCollectionsAql (TRI_aql_context_t* const context) {
   if (! SetupCollections(context)) {
     return false;
   }
 
-  if (! OpenCollections(context)) {
-    TRI_UnlockCollectionsAql(context);
-    return false;
-  }
-
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-locks all collections used in a query
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
-  size_t i;
-  size_t n;
-  bool result = true;
-
-  // lock in forward order
-  n = context->_collections._length;
-  for (i = 0; i < n; ++i) {
-    int lockResult;
-
-    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_primary_collection_t* primaryCollection;
-
-    assert(collection);
-    assert(collection->_name);
-    assert(collection->_collection);
-    assert(collection->_collection->_collection);
-    assert(! collection->_readLocked);
-    assert(! collection->_barrier);
-
-    primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
-
-    LOG_TRACE("read-locking collection '%s'", collection->_name);
-
-    lockResult = primaryCollection->beginRead(primaryCollection);
-    if (lockResult != TRI_ERROR_NO_ERROR) {
-      // couldn't acquire the read lock
-      LOG_WARNING("couldn't acquire read-lock on collection '%s'", collection->_name);
-
-      result = false;
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
-      break;
-    }
-    else {
-      collection->_readLocked = true;
-      LOG_TRACE("read-locked collection '%s'", collection->_name);
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-unlocks all collections used in a query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
-  size_t i;
-
-  // unlock in reverse order
-  i = context->_collections._length;
-  while (i--) {
-    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_primary_collection_t* primaryCollection;
-
-    assert(collection);
-    assert(collection->_name);
-
-    if (! collection->_collection) {
-      // don't unlock collections we weren't able to lock at all
-      continue;
-    }
-
-    if (! collection->_readLocked) {
-      // don't unlock non-read-locked collections
-      continue;
-    }
-    
-    assert(collection->_collection->_collection);
-    assert(! collection->_barrier);
-
-    primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
-
-    LOG_TRACE("read-unlocking collection '%s'", collection->_name);
-
-    primaryCollection->endRead(primaryCollection);
-    collection->_readLocked = false;
-    LOG_TRACE("read-unlocked collection '%s'", collection->_name);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,9 +376,8 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection);
     assert(collection->_name);
     assert(collection->_collection);
-    assert(collection->_readLocked);
     assert(collection->_collection->_collection);
-    assert(!collection->_barrier);
+    assert(! collection->_barrier);
 
     primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
@@ -534,12 +413,11 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection);
     assert(collection->_name);
 
-    if (!collection->_collection || !collection->_readLocked || !collection->_barrier) {
+    if (! collection->_collection || ! collection->_barrier) {
       // don't process collections we weren't able to lock at all
       continue;
     }
 
-    assert(collection->_readLocked);
     assert(collection->_barrier);
     assert(collection->_collection->_collection);
 

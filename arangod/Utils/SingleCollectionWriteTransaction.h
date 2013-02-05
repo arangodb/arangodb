@@ -28,9 +28,8 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H 1
 
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-
-#include "Utils/CollectionWriteLock.h"
 
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/transaction.h"
@@ -70,8 +69,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          const triagens::arango::CollectionNameResolver& resolver,
+                                          const TRI_transaction_cid_t cid) :
+          SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_WRITE),
+          _numWrites(0), 
+          _synchronous(false) {
+
+          if (N == 1) {
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief same as above, but create using collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          const triagens::arango::CollectionNameResolver& resolver,
                                           const string& name) :
-          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
+          SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_WRITE),
           _numWrites(0), 
           _synchronous(false) {
 
@@ -108,6 +124,16 @@ namespace triagens {
 
         inline bool synchronous () const {
           return _synchronous;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explicitly lock the underlying collection for write access
+////////////////////////////////////////////////////////////////////////////////
+
+        int lockWrite () {
+          TRI_primary_collection_t* primary = this->primaryCollection();
+
+          return this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,6 +208,9 @@ namespace triagens {
           return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update (replace!) a single document within a transaction, 
+/// using json
 ////////////////////////////////////////////////////////////////////////////////
 
         int updateDocument (const string& key,

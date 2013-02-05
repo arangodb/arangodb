@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
@@ -181,7 +182,12 @@ ArangoCollection.prototype.index = function (id) {
     }
   }
 
-  return null;
+  // index not found
+  var err = new ArangoError();
+  err.errorNum = internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code;
+  err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.message;
+
+  throw err;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

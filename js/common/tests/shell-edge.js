@@ -290,6 +290,41 @@ function CollectionEdgeSuite () {
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
+      assertMatch(/^UnitTestsCollectionEdge\//, doc._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge that reference non-existing vertex collections
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeInvalidVertexCollection : function () {
+      [ "UnitTestsCollectionNonExistingVertex/12345", "UnitTestsCollectionNonExistingVertex/456745" ].forEach(function(key) {
+        try {
+          edge.save(key, key, { });
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge that reference an unloaded collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeUnloadedVertexCollection : function () {
+      vertex.unload();
+      wait(4);
+
+      var e = edge.save(v1._id, v2._id, { });
+      
+      assertMatch(/^UnitTestsCollectionEdge\//, e._id);
+      var doc = edge.document(e._id);
+
+      assertMatch(/^UnitTestsCollectionEdge\//, doc._id);
+      assertMatch(/^UnitTestsCollectionVertex\//, doc._from);
+      assertMatch(/^UnitTestsCollectionVertex\//, doc._to);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,6 +495,54 @@ function CollectionEdgeSuite () {
       e = edge.outEdges([v1, v2]);
 
       assertEqual(1, e.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edges query
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadEdgesUnloaded : function () {
+      var d1 = edge.save(v1, v2, { "Hallo" : "World" })._id;
+      var d2 = edge.save(v2, v1, { "World" : "Hallo" })._id;
+
+      var e1 = edge.document(d1);
+      var e2 = edge.document(d2);
+
+      assertMatch(/^UnitTestsCollectionEdge\//, e1._id);
+      assertMatch(/^UnitTestsCollectionVertex\//, e1._from);
+      assertMatch(/^UnitTestsCollectionVertex\//, e1._to);
+
+      assertMatch(/^UnitTestsCollectionEdge\//, e2._id);
+      assertMatch(/^UnitTestsCollectionVertex\//, e2._from);
+      assertMatch(/^UnitTestsCollectionVertex\//, e2._to);
+
+      e1 = null;
+      e2 = null;
+
+      vertex.unload();
+      edge.unload();
+      wait(4);
+
+      var e = edge.edges(v1);
+
+      assertEqual(2, e.length);
+
+      if (e[0]._id == d1) {
+        assertEqual(v2._id, e[0]._to);
+        assertEqual(v1._id, e[0]._from);
+
+        assertEqual(d2, e[1]._id);
+        assertEqual(v1._id, e[1]._to);
+        assertEqual(v2._id, e[1]._from);
+      }
+      else {
+        assertEqual(v1._id, e[0]._to);
+        assertEqual(v2._id, e[0]._from);
+
+        assertEqual(d1, e[1]._id);
+        assertEqual(v2._id, e[1]._to);
+        assertEqual(v1._id, e[1]._from);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
