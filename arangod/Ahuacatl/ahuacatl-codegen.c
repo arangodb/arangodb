@@ -1428,7 +1428,8 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ", ");
     }
 
-    if (parameter->_type == TRI_AQL_NODE_COLLECTION && TRI_ConvertParameterFunctionAql(function, i)) {
+    if (parameter->_type == TRI_AQL_NODE_COLLECTION && 
+        TRI_ConvertParameterFunctionAql(function, i)) {
       // collection arguments will be created as string argument => e.g. "users"
       TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(parameter, 0);
 

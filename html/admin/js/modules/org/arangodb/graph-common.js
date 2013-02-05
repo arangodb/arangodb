@@ -1,3 +1,4 @@
+module.define("org/arangodb/graph-common", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
@@ -599,3 +600,4 @@ Graph.prototype._PRINT = function (seen, path, names) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+});

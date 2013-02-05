@@ -571,6 +571,16 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*, char const*
 int TRI_UseCollectionVocBase (TRI_vocbase_t*, TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locks a (document) collection for usage by id
+///
+/// Note that this will READ lock the collection you have to release the
+/// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
+/// when you are done with the collection.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*, const TRI_voc_cid_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by name
 ///
 /// Note that this will READ lock the collection you have to release the

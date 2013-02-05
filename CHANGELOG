@@ -1,6 +1,12 @@
 v1.2.beta1 (2013-02-01)
 -----------------------
 
+* replaced redundant error return code 1520 (Unable to open collection) with error code
+  1203 (Collection not found). These error codes have the same meanings, but one of
+  them was returned from AQL queries only, the other got thrown by other parts of
+  ArangoDB. Now, error 1203 (Collection not found) is used in AQL too in case a 
+  non-existing collection is used.
+
 * fixed issue #382: [Documentation error] Maschine... should be Machine...
  
 * unified history file locations for arangod, arangosh, and arangoirb.

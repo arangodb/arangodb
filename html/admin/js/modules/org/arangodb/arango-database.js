@@ -92,6 +92,12 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief index id regex
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief append the waitForSync parameter to a URL
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -152,6 +158,18 @@ ArangoDatabase.prototype._documenturl = function (id, expectedName) {
 ////////////////////////////////////////////////////////////////////////////////
   
 ArangoDatabase.prototype._indexurl = function (id, expectedName) {
+  if (typeof id === "string") {
+    var pa = ArangoDatabase.indexRegex.exec(id);
+
+    if (pa === null && expectedName !== undefined) {
+      id = expectedName + "/" + id;
+    }
+  }
+  else if (typeof id === "number" && expectedName !== undefined) {
+    // stringify a numeric id
+    id = expectedName + "/" + id;
+  }
+
   var s = id.split("/");
 
   if (s.length !== 2) {

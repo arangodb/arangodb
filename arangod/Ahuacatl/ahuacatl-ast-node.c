@@ -398,7 +398,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   }
   
   if (strlen(name) == 0) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
+    TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
 
     return NULL;
   }
