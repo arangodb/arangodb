@@ -106,7 +106,7 @@
 ///   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
 ///   will be rejected by ArangoDB.
 ///
-/// @section CommunicationCors Cross Origin Resource Sharing (CORS) requests
+/// @page CommunicationCors Cross Origin Resource Sharing (CORS) requests
 ///
 /// ArangoDB will automatically handle CORS requests as follows:
 /// - when the client sends an @LIT{Origin} HTTP header, ArangoDB will return
