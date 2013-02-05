@@ -96,7 +96,7 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	Key-Value \
+	KeyValue \
 	NamingConventions \
 	NewFeatures11 \
 	RefManual \
