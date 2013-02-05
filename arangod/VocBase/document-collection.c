@@ -2946,12 +2946,12 @@ static int ComparePidName (void const* left, void const* right) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a description of all indexes
+/// 
+/// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document,
-                                                     const bool lock) {
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
   TRI_vector_pointer_t* vector;
-  TRI_primary_collection_t* primary;
   size_t n;
   size_t i;
 
@@ -2960,17 +2960,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
     return NULL;
   }
 
-  primary = &document->base;
-  
   TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
-
-  // .............................................................................
-  // inside read-lock
-  // .............................................................................
-
-  if (lock) {
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-  }
 
   n = document->_allIndexes._length;
 
@@ -2980,20 +2970,12 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 
     idx = document->_allIndexes._buffer[i];
 
-    json = idx->json(idx, primary);
+    json = idx->json(idx, (TRI_primary_collection_t*) document);
 
     if (json != NULL) {
       TRI_PushBackVectorPointer(vector, json);
     }
   }
-
-  if (lock) {
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-  }
-
-  // .............................................................................
-  // outside read-lock
-  // .............................................................................
 
   return vector;
 }

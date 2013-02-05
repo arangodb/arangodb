@@ -3317,18 +3317,30 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
 static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+  
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-  TRI_primary_collection_t* primary = collection->_collection;
+  CollectionNameResolver resolver(collection->_vocbase);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot count documents", true)));
+  }
+
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+
+  // READ-LOCK start
+  trx.lockRead();
+
   size_t s = primary->size(primary);
 
-  ReleaseCollection(collection);
+  trx.finish(res);
+  // READ-LOCK end
+
   return scope.Close(v8::Number::New((double) s));
 }
 
@@ -4448,35 +4460,43 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///
-/// it is the caller's responsibility to acquire and release all required locks
+/// @FUN{getIndexes()}
+///
+/// Returns a list of all indexes defined for the collection.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_index-read-all
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv) { 
+static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = 0;
-  
-  collection = UseCollection(argv.Holder(), &err);
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
-    ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+  CollectionNameResolver resolver(collection->_vocbase);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(collection->_vocbase, resolver, collection->_cid);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot get indexes", true)));
   }
 
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+  TRI_collection_t* c = (TRI_collection_t*) &(document->base.base);
 
-  // get a list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, true);
+  // READ-LOCK start
+  trx.lockRead();
+  
+  // get list of indexes
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document);
+
+  trx.finish(res);
+  // READ-LOCK end
  
-  ReleaseCollection(collection);
-
   if (! indexes) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -4488,8 +4508,8 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv) {
   for (uint32_t i = 0, j = 0;  i < n;  ++i) {
     TRI_json_t* idx = (TRI_json_t*) indexes->_buffer[i];
 
-    if (idx) {
-      result->Set(j++, IndexRep(&primary->base, idx));
+    if (idx != NULL) {
+      result->Set(j++, IndexRep(c, idx));
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, idx);
     }
   }
@@ -4497,22 +4517,6 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv) {
   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, indexes);
 
   return scope.Close(result);
-}
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the indexes
-///
-/// @FUN{getIndexes()}
-///
-/// Returns a list of all indexes defined for the collection.
-///
-/// @EXAMPLES
-///
-/// @verbinclude shell_index-read-all
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
-  return GetIndexesVocbaseCol(argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
