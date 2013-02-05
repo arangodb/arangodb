@@ -99,8 +99,8 @@
 ///  <li>@ref IndexGeoHttp
 ///   <ul>
 ///    <li>@ref IndexGeoHttpEnsureGeo "POST /_api/index"</li>
-///    <li>@ref IndexGeoHttpNear "POST /_api/simple/near"</li>
-///    <li>@ref IndexGeoHttpWithin "POST /_api/simple/within"</li>
+///    <li>@ref IndexGeoHttpNear "PUT /_api/simple/near"</li>
+///    <li>@ref IndexGeoHttpWithin "PUT /_api/simple/within"</li>
 ///   </ul>
 ///  </li>
 /// </ul>
