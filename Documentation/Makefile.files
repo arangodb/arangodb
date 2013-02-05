@@ -81,6 +81,8 @@ WIKI = \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
+	IndexFulltext \
+	IndexFulltextHttp \
 	IndexGeo \
 	IndexGeoHttp \
 	IndexHash \

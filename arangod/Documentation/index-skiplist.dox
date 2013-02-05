@@ -76,7 +76,7 @@
 ///  <li>@ref IndexSkiplistHttp
 ///   <ul>
 ///    <li>@ref IndexSkiplistHttpEnsureSkiplist "POST /_api/index"</li>
-///    <li>@ref IndexSkiplistHttpRange "POST /_api/simple/range"</li>
+///    <li>@ref IndexSkiplistHttpRange "PUT /_api/simple/range"</li>
 ///   </ul>
 ///  </li>
 /// </ul>

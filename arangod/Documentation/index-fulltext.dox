@@ -71,7 +71,7 @@
 ///  <li>@ref IndexFulltextHttp
 ///   <ul>
 ///    <li>@ref IndexFulltextHttpEnsureFulltextIndex "POST /_api/index"</li>
-///    <li>@ref IndexFulltextHttpFulltext "POST /_api/simple/fulltext"</li>
+///    <li>@ref IndexFulltextHttpFulltext "PUT /_api/simple/fulltext"</li>
 ///   </ul>
 ///  </li>
 /// </ul>

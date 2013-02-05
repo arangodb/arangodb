@@ -157,15 +157,15 @@ function GET_api_index (req, res) {
 ///
 /// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a cap constraint for the collection @FA{collection-name}, if
+/// Creates a cap constraint (@ref IndexCapIntro) for the collection @FA{collection-name}, if
 /// it does not already exist. Expects an object containing the index details.
 ///
 /// - @LIT{type}: must be equal to @LIT{"cap"}.
 ///
-/// - @LIT{size}: The maximal size of documents.
+/// - @LIT{size}: The maximal number of documents for the collection.
 ///
 /// If the index does not already exist and could be created, then a @LIT{HTTP
-/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// 201} is returned. If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
 /// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
@@ -197,7 +197,7 @@ function POST_api_index_cap (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo index
 ///
-/// @RESTHEADER{GET /_api/index,creates a geo-spatial index}
+/// @RESTHEADER{POST /_api/index,creates a geo-spatial index}
 ///
 /// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
@@ -569,10 +569,11 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// Creates a new index in the collection @FA{collection-name}. Expects
 /// an object containing the index details.
 ///
-/// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, and
-/// @ref IndexSkiplistHttp for details. By default, non-unique indexes will
-/// be created. To change this, use the @LIT{unique} attribute in the index details
-/// and set its value to @LIT{true}.
+/// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, 
+/// @ref IndexFulltextHttp, and @ref IndexSkiplistHttp for details. 
+///
+/// By default, non-unique indexes will be created. To change this, use the 
+/// @LIT{unique} attribute in the index details and set its value to @LIT{true}.
 ///
 /// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
