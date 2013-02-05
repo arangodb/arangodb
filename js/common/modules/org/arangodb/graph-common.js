@@ -58,7 +58,9 @@ var GraphArray;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.GraphArray = GraphArray = function (len) {
-  this.length = len;
+  if (len !== undefined) {
+    this.length = len;
+  }
 };
 
 GraphArray.prototype = new Array();
