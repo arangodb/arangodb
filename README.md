@@ -1,7 +1,12 @@
+![ArangoDB-Logo](https://www.arangodb.org/wp-content/uploads/2012/10/logo_arangodb_transp.png)
+
 ArangoDB
 ========
 
-[![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png)](http://travis-ci.org/triAGENS/ArangoDB)
+Master: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=master)](http://travis-ci.org/triAGENS/ArangoDB)
+Devel: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=devel)](http://travis-ci.org/triAGENS/ArangoDB)
+1.2: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=1.2)](http://travis-ci.org/triAGENS/ArangoDB)
+1.1: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=1.1)](http://travis-ci.org/triAGENS/ArangoDB)
 
 ArangoDB is a universal open-source database with flexible data model for documents, graphs, and key-values. Build high performance application using a convenient sql-like query language or JavaScript/Ruby extensions. 
 
