@@ -764,17 +764,20 @@
 ///   - Strings are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise. 
 ///   - Lists are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise.
 ///   - Documents are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise.
+///
 /// - @FN{TO_NUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a numeric value as follows:
 ///   - @LIT{null}, @LIT{false}, lists, and documents are converted to the value @LIT{0}.
 ///   - @LIT{true} is converted to @LIT{1}.
 ///   - Strings are converted to their numeric equivalent if the full string content is
 ///     is a valid number, and to @LIT{0} otherwise.
+///
 /// - @FN{TO_STRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a string value as follows:
 ///   - @LIT{null} is converted to the string @LIT{"null"}
 ///   - @LIT{false} is converted to the string @LIT{"false"}, @LIT{true} to the string @LIT{"true"}
 ///   - numbers, lists, and documents are converted to their string equivalents. 
+///
 /// - @FN{TO_LIST(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a list value as follows:
 ///   - @LIT{null} is converted to an empty list
@@ -792,10 +795,15 @@
 /// The following type check functions are available:
 ///
 /// - @FN{IS_NULL(@FA{value})}: checks whether @FA{value} is a @LIT{null} value
+///
 /// - @FN{IS_BOOL(@FA{value})}: checks whether @FA{value} is a boolean value
+///
 /// - @FN{IS_NUMBER(@FA{value})}: checks whether @FA{value} is a numeric value
+///
 /// - @FN{IS_STRING(@FA{value})}: checks whether @FA{value} is a string value
+///
 /// - @FN{IS_LIST(@FA{value})}: checks whether @FA{value} is a list value
+///
 /// - @FN{IS_DOCUMENT(@FA{value})}: checks whether @FA{value} is a document value
 ///
 /// @subsubsection AqlFunctionsString String functions
@@ -804,15 +812,38 @@
 ///
 /// - @FN{CONCAT(@FA{value1}\, @FA{value2}\, ... @FA{valuen})}: concatenate the strings 
 ///   passed as in @FA{value1} to @FA{valuen}. @LIT{null} values are ignored.
+///
 /// - @FN{CONCAT_SEPARATOR(@FA{separator}\, @FA{value1}\, @FA{value2}\, ... @FA{valuen})}: 
 ///   concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
 ///   @FA{separator} string. @LIT{null} values are ignored.
+///
 /// - @FN{CHAR_LENGTH(@FA{value})}: return the number of characters in @FA{value}
+///
 /// - @FN{LOWER(@FA{value})}: lower-case @FA{value}
+///
 /// - @FN{UPPER(@FA{value})}: upper-case @FA{value}
+///
 /// - @FN{SUBSTRING(@FA{value}\, @FA{offset}\, @FA{length})}: return a substring of @FA{value},
 ///   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
 ///   start at position 0.
+///
+/// - @FN{CONTAINS(@FA{text}, @FA{search}, @FA{return-index})}: checks whether the string
+///   @FA{search} is contained in the string @FA{text}. By default, this function returns 
+///   @LIT{true} if @FA{search} is contained in @FA{text}, and @LIT{false} otherwise. By
+///   passing @LIT{true} as the third function parameter @FA{return-index}, the function
+///   will return the position of the first occurence of @FA{search} within @FA{text}, 
+///   starting at offset 0, or @LIT{\-1} if @FA{search} is not contained in @FA{text}.
+///
+///   The string matching performed by @FN{CONTAINS} is case-sensitive.
+///
+/// - @FN{LIKE(@FA{text}, @FA{search}, @FA{case-insensitive})}: checks whether the pattern
+///   @FA{search} is contained in the string @FA{text}, using wildcard matching. 
+///   Returns @LIT{true} if the pattern is contained in @FA{text}, and @LIT{false} otherwise. 
+///   The @FA{pattern} string can contain the wildcard characters @LIT{%} (meaning any
+///   sequence of characters) and @LIT{_} (any single character).
+///
+///   The string matching performed by @FN{LIKE} is case-sensitive by default, but by
+///   passing @LIT{true} as the third parameter, the matching will be case-insensitive.
 ///
 /// @subsubsection AqlFunctionsNumeric Numeric functions
 ///
@@ -820,9 +851,13 @@
 /// supported:
 ///
 /// - @FN{FLOOR(@FA{value})}: returns the integer closest but not greater to @FA{value}
+///
 /// - @FN{CEIL(@FA{value})}: returns the integer closest but not less than @FA{value}
+///
 /// - @FN{ROUND(@FA{value})}: returns the integer closest to @FA{value}
+///
 /// - @FN{ABS(@FA{value})}: returns the absolute part of @FA{value}
+///
 /// - @FN{RAND()}: returns a pseudo-random number between 0 and 1
 ///
 /// @subsubsection AqlFunctionsList List functions
@@ -832,21 +867,28 @@
 /// - @FN{LENGTH(@FA{list})}: returns the length (number of list elements) of @FA{list}. If 
 ///   @FA{list} is a document, returns the number of attribute keys of the document, 
 ///   regardless of their values.
+///
 /// - @FN{MIN(@FA{list})}: returns the smallest element of @FA{list}. @LIT{null} values
 ///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
 ///   function will return @LIT{null}.
+///
 /// - @FN{MAX(@FA{list})}: returns the greatest element of @FA{list}. @LIT{null} values
 ///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
 ///   function will return @LIT{null}.
+///
 /// - @FN{SUM(@FA{list})}: returns the sum of values of the elements in @FA{list}. This
 ///   requires the elements in @FA{list} to be numbers. @LIT{null} values are ignored. 
 ///   If the list is empty or only @LIT{null} are contained in the list, the  function 
 ///   will return @LIT{null}.
+///
 /// - @FN{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
+///
 /// - @FN{FIRST(@FA{list})}: returns the first element in @FA{list} or @LIT{null} if the
 ///   list is empty.
+///
 /// - @FN{LAST(@FA{list})}: returns the last element in @FA{list} or @LIT{null} if the
 ///   list is empty.
+///
 /// - @FN{UNIQUE(@FA{list})}: returns all unique elements in @FA{list}. To determine
 ///   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
 ///   Calling this function might return the unique elements in any order.
@@ -946,6 +988,7 @@
 ///   To make use of that, an attribute name for the distance result has to be specified in
 ///   the @FA{distancename} argument. The result documents will contain the distance value in
 ///   an attribute of that name.
+///
 /// - @FN{WITHIN(@FA{collection}\, @FA{latitude}\, @FA{longitude}\, @FA{radius}\, @FA{distancename})}: 
 ///   returns all documents from collection @FA{collection} that are within a radius of
 ///   @FA{radius} around that specified coordinate (@FA{latitude} and @FA{longitude}). The order
@@ -973,14 +1016,18 @@
 ///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "banana")} will look for the word @LIT{banana} in the 
 ///     attribute @LIT{body} of the collection @LIT{collection}.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "banana\,orange")} will look for boths the words 
 ///     @LIT{banana} and @LIT{orange} in the mentioned attribute. Only those documents will be
 ///     returned that contain both words.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "prefix:head")} will look for documents that contain any
 ///     words starting with the prefix @LIT{head}.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "prefix:head,complete:aspirin")} will look for all 
 ///     documents that contain a word starting with the prefix @LIT{head} and that also contain 
 ///     the (complete) word @LIT{aspirin}. Note: specifying @LIT{complete} is optional here.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "prefix:cent,prefix:subst")} will look for all documents 
 ///     that contain a word starting with the prefix @LIT{cent} and that also contain a word
 ///     starting with the prefix @LIT{subst}.
@@ -991,13 +1038,17 @@
 ///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "+this,+text,+document")} will return all documents that 
 ///     contain all the mentioned words. Note: specifying the @LIT{+} symbols is optional here.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "banana,|apple")} will return all documents that contain
 ///     either (or both) words @LIT{banana} or @LIT{apple}.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "banana,-apple")} will return all documents that contain
 ///     the word @LIT{banana} but do not contain the word @LIT{apple}.
+///
 ///   - @LIT{FULLTEXT(emails\, "body"\, "banana,pear,-cranberry")} will return all documents that 
 ///     contain both the words @LIT{banana} and @LIT{pear} but do not contain the word 
 ///     @LIT{cranberry}.
+///
 ///   No precedence of logical operators will be honored in a fulltext query. The query will simply
 ///   be evaluated from left to right.
 ///   
@@ -1115,8 +1166,10 @@
 ///
 /// - @FN{NOT_NULL(@FA{alternative}\, ...)}: returns the first alternative that is not @LIT{null}, 
 ///   and @LIT{null} if all alternatives are @LIT{null} themselves.
+///
 /// - @FN{FIRST_LIST(@FA{alternative}\, ...)}: returns the first alternative that is a list, and
 ///   @LIT{null} if none of the alternatives is a list.
+///
 /// - @FN{FIRST_DOCUMENT(@FA{alternative}\, ...)}: returns the first alternative that is a document,
 ///   and @LIT{null} if none of the alternatives is a document.
 ///
@@ -1127,6 +1180,7 @@
 ///
 /// - @FN{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
 ///   with attributes @LIT{name} and @LIT{_id}.
+///
 /// - @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document that id uniquely identified by
 ///   the @FA{id}. ArangoDB will try to find the document using the @LIT{_id} value of the document
 ///   in the specified collection. If there is a mismatch between the @FA{collection} passed and

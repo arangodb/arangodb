@@ -188,6 +188,9 @@ extern "C" {
 /// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
 ///   Will be raised when the type of an argument used in a function call does
 ///   not match the expected argument type.
+/// - 1543: @LIT{invalid regex argument value used in call to function '\%s()'}
+///   Will be raised when an invalid regex argument value is used in a call to
+///   a function that expects a regex.
 /// - 1550: @LIT{invalid structure of bind parameters}
 ///   Will be raised when the structure of bind parameters passed has an
 ///   unexpected format.
@@ -1155,6 +1158,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH                   (1542)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1543: ERROR_QUERY_INVALID_REGEX
+///
+/// invalid regex argument value used in call to function '%s()'
+///
+/// Will be raised when an invalid regex argument value is used in a call to a
+/// function that expects a regex.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_INVALID_REGEX                                     (1543)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1550: ERROR_QUERY_BIND_PARAMETERS_INVALID
