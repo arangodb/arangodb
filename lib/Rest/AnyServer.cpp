@@ -209,9 +209,9 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
   }
 
   // close the standard file descriptors
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
+  // close(STDIN_FILENO);
+  // close(STDOUT_FILENO);
+  // close(STDERR_FILENO);
 
   return 0;
 }
