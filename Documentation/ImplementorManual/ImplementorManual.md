@@ -24,4 +24,6 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{CommunicationCors}
 @CHAPTER_REF{NamingConventions}
 @CHAPTER_REF{ArangoErrors}
+@if LATEX
 @CHAPTER_REF{Glossary}
+@endif
