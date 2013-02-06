@@ -150,7 +150,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@cv + "/")
+        doc.parsed_response['_id'].should match(@reVertex)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id1 = doc.parsed_response['_id']
