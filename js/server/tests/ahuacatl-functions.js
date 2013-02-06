@@ -133,12 +133,75 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test like function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLikeInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LIKE()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LIKE(\"test\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN LIKE(\"test\", \"meow\", \"foo\", \"bar\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", 1)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(1, \"test\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test\", 1)"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test like function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLike : function () {
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%is%test%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%g\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%n\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"This%n\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"his%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%g\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%G\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%is%\")", true));
+    
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"%\", \"\\%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"a%c\", \"a%c\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"ac\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"a\\\\%\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"\\\\%a%\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"a%c\", \"\\\\%\\\\%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"%%\", \"\\\\%\\\\%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"_\", \"\\\\_\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"_\", \"\\\\_%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcd\", \"_bcd\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcde\", \"_bcd%\")", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcde\", \"\\\\_bcd%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\\\abc\", \"\\\\\\\\%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"\\abc\", \"\\\\a%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"[ ] ( ) \\% * . + -\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"%. +%\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"abc^def$g\")", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"%^%$g\")", true));
+      
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", false)", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", true)", true));
+      assertEqual([ false ], getQueryResults("RETURN LIKE(\"abcd\", \"ABCD\", false)", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"abcd\", \"ABCD\", true)", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MöterTräNenMütterSöhne\", true)", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"mötertränenmüttersöhne\", true)", true));
+      assertEqual([ true ], getQueryResults("RETURN LIKE(\"MÖterTräNenMÜtterSöhne\", \"MÖTERTRÄNENMÜTTERSÖHNE\", true)", true));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test first require function / expected datatype & arg. mismatch
 ////////////////////////////////////////////////////////////////////////////////
     
     testContainsFirst : function () {
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\")"); } ));
-      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test2\", \"test3\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test\", \"test\", \"test\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(\"test\", \"test2\", \"test3\")"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(null, null)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS(4, 4)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN CONTAINS({ }, { })"); } ));
@@ -195,6 +258,23 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [false];  
       var actual = getQueryResults("RETURN CONTAINS(\"\", \"test123\")", true);
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear contains indexed
+////////////////////////////////////////////////////////////////////////////////
+
+    testContainsIndexed : function () {
+      assertEqual([ 0 ], getQueryResults("RETURN CONTAINS(\"test2\", \"test\", true)", true));
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"test2\", \"test\", false)", true));
+      assertEqual([ 1 ], getQueryResults("RETURN CONTAINS(\"test2\", \"est\", true)", true));
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"test2\", \"est\", false)", true));
+      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a long test\", \"this is a test\", true)", true));
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a long test\", \"this is a test\", false)", true));
+      assertEqual([ 18 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", true)", true));
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"this test\", false)", true));
+      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", true)", true));
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS(\"this is a test of this test\", \"This\", false)", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

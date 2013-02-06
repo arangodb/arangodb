@@ -86,6 +86,7 @@ typedef struct param_s {
   bool _list       : 1;
   bool _array      : 1;
   bool _collection : 1;
+  bool _regex      : 1;
 } 
 param_t;
 
@@ -109,13 +110,14 @@ param_t;
 static param_t InitParam (void) {
   param_t param;
 
-  param._null = false;
-  param._bool = false;
-  param._number = false;
-  param._string = false;
-  param._list = false;
-  param._array = false;
+  param._null       = false;
+  param._bool       = false;
+  param._number     = false;
+  param._string     = false;
+  param._list       = false;
+  param._array      = false;
   param._collection = false;
+  param._regex      = false;
 
   return param;
 }
@@ -135,26 +137,26 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
     if (*name == '@') {
       // collection bind parameter. this is an error
       found._collection = true;
-      found._list = true; // a collection is a list of documents
+      found._list       = true; // a collection is a list of documents
     }
     else {
       // regular bind parameter
-      found._null = true;
-      found._bool = true;
+      found._null   = true;
+      found._bool   = true;
       found._number = true;
       found._string = true;
-      found._list = true;
-      found._array = true;
+      found._list   = true;
+      found._array  = true;
     }
   }
   else if (parameter->_type == TRI_AQL_NODE_VALUE) {
     switch (parameter->_value._type) {
       case TRI_AQL_TYPE_FAIL:
       case TRI_AQL_TYPE_NULL:
-        found._null = true;
+        found._null   = true;
         break;
       case TRI_AQL_TYPE_BOOL:
-        found._bool = true;
+        found._bool   = true;
         break;
       case TRI_AQL_TYPE_INT:
       case TRI_AQL_TYPE_DOUBLE:
@@ -176,11 +178,15 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
   else if (parameter->_type == TRI_AQL_NODE_COLLECTION) {
     // actual parameter is a collection
     found._collection = true;
-    found._list = true; // a collection is a list of documents
+    found._list       = true; // a collection is a list of documents
   }
   else {
     // we cannot yet determine the type of the parameter
     // this is the case if the argument is an expression, a function call etc.
+
+    if (allowed->_regex) {
+      return false;
+    }
 
     if (! allowed->_collection) {
       // if we do require anything else but a collection, we don't know the
@@ -208,7 +214,7 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
     return true;
   }
   
-  if (allowed->_string && found._string) {
+  if ((allowed->_string || allowed->_regex) && found._string) {
     // argument is a string value, and this is allowed
     return true;
   }
@@ -568,6 +574,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // p = primitive
   // l = list
   // a = (hash) array/document
+  // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
 
   // type check functions
   REGISTER_FUNCTION("IS_NULL", "IS_NULL", true, false, ".", NULL);
@@ -590,7 +597,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s", NULL); 
   REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s", NULL); 
   REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n", NULL);
-  REGISTER_FUNCTION("CONTAINS", "STRING_CONTAINS", true, false, "s,s", NULL);
+  REGISTER_FUNCTION("CONTAINS", "STRING_CONTAINS", true, false, "s,s|b", NULL);
+  REGISTER_FUNCTION("LIKE", "STRING_LIKE", true, false, "s,r|b", NULL);
 
   // numeric functions 
   REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n", NULL);
@@ -909,6 +917,10 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
             break;
           case 'h': // collection name => string
             allowed._collection = true;
+            foundArg = true;
+            break;
+          case 'r': // regex
+            allowed._regex = true;
             foundArg = true;
             break;
         }

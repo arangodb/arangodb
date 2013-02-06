@@ -32,6 +32,8 @@ var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
+var RegexCache = { 'i' : { }, '' : { } };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -244,6 +246,64 @@ function ARG_CHECK (actualValue, expectedType, functionName) {
   if (TYPEWEIGHT(actualValue) !== expectedType) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex from a string pattern
+////////////////////////////////////////////////////////////////////////////////
+
+function COMPILE_REGEX (regex, modifiers) {
+  var i, n = regex.length;
+  var escaped = false;
+  var pattern = '';
+  
+  ARG_CHECK(regex, TYPEWEIGHT_STRING, "LIKE");
+
+  for (i = 0; i < n; ++i) {
+    var c = regex.charAt(i);
+
+    if (c === '\\') {
+      if (escaped) {
+        // literal \
+        pattern += '\\\\';
+      }
+      escaped = ! escaped;
+    }
+    else {
+      if (c === '%') {
+        if (escaped) {
+          // literal %
+          pattern += '%';
+        }
+        else {
+          // wildcard
+          pattern += '.*';
+        }
+      }
+      else if (c === '_') {
+        if (escaped) {
+          // literal _
+          pattern += '_';
+        }
+        else {
+          // wildcard character
+          pattern += '.';
+        }
+      }
+      else if (c.match(/^([.*+?\^=!:${}()|\[\]\/\\])$/)) {
+        // character with special meaning in a regex
+        pattern += '\\' + c;
+      }
+      else {
+        // literal character
+        pattern += c;
+      }
+
+      escaped = false;
+    }
+  }
+ 
+  return new RegExp('^' + pattern + '$', modifiers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1494,15 +1554,49 @@ function STRING_SUBSTRING (value, offset, count) {
 /// the two input operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_CONTAINS (value, search) {
+function STRING_CONTAINS (value, search, returnIndex) {
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CONTAINS");
   ARG_CHECK(search, TYPEWEIGHT_STRING, "CONTAINS");
 
+  var result;
   if (search.length === 0) {
-    return false;
+    result = -1;
+  }
+  else {
+    result = value.indexOf(search);
   }
 
-  return value.indexOf(search) !== -1;
+  if (returnIndex) {
+    return result;
+  }
+
+  return (result !== -1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searches a substring in a string, using a regex
+///
+/// the two input operands must be strings or this function will fail
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_LIKE (value, regex, caseInsensitive) {
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "LIKE");
+
+  var modifiers = '';
+  if (caseInsensitive) {
+    modifiers += 'i';
+  }
+
+  if (RegexCache[modifiers][regex] === undefined) {
+    RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+  }
+  
+  try {
+    return RegexCache[modifiers][regex].test(value);
+  }
+  catch (err) {
+    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_REGEX, "LIKE");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2820,6 +2914,7 @@ exports.STRING_LOWER = STRING_LOWER;
 exports.STRING_UPPER = STRING_UPPER;
 exports.STRING_SUBSTRING = STRING_SUBSTRING;
 exports.STRING_CONTAINS = STRING_CONTAINS;
+exports.STRING_LIKE = STRING_LIKE;
 exports.CAST_BOOL = CAST_BOOL;
 exports.CAST_NUMBER = CAST_NUMBER;
 exports.CAST_STRING = CAST_STRING;
