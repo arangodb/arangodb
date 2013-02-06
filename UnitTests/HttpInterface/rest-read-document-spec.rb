@@ -83,6 +83,7 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionBasics"
         @cid = ArangoDB.create_collection(@cn)
+        @reStart = Regexp.new('^' + @cn + '/') 
       end
 
       after do
@@ -102,7 +103,7 @@ describe ArangoDB do
         did = doc.parsed_response['_id']
         
         did.should match(@reFull)
-        did.should start_with(@cn + "/")
+        did.should match(@reStart)
         
         rev = doc.parsed_response['_rev']
         rev.should match(@reRev)
@@ -117,7 +118,7 @@ describe ArangoDB do
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
         did2.should match(@reFull)
-        did2.should start_with(@cn + "/")
+        did2.should match(@reStart)
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
@@ -147,7 +148,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should match(@reFull)
-        did.should start_with(@cn + "/")
+        did.should match(@reStart)
 
         rev = doc.parsed_response['_rev']
         rev.should match(@reRev)
@@ -162,7 +163,7 @@ describe ArangoDB do
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
         did2.should match(@reFull)
-        did2.should start_with(@cn + "/")
+        did2.should match(@reStart)
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
@@ -192,7 +193,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should match(@reFull)
-        did.should start_with(@cn + "/")
+        did.should match(@reStart)
 
         rev = doc.parsed_response['_rev']
         rev.should match(@reRev)
@@ -225,7 +226,7 @@ describe ArangoDB do
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
         did2.should match(@reFull)
-        did2.should start_with(@cn + "/")
+        did2.should match(@reStart)
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
@@ -255,7 +256,7 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should match(@reFull)
-        did.should start_with(@cn + "/")
+        did.should match(@reStart)
 
         rev = doc.parsed_response['_rev']
         rev.should match(@reRev)
@@ -271,7 +272,7 @@ describe ArangoDB do
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
         did2.should match(@reFull) 
-        did2.should start_with(@cn + "/")
+        did2.should match(@reStart)
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
@@ -294,7 +295,7 @@ describe ArangoDB do
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
         did2.should match(@reFull) 
-        did2.should start_with(@cn + "/")
+        did2.should match(@reStart)
         did2.should eq(did)
         
         rev2 = doc.parsed_response['_rev']
@@ -316,6 +317,7 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionAll"
         @cid = ArangoDB.create_collection(@cn)
+        @reStart = Regexp.new('^/_api/document/' + @cn + '/')
       end
 
       after do
@@ -366,7 +368,7 @@ describe ArangoDB do
 
         documents.each { |document|
           document.should match(@rePath)
-          document.should start_with("/_api/document/" + @cn + "/")
+          document.should match(@reStart)
         }
 
         for l in location
@@ -403,7 +405,7 @@ describe ArangoDB do
         
         documents.each { |document|
           document.should match(@rePath)
-          document.should start_with("/_api/document/" + @cn + "/")
+          document.should match(@reStart)
         }
 
         for l in location
