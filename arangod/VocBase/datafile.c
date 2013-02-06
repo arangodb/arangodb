@@ -443,6 +443,16 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       TRI_PushBackVector(&scan._entries, &entry);
       return scan;
     }
+    
+    if (! TRI_IsValidMarkerDatafile(marker)) {
+      entry._status = 4;
+
+      scan._endPosition = currentSize;
+      scan._status = 3;
+
+      TRI_PushBackVector(&scan._entries, &entry);
+      return scan;
+    }
 
     ok = TRI_CheckCrcMarkerDatafile(marker);
 
