@@ -15,11 +15,11 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{IndexSkiplistHttp}
 @CHAPTER_REF{IndexGeoHttp}
 @CHAPTER_REF{IndexFulltextHttp}
-@CHAPTER_REF{HttpSystem}
-@CHAPTER_REF{HttpMisc}
 @CHAPTER_REF{HttpGraph}
 @CHAPTER_REF{HttpImport}
 @CHAPTER_REF{HttpBatch}
+@CHAPTER_REF{HttpSystem}
+@CHAPTER_REF{HttpMisc}
 @CHAPTER_REF{Communication}
 @CHAPTER_REF{CommunicationCors}
 @CHAPTER_REF{NamingConventions}
