@@ -30,6 +30,13 @@ Please follow these guidelines if you want to contribute to ArangoDB:
 * When finished, push the changes to your GitHub repository and send a pull request from your fork to the ArangoDB repository. Please make sure to select the appropriate branches there
 * You must use the Apache License for your changes
 
+## Reporting Bugs
+
+When reporting bugs, please use our issue tracker on GitHub.
+Please make sure to include to include the version number of ArangoDB in your bug report, along with the platform you are using (e.g. `Linux OpenSuSE x86_64`). 
+Please also include the ArangoDB startup mode (daemon, console, supervisor mode) plus any special configuration.
+This will help us reproducing and finding bugs.
+
 ## Additional Resources
 
 * [ArangoDB website](http://www.arangodb.org/)
