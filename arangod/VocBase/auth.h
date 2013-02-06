@@ -77,7 +77,7 @@ TRI_vocbase_auth_t;
 /// @brief loads the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LoadAuthInfo (struct TRI_vocbase_s*);
+bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the default authentication info
@@ -87,10 +87,10 @@ void TRI_DefaultAuthInfo (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info
-/// this must be executed when the underlying _users collection is modified
+/// this must be executed after the underlying _users collection is modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReloadAuthInfo (struct TRI_vocbase_s*);
+bool TRI_ReloadAuthInfo (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the default authentication info
