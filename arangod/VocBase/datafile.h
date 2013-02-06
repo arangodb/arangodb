@@ -146,6 +146,9 @@ TRI_df_state_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
+  TRI_MARKER_MIN          = 999,  // not a real marker type, 
+                                  // but used for bounds checking
+
   TRI_DF_MARKER_HEADER    = 1000,
   TRI_DF_MARKER_FOOTER    = 1001,
   TRI_DF_MARKER_SKIP      = 1002,  // currently unused
@@ -160,7 +163,12 @@ typedef enum {
   TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003, // currently unused
   TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
   TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
-  TRI_DOC_MARKER_EDGE               = 3006
+  TRI_DOC_MARKER_EDGE               = 3006,
+  
+
+  TRI_MARKER_MAX                    = 3010  // again, this is not a real
+                                            // marker, but we use it for
+                                            // bounds checking
 }
 TRI_df_marker_type_e;
 
@@ -452,6 +460,12 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_DF_ALIGN_BLOCK(a) ((((a) + TRI_DF_BLOCK_ALIGNMENT - 1) / TRI_DF_BLOCK_ALIGNMENT) * TRI_DF_BLOCK_ALIGNMENT)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a marker is valid
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a CRC of a marker

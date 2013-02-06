@@ -382,6 +382,18 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     }
 
     ok = TRI_CheckCrcMarkerDatafile(marker);
+    
+    // the following sanity check offers some, but not 100% crash-protection when reading
+    // totally corrupted datafiles
+    if (! TRI_IsValidMarkerDatafile(marker)) {
+      datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+      datafile->_currentSize = currentSize;
+      datafile->_next = datafile->_data + datafile->_currentSize;
+      datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+
+      LOG_WARNING("marker in datafile '%s' is corrupt", datafile->_filename);
+      return false;
+    }
 
     if (! ok) {
       datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
@@ -746,6 +758,38 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a marker is valid
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker) {
+  TRI_df_marker_type_t type;
+
+  if (marker == 0) {
+    return false;
+  }
+
+  // check marker type
+  type = marker->_type;
+  if (type <= (TRI_df_marker_type_t) TRI_MARKER_MIN) {
+    // marker type is less than minimum allowed type value
+    return false;
+  }
+
+  if (type >= (TRI_df_marker_type_t) TRI_MARKER_MAX) {
+    // marker type is greater than maximum allowed type value
+    return false;
+  }
+
+  if (marker->_size >= (TRI_voc_size_t) (256 * 1024 * 1024)) {
+    // a single marker bigger than 256 MB seems unreasonable
+    // note: this is an arbitrary limit
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a CRC of a marker
