@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added more crash-protection when reading corrupted collections at startup
+
 * added documentation for AQL function CONTAINS()
 
 * added AQL function LIKE()

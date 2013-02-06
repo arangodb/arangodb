@@ -234,7 +234,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 /// @brief loads the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
+bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
   void** beg;
@@ -247,7 +247,7 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   if (collection == NULL) {
     LOG_INFO("collection '_users' does not exist, no authentication available");
-    return;
+    return false;
   }
 
   TRI_UseCollectionVocBase(vocbase, collection);
@@ -256,13 +256,13 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   if (primary == NULL) {
     LOG_FATAL("collection '_users' cannot be loaded");
-    return;
+    return false;
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
     TRI_ReleaseCollectionVocBase(vocbase, collection);
     LOG_FATAL("collection '_users' has an unknown collection type");
-    return;
+    return false;
   }
   
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
@@ -313,6 +313,8 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,11 +327,13 @@ void TRI_DefaultAuthInfo (TRI_vocbase_t* vocbase) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info
+/// this must be executed after the underlying _users collection is modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
+bool TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_DestroyAuthInfo(vocbase);
-  TRI_LoadAuthInfo(vocbase);
+
+  return TRI_LoadAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
