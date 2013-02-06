@@ -131,6 +131,8 @@ describe ArangoDB do
         @vid = ArangoDB.create_collection(@cv, true, 2) # type 2 = document collection
     
         @reFull = Regexp.new('^[a-zA-Z0-9_\-]+/\d+$')
+        @reEdge = Regexp.new('^' + @ce + '/')
+        @reVertex = Regexp.new('^' + @cv + '/')
       end
 
       after do
@@ -160,7 +162,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@cv + "/")
+        doc.parsed_response['_id'].should match(@reVertex)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id2 = doc.parsed_response['_id']
@@ -173,7 +175,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id3 = doc.parsed_response['_id']
@@ -206,13 +208,13 @@ describe ArangoDB do
         doc.code.should eq(200)
         doc.parsed_response['_id'].should eq(id4)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.parsed_response['_from'].should eq(id1)
         doc.parsed_response['_from'].should match(@reFull)
-        doc.parsed_response['_from'].should start_with(@cv + "/")
+        doc.parsed_response['_from'].should match(@reVertex)
         doc.parsed_response['_to'].should eq(id2)
         doc.parsed_response['_to'].should match(@reFull)
-        doc.parsed_response['_to'].should start_with(@cv + "/")
+        doc.parsed_response['_to'].should match(@reVertex)
         doc.parsed_response['e'].should eq(1)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -224,7 +226,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id5 = doc.parsed_response['_id']
@@ -236,13 +238,13 @@ describe ArangoDB do
         doc.code.should eq(200)
         doc.parsed_response['_id'].should eq(id5)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.parsed_response['_from'].should eq(id2)
         doc.parsed_response['_from'].should match(@reFull)
-        doc.parsed_response['_from'].should start_with(@cv + "/")
+        doc.parsed_response['_from'].should match(@reVertex)
         doc.parsed_response['_to'].should eq(id1)
         doc.parsed_response['_to'].should match(@reFull)
-        doc.parsed_response['_to'].should start_with(@cv + "/")
+        doc.parsed_response['_to'].should match(@reVertex)
         doc.parsed_response['e'].should eq(2)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -281,7 +283,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@cv + "/")
+        doc.parsed_response['_id'].should match(@reVertex)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id = doc.parsed_response['_id']
@@ -296,7 +298,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         # create edge, using collection names
@@ -307,7 +309,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
               
         # create edge, using mix of collection names and ids
@@ -318,7 +320,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
   
         # turn parameters around
@@ -329,7 +331,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
             
@@ -369,7 +371,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@cv + "/")
+        doc.parsed_response['_id'].should match(@reVertex)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         id = doc.parsed_response['_id']
@@ -384,7 +386,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['_id'].should be_kind_of(String)
         doc.parsed_response['_id'].should match(@reFull)
-        doc.parsed_response['_id'].should start_with(@ce + "/")
+        doc.parsed_response['_id'].should match(@reEdge)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
