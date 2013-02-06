@@ -49,16 +49,15 @@ DOXYGEN = \
 
 WIKI = \
 	ArangoErrors \
-        Aql \
-        AqlExamples \
 	CommandLine \
-	Compiling \
 	Communication \
 	CommunicationCors \
+	Compiling \
 	DbaManual \
-	DbaManualBasics \
 	DbaManualAuthentication \
+	DbaManualBasics \
 	DbaManualDatafileDebugger \
+	DbaManualEmergencyConsole \
 	DefineAction \
 	FirstStepsArangoDB \
 	Glossary \
@@ -72,6 +71,8 @@ WIKI = \
 	HttpIndex \
 	HttpInterface \
 	HttpMisc \
+        Aql \
+        AqlExamples \
 	HttpQueries \
 	HttpSimple \
 	HttpSystem \
