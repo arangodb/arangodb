@@ -81,43 +81,49 @@ HTTP layer:
   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
   will be rejected by ArangoDB.
 
-@page CommunicationCors Cross Origin Resource Sharing (CORS) requests
-///
+Cross Origin Resource Sharing (CORS) requests {#CommunicationCors}
+==================================================================
+
 ArangoDB will automatically handle CORS requests as follows:
-- when the client sends an `Origin` HTTP header, ArangoDB will return
-  a header `access-control-allow-origin` containing the value the
-  client sent in the `Origin` header.
-- for non-trivial CORS requests, clients may issue a preflight request via
-  an additional HTTP OPTIONS request. 
-  ArangoDB will automatically answer such preflight HTTP OPTIONS requests with
-  an HTTP 200 response with an empty body. ArangoDB will return the following
-  headers in the response:
+
+- when the client sends an `Origin` HTTP header, ArangoDB will return a header
+  `access-control-allow-origin` containing the value the client sent in the
+  `Origin` header.
+
+- for non-trivial CORS requests, clients may issue a preflight request via an
+  additional HTTP OPTIONS request.  ArangoDB will automatically answer such
+  preflight HTTP OPTIONS requests with an HTTP 200 response with an empty
+  body. ArangoDB will return the following headers in the response:
+
   - `access-control-allow-origin`: will contain the value that the client
     provided in the `Origin` header of the request
+
   - `access-control-allow-methods`: will contain a list of all HTTP methods
     generally supported by ArangoDB. This list does not depend on the URL the 
     client requested and is the same for all CORS requests. 
+
   - `access-control-allow-headers`: will contain exactly the value that
     the client has provided in the `Access-Control-Request-Header` header 
     of the request. This header will only be returned if the client has
     specified the header in the request. ArangoDB will send back the original
     value without further validation.
+
   - `access-control-max-age`: will return a cache lifetime for the preflight
     response as determined by ArangoDB.
-- any `access-control-allow-credentials` header sent by the client is 
-  ignored by ArangoDB its value is not `true`. If a client sends a header
-  value of `true`, ArangoDB will return the header 
-  `access-control-allow-credentials: true`, too.
-///
-Note that CORS preflight requests will probably not send any authentication
-data with them. One of the purposes of the preflight request is to check whether
-the server accepts authentication or not. 
-///
-A consequence of this is that ArangoDB will allow requests using the HTTP 
-OPTIONS method without credentials, even when the server is run with 
-authentication enabled. 
-///
-The response to the HTTP OPTIONS request will however be a generic response
-that will not expose any private data and thus can be considered "safe"
-even without credentials.
-////////////////////////////////////////////////////////////////////////////////
+
+- any `access-control-allow-credentials` header sent by the client is ignored by
+  ArangoDB its value is not `true`. If a client sends a header value of `true`,
+  ArangoDB will return the header `access-control-allow-credentials: true`, too.
+
+Note that CORS preflight requests will probably not send any authentication data
+with them. One of the purposes of the preflight request is to check whether the
+server accepts authentication or not.
+
+A consequence of this is that ArangoDB will allow requests using the HTTP
+OPTIONS method without credentials, even when the server is run with
+authentication enabled.
+
+The response to the HTTP OPTIONS request will however be a generic response that
+will not expose any private data and thus can be considered "safe" even without
+credentials.
+
