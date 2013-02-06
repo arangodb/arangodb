@@ -1,4 +1,4 @@
-TOC {#IndexCapHTTPTOC}
+TOC {#IndexCapHttpTOC}
 ======================
 
 - @ref IndexCapHttp
