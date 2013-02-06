@@ -1946,9 +1946,9 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
                                                "usage: RELOAD_AUTH()")));
   }
 
-  TRI_ReloadAuthInfo(vocbase);
+  bool result = TRI_ReloadAuthInfo(vocbase);
 
-  return scope.Close(v8::True());
+  return scope.Close(result ? v8::True() : v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
