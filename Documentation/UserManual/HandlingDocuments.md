@@ -4,12 +4,12 @@ Handling Documents {#ShellDocument}
 @NAVIGATE_ShellDocument
 @EMBEDTOC{ShellDocumentTOC}
 
-This is an introduction to ArangoDB's interface for documents and how handle
-documents from the JavaScript shell _arangosh_. For other languages see
-the corresponding language API.
-
 Documents, Identifiers, Handles {#ShellDocumentIntro}
 =====================================================
+
+This is an introduction to ArangoDB's interface for documents and how handle
+documents from the JavaScript shell _arangosh_. For other languages see the
+corresponding language API.
 
 @copydoc GlossaryDocument
 
@@ -78,6 +78,7 @@ Collection Methods {#ShellDocumentCollectionMethods}
 @anchor ShellDocumentRead
 @copydetails JS_DocumentVocbaseCol
 
+@CLEARPAGE
 @anchor ShellDocumentAny
 @copydetails JS_AnyQuery
 
