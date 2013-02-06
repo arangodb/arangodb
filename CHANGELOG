@@ -1,6 +1,8 @@
 v1.1.3 (2013-XX-XX)
 -------------------
 
+* added some more crash protection when reading corrupt collection datafiles
+
 * added missing documentation for AQL CONTAINS() function
 
 * fix case when an error message was looked up for an error code but no error
