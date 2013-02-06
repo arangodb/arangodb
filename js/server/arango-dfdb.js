@@ -354,7 +354,8 @@ function main (argv) {
 
     var last = Math.round(internal.time());
 
-    while (collection.status() !== 2) {
+    // unload all collections not yet unloaded (2) & not corrupted (0)
+    while (collection.status() !== 2 && collection.status() !== 0) {
       collection.unload();
 
       var next = Math.round(internal.time());
