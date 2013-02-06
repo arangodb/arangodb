@@ -819,6 +819,10 @@
 /// - @FN{SUBSTRING(@FA{value}\, @FA{offset}\, @FA{length})}: return a substring of @FA{value},
 ///   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
 ///   start at position 0.
+/// - @FN{CONTAINS(@FA{text}, @FA{search})}: checks whether the string @FA{search} is 
+///   contained in the string @FA{text}. Returns @LIT{true} if @FA{search} is contained in 
+///   @FA{text}, and @LIT{false} otherwise.
+///   The string matching performed by @FN{CONTAINS} is case-sensitive.
 ///
 /// @subsubsection AqlFunctionsNumeric Numeric functions
 ///
