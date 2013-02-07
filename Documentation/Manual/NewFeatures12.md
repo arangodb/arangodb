@@ -151,7 +151,9 @@ in ArangoDB 1.2:
   the traversal to specific types of edges.
   
 * `TRAVERSAL_TREE()`: the same as `TRAVERSAL()`, but will return the result in 
-  a hierarchical format.
+  a hierarchical format
+
+* `EDGES()`: access edges connected to a vertex from via an AQL function
 
 * `ATTRIBUTES()`: returns the names of all attributes of a document as a list
 
