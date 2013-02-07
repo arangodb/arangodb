@@ -1,6 +1,12 @@
 v1.2.beta1 (2013-02-01)
 -----------------------
 
+* added more crash-protection when reading corrupted collections at startup
+
+* added documentation for AQL function CONTAINS()
+
+* added AQL function LIKE()
+
 * replaced redundant error return code 1520 (Unable to open collection) with error code
   1203 (Collection not found). These error codes have the same meanings, but one of
   them was returned from AQL queries only, the other got thrown by other parts of
