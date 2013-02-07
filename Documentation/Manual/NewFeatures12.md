@@ -412,3 +412,9 @@ ArangoDB 1.2 supplies additional information about the errors that occurred in t
 server log files. This information can be used to find documents that could not be
 imported (for example, because of a unique constraint violation, malformed data etc.).
 
+### Pretty printing in arangosh
+
+`arangosh` now uses colorised output by default, which makes all of its output
+more easy to grasp.
+
+Note that colorised output may not be supported on all platforms.
