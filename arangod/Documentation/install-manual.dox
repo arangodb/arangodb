@@ -178,9 +178,7 @@
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @code
-/// ./arangod --server.endpoint tcp://127.0.0.1:12345 --server.disable-authentication true /tmp/vocbase
-/// @endcode
+/// @verbinclude arangod-startup
 ///
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to IP address 127.0.0.1. You should see the startup messages
@@ -192,9 +190,7 @@
 ///
 /// Use your favorite browser to access the URL
 ///
-/// @code
-/// http://127.0.0.1:12345/version
-/// @endcode
+/// @verbinclude arangod-version
 ///
 /// This should produce a JSON object like
 ///

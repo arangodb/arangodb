@@ -101,6 +101,7 @@ WIKI = \
 	KeyValue \
 	NamingConventions \
 	NewFeatures11 \
+	NewFeatures12 \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -110,7 +111,8 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
-	Upgrading \
+	Upgrading11 \
+	Upgrading12 \
 	UserManagement \
 	UserManual \
 	UserManualArangosh \
