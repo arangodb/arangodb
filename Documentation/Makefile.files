@@ -80,6 +80,8 @@ WIKI = \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
+	IndexFulltext \
+	IndexFulltextHttp \
 	IndexGeo \
 	IndexGeoHttp \
 	IndexHash \
@@ -94,7 +96,7 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	Key-Value \
+	KeyValue \
 	NamingConventions \
 	NewFeatures11 \
 	RefManual \

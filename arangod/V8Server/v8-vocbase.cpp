@@ -1946,9 +1946,9 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
                                                "usage: RELOAD_AUTH()")));
   }
 
-  TRI_ReloadAuthInfo(vocbase);
+  bool result = TRI_ReloadAuthInfo(vocbase);
 
-  return scope.Close(v8::True());
+  return scope.Close(result ? v8::True() : v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3247,7 +3247,8 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED))); 
   }
@@ -3363,7 +3364,8 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
+      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
   }

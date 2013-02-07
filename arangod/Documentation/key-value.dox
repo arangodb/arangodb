@@ -26,16 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Key-Value REST Interface for storing key-value pairs
+/// @page KeyValue REST Interface for storing key-value pairs
 ///
-/// @section Key-ValueCreate Create a new key-value pair in the data store. 
+/// @section KeyValueCreate Create a new key-value pair in the data store. 
 ///
 /// Creates a new key-value pair with the given key, the data passed in content 
 /// and optional attributes passed in the header.
 /// If a key-value pair with the same key exists in the data store, the request 
 /// returns an error. 
 ///
-/// @anchor Key-ValuePost
+/// @anchor KeyValuePost
 /// @REST{POST /_api/key/@FA{collection-name}/@FA{key}}
 ///
 /// Optional Attributes:
@@ -67,11 +67,11 @@
 ///
 ///
 ///
-/// @section Key-ValueChange Creates or changes the value for a given key. 
+/// @section KeyValueChange Creates or changes the value for a given key. 
 ///
 /// Sets the value associated with key to the new data passed in content. 
 ///
-/// @anchor Key-ValuePut
+/// @anchor KeyValuePut
 /// @REST{PUT /_api/key/@FA{collection-name}/@FA{key}}
 ///
 /// Optional parameter:
@@ -103,12 +103,12 @@
 ///
 ///
 ///
-/// @section Key-ValueReturn Returns the value associated with a given key.
+/// @section KeyValueReturn Returns the value associated with a given key.
 ///
 /// Returns the value associated with the key in content. The Attributes of
 /// the key-value pair are returned in the header.
 ///
-/// @anchor Key-ValueGet
+/// @anchor KeyValueGet
 /// @REST{GET /_api/key/@FA{collection-name}/@FA{key}}
 ///
 /// If the document was found, then a @LIT{HTTP 200} is returned.
@@ -134,12 +134,12 @@
 ///
 ///
 ///
-/// @section Key-ValueRemove This function deletes a key-value pair from the data store. 
+/// @section KeyValueRemove This function deletes a key-value pair from the data store. 
 ///
 /// Deletes the key-value pair with key from the store.
 /// Deletions cannot be undone!
 ///
-/// @anchor Key-ValueDelete
+/// @anchor KeyValueDelete
 /// @REST{DELETE /_api/key/@FA{collection-name}/@FA{key}}
 ///
 /// This function does not support any header parameters. 
@@ -167,12 +167,12 @@
 ///
 ///
 ///
-/// @section Key-ValueLookup This function returns all keys matching a given prefix. 
+/// @section KeyValueLookup This function returns all keys matching a given prefix. 
 ///
 /// Retrieves all values that begin with key and returns them as a JSON-array in 
 /// content. 
 ///
-/// @anchor Key-ValueSearch
+/// @anchor KeyValueSearch
 /// @REST{GET /_api/keys/@FA{collection-name}/@FA{prefix}}
 ///
 /// @FA{prefix} (=beginning of word) to search for. Note that any /-characters 
