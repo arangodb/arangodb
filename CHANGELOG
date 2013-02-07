@@ -17,7 +17,7 @@ v1.2.alpha (XXXX-XX-XX)
  
 * unified history file locations for arangod, arangosh, and arangoirb.
   - The readline history for arangod (emergency console) is now stored in file
-    $HOME/.arangod. It was stored in $HOME/.arangod before.
+    $HOME/.arangod. It was stored in $HOME/.arango before.
   - The readline history for arangosh is still stored in $HOME/.arangosh.
   - The readline history for arangoirb is now stored in $HOME/.arangoirb. It was
     stored in $HOME/.arango-mrb before.
@@ -159,7 +159,7 @@ v1.2.alpha (XXXX-XX-XX)
 * fixed issue #352: "pretty print" console.log
   This was achieved by adding the dump() function for the "internal" object
 
-* reduced memory usage and insertion time for edges index
+* reduced insertion time for edges index
   Inserting into the edges index now avoids costly comparisons in case of a hash 
   collision, reducing the prefilling/loading timer for bigger edge collections
 
