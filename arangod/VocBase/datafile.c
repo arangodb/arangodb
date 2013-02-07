@@ -936,7 +936,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot memory map file '%s': '%d'", filename, (int) res);
+    LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_errno_string((int) res));
     return NULL;
   }
 

@@ -1,6 +1,8 @@
 v1.2.beta1 (2013-02-01)
 -----------------------
 
+* added AQL function EDGES()
+
 * added more crash-protection when reading corrupted collections at startup
 
 * added documentation for AQL function CONTAINS()
