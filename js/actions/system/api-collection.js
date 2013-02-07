@@ -200,6 +200,7 @@ function post_api_collection (req, res) {
     }
 
     var result = {};
+    var headers = {};
 
     result.id = collection._id;
     result.name = collection.name();
@@ -208,8 +209,10 @@ function post_api_collection (req, res) {
     result.status = collection.status();
     result.type = collection.type();
     result.createOptions = collection.createOptions;
+    
+    headers.location = "/" + API + "/" + result.name;
 
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
   }
   catch (err) {
     actions.resultException(req, res, err);
@@ -406,6 +409,7 @@ function get_api_collection (req, res) {
     return;
   }
       
+  var headers;
 
   // .............................................................................
   // /_api/collection/<name>
@@ -413,7 +417,8 @@ function get_api_collection (req, res) {
 
   if (req.suffix.length === 1) {
     result = collectionRepresentation(collection, false, false, false);
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    headers = { location : "/" + API + "/" + collection.name() };
+    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     return;
   }
 
@@ -426,7 +431,8 @@ function get_api_collection (req, res) {
 
     if (sub === "figures") {
       result = collectionRepresentation(collection, true, true, true);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      headers = { location : "/" + API + "/" + collection.name() + "/figures" };
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
     // .............................................................................
@@ -435,7 +441,8 @@ function get_api_collection (req, res) {
 
     else if (sub === "count") {
       result = collectionRepresentation(collection, true, true, false);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      headers = { location : "/" + API + "/" + collection.name() + "/count" };
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
     // .............................................................................
@@ -444,7 +451,8 @@ function get_api_collection (req, res) {
 
     else if (sub === "properties") {
       result = collectionRepresentation(collection, true, false, false);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      headers = { location : "/" + API + "/" + collection.name() + "/properties" };
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
     // .............................................................................
@@ -453,7 +461,8 @@ function get_api_collection (req, res) {
 
     else if (sub === "parameter") {
       result = collectionRepresentation(collection, true, false, false);
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      headers = { location : "/" + API + "/" + collection.name() + "/parameter" };
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
     
     // .............................................................................
