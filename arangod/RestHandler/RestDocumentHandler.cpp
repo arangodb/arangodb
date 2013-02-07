@@ -424,7 +424,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   const TRI_voc_cid_t cid = trx.cid();
   TRI_doc_mptr_t* document = 0;
   
-  res = trx.read(&document, key);
+  res = trx.read(&document, key, true);
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
   assert(primary != 0);
@@ -812,7 +812,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     // read the existing document
     TRI_doc_mptr_t* oldDocument = 0;
 
-    res = trx.read(&oldDocument, key); 
+    // create a write lock that spans the initial read and the update
+    // otherwise the update is not atomic
+    trx.lockWrite();
+
+    // do not lock again
+    res = trx.read(&oldDocument, key, false); 
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
@@ -830,13 +835,14 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
 
       if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
-        res = trx.updateDocument(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid);
+        // do not acquire an extra lock
+        res = trx.updateDocument(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid, false);
       }
     }
   }
   else {
-    // replacing an existing document
-    res = trx.updateDocument(key, &document, json, policy, extractWaitForSync(), revision, &rid);
+    // replacing an existing document, using a lock
+    res = trx.updateDocument(key, &document, json, policy, extractWaitForSync(), revision, &rid, true);
   }
   
   res = trx.finish(res);
