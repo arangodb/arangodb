@@ -59,7 +59,7 @@ case "$action" in
     ARANGO_PIDDIR=`dirname $ARANGO_PIDFILE`
     test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
  
-    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arangodb --gid arangodb $@ 
+    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arangodb $@ 
 
     # Remember status and be verbose
     rc_status -v
