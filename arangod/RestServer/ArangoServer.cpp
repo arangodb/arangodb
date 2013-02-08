@@ -797,6 +797,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           }
         }
 
+        v8::V8::LowMemoryNotification();
         while(! v8::V8::IdleNotification()) {
         }
 
@@ -847,6 +848,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
         console.open(true);
 
         while (true) {
+          v8::V8::LowMemoryNotification();
           while(! v8::V8::IdleNotification()) {
           }
 
