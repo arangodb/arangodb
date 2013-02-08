@@ -62,8 +62,12 @@ case "$action" in
     $0 restart
     ;;
 
+  status)
+    status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+    ;;
+
   *)
-    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload} <server options>"
+    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status} <server options>"
     exit 1
     ;;
 esac
