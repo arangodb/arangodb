@@ -1,14 +1,14 @@
-Upgrading to ArangoDB 1.1 {#Upgrading}
-======================================
+Upgrading to ArangoDB 1.1 {#Upgrading11}
+========================================
 
-@NAVIGATE_Upgrading
-@EMBEDTOC{UpgradingTOC}
+@NAVIGATE_Upgrading11
+@EMBEDTOC{Upgrading11TOC}
 
-Upgrading {#UpgradingIntroduction}
-==================================
+Upgrading {#Upgrading11Introduction}
+====================================
 
 ArangoDB 1.1 introduces new features but may in some respect have
-slightly different behavior than 1.0.
+slightly different behavior than in 1.0.
 
 This is unavoidable as new features get introduced and others become
 superfluous.
@@ -19,17 +19,17 @@ downwards-compatible to ArangoDB 1.0.
 Existing users of ArangoDB 1.0 should read the list carefully and make
 sure they have undertaken all necessary steps and precautions before
 upgrading from ArangoDB 1.0 to ArangoDB 1.1. Also check
-@ref UpgradingTroubleshooting.
+@ref Upgrading11Troubleshooting.
 
-New Dependencies {#UpgradingNewDependencies}
---------------------------------------------
+New Dependencies {#Upgrading11NewDependencies}
+----------------------------------------------
 
 As ArangoDB 1.1 supports SSL connections, ArangoDB can only be built
 on servers with the OpenSSL library installed. The OpenSSL is not
 bundled with ArangoDB and must be installed separately.
 
-Database Directory Version Check and Upgrade {#UpgradingVersionCheck}
----------------------------------------------------------------------
+Database Directory Version Check and Upgrade {#Upgrading11VersionCheck}
+-----------------------------------------------------------------------
 
 Starting with ArangoDB 1.1, _arangod_ will perform a database version
 check at startup.
@@ -73,8 +73,8 @@ that it cannot fix, it will halt on the first error and warn the user.
 Re-starting arangod with the `--upgrade` option will execute only the 
 previously failed and not yet executed tasks.
 
-Server Startup Options Changes {#UpgradingServerOptions}
---------------------------------------------------------
+Server Startup Options Changes {#Upgrading11ServerOptions}
+----------------------------------------------------------
 
 ### Port options and endpoints
 
@@ -165,8 +165,8 @@ requests from a browser, you should either set
 `--server.keep-alive-timeout` to a value of `0`, or make your browser
 send `Connection: close` HTTP headers with its requests.
 
-Start / Stop Scripts {#UpgradingStartScripts}
----------------------------------------------
+Start / Stop Scripts {#Upgrading11StartScripts}
+-----------------------------------------------
 
 The user used in start and stop scripts has changed from _arango_ to
 _arangodb_. Furthermore, the start script name itself has changed from
@@ -174,8 +174,8 @@ _arangod_ to _arangodb_. Additionally, the default database directory
 name changed from _/var/arangodb_ to _/var/lib/arangodb_.  This was
 necessary to be more compliant with various Linux policies.
 
-Collection Types {#UpgradingCollectionTypes}
---------------------------------------------
+Collection Types {#Upgrading11CollectionTypes}
+----------------------------------------------
 
 In ArangoDB 1.1, collection types have been introduced:
 
@@ -228,8 +228,8 @@ the server, directly in ArangoDB. The `ArangoEdges` or
 `ArangoEdgesCollection` objects were not exposed to _arangosh_ or any
 other clients.
 
-arangoimp / arangosh {#UpgradingShellImport}
---------------------------------------------
+arangoimp / arangosh {#Upgrading11ShellImport}
+----------------------------------------------
 
 The parameters `--connect-timeout` and `--request-timeout` for
 _arangosh_ and _arangoimp_ have been renamed to
@@ -255,8 +255,8 @@ interactively prompt for a password.  If no username is specified on
 the command line, the default user _root_ will be used but there will
 still be a password prompt.
 
-Change of Syslog Usage {#UpgradingSyslog}
------------------------------------------
+Change of Syslog Usage {#Upgrading11Syslog}
+-------------------------------------------
 
 In 1.0, arangod always logged its output to the syslog, regardless of
 any other logging that was configured. In 1.1, this has changed. Log
@@ -264,8 +264,8 @@ messages will be sent to the syslog only if the server is started with
 the `--log.syslog` option and a non-empty string (the log facility) is
 given to it. This is in accordance with the 1.0 documentation.
 
-Troubleshooting {#UpgradingTroubleshooting}
-===========================================
+Troubleshooting {#Upgrading11Troubleshooting}
+=============================================
 
 If you cannot find a solution here, please ask the Google-Group at 
 http://groups.google.com/group/arangodb
@@ -318,16 +318,16 @@ If necessary, stop the server, copy the files using
 
 and start the server agaib.
 
-Removed Features {#UpgradingRemovedFeatures}
-============================================
+Removed Features {#Upgrading11RemovedFeatures}
+==============================================
 
-Removed Dependencies {#UpgradingRemovedDependencies}
-----------------------------------------------------
+Removed Dependencies {#Upgrading11RemovedDependencies}
+------------------------------------------------------
 
 ArangoDB no longer requires BOOST, ZeroMQ, or ProtocolBuffers.
 
-Removed Functionality {#UpgradingRemovedFunctionality}
-------------------------------------------------------
+Removed Functionality {#Upgrading11RemovedFunctionality}
+--------------------------------------------------------
 
 ### Configuration
 
