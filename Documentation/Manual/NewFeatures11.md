@@ -404,7 +404,7 @@ breaks inside the values.
 
 ### libicu
 
-ArangoDb uses ICU - International Components for Unicode (icu-project.org)
+ArangoDB uses ICU - International Components for Unicode (icu-project.org)
 for string sorting and string normalization.
 
 ArangoDB 1.1 adds the option `--default-language` to select a locale for

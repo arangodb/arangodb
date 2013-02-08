@@ -845,6 +845,9 @@
 ///   The string matching performed by @FN{LIKE} is case-sensitive by default, but by
 ///   passing @LIT{true} as the third parameter, the matching will be case-insensitive.
 ///
+///   The value for @FA{search} cannot be a variable or a document attribute. The actual 
+///   value must be present at query parse time already.
+///
 /// @subsubsection AqlFunctionsNumeric Numeric functions
 ///
 /// AQL offers some numeric functions for calculations. The following functions are
@@ -1159,6 +1162,17 @@
 /// If no bounds are set, a traversal might run into an endless loop in a cyclic graph or sub-graph,
 /// and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
 /// time and memory for the result set.
+///
+/// - @FN{EDGES(@FA{edgecollection}\, @FA{startvertex}\, @FA{direction})}:
+///   return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
+///   direction are:
+///   - @LIT{outbound}: return all outbound edges
+///   - @LIT{inbound}: return all inbound edges
+///   - @LIT{any}: return outbound and inbound edges
+///
+/// Example calls:
+/// 
+/// @verbinclude aqledges
 ///
 /// @subsubsection AqlFunctionsControl Control flow functions
 ///
