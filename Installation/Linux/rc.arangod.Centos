@@ -29,7 +29,7 @@ start() {
   ARANGO_PIDDIR=`dirname $pidfile`
   test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
 
-  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arangodb
+  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arangodb --gid arangodb $@
 
   RETVAL=$?
   echo
@@ -48,11 +48,13 @@ stop() {
 }
 
 
+action="$1"
+shift
 
 # See how we were called.
-case "$1" in
+case "$action" in
   start)
-    start
+    start $@
     ;;
 
   stop)
@@ -66,11 +68,11 @@ case "$1" in
 
   restart)
     stop
-    start
+    start $@
     ;;
 
   *)
-    echo $"Usage: $ARANGO_BIN {start|stop|restart|status|help}"
+    echo $"Usage: $ARANGO_BIN {start|stop|restart|status|help} <server options>"
     exit 1
 esac
 
