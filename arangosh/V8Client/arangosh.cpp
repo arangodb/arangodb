@@ -936,6 +936,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
   while (true) {
     // gc
+    v8::V8::LowMemoryNotification();
     while (! v8::V8::IdleNotification()) {
     }
   
