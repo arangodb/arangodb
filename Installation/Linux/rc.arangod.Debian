@@ -39,7 +39,7 @@ case "$action" in
     ARANGO_PIDDIR=`dirname $PIDFILE`
     test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb --gid arangodb $@
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb $@
     log_end_msg $?
     ;;
 
