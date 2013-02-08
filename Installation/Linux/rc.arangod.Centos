@@ -29,7 +29,7 @@ start() {
   ARANGO_PIDDIR=`dirname $pidfile`
   test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
 
-  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arangodb --gid arangodb $@
+  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arangodb $@
 
   RETVAL=$?
   echo
