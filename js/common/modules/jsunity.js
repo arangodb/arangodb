@@ -34,7 +34,28 @@ var FAILED = 0;
 var DURATION = 0;
 
 internal.loadFile("jsunity/jsunity");
-jsUnity.log = console;
+//jsUnity.log = console;
+
+jsUnity.results.begin = function (total, suiteName) {
+  print("Running " + (suiteName || "unnamed test suite"));
+  print(" " + total + " test(s) found");
+  print();
+};
+
+jsUnity.results.pass = function (index, testName) {
+  print(internal.COLORS.COLOR_GREEN + " [PASSED] " + testName + internal.COLORS.COLOR_RESET);
+};
+
+jsUnity.results.fail = function (index, testName, message) {
+  print(internal.COLORS.COLOR_RED + " [FAILED] " + testName + ": " + message + internal.COLORS.COLOR_RESET);
+};
+
+jsUnity.results.end = function (passed, failed, duration) {
+  print(" " + passed + " test(s) passed");
+  print(" " + ((failed > 0) ? internal.COLORS.COLOR_RED : internal.COLORS.COLOR_RESET) + failed + " test(s) failed" + internal.COLORS.COLOR_RESET);
+  print(" " + duration + " millisecond(s) elapsed");
+  print();
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -328,7 +349,9 @@ function Run (tests) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Done () {
-  console.log("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
+//  console.log("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
+  internal.printf("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
+  print();
 
   var ok = FAILED == 0;
 
