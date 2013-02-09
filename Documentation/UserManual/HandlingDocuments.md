@@ -32,6 +32,10 @@ For example:
       ]
     }
 
+@EXAMPLE_ARANGOSH_OUTPUT{ShellDocument1}
+    db.demo.document("demo/schlonz")
+@END_EXAMPLE_ARANGOSH_OUTPUT
+
 All documents contain special attributes: the document handle in `_id`, the
 document's unique key in `_key` and and the etag aka document revision in
 `_rev`. The value of the `_key` attribute can be specified by the user when

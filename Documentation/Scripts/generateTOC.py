@@ -1,5 +1,5 @@
 ################################################################################
-### @brief create a C stub from a Python file
+### @brief creates table-of-contents from documentation files
 ###
 ### @file
 ###
@@ -32,7 +32,7 @@
 ### Copyright holder is triAGENS GmbH, Cologne, Germany
 ###
 ### @author Dr. Frank Celler
-### @author Copyright 2011, triagens GmbH, Cologne, Germany
+### @author Copyright 2011-2012, triagens GmbH, Cologne, Germany
 ################################################################################
 
 import re, sys, string

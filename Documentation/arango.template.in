@@ -232,6 +232,8 @@ ALIASES += \
 # examples
 ALIASES += \
   "EXAMPLES=@htmlonly<div class=\"example\">Examples</div>@endhtmlonly" \
+  "EXAMPLE_ARANGOSH_OUTPUT{1}=@verbinclude \1.generated@if IGNORE" \
+  "END_EXAMPLE_ARANGOSH_OUTPUT=@endif" \
   "EXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly" \
   "TINYEXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly"
 
