@@ -1,2 +1,0 @@
-FOR u IN users
-  RETURN u
