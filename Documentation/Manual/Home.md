@@ -23,11 +23,17 @@ The HTML and PDF versions of the manual can be found
 Please contact @EXTREF_S{http://www.arangodb.org/connect,us} if you
 have any questions.
 
-Upgrading to ArangoDB 1.1 {#ArangoDBUpgrading}
-==============================================
+Upgrading to ArangoDB 1.2 {#ArangoDBUpgrading12}
+================================================
+
+- @BOOK_REF{NewFeatures12}
+- @BOOK_REF{Upgrading12}
+
+Upgrading to ArangoDB 1.1 {#ArangoDBUpgrading11}
+================================================
 
 - @BOOK_REF{NewFeatures11}
-- @BOOK_REF{Upgrading}
+- @BOOK_REF{Upgrading11}
 
 ArangoDB's User Manuals {#ArangoDBUserManual}
 =============================================

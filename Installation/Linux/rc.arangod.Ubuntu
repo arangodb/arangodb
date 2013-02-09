@@ -23,14 +23,17 @@ CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
-case "$1" in
+action="$1"
+shift
+
+case "$action" in
   start)
     log_daemon_msg "Starting $DESC" "$NAME"
 
     test -d $PIDDIR || mkdir $PIDDIR
     chown arangodb $PIDDIR
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb $@
     log_end_msg $?
     ;;
 
@@ -58,7 +61,7 @@ case "$1" in
     ;;
 
   *)
-    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status}"
+    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status} <server options>"
     exit 1
     ;;
 esac
