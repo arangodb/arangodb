@@ -1,8 +1,8 @@
-ArangoDB Query Language (AQL) Examples {#AqlExamples}
-=====================================================
+AQL Examples {#AqlExamples}
+===========================
 
 @NAVIGATE_AqlExamples
-@EMBEDTOC{AqlExamples}
+@EMBEDTOC{AqlExamplesTOC}
 
 Simple queries {#AqlExamplesSimple}
 ===================================

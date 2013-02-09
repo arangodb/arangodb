@@ -67,6 +67,8 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
+	Aql \
+	AqlExamples \
 	ArangoErrors \
 	CommandLine \
 	Communication \
@@ -81,6 +83,10 @@ WIKI = \
 	FirstStepsArangoDB \
 	Glossary \
 	Graphs \
+	HandlingCollections \
+	HandlingDocuments \
+	HandlingEdges \
+	HandlingIndexes \
 	Home \
 	HttpBatch \
 	HttpCollection \
@@ -90,14 +96,12 @@ WIKI = \
 	HttpIndex \
 	HttpInterface \
 	HttpMisc \
-        Aql \
-        AqlExamples \
 	HttpQueries \
 	HttpSimple \
 	HttpSystem \
-	ImplementorManual \
 	ImpManual \
 	ImpManualBasics \
+	ImplementorManual \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
@@ -125,18 +129,14 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	RestSystem \
-	ShellCollection \
-	ShellDocument \
-	ShellEdge \
-	ShellIndex \
 	SimpleQueries \
 	Upgrading11 \
 	Upgrading12 \
 	UserManagement \
 	UserManual \
+	UserManualActions \
 	UserManualArangosh \
 	UserManualWebInterface \
-	UserManualActions \
 	jsUnity
 
 ## -----------------------------------------------------------------------------

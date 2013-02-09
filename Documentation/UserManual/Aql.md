@@ -1,5 +1,5 @@
-ArangoDB Query Language (AQL) {#Aql}
-====================================
+ArangoDB's Query Language (AQL) {#Aql}
+======================================
 
 @NAVIGATE_Aql
 @EMBEDTOC{AqlTOC}

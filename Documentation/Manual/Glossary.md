@@ -1,7 +1,11 @@
 Glossary {#Glossary}
 ====================
 
-@NAVIGATE{ImpManual,Home,InstallManual}
+@NAVIGATE_Glossary
+@EMBEDTOC{GlossaryTOC}
+
+Glossary {#GlossaryIntro}
+=========================
 
 @copydoc GlossaryCollection
 
