@@ -1,7 +1,7 @@
 JavaScript Modules {#JSModules}
 ===============================
 
-@EMBEDTOC{JSModulesToc}
+@EMBEDTOC{JSModulesTOC}
 
 Javascript Modules {#JSModulesIntro}
 ====================================

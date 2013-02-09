@@ -10,6 +10,7 @@ ArangoDB's DBA Manual (@VERSION) {#DbaManual}
 @CHAPTER_REF{HandlingIndexes}
 @CHAPTER_REF{IndexCap}
 @CHAPTER_REF{IndexGeo}
+@CHAPTER_REF{IndexFulltext}
 @CHAPTER_REF{IndexHash}
 @CHAPTER_REF{IndexSkiplist}
 @CHAPTER_REF{IndexBitArray}

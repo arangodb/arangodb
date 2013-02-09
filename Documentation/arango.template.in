@@ -247,7 +247,7 @@ ALIASES += \
 # table of content
 ALIASES += \
   "BOOK_REF{1}=@ref \1" \
-  "CHAPTER_REF{1}=@if LATEX @copydetails \1@else@copydetails \1TOC@endif"
+  "CHAPTER_REF{1}=@if LATEX - @ref \1\n@else@copydetails \1TOC@endif"
 
 # other aliases
 ALIASES += \

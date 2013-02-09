@@ -5552,7 +5552,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineArango
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineArangod
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
@@ -5622,7 +5622,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineArango
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineArangod
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.

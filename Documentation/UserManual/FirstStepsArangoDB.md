@@ -460,7 +460,7 @@ list of options see @ref CommandLine "here".
 
 Uses the @CA{database-directory} as base directory. There is an
 alternative version available for use in configuration files, see @ref
-CommandLineArango "here".
+CommandLineArangod "here".
 
 
 @copydetails triagens::rest::ApplicationServer::_options
