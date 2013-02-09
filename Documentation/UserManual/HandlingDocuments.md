@@ -1,11 +1,11 @@
-Handling Documents {#ShellDocument}
-===================================
+Handling Documents {#HandlingDocuments}
+=======================================
 
-@NAVIGATE_ShellDocument
-@EMBEDTOC{ShellDocumentTOC}
+@NAVIGATE_HandlingDocuments
+@EMBEDTOC{HandlingDocumentsTOC}
 
-Documents, Identifiers, Handles {#ShellDocumentIntro}
-=====================================================
+Documents, Identifiers, Handles {#HandlingDocumentsIntro}
+=========================================================
 
 This is an introduction to ArangoDB's interface for documents and how handle
 documents from the JavaScript shell _arangosh_. For other languages see the
@@ -15,24 +15,7 @@ corresponding language API.
 
 For example:
 
-    {
-      "_id" : "demo/2345678",
-      "_rev" : "3456789",
-      "_key" : "2345678",
-      "firstName" : "Hugo",
-      "lastName" : "Schlonz",
-      "address" : {
-	"street" : "Strasse 1",
-	"city" : "Hier"
-      },
-      "hobbies" : [
-	"swimming",
-	"biking",
-	"programming"
-      ]
-    }
-
-@EXAMPLE_ARANGOSH_OUTPUT{ShellDocument1}
+@EXAMPLE_ARANGOSH_OUTPUT{HandlingDocuments1}
     db.demo.document("demo/schlonz")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
@@ -48,8 +31,8 @@ has been created. The `_rev` value is maintained by ArangoDB autonomously.
 
 @copydoc GlossaryDocumentEtag
 
-Address and ETag of a Document {#ShellDocumentResource}
-========================================================
+Address and ETag of a Document {#HandlingDocumentsResource}
+===========================================================
 
 All documents in ArangoDB have a document handle. This handle uniquely defines a
 document and is managed by ArangoDB. The interface allows you to access the
@@ -73,54 +56,54 @@ Each document also has a document revision or etag with is returned in the
 `_key` attribute.
 
 @CLEARPAGE
-Working with Documents {#ShellDocumentShell}
-============================================
+Working with Documents {#HandlingDocumentsShell}
+================================================
 
-Collection Methods {#ShellDocumentCollectionMethods}
-----------------------------------------------------
+Collection Methods {#HandlingDocumentsCollectionMethods}
+--------------------------------------------------------
 
-@anchor ShellDocumentRead
+@anchor HandlingDocumentsRead
 @copydetails JS_DocumentVocbaseCol
 
 @CLEARPAGE
-@anchor ShellDocumentAny
+@anchor HandlingDocumentsAny
 @copydetails JS_AnyQuery
 
 @CLEARPAGE
-@anchor ShellDocumentCreate
+@anchor HandlingDocumentsCreate
 @copydetails JS_SaveVocbaseCol
 
 @CLEARPAGE
-@anchor ShellDocumentReplace
+@anchor HandlingDocumentsReplace
 @copydetails JS_ReplaceVocbaseCol
 
 @CLEARPAGE
-@anchor ShellDocumentUpdate
+@anchor HandlingDocumentsUpdate
 @copydetails JS_UpdateVocbaseCol
 
 @CLEARPAGE
-@anchor ShellDocumentRemove
+@anchor HandlingDocumentsRemove
 @copydetails JS_RemoveVocbaseCol
 
 @CLEARPAGE
-@anchor ShellDocumentRemoveByExample
+@anchor HandlingDocumentsRemoveByExample
 @copydetails JSF_ArangoCollection_prototype_removeByExample
 
 @CLEARPAGE
-Database Methods {#ShellDocumentDatabaseMethods}
-------------------------------------------------
+Database Methods {#HandlingDocumentsDatabaseMethods}
+----------------------------------------------------
 
-@anchor ShellDocumentDbRead
+@anchor HandlingDocumentsDbRead
 @copydetails JS_DocumentVocbase
 
 @CLEARPAGE
-@anchor ShellDocumentDbReplace
+@anchor HandlingDocumentsDbReplace
 @copydetails JS_ReplaceVocbase
 
 @CLEARPAGE
-@anchor ShellDocumentDbUpdate
+@anchor HandlingDocumentsDbUpdate
 @copydetails JS_UpdateVocbase
 
 @CLEARPAGE
-@anchor ShellDocumentDbRemove
+@anchor HandlingDocumentsDbRemove
 @copydetails JS_RemoveVocbase

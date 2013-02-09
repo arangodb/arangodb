@@ -1,6 +1,7 @@
 Cap Constraint {#IndexCap}
 ==========================
 
+@NAVIGATE_IndexCap
 @EMBEDTOC{IndexCapTOC}
 
 Cap Constraint {#IndexCapIntro}

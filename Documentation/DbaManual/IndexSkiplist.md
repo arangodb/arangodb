@@ -1,6 +1,7 @@
 Skip-Lists {#IndexSkiplist}
 ===========================
 
+@NAVIGATE_IndexSkiplist
 @EMBEDTOC{IndexSkiplistTOC}
 
 Skiplist Indexes {#IndexSkiplistIntro}

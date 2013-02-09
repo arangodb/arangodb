@@ -1,11 +1,11 @@
-Handling Indexes {#ShellIndex}
-==============================
+Handling Indexes {#HandlingIndexes}
+===================================
 
-@NAVIAGTE_ShellIndex
-@EMBEDTOC{ShellIndexTOC}
+@NAVIGATE_HandlingIndexes
+@EMBEDTOC{HandlingIndexesTOC}
 
-Indexes, Identifiers, Handles {#ShellIndexIntro}
-================================================
+Indexes, Identifiers, Handles {#HandlingIndexesIntro}
+=====================================================
 
 This is an introduction to ArangoDB's interface for indexs in general.  There
 are special sections for 
@@ -29,8 +29,8 @@ are special sections for
 
 @copydoc GlossaryIndexFulltext
 
-Address and ETag of an Index {#ShellIndexResource}
-==================================================
+Address and ETag of an Index {#HandlingIndexesResource}
+=======================================================
 
 All indexs in ArangoDB have an index handle. This handle uniquely defines an
 index and is managed by ArangoDB. The interface allows you to access the indexs
@@ -49,30 +49,30 @@ Because the index handle is unique within the database, you can leave out the
 
     db._index("demo/362549736")
 
-Working with Indexes {#ShellIndexShell}
-=======================================
+Working with Indexes {#HandlingIndexesShell}
+============================================
 
-Collection Methods {#ShellIndexCollectionMethods}
--------------------------------------------------
+Collection Methods {#HandlingIndexesCollectionMethods}
+------------------------------------------------------
 
-@anchor ShellIndexRead
+@anchor HandlingIndexesRead
 @copydetails JSF_ArangoCollection_prototype_index
 
 @CLEARPAGE
-@anchor ShellIndexReadAll
+@anchor HandlingIndexesReadAll
 @copydetails JS_GetIndexesVocbaseCol
 
 @CLEARPAGE
-@anchor ShellIndexDelete
+@anchor HandlingIndexesDelete
 @copydetails JS_DropIndexVocbaseCol
 
 @CLEARPAGE
-Database Methods {#ShellIndexDatabaseMethods}
----------------------------------------------
+Database Methods {#HandlingIndexesDatabaseMethods}
+--------------------------------------------------
 
-@anchor ShellIndexDbRead
+@anchor HandlingIndexesDbRead
 @copydetails JSF_ArangoDatabase_prototype__index
 
 @CLEARPAGE
-@anchor ShellIndexDbDelete
+@anchor HandlingIndexesDbDelete
 @copydetails JSF_ArangoDatabase_prototype__dropIndex
