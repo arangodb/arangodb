@@ -78,7 +78,8 @@
   }
 
   if (typeof SYS_OUTPUT !== "undefined") {
-    internal.output = SYS_OUTPUT;
+    internal.stdOutput = SYS_OUTPUT;
+    internal.output = internal.stdOutput;
     delete SYS_OUTPUT;
   }
 
@@ -331,12 +332,43 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-    var output = internal.output;
+  var printArray;
+  var printIndent;
+  var printObject;
+  var printRecursive;
 
-    var printArray;
-    var printIndent;
-    var printObject;
-    var printRecursive;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outputs text to shell window
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.bufferOutput = function () {
+    var i;
+
+    for (i = 0;  i < arguments.length;  ++i) {
+      var value = arguments[i];
+      var text;
+
+      if (value === null) {
+        text = "null";
+      }
+      else if (value === undefined) {
+        text = "undefined";
+      }
+      else if (typeof(value) === "object") {
+        try {
+          text = JSON.stringify(value);
+        }
+        catch (err) {
+          text = String(value);
+        }
+      }
+      else {
+        text = String(value);
+      }
+
+      internal.outputBuffer += text;
+    }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output
@@ -353,6 +385,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.printShell = function () {
+    var output = internal.output;
     var i;
 
     for (i = 0;  i < arguments.length;  ++i) {
@@ -417,6 +450,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   printRecursive = function (value, seen, path, names, level) {
+    var output = internal.output;
     var p;
 
     if (seen === undefined) {
@@ -495,6 +529,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   printArray = function (object, seen, path, names, level) {
+    var output = internal.output;
+
     if (object.length === 0) {
       output(internal.colors.COLOR_PUNCTUATION);
       output("[ ]");
@@ -540,12 +576,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   printObject = function (object, seen, path, names, level) {
+    var output = internal.output;
+    var colors = internal.colors;
     var sep = " ";
     var k;
 
-    output(internal.colors.COLOR_PUNCTUATION);
+    output(colors.COLOR_PUNCTUATION);
     output("{");
-    output(internal.colors.COLOR_RESET);
+    output(colors.COLOR_RESET);
 
     var newLevel = level + 1;
 
@@ -553,15 +591,15 @@
       if (object.hasOwnProperty(k)) {
         var val = object[k];
 
-        output(internal.colors.COLOR_PUNCTUATION);
+        output(colors.COLOR_PUNCTUATION);
         output(sep);
-        output(internal.colors.COLOR_RESET);
+        output(colors.COLOR_RESET);
 
         printIndent(newLevel);
 
-        output(internal.colors.COLOR_INDEX);
+        output(colors.COLOR_INDEX);
         output(quoteJsonString(k));
-        output(internal.colors.COLOR_RESET);
+        output(colors.COLOR_RESET);
         output(" : ");
 
         printRecursive(val,
@@ -577,9 +615,9 @@
 
     printIndent(level);
 
-    output(internal.colors.COLOR_PUNCTUATION);
+    output(colors.COLOR_PUNCTUATION);
     output("}");
-    output(internal.colors.COLOR_RESET);
+    output(colors.COLOR_RESET);
   };
 
   internal.printObject = printObject;
@@ -589,6 +627,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   printIndent = function (level) {
+    var output = internal.output;
     var j;
 
     if (internal.PRETTY_PRINT) {
@@ -638,7 +677,7 @@
   var sprintf = internal.sprintf;
 
   internal.printf = function () {
-    output(sprintf.apply(sprintf, arguments));
+    internal.output(sprintf.apply(sprintf, arguments));
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,6 +726,28 @@
     internal.PRETTY_PRINT = false;
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start capture mode
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.startCaptureMode = function () {
+    internal.outputBuffer = "";
+    internal.output = internal.bufferOutput;
+  }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop capture mode
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.stopCaptureMode = function () {
+    var buffer = internal.outputBuffer;
+
+    internal.outputBuffer = "";
+    internal.output = internal.stdOutput;
+
+    return buffer;
+  }
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start color printing
 ////////////////////////////////////////////////////////////////////////////////
