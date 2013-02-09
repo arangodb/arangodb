@@ -1,6 +1,7 @@
 Hash Indexes {#IndexHash}
 =========================
 
+@NAVIGATE_IndexHash
 @EMBEDTOC{IndexHashTOC}
 
 Hash Indexes {#IndexHashIntro}

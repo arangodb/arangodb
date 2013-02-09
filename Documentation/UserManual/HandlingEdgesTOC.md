@@ -1,12 +1,10 @@
-TOC {#ShellEdgeTOC}
-===================
+TOC {#HandlingEdgesTOC}
+=======================
 
-- @ref ShellEdge
-  - @ref ShellEdgeIntro
-  - @ref ShellEdgeShell
-    - @ref ShellEdgeCreate "edge-collection.save"
-    - @ref ShellEdgeEdges "edge-collection.edges"
-    - @ref ShellEdgeInEdges "edge-collection.inEdges"
-    - @ref ShellEdgeOutEdges "edge-collection.outEdges"
-
-
+- @ref HandlingEdges
+  - @ref HandlingEdgesIntro
+  - @ref HandlingEdgesShell
+    - @ref HandlingEdgesCreate "edge-collection.save"
+    - @ref HandlingEdgesEdges "edge-collection.edges"
+    - @ref HandlingEdgesInEdges "edge-collection.inEdges"
+    - @ref HandlingEdgesOutEdges "edge-collection.outEdges"

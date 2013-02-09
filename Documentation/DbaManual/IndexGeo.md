@@ -1,6 +1,7 @@
 Geo Indexes {#IndexGeo}
 =======================
 
+@NAVIGATE_IndexGeo
 @EMBEDTOC{IndexGeoTOC}
 
 Geo Indexes {#IndexGeoIntro}
@@ -40,4 +41,3 @@ Accessing Geo Indexes from the Shell {#IndexGeoShell}
 @CLEARPAGE
 @anchor IndexGeoShellWithin
 @copydetails JSF_ArangoCollection_prototype_within
-

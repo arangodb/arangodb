@@ -1,18 +1,18 @@
-Handling Collections {#ShellCollection}
-=======================================
+Handling Collections {#HandlingCollections}
+===========================================
 
-@NAVIGATE_ShellCollection
-@EMBEDTOC{ShellCollectionTOC}
+@NAVIGATE_HandlingCollections
+@EMBEDTOC{HandlingCollectionsTOC}
 
-JavaScript Interface to Collections {#ShellCollectionIntro}
-===========================================================
+JavaScript Interface to Collections {#HandlingCollectionsIntro}
+===============================================================
 
 This is an introduction to ArangoDB's interface for collections and how handle
 collections from the JavaScript shell _arangosh_. For other languages see the
 corresponding language API.
 
 The most import call is the call to create a new collection, see
-@ref ShellCollectionCreate "_create".
+@ref HandlingCollectionsCreate "_create".
 
 @copydoc GlossaryCollection
 
@@ -20,8 +20,8 @@ The most import call is the call to create a new collection, see
 
 @copydoc GlossaryCollectionName
 
-Address of a Collection {#ShellCollectionResource}
-==================================================
+Address of a Collection {#HandlingCollectionsResource}
+======================================================
 
 All collections in ArangoDB have an unique identifier and a unique
 name. ArangoDB internally uses the collection's unique identifier to look up
@@ -33,7 +33,7 @@ from the user perspective, the collection name should be used, i.e.:
     db._collection(@FA{collection-name})
 
 A collection is created by a @FN{db._create} call, see @ref
-ShellCollectionCreate "_create".
+HandlingCollectionsCreate "_create".
 
 For example: Assume that the collection identifier is `7254820` and the name is
 `demo`, then the collection can be accessed as:
@@ -55,66 +55,66 @@ not work in arangosh. To create a new collection from arangosh, please use
     db._create(@FA{collection-name})
 
 @CLEARPAGE
-Working with Collections {#ShellCollectionShell}
-================================================
+Working with Collections {#HandlingCollectionsShell}
+====================================================
 
-Collection Methods {#ShellCollectionCollectionMethods}
-------------------------------------------------------
+Collection Methods {#HandlingCollectionsCollectionMethods}
+----------------------------------------------------------
 
-@anchor ShellCollectionDrop
+@anchor HandlingCollectionsDrop
 @copydetails JS_DropVocbaseCol
 
 @CLEARPAGE
-@anchor ShellCollectionTruncate
+@anchor HandlingCollectionsTruncate
 @copydetails JSF_ArangoCollection_prototype_truncate
 
 @CLEARPAGE
-@anchor ShellCollectionProperties
+@anchor HandlingCollectionsProperties
 @copydetails JS_PropertiesVocbaseCol
 
 @CLEARPAGE
-@anchor ShellCollectionFigures
+@anchor HandlingCollectionsFigures
 @copydetails JS_FiguresVocbaseCol
 
 @CLEARPAGE
-@anchor ShellCollectionLoad
+@anchor HandlingCollectionsLoad
 @copydetails JS_LoadVocbaseCol
 
 @CLEARPAGE
-@anchor ShellCollectionRevision
+@anchor HandlingCollectionsRevision
 @copydetails JS_RevisionVocbaseCol
 
 @CLEARPAGE
-@anchor ShellCollectionUnload
+@anchor HandlingCollectionsUnload
 @copydetails JS_UnloadVocbaseCol
 
 @CLEARPAGE
-@anchor ShellCollectionRename
+@anchor HandlingCollectionsRename
 @copydetails JS_RenameVocbaseCol
 
 @CLEARPAGE
-Database Methods {#ShellCollectionDatabaseMethods}
---------------------------------------------------
+Database Methods {#HandlingCollectionsDatabaseMethods}
+------------------------------------------------------
 
-@anchor ShellCollectionRead
+@anchor HandlingCollectionsRead
 @copydetails JS_CollectionVocbase
 
 @CLEARPAGE
-@anchor ShellCollectionCreate
+@anchor HandlingCollectionsCreate
 @copydetails JS_CreateVocbase
 
 @CLEARPAGE
-@anchor ShellCollectionReadAll
+@anchor HandlingCollectionsReadAll
 @copydetails JS_CollectionsVocbase
 
 @CLEARPAGE
-@anchor ShellCollectionReadShortCut
+@anchor HandlingCollectionsReadShortCut
 @copydetails MapGetVocBase
 
 @CLEARPAGE
-@anchor ShellCollectionDropDb
+@anchor HandlingCollectionsDropDb
 @copydetails JSF_ArangoDatabase_prototype__drop
 
 @CLEARPAGE
-@anchor ShellCollectionTruncateDb
+@anchor HandlingCollectionsTruncateDb
 @copydetails JSF_ArangoDatabase_prototype__truncate

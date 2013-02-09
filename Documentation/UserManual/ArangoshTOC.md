@@ -2,4 +2,3 @@ TOC {#UserManualArangoshTOC}
 ============================
 
 - @ref UserManualArangosh
-

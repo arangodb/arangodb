@@ -7,8 +7,7 @@ ArangoDB's DBA Manual (@VERSION) {#DbaManual}
 @CHAPTER_REF{DbaManualAuthentication}
 @CHAPTER_REF{DbaManualDatafileDebugger}
 @CHAPTER_REF{DbaManualEmergencyConsole}
-@CHAPTER_REF{ShellCollection}
-@CHAPTER_REF{ShellIndex}
+@CHAPTER_REF{HandlingIndexes}
 @CHAPTER_REF{IndexCap}
 @CHAPTER_REF{IndexGeo}
 @CHAPTER_REF{IndexHash}
