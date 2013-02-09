@@ -3,20 +3,6 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 
 @NAVIGATE_UserManual
 
-@if LATEX
-- @ref FirstStepsArangoDB
-- @ref UserManualArangosh
-- @ref UserManualWebInterface
-- @ref ShellCollection
-- @ref ShellDocument
-- @ref ShellEdge
-- @ref SimpleQueries
-- @ref Aql
-- @ref UserManualActions
-@latexonly\appendix@endlatexonly
-- @ref CommandLine
-- @ref Glossary
-@else
 @CHAPTER_REF{FirstStepsArangoDB}
 @CHAPTER_REF{UserManualArangosh}
 @CHAPTER_REF{UserManualWebInterface}
@@ -25,6 +11,7 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{ShellEdge}
 @CHAPTER_REF{SimpleQueries}
 @CHAPTER_REF{Aql}
+@CHAPTER_REF{AqlExamples}
 @CHAPTER_REF{UserManualActions}
 @CHAPTER_REF{CommandLine}
-@endif
+@CHAPTER_REF{Glossary}

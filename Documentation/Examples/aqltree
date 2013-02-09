@@ -1,3 +1,0 @@
-TREE(friends, friendrelations, "friends/john", "outbound", "likes", { 
-  itemOrder: "forward"
-})

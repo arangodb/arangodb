@@ -1,3 +1,0 @@
-FOR u IN users
-  FILTER u.age < 39
-  RETURN u

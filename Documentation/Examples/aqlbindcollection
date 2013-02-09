@@ -1,3 +1,0 @@
-FOR u IN @@collection
-  FILTER u.active == true
-    RETURN u
