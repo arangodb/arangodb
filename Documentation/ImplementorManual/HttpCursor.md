@@ -38,8 +38,8 @@ the `batchSize` attribute when issueing the query.
 If the complete result can be transferred to the client in one go, the client
 does not need to issue any further request. The client can check whether it has
 retrieved the complete result set by checking the `hasMore` attribute of the
-result set. If it is set to false, then the client has fetched the complete
-result set from the server.
+result set. If it is set to `false`, then the client has fetched the complete
+result set from the server. In this case no server side cursor will be created.
 
 @EXAMPLES
 

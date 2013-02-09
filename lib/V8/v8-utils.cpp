@@ -1032,6 +1032,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
+  v8::V8::LowMemoryNotification();
   while(! v8::V8::IdleNotification()) {
   }
 
@@ -1039,6 +1040,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   while (TRI_microtime() < until) {
     if (++i % 1000 == 0) {
       // garbage collection only every x iterations, otherwise we'll use too much CPU
+      v8::V8::LowMemoryNotification();
       while(! v8::V8::IdleNotification()) {
       }
     }
