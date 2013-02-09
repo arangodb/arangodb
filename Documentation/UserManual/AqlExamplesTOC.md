@@ -1,4 +1,4 @@
-TOC {#AqlExamples}
-==================
+TOC {#AqlExamplesTOC}
+=====================
 
 - @ref AqlExamples
