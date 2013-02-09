@@ -1,0 +1,31 @@
+TOC {#SimpleQueriesTOC}
+=======================
+
+- @ref SimpleQueries
+  - @ref SimpleQueriesQueries
+    - @ref SimpleQueryAll "collection.all"
+    - @ref SimpleQueryByExample "collection.byExample"
+    - @ref SimpleQueryFirstExample "collection.firstExample"
+    - @ref SimpleQueryRange "collection.range"
+    - @ref SimpleQueryAny "collection.any"
+    - @ref SimpleQueryCollectionCount "collection.count"
+    - @ref SimpleQueryToArray "collection.toArray"
+  - @ref SimpleQueriesGeoQueries
+    - @ref SimpleQueryNear "collection.near"
+    - @ref SimpleQueryWithin "collection.within"
+    - @ref SimpleQueryGeo "collection.geo"
+  - @ref SimpleQueriesFulltext
+    - @ref SimpleQueryFulltext "collection.fulltext"
+  - @ref SimpleQueriesPagination
+    - @ref SimpleQueryLimit "query.limit"
+    - @ref SimpleQuerySkip "query.skip"
+  - @ref SimpleQueriesCursor
+    - @ref SimpleQueryHasNext "query.hasNext"
+    - @ref SimpleQueryNext "query.next"
+    - @ref SimpleQuerySetBatchSize "query.setBatchSize"
+    - @ref SimpleQueryGetBatchSize "query.getBatchSize"
+    - @ref SimpleQueryExecute "query.execute"
+    - @ref SimpleQueryDispose "query.dispose"
+    - @ref SimpleQueryCount "query.count"
+  - @ref SimpleQueriesModify
+    - @ref SimpleQueryRemoveByExample "collection.removeByExample"
