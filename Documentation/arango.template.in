@@ -723,8 +723,9 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = @srcdir@/Documentation/DbaManual \
-                         @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/ImplementorManual \
+                         @srcdir@/Documentation/ImporterManual \
+                         @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/Manual \
                          @srcdir@/Documentation/RefManual \
                          @srcdir@/Documentation/UserManual \

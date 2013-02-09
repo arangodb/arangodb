@@ -1,5 +1,5 @@
-Arango Actions {#UserManualActions}
-===================================
+ArangoDB's Actions {#UserManualActions}
+=======================================
 
 @NAVIGATE_UserManualActions
 @EMBEDTOC{UserManualActionsTOC}

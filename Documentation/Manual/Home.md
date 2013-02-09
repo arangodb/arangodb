@@ -1,27 +1,26 @@
 ArangoDB (@VERSION) {#Home}
 ===========================
 
-ArangoDB is a universal open-source database with a flexible data
-model for documents, graphs, and key-values. You can easily build high
-performance applications using a convenient sql-like query language or
-JavaScript/Ruby extensions.  It focuses on durability of the data
-taking advantage of new technologies like SSD, support for graph and
-geo algorithms needed in social networks, ease of use for the
-developer and minimal effort to operate for the administrator. The
-design goals are described @EXTREF{http://www.arangodb.org/,here}.
+ArangoDB is a universal open-source database with a flexible data model for
+documents, graphs, and key-values. You can easily build high performance
+applications using a convenient sql-like query language or JavaScript/Ruby
+extensions.  It focuses on durability of the data taking advantage of new
+technologies like SSD, support for graph and geo algorithms needed in social
+networks, ease of use for the developer and minimal effort to operate for the
+administrator. The design goals are described
+@EXTREF{http://www.arangodb.org/,here}.
 
-The ArangoDB package consists of a server, a separate shell, which
-allows you to administrate the server, and a set of client API (or
-sometimes called drivers) for various languages including the Big-P
-(PHP, Python, Perl) and Ruby.
+The ArangoDB package consists of a server, a separate shell, which allows you to
+administrate the server, and a set of client API (or sometimes called drivers)
+for various languages including the Big-P (PHP, Python, Perl) and Ruby.
 
 @xmlonly
 The HTML and PDF versions of the manual can be found
 <ulink url="http://www.arangodb.org/manuals">here</ulink>.
 @endxmlonly
 
-Please contact @EXTREF_S{http://www.arangodb.org/connect,us} if you
-have any questions.
+Please contact @EXTREF_S{http://www.arangodb.org/connect,us} if you have any
+questions.
 
 Upgrading to ArangoDB 1.2 {#ArangoDBUpgrading12}
 ================================================
@@ -29,8 +28,7 @@ Upgrading to ArangoDB 1.2 {#ArangoDBUpgrading12}
 - @BOOK_REF{NewFeatures12}
 - @BOOK_REF{Upgrading12}
 
-Upgrading to ArangoDB 1.1 {#ArangoDBUpgrading11}
-================================================
+Older Releases:
 
 - @BOOK_REF{NewFeatures11}
 - @BOOK_REF{Upgrading11}
