@@ -75,8 +75,8 @@ start up a new database process:
 @anchor CommandLinePidFile
 @copydetails triagens::rest::AnyServer::_pidFile
 
-Command-Line Options for the ArangoDB {#CommandLineArango}
-==========================================================
+Command-Line Options for arangod {#CommandLineArangod}
+======================================================
 
 @anchor CommandLineArangoEndpoint
 @copydetails triagens::rest::ApplicationEndpointServer::_endpoints

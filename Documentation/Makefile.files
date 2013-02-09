@@ -9,6 +9,7 @@
 ################################################################################
 
 DOXYGEN_TOC = \
+	Documentation/DbaManual/DbaManual.md \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/UserManual/UserManual.md

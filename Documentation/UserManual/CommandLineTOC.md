@@ -13,7 +13,7 @@ TOC {#CommandLineTOC}
     - @ref CommandLineUid "uid"
     - @ref CommandLineGid "gid"
     - @ref CommandLinePidFile "pid-file"
-  - @ref CommandLineArango
+  - @ref CommandLineArangod
     - @ref CommandLineArangoEndpoint "server.endpoint"
     - @ref CommandLineArangoDisableAuthentication "server.disable-authentication"
     - @ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"

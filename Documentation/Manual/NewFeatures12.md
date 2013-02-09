@@ -374,7 +374,7 @@ only be noticeable if the collection is big.
 
 ### Allow importing of JSON lists
 
-`arangoimp` and the REST bulk import API (@ref HTTPImport) of ArangoDB allow mass importing
+`arangoimp` and the REST bulk import API (@ref HttpImport) of ArangoDB allow mass importing
 documents from a file in these formats:
 
 - individual JSON documents: each line in the input file is a standalone JSON document:
@@ -406,7 +406,7 @@ option to an appropriate value. To set the buffer to 16 MB:
 
 ### Logging of import failures
 
-When documents are imported via the REST bulk import API (@ref HTTPImport), ArangoDB 
+When documents are imported via the REST bulk import API (@ref HttpImport), ArangoDB 
 returns an aggregate response containing the number of documents inserted plus the
 number of errors that occurred during the import.
 
