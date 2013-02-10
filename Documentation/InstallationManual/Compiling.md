@@ -227,28 +227,28 @@ Now continue with @ref CompilingAIOCompile.
 
 The following configuration options exists:
 
-`\-\-enable-all-in-one-libev` tells the build system to use the bundled version
+`--enable-all-in-one-libev` tells the build system to use the bundled version
 of LIBEV instead of using the system version.
 
-`\-\-disable-all-in-one-libev` tells the build system to use the installed
+`--disable-all-in-one-libev` tells the build system to use the installed
 system version of LIBEV instead of compiling the supplied version from the
 3rdParty directory in the make run.
 
-`\-\-enable-all-in-one-v8` tells the build system to use the bundled version of
+`--enable-all-in-one-v8` tells the build system to use the bundled version of
 V8 instead of using the system version.
 
-`\-\-disable-all-in-one-v8` tells the build system to use the installed system
+`--disable-all-in-one-v8` tells the build system to use the installed system
 version of V8 instead of compiling the supplied version from the 3rdParty
 directory in the make run.
 
-`\-\-enable-all-in-one-icu` tells the build system to use the bundled version of
+`--enable-all-in-one-icu` tells the build system to use the bundled version of
 ICU instead of using the system version.
 
-`\-\-disable-all-in-one-icu` tells the build system to use the installed system
+`--disable-all-in-one-icu` tells the build system to use the installed system
 version of ICU instead of compiling the supplied version from the 3rdParty
 directory in the make run.
 
-`\-\-enable-maintainer-mode` tells the build system to use BISON and FLEX to
+`--enable-maintainer-mode` tells the build system to use BISON and FLEX to
 regenerate the parser and scanner files. If disabled, the supplied files will be
 used so you cannot make changes to the parser and scanner files.  You need at
 least BISON 2.4.1 and FLEX 2.5.35.  This option also allows you to make changes
@@ -257,5 +257,5 @@ Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a `make unittests` run. You also need to
 install the Boost test framework for this.
 
-`\-\-enable-arangob` tells the build system to also build the arangob benchmark
+`--enable-arangob` tells the build system to also build the arangob benchmark
 tool. The binary will be built in the bin subdirectory.
