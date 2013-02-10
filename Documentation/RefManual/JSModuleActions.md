@@ -1,6 +1,7 @@
 Module "actions" {#JSModuleActions}
 ===================================
 
+@NAVIGATE_JSModuleActions
 @EMBEDTOC{JSModuleActionsTOC}
 
 The action module provides the infrastructure for defining HTTP actions.

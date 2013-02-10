@@ -1,6 +1,9 @@
 HTTP Interface for Graphs {#HttpGraph}
 ======================================
 
+@NAVIGATE_HttpGraph
+@EMBEDTOC{HttpGraphTOC}
+
 @anchor A_JSF_POST_graph_graph
 @copydetails JSF_post_graph_graph
 

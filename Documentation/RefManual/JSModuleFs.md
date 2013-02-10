@@ -1,6 +1,7 @@
 Module "fs" {#JSModuleFs}
 =========================
 
+@NAVIGATE_JSModuleFs
 @EMBEDTOC{JSModuleFsTOC}
 
 The implementation follows the CommonJS specification 

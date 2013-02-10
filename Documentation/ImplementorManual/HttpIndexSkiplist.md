@@ -1,6 +1,7 @@
 Accessing Skip-List Indexes via Http {#IndexSkiplistHttp}
 =========================================================
 
+@NAVIGATE_IndexSkiplistHttp
 @EMBEDTOC{IndexSkiplistHttpTOC}
 
 If a suitable skip-list index exists, then @ref HttpSimpleRange

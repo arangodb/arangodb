@@ -1,0 +1,4 @@
+TOC {#ImplementorManualArangoErrorsTOC}
+=======================================
+
+- @ref ImplementorManualArangoErrors

@@ -1,6 +1,9 @@
 HTTP Interface for Batch Requests {#HttpBatch}
 ==============================================
 
+@NAVIGATE_HttpBatch
+@EMBEDTOC{HttpBatchTOC}
+
 Clients normally send individual operations to ArangoDB in individual
 HTTP requests. This is straightforward and simple, but has the
 disadvantage that the network overhead can be significant if many

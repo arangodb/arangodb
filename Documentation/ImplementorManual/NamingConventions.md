@@ -1,6 +1,9 @@
 Naming Conventions in ArangoDB {#NamingConventions}
 ===================================================
 
+@NAVIGATE_NamingConventions
+@EMBEDTOC{NamingConventionsTOC}
+
 The following naming conventions should be followed by users when creating
 collections and documents in ArangoDB.
 

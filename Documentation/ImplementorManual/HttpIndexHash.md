@@ -1,6 +1,7 @@
 Accessing Hash Indexes via Http {#IndexHashHttp}
 ================================================
 
+@NAVIGATE_IndexHashHttp
 @EMBEDTOC{IndexHashHttpTOC}
 
 If a suitable hash index exists, then @ref HttpSimpleByExample

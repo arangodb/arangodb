@@ -1,6 +1,7 @@
 Module "console" {#JSModuleConsole}
 ===================================
 
+@NAVIGATE_JSModuleConsole
 @EMBEDTOC{JSModuleConsoleTOC}
 
 Console Module {#JSModuleConsoleIntro}

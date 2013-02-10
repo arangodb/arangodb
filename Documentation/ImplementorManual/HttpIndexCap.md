@@ -1,6 +1,7 @@
 Accessing Cap Constraints via Http {#IndexCapHttp}
 ==================================================
 
+@NAVIGATE_IndexCapHttp
 @EMBEDTOC{IndexCapHttpTOC}
 
 @anchor IndexCapHttpEnsureCapConstraint

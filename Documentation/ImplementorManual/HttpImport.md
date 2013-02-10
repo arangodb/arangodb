@@ -1,6 +1,7 @@
 HTTP Interface for bulk imports {#HttpImport}
 =============================================
 
+@NAVIGATE_HttpImport
 @EMBEDTOC{HttpImportTOC}
 
 ArangoDB provides an HTTP interface to import multiple documents at once into a

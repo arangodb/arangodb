@@ -1,6 +1,7 @@
 Module "graph" {#JSModuleGraph}
 ===============================
 
+@NAVIGATE_JSModuleGraph
 @EMBEDTOC{JSModuleGraphTOC}
 
 First Steps with Graphs {#JSModuleGraphIntro}
