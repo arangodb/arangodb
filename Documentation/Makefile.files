@@ -73,17 +73,14 @@ WIKI = \
 	ArangoErrors \
 	CommandLine \
 	Communication \
-	CommunicationCors \
 	Compiling \
 	DbaManual \
 	DbaManualAuthentication \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
-	DefineAction \
 	FirstStepsArangoDB \
 	Glossary \
-	Graphs \
 	HandlingCollections \
 	HandlingDocuments \
 	HandlingEdges \
@@ -95,7 +92,6 @@ WIKI = \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
-	HttpInterface \
 	HttpMisc \
 	HttpQueries \
 	HttpSimple \
@@ -122,14 +118,12 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	KeyValue \
 	NamingConventions \
 	NewFeatures11 \
 	NewFeatures12 \
 	RefManual \
 	RestDocument \
 	RestEdge \
-	RestSystem \
 	SimpleQueries \
 	Upgrading11 \
 	Upgrading12 \

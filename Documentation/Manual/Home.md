@@ -1,25 +1,25 @@
 ArangoDB (@VERSION) {#Home}
 ===========================
 
+@xmlonly
+Please note: This is the current DEVELOPMENT version of the manual.  The stable
+HTML and PDF versions of the manual can be found 
+<ulink url="http://www.arangodb.org/manuals">here</ulink>.
+@endxmlonly
+
 ArangoDB is a universal open-source database with a flexible data model for
 documents, graphs, and key-values. You can easily build high performance
 applications using a convenient sql-like query language or JavaScript/Ruby
 extensions.  It focuses on durability of the data taking advantage of new
 technologies like SSD, support for graph and geo algorithms needed in social
 networks, ease of use for the developer and minimal effort to operate for the
-administrator. The design goals are described
-@EXTREF{http://www.arangodb.org/,here}.
+administrator. The design goals are described @S_EXTREF{http://www.arangodb.org/,here}.
 
 The ArangoDB package consists of a server, a separate shell, which allows you to
 administrate the server, and a set of client API (or sometimes called drivers)
 for various languages including the Big-P (PHP, Python, Perl) and Ruby.
 
-@xmlonly
-The HTML and PDF versions of the manual can be found
-<ulink url="http://www.arangodb.org/manuals">here</ulink>.
-@endxmlonly
-
-Please contact @EXTREF_S{http://www.arangodb.org/connect,us} if you have any
+Please contact @S_EXTREF_S{http://www.arangodb.org/connect,us} if you have any
 questions.
 
 Upgrading to ArangoDB 1.2 {#ArangoDBUpgrading12}

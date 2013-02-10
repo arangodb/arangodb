@@ -100,8 +100,8 @@ directories in the database directory. You can easily detect the backup
 files because they have a file ending of `.old`.
 
 
-Troubleshooting {#Upgrading12Troubleshooting}
-=============================================
+Troubleshooting{#Upgrading12Troubleshooting}
+============================================
 
 Problem: ArangoDB fails on startup with "directory not writable"
 ----------------------------------------------------------------
@@ -116,15 +116,15 @@ When the server is started and ArangoDB detects that one of the directories
 is not writeable, it will abort with a message as follows:
 
     ...
-    2013-02-06T15:10:09Z [5034] ERROR database directory '/tmp/migrate/' is not writable for current user
-    2013-02-06T15:07:46Z [4990] FATAL cannot open database '/tmp/migrate/'
+    2013-02-06T15:10:09Z [5034] ERROR database directory '/tmp/migrate' is not writable for current user
+    2013-02-06T15:07:46Z [4990] FATAL cannot open database '/tmp/migrate'
     ...
 
 or
 
     ...
-    2013-02-06T15:07:46Z [4990] ERROR database subdirectory '/tmp/migrate//collection-33374320' is not writable for current user
-    2013-02-06T15:07:46Z [4990] FATAL cannot open database '/tmp/migrate/'
+    2013-02-06T15:07:46Z [4990] ERROR database subdirectory '/tmp/migrate/collection-33374320' is not writable for current user
+    2013-02-06T15:07:46Z [4990] FATAL cannot open database '/tmp/migrate'
     ...
 
 If this happens, please make sure the user that ArangoDB is run with
@@ -361,12 +361,12 @@ following global variables are missing in ArangoDB 1.2:
 - `edges`: not needed in ArangoDB 1.2. Please use `db`'s functionality instead.
 - `internal`: can be made available via ```var internal = require("internal");```
 
-Removed Features {#Upgrading12ConfigChanges}
-============================================
+File Layout {#Upgrading12ConfigChanges}
+=======================================
 
 The file locations for readline console history files have been unified in 
 ArangoDB 1.2 as follows:
-- the history for `arangod``s emergency console is now stored in file
+- the history for `arangod`'s emergency console is now stored in file
   `$HOME/.arangod`. It was stored in `$HOME/.arango` before.
 - the history for `arangosh` is still stored in file `$HOME/.arangosh` as before.
 - the history for `arangoirb` is now stored in file `$HOME/.arangoirb`. It was
