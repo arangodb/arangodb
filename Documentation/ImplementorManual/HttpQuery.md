@@ -1,5 +1,8 @@
-HTTP Interface for AQL Queries {#HttpQueries}
-=============================================
+HTTP Interface for AQL Queries {#HttpQuery}
+===========================================
+
+@NAVIGATE_HttpQuery
+@EMBEDTOC{HttpQueryTOC}
 
 ArangoDB has an Http interface to syntactically validate AQL queries.
 Furthermore, it offers an Http interface to retrieve the execution plan for any

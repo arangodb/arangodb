@@ -1,0 +1,4 @@
+TOC {#RefManualArangoErrorsTOC}
+===============================
+
+- @ref RefManualArangoErrors

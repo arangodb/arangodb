@@ -1,6 +1,7 @@
 HTTP Interface for Collections {#HttpCollection}
 ================================================
 
+@NAVIGATE_HttpCollection
 @EMBEDTOC{HttpCollectionTOC}
 
 Collections {#HttpCollectionIntro}

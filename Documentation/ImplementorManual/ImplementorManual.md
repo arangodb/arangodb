@@ -22,7 +22,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{HttpMisc}
 @CHAPTER_REF{Communication}
 @CHAPTER_REF{NamingConventions}
-@CHAPTER_REF{ArangoErrors}
+@CHAPTER_REF{ImplementorManualArangoErrors}
 @if LATEX
 @CHAPTER_REF{Glossary}
 @endif

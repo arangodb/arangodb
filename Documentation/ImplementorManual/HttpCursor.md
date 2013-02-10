@@ -1,6 +1,7 @@
 HTTP Interface for AQL Query Cursors {#HttpCursor}
 ==================================================
 
+@NAVIGATE_HttpCursor
 @EMBEDTOC{HttpCursorTOC}
 
 Database Cursors {#HttpCursorIntro}

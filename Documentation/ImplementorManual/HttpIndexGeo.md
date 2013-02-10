@@ -1,6 +1,7 @@
 Accessing Geo Indexes via Http {#IndexGeoHttp}
 ==============================================
 
+@NAVIGATE_IndexGeoHttp
 @EMBEDTOC{IndexGeoHttpTOC}
 
 @anchor IndexGeoHttpEnsureGeo

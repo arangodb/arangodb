@@ -1,6 +1,7 @@
 HTTP Interface for Simple Queries {#HttpSimple}
 ===============================================
 
+@NAVIGATE_HttpSimple
 @EMBEDTOC{HttpSimpleTOC}
 
 Simple Queries {#HttpSimpleIntro}

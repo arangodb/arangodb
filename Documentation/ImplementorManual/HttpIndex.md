@@ -1,8 +1,11 @@
 HTTP Interface for Indexes {#HttpIndex}
 =======================================
 
+@NAVIGATE_HttpIndex
 @EMBEDTOC{HttpIndexTOC}
-@section HttpIndexIntro Indexes
+
+Indexes{#HttpIndexIntro}
+========================
 
 This is an introduction to ArangoDB's Http interface for indexes in
 general. There are special sections for various index types.
