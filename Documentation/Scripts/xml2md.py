@@ -492,7 +492,7 @@ def finalize_string(text):
     
     # links
     text = re.sub('__~4__([^~/]*)__~6__([^~]*)__~5__', '<a href="\\1">\\2</a>', text)
-    text = re.sub('\\[__~9__([^~]*)__~10__([^\\]]*)\\]', '[\\2](\\1)', text)
+    text = re.sub('\\[__~9__([^~]*)__~10__([^\\]]*)\\]', '<a href="\\1">\\2</a>', text)
 
     # verbatim
     text = text.replace("__~1__", "    ")
