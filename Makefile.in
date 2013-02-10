@@ -1155,7 +1155,7 @@ noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
 ################################################################################
 ### @brief /sbin scripts
 ################################################################################
-bin_SCRIPTS = bin/arango-dfdb
+bin_SCRIPTS = bin/arango-dfdb bin/arango-password
 
 ################################################################################
 ### @brief /etc data
@@ -1627,6 +1627,7 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
 			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
 			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
+			@top_srcdir@/js/server/tests/ahuacatl-cross.js \
 			@top_srcdir@/js/server/tests/ahuacatl-graph.js \
 			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
@@ -1680,6 +1681,7 @@ UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMM
 ################################################################################
 GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 DOXYGEN_TOC = \
+	Documentation/DbaManual/DbaManual.md \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/UserManual/UserManual.md
@@ -1719,20 +1721,23 @@ DOXYGEN = \
 ### @brief wiki pages
 ################################################################################
 WIKI = \
+	Aql \
+	AqlExamples \
 	ArangoErrors \
-        Aql \
-        AqlExamples \
 	CommandLine \
-	Compiling \
 	Communication \
+	Compiling \
 	DbaManual \
-	DbaManualBasics \
 	DbaManualAuthentication \
+	DbaManualBasics \
 	DbaManualDatafileDebugger \
-	DefineAction \
+	DbaManualEmergencyConsole \
 	FirstStepsArangoDB \
 	Glossary \
-	Graphs \
+	HandlingCollections \
+	HandlingDocuments \
+	HandlingEdges \
+	HandlingIndexes \
 	Home \
 	HttpBatch \
 	HttpCollection \
@@ -1740,17 +1745,18 @@ WIKI = \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
-	HttpInterface \
 	HttpMisc \
 	HttpQueries \
 	HttpSimple \
 	HttpSystem \
-	ImplementorManual \
 	ImpManual \
 	ImpManualBasics \
+	ImplementorManual \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
+	IndexFulltext \
+	IndexFulltextHttp \
 	IndexGeo \
 	IndexGeoHttp \
 	IndexHash \
@@ -1765,41 +1771,38 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	Key-Value \
 	NamingConventions \
 	NewFeatures11 \
+	NewFeatures12 \
 	RefManual \
 	RestDocument \
 	RestEdge \
-	RestSystem \
-	ShellCollection \
-	ShellDocument \
-	ShellEdge \
-	ShellIndex \
 	SimpleQueries \
-	Upgrading \
+	Upgrading11 \
+	Upgrading12 \
 	UserManagement \
 	UserManual \
+	UserManualActions \
 	UserManualArangosh \
 	UserManualWebInterface \
-	UserManualActions \
 	jsUnity
 
 JAVASCRIPT_BROWSER = \
+	html/admin/js/modules/org/arangodb.js \
 	html/admin/js/modules/org/arangodb/arango-collection.js \
 	html/admin/js/modules/org/arangodb/arango-database.js \
 	html/admin/js/modules/org/arangodb/arango-error.js \
 	html/admin/js/modules/org/arangodb/arango-query-cursor.js \
 	html/admin/js/modules/org/arangodb/arango-statement.js \
-	html/admin/js/modules/org/arangodb.js \
 	html/admin/js/modules/org/arangodb/arangosh.js \
+	html/admin/js/modules/org/arangodb/graph.js \
 	html/admin/js/modules/org/arangodb/simple-query.js \
 	\
 	html/admin/js/modules/org/arangodb-common.js \
 	html/admin/js/modules/org/arangodb/arango-collection-common.js \
 	html/admin/js/modules/org/arangodb/arango-error-common.js \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
-	html/admin/js/modules/org/arangodb/graph.js \
+	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js
 
@@ -5557,6 +5560,17 @@ bin/arango-dfdb: utils/arango-dfdb.in
 	chmod 755 $@
 
 ################################################################################
+### @brief arango password: this create a file with a warning message only
+### as arango-password is deprecated        
+################################################################################
+
+.PHONY: bin/arango-password
+
+bin/arango-password: 
+	@echo "echo \"arango-password is not part of this ArangoDB release.\"; exit 1" > $@
+	@chmod 755 $@
+
+################################################################################
 ################################################################################
 
 ################################################################################
@@ -6042,6 +6056,29 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 
 man: Doxygen/.setup-directories
 	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
+
+################################################################################
+### @brief generate examples
+################################################################################
+
+.PHONY: examples
+
+examples:
+	@rm -f /tmp/arangodb.examples
+
+	python @srcdir@/Documentation/Scripts/generateExamples.py \
+		--output-dir @builddir@/Documentation/Examples \
+		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
+		@srcdir@/Documentation/UserManual/*.md > /tmp/arangosh.examples
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+
+	@builddir@/bin/arangosh \
+		-s \
+		-c @srcdir@/etc/relative/arangosh.conf \
+		--server.password "" \
+		--server.endpoint unix://$(VOCDIR)/arango.sock \
+		--javascript.execute /tmp/arangosh.examples
 
 ################################################################################
 ### @brief executes jslint
