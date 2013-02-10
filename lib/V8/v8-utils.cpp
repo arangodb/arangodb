@@ -1301,7 +1301,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 
-
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
     return scope.Close(result);

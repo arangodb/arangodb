@@ -41,14 +41,16 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
+#ifndef _WIN32
+
+  ////////////////////////////////////////////////////////////////////////////////
 /// @brief color red
 ////////////////////////////////////////////////////////////////////////////////
         
 #define TRI_SHELL_COLOR_RED "\x1b[31m"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief color blod red
+/// @brief color bold red
 ////////////////////////////////////////////////////////////////////////////////
         
 #define TRI_SHELL_COLOR_BOLD_RED "\x1b[1;31m"
@@ -130,6 +132,29 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
         
 #define TRI_SHELL_COLOR_RESET "\x1b[0m"
+
+#else
+  // .............................................................................
+  // Quick hack for windows
+  // .............................................................................
+
+#define TRI_SHELL_COLOR_RED ""
+#define TRI_SHELL_COLOR_BOLD_RED ""
+#define TRI_SHELL_COLOR_GREEN ""
+#define TRI_SHELL_COLOR_BOLD_GREEN ""
+#define TRI_SHELL_COLOR_BLUE ""
+#define TRI_SHELL_COLOR_BOLD_BLUE ""
+#define TRI_SHELL_COLOR_YELLOW ""
+#define TRI_SHELL_COLOR_BOLD_YELLOW ""
+#define TRI_SHELL_COLOR_WHITE ""
+#define TRI_SHELL_COLOR_BOLD_WHITE ""
+#define TRI_SHELL_COLOR_BLACK ""
+#define TRI_SHELL_COLOR_BOLD_BLACK ""
+#define TRI_SHELL_COLOR_BLINK ""
+#define TRI_SHELL_COLOR_BRIGHT ""
+#define TRI_SHELL_COLOR_RESET ""
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

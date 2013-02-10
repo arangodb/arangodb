@@ -1,0 +1,4 @@
+TOC {#HttpBatchTOC}
+===================
+
+- @ref HttpBatch
