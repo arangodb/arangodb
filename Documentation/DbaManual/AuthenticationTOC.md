@@ -1,6 +1,7 @@
 TOC {#DbaManualAuthenticationTOC}
 =================================
 
-- @ref DbaManualAuthenticationIntro
-  - @ref DbaManualAuthenticationCommandLine
-- @ref UserManagementIntro
+- @ref DbaManualAuthentication
+  - @ref DbaManualAuthenticationIntro
+    - @ref DbaManualAuthenticationCommandLine
+  - @ref UserManagementIntro

@@ -1,6 +1,7 @@
 HTTP Interface for Miscellaneous functions {#HttpMisc}
 ======================================================
 
+@NAVIGATE_HttpMisc
 @EMBEDTOC{HttpMiscTOC}
 
 This is an overview of ArangoDB's HTTP interface for miscellaneous functions.

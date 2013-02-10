@@ -1,6 +1,7 @@
 Module "internal" {#JSModuleInternal}
 =====================================
 
+@NAVIGATE_JSModuleInternal
 @EMBEDTOC{JSModuleInternalTOC}
 
 Internal Module {#JSModuleInternalIntro}

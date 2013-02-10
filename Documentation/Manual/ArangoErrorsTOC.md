@@ -1,4 +1,0 @@
-TOC {#ArangoErrorsTOC}
-======================
-
-- @ref ArangoErrors

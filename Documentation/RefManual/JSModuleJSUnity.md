@@ -1,6 +1,7 @@
 Using jsUnity and node-jscoverage {#jsUnity}
 ============================================
 
+@NAVIGATE_jsUnity
 @EMBEDTOC{jsUnityTOC}
 
 jsUnity {#jsUnityIntro}

@@ -1,6 +1,7 @@
 Accessing Fulltext Indexes via Http {#IndexFulltextHttp}
 ========================================================
 
+@NAVIGATE_IndexFulltextHttp
 @EMBEDTOC{IndexFulltextHttpTOC}
 
 If a fulltext index exists, then @ref HttpSimpleFulltext

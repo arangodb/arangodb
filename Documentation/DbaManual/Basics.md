@@ -1,6 +1,7 @@
 Administrating ArangoDB {#DbaManualBasics}
 ==========================================
 
+@NAVIGATE_DbaManualBasics
 @EMBEDTOC{DbaManualBasicsTOC}
 
 Mostly Memory/Durability {#DbaManualBasicsDurability}

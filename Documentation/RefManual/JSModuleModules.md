@@ -1,6 +1,7 @@
 JavaScript Modules {#JSModules}
 ===============================
 
+@NAVIGATE_JSModules
 @EMBEDTOC{JSModulesTOC}
 
 Javascript Modules {#JSModulesIntro}

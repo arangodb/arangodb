@@ -9,5 +9,5 @@ ArangoDB's Reference Manual (@VERSION) {#RefManual}
 @CHAPTER_REF{JSModuleConsole}
 @CHAPTER_REF{JSModuleFs}
 @CHAPTER_REF{JSModuleInternal}
-@CHAPTER_REF{ArangoErrors}
 @CHAPTER_REF{jsUnity}
+@CHAPTER_REF{RefManualArangoErrors}
