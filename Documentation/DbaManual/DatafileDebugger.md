@@ -1,6 +1,7 @@
 Datafile Debugger {#DbaManualDatafileDebugger}
 ==============================================
 
+@NAVIGATE_DbaManualDatafileDebugger
 @EMBEDTOC{DbaManualDatafileDebuggerTOC}
 
 In Case Of Disaster

@@ -1,6 +1,7 @@
 Authentication and Authorisation {#DbaManualAuthentication}
 ===========================================================
 
+@NAVIGATE_DbaManualAuthentication
 @EMBEDTOC{DbaManualAuthenticationTOC}
 
 Authentication and Authorisation {#DbaManualAuthenticationIntro}

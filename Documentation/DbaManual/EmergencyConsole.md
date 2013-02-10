@@ -1,6 +1,7 @@
 Emergency Console {#DbaManualEmergencyConsole}
 ==============================================
 
+@NAVIGATE_DbaManualEmergencyConsole
 @EMBEDTOC{DbaManualEmergencyConsoleTOC}
 
 In Case Of Disaster
