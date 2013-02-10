@@ -1,6 +1,7 @@
 BitArray Indexes {#IndexBitArray}
 =================================
 
+@NAVIGATE_IndexBitArray
 @EMBEDTOC{IndexBitArrayTOC}
 
 Introduction to Bit-Array Indexes {#IndexBitArrayIntro}

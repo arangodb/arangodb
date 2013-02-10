@@ -1,6 +1,7 @@
 HTTP Interface for Administration and Monitoring {#HttpSystem}
 ==============================================================
 
+@NAVIGATE_HttpSystem
 @EMBEDTOC{HttpSystemTOC}
 
 This is an introduction to ArangoDB's Http interface for administration and

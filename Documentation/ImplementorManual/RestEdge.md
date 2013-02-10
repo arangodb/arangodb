@@ -1,6 +1,7 @@
 REST Interface for Edges {#RestEdge}
 ====================================
 
+@NAVIGATE_RestEdge
 @EMBEDTOC{RestEdgeTOC}
 
 This is an introduction to ArangoDB's REST interface for edges.

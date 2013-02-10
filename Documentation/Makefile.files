@@ -10,8 +10,10 @@
 
 DOXYGEN_TOC = \
 	Documentation/DbaManual/DbaManual.md \
+	Documentation/ImplementorManual/ImplementorManual.md \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
+	Documentation/RefManual/RefManual.md \
 	Documentation/UserManual/UserManual.md
 
 ################################################################################
@@ -93,12 +95,13 @@ WIKI = \
 	HttpImport \
 	HttpIndex \
 	HttpMisc \
-	HttpQueries \
+	HttpQuery \
 	HttpSimple \
 	HttpSystem \
 	ImpManual \
 	ImpManualBasics \
 	ImplementorManual \
+        ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
@@ -122,6 +125,7 @@ WIKI = \
 	NewFeatures11 \
 	NewFeatures12 \
 	RefManual \
+	RefManualArangoErrors \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \

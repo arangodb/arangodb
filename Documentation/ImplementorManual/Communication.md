@@ -1,6 +1,9 @@
 HTTP Handling in ArangoDB {#Communication}
 ==========================================
 
+@NAVIGATE_Communication
+@EMBEDTOC{CommunicationTOC}
+
 ArangoDB will always respond to client requests with HTTP 1.1. Clients
 should therefore support HTTP version 1.1.
 

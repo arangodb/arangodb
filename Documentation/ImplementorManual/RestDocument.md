@@ -1,6 +1,7 @@
 REST Interface for Documents {#RestDocument}
 ============================================
 
+@NAVIGATE_RestDocument
 @EMBEDTOC{RestDocumentTOC}
 
 Documents, Identifiers, Handles {#RestDocumentIntro}
