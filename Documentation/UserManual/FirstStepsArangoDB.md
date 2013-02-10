@@ -39,27 +39,26 @@ Key features include:
 For more in-depth information
 
 - read more on the 
-  @EXTREF_S{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals} 
+  @S_EXTREF_S{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals} 
   of ArangoDB
-- @EXTREF_S{http://vimeo.com/36411892,watch the video} - Martin Schoenert, 
+- @EXTREF{http://vimeo.com/36411892,watch the video}: Martin Schoenert, 
   architect of ArangoDB, gives an introduction of what the ArangoDB project 
   is about
-- or give it a @EXTREF{http://www.arangodb.org/try,try}.
+- or give it a @S_EXTREF{http://www.arangodb.org/try,try}.
 
 Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
 ===============================================================
 
-First of all download and install the corresponding RPM or Debian
-package or use homebrew on the MacOS X. See the
-@EXTREF_S{InstallManual.html, installation manual} for more details.
-In case you just want to experiment with ArangoDB you can use the
-@EXTREF_S{http://www.arangodb.org/try,on-line} demo without installing
-ArangoDB locally.
+First of all download and install the corresponding RPM or Debian package or use
+homebrew on the MacOS X. See the @S_EXTREF_S{InstallManual.html, installation
+manual} for more details.  In case you just want to experiment with ArangoDB you
+can use the @S_EXTREF_S{http://www.arangodb.org/try,on-line} demo without
+installing ArangoDB locally.
 
 For Linux:
 
 - visit the official ArangoDB download page at 
-  @EXTREF{http://www.arangodb.org/download,http://www.arangodb.org/download}
+  @S_EXTREF_S{http://www.arangodb.org/download,http://www.arangodb.org/download}
   and download the correct package for you Linux distribution
 - install the package using your favorite package manager
 - start up the database server, normally this is done by
@@ -80,6 +79,7 @@ the ArangoDB database server.
 If there is no such process, check the log file
 `/var/log/arangodb/arangod.log` for errors. If you see a log message
 like
+
     2012-12-03T11:35:29Z [12882] ERROR Database directory version (1) is lower than server version (1.2).
     2012-12-03T11:35:29Z [12882] ERROR It seems like you have upgraded the ArangoDB binary. If this is what you wanted to do, please restart with the --upgrade option to upgrade the data in the database directory.
     2012-12-03T11:35:29Z [12882] FATAL Database version check failed. Please start the server with the --upgrade option

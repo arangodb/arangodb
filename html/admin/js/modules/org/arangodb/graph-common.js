@@ -64,7 +64,7 @@ exports.GraphArray = GraphArray = function (len) {
   }
 };
 
-GraphArray.prototype = new Array();
+GraphArray.prototype = new Array(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -94,7 +94,7 @@ GraphArray.prototype.map = function (fun, thisp) {
   var res = new GraphArray(len);
 
   for (i = 0;  i < len;  i++) {
-    if (i in this) {
+    if (this.hasOwnProperty(i)) {
       res[i] = fun.call(thisp, this[i], i, this);
     }
   }

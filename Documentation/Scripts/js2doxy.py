@@ -96,9 +96,14 @@ for line in f:
     m = r2.match(line)
 
     if m:
-        name = m.group(1)
+	if fn:
+            func = "void " + fn + " ("
+	    fn = None
+	else:
+            name = m.group(1)
+            func = "void JSF_" + name + " ("
+
         args = m.group(2).split(',')
-        func = "void JSF_" + name + " ("
         sep = ""
 
         if 1 == len(args) and args[0] == "":
@@ -119,9 +124,14 @@ for line in f:
     m = r4.match(line)
 
     if m:
-        name = m.group(1)
+	if fn:
+            func = "void " + fn + " ("
+	    fn = None
+	else:
+            name = m.group(1)
+            func = "void JSF_" + string.replace(name, '.', '_') + " ("
+
         args = m.group(2).split(',')
-        func = "void JSF_" + string.replace(name, '.', '_') + " ("
         sep = ""
 
         for a in args:

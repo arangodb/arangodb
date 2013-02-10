@@ -42,7 +42,7 @@ ArangoDB's User Manuals {#ArangoDBUserManual}
 
 - @BOOK_REF{ImpManual} @ifnot XML @EXTREF{imp-manual.pdf,pdf} @endif
 
-- @BOOK_REF{Glossary}
+- also see the @ref Glossary
 
 @ifnot XML 
 - @EXTREF{arangodb_1.0_shell_reference_card.pdf,Cheat Sheet} 
