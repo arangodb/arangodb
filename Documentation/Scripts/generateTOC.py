@@ -90,7 +90,7 @@ for filename in argv:
 
     f.close()
 
-def generate(l):
+def generate(l, h):
     for i in range(0,len(l)):
         entry = l[i]
         prev = ""
@@ -106,6 +106,13 @@ def generate(l):
         if entry in homes:
             home = homes[entry]
 
+        if h:
+            if prev != "" and home != homes[prev]:
+                prev = ""
+
+            if next != "" and home != homes[next]:
+                next = ""
+
         if prev == "":
             print 'ALIASES += "NAVIGATE_%s=@NAVIGATE_FIRST{%s,%s}"' % (entry,home,next)
         elif next == "":
@@ -113,5 +120,5 @@ def generate(l):
         else:
             print 'ALIASES += "NAVIGATE_%s=@NAVIGATE{%s,%s,%s}"' % (entry,prev,home,next)
 
-generate(books)
-generate(chapters)
+generate(books, None)
+generate(chapters, homes)
