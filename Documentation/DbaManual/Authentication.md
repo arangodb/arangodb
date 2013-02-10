@@ -29,3 +29,25 @@ Command-Line Options for the Authentication and Authorisation {#DbaManualAuthent
 ---------------------------------------------------------------------------------------------------
 
 @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+
+Introduction to User Management {#UserManagementIntro}
+======================================================
+
+ArangoDB provides basic functionality to add, modify and remove
+database users programmatically. The following functionality is
+provided by the `users` module and can be used from inside arangosh
+and arangod.
+
+Please note that this functionality is not available from within the
+web interface.
+
+@anchor UserManagementSave
+@copydetails JSF_saveUser
+
+@CLEARPAGE
+@anchor UserManagementReplace
+@copydetails JSF_replaceUser
+
+@CLEARPAGE
+@anchor UserManagementRemove
+@copydetails JSF_removeUser

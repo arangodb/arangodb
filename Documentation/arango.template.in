@@ -239,9 +239,10 @@ ALIASES += \
 
 # references
 ALIASES += \
-  "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href=\1>\2</a>@endif" \
-  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
-  "S_EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else <a href=\1>\2</a>@endif" \
+  "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href=\"\1\">\2</a>@endif" \
+  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\"\1\">\2</a>\n@endif" \
+  "S_EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else\n<a href=\"\1\">\2</a>@endif" \
+  "S_EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly) @else\n<a href=\"\1\">\2</a>\n@endif" \
   "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif"
 
 # table of content
