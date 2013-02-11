@@ -143,6 +143,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief explicitly lock the underlying collection for write access
+////////////////////////////////////////////////////////////////////////////////
+
+        int lockWrite () {
+          TRI_primary_collection_t* primary = primaryCollection();
+
+          return this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read any (random) document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -156,10 +166,10 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (TRI_doc_mptr_t** mptr, const string& key) {
+        int read (TRI_doc_mptr_t** mptr, const string& key, const bool lock) {
           TRI_primary_collection_t* const primary = primaryCollection();
 
-          return this->readCollectionDocument(primary, mptr, key);
+          return this->readCollectionDocument(primary, mptr, key, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -109,6 +109,7 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_saveUser
 /// @brief create a new user
 ///
 /// @FUN{@FA{users}.save(@FA{username}, @FA{passwd})}
@@ -159,6 +160,7 @@ exports.save = function (username, passwd) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_replaceUser
 /// @brief update an existing user
 ///
 /// @FUN{@FA{users}.replace(@FA{username}, @FA{passwd})}
@@ -214,6 +216,7 @@ exports.update = function (username, passwd) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_removeUser
 /// @brief delete an existing user
 ///
 /// @FUN{@FA{users}.remove(@FA{username}, @FA{passwd})}

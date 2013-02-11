@@ -31,8 +31,6 @@
 
 var arangodb = require("org/arangodb");
 
-var output = arangodb.output;
-
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
@@ -53,7 +51,7 @@ var ArangoError = require("org/arangodb/arango-error").ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoError.prototype._PRINT = function () {
-  output(this.toString());
+  arangodb.output(this.toString());
 };
 
 ////////////////////////////////////////////////////////////////////////////////

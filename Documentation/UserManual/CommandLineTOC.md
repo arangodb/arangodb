@@ -1,0 +1,56 @@
+TOC {#CommandLineTOC}
+=====================
+
+- @ref CommandLine
+  - @ref CommandLineGeneralOptions
+    - @ref CommandLineHelp "help"
+    - @ref CommandLineVersion "version"
+    - @ref CommandLineUpgrade "upgrade"
+    - @ref CommandLineConfiguration "configuration"
+    - @ref CommandLineDaemon "daemon"
+    - @ref CommandLineDefaultLanguage "default-language"
+    - @ref CommandLineSupervisor "supervisor"
+    - @ref CommandLineUid "uid"
+    - @ref CommandLineGid "gid"
+    - @ref CommandLinePidFile "pid-file"
+  - @ref CommandLineArangod
+    - @ref CommandLineArangoEndpoint "server.endpoint"
+    - @ref CommandLineArangoDisableAuthentication "server.disable-authentication"
+    - @ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"
+    - @ref CommandLineArangoKeyFile "server.keyfile"
+    - @ref CommandLineArangoCaFile "server.cafile"
+    - @ref CommandLineArangoSslProtocol "server.ssl-protocol"
+    - @ref CommandLineArangoSslCacheMode "server.ssl-cache"
+    - @ref CommandLineArangoSslOptions "server.ssl-options"
+    - @ref CommandLineArangoSslCipherList "server.ssl-cipher-list"
+    - @ref CommandLineArangoDirectory "database.directory"
+    - @ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"
+    - @ref CommandLineArangoWaitForSync "database.wait-for-sync"
+    - @ref CommandLineArangoForceSyncShapes "database.force-sync-shapes"
+    - @ref CommandLineArangoRemoveOnDrop "database.remove-on-compacted"
+    - @ref CommandLineArangoJsGcFrequency "javascript.gc-frequency"
+    - @ref CommandLineArangoJsGcInterval "javascript.gc-interval"
+    - @ref CommandLineArangoJsV8Options "javascript.v8-options"
+  - @ref CommandLineLogging
+    - @ref CommandLineLoggingGeneral
+      - @ref CommandLineLoggingLogFile "log.file"
+      - @ref CommandLineLoggingLogSeverity "log.severity"
+      - @ref CommandLineLoggingLogSyslog "log.syslog"
+    - @ref CommandLineLoggingHuman
+      - @ref CommandLineLoggingLogLevel "log.level"
+      - @ref CommandLineLoggingLogLineNumber "log.line-number"
+      - @ref CommandLineLoggingLogPrefix "log.prefix"
+      - @ref CommandLineLoggingLogThread "log.thread"
+      - @ref CommandLineLoggingLogFilter "log.filter"
+    - @ref CommandLineLoggingMachine
+      - @ref CommandLineLoggingLogApplication "log.application"
+      - @ref CommandLineLoggingLogFacility "log.facility"
+      - @ref CommandLineLoggingLogFormat "log.format"
+      - @ref CommandLineLoggingLogHostName "log.hostname"
+  - @ref CommandLineScheduler
+    - @ref CommandLineSchedulerThreads "scheduler.threads"
+    - @ref CommandLineSchedulerBackend "scheduler.backend"
+    - @ref CommandLineSchedulerShowIoBackends "show-io-backends"
+  - @ref CommandLineRandom
+    - @ref CommandLineRandomGenerator "random.generator"
+    - @ref CommandLineRandomGenerator "random.no-seed"

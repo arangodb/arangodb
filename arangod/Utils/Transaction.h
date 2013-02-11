@@ -444,17 +444,22 @@ namespace triagens {
         
         int readCollectionDocument (TRI_primary_collection_t* const primary, 
                                     TRI_doc_mptr_t** mptr,
-                                    const string& key) {
+                                    const string& key, 
+                                    const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitReadContextPrimaryCollection(&context, primary);
           
-          // READ-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_READ);
+          if (lock) {
+            // READ-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_READ);
+          }
 
           int res = primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
-          // READ-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+          }
 
           return res;
         }
@@ -652,19 +657,24 @@ namespace triagens {
                                       const TRI_doc_update_policy_e policy,
                                       const TRI_voc_rid_t expectedRevision,
                                       TRI_voc_rid_t* actualRevision,
-                                      const bool forceSync) {
+                                      const bool forceSync,
+                                      const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          if (lock) {
+            // WRITE-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          }
 
           int res = primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+            // WRITE-LOCK END
+          }
 
           return res;
         }
@@ -680,19 +690,24 @@ namespace triagens {
                                     const TRI_doc_update_policy_e policy,
                                     const TRI_voc_rid_t expectedRevision,
                                     TRI_voc_rid_t* actualRevision,
-                                    const bool forceSync) {
+                                    const bool forceSync,
+                                    const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          if (lock) {
+            // WRITE-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          }
 
           int res = primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+            // WRITE-LOCK END
+          }
 
           return res;
         }

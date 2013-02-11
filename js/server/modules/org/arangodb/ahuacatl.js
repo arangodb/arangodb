@@ -2858,6 +2858,30 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected edges
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_EDGES (edgeCollection, 
+                      vertex, 
+                      direction) {
+  var c = COLLECTION(edgeCollection);
+
+  // validate arguments
+  if (direction === "outbound") {
+    return c.outEdges(vertex);
+  }
+  else if (direction === "inbound") {
+    return c.inEdges(vertex);
+  }
+  else if (direction === "any") {
+    return c.edges(vertex);
+  }
+  else {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
+  }
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2948,6 +2972,7 @@ exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
+exports.GRAPH_EDGES = GRAPH_EDGES;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;

@@ -459,6 +459,7 @@ void ApplicationV8::collectGarbage () {
       context->_isolate->Enter();
       context->_context->Enter();
 
+      v8::V8::LowMemoryNotification();
       while (!v8::V8::IdleNotification()) {
       }
 
@@ -790,6 +791,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   context->_isolate->Enter();
   context->_context->Enter();
 
+  v8::V8::LowMemoryNotification();
   while (!v8::V8::IdleNotification()) {
   }
  

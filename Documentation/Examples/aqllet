@@ -1,3 +1,0 @@
-FOR u IN users
-  LET numRecommendations = LENGTH(u.recommendations)
-  RETURN { "user" : u, "numRecommendations" : numRecommendations, "isPowerUser" : numRecommendations >= 10 } 
