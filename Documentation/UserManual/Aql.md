@@ -547,7 +547,8 @@ result is defined as follows:
 - null: `null` is equal to `null`
 - boolean:`false` is less than `true`
 - number: numeric values are ordered by their cardinal value
-- string: string values are ordered using a byte-wise comparison 
+- string: string values are ordered using a localized comparison,
+  see @ref CommandLineDefaultLanguage "-\-default-language"
 
 Note: unlike in SQL, `null` can be compared to any value, including `null`
 itself, without the result being converted into `null` automatically.
