@@ -53,7 +53,8 @@ cat $INPUT \
   | sed -e 's:<\(/*\)h4>:<\1h5>:g' \
   | sed -e 's:<\(/*\)h3>:<\1h4>:g' \
   | sed -e 's:<\(/*\)h2>:<\1h3>:g' \
-  | sed -e 's:<\(/*\)h1>:<\1h2>:g' >> $OUTPUT.tmp || exit 1
+  | sed -e 's:<\(/*\)h1>:<\1h2>:g' \
+  | sed -e 's:<span class="comment">:<span class="doxy-comment">:g' >> $OUTPUT.tmp || exit 1
 
 if test "x$KEEP_TITLE" == "x0";  then
   mv $OUTPUT.tmp $OUTPUT.tmp1 || exit 1
