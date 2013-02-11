@@ -316,6 +316,8 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
     return false;
   }
 
+  // string handle
+
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
   char const* s = *str;
 
@@ -803,7 +805,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t* document = 0;
-  res = trx.read(&document, key);
+  res = trx.read(&document, key, true);
   
   if (res == TRI_ERROR_NO_ERROR) {
     assert(document);
@@ -897,7 +899,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
   
   TRI_doc_mptr_t* document = 0;
-  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
+  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision, true);
 
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -972,6 +974,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
     v8::Handle<v8::Object> obj = argv[0]->ToObject();
     v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
     if (v->IsString()) {
+      // string key
       TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
       key = TRI_DuplicateString2(*str, str.length());
       holder.registerString(TRI_CORE_MEM_ZONE, key);
@@ -1199,8 +1202,13 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
   }
 
+  // we must use a write-lock that spans both the initial read and the update.
+  // otherwise the operation is not atomic
+  trx.lockWrite();
+
   TRI_doc_mptr_t* document = 0;
-  res = trx.read(&document, key);
+  // do not acquire an extra lock
+  res = trx.read(&document, key, false);
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
   }
@@ -1223,7 +1231,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
 
-  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision);
+  // do not acquire an extra-lock
+  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision, false);
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
@@ -5543,7 +5552,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineArango
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineArangod
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
@@ -5613,7 +5622,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
 ///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineArango
+/// - @LIT{journalSize} (optional, default is a @ref CommandLineArangod
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
@@ -6101,7 +6110,7 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
   rid = 0;
 
   // extract the document identifier and revision from a string
-  if (val->IsString() || val->IsStringObject()) {
+  if (val->IsString()) {
     return ParseDocumentHandle(val, collectionName, key);
   }
 

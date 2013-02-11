@@ -98,26 +98,26 @@ replDict["e_linebreak"] = "\n"
 replDict["s_hruler"] = "<hr>"
 replDict["e_hruler"] = "\n"
 
-replDict["s_itemizedlist"] = "<ul>"
+replDict["s_itemizedlist"] = "\n<ul>"
 replDict["e_itemizedlist"] = "</ul>"
 
-replDict["s_orderedlist"] = "<ol>"
+replDict["s_orderedlist"] = "\n<ol>"
 replDict["e_orderedlist"] = "</ol>"
 
 replDict["s_listitem_1"] = "<li>"
-replDict["e_listitem_1"] = "</li>"
+replDict["e_listitem_1"] = "</li>\n"
 
 replDict["s_listitem_2"] = "<li>"
-replDict["e_listitem_2"] = "</li>"
+replDict["e_listitem_2"] = "</li>\n"
 
 replDict["s_listitem_3"] = "<li>"
-replDict["e_listitem_3"] = "</li>"
+replDict["e_listitem_3"] = "</li>\n"
 
 replDict["s_listitem_4"] = "<li>"
-replDict["e_listitem_4"] = "</li>"
+replDict["e_listitem_4"] = "</li>\n"
 
 replDict["s_listitem_5"] = "<li>"
-replDict["e_listitem_5"] = "</li>"
+replDict["e_listitem_5"] = "</li>\n"
 
 replDict["s_xrefsect"] = ""
 replDict["e_xrefsect"] = ""
@@ -159,7 +159,7 @@ replDict["e_title_4"] = "\n\n"
 replDict["s_ulink"] = "["
 replDict["e_ulink"] = "]"
 
-replDict["s_verbatim"] = ""
+replDict["s_verbatim"] = "\n\n"
 replDict["e_verbatim"] = ""
 
 replDict["s_simplesect"] = ""
@@ -417,7 +417,6 @@ def end_element(name):
     #endif
     
     if name == "heading":
-        titlevel = titlevel - 1
         name = "title"
     #endif
         
@@ -468,6 +467,9 @@ def char_data(data):
         text = text.replace("\n", "__~2____~1__")
         text = "__~1__%s__~3__" % text
         text = text.replace("__~1____~3__", "")
+    else:
+        text = text.replace('<', '&lt;')
+        text = text.replace('>', '&gt;')
     #endif
 
     if DEBUG:
@@ -490,18 +492,11 @@ def finalize_string(text):
     
     # links
     text = re.sub('__~4__([^~/]*)__~6__([^~]*)__~5__', '<a href="\\1">\\2</a>', text)
-    text = re.sub('\\[__~9__([^~]*)__~10__([^\\]]*)\\]', '[\\2](\\1)', text)
+    text = re.sub('\\[__~9__([^~]*)__~10__([^\\]]*)\\]', '<a href="\\1">\\2</a>', text)
 
     # verbatim
     text = text.replace("__~1__", "    ")
     text = text.replace("__~2__", "\n")
-    
-    # really ugly, but fixes things that otherwise go wrong
-    # unfortunately we can't simply replace <>&"' in text values as this is wrong, either
-    # text = text.replace("<tt><", "<tt>&lt;")
-    text = text.replace("<tt><b>", "__GRRR__")
-    text = text.replace("<tt><", "<tt>&lt;")
-    text = text.replace("__GRRR__", "<tt><b>")
     
     return text
 #enddef

@@ -1,1 +1,1 @@
-#define TRIAGENS_VERSION "1.2.beta1"
+#define TRIAGENS_VERSION "1.2.beta2"

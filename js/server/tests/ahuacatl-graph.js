@@ -29,7 +29,221 @@ var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var ArangoError = require("org/arangodb/arango-error").ArangoError; 
 var QUERY = require("internal").AQL_QUERY;
+var errors = require("internal").errors;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for EDGES() function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryEdgesTestSuite () {
+  var vertex = null;
+  var edge = null;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a given query
+////////////////////////////////////////////////////////////////////////////////
+
+  function executeQuery (query) {
+    var cursor = QUERY(query, undefined);
+    if (cursor instanceof ArangoError) {
+      print(query, cursor.errorMessage);
+    }
+    assertFalse(cursor instanceof ArangoError);
+    return cursor;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a given query and return the results as an array
+////////////////////////////////////////////////////////////////////////////////
+
+  function getQueryResults (query, isFlat) {
+    var result = executeQuery(query).getRows();
+    var results = [ ];
+
+    for (var i in result) {
+      if (! result.hasOwnProperty(i)) {
+        continue;
+      }
+
+      var row = result[i];
+      if (isFlat) {
+        results.push(row);
+      } 
+      else {
+        var keys = [ ];
+        for (var k in row) {
+          if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
+            keys.push(k);
+          }
+        }
+       
+        keys.sort();
+        var resultRow = { };
+        for (var k in keys) {
+          if (keys.hasOwnProperty(k)) {
+            resultRow[keys[k]] = row[keys[k]];
+          }
+        }
+        results.push(resultRow);
+      }
+    }
+
+    return results;
+  }
+
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop("UnitTestsAhuacatlVertex");
+      db._drop("UnitTestsAhuacatlEdge");
+
+      vertex = db._create("UnitTestsAhuacatlVertex");
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+
+      vertex.save({ _key: "v1" });
+      vertex.save({ _key: "v2" });
+      vertex.save({ _key: "v3" });
+      vertex.save({ _key: "v4" });
+      vertex.save({ _key: "v5" });
+      vertex.save({ _key: "v6" });
+      vertex.save({ _key: "v7" });
+
+      function makeEdge (from, to) {
+        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to });
+      }
+
+      makeEdge("v1", "v2");
+      makeEdge("v1", "v3");
+      makeEdge("v2", "v3");
+      makeEdge("v3", "v4");
+      makeEdge("v3", "v6");
+      makeEdge("v3", "v7");
+      makeEdge("v4", "v2");
+      makeEdge("v7", "v3");
+      makeEdge("v6", "v3");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop("UnitTestsAhuacatlVertex");
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesAny : function () {
+      var actual;
+     
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'any') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v2", "v1->v3" ]);
+
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'any') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v2", "v2->v3", "v4->v2" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'any') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'any') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'any') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'any') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+     
+      try { 
+        actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'thefox/thefox', 'any') SORT e.what RETURN e.what", true);
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+      
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesIn : function () {
+      var actual;
+     
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'inbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'inbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v2", "v4->v2" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'inbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v3", "v2->v3", "v6->v3", "v7->v3" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'inbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v3", "v2->v3", "v6->v3", "v7->v3" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'inbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'inbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+     
+      try { 
+        actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'thefox/thefox', 'inbound') SORT e.what RETURN e.what", true);
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesOut : function () {
+      var actual;
+     
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v1', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v1->v2", "v1->v3" ]);
+
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v2', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v2->v3" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v3->v4", "v3->v6", "v3->v7" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v3', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ "v3->v4", "v3->v6", "v3->v7" ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v8', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+      
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/v5', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+
+      actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'UnitTestsAhuacatlVertex/thefox', 'outbound') SORT e.what RETURN e.what", true);
+      assertEqual(actual, [ ]);
+      
+      try {
+        actual = getQueryResults("FOR e IN EDGES(UnitTestsAhuacatlEdge, 'thefox/thefox', 'outbound') SORT e.what RETURN e.what", true);
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+    }
+
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for PATHS() function
@@ -646,6 +860,7 @@ function ahuacatlQueryTraversalTreeTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryPathsTestSuite);
 jsunity.run(ahuacatlQueryTraversalTestSuite);
 jsunity.run(ahuacatlQueryTraversalTreeTestSuite);

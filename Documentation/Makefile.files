@@ -9,9 +9,31 @@
 ################################################################################
 
 DOXYGEN_TOC = \
+	Documentation/DbaManual/DbaManual.md \
+	Documentation/ImplementorManual/ImplementorManual.md \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
+	Documentation/RefManual/RefManual.md \
 	Documentation/UserManual/UserManual.md
+
+################################################################################
+### @brief install man pages
+################################################################################
+
+dist_man_MANS += \
+	Documentation/man/man1/arangoimp.1 \
+	Documentation/man/man1/arangosh.1 \
+        Documentation/man/man8/rcarangod.8 \
+        Documentation/man/man8/arangod.8 \
+        Documentation/man/man8/arango-dfdb.8 
+
+
+if ENABLE_ARANGOB        
+
+dist_man_MANS += \
+	Documentation/man/man1/arangob.1 
+
+endif
 
 ################################################################################
 ### @brief JavaScript files
@@ -48,20 +70,23 @@ DOXYGEN = \
 ################################################################################
 
 WIKI = \
+	Aql \
+	AqlExamples \
 	ArangoErrors \
-        Aql \
-        AqlExamples \
 	CommandLine \
-	Compiling \
 	Communication \
+	Compiling \
 	DbaManual \
-	DbaManualBasics \
 	DbaManualAuthentication \
+	DbaManualBasics \
 	DbaManualDatafileDebugger \
-	DefineAction \
+	DbaManualEmergencyConsole \
 	FirstStepsArangoDB \
 	Glossary \
-	Graphs \
+	HandlingCollections \
+	HandlingDocuments \
+	HandlingEdges \
+	HandlingIndexes \
 	Home \
 	HttpBatch \
 	HttpCollection \
@@ -69,14 +94,14 @@ WIKI = \
 	HttpGraph \
 	HttpImport \
 	HttpIndex \
-	HttpInterface \
 	HttpMisc \
-	HttpQueries \
+	HttpQuery \
 	HttpSimple \
 	HttpSystem \
-	ImplementorManual \
 	ImpManual \
 	ImpManualBasics \
+	ImplementorManual \
+        ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
@@ -96,24 +121,21 @@ WIKI = \
 	JSModuleGraph \
 	JSModuleInternal \
 	JSModules \
-	KeyValue \
 	NamingConventions \
 	NewFeatures11 \
+	NewFeatures12 \
 	RefManual \
+	RefManualArangoErrors \
 	RestDocument \
 	RestEdge \
-	RestSystem \
-	ShellCollection \
-	ShellDocument \
-	ShellEdge \
-	ShellIndex \
 	SimpleQueries \
-	Upgrading \
+	Upgrading11 \
+	Upgrading12 \
 	UserManagement \
 	UserManual \
+	UserManualActions \
 	UserManualArangosh \
 	UserManualWebInterface \
-	UserManualActions \
 	jsUnity
 
 ## -----------------------------------------------------------------------------
@@ -260,30 +282,38 @@ man: Doxygen/.setup-directories
 	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
 
 ################################################################################
-### @brief install man pages
-################################################################################
-
-dist_man_MANS += \
-	Documentation/man/man1/arangoimp.1 \
-	Documentation/man/man1/arangosh.1 \
-        Documentation/man/man8/rcarangod.8 \
-        Documentation/man/man8/arangod.8 \
-        Documentation/man/man8/arango-dfdb.8 
-
-
-if ENABLE_ARANGOB        
-
-dist_man_MANS += \
-	Documentation/man/man1/arangob.1 
-
-endif
-
-################################################################################
 ### @brief cleanup
 ################################################################################
 
 CLEANUP += \
 	Doxygen/*
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                          EXAMPLES
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief generate examples
+################################################################################
+
+.PHONY: examples
+
+examples:
+	@rm -f /tmp/arangodb.examples
+
+	python @srcdir@/Documentation/Scripts/generateExamples.py \
+		--output-dir @builddir@/Documentation/Examples \
+		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
+		@srcdir@/Documentation/UserManual/*.md > /tmp/arangosh.examples
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+
+	@builddir@/bin/arangosh \
+		-s \
+		-c @srcdir@/etc/relative/arangosh.conf \
+		--server.password "" \
+		--server.endpoint unix://$(VOCDIR)/arango.sock \
+		--javascript.execute /tmp/arangosh.examples
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

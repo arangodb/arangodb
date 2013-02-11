@@ -109,7 +109,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///   update of an document.
 ///
 /// - @LIT{journalSize} (optional, default is a @ref
-///   CommandLineArango "configuration parameter"): The maximal size of
+///   CommandLineArangod "configuration parameter"): The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
