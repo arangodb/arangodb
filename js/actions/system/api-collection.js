@@ -59,6 +59,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
     result.journalSize   = properties.journalSize;      
     result.createOptions = properties.createOptions;
     result.isVolatile    = properties.isVolatile;
+    result.isSystem      = properties.isSystem;
   }
 
   if (showCount) {
@@ -204,8 +205,9 @@ function post_api_collection (req, res) {
 
     result.id = collection._id;
     result.name = collection.name();
-    result.waitForSync = parameter.waitForSync;
-    result.isVolatile = parameter.isVolatile;
+    result.waitForSync = parameter.waitForSync || false;
+    result.isVolatile = parameter.isVolatile || false;
+    result.isSystem = parameter.isSystem || false;
     result.status = collection.status();
     result.type = collection.type();
     result.createOptions = collection.createOptions;

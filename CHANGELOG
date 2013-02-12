@@ -1,7 +1,20 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #395:  Collection properties() function should return 'isSystem' for 
+  Javascript and REST API
+
+* make server stop after upgrade procedure when invoked with `--upgrade option`.
+  When started with the `--upgrade` option, the server will perfom
+  the upgrade, and then exit with a status code indicating the result of the
+  upgrade (0 = success, 1 = failure). To start the server regularly in either 
+  daemon or console mode, the `--upgrade` option must not be specified.
+  This change was introduced to allow init.d scripts check the result of
+  the upgrade procedure, even in case an upgrade was successful.
+  this was introduced as part of issue #391.
+
 * added AQL function EDGES()
+
 * added more crash-protection when reading corrupted collections at startup
 
 * added documentation for AQL function CONTAINS()

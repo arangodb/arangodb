@@ -4730,6 +4730,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
     result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
+    result->Set(TRI_V8_SYMBOL("isSystem"), base->_info._isSystem ? v8::True() : v8::False());
 
     if (base->_info._options) {
       result->Set(v8g->CreateOptionsKey, TRI_ObjectJson(base->_info._options)->ToObject());
