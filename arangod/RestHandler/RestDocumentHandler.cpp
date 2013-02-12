@@ -803,7 +803,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     bool nullMeansRemove;
     bool found;
     char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    if (! found || StringUtils::boolean(valueStr)) {
       // default: null values are saved as Null
       nullMeansRemove = false;
     }
