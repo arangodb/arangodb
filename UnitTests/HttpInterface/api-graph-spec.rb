@@ -177,9 +177,9 @@ describe ArangoDB do
         body = "{\"\_key\" : \"vertexTest1\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest1")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
       end
@@ -188,9 +188,9 @@ describe ArangoDB do
         body = "{\"\_key\" : \"vertexTest2\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
 
         doc2 = create_vertex( prefix, graph_name, body )
         doc2.code.should eq(400)
@@ -202,9 +202,9 @@ describe ArangoDB do
         body = "{\"\_key\" : \"vertexTest3\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest3")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
 
@@ -219,7 +219,7 @@ describe ArangoDB do
         body = "{\"\_key\" : \"vertexTest_id\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         _id = doc.parsed_response['vertex']['_id'];
 
@@ -241,9 +241,9 @@ describe ArangoDB do
         body = "{\"\_key\" : \"vertexTest5\", \"optional1\" : \"val1\"}"
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest5")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
 
@@ -268,9 +268,9 @@ describe ArangoDB do
         body = "{\"optional1\" : \"val1\", \"optional2\" : \"val2\"}"
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['optional1'].should eq("val1")
         doc.parsed_response['vertex']['optional2'].should eq("val2")
         _key = doc.parsed_response['vertex']['_key'];
@@ -302,7 +302,7 @@ describe ArangoDB do
         body = "{\"optional1\" : \"vertexDelete1\"}"
         doc = create_vertex( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         _key = doc.parsed_response['vertex']['_key'];
 
@@ -348,9 +348,9 @@ describe ArangoDB do
         body = "{\"_key\" : \"edgeTest1\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['_key'].should eq("edgeTest1")
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['$label'].should eq(nil)
@@ -360,9 +360,9 @@ describe ArangoDB do
         body = "{\"_key\" : \"edgeTest2\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['_key'].should eq("edgeTest2")
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['$label'].should eq(nil)
@@ -385,9 +385,9 @@ describe ArangoDB do
         body = "{\"_key\" : \"edgeTest4\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['_key'].should eq("edgeTest4")
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['$label'].should eq("label1")
@@ -403,9 +403,9 @@ describe ArangoDB do
         body = "{\"_key\" : \"edgeTest5\", \"_from\" : \"#{v_id1}\", \"_to\" : \"#{v_id2}\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['_key'].should eq("edgeTest5")
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['_from'].should eq(v_id1)
@@ -416,9 +416,9 @@ describe ArangoDB do
         body = "{\"_key\" : \"edgeTest6\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['_key'].should eq("edgeTest6")
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['$label'].should eq("label1")
@@ -444,9 +444,9 @@ describe ArangoDB do
       it "checks replace edge properties by _id" do
         body = "{\"_key\" : \"edgeTest7\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['optional2'].should eq(nil)
 
@@ -471,9 +471,9 @@ describe ArangoDB do
       it "checks delete edge by _id" do
         body = "{\"_key\" : \"edgeTest8\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['optional2'].should eq(nil)
 
@@ -494,9 +494,9 @@ describe ArangoDB do
       it "checks delete edge by _key" do
         body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['optional1'].should eq("val1")
         doc.parsed_response['edge']['optional2'].should eq(nil)
 
