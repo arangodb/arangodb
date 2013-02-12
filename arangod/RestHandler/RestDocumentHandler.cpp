@@ -271,6 +271,8 @@ bool RestDocumentHandler::createDocument () {
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
+  
+  const bool waitForSync = extractWaitForSync();
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -283,6 +285,7 @@ bool RestDocumentHandler::createDocument () {
   if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
+
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -300,7 +303,7 @@ bool RestDocumentHandler::createDocument () {
   const TRI_voc_cid_t cid = trx.cid();
   
   TRI_doc_mptr_t* document = 0;
-  res = trx.createDocument(&document, json, extractWaitForSync());
+  res = trx.createDocument(&document, json, waitForSync, true);
   res = trx.finish(res);
   
   // .............................................................................

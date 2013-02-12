@@ -231,23 +231,24 @@ bool RestImportHandler::createByDocumentsLines () {
     return false;
   }
 
-  size_t start = 0;
-  size_t next = 0;
+  trx.lockWrite();
+
+  const char* ptr = _request->body();
+  const char* end = ptr + _request->bodySize();
   string line;
   
-  string body(_request->body(), _request->bodySize());
+  while (ptr < end) {
+    const char* pos = strchr(ptr, '\n');
 
-  while (next != string::npos && start < body.size()) {
-    next = body.find('\n', start);
-
-    if (next == string::npos) {
-      line = body.substr(start);
+    if (pos == 0) {
+      line.assign(ptr, (size_t) (end - ptr));
+      ptr = end;
     }
     else {
-      line = body.substr(start, next - start);
-      start = next + 1;      
+      line.assign(ptr, (size_t) (pos - ptr));
+      ptr = pos + 1;
     }
-
+    
     StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
       ++numEmpty;
@@ -260,7 +261,8 @@ bool RestImportHandler::createByDocumentsLines () {
       // now save the document
       TRI_doc_mptr_t* document = 0;
       
-      res = trx.createDocument(&document, values, forceSync);
+      // do not acquire an extra lock
+      res = trx.createDocument(&document, values, forceSync, false);
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
@@ -389,7 +391,7 @@ bool RestImportHandler::createByDocumentsList () {
       // now save the document
       TRI_doc_mptr_t* document = 0;
       
-      res = trx.createDocument(&document, values, forceSync);
+      res = trx.createDocument(&document, values, forceSync, true);
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
@@ -569,7 +571,7 @@ bool RestImportHandler::createByKeyValueList () {
 
       // now save the document
       TRI_doc_mptr_t* document = 0;
-      res = trx.createDocument(&document, json, forceSync);
+      res = trx.createDocument(&document, json, forceSync, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;

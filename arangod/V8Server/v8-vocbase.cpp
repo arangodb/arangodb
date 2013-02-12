@@ -993,7 +993,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   const bool forceSync = ExtractForceSync(argv, 2);
   
   TRI_doc_mptr_t* document = 0;
-  int res = trx->createDocument(key, &document, shaped, forceSync);
+  int res = trx->createDocument(key, &document, shaped, forceSync, true);
 
   res = trx->finish(res);
 
@@ -1113,7 +1113,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   
   
   TRI_doc_mptr_t* document = 0;
-  int res = trx->createEdge(key, &document, shaped, forceSync, &edge);
+  int res = trx->createEdge(key, &document, shaped, forceSync, &edge, true);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4415,12 +4415,15 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
   }
 
+  // READ-LOCK start
   trx.lockRead();
 
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_doc_collection_info_t* info = primary->figures(primary);
 
   res = trx.finish(res);
+  // READ-LOCK end
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
   }
@@ -5126,11 +5129,13 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch revision", true)));
   }
 
+  // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t rid = primary->base._info._rid;
 
   trx.finish(res);
+  // READ-LOCK end
 
   return scope.Close(V8RevisionId(rid));
 }
