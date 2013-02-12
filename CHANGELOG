@@ -1,7 +1,14 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #395:  Collection properties() function should return 'isSystem' for 
+  Javascript and REST API
+
+* make server stop after upgrade procedure when invoked with `--upgrade option`.
+  this was introduced as part of issue #391.
+
 * added AQL function EDGES()
+
 * added more crash-protection when reading corrupted collections at startup
 
 * added documentation for AQL function CONTAINS()
