@@ -1,6 +1,9 @@
 v1.1.3 (2013-XX-XX)
 -------------------
 
+* request body was not passed to actions when a user-defined action was called with
+  the HTTP PATCH method
+
 * added some more crash protection when reading corrupt collection datafiles
 
 * added missing documentation for AQL CONTAINS() function

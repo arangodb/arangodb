@@ -374,6 +374,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     
     case HttpRequest::HTTP_REQUEST_PATCH:
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
 
     case HttpRequest::HTTP_REQUEST_DELETE:
