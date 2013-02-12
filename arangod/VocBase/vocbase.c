@@ -1763,6 +1763,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   TRI_col_info_t info;
   void const* found;
   char const* oldName;
+  bool isSystem;
   int res;
 
   // old name should be different
@@ -1772,7 +1773,17 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (! TRI_IsAllowedCollectionName(TRI_IsSystemCollectionName(oldName), newName)) {
+  isSystem = TRI_IsSystemCollectionName(oldName);
+  if (isSystem && ! TRI_IsSystemCollectionName(newName)) {
+    // a system collection shall not be renamed to a non-system collection name
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+  else if (! isSystem && TRI_IsSystemCollectionName(newName)) {
+    // a non-system collection shall not be renamed to a system collection name
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+
+  if (! TRI_IsAllowedCollectionName(isSystem, newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
