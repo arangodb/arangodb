@@ -2398,8 +2398,6 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
   struct yyguts_t * yyg;
   yyscan_t scanner;
 
-  object = 0;
-
   tri_jsp_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
 

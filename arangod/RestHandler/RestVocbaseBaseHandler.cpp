@@ -194,6 +194,7 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
                                           TRI_voc_key_t key,
                                           TRI_voc_rid_t rid) {
   const string handle = DocumentHelper::assembleDocumentId(collectionName, key);
+  const string rev = StringUtils::itoa(rid);
 
   _response = createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
@@ -201,7 +202,7 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
   if (responseCode != HttpResponse::OK) {
     // 200 OK is sent is case of delete or update. 
     // in these cases we do not return etag nor location
-    _response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
+    _response->setHeader("ETag", "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
     _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
   }
@@ -209,9 +210,9 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
-    .appendText(handle.c_str())
+    .appendText(handle)
     .appendText("\",\"_rev\":\"")
-    .appendText(StringUtils::itoa(rid))
+    .appendText(rev)
     .appendText("\",\"_key\":\"")
     .appendText(key)
     .appendText("\"}");

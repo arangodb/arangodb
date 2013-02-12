@@ -606,17 +606,22 @@ namespace triagens {
                                       TRI_doc_mptr_t** mptr,
                                       TRI_json_t const* json, 
                                       void const* data,
-                                      const bool forceSync) {
+                                      const bool forceSync,
+                                      const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          if (lock) {
+            // WRITE-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          }
 
           int res = primary->createJson(&context, markerType, mptr, json, data);
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+            // WRITE-LOCK END
+          }
 
           return res;
         }
@@ -631,17 +636,22 @@ namespace triagens {
                                     TRI_doc_mptr_t** mptr,
                                     TRI_shaped_json_t const* shaped, 
                                     void const* data,
-                                    const bool forceSync) {
+                                    const bool forceSync,
+                                    const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          if (lock) {
+            // WRITE-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          }
 
           int res = primary->create(&context, markerType, mptr, shaped, data, key);
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+            // WRITE-LOCK END
+          }
 
           return res;
         }
