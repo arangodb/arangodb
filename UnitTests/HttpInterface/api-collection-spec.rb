@@ -243,6 +243,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
         doc.parsed_response['journalSize'].should be_kind_of(Integer)
       end
 
@@ -491,6 +492,7 @@ describe ArangoDB do
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(true)
+        doc.parsed_response['isSystem'].should eq(false)
 
         cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
@@ -927,6 +929,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
 
         cmd = api + "/" + cn + "/properties"
         body = "{ \"waitForSync\" : false }"
@@ -941,6 +944,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
 
         ArangoDB.drop_collection(cn)
       end
