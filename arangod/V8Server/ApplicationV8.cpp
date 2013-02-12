@@ -407,10 +407,10 @@ void ApplicationV8::collectGarbage () {
   bool useReducedWait = false;
 
   // the time we'll wait for a signal
-  uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+  const uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
-  uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
+  const uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
 
   while (_stopping == 0) {
     V8Context* context = 0;
@@ -442,7 +442,7 @@ void ApplicationV8::collectGarbage () {
         context = pickContextForGc();
 
         // there is no context to clean up, probably they all have been cleaned up
-        // already. increase the wait time so we don't cycle to much in the GC loop
+        // already. increase the wait time so we don't cycle too much in the GC loop
         // and waste CPU unnecessary
         useReducedWait =  (context != 0);
       }
@@ -460,7 +460,7 @@ void ApplicationV8::collectGarbage () {
       context->_context->Enter();
 
       v8::V8::LowMemoryNotification();
-      while (!v8::V8::IdleNotification()) {
+      while (! v8::V8::IdleNotification()) {
       }
 
       context->_context->Exit();
@@ -804,7 +804,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   context->_context->Enter();
 
   v8::V8::LowMemoryNotification();
-  while (!v8::V8::IdleNotification()) {
+  while (! v8::V8::IdleNotification()) {
   }
  
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
