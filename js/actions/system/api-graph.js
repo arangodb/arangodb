@@ -301,7 +301,7 @@ function post_graph_vertex (req, res, g) {
       throw "could not create vertex";
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties } );
+    actions.resultOk(req, res, actions.HTTP_CREATED, { "vertex" : v._properties } );
   }
   catch (err) {
     actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
@@ -731,7 +731,7 @@ function post_graph_edge (req, res, g) {
       throw "could not create edge";
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
+    actions.resultOk(req, res, actions.HTTP_CREATED, { "edge" : e._properties } );
   }
   catch (err) {
     actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
