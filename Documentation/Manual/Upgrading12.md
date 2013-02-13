@@ -111,6 +111,24 @@ to 1.1:
   This change was introduced to allow init.d scripts check the result of
   the upgrade procedure, even in case an upgrade was successful.
 
+Upgrade a binary package {#UpgradingBinaryPackage}
+---------------------------------------------------
+
+Linux:
+- Upgrade ArangoDB by package manager (Example `zypper update arangodb`)
+- check configuration file: `/etc/arangodb/arangod.conf`
+- Upgrade database files with `/etc/init.d/arangodb upgrade`
+
+Mac OS X binary package
+- You can find the new Mac OS X packages here: `http://www.arangodb.org/repositories/MacOSX`
+- check configuration file: `/etc/arangodb/arangod.conf`
+- Upgrade database files `/usr/sbin/arangod --upgrade'
+
+Mac OS X with homebrew
+- Upgrade ArangoDB by `brew upgrade arangodb'
+- check configuration file: `/usr/local/Cellar/1.X.Y/etc/arangodb/arangod.conf`
+- Upgrade database files `/usr/local/sbin/arangod --upgrade`
+
 Troubleshooting{#Upgrading12Troubleshooting}
 ============================================
 
