@@ -69,6 +69,8 @@ case "$1" in
     ;;
 
   upgrade)
+    echo $"Upgrading ArangoDB database files"
+
     start --upgrade
     ;;
 
