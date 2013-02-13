@@ -1,6 +1,9 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fix stringification of specific positive int64 values. Stringification of int64
+  values with the upper 32 bits cleared and the 33rd bit set were broken.
+
 * issue #395:  Collection properties() function should return 'isSystem' for 
   Javascript and REST API
 
