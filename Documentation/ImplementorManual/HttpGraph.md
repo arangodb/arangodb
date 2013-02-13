@@ -28,6 +28,10 @@ HTTP Interface for Graphs {#HttpGraph}
 @copydetails JSF_put_graph_vertex
 
 @CLEARPAGE
+@anchor A_JSF_PATCH_graph_vertex
+@copydetails JSF_patch_graph_vertex
+
+@CLEARPAGE
 @anchor A_JSF_DELETE_graph_vertex
 @copydetails JSF_delete_graph_vertex
 
@@ -42,6 +46,10 @@ HTTP Interface for Graphs {#HttpGraph}
 @CLEARPAGE
 @anchor A_JSF_PUT_graph_edge
 @copydetails JSF_put_graph_edge
+
+@CLEARPAGE
+@anchor A_JSF_PATCH_graph_edge
+@copydetails JSF_patch_graph_edge
 
 @CLEARPAGE
 @anchor A_JSF_DELETE_graph_edge
