@@ -380,8 +380,6 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 
       return false;
     }
-
-    ok = TRI_CheckCrcMarkerDatafile(marker);
     
     // the following sanity check offers some, but not 100% crash-protection when reading
     // totally corrupted datafiles
@@ -395,6 +393,9 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
       return false;
     }
 
+
+    ok = TRI_CheckCrcMarkerDatafile(marker);
+    
     if (! ok) {
       datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
       datafile->_currentSize = currentSize;
