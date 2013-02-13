@@ -127,12 +127,9 @@ which makes setting up and querying edges much easier in ArangoDB 1.2:
 Additional graph functionality {#NewFeatures12GraphFunctionality}
 -----------------------------------------------------------------
 
-- Javascript graph API
+- @BOOK_REF{JSModuleGraph}
 
-- Javascript traversal functionality
-
-- REST graphi API /_api/graph
-
+- @BOOK_REF{HttpGraph}
 
 AQL Improvements {#NewFeatures12AqlImprovements}
 ------------------------------------------------
