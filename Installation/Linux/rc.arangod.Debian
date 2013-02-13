@@ -22,8 +22,6 @@ CONF=/etc/arangodb/arangod.conf
 test -x $DAEMON || exit 0
 
 start () {
-    log_begin_msg "Starting $DESC" "$NAME"
-
     pid=$( pidofproc -p $PIDFILE $DAEMON )
 
     if [ -n "$pid" ] ; then
@@ -41,6 +39,8 @@ start () {
 
 case "$1" in
   start)
+    log_begin_msg "Starting $DESC" "$NAME"
+
     start
     ;;
 
@@ -68,6 +68,8 @@ case "$1" in
     ;;
 
   upgrade)
+    log_begin_msg "Upgrading $DESC" "$NAME"
+
     start --upgrade
     ;;
 
