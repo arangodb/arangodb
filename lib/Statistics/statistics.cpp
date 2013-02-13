@@ -144,7 +144,9 @@ static volatile sig_atomic_t StatisticsRunning = 1;
 /// @brief statistics thread
 ////////////////////////////////////////////////////////////////////////////////
 
+#if TRI_ENABLE_FIGURES
 static TRI_thread_t StatisticsThread;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics time lock
@@ -483,6 +485,8 @@ void UpdateConnectionStatistics (double now) {
 /// @brief worker for statistics
 ////////////////////////////////////////////////////////////////////////////////
 
+#if TRI_ENABLE_FIGURES
+
 static void StatisticsLoop (void* data) {
   while (StatisticsRunning != 0) {
     double t = TRI_microtime();
@@ -497,6 +501,8 @@ static void StatisticsLoop (void* data) {
     usleep(500);
   }
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -754,9 +760,9 @@ void TRI_FillStatisticsList (TRI_statistics_list_t* list, size_t element, size_t
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseStatistics () {
-  static size_t const QUEUE_SIZE = 1000;
-
 #if TRI_ENABLE_FIGURES
+
+  static size_t const QUEUE_SIZE = 1000;
 
   // .............................................................................
   // generate the request statistics queue

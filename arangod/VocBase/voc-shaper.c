@@ -232,6 +232,8 @@ static void setAttributeWeight(voc_shaper_t* shaper, attribute_weight_t* item,
   const int64_t resolution = 100;
   void* result;
   
+  *weighted = false;
+
   if (item == NULL && shaper == NULL) { // oops
     assert(false);
     return;
@@ -243,8 +245,6 @@ static void setAttributeWeight(voc_shaper_t* shaper, attribute_weight_t* item,
     assert(false);
     return;
   }
-  
-  *weighted = false;
   
   switch ( (shaper->_sortedAttributes)._length) {
   
@@ -424,7 +424,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
     
     setAttributeWeight(s, weightedAttribute, &searchResult, &weighted); 
     assert(searchResult > -1);
-    if (!weighted) {  
+    if (! weighted) {  
       fullSetAttributeWeight(s);
     }    
   }
