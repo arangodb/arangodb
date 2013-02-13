@@ -1,0 +1,34 @@
+> curl --data @- -X PATCH --dump - http://localhost:8529/_api/graph/graph1/vertex/v1
+{"optional2" : "vertexPatch2"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "vertex": {
+    "_id": "v/v1",
+    "_rev": "24332193",
+    "_key": "v1",
+    "optional1": "val2",
+    "optional2": "vertexPatch2"
+  },
+  "error": false,
+  "code": 200
+}
+
+> curl --data @- -X PATCH --dump - http://localhost:8529/_api/graph/graph1/vertex/v1?keepNull=false
+{"optional2" : null}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "vertex": {
+    "_id": "v/v1",
+    "_rev": "24332199",
+    "_key": "v1",
+    "optional1": "val2"
+  },
+  "error": false,
+  "code": 200
+}
