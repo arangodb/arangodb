@@ -365,6 +365,7 @@ typedef struct TRI_doc_document_key_marker_s {
  
   uint16_t        _offsetKey; 
   uint16_t        _offsetJson; 
+
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
 #endif
@@ -383,6 +384,10 @@ typedef struct TRI_doc_edge_key_marker_s {
 
   uint16_t       _offsetToKey;
   uint16_t       _offsetFromKey;
+
+#ifdef TRI_PADDING_32
+  char _padding_df_marker[4];
+#endif
 }
 TRI_doc_edge_key_marker_t;
 
