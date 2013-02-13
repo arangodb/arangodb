@@ -838,32 +838,91 @@ function ahuacatlQuerySimpleTestSuite () {
 /// @brief numeric overflow at compile time
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOverflowCompile: function () {
+    testOverflowCompileInt: function () {
       assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric overflow at compile time
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverflowCompileDouble: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = 4.0e999 RETURN l * l * l * l * l"); }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief numeric underflow at compile time
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUnderflowCompile: function () {
+    testUnderflowCompileInt: function () {
       assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric underflow at compile time
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnderflowCompileDouble: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("LET l = -4.0e999 RETURN l * l * l * l * l"); }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief numeric overflow at execution time
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOverflowExecution: function () {
+    testOverflowExecutionInt: function () {
       assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric overflow at execution time
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverflowExecutionDouble: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief numeric underflow at execution time
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUnderflowExecution: function () {
+    testUnderflowExecutionInt: function () {
       assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numeric underflow at execution time
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnderflowExecutionDouble: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief big integer overflow
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigIntOverflow: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("RETURN 9223372036854775808"); }));
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief big integer underflow
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigIntUnderflow: function () {
+      assertEqual(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, getErrorCode(function() { QUERY("RETURN -9223372036854775809"); }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief big integers
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigInt: function () {
+      var actual;
+
+      actual = getQueryResults("FOR i IN [ 2147483647, 2147483648, -2147483648, -2147483649 /*,  9223372036854775807,*/ /*-9223372036854775808*/ ] RETURN 1");
+      assertEqual([ 1, 1, 1, 1 ], actual);
     }
 
   };
