@@ -1,6 +1,9 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #348: "HTTP Interface for Administration and Monitoring" 
+  documentation errors.
+
 * fix stringification of specific positive int64 values. Stringification of int64
   values with the upper 32 bits cleared and the 33rd bit set were broken.
 
