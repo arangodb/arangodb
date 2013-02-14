@@ -1,0 +1,26 @@
+body, input, textarea, .page-title span, .pingback a.url {
+  font-family: "Helvetica",sans-serif;
+  font-weight: 300;
+}
+
+.arango-top-nav {
+  background-color: #333232;
+}
+
+.arango-nav {
+  height: 34px;
+  min-height: 34px;
+  background-color: #333232;
+}
+
+.arango-logo {
+  height: 34px;
+  padding: 0 !important;
+}
+
+.dropdown-toggle:hover, .dropdown-toggle:focus {
+  color: white !important;
+  height:16px !important;
+  border: 0;
+  background-color: #333232 !important;
+}

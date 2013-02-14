@@ -1,0 +1,13 @@
+#documentsTableID .odd:hover {
+  border: 1px solid red;
+  cursor: pointer;
+}
+
+#documentsTableID .even:hover {
+  border: 1px solid red;
+  cursor: pointer;
+}
+
+#documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
+  visibility: hidden;
+}
