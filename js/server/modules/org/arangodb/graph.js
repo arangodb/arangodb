@@ -585,13 +585,14 @@ function Graph (name, vertices, edges) {
       }
     }
     else {
-      if (graphProperties.vertices !== vertices.name()) {
-        throw "found graph but has different <vertices>";
-      }
+      throw "graph with that name already exists";
+      //if (graphProperties.vertices !== vertices.name()) {
+      //  throw "found graph but has different <vertices>";
+      //}
 
-      if (graphProperties.edges !== edges.name()) {
-        throw "found graph but has different <edges>";
-      }
+      //if (graphProperties.edges !== edges.name()) {
+      //  throw "found graph but has different <edges>";
+      //}
     }
   }
 

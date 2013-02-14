@@ -85,11 +85,7 @@ you report them:
 
     https://github.com/triAGENS/ArangoDB/issues
 
-You can use the Google group for questions concerning ArangoDB:
+You can use the Google group for improvements, feature requests, comments 
 
     http://www.arangodb.org/connect
-
-For feature requests, please use our feature request tracking & voting system at:
-
-    http://arangodb.uservoice.com
 

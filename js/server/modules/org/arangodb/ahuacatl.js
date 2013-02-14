@@ -2864,21 +2864,23 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 function GRAPH_EDGES (edgeCollection, 
                       vertex, 
                       direction) {
-  var c = COLLECTION(edgeCollection);
+  var c = COLLECTION(edgeCollection), result;
 
   // validate arguments
   if (direction === "outbound") {
-    return c.outEdges(vertex);
+    result = c.outEdges(vertex);
   }
   else if (direction === "inbound") {
-    return c.inEdges(vertex);
+    result = c.inEdges(vertex);
   }
   else if (direction === "any") {
-    return c.edges(vertex);
+    result = c.edges(vertex);
   }
   else {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
   }
+
+  return result;
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
