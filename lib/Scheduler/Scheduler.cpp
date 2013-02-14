@@ -69,10 +69,10 @@ Scheduler::Scheduler (size_t nrThreads)
 
   // report status
   if (multiThreading) {
-    LOGGER_TRACE << "scheduler is multi-threaded, number of threads = " << nrThreads;
+    LOGGER_TRACE("scheduler is multi-threaded, number of threads = " << nrThreads);
   }
   else {
-    LOGGER_TRACE << "scheduler is single-threaded";
+    LOGGER_TRACE("scheduler is single-threaded");
   }
 
   // setup signal handlers
@@ -111,8 +111,7 @@ bool Scheduler::start (ConditionVariable* cv) {
     bool ok = threads[i]->start(cv);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot start threads";
-      return false;
+      LOGGER_FATAL_AND_EXIT("cannot start threads");
     }
   }
 
@@ -127,12 +126,12 @@ bool Scheduler::start (ConditionVariable* cv) {
     for (size_t i = 0;  i < nrThreads;  ++i) {
       if (! threads[i]->isRunning()) {
         waiting = true;
-        LOGGER_TRACE << "waiting for thread #" << i << " to start";
+        LOGGER_TRACE("waiting for thread #" << i << " to start");
       }
     }
   }
 
-  LOGGER_TRACE << "all scheduler threads are up and running";
+  LOGGER_TRACE("all scheduler threads are up and running");
   return true;
 }
 
@@ -195,7 +194,7 @@ void Scheduler::beginShutdown () {
 
   MUTEX_LOCKER(schedulerLock);
 
-  LOGGER_DEBUG << "beginning shutdown sequence of scheduler";
+  LOGGER_DEBUG("beginning shutdown sequence of scheduler");
 
   for (size_t i = 0;  i < nrThreads;  ++i) {
     threads[i]->beginShutdown();
@@ -221,7 +220,7 @@ void Scheduler::shutdown () {
   for (set<Task*>::iterator i = taskRegistered.begin();
        i != taskRegistered.end();
        ++i) {
-    LOGGER_WARNING << "forcefully removing task '" << (*i)->getName() << "'";
+    LOGGER_WARNING("forcefully removing task '" << (*i)->getName() << "'");
 
     deleteTask(*i);
   }
@@ -241,7 +240,7 @@ void Scheduler::registerTask (Task* task) {
   {
     MUTEX_LOCKER(schedulerLock);
 
-    LOGGER_TRACE << "registerTask for task " << task << " (" << task->getName() << ")";
+    LOGGER_TRACE("registerTask for task " << task << " (" << task->getName() << ")");
 
     size_t n = 0;
 
@@ -272,12 +271,12 @@ void Scheduler::unregisterTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOGGER_WARNING << "unregisterTask called for an unknown task " << task << " (" << task->getName() << ")";
+      LOGGER_WARNING("unregisterTask called for an unknown task " << task << " (" << task->getName() << ")");
 
       return;
     }
     else {
-      LOGGER_TRACE << "unregisterTask for task " << task << " (" << task->getName() << ")";
+      LOGGER_TRACE("unregisterTask for task " << task << " (" << task->getName() << ")");
 
       thread = i->second;
 
@@ -306,12 +305,12 @@ void Scheduler::destroyTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOGGER_WARNING << "destroyTask called for an unknown task " << task << " (" << task->getName() << ")";
+      LOGGER_WARNING("destroyTask called for an unknown task " << task << " (" << task->getName() << ")");
 
       return;
     }
     else {
-      LOGGER_TRACE << "destroyTask for task " << task << " (" << task->getName() << ")";
+      LOGGER_TRACE("destroyTask for task " << task << " (" << task->getName() << ")");
 
       thread = i->second;
 
@@ -350,10 +349,8 @@ void Scheduler::reportStatus () {
       << LoggerData::Extra(val);
     }
 
-    LOGGER_DEBUG_I(info)
-    << status;
-
-    LOGGER_HEARTBEAT_I(info);
+    LOGGER_DEBUG_I(info, status);
+    LOGGER_HEARTBEAT_I(info, "");
   }
 }
 
@@ -389,7 +386,7 @@ void Scheduler::initialiseSignalHandlers () {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOGGER_ERROR << "cannot initialise signal handlers for pipe";
+    LOGGER_ERROR("cannot initialise signal handlers for pipe");
   }
 #endif
 

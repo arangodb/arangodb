@@ -1074,7 +1074,7 @@ void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
       break;
     case HTTP_REQUEST_ILLEGAL:
       buffer->appendText("UNKNOWN ");
-      LOGGER_WARNING << "illegal http request method encountered in switch";
+      LOGGER_WARNING("illegal http request method encountered in switch");
       break;
   }
 }
