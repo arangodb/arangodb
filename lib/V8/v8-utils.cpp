@@ -560,7 +560,7 @@ static v8::Handle<v8::Value> JS_Log (v8::Arguments const& argv) {
   }
 
   if (TRI_CaseEqualString(*level, "fatal")) {
-    LOG_FATAL("%s", *message);
+    LOG_ERROR("(FATAL) %s", *message);
   }
   else if (TRI_CaseEqualString(*level, "error")) {
     LOG_ERROR("%s", *message);

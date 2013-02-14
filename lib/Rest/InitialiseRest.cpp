@@ -118,7 +118,7 @@ namespace triagens {
       TRI_InitialiseUrl();
 
       string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";
-      LOGGER_TRACE << revision;
+      LOGGER_TRACE(revision);
 
       SSL_library_init();
       SSL_load_error_strings();
@@ -127,12 +127,12 @@ namespace triagens {
 
 #ifdef TRI_OPENSSL_VERSION
       revision = "$Revision: OPENSSL " TRI_OPENSSL_VERSION " $";
-      LOGGER_TRACE << revision;
+      LOGGER_TRACE(revision);
 #endif
 
 #ifdef TRI_LIBEV_VERSION
       revision = "$Revision: LIBEV " TRI_LIBEV_VERSION " $";
-      LOGGER_TRACE << revision;
+      LOGGER_TRACE(revision);
 #endif      
 
 #ifdef TRI_HAVE_POSIX_THREADS

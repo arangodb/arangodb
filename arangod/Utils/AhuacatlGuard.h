@@ -66,7 +66,7 @@ namespace triagens {
             _context = TRI_CreateContextAql(vocbase, query.c_str());
 
             if (_context == 0) {
-              LOGGER_DEBUG << "failed to create context for query %s" << query;
+              LOGGER_DEBUG("failed to create context for query %s" << query);
             }
           }
 

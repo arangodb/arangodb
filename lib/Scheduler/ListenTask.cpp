@@ -136,10 +136,10 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       ++acceptFailures;
       
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOGGER_WARNING << "accept failed with " << errno << " (" << strerror(errno) << ")";
+        LOGGER_WARNING("accept failed with " << errno << " (" << strerror(errno) << ")");
       }
       else if (acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOGGER_ERROR << "too many accept failures, stopping logging";
+        LOGGER_ERROR("too many accept failures, stopping logging");
       }
       
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
@@ -157,7 +157,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     if (res != 0) {
       TRI_CLOSE_SOCKET(connfd);
       
-      LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_WARNING("getsockname failed with " << errno << " (" << strerror(errno) << ")");
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
