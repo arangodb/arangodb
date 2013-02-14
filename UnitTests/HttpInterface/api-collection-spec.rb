@@ -63,6 +63,23 @@ describe ArangoDB do
           realNames[collection['name']].should eq(collection)
         end
       end
+
+      it "returns all collections, exclude system collections" do
+        cmd = api + '/?excludeSystem=true'
+        doc = ArangoDB.log_get("#{prefix}-all-collections-nosystem", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        collections = doc.parsed_response['collections']
+        names = doc.parsed_response['names']
+
+        collections.length.should eq(3)
+        names.length.should eq(3)
+      end
+
     end
 
 ################################################################################

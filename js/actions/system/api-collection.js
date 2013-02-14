@@ -233,6 +233,9 @@ function post_api_collection (req, res) {
 /// available in the @LIT{names} as hash map with the collection names
 /// as keys.
 ///
+/// By providing the optional URL parameter @LIT{excludeSystem} with a value of
+/// @LIT{true}, all system collections will be excluded from the response.
+///
 /// @EXAMPLES
 ///
 /// Return information about all collections:
@@ -244,11 +247,24 @@ function get_api_collections (req, res) {
   var i;
   var list = [];
   var names = {};
+  var excludeSystem;
   var collections = arangodb.db._collections();
+
+  excludeSystem = false;
+  if (req.parameters.hasOwnProperty('excludeSystem')) {
+    var value = req.parameters.excludeSystem;
+    if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+      excludeSystem = true;
+    }
+  }
 
   for (i = 0;  i < collections.length;  ++i) {
     var collection = collections[i];
     var rep = collectionRepresentation(collection);
+
+    if (excludeSystem && rep.name.substr(0, 1) === '_') {
+      continue;
+    }
 
     list.push(rep);
     names[rep.name] = rep;
@@ -398,7 +414,7 @@ function get_api_collection (req, res) {
   // .............................................................................
 
   if (req.parameters.useId || parseInt(req.suffix[0],10)) {
-    name = parseInt(req.suffix[0],10);
+    name = parseInt(req.suffix[0], 10);
   }
   else {
     name = decodeURIComponent(req.suffix[0]);

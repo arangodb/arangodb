@@ -1,6 +1,10 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added optional parameter 'excludeSystem' to GET /_api/collection
+  This parameter can be used to disable returning system collections in the list
+  of all collections.
+
 * added AQL functions KEEP() and UNSET()
 
 * fixed issue #348: "HTTP Interface for Administration and Monitoring" 
