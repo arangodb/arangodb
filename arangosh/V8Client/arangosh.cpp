@@ -455,8 +455,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   // check module path
   if (StartupModules.empty()) {
-    LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("module path not known, please use '--javascript.modules-path'");
   }
   
   // turn on paging automatically if "pager" option is set
@@ -1483,12 +1482,10 @@ int main (int argc, char* argv[]) {
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+    LOGGER_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
   }
 
-  LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+  LOGGER_DEBUG("using JavaScript startup files at '" << StartupPath << "'");
   StartupLoader.setDirectory(StartupPath);
 
   context->Global()->Set(v8::String::New("ARANGO_QUIET"), v8::Boolean::New(BaseClient.quiet()), v8::ReadOnly);
@@ -1514,11 +1511,10 @@ int main (int argc, char* argv[]) {
     bool ok = StartupLoader.loadScript(context, files[i]);
     
     if (ok) {
-      LOGGER_TRACE << "loaded JavaScript file '" << files[i] << "'";
+      LOGGER_TRACE("loaded JavaScript file '" << files[i] << "'");
     }
     else {
-      LOGGER_ERROR << "cannot load JavaScript file '" << files[i] << "'";
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
+      LOGGER_FATAL_AND_EXIT("cannot load JavaScript file '" << files[i] << "'");
     }
   }
 

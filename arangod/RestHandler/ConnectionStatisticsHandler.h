@@ -119,10 +119,6 @@ namespace triagens {
 ///
 /// - @LIT{totalLength}: the number of available intervals.
 ///
-/// - @LIT{totalTime}: the distribution of the total time.
-///
-/// - @LIT{queueTime}: the distribution of the queue time.
-///
 /// - @LIT{httpConnections}: the number of opened http connections
 ///   during the interval.
 ///

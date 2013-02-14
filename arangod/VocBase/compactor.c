@@ -260,8 +260,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
-      return false;
+      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
     }
 
     // check if the document is still active
@@ -304,8 +303,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
-      return false;
+      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
     }
 
     // update datafile info

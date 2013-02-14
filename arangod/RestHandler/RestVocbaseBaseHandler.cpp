@@ -140,7 +140,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbas
 ////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
-  LOGGER_REQUEST_IN_END_I(_timing) << _timingResult;
+  LOGGER_REQUEST_IN_END_I(_timing,  _timingResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

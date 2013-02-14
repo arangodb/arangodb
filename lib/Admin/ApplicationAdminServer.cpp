@@ -216,7 +216,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   
   if (_allowAdminDirectory) {
-    LOGGER_INFO << "using JavaScript front-end files stored at '" << _adminDirectory << "'";
+    LOGGER_INFO("using JavaScript front-end files stored at '" << _adminDirectory << "'");
 
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = _adminDirectory;
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
@@ -274,8 +274,7 @@ void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDes
 
 bool ApplicationAdminServer::prepare () {
   if (_allowAdminDirectory && _adminDirectory.empty()) {
-    LOGGER_FATAL << "you must specify an admin directory, giving up!";
-    return false;
+    LOGGER_FATAL_AND_EXIT("you must specify an admin directory, giving up!");
   }
 
   return true;

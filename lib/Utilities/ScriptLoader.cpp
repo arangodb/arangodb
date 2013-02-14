@@ -154,7 +154,7 @@ string const& ScriptLoader::findScript (string const& name) {
       char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename);
 
       if (result == 0 && (i == parts.size() - 1)) {
-        LOGGER_ERROR << "cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error();
+        LOGGER_ERROR("cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error());
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);

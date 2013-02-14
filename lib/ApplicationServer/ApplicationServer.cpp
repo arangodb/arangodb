@@ -282,8 +282,7 @@ void ApplicationServer::setupLogging () {
   if (NULL == TRI_CreateLogAppenderFile(_logFile.c_str())) {
     if (_logFile.length() > 0) {
       // the user specified a log file to use but it could not be created. bail out
-      std::cerr << "failed to create logfile '" << _logFile << "'. Please check the path and permissions." << std::endl;
-      exit(EXIT_FAILURE);      
+      LOGGER_FATAL_AND_EXIT("failed to create logfile '" << _logFile << "'. Please check the path and permissions.");
     }
   }
 #ifdef TRI_ENABLE_SYSLOG
@@ -361,7 +360,7 @@ bool ApplicationServer::parse (int argc,
   bool ok = _options.parse(_description, argc, argv);
 
   if (! ok) {
-    cout << "cannot parse command line: " << _options.lastError() << endl;
+    LOGGER_ERROR("cannot parse command line: " << _options.lastError());
     return false;
   }
 
@@ -451,9 +450,7 @@ bool ApplicationServer::parse (int argc,
     }
   }
   catch (...) {
-    LOGGER_FATAL << "cannot select random generator, giving up";
-    TRI_ShutdownLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("cannot select random generator, giving up");
   }
 
 
@@ -481,17 +478,15 @@ void ApplicationServer::prepare () {
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
-    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+    LOGGER_DEBUG("preparing server feature '" << feature->getName() << "'");
 
     bool ok = feature->prepare();
 
     if (! ok) {
-      LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      LOGGER_FATAL_AND_EXIT("failed to prepare server feature '" << feature->getName() <<"'");
     }
 
-    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
+    LOGGER_TRACE("prepared server feature '" << feature->getName() << "'");
   }
 }
 
@@ -505,17 +500,15 @@ void ApplicationServer::prepare2 () {
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
-    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+    LOGGER_DEBUG("preparing server feature '" << feature->getName() << "'");
 
     bool ok = feature->prepare2();
 
     if (! ok) {
-      LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      LOGGER_FATAL_AND_EXIT("failed to prepare server feature '" << feature->getName() <<"'");
     }
 
-    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
+    LOGGER_TRACE("prepared server feature '" << feature->getName() << "'");
   }
 }
 
@@ -524,7 +517,7 @@ void ApplicationServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::start () {
-  LOGGER_DEBUG << "ApplicationServer version " << TRIAGENS_VERSION;
+  LOGGER_DEBUG("ApplicationServer version " << TRIAGENS_VERSION);
 
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
@@ -541,29 +534,25 @@ void ApplicationServer::start () {
     bool ok = feature->start();
 
     if (! ok) {
-      LOGGER_FATAL << "failed to start server feature '" << feature->getName() <<"'";
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      LOGGER_FATAL_AND_EXIT("failed to start server feature '" << feature->getName() <<"'");
     }
 
-    LOGGER_DEBUG << "started server feature '" << feature->getName() << "'";
+    LOGGER_DEBUG("started server feature '" << feature->getName() << "'");
   }
 
   // now open all features
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
-    LOGGER_DEBUG << "opening server feature '" << feature->getName() << "'";
+    LOGGER_DEBUG("opening server feature '" << feature->getName() << "'");
 
     bool ok = feature->open();
 
     if (! ok) {
-      LOGGER_FATAL << "failed to open server feature '" << feature->getName() <<"'";
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      LOGGER_FATAL_AND_EXIT("failed to open server feature '" << feature->getName() <<"'");
     }
 
-    LOGGER_TRACE << "opened server feature '" << feature->getName() << "'";
+    LOGGER_TRACE("opened server feature '" << feature->getName() << "'");
   }
 
   dropPrivilegesPermanently();
@@ -612,7 +601,7 @@ void ApplicationServer::stop () {
 
     feature->close();
 
-    LOGGER_TRACE << "closed server feature '" << feature->getName() << "'";
+    LOGGER_TRACE("closed server feature '" << feature->getName() << "'");
   }
 
 
@@ -620,11 +609,9 @@ void ApplicationServer::stop () {
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
-    LOGGER_DEBUG << "shutting down server feature '" << feature->getName() << "'";
-
+    LOGGER_DEBUG("shutting down server feature '" << feature->getName() << "'");
     feature->stop();
-
-    LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
+    LOGGER_TRACE("shut down server feature '" << feature->getName() << "'");
   }
 
 }
@@ -641,9 +628,7 @@ void ApplicationServer::raisePrivileges () {
     int res = setegid(_realGid);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot set gid '" << _effectiveGid << "', because " << strerror(errno));
     }
   }
 
@@ -655,9 +640,7 @@ void ApplicationServer::raisePrivileges () {
     int res = seteuid(_realUid);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot set uid '" << _uid << "', because " << strerror(errno));
     }
   }
 
@@ -676,10 +659,7 @@ void ApplicationServer::dropPrivileges () {
     int res = setegid(_effectiveGid);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
-      cerr << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno) << endl;
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot set gid '" << _effectiveGid << "', because " << strerror(errno));
     }
   }
 
@@ -691,10 +671,7 @@ void ApplicationServer::dropPrivileges () {
     int res = seteuid(_effectiveUid);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
-      cerr << "cannot set uid '" << _uid << "', because " << strerror(errno) << endl;
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot set uid '" << _uid << "', because " << strerror(errno));
     }
   }
 
@@ -711,15 +688,12 @@ void ApplicationServer::dropPrivilegesPermanently () {
 #ifdef TRI_HAVE_SETGID
 
   if (_effectiveGid != _realGid) {
-    LOGGER_INFO << "permanently changing the gid to '" << _effectiveGid << "'";
+    LOGGER_INFO("permanently changing the gid to '" << _effectiveGid << "'");
 
     int res = setgid(_effectiveGid);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
-      cerr << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno) << endl;
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot set gid '" << _effectiveGid << "', because " << strerror(errno));
     }
 
     _realGid = _effectiveGid;
@@ -730,15 +704,12 @@ void ApplicationServer::dropPrivilegesPermanently () {
 #ifdef TRI_HAVE_SETUID
 
   if (_effectiveUid != _realUid) {
-    LOGGER_INFO << "permanently changing the uid to '" << _effectiveUid << "'";
+    LOGGER_INFO("permanently changing the uid to '" << _effectiveUid << "'");
 
     int res = setuid(_effectiveUid);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
-      cerr << "cannot set uid '" << _uid << "', because " << strerror(errno) << endl;
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot set uid '" << _uid << "', because " << strerror(errno));
     }
 
     _realUid = _effectiveUid;
@@ -847,7 +818,7 @@ bool ApplicationServer::checkParent () {
   // check our parent, if it died given up
 #ifdef TRI_HAVE_GETPPID
   if (_exitOnParentDeath && getppid() == 1) {
-    LOGGER_INFO << "parent has died";
+    LOGGER_INFO("parent has died");
     return false;
   }
 #endif
@@ -863,7 +834,7 @@ bool ApplicationServer::checkParent () {
     int res = -1;
 #endif
     if (res != 0) {
-      LOGGER_INFO << "parent " << _watchParent << " has died";
+      LOGGER_INFO("parent " << _watchParent << " has died");
       return false;
     }
   }
@@ -883,11 +854,11 @@ bool ApplicationServer::readConfigurationFile () {
 
     // do not use init files
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOGGER_INFO << "using no init file at all";
+      LOGGER_INFO("using no init file at all");
       return true;
     }
 
-    LOGGER_INFO << "using init file '" << _configFile << "'";
+    LOGGER_INFO("using init file '" << _configFile << "'");
 
     bool ok = _options.parse(_descriptionFile, _configFile);
 
@@ -895,13 +866,13 @@ bool ApplicationServer::readConfigurationFile () {
     // but for some reason can not be parsed. Best to report an error.
 
     if (! ok) {
-      cout << "cannot parse config file '" << _configFile << "': " << _options.lastError() << endl;
+      LOGGER_ERROR("cannot parse config file '" << _configFile << "': " << _options.lastError());
     }
 
     return ok;
   }
   else {
-    LOGGER_DEBUG << "no init file has been specified";
+    LOGGER_DEBUG("no init file has been specified");
   }
 
 
@@ -965,7 +936,7 @@ bool ApplicationServer::readConfigurationFile () {
 
       // check and see if file exists
       if (FileUtils::exists(homeDir)) {
-        LOGGER_INFO << "using user init file '" << homeDir << "'";
+        LOGGER_INFO("using user init file '" << homeDir << "'");
 
         bool ok = _options.parse(_descriptionFile, homeDir);
 
@@ -973,19 +944,19 @@ bool ApplicationServer::readConfigurationFile () {
         // but for some reason can not be parsed. Best to report an error.
 
         if (! ok) {
-          cout << "cannot parse config file '" << homeDir << "': " << _options.lastError() << endl;
+          LOGGER_ERROR("cannot parse config file '" << homeDir << "': " << _options.lastError());
         }
 
         return ok;
       }
       else {
 
-        LOGGER_INFO << "no user init file '" << homeDir << "' found";
+        LOGGER_INFO("no user init file '" << homeDir << "' found");
 
       }
     }
     else {
-      LOGGER_DEBUG << "no user init file, " << homeEnv << " is empty";
+      LOGGER_DEBUG("no user init file, " << homeEnv << " is empty");
     }
   }
 
@@ -1012,7 +983,7 @@ bool ApplicationServer::readConfigurationFile () {
 
         // check and see if file exists
         if (FileUtils::exists(sysDir)) {
-          LOGGER_INFO << "using init file '" << sysDir << "'";
+          LOGGER_INFO("using init file '" << sysDir << "'");
 
           bool ok = _options.parse(_descriptionFile, sysDir);
 
@@ -1020,21 +991,22 @@ bool ApplicationServer::readConfigurationFile () {
           // but for some reason can not be parsed. Best to report an error.
 
           if (! ok) {
-            cout << "cannot parse config file '" << sysDir << "': " << _options.lastError() << endl;
+            LOGGER_ERROR("cannot parse config file '" << sysDir << "': " << _options.lastError());
           }
 
           return ok;
         }
         else {
-          LOGGER_INFO << "no system init file '" << sysDir << "' found";
+          LOGGER_INFO("no system init file '" << sysDir << "' found");
         }
       }
       else {
-        LOGGER_DEBUG << "no system init file, not system directory is known";
+        LOGGER_DEBUG("no system init file, not system directory is known");
       }
     }
 
 #endif
+
   }
   else {
     if (! _systemConfigFile.empty()) {
@@ -1042,7 +1014,7 @@ bool ApplicationServer::readConfigurationFile () {
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {
-        LOGGER_INFO << "using init file '" << sysDir << "'";
+        LOGGER_INFO("using init file '" << sysDir << "'");
 
         bool ok = _options.parse(_descriptionFile, sysDir);
 
@@ -1050,17 +1022,17 @@ bool ApplicationServer::readConfigurationFile () {
         // but for some reason can not be parsed. Best to report an error.
 
         if (! ok) {
-          cout << "cannot parse config file '" << sysDir << "': " << _options.lastError() << endl;
+          LOGGER_ERROR("cannot parse config file '" << sysDir << "': " << _options.lastError());
         }
 
         return ok;
       }
       else {
-        LOGGER_INFO << "no system init file '" << sysDir << "' found";
+        LOGGER_INFO("no system init file '" << sysDir << "' found");
       }
     }
     else {
-      LOGGER_DEBUG << "no system init file specified";
+      LOGGER_DEBUG("no system init file specified");
     }
   }
 
@@ -1087,10 +1059,7 @@ void ApplicationServer::extractPrivileges() {
       group* g = getgrgid(gidNumber);
 
       if (g == 0) {
-        cerr << "unknown numeric gid '" << _gid << "'" << endl;
-        LOGGER_FATAL << "unknown numeric gid '" << _gid << "'";
-        TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("unknown numeric gid '" << _gid << "'");
       }
 #endif
     }
@@ -1103,16 +1072,10 @@ void ApplicationServer::extractPrivileges() {
         gidNumber = g->gr_gid;
       }
       else {
-        cerr << "cannot convert groupname '" << _gid << "' to numeric gid" << endl;
-        LOGGER_FATAL << "cannot convert groupname '" << _gid << "' to numeric gid";
-        TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("cannot convert groupname '" << _gid << "' to numeric gid");
       }
 #else
-      cerr << "cannot convert groupname '" << _gid << "' to numeric gid" << endl;
-      LOGGER_FATAL << "cannot convert groupname '" << _gid << "' to numeric gid";
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot convert groupname '" << _gid << "' to numeric gid");
 #endif
     }
 
@@ -1135,10 +1098,7 @@ void ApplicationServer::extractPrivileges() {
       passwd* p = getpwuid(uidNumber);
 
       if (p == 0) {
-        cerr << "unknown numeric uid '" << _uid << "'" << endl;
-        LOGGER_FATAL << "unknown numeric uid '" << _uid << "'";
-        TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("unknown numeric uid '" << _uid << "'");
       }
 #endif
     }
@@ -1151,16 +1111,10 @@ void ApplicationServer::extractPrivileges() {
         uidNumber = p->pw_uid;
       }
       else {
-        cerr << "cannot convert username '" << _uid << "' to numeric uid" << endl;
-        LOGGER_FATAL << "cannot convert username '" << _uid << "' to numeric uid";
-        TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("cannot convert username '" << _uid << "' to numeric uid");
       }
 #else
-      cerr << "cannot convert username '" << _uid << "' to numeric uid" << endl;
-      LOGGER_FATAL << "cannot convert username '" << _uid << "' to numeric uid";
-      TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot convert username '" << _uid << "' to numeric uid");
 #endif
     }
 
