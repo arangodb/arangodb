@@ -3,7 +3,6 @@ window.arangoDocument = Backbone.Collection.extend({
   model: arangoDocument,
 
   getDocument: function (colid, docid, view) {
-
     this.clearDocument();
     var self = this;
     $.ajax({
@@ -28,19 +27,23 @@ window.arangoDocument = Backbone.Collection.extend({
   },
 
   saveDocument: function (view) {
-
     if (view == "source") {
       var model = $('#documentSourceBox').val();
+      var tmp1 = window.location.hash.split("/")[2];
+      var tmp2 = window.location.hash.split("/")[1];
+      var docID = tmp2 + "/" + tmp1;
     }
     else {
-      var model = this.models[0].attributes;
+      var tmp = this.models[0].attributes;
+      var model = JSON.stringify(tmp);
+      var docID = this.models[0].attributes._id;
     }
-    var docID = this.models[0].attributes._id;
+
 
     $.ajax({
       type: "PUT",
       url: "/_api/document/" + docID,
-      data: JSON.stringify(model),
+      data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
