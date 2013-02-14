@@ -109,11 +109,11 @@ static SignalTask* localSignalTask;
         TRI_SetProcessTitle(msg.c_str());
 
         if (_seen == 0) {
-          LOGGER_INFO << "control-c received, beginning shut down sequence";
+          LOGGER_INFO("control-c received, beginning shut down sequence");
           _server->beginShutdown();
         }
         else {
-          LOGGER_INFO << "control-c received, terminating";
+          LOGGER_INFO("control-c received, terminating");
           exit(EXIT_FAILURE);
         }
 
@@ -141,9 +141,9 @@ static SignalTask* localSignalTask;
 
     public:
       bool handleSignal () {
-        LOGGER_INFO << "hangup received, about to reopen logfile";
+        LOGGER_INFO("hangup received, about to reopen logfile");
         TRI_ReopenLogging();
-        LOGGER_INFO << "hangup received, reopened logfile";
+        LOGGER_INFO("hangup received, reopened logfile");
         return true;
       }
   };
@@ -157,9 +157,9 @@ static SignalTask* localSignalTask;
 
     public:
       bool handleSignal () {
-        LOGGER_INFO << "hangup received, about to reopen logfile";
+        LOGGER_INFO("hangup received, about to reopen logfile");
         TRI_ReopenLogging();
-        LOGGER_INFO << "hangup received, reopened logfile";
+        LOGGER_INFO("hangup received, reopened logfile");
         return true;
       }
   };
@@ -252,7 +252,7 @@ static SignalTask* localSignalTask;
     } // end of switch statement
 
     if (shutdown == false) {
-      LOGGER_ERROR << "Invalid CTRL HANDLER event received - ignoring event";
+      LOGGER_ERROR("Invalid CTRL HANDLER event received - ignoring event");
       return true;
     }
 
@@ -357,8 +357,7 @@ Scheduler* ApplicationScheduler::scheduler () const {
 
 void ApplicationScheduler::installSignalHandler (SignalTask* task) {
   if (_scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot install signal handler";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
   }
 
   _scheduler->registerTask(task);
@@ -489,7 +488,7 @@ bool ApplicationScheduler::start () {
   bool ok = _scheduler->start(0);
 
   if (! ok) {
-    LOGGER_FATAL << "the scheduler cannot be started";
+    LOGGER_FATAL_AND_EXIT("the scheduler cannot be started");
 
     delete _scheduler;
     _scheduler = 0;
@@ -498,7 +497,7 @@ bool ApplicationScheduler::start () {
   }
 
   while (! _scheduler->isStarted()) {
-    LOGGER_DEBUG << "waiting for scheduler to start";
+    LOGGER_DEBUG("waiting for scheduler to start");
     usleep(500 * 1000);
   }
 
@@ -539,7 +538,7 @@ void ApplicationScheduler::stop () {
     _scheduler->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _scheduler->isRunning();  ++count) {
-      LOGGER_TRACE << "waiting for scheduler to stop";
+      LOGGER_TRACE("waiting for scheduler to stop");
       usleep(1000000);
     }
 
@@ -570,8 +569,7 @@ void ApplicationScheduler::stop () {
 
 void ApplicationScheduler::buildScheduler () {
   if (_scheduler != 0) {
-    LOGGER_FATAL << "a scheduler has already been created";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("a scheduler has already been created");
   }
 
   _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
@@ -583,8 +581,7 @@ void ApplicationScheduler::buildScheduler () {
 
 void ApplicationScheduler::buildSchedulerReporter () {
   if (_scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
   if (0.0 < _reportIntervall) {
@@ -601,8 +598,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
 
 void ApplicationScheduler::buildControlCHandler () {
   if (_scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
   // control C handler
@@ -630,16 +626,15 @@ void ApplicationScheduler::adjustFileDescriptors () {
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
     if (res != 0) {
-      LOGGER_FATAL << "cannot get the file descriptor limit: " << strerror(errno) << "'";
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot get the file descriptor limit: " << strerror(errno) << "'");
     }
 
-    LOGGER_DEBUG << "hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
+    LOGGER_DEBUG("hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur);
 
     bool changed = false;
 
     if (rlim.rlim_max < _descriptorMinimum) {
-      LOGGER_DEBUG << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
+      LOGGER_DEBUG("hard limit " << rlim.rlim_max << " is too small, trying to raise");
 
       rlim.rlim_max = _descriptorMinimum;
       rlim.rlim_cur = _descriptorMinimum;
@@ -647,22 +642,20 @@ void ApplicationScheduler::adjustFileDescriptors () {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOGGER_FATAL << "cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno);
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno));
       }
 
       changed = true;
     }
     else if (rlim.rlim_cur < _descriptorMinimum) {
-      LOGGER_DEBUG << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
+      LOGGER_DEBUG("soft limit " << rlim.rlim_cur << " is too small, trying to raise");
 
       rlim.rlim_cur = _descriptorMinimum;
 
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOGGER_FATAL << "cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno);
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno));
       }
 
       changed = true;
@@ -672,19 +665,17 @@ void ApplicationScheduler::adjustFileDescriptors () {
       res = getrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res != 0) {
-        LOGGER_FATAL << "cannot get the file descriptor limit: " << strerror(errno) << "'";
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("cannot get the file descriptor limit: " << strerror(errno) << "'");
       }
 
-      LOGGER_DEBUG << "new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur;
+      LOGGER_DEBUG("new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur);
     }
 
     // the select backend has more restrictions
     if (_backend == 1) {
       if (FD_SETSIZE < _descriptorMinimum) {
-        LOGGER_FATAL << "i/o backend 'select' has been selected, which supports only " << FD_SETSIZE
-                     << " descriptors, but " << _descriptorMinimum << " are required";
-        exit(EXIT_FAILURE);
+        LOGGER_FATAL_AND_EXIT("i/o backend 'select' has been selected, which supports only " << FD_SETSIZE
+                              << " descriptors, but " << _descriptorMinimum << " are required");
       }
     }
   }
