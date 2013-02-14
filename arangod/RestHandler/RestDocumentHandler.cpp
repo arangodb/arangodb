@@ -127,7 +127,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   _timing << *task;
 #ifdef TRI_ENABLE_LOGGER
   // if logger is not activated, the compiler will complain, so enclose it in ifdef
-  LOGGER_REQUEST_IN_START_I(_timing);
+  LOGGER_REQUEST_IN_START_I(_timing, "");
 #endif
 
   // execute one of the CRUD methods

@@ -145,7 +145,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
       result = FileUtils::slurp(_filename);
     }
     catch (...) {
-      LOGGER_INFO << "cannot read configuration '" << _filename << "'";
+      LOGGER_INFO("cannot read configuration '" << _filename << "'");
     }
   }
   

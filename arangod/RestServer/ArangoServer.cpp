@@ -391,8 +391,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
   
   // .............................................................................
@@ -403,14 +402,14 @@ void ArangoServer::buildApplicationServer () {
   char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
   u_getVersion(icuVersion);
   u_versionToString(icuVersion, icuVersionString);  
-  LOGGER_INFO << "using ICU " << icuVersionString;        
+  LOGGER_INFO("using ICU " << icuVersionString);        
   
   Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'";    
+    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'");    
   }
   else {
-    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
+    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" );        
   }
  
   // .............................................................................
@@ -423,9 +422,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     // validate journal size
-    LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE);
   }
 
   // .............................................................................
@@ -435,19 +432,15 @@ void ArangoServer::buildApplicationServer () {
   vector<string> arguments = _applicationServer->programArguments();
 
   if (1 < arguments.size()) {
-    LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("expected at most one database directory, got " << arguments.size());
   }
   else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
 
   if (_databasePath.empty()) {
-    LOGGER_FATAL << "no database path has been supplied, giving up";
-    LOGGER_INFO << "please use the '--database.directory' option";
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_INFO("please use the '--database.directory' option");
+    LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
@@ -458,15 +451,14 @@ void ArangoServer::buildApplicationServer () {
       mode == OperationMode::MODE_SCRIPT) {
     int res = executeConsole(mode);
 
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(res,NULL);
+    TRI_EXIT_FUNCTION(res, NULL);
   }
+
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
 
-    TRI_FlushLogging();
-    exit(res);
+    TRI_EXIT_FUNCTION(res, NULL);
   }
 #endif
 
@@ -486,13 +478,8 @@ void ArangoServer::buildApplicationServer () {
 
   if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
-      cerr << "no pid-file defined, but daemon or supervisor mode requested, giving up\n";
-
-      LOGGER_FATAL << "no pid-file defined, but daemon or supervisor mode was requested";
-      LOGGER_INFO << "please use the '--pid-file' option";
-
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_INFO("please use the '--pid-file' option");
+      LOGGER_FATAL_AND_EXIT("no pid-file defined, but daemon or supervisor mode was requested");
     }
 
     // make the pid filename absolute
@@ -504,15 +491,10 @@ void ArangoServer::buildApplicationServer () {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
  
-      LOGGER_DEBUG << "using absolute pid file '" << _pidFile << "'";
+      LOGGER_DEBUG("using absolute pid file '" << _pidFile << "'");
     }
     else {
-      cerr << "cannot determine current directory, giving up\n";
-
-      LOGGER_FATAL << "cannot determine current directory";
-
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot determine current directory");
     }
   }
 
@@ -603,14 +585,14 @@ int ArangoServer::startupServer () {
   // .............................................................................
 
   if (_applicationServer->programOptions().has("show-markers")) {
-    LOGGER_INFO << "sizeof(TRI_df_marker_t): " << sizeof(TRI_df_marker_t);
-    LOGGER_INFO << "sizeof(TRI_df_header_marker_t): " << sizeof(TRI_df_header_marker_t);
-    LOGGER_INFO << "sizeof(TRI_df_footer_marker_t): " << sizeof(TRI_df_footer_marker_t);
-    LOGGER_INFO << "sizeof(TRI_df_document_marker_t): " << sizeof(TRI_df_document_marker_t);
-    LOGGER_INFO << "sizeof(TRI_df_skip_marker_t): " << sizeof(TRI_df_skip_marker_t);
-    LOGGER_INFO << "sizeof(TRI_doc_document_key_marker_s): " << sizeof(TRI_doc_document_key_marker_s);
-    LOGGER_INFO << "sizeof(TRI_doc_edge_key_marker_s): " << sizeof(TRI_doc_edge_key_marker_s);
-    LOGGER_INFO << "sizeof(TRI_doc_deletion_key_marker_s): " << sizeof(TRI_doc_deletion_key_marker_s);
+    LOGGER_INFO("sizeof(TRI_df_marker_t): " << sizeof(TRI_df_marker_t));
+    LOGGER_INFO("sizeof(TRI_df_header_marker_t): " << sizeof(TRI_df_header_marker_t));
+    LOGGER_INFO("sizeof(TRI_df_footer_marker_t): " << sizeof(TRI_df_footer_marker_t));
+    LOGGER_INFO("sizeof(TRI_df_document_marker_t): " << sizeof(TRI_df_document_marker_t));
+    LOGGER_INFO("sizeof(TRI_df_skip_marker_t): " << sizeof(TRI_df_skip_marker_t));
+    LOGGER_INFO("sizeof(TRI_doc_document_key_marker_s): " << sizeof(TRI_doc_document_key_marker_s));
+    LOGGER_INFO("sizeof(TRI_doc_edge_key_marker_s): " << sizeof(TRI_doc_edge_key_marker_s));
+    LOGGER_INFO("sizeof(TRI_doc_deletion_key_marker_s): " << sizeof(TRI_doc_deletion_key_marker_s));
   }
 
 
@@ -620,8 +602,8 @@ int ArangoServer::startupServer () {
 
   _applicationServer->start();
 
-  LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
-  LOGGER_INFO << "Have Fun!";
+  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business");
+  LOGGER_INFO("Have Fun!");
 
   _applicationServer->wait();
   
@@ -683,9 +665,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   ok = _applicationV8->prepare();
 
   if (! ok) {
-    LOGGER_FATAL << "cannot initialize V8 enigne";
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("cannot initialize V8 enigne");
   }
 
   _applicationV8->start();
@@ -705,7 +685,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       printf("ArangoDB JavaScript emergency console [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
     }
     else {
-      LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
+      LOGGER_INFO("V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION);
     }
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
@@ -791,9 +771,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
 
           if (! r) {
-            LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
-            ok = false;
-            break;
+            LOGGER_FATAL_AND_EXIT("cannot load script '" << _scriptFile[i] << ", giving up");
           }
         }
 
@@ -817,8 +795,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(context->_context->Global()->Get(mainFuncName));
 
           if (main.IsEmpty() || main->IsUndefined()) {
-            LOGGER_FATAL << "no main function defined, giving up";
-            ok = false;
+            LOGGER_FATAL_AND_EXIT("no main function defined, giving up");
           }
           else {
             v8::Handle<v8::Value> args[] = { params };
@@ -1006,9 +983,7 @@ int ArangoServer::executeRubyConsole () {
   ok = _applicationMR->prepare();
 
   if (! ok) {
-    LOGGER_FATAL << "cannot initialize MRuby enigne";
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("cannot initialize MRuby enigne");
   }
 
   _applicationMR->start();
@@ -1042,14 +1017,14 @@ int ArangoServer::executeRubyConsole () {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
-      LOGGER_ERROR << "failed to compile input";
+      LOGGER_ERROR("failed to compile input");
       continue;
     }
 
     int n = mrb_generate_code(context->_mrb, p);
 
     if (n < 0) {
-      LOGGER_ERROR << "failed to execute Ruby bytecode";
+      LOGGER_ERROR("failed to execute Ruby bytecode");
       continue;
     }
 
@@ -1058,7 +1033,7 @@ int ArangoServer::executeRubyConsole () {
                                mrb_top_self(context->_mrb));
 
     if (context->_mrb->exc != 0) {
-      LOGGER_ERROR << "caught Ruby exception";
+      LOGGER_ERROR("caught Ruby exception");
       mrb_p(context->_mrb, mrb_obj_value(context->_mrb->exc));
       context->_mrb->exc = 0;
     }
@@ -1090,11 +1065,8 @@ void ArangoServer::openDatabase () {
   _vocbase = TRI_OpenVocBase(_databasePath.c_str());
 
   if (! _vocbase) {
-    LOGGER_FATAL << "cannot open database '" << _databasePath << "'";
-    LOGGER_INFO << "please use the '--database.directory' option";
-    TRI_FlushLogging();
-
-    exit(EXIT_FAILURE);
+    LOGGER_INFO("please use the '--database.directory' option");
+    LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
 
   _vocbase->_removeOnDrop = _removeOnDrop;
@@ -1115,7 +1087,7 @@ void ArangoServer::closeDatabase () {
   _vocbase = 0;
   TRI_ShutdownVocBase();
 
-  LOGGER_INFO << "ArangoDB has been shut down";
+  LOGGER_INFO("ArangoDB has been shut down");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

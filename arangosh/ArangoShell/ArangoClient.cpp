@@ -291,7 +291,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! _configFile.empty()) {
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOGGER_INFO << "using no init file at all";
+      LOGGER_INFO("using no init file at all");
     }
     else {
       configFile = _configFile;
@@ -316,7 +316,7 @@ void ArangoClient::parse (ProgramOptions& options,
         configFile = sysDir;
       }
       else {
-        LOGGER_DEBUG << "no system init file '" << sysDir << "'";
+        LOGGER_DEBUG("no system init file '" << sysDir << "'");
       }
     }
   }
@@ -324,11 +324,10 @@ void ArangoClient::parse (ProgramOptions& options,
 #endif
 
   if (! configFile.empty()) {
-    LOGGER_DEBUG << "using init file '" << configFile << "'";
+    LOGGER_DEBUG("using init file '" << configFile << "'");
 
     if (! options.parse(description, configFile)) {
-      cout << "cannot parse config file '" << configFile << "': " << options.lastError() << endl;
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot parse config file '" << configFile << "': " << options.lastError());
     }
   }
 
@@ -399,7 +398,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
     // no password given on command-line
     if (! _hasPassword) {
-      TRI_FlushLogging();
+      usleep(10 * 1000);
       cout << "Please specify a password: " << flush;
 
       // now prompt for it

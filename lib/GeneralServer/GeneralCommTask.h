@@ -98,11 +98,11 @@ namespace triagens {
             _readRequestBody(false),
             _maximalHeaderSize(0),
             _maximalBodySize(0) {
-          LOGGER_TRACE << "connection established, client " << fd
+          LOGGER_TRACE("connection established, client " << fd
                        << ", server ip " << _connectionInfo.serverAddress
                        << ", server port " << _connectionInfo.serverPort
                        << ", client ip " <<  _connectionInfo.clientAddress
-                       << ", client port " <<  _connectionInfo.clientPort;
+                       << ", client port " <<  _connectionInfo.clientPort);
 
                     
           pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
@@ -118,7 +118,7 @@ namespace triagens {
       protected:
 
         ~GeneralCommTask () {
-          LOGGER_TRACE << "connection closed, client " << commSocket;
+          LOGGER_TRACE("connection closed, client " << commSocket);
 
           // free write buffers
           for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {

@@ -137,7 +137,7 @@ Handler::status_e RestBatchHandler::execute() {
     if (! extractPart(&helper)) {
       // error
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
-      LOGGER_WARNING << "received a corrupted multipart message";
+      LOGGER_WARNING("received a corrupted multipart message");
 
       return Handler::HANDLER_FAILED;
     }
@@ -174,10 +174,11 @@ Handler::status_e RestBatchHandler::execute() {
     }
    
     // set up request object for the part
-    LOGGER_TRACE << "part header is " << string(headerStart, headerLength); 
+    LOGGER_TRACE("part header is " << string(headerStart, headerLength)); 
     HttpRequest* request = new HttpRequest(headerStart, headerLength);
+
     if (bodyLength > 0) {
-      LOGGER_TRACE << "part body is " << string(bodyStart, bodyLength);
+      LOGGER_TRACE("part body is " << string(bodyStart, bodyLength));
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -315,7 +316,7 @@ bool RestBatchHandler::getBoundary (string* result) {
     return false;
   }
 
-  LOGGER_TRACE << "boundary of multipart-message is " << boundary;
+  LOGGER_TRACE("boundary of multipart-message is " << boundary);
 
   *result = boundary;
   return true;

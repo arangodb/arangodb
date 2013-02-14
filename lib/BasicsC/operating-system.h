@@ -151,7 +151,6 @@
 #define TRI_READ                        read
 #define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
-#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
@@ -237,7 +236,6 @@ typedef int socket_t;
 #define TRI_READ                        read
 #define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
-#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
@@ -360,7 +358,6 @@ typedef int socket_t;
 #define TRI_READ                        read
 #define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
-#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
@@ -452,7 +449,7 @@ typedef int socket_t;
 // usleep in POSIX is for microseconds - not milliseconds
 // has been redefined in win-utils.h
 // ..............................................................
-// #define usleep                          Sleep 
+
 #define usleep                          TRI_usleep
 #define sleep                           TRI_sleep
 #define srandom                         srand
@@ -508,7 +505,6 @@ typedef unsigned char bool;
 #define TRI_READ                        _read
 #define TRI_READ_SOCKET(a,b,c,d)        recv((a), (b), (c), (d))
 #define TRI_RMDIR                       _rmdir
-#define TRI_SLEEP                       TRI_sleep
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
 #define TRI_WRITE_SOCKET(a,b,c,d)       send((a), (b), (c), (d))

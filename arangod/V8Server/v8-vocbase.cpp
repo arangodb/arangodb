@@ -6413,33 +6413,25 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // collection name / id (used for indexes)
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
   if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
   
   // id only
   expr = "^(" TRI_VOC_ID_REGEX ")$";
   if (regcomp(&v8g->IdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
 
   // collection name / document key (used for documents)
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
   if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
   
   // key only
   expr = "^" TRI_VOC_KEY_REGEX "$";
   if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
   
 
