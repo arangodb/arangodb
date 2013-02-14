@@ -1,0 +1,82 @@
+.shelltrashicon {
+  right:65px;
+}
+
+#submitShellButton {
+  position:absolute;
+  width: 14px;
+  height: 14px;
+  margin-top: -40px;
+  right: 27px;
+  z-index: 9999;
+  opacity: 0.2;
+}
+
+#submitShellButton:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+#shellInput {
+  border-radius: 0px 0px 0px 0px !important;
+}
+
+/*
+#shellInput:focus {
+  outline:none;
+  border-color:#8AA051;
+  box-shadow:0 0 3px #8AA051;
+}
+*/
+
+.shellnavbar {
+  background-color: red !important;
+  background-color: #FAFAFA !important;
+  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2) !important;
+  background-repeat: repeat-x;
+  margin-bottom: 20px;
+}
+
+.shellnavbar h3 {
+  padding-top: 5px;
+}
+
+#shellContent p, #shellContent b {
+  font-family: Consolas,"Liberation Mono",Courier,monospace !important;
+  font-size: 12px !important;
+}
+
+#shellFooter {
+  background-color:rgba(0,0,0,0.05);
+  position: relative;
+  margin-top: 0px;
+  padding-bottom: 2px;
+  border-radius: 4px;
+}
+
+#shellInput {
+  width: 886px;
+  margin-top:5px;
+  margin-bottom:0px;
+  background-color: #FAFAFA;
+  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2);
+  background-repeat: repeat-x;
+}
+
+#shellContent {
+  margin-top: 2px;
+  background-color: #FAFAFA;
+  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2);
+  background-repeat: repeat-x;
+  height: 400px;
+  width: 890px;
+  overflow-y: auto;
+  word-wrap: break-word;
+  border: 1px solid #c0c0c0;
+}
+
+.shellError {
+  color: red;
+  padding-left: 14px;
+}
+
