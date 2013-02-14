@@ -1,0 +1,99 @@
+<div class="row blackbackground collectionDiv">
+
+  <form class="form-horizontal span12 collectionDiv2">
+
+    <fieldset class="">
+
+      <legend> Collection Details</legend>
+      <br/>
+
+      <div class="row">
+        <div class="span9">
+
+          <div class="control-group">
+            <label for="name" class="control-label">Name:</label>
+
+            <div class="controls">
+              <input type="text" id="collectionName" name="name" value="<%= name %>"/>
+              <span class="help-inline"></span>
+            </div>
+          </div>
+
+          <div class="control-group" id="collectionSizeBox" style="display:none">
+            <label for="size" class="control-label">Size:</label>
+
+            <div class="controls">
+              <input type="text" id="update-collection-size" name="size" value=""/>
+              <span class="help-inline"></span>
+            </div>
+          </div>
+
+          <div class="control-group" id="collectionSyncBox" style="display:none">
+            <label for="sync" class="control-label">Sync:</label>
+
+            <div class="controls">
+              <select id="update-collection-sync">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="id" class="control-label">Id:</label>
+
+            <div class="controls">
+              <input id="collectionId" name="id" type="text" value="<%= id === null ? '' : id %>" class="span1"
+              disabled/>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="status" class="control-label">Status:</label>
+
+            <div class="controls">
+              <input id="status" name="status" type="text" value="<%= status === null ? '' : status %>" class="span1"
+              disabled/>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="type" class="control-label">Type:</label>
+
+            <div class="controls">
+              <input id="type" name="type" type="text" value="<%= type === null ? '' : type %>" class="span1"
+              disabled/>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="span3">
+          <div class="well" id="collectionBox">
+            <img id="picture" width="48" src="<%= picture === null ? 'pics/generic.jpg' : 'pics/' + picture %>"/>
+            <a href="#" class="btn load">Load</a>
+          </div>
+        </div>
+
+      </div>
+
+    </fieldset>
+
+    <div class="form-actions">
+      <a href="#" class="btn btn-primary save pull-right collectionViewBtn">Save</a>
+      <a href="#" class="btn delete btn-delete pull-right">Delete</a>
+      <a href="#" class="btn">Cancel</a>
+    </div>
+
+  </form>
+
+</div>
+
+<div class="row status-bar">
+  <div class="span12">
+    <div class="alert alert-success" style="display: none">
+      <b>Success!</b> Collection saved successfully
+    </div>
+  </div>
+</div>
+

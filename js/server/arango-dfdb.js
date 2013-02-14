@@ -307,6 +307,11 @@ function main (argv) {
   printf("%s\n", "/___,' \\__,_|\\__\\__,_|_| |_|_|\\___| /___,'\\_____/\\____/ ");
   printf("\n");
 
+  if (collections.length == 0) {
+    printf("No collections available. Exiting\n");
+    return;
+  }
+
   printf("Available collections:\n");
 
   for (i = 0;  i < collections.length;  ++i) {

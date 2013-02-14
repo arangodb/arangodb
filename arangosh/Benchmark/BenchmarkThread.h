@@ -240,7 +240,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void executeBatchRequest (const unsigned long numOperations) {
-          const string boundary = "XXXarangob-benchmarkXXX";
+          static const string boundary = "XXXarangob-benchmarkXXX";
+          const HttpRequest::HttpRequestType type = _operation->type();
 
           StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
 
@@ -253,7 +254,6 @@ namespace triagens {
             batchPayload.appendText("\r\n\r\n", 4);
 
             // everything else (i.e. part request header & body) will get into the body
-            const HttpRequest::HttpRequestType type = _operation->type();
             const string url = _operation->url();
             size_t payloadLength = 0;
             bool mustFree = false;

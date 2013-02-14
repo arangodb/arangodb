@@ -1,0 +1,41 @@
+#documentsTableID {
+  width: 940px;
+  table-layout:fixed !important;
+}
+
+#documentsTableID .odd, #documentsTableID .even {
+  border: 1px solid black;
+}
+
+#documentsTableID .odd:hover {
+  border: 1px solid red;
+  cursor: pointer;
+}
+
+#documentsTableID .even:hover {
+  border: 1px solid red;
+  cursor: pointer;
+}
+
+#documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
+  visibility: hidden;
+}
+
+.snippet-no-num {
+  font-size: 1em;
+  font-weight: normal;
+  font-family: Verdana, Arial, sans-serif;
+}
+
+.cuttedContent, .prettify ul li, .writeable a {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.prettify {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1em !important;
+}
