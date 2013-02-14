@@ -154,6 +154,10 @@ in ArangoDB 1.2:
 
 * `ATTRIBUTES()`: returns the names of all attributes of a document as a list
 
+* `KEEP()`: keeps only the specified attributes of a document, and removes all others
+
+* `UNSET()`: removes only the specified attributes from a document, and preserves all others
+
 * `MATCHES()`: to check if a document matches one of multiple example documents
 
 * `LIKE()`: pattern-based text comparison

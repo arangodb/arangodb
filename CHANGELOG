@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* added AQL functions KEEP() and UNSET()
+
 * fixed issue #348: "HTTP Interface for Administration and Monitoring" 
   documentation errors.
 
