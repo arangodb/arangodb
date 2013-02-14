@@ -74,6 +74,13 @@ $(document).ready(function() {
       }
       this.collectionView.render();
     },
+    newCollection: function() {
+      if (!this.newCollectionView) {
+        this.newCollectionView = new window.newCollectionView({
+        });
+      }
+      this.newCollectionView.render();
+    },
     documents: function(colid, pageid) {
       window.documentsView.render();
       window.arangoDocumentsStore.getDocuments(colid, pageid);
