@@ -82,11 +82,11 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": true,
       "aoColumns": [
-        { "sClass":"read_only leftCell", "bSortable": false, "sWidth":"80px"},
+        { "sClass":"read_only leftCell", "bSortable": false, "sWidth":"40px"},
         { "sClass":"read_only","bSortable": false, "sWidth": "200px"},
         { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
         { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
-        { "bSortable": false, "sClass": "cuttedContent rightCell"}
+        { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
