@@ -189,7 +189,7 @@ TRI_doc_collection_info_t;
 /// as the object is not deleted.
 ///
 /// It is important to use locks for create, read, update, and delete.  The
-/// functions @FN{create}, @FN{createJson}, @FN{update}, @FN{updateJson}, and
+/// functions @FN{create}, @FN{update}, @FN{updateJson}, and
 /// @FN{destroy} are only allowed within a @FN{beginWrite} and
 /// @FN{endWrite}. The function @FN{read} is only allowed within a
 /// @FN{beginRead} and @FN{endRead}. Note that @FN{read} returns a copy of the
@@ -230,23 +230,12 @@ TRI_doc_collection_info_t;
 /// @LIT{beginWrite}.
 ///
 /// @FUN{TRI_doc_mptr_t const create (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool @FA{release})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// Adds a new document to the collection and returns the master pointer of the
 /// newly created entry. In case of an error, the attribute @LIT{_did} of the
 /// result is @LIT{0} and "TRI_errno()" is set accordingly. The function DOES
 /// NOT acquire a write lock. This must be done by the caller. If @FA{release}
 /// is true, it will release the write lock as soon as possible.
-///
-/// @FUN{TRI_doc_mptr_t const createJson (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_json_t const*, bool @FA{release})}
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but instead of a shaped json a json object must be given.
-///
-/// @FUN{TRI_voc_key_t createLock (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but the function will acquire and release the write lock.
 ///
 /// @FUN{TRI_doc_mptr_t const read (TRI_primary_collection_t*, TRI_voc_key_t)}
 //////////////////////////////////////////////////////////////////////////
@@ -338,7 +327,6 @@ typedef struct TRI_primary_collection_s {
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
   int (*create) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_doc_mptr_t**, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key);
-  int (*createJson) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_doc_mptr_t**, TRI_json_t const*, void const*);
   int (*read) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_voc_key_t);
 
   int (*update) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_shaped_json_t const*, TRI_voc_key_t);
