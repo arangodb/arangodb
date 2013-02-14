@@ -8,8 +8,8 @@ Please follow these guidelines if you want to contribute to ArangoDB:
 * Please make sure you have a GitHub account
 * Please look into the ArangoDB issue tracker on GitHub for similar/identical issues
 * For bugs: if the bug you found is not yet described in an existing issue, please file a new one. The new issue should include a clear description of the bug and how to reproduce it (including your environment)
-* For feature requests: please clearly describe the proposed feature, additional configuration options, and side effects
 * Please let us know if you plan to work an a ticket. This way we can make sure we avoid redundant work
+* For feature requests: feature requests should be directed to our feature request & voting system at arangodb.uservoice.com
 
 * Create a fork our repository. You can use GitHub to do this
 * Clone the fork to your development box and pull the latest changes from the ArangoDB repository. Please make sure to use the appropriate branch:
@@ -32,7 +32,8 @@ Please follow these guidelines if you want to contribute to ArangoDB:
 
 ## Additional Resources
 
-* [ArangoDB website](http://www.arangodb.org/)
-* [ArangoDB on Twitter](http://twitter.com/arangodb)
-* [General GitHub documentation](http://help.github.com/)
-* [GitHub pull request documentation](http://help.github.com/send-pull-requests/)
+* [ArangoDB website](https://www.arangodb.org/)
+* [ArangoDB on Twitter](https://twitter.com/arangodb)
+* [ArangoDB feature requests](https://uservoice.arangodb.com)
+* [General GitHub documentation](https://help.github.com/)
+* [GitHub pull request documentation](https://help.github.com/send-pull-requests/)
