@@ -138,11 +138,10 @@ Dispatcher* ApplicationDispatcher::dispatcher () const {
 
 void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
   if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher queue";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOGGER_TRACE << "setting up a standard queue with " << nrThreads << " threads ";
+  LOGGER_TRACE("setting up a standard queue with " << nrThreads << " threads ");
 
   _dispatcher->addQueue("STANDARD", nrThreads);
 }
@@ -153,11 +152,10 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
 
 void ApplicationDispatcher::buildNamedQueue (string const& name, size_t nrThreads) {
   if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher queue";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOGGER_TRACE << "setting up a named queue '" << name << "' with " << nrThreads << " threads ";
+  LOGGER_TRACE("setting up a named queue '" << name << "' with " << nrThreads << " threads ");
 
   _dispatcher->addQueue(name, nrThreads);
 }
@@ -206,16 +204,11 @@ bool ApplicationDispatcher::start () {
   bool ok = _dispatcher->start();
 
   if (! ok) {
-    LOGGER_FATAL << "cannot start dispatcher";
-
-    delete _dispatcher;
-    _dispatcher = 0;
-
-    return false;
+    LOGGER_FATAL_AND_EXIT("cannot start dispatcher");
   }
 
   while (! _dispatcher->isStarted()) {
-    LOGGER_DEBUG << "waiting for dispatcher to start";
+    LOGGER_DEBUG("waiting for dispatcher to start");
     usleep(500 * 1000);
   }
 
@@ -250,8 +243,8 @@ void ApplicationDispatcher::stop () {
     _dispatcher->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
-      LOGGER_TRACE << "waiting for dispatcher to stop";
-      TRI_SLEEP(1);
+      LOGGER_TRACE("waiting for dispatcher to stop");
+      sleep(1);
     }
 
     _dispatcher->shutdown();
@@ -280,8 +273,7 @@ void ApplicationDispatcher::stop () {
 
 void ApplicationDispatcher::buildDispatcher () {
   if (_dispatcher != 0) {
-    LOGGER_FATAL << "a dispatcher has already been created";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("a dispatcher has already been created");
   }
 
   _dispatcher = new Dispatcher();
@@ -293,8 +285,7 @@ void ApplicationDispatcher::buildDispatcher () {
 
 void ApplicationDispatcher::buildDispatcherReporter () {
   if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher reporter";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
   }
 
   if (0.0 < _reportIntervall) {
