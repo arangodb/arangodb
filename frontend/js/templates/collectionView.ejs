@@ -1,0 +1,55 @@
+<div id="change-collection" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3>Modify Collection</h3>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
+      </tr>
+      <tr id="collectionSizeBox" style="display:none">
+        <th class="collectionTh">Size:</th>
+        <th class="collectionTh"><input type="text" id="change-collection-size" name="size" value=""/></th>
+      </tr>
+      <tr id="collectionSyncBox" style="display:none">
+        <th class="collectionTh">Sync:</th>
+        <th class="collectionTh">
+          <select id="change-collection-sync">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select> 
+        </th> 
+      </tr> 
+
+      <tr>
+        <th class="collectionTh">ID:</th>
+        <th class="collectionTh">
+          <input id="change-collection-id" name="id" type="text" class="span1" disabled/>
+        <th>
+      </tr>
+
+      <tr>
+        <th class="collectionTh">Type:</th> 
+        <th class="collectionTh">
+          <input type="text" id="change-collection-type" name="size" value="" disabled/>
+        </th>
+      </tr>
+
+      <tr>
+        <th class="collectionTh">Status:</th> 
+        <th class="collectionTh">
+          <input id="change-collection-status" name="id" type="text" class="span1" disabled/>
+        </th>
+      </tr>
+
+
+
+    </table>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Abort</button> 
+    <button id="save-modified-collection" class="btn btn-primary">Modify Collection</button> 
+  </div>
+</div>
