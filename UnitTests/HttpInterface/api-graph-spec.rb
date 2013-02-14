@@ -136,7 +136,7 @@ describe ArangoDB do
         doc1.code.should eq(201)
 
         doc2 = create_graph( prefix, "recreate", vertex_collection, edge_collection )
-        doc2.code.should eq(201)
+        doc2.code.should eq(400)
       end
 
       it "checks (re)create graph different name" do
