@@ -127,12 +127,9 @@ which makes setting up and querying edges much easier in ArangoDB 1.2:
 Additional graph functionality {#NewFeatures12GraphFunctionality}
 -----------------------------------------------------------------
 
-- Javascript graph API
+- @BOOK_REF{JSModuleGraph}
 
-- Javascript traversal functionality
-
-- REST graphi API /_api/graph
-
+- @BOOK_REF{HttpGraph}
 
 AQL Improvements {#NewFeatures12AqlImprovements}
 ------------------------------------------------
@@ -156,6 +153,10 @@ in ArangoDB 1.2:
 * `EDGES()`: access edges connected to a vertex from via an AQL function
 
 * `ATTRIBUTES()`: returns the names of all attributes of a document as a list
+
+* `KEEP()`: keeps only the specified attributes of a document, and removes all others
+
+* `UNSET()`: removes only the specified attributes from a document, and preserves all others
 
 * `MATCHES()`: to check if a document matches one of multiple example documents
 

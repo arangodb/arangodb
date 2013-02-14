@@ -1032,6 +1032,20 @@ AQL supports the following functions to operate on document values:
   `_key` etc.) are removed from the result. If @FA{sort} is set to `true`, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
 
+- @FN{UNSET(@FA{document}\, @FA{attributename}\, ...)}: removes the attributes @FA{attributename}
+  (can be one or many) from @FA{document}. All other attributes will be preserved.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+    RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+
+- @FN{KEEP(@FA{document}\, @FA{attributename}\, ...)}: keeps only the attributes @FA{attributename}
+  (can be one or many) from @FA{document}. All other attributes will be removed from the result.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+    RETURN KEEP(doc, 'firstname', 'name', 'likes')
+
 @subsubsection AqlFunctionsGeo Geo functions
 
 AQL offers the following functions to filter data based on geo indexes:

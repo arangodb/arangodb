@@ -661,12 +661,16 @@ static TRI_transaction_collection_global_t* GetGlobalCollection (TRI_transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 static int UseCollections (TRI_transaction_t* const trx) {
+#if 0  
   TRI_transaction_context_t* context;
+#endif  
   size_t i, n;
   
   LOG_DEBUG("acquiring collection locks");
 
+#if 0  
   context = trx->_context;
+#endif
 
   n = trx->_collections._length;
 

@@ -54,6 +54,9 @@ class Arangodb < Formula
     To start the ArangoDB server manually, run:
         /usr/local/sbin/arangod
 
+    To upgrade the ArangoDB database files, run:
+        /usr/local/sbin/arangod --upgrade
+
     To start the ArangoDB shell, run:
         arangosh
     EOS

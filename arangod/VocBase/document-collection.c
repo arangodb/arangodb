@@ -2609,7 +2609,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
                                                        TRI_idx_type_e type,
                                                        bool unique) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
-  TRI_vector_t* indexPaths;
+  TRI_vector_t* indexPaths = NULL;
   size_t j;
   size_t k;
 
@@ -2675,7 +2675,11 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       }
       
     }
-    
+
+    if (indexPaths == NULL) {
+      // this may actually happen if compiled with -DNDEBUG
+      return NULL;
+    }
     
     // .........................................................................
     // check that the number of paths (fields) in the index matches that
