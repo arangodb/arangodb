@@ -15,7 +15,7 @@ var collectionView = Backbone.View.extend({
     return this;
   },
   events: {
-    "click #save-modified-collection"    :    "saveNewCollection",
+    "click #save-modified-collection"    :    "saveModifiedCollection",
     "hidden #change-collection"          :    "hidden",
   },
   hidden: function () {
@@ -23,7 +23,6 @@ var collectionView = Backbone.View.extend({
   },
   fillModal: function() {
     myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
-    console.log(myCollection);
     $('#change-collection-name').val(myCollection.name);
     $('#change-collection-id').val(myCollection.id);
     $('#change-collection-type').val(myCollection.type);
@@ -33,7 +32,6 @@ var collectionView = Backbone.View.extend({
       $('#collectionSizeBox').show();
       $('#collectionSyncBox').show();
       var data = window.arangoCollectionsStore.getProperties(this.options.colId);
-      console.log(data);
       if (data.waitForSync == false) {
         $('#change-collection-sync').val('false');
       }
@@ -47,10 +45,6 @@ var collectionView = Backbone.View.extend({
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
-  },
-  saveNewCollection: function() {
-    console.log("atm missing");
-    return false;
   },
   saveModifiedCollection: function() {
 
