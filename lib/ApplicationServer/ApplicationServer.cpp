@@ -107,6 +107,7 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
@@ -142,7 +143,9 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logLineNumber(false),
     _randomGenerator(5) {
 }
+
 #else
+
 ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
@@ -177,7 +180,9 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logThreadId(false),
     _logLineNumber(false),
     _randomGenerator(3) {
+  storeRealPrivileges();
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,9 +252,8 @@ string const& ApplicationServer::getName () const {
 /// @brief sets up the logging
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setupLogging () {
-  bool threaded = TRI_ShutdownLogging();
-
+void ApplicationServer::setupLogging (bool threaded, bool daemon) {
+  TRI_ShutdownLogging();
   TRI_InitialiseLogging(threaded);
 
   Logger::setApplicationName(_logApplicationName);
@@ -279,17 +283,26 @@ void ApplicationServer::setupLogging () {
     TRI_SetFileToLog(i->c_str());
   }
 
-  if (NULL == TRI_CreateLogAppenderFile(_logFile.c_str())) {
-    if (_logFile.length() > 0) {
-      // the user specified a log file to use but it could not be created. bail out
-      LOGGER_FATAL_AND_EXIT("failed to create logfile '" << _logFile << "'. Please check the path and permissions.");
-    }
-  }
 #ifdef TRI_ENABLE_SYSLOG
   if (_logSyslog != "") {
     TRI_CreateLogAppenderSyslog(_logPrefix.c_str(), _logSyslog.c_str());
   }
 #endif  
+
+  if (_logFile.length() > 0) {
+    string filename = _logFile;
+
+    if (daemon && filename != "+" && filename != "-") {
+      filename = filename + ".daemon";
+    }
+
+    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str());
+
+    // the user specified a log file to use but it could not be created. bail out
+    if (appender == 0) {
+      LOGGER_FATAL_AND_EXIT("failed to create logfile '" << filename << "'. Please check the path and permissions.");
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,21 +392,6 @@ bool ApplicationServer::parse (int argc,
   }
 
   // .............................................................................
-  // UID and GID
-  // .............................................................................
-
-
-  storeRealPrivileges();
-  extractPrivileges();
-  dropPrivileges();
-
-  // .............................................................................
-  // setup logging
-  // .............................................................................
-
-  setupLogging();
-
-  // .............................................................................
   // parse phase 1
   // .............................................................................
 
@@ -415,8 +413,18 @@ bool ApplicationServer::parse (int argc,
     return false;
   }
 
-  // re-set logging using the additional config file entries
-  setupLogging();
+  // .............................................................................
+  // UID and GID
+  // .............................................................................
+
+  extractPrivileges();
+  dropPrivileges();
+
+  // .............................................................................
+  // setup logging
+  // .............................................................................
+
+  setupLogging(false, false);
 
   // .............................................................................
   // parse phase 2
@@ -719,6 +727,20 @@ void ApplicationServer::dropPrivilegesPermanently () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves the logging privileges
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::storeRealPrivileges () {
+#ifdef TRI_HAVE_SETGID
+  _realGid = getgid();
+#endif
+
+#ifdef TRI_HAVE_SETUID
+  _realUid = getuid();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -746,12 +768,6 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 #if defined(TRI_HAVE_SETUID) || defined(TRI_HAVE_SETGID)
 
   options[OPTIONS_CMDLINE + ":help-extended"]
-#ifdef TRI_HAVE_SETUID
-    ("uid", &_uid, "switch to user-id after reading config files")
-#endif
-#ifdef TRI_HAVE_SETGID
-    ("gid", &_gid, "switch to group-id after reading config files")
-#endif
 #ifdef TRI_HAVE_GETPPID
     ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
 #endif
@@ -784,6 +800,12 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options[OPTIONS_HIDDEN]
     ("log", &_logLevel, "log level for severity 'human'")
+#ifdef TRI_HAVE_SETUID
+    ("uid", &_uid, "switch to user-id after reading config files")
+#endif
+#ifdef TRI_HAVE_SETGID
+    ("gid", &_gid, "switch to group-id after reading config files")
+#endif
   ;
 
   // .............................................................................
@@ -793,6 +815,12 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   options[OPTIONS_SERVER + ":help-extended"]
     ("random.no-seed", "do not seed the random generator")
     ("random.generator", &_randomGenerator, "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
+#ifdef TRI_HAVE_SETUID
+    ("server.uid", &_uid, "switch to user-id after reading config files")
+#endif
+#ifdef TRI_HAVE_SETGID
+    ("server.gid", &_gid, "switch to group-id after reading config files")
+#endif
   ;
 }
 
@@ -1121,20 +1149,6 @@ void ApplicationServer::extractPrivileges() {
     _effectiveUid = uidNumber;
   }
 
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves the logging privileges
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationServer::storeRealPrivileges () {
-#ifdef TRI_HAVE_SETGID
-  _realGid = getgid();
-#endif
-
-#ifdef TRI_HAVE_SETUID
-  _realUid = getuid();
 #endif
 }
 
