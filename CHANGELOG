@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #333: [debian] Group "arangodb" is not used when starting vie init.d script
+
 * added AQL functions KEEP() and UNSET()
 
 * fixed issue #348: "HTTP Interface for Administration and Monitoring" 
