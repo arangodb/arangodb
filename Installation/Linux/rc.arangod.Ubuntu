@@ -27,7 +27,7 @@ start () {
     test -d $PIDDIR || mkdir $PIDDIR
     chown arangodb $PIDDIR
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb --gid arangodb $@
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
     log_end_msg $?
 }
 
