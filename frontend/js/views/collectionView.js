@@ -15,9 +15,11 @@ var collectionView = Backbone.View.extend({
     return this;
   },
   events: {
-    "click #save-modified-collection"    :    "saveModifiedCollection",
-    "hidden #change-collection"          :    "hidden",
-    "click #delete-modified-collection"  :    "deleteCollection"
+    "click #save-modified-collection"     :    "saveModifiedCollection",
+    "hidden #change-collection"           :    "hidden",
+    "click #delete-modified-collection"   :    "deleteCollection",
+    "click #load-modified-collection"     :    "loadCollection",
+    "click #unload-modified-collection" :    "unloadCollection"
   },
   hidden: function () {
     window.location.hash = "#";
@@ -30,10 +32,12 @@ var collectionView = Backbone.View.extend({
     $('#change-collection-status').val(myCollection.status);
 
     if (myCollection.status == 'unloaded') {
+      $('#colFooter').append('<button id="load-modified-collection" class="btn">Load</button>');
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
     else if (myCollection.status == 'loaded') {
+      $('#colFooter').append('<button id="unload-modified-collection" class="btn">Unload</button>');
       var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
       this.fillLoadedModal(data);
     }
@@ -51,6 +55,16 @@ var collectionView = Backbone.View.extend({
     $('#change-collection').modal('show')
   },
   saveModifiedCollection: function() {
+  },
+  unloadCollection: function () {
+    var collid = $('#change-collection-name').val();
+    window.arangoCollectionsStore.unloadCollection(collid);
+    $('#change-collection').modal('hide');
+  },
+  loadCollection: function () {
+    var collid = $('#change-collection-name').val();
+    window.arangoCollectionsStore.loadCollection(collid);
+    $('#change-collection').modal('hide');
   },
   deleteCollection: function () {
     var self = this;

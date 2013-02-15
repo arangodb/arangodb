@@ -34,5 +34,32 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       rename: function (id) {
 
+      },
+      deleteCollection: function (id) {
+
+      },
+      loadCollection: function (id) {
+        $.ajax({
+          type: 'PUT',
+          url: "/_api/collection/" + id + "/load",
+          success: function () {
+          },
+          error: function (data) {
+            var temp = JSON.parse(data.responseText);
+            alert("Error: " + JSON.stringify(temp.errorMessage));
+          }
+        });
+      },
+      unloadCollection: function (id) {
+        $.ajax({
+          type: 'PUT',
+          url: "/_api/collection/" + id + "/unload",
+          success: function () {
+          },
+          error: function () {
+            var temp = JSON.parse(data.responseText);
+            alert("Error: " + JSON.stringify(temp.errorMessage));
+          }
+        });
       }
 });
