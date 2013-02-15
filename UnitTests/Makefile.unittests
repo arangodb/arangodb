@@ -472,7 +472,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 
 ################################################################################
