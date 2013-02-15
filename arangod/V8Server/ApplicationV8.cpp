@@ -726,18 +726,6 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
-  if (_performUpgrade) {
-    // issue #391: when invoked with --upgrade, the server will not always shut down
-    LOGGER_INFO << "database version check passed";
-    context->_context->Exit();
-    context->_isolate->Exit();
-    delete context->_locker;
-    
-    TRI_FlushLogging();
-
-    exit(EXIT_SUCCESS);
-  }
-
   // load all actions
   if (_useActions) {
     bool ok = _actionLoader.executeAllScripts(context->_context);
