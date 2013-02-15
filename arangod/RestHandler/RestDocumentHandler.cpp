@@ -127,7 +127,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   _timing << *task;
 #ifdef TRI_ENABLE_LOGGER
   // if logger is not activated, the compiler will complain, so enclose it in ifdef
-  LOGGER_REQUEST_IN_START_I(_timing);
+  LOGGER_REQUEST_IN_START_I(_timing, "");
 #endif
 
   // execute one of the CRUD methods
@@ -271,6 +271,8 @@ bool RestDocumentHandler::createDocument () {
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
+  
+  const bool waitForSync = extractWaitForSync();
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -283,6 +285,7 @@ bool RestDocumentHandler::createDocument () {
   if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
+
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -300,7 +303,7 @@ bool RestDocumentHandler::createDocument () {
   const TRI_voc_cid_t cid = trx.cid();
   
   TRI_doc_mptr_t* document = 0;
-  res = trx.createDocument(&document, json, extractWaitForSync());
+  res = trx.createDocument(&document, json, waitForSync, true);
   res = trx.finish(res);
   
   // .............................................................................
@@ -405,8 +408,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
@@ -460,7 +463,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
   else if (ifNoneRid == rid) {
     if (ifRid == 0 || ifRid == rid) {
-      generateNotModified(StringUtils::itoa(rid));
+      generateNotModified(rid);
     }
     else {
       generatePreconditionFailed(cid, document->_key, rid);
@@ -757,8 +760,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -800,7 +803,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     bool nullMeansRemove;
     bool found;
     char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    if (! found || StringUtils::boolean(valueStr)) {
       // default: null values are saved as Null
       nullMeansRemove = false;
     }
@@ -927,8 +930,8 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");

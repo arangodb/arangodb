@@ -87,7 +87,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
 
     // default
     default:                   
-      LOGGER_WARNING << "unknown HTTP response code " << code << " returned";
+      LOGGER_WARNING("unknown HTTP response code " << code << " returned");
       return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
   }
 }

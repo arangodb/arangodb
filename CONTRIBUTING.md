@@ -39,7 +39,7 @@ This will help us reproducing and finding bugs.
 
 ## Additional Resources
 
-* [ArangoDB website](http://www.arangodb.org/)
-* [ArangoDB on Twitter](http://twitter.com/arangodb)
-* [General GitHub documentation](http://help.github.com/)
-* [GitHub pull request documentation](http://help.github.com/send-pull-requests/)
+* [ArangoDB website](https://www.arangodb.org/)
+* [ArangoDB on Twitter](https://twitter.com/arangodb)
+* [General GitHub documentation](https://help.github.com/)
+* [GitHub pull request documentation](https://help.github.com/send-pull-requests/)

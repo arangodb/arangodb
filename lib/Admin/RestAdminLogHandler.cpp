@@ -282,7 +282,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
       sortDescending = true;
     }
     else {
-      LOGGER_DEBUG << "unknown sort direction '" << sortdir << "'";
+      LOGGER_DEBUG("unknown sort direction '" << sortdir << "'");
     }
   }
   

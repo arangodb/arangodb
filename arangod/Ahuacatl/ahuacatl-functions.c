@@ -625,6 +625,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h,sl", NULL);
   REGISTER_FUNCTION("MATCHES", "MATCHES", true, false, ".,l|b", NULL);
+  REGISTER_FUNCTION("UNSET", "UNSET", true, false, "a,sl|+", NULL);
+  REGISTER_FUNCTION("KEEP", "KEEP", true, false, "a,sl|+", NULL);
 
   // geo functions
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);

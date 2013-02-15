@@ -102,7 +102,7 @@ size_t EndpointList::count (const Endpoint::ProtocolType protocol,
 void EndpointList::dump () const {
   for (map<string, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
-      LOGGER_INFO << "using endpoint '" << (*i2)->getSpecification() << "' for " << (*i).first << " requests";
+      LOGGER_INFO("using endpoint '" << (*i2)->getSpecification() << "' for " << (*i).first << " requests");
     }
   }
 }

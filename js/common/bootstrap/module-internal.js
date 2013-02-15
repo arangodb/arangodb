@@ -733,7 +733,7 @@
   internal.startCaptureMode = function () {
     internal.outputBuffer = "";
     internal.output = internal.bufferOutput;
-  }
+  };
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop capture mode
@@ -746,7 +746,7 @@
     internal.output = internal.stdOutput;
 
     return buffer;
-  }
+  };
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start color printing

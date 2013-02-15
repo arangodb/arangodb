@@ -160,7 +160,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   else if (nr == 0) {
     closed = true;
 
-    LOGGER_TRACE << "read returned 0";
+    LOGGER_TRACE("read returned 0");
 
     return false;
   }
@@ -170,12 +170,12 @@ bool SocketTask::fillReadBuffer (bool& closed) {
       return fillReadBuffer(closed);
     }
     else if (errno != EWOULDBLOCK) {
-      LOGGER_TRACE << "read failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_TRACE("read failed with " << errno << " (" << strerror(errno) << ")");
 
       return false;
     }
     else {
-      LOGGER_TRACE << "read would block with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_TRACE("read would block with " << errno << " (" << strerror(errno) << ")");
 
       return true;
     }
@@ -213,7 +213,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
           return handleWrite(closed, noWrite);
         }
         else if (errno != EWOULDBLOCK) {
-          LOGGER_DEBUG << "write failed with " << errno << " (" << strerror(errno) << ")";
+          LOGGER_DEBUG("write failed with " << errno << " (" << strerror(errno) << ")");
 
           return false;
         }
@@ -455,7 +455,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
   if (token == keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
-    LOGGER_TRACE << "got keep-alive timeout signal, closing connection";
+    LOGGER_TRACE("got keep-alive timeout signal, closing connection");
 
     // TODO: do we need some lock before we modify the scheduler?
     scheduler->clearTimer(token);

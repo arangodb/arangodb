@@ -121,7 +121,7 @@ Job* HttpHandler::createJob (AsyncJobServer* server) {
   }
   // end of hack
 
-  LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
+  LOGGER_WARNING("cannot convert AsyncJobServer into a HttpServer");
   return 0;
 }
 
