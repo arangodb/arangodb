@@ -108,7 +108,7 @@ after the upgrade, you may want to remove these backup files manually.
 
 All collection datafiles will be backed up in the original collection
 directories in the database directory. You can easily detect the backup files
-because they have a file ending of `.old`.
+because they have a filename ending in `.old`.
 
 Please note that the upgrade behavior in 1.2 was slightly changed compared to
 1.1:
@@ -116,6 +116,7 @@ Please note that the upgrade behavior in 1.2 was slightly changed compared to
 - in 1.1, when starting `arangod` with `--upgrade`, the server performed the
   upgrade, and if the upgrade was successfully, continued to work in either
   daemon or console mode.
+
 - in 1.2, when started with the `--upgrade` option, the server will perfom
   the upgrade, and then exit with a status code indicating the result of the
   upgrade (0 = success, 1 = failure). To start the server regularly in either 
