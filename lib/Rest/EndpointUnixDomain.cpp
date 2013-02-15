@@ -93,22 +93,22 @@ EndpointUnixDomain::~EndpointUnixDomain () {
 ////////////////////////////////////////////////////////////////////////////////
 
 socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeout) {
-  LOGGER_DEBUG << "connecting to unix endpoint " << _specification;
+  LOGGER_DEBUG("connecting to unix endpoint " << _specification);
 
   assert(_socket == 0);
   assert(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
     // socket file already exists
-    LOGGER_WARNING << "socket file '" << _path << "' already exists.";
+    LOGGER_WARNING("socket file '" << _path << "' already exists.");
 
     int error = 0;
     // delete previously existing socket file
     if (FileUtils::remove(_path, &error)) {
-      LOGGER_WARNING << "deleted previously existing socket file '" << _path << "'.";
+      LOGGER_WARNING("deleted previously existing socket file '" << _path << "'.");
     }
     else {
-      LOGGER_ERROR << "unable to delete previously existing socket file '" << _path << "'.";
+      LOGGER_ERROR("unable to delete previously existing socket file '" << _path << "'.");
     
       return 0;
     }
@@ -123,13 +123,13 @@ socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeo
   int opt = 1;
     
   if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-    LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
+    LOGGER_ERROR("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
 
     close(listenSocket);
 
     return 0;
   }
-  LOGGER_TRACE << "reuse address flag set";
+  LOGGER_TRACE("reuse address flag set");
     
   struct sockaddr_un address;
 
@@ -147,13 +147,13 @@ socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeo
     }
     
     // listen for new connection, executed for server endpoints only
-    LOGGER_TRACE << "using backlog size " << _listenBacklog;
+    LOGGER_TRACE("using backlog size " << _listenBacklog);
     result = listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
       close(listenSocket);
 
-      LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_ERROR("listen failed with " << errno << " (" << strerror(errno) << ")");
 
       return 0;
     }

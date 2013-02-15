@@ -50,6 +50,30 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Logging
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base structure for log appenders
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_log_appender_s {
+  void (*log) (struct TRI_log_appender_s*, TRI_log_level_e, TRI_log_severity_e, char const* msg, size_t length);
+  void (*reopen) (struct TRI_log_appender_s*);
+  void (*close) (struct TRI_log_appender_s*);
+}
+TRI_log_appender_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -230,7 +254,7 @@ static sig_atomic_t ShowFunction = 1;
 /// @brief show thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static sig_atomic_t ShowThreadIdentifier = 1;
+static sig_atomic_t ShowThreadIdentifier = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output prefix
@@ -508,6 +532,25 @@ static int GenerateMessage (char* buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief write to stderr
+////////////////////////////////////////////////////////////////////////////////
+
+void writeStderr (char const* line, size_t len) {
+  ssize_t n;
+
+  while (0 < len) {
+    n = TRI_WRITE(STDERR_FILENO, line, len);
+
+    if (n <= 0) {
+      return;
+    }
+
+    line += n;
+    len -= n;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs a message string to all appenders
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -517,6 +560,9 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t length,
                            bool copy) {
   if (! LoggingActive) {
+    writeStderr(message, length);
+    writeStderr("\n", 1);
+
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
     }
@@ -527,6 +573,22 @@ static void OutputMessage (TRI_log_level_e level,
   if (severity == TRI_LOG_SEVERITY_HUMAN) {
     StoreOutput(level, time(0), message, length);
   }
+
+  TRI_LockSpin(&AppendersLock);
+
+  if (Appenders._length == 0) {
+    writeStderr(message, length);
+    writeStderr("\n", 1);
+
+    if (! copy) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, message);
+    }
+
+    TRI_UnlockSpin(&AppendersLock);
+    return;
+  }
+
+  TRI_UnlockSpin(&AppendersLock);
 
   if (ThreadedLogging) {
     log_message_t msg;
@@ -748,6 +810,32 @@ static void LogThread (char const* func,
       return;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes all log appenders
+////////////////////////////////////////////////////////////////////////////////
+
+static void CloseLogging (void) {
+  TRI_LockSpin(&AppendersLock);
+
+  while (0 < Appenders._length) {
+    TRI_log_appender_t* appender = Appenders._buffer[0];
+
+    TRI_RemoveVectorPointer(&Appenders, 0);
+    appender->close(appender);
+  }
+
+  TRI_UnlockSpin(&AppendersLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs fatal error, cleans up, and exists
+////////////////////////////////////////////////////////////////////////////////
+
+void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR () {
+  TRI_ShutdownLogging();
+  TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1311,20 +1399,8 @@ static void LogAppenderFile_Reopen (TRI_log_appender_t* appender) {
 
 static void LogAppenderFile_Close (TRI_log_appender_t* appender) {
   log_appender_file_t* self;
-  size_t i;
 
   self = (log_appender_file_t*) appender;
-
-  TRI_LockSpin(&AppendersLock);
-
-  for (i = 0;  i < Appenders._length;  ++i) {
-    if (appender == Appenders._buffer[i]) {
-      TRI_RemoveVectorPointer(&Appenders, i);
-      break;
-    }
-  }
-
-  TRI_UnlockSpin(&AppendersLock);
 
   if (self->_fd >= 3) {
     TRI_CLOSE(self->_fd);
@@ -1528,20 +1604,9 @@ static void LogAppenderSyslog_Reopen (TRI_log_appender_t* appender) {
 
 static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
   log_appender_syslog_t* self;
-  size_t i;
 
-  TRI_LockSpin(&AppendersLock);
-
-  for (i = 0;  i < Appenders._length;  ++i) {
-    if (appender == Appenders._buffer[i]) {
-      TRI_RemoveVectorPointer(&Appenders, i);
-      break;
-    }
-  }
-
-  TRI_UnlockSpin(&AppendersLock);
-  
   self = (log_appender_syslog_t*) appender;
+
   TRI_LockMutex(&self->_mutex);
   closelog();
   TRI_UnlockMutex(&self->_mutex);
@@ -1647,48 +1712,6 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resets logging in child process
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ResetLogging () {
-  bool oldThreaded;
-  size_t i;
-
-  Initialised = false;
-  ShutdownInitalised = false;
-  BufferLID = 1;
-
-  for (i = 0;  i < sizeof(BufferCurrent) / sizeof(BufferCurrent[0]);  ++i) {
-    BufferCurrent[i] = 0;
-  }
-
-  LoggingThreadActive = 0;
-  IsHuman = 1;
-  IsException = 1;
-  IsTechnical = 1;
-  IsFunctional = 1;
-  IsDevelopment = 1;
-  IsFatal = 1;
-  IsError = 1;
-  IsWarning = 1;
-  IsInfo = 1;
-  IsDebug = 1;
-  IsTrace = 1;
-  ShowLineNumber = 1;
-  ShowFunction = 1;
-  ShowThreadIdentifier = 1;
-  OutputPrefix = NULL;
-  LoggingActive = 0;
-
-  oldThreaded = ThreadedLogging;
-  ThreadedLogging = false;
-
-  UseFileBasedLogging = false;
-
-  return oldThreaded;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1735,70 +1758,6 @@ void TRI_InitialiseLogging (bool threaded) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for messages to be flushed
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FlushLogging (void) {
-  bool done;
-
-  if (! ThreadedLogging) {
-    return;
-  }
-
-  do {
-    TRI_LockMutex(&LogMessageQueueLock);
-    done = LogMessageQueue._length == 0;
-    TRI_UnlockMutex(&LogMessageQueueLock);
-
-    if (! done) {
-      usleep(1000);
-    }
-  }
-  while (! done);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes all log appenders
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CloseLogging () {
-  TRI_log_appender_t* appender;
-
-  appender = NULL;
-
-  TRI_LockSpin(&AppendersLock);
-
-  if (Appenders._length != 0) {
-    appender = Appenders._buffer[0];
-  }
-
-  TRI_UnlockSpin(&AppendersLock);
-
-  if (appender != NULL) {
-    appender->close(appender);
-    TRI_CloseLogging();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reopens all log appenders
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReopenLogging () {
-  size_t i;
-
-  TRI_LockSpin(&AppendersLock);
-
-  for (i = 0;  i < Appenders._length;  ++i) {
-    TRI_log_appender_t* appender = Appenders._buffer[i];
-
-    appender->reopen(appender);
-  }
-
-  TRI_UnlockSpin(&AppendersLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1807,7 +1766,7 @@ bool TRI_ShutdownLogging () {
     return ThreadedLogging;
   }
 
-  // logging is now inactive
+  // logging is now inactive (this will terminate the logging thread)
   LoggingActive = 0;
 
   // join with the logging thread
@@ -1818,7 +1777,7 @@ bool TRI_ShutdownLogging () {
   }
 
   // cleanup appenders
-  TRI_CloseLogging();
+  CloseLogging();
   TRI_DestroyVectorPointer(&Appenders);
 
   // cleanup prefix
@@ -1842,10 +1801,32 @@ bool TRI_ShutdownLogging () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reopens all log appenders
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReopenLogging () {
+  size_t i;
+
+  TRI_LockSpin(&AppendersLock);
+
+  for (i = 0;  i < Appenders._length;  ++i) {
+    TRI_log_appender_t* appender = Appenders._buffer[i];
+
+    appender->reopen(appender);
+  }
+
+  TRI_UnlockSpin(&AppendersLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:

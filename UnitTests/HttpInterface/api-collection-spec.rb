@@ -63,6 +63,23 @@ describe ArangoDB do
           realNames[collection['name']].should eq(collection)
         end
       end
+
+      it "returns all collections, exclude system collections" do
+        cmd = api + '/?excludeSystem=true'
+        doc = ArangoDB.log_get("#{prefix}-all-collections-nosystem", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        collections = doc.parsed_response['collections']
+        names = doc.parsed_response['names']
+
+        collections.length.should eq(3)
+        names.length.should eq(3)
+      end
+
     end
 
 ################################################################################
@@ -243,6 +260,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
         doc.parsed_response['journalSize'].should be_kind_of(Integer)
       end
 
@@ -491,6 +509,7 @@ describe ArangoDB do
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(true)
+        doc.parsed_response['isSystem'].should eq(false)
 
         cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
@@ -927,6 +946,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
 
         cmd = api + "/" + cn + "/properties"
         body = "{ \"waitForSync\" : false }"
@@ -941,6 +961,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
 
         ArangoDB.drop_collection(cn)
       end

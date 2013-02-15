@@ -265,10 +265,10 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   SCHEDULER_INIT(&_watcherLock);
 
   // report status
-  LOGGER_TRACE << "supported backends: " << ev_supported_backends();
-  LOGGER_TRACE << "recommended backends: " << ev_recommended_backends();
-  LOGGER_TRACE << "embeddable backends: " << ev_embeddable_backends();
-  LOGGER_TRACE << "backend flags: " << backend;
+  LOGGER_TRACE("supported backends: " << ev_supported_backends());
+  LOGGER_TRACE("recommended backends: " << ev_recommended_backends());
+  LOGGER_TRACE("embeddable backends: " << ev_embeddable_backends());
+  LOGGER_TRACE("backend flags: " << backend);
   
   // construct the loops
   _loops = new struct ev_loop*[nrThreads];
@@ -557,10 +557,12 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
     // The problem we have here is that this opening of the fs handle may fail.
     // There is no mechanism to the calling function to report failure.
     // ..........................................................................
-    LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
+
+    LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
+
     int fd = _open_osfhandle (socket, 0);
     if (fd == -1) {
-      LOGGER_ERROR << "could not convert socket handle to socket descriptor";
+      LOGGER_ERROR("could not convert socket handle to socket descriptor");
       delete watcher;
       abort();
       // Dr. O TODO: return to calling function

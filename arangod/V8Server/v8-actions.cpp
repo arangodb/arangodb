@@ -137,7 +137,7 @@ class v8_action_t : public TRI_action_t {
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context->_isolate);
 
       if (i == _callbacks.end()) {
-        LOGGER_WARNING << "no callback function for JavaScript action '" << _url.c_str() << "'";
+        LOGGER_WARNING("no callback function for JavaScript action '" << _url.c_str() << "'");
 
         GlobalV8Dealer->exitContext(context);
 
@@ -374,6 +374,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
     case HttpRequest::HTTP_REQUEST_PATCH:
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
+      req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
     
     case HttpRequest::HTTP_REQUEST_OPTIONS:
@@ -641,11 +642,11 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
       action->createCallback(isolate, callback);
     }
     else {
-      LOGGER_ERROR << "cannot create callback for V8 action";
+      LOGGER_ERROR("cannot create callback for V8 action");
     }
   }
   else {
-    LOGGER_ERROR << "cannot define V8 action";
+    LOGGER_ERROR("cannot define V8 action");
   }
 
   return scope.Close(v8::Undefined());

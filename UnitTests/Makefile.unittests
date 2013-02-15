@@ -36,6 +36,7 @@ unittests-brief: \
 	unittests-shell-client \
 	unittests-arangob \
 	unittests-import \
+	unittests-upgrade \
 	unittests-dfdb
 
 unittests-verbose:
@@ -435,6 +436,30 @@ unittests-import:
 
 
 ################################################################################
+### @brief UPGRADE TESTS
+###
+### invokes the --upgrade option twice and checks for errors
+################################################################################
+
+.PHONY: unittests-upgrade
+
+unittests-upgrade:
+	@echo
+	@echo "================================================================================"
+	@echo "<< UPGRADE TESTS                                                              >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+################################################################################
 ### @brief DATAFILE DEBUGGER TESTS      
 ###
 ### this test just checks whether the dfdb starts.
@@ -447,7 +472,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 
 ################################################################################

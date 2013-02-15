@@ -138,7 +138,7 @@ class mr_action_t : public TRI_action_t {
       map< mrb_state*, mrb_value >::iterator i = _callbacks.find(mrb);
 
       if (i == _callbacks.end()) {
-        LOGGER_WARNING << "no callback function for Ruby action '" << _url.c_str() << "'";
+        LOGGER_WARNING("no callback function for Ruby action '" << _url.c_str() << "'");
         return new HttpResponse(HttpResponse::NOT_FOUND);
       }
 
@@ -441,12 +441,12 @@ static mrb_value MR_Mount (mrb_state* mrb, mrb_value self) {
       return mrb_false_value();
     }
     else {
-      LOGGER_ERROR << "cannot create callback for MRuby action";
+      LOGGER_ERROR("cannot create callback for MRuby action");
       return mrb_true_value();
     }
   }
   else {
-    LOGGER_ERROR << "cannot define MRuby action";
+    LOGGER_ERROR("cannot define MRuby action");
     return mrb_false_value();
   }
 }
