@@ -53,7 +53,7 @@ void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseMemory();
   TRI_InitialiseMersenneTwister();
   TRI_InitialiseError();
-  TRI_InitialiseLogging(true);
+  TRI_InitialiseLogging(false);
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
   TRI_InitialiseProcess(argc, argv);

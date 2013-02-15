@@ -254,7 +254,7 @@ static sig_atomic_t ShowFunction = 1;
 /// @brief show thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static sig_atomic_t ShowThreadIdentifier = 1;
+static sig_atomic_t ShowThreadIdentifier = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output prefix
@@ -541,8 +541,8 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t length,
                            bool copy) {
   if (! LoggingActive) {
-    write(2, message, length);
-    write(2, "\n", 1);
+    write(STDERR_FILENO, message, length);
+    write(STDERR_FILENO, "\n", 1);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
@@ -558,8 +558,8 @@ static void OutputMessage (TRI_log_level_e level,
   TRI_LockSpin(&AppendersLock);
 
   if (Appenders._length == 0) {
-    write(2, message, length);
-    write(2, "\n", 1);
+    write(STDERR_FILENO, message, length);
+    write(STDERR_FILENO, "\n", 1);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
