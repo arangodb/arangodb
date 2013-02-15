@@ -60,7 +60,7 @@ arangod/Ahuacatl/ahuacatl-grammar.h
 arangod/Ahuacatl/ahuacatl-grammar.output
 arangod/Ahuacatl/ahuacatl-tokens.c
 bin/
-etc/arangodb/arangod-nouid.conf
+etc/arangodb/arangod-uid.conf
 etc/arangodb/arangod.conf
 etc/arangodb/arangoirb.conf
 etc/arangodb/arangosh.conf

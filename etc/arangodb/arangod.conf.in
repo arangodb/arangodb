@@ -31,8 +31,8 @@ disable-admin-interface = no
 disable-authentication = yes
 admin-directory= @PKGDATADIR@/html/admin
 threads = 5
-uid = arangodb
-gid = arangodb
+# uid = arangodb
+# gid = arangodb
 
 [scheduler]
 threads = 3
