@@ -72,6 +72,11 @@ TRI_SBINDIR = ${sbindir}
 
 endif
 
+BUILT_SOURCES += etc/arangodb/arangod-uid.conf
+
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:# \([ug]id\):\1:' $< > $@
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FLAGS
 ## -----------------------------------------------------------------------------

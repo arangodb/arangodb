@@ -1033,13 +1033,13 @@ top_srcdir = @top_srcdir@
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
-BUILT_SOURCES = build_posix.h etc/arangodb/arangod.conf \
-	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
-	$(am__append_13) Doxygen/.setup-directories \
-	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
-	$(am__append_15) $(am__append_17) $(am__append_18) \
-	$(am__append_19) $(am__append_21) $(am__append_24) \
-	$(am__append_27)
+BUILT_SOURCES = build_posix.h etc/arangodb/arangod-uid.conf \
+	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
+	etc/arangodb/arangosh.conf $(am__append_13) \
+	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
+	@builddir@/.setup-js-directories $(am__append_15) \
+	$(am__append_17) $(am__append_18) $(am__append_19) \
+	$(am__append_21) $(am__append_24) $(am__append_27)
 
 ################################################################################
 ### @brief man pages to install
@@ -1682,8 +1682,10 @@ UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMM
 GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 DOXYGEN_TOC = \
 	Documentation/DbaManual/DbaManual.md \
+	Documentation/ImplementorManual/ImplementorManual.md \
 	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
+	Documentation/RefManual/RefManual.md \
 	Documentation/UserManual/UserManual.md
 
 
@@ -1746,12 +1748,13 @@ WIKI = \
 	HttpImport \
 	HttpIndex \
 	HttpMisc \
-	HttpQueries \
+	HttpQuery \
 	HttpSimple \
 	HttpSystem \
 	ImpManual \
 	ImpManualBasics \
 	ImplementorManual \
+        ImplementorManualArangoErrors \
 	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
@@ -1775,12 +1778,12 @@ WIKI = \
 	NewFeatures11 \
 	NewFeatures12 \
 	RefManual \
+	RefManualArangoErrors \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \
 	Upgrading11 \
 	Upgrading12 \
-	UserManagement \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -5503,6 +5506,9 @@ uninstall-man: uninstall-man1 uninstall-man8
 	uninstall-sbinPROGRAMS
 
 
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:# \([ug]id\):\1:' $< > $@
+
 ################################################################################
 ### @brief /var data
 ################################################################################
@@ -5591,6 +5597,7 @@ unittests-brief: \
 	unittests-shell-client \
 	unittests-arangob \
 	unittests-import \
+	unittests-upgrade \
 	unittests-dfdb
 
 unittests-verbose:
@@ -5814,6 +5821,30 @@ unittests-import:
 	@echo
 
 ################################################################################
+### @brief UPGRADE TESTS
+###
+### invokes the --upgrade option twice and checks for errors
+################################################################################
+
+.PHONY: unittests-upgrade
+
+unittests-upgrade:
+	@echo
+	@echo "================================================================================"
+	@echo "<< UPGRADE TESTS                                                              >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+################################################################################
 ### @brief DATAFILE DEBUGGER TESTS      
 ###
 ### this test just checks whether the dfdb starts.
@@ -5826,7 +5857,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 .PHONY:	unittests-bitarray-index
 

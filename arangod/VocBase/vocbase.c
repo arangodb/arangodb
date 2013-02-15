@@ -591,9 +591,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     file = TRI_Concatenate2File(path, name);
 
     if (file == NULL) {
-      LOG_FATAL("out of memory");
-      regfree(&re);
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      LOG_FATAL_AND_EXIT("out of memory");
     }
 
     if (TRI_IsDirectory(file)) {
@@ -665,7 +663,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           c = AddCollection(vocbase, type, info._name, info._cid, file);
 
           if (c == NULL) {
-            LOG_FATAL("failed to add document collection from '%s'", file);
+            LOG_ERROR("failed to add document collection from '%s'", file);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, file);
             regfree(&re);
@@ -1152,12 +1150,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   res = TRI_VerifyLockFile(lockFile);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    LOG_FATAL("database is locked, please check the lock file '%s'", lockFile);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
-    TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_LOCKED);
-
-    return NULL;
+    LOG_FATAL_AND_EXIT("database is locked, please check the lock file '%s'", lockFile);
   }
 
   if (TRI_ExistsFile(lockFile)) {
@@ -1167,10 +1160,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   res = TRI_CreateLockFile(lockFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_FATAL("cannot lock the database, please check the lock file '%s': %s", lockFile, TRI_last_error());
-    TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
-
-    return NULL;
+    LOG_FATAL_AND_EXIT("cannot lock the database, please check the lock file '%s': %s", lockFile, TRI_last_error());
   }
 
   // .............................................................................
@@ -1178,11 +1168,9 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // .............................................................................
 
   vocbase = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t), false);
-  if (vocbase == NULL) {
-    LOG_FATAL("out of memory");
-    TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
 
-    return NULL;
+  if (vocbase == NULL) {
+    LOG_FATAL_AND_EXIT("out of memory");
   }
 
   vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
@@ -1763,6 +1751,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   TRI_col_info_t info;
   void const* found;
   char const* oldName;
+  bool isSystem;
   int res;
 
   // old name should be different
@@ -1772,7 +1761,17 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (! TRI_IsAllowedCollectionName(TRI_IsSystemCollectionName(oldName), newName)) {
+  isSystem = TRI_IsSystemCollectionName(oldName);
+  if (isSystem && ! TRI_IsSystemCollectionName(newName)) {
+    // a system collection shall not be renamed to a non-system collection name
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+  else if (! isSystem && TRI_IsSystemCollectionName(newName)) {
+    // a non-system collection shall not be renamed to a system collection name
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+
+  if (! TRI_IsAllowedCollectionName(isSystem, newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 

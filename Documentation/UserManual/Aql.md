@@ -547,7 +547,8 @@ result is defined as follows:
 - null: `null` is equal to `null`
 - boolean:`false` is less than `true`
 - number: numeric values are ordered by their cardinal value
-- string: string values are ordered using a byte-wise comparison 
+- string: string values are ordered using a localized comparison,
+  see @ref CommandLineDefaultLanguage "-\-default-language"
 
 Note: unlike in SQL, `null` can be compared to any value, including `null`
 itself, without the result being converted into `null` automatically.
@@ -1030,6 +1031,20 @@ AQL supports the following functions to operate on document values:
   If @FA{removeInternal} is set to `true`, then all internal attributes (such as `_id`, 
   `_key` etc.) are removed from the result. If @FA{sort} is set to `true`, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
+
+- @FN{UNSET(@FA{document}\, @FA{attributename}\, ...)}: removes the attributes @FA{attributename}
+  (can be one or many) from @FA{document}. All other attributes will be preserved.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+    RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+
+- @FN{KEEP(@FA{document}\, @FA{attributename}\, ...)}: keeps only the attributes @FA{attributename}
+  (can be one or many) from @FA{document}. All other attributes will be removed from the result.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+    RETURN KEEP(doc, 'firstname', 'name', 'likes')
 
 @subsubsection AqlFunctionsGeo Geo functions
 

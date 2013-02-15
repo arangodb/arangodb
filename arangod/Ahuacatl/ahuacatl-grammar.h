@@ -1,10 +1,8 @@
+/* A Bison parser, made by GNU Bison 2.5.  */
 
-/* A Bison parser, made by GNU Bison 2.4.1.  */
-
-/* Skeleton interface for Bison's Yacc-like parsers in C
+/* Bison interface for Yacc-like parsers in C
    
-      Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
-   Free Software Foundation, Inc.
+      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -56,38 +54,39 @@
      T_FALSE = 271,
      T_STRING = 272,
      T_QUOTED_STRING = 273,
-     T_NUMBER = 274,
-     T_PARAMETER = 275,
-     T_ASSIGN = 276,
-     T_NOT = 277,
-     T_AND = 278,
-     T_OR = 279,
-     T_EQ = 280,
-     T_NE = 281,
-     T_LT = 282,
-     T_GT = 283,
-     T_LE = 284,
-     T_GE = 285,
-     T_PLUS = 286,
-     T_MINUS = 287,
-     T_TIMES = 288,
-     T_DIV = 289,
-     T_MOD = 290,
-     T_EXPAND = 291,
-     T_QUESTION = 292,
-     T_COLON = 293,
-     T_COMMA = 294,
-     T_OPEN = 295,
-     T_CLOSE = 296,
-     T_DOC_OPEN = 297,
-     T_DOC_CLOSE = 298,
-     T_LIST_OPEN = 299,
-     T_LIST_CLOSE = 300,
-     UPLUS = 301,
-     UMINUS = 302,
-     FUNCCALL = 303,
-     REFERENCE = 304,
-     INDEXED = 305
+     T_INTEGER = 274,
+     T_DOUBLE = 275,
+     T_PARAMETER = 276,
+     T_ASSIGN = 277,
+     T_NOT = 278,
+     T_AND = 279,
+     T_OR = 280,
+     T_EQ = 281,
+     T_NE = 282,
+     T_LT = 283,
+     T_GT = 284,
+     T_LE = 285,
+     T_GE = 286,
+     T_PLUS = 287,
+     T_MINUS = 288,
+     T_TIMES = 289,
+     T_DIV = 290,
+     T_MOD = 291,
+     T_EXPAND = 292,
+     T_QUESTION = 293,
+     T_COLON = 294,
+     T_COMMA = 295,
+     T_OPEN = 296,
+     T_CLOSE = 297,
+     T_DOC_OPEN = 298,
+     T_DOC_CLOSE = 299,
+     T_LIST_OPEN = 300,
+     T_LIST_CLOSE = 301,
+     UPLUS = 302,
+     UMINUS = 303,
+     FUNCCALL = 304,
+     REFERENCE = 305,
+     INDEXED = 306
    };
 #endif
 
@@ -97,7 +96,7 @@
 typedef union YYSTYPE
 {
 
-/* Line 1676 of yacc.c  */
+/* Line 2132 of yacc.c  */
 #line 26 "arangod/Ahuacatl/ahuacatl-grammar.y"
 
   TRI_aql_node_t* node;
@@ -107,8 +106,8 @@ typedef union YYSTYPE
 
 
 
-/* Line 1676 of yacc.c  */
-#line 112 "arangod/Ahuacatl/ahuacatl-grammar.h"
+/* Line 2132 of yacc.c  */
+#line 111 "arangod/Ahuacatl/ahuacatl-grammar.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

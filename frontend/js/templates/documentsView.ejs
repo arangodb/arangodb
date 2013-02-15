@@ -1,0 +1,37 @@
+<div id="documentsDiv">
+
+<table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID">
+  <thead>
+    <tr>
+      <th class="th1" style="width:30px"></th>
+      <th class="th2" style="width:150px">_id</th>
+      <th class="th3" style="width:100px">_key</th>
+      <th class="th4" style="width:80px">_rev</th>
+      <th class="th5" style="width:400px">Content</th>
+    </tr>
+  </thead>
+</table>
+
+<div id="documentsToolbar" class="arangoToolbar">
+  <button class="enabled" id="documents_last"><img src="/_admin/html/img/rnd_br_first_icon16.png"></button>
+  <button class="enabled" id="documents_next"><img src="/_admin/html/img/rnd_br_prev_icon16.png"></button>
+  <button class="enabled" id="documents_prev"><img src="/_admin/html/img/rnd_br_next_icon16.png"></button>
+  <button class="enabled" id="documents_first"><img src="/_admin/html/img/rnd_br_last_icon16.png"></button>
+</div>
+
+</div>
+
+<!-- Modal -->
+<div id="docDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Delete Document?</h3>
+  </div>
+  <div class="modal-body">
+    <p>Theres no way back…</p>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
+  </div>
+</div>

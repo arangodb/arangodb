@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 #
 # arangod        Startup script for the ArangoDB Server
 #
@@ -29,7 +29,7 @@ start() {
   ARANGO_PIDDIR=`dirname $pidfile`
   test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
 
-  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arangodb $@
+  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor $@
 
   RETVAL=$?
   echo
@@ -48,13 +48,10 @@ stop() {
 }
 
 
-action="$1"
-shift
-
 # See how we were called.
-case "$action" in
+case "$1" in
   start)
-    start $@
+    start
     ;;
 
   stop)
@@ -68,11 +65,17 @@ case "$action" in
 
   restart)
     stop
-    start $@
+    start
+    ;;
+
+  upgrade)
+    echo $"Upgrading ArangoDB database files"
+
+    start --upgrade
     ;;
 
   *)
-    echo $"Usage: $ARANGO_BIN {start|stop|restart|status|help} <server options>"
+    echo $"Usage: $0 {start|stop|restart|status|help|upgrade}"
     exit 1
 esac
 

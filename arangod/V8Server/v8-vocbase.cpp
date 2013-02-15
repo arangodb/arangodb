@@ -993,7 +993,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   const bool forceSync = ExtractForceSync(argv, 2);
   
   TRI_doc_mptr_t* document = 0;
-  int res = trx->createDocument(key, &document, shaped, forceSync);
+  int res = trx->createDocument(key, &document, shaped, forceSync, true);
 
   res = trx->finish(res);
 
@@ -1113,7 +1113,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   
   
   TRI_doc_mptr_t* document = 0;
-  int res = trx->createEdge(key, &document, shaped, forceSync, &edge);
+  int res = trx->createEdge(key, &document, shaped, forceSync, &edge, true);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4415,12 +4415,15 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
   }
 
+  // READ-LOCK start
   trx.lockRead();
 
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_doc_collection_info_t* info = primary->figures(primary);
 
   res = trx.finish(res);
+  // READ-LOCK end
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch figures", true)));
   }
@@ -4730,6 +4733,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
     result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
+    result->Set(TRI_V8_SYMBOL("isSystem"), base->_info._isSystem ? v8::True() : v8::False());
 
     if (base->_info._options) {
       result->Set(v8g->CreateOptionsKey, TRI_ObjectJson(base->_info._options)->ToObject());
@@ -5125,11 +5129,13 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch revision", true)));
   }
 
+  // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t rid = primary->base._info._rid;
 
   trx.finish(res);
+  // READ-LOCK end
 
   return scope.Close(V8RevisionId(rid));
 }
@@ -6407,33 +6413,25 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // collection name / id (used for indexes)
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
   if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
   
   // id only
   expr = "^(" TRI_VOC_ID_REGEX ")$";
   if (regcomp(&v8g->IdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
 
   // collection name / document key (used for documents)
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
   if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
   
   // key only
   expr = "^" TRI_VOC_KEY_REGEX "$";
   if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
   
 

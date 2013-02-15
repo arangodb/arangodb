@@ -301,7 +301,7 @@ function post_graph_vertex (req, res, g) {
       throw "could not create vertex";
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties } );
+    actions.resultOk(req, res, actions.HTTP_CREATED, { "vertex" : v._properties } );
   }
   catch (err) {
     actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
@@ -390,6 +390,7 @@ function put_graph_vertex (req, res, g) {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
 
     if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "error in request body");
       return;
     }
 
@@ -399,6 +400,64 @@ function put_graph_vertex (req, res, g) {
     var result = g._vertices.document(id2);
 
     actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a vertex
+///
+/// @RESTHEADER{PATCH /_api/graph/@FA{graph-name}/vertex,update vertex}
+///
+/// @REST{PATCH /_api/graph/@FA{graph-name}/vertex/@FA{vertex-name}}
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Partially updates the vertex properties.
+///
+/// The call expects a JSON hash array as body with the properties to patch.
+///
+/// Setting an attribute value to @LIT{null} in the patch document will cause a value 
+/// of @LIT{null} be saved for the attribute by default. If the intention is to 
+/// delete existing attributes with the patch command, the URL parameter 
+/// @LIT{keepNull} can be used with a value of @LIT{false}. 
+/// This will modify the behavior of the patch command to remove any attributes 
+/// from the existing document that are contained in the patch document 
+/// with an attribute value of @LIT{null}.
+//
+/// Returns an object with an attribute @LIT{vertex} containing a
+/// list of all vertex properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-graph-changep-vertex
+////////////////////////////////////////////////////////////////////////////////
+
+function patch_graph_vertex (req, res, g) {
+  try {
+    var v = vertex_by_request(req, g);
+
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
+
+    if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "error in request body");
+      return;
+    }
+    
+    var keepNull = req.parameters['keepNull'];
+    if (keepNull != undefined || keepNull == "false") {
+      keepNull = false;
+    }
+    else {
+      keepNull = true;
+    }
+
+    var id2 = g._vertices.update(v._properties, json, true, keepNull);
+    var result = g._vertices.document(id2);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result } );
   }
   catch (err) {
     actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
@@ -717,6 +776,7 @@ function post_graph_edge (req, res, g) {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
 
     if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "error in request body");
       return;
     }
 
@@ -731,7 +791,7 @@ function post_graph_edge (req, res, g) {
       throw "could not create edge";
     }
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
+    actions.resultOk(req, res, actions.HTTP_CREATED, { "edge" : e._properties } );
   }
   catch (err) {
     actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
@@ -817,6 +877,7 @@ function put_graph_edge (req, res, g) {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
 
     if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "error in request body");
       return;
     }
 
@@ -824,6 +885,67 @@ function put_graph_edge (req, res, g) {
     shallow.$label = e._properties.$label;
 
     var id2 = g._edges.replace(e._properties, shallow);
+    var result = g._edges.document(id2);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates an edge
+///
+/// @RESTHEADER{PATCH /_api/graph/@FA{graph-name}/edge,update edge}
+///
+/// @REST{PATCH /_api/graph/@FA{graph-name}/edge/@FA{vertex-name}}
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Partially updates the edge properties.
+///
+/// The call expects a JSON hash array as body with the properties to patch.
+///
+/// Setting an attribute value to @LIT{null} in the patch document will cause a value 
+/// of @LIT{null} be saved for the attribute by default. If the intention is to 
+/// delete existing attributes with the patch command, the URL parameter 
+/// @LIT{keepNull} can be used with a value of @LIT{false}. 
+/// This will modify the behavior of the patch command to remove any attributes 
+/// from the existing document that are contained in the patch document 
+/// with an attribute value of @LIT{null}.
+//
+/// Returns an object with an attribute @LIT{edge} containing a
+/// list of all edge properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-graph-changep-edge
+////////////////////////////////////////////////////////////////////////////////
+
+function patch_graph_edge (req, res, g) {
+  try {
+    var e = edge_by_request(req, g);
+
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
+
+    if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "error in request body");
+      return;
+    }
+    
+    var keepNull = req.parameters['keepNull'];
+    if (keepNull != undefined || keepNull == "false") {
+      keepNull = false;
+    }
+    else {
+      keepNull = true;
+    }
+    
+    var shallow = json.shallowCopy;
+    shallow.$label = e._properties.$label;
+
+    var id2 = g._edges.update(e._properties, shallow, true, keepNull);
     var result = g._edges.document(id2);
 
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
@@ -1182,7 +1304,41 @@ function put_graph (req, res) {
     }
   }
 }
-//
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle patch requests
+////////////////////////////////////////////////////////////////////////////////
+
+function patch_graph (req, res) {
+  if (req.suffix.length < 2) {
+    // PATCH /_api/graph
+    actions.resultUnsupported(req, res);
+  }
+  else {
+    // PATCh /_api/graph/<key>/...
+    try {
+      var g = graph_by_request(req);
+
+      switch (req.suffix[1]) {
+        case ("vertex") :
+          patch_graph_vertex(req, res, g);
+          break;
+
+        case ("edge") :
+          patch_graph_edge(req, res, g);
+          break;
+
+       default:
+          actions.resultUnsupported(req, res);
+       }
+
+    }
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle delete requests
 ////////////////////////////////////////////////////////////////////////////////
@@ -1246,6 +1402,10 @@ actions.defineHttp({
 
         case (actions.PUT) :
           put_graph(req, res);
+          break;
+
+        case (actions.PATCH) :
+          patch_graph(req, res);
           break;
 
         default:

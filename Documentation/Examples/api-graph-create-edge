@@ -1,7 +1,7 @@
 > curl --data @- -X POST --dump - http://localhost:8529/_api/graph/graph1/edge
 {"_key" : "edge1", "_from" : "vert2", "_to" : "vert1", "optional1" : "val1"}
 
-HTTP/1.1 200 OK
+HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 {
@@ -15,5 +15,5 @@ content-type: application/json; charset=utf-8
     "optional1": "val1"
   },
   "error": false,
-  "code": 200
+  "code": 201
 }
