@@ -1033,13 +1033,13 @@ top_srcdir = @top_srcdir@
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
-BUILT_SOURCES = build_posix.h etc/arangodb/arangod.conf \
-	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
-	$(am__append_13) Doxygen/.setup-directories \
-	$(JAVASCRIPT_BROWSER) @builddir@/.setup-js-directories \
-	$(am__append_15) $(am__append_17) $(am__append_18) \
-	$(am__append_19) $(am__append_21) $(am__append_24) \
-	$(am__append_27)
+BUILT_SOURCES = build_posix.h etc/arangodb/arangod-uid.conf \
+	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
+	etc/arangodb/arangosh.conf $(am__append_13) \
+	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
+	@builddir@/.setup-js-directories $(am__append_15) \
+	$(am__append_17) $(am__append_18) $(am__append_19) \
+	$(am__append_21) $(am__append_24) $(am__append_27)
 
 ################################################################################
 ### @brief man pages to install
@@ -5506,6 +5506,9 @@ uninstall-man: uninstall-man1 uninstall-man8
 	uninstall-man8 uninstall-nobase_pkgdataDATA \
 	uninstall-sbinPROGRAMS
 
+
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:# \([ug]id\):\1:' $< > $@
 
 ################################################################################
 ### @brief /var data
