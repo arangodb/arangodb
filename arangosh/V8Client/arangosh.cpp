@@ -954,13 +954,16 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     string i = triagens::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       break;
     }
 
     if (i == "help" || i == "help;") {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
-      input = TRI_DuplicateString("help()");
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
+      if (input == 0) {
+        LOGGER_FATAL_AND_EXIT("out of memory");
+      }
     }
    
     console.addHistory(input);
