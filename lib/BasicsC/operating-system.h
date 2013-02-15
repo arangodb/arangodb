@@ -41,10 +41,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_HAVE_GETGRGID                   1
-#define TRI_HAVE_GETPWNAM                   1
-#define TRI_HAVE_GETPWUID                   1
-
 #define GLOBAL_TIMEZONE                     timezone
 
 #ifndef __STDC_LIMIT_MACROS
@@ -110,6 +106,11 @@
 
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
+#define TRI_HAVE_GETGRGID                   1
+#define TRI_HAVE_GETPWNAM                   1
+#define TRI_HAVE_GETPWUID                   1
+#define TRI_HAVE_GETGRNAM                   1
+
 
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
@@ -151,7 +152,6 @@
 #define TRI_READ                        read
 #define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
-#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
@@ -237,7 +237,6 @@ typedef int socket_t;
 #define TRI_READ                        read
 #define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
-#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
@@ -334,6 +333,11 @@ typedef int socket_t;
 
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
+#define TRI_HAVE_GETGRGID                   1
+#define TRI_HAVE_GETPWNAM                   1
+#define TRI_HAVE_GETPWUID                   1
+#define TRI_HAVE_GETGRNAM                   1
+
 
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
@@ -360,7 +364,6 @@ typedef int socket_t;
 #define TRI_READ                        read
 #define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
-#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 #define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
@@ -398,6 +401,7 @@ typedef int socket_t;
 // This directive below suppresses warnings about using the 'new' more secure CRT 
 // functions.
 // ..............................................................................
+
 #define _CRT_SECURE_NO_WARNINGS                     1
 
 // ..............................................................................
@@ -405,6 +409,7 @@ typedef int socket_t;
 // for example, strcpy is automatically converted to strcpy_s. This is enabled
 // by default. We have disabled it here.
 // ..............................................................................
+
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
 #include <stdio.h>
@@ -452,7 +457,7 @@ typedef int socket_t;
 // usleep in POSIX is for microseconds - not milliseconds
 // has been redefined in win-utils.h
 // ..............................................................
-// #define usleep                          Sleep 
+
 #define usleep                          TRI_usleep
 #define sleep                           TRI_sleep
 #define srandom                         srand
@@ -482,9 +487,7 @@ typedef unsigned char bool;
 #define false 0
 #endif
 
-
 #define va_copy(d,s) ((d) = (s))
-
 
 // we do not have owner read and owner write under windows
 // so map these to global read, global write
@@ -508,7 +511,6 @@ typedef unsigned char bool;
 #define TRI_READ                        _read
 #define TRI_READ_SOCKET(a,b,c,d)        recv((a), (b), (c), (d))
 #define TRI_RMDIR                       _rmdir
-#define TRI_SLEEP                       TRI_sleep
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
 #define TRI_WRITE_SOCKET(a,b,c,d)       send((a), (b), (c), (d))
@@ -520,6 +522,7 @@ typedef unsigned char bool;
 // security identifiers (SID) which is a variable length structure
 // which can (should) not be accessed directly.
 // ...........................................................................
+
 #define TRI_uid_t                       void*
 #define TRI_gid_t                       void*
 
@@ -527,11 +530,13 @@ typedef unsigned char bool;
 // windows does not like the keyword inline -- but only if it uses the c compiler
 // weird. _inline should work for both I hope
 // ...........................................................................
+
 #define inline                          _inline
 
 // ...........................................................................
 // windows uses _alloca instead of alloca
 // ...........................................................................
+
 #define alloca                          _alloca
 
 
@@ -540,7 +545,6 @@ typedef SOCKET socket_t;
 #define STDIN_FILENO  0;
 #define STDOUT_FILENO 1;
 #define STDERR_FILENO 2;
-
 
 #endif
 

@@ -606,17 +606,48 @@ namespace triagens {
                                       TRI_doc_mptr_t** mptr,
                                       TRI_json_t const* json, 
                                       void const* data,
-                                      const bool forceSync) {
+                                      const bool forceSync,
+                                      const bool lock) {
+          TRI_voc_key_t key = 0;
+
+          // check if _key is present
+          if (json != NULL && json->_type == TRI_JSON_ARRAY) {
+            // _key is there
+            TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
+            if (k != NULL) {
+              if (k->_type == TRI_JSON_STRING) {
+                // _key is there and a string
+                key = k->_value._string.data;
+              }
+              else {
+                // _key is there but not a string
+                return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+              }
+            }    
+          }
+ 
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+          if (shaped == 0) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+          
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
 
-          int res = primary->createJson(&context, markerType, mptr, json, data);
+          if (lock) {
+            // WRITE-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          }
+
+          int res = primary->create(&context, markerType, mptr, shaped, data, key);
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+            // WRITE-LOCK END
+          }
+  
+          TRI_FreeShapedJson(primary->_shaper, shaped);
 
           return res;
         }
@@ -631,17 +662,22 @@ namespace triagens {
                                     TRI_doc_mptr_t** mptr,
                                     TRI_shaped_json_t const* shaped, 
                                     void const* data,
-                                    const bool forceSync) {
+                                    const bool forceSync,
+                                    const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          if (lock) {
+            // WRITE-LOCK START
+            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          }
 
           int res = primary->create(&context, markerType, mptr, shaped, data, key);
           
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          if (lock) {
+            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+            // WRITE-LOCK END
+          }
 
           return res;
         }
@@ -659,6 +695,12 @@ namespace triagens {
                                       TRI_voc_rid_t* actualRevision,
                                       const bool forceSync,
                                       const bool lock) {
+          
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+          if (shaped == 0) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+          
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
           context._expectedRid = expectedRevision;
@@ -669,12 +711,14 @@ namespace triagens {
             this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
           }
 
-          int res = primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
+          int res = primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
           
           if (lock) {
             this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
             // WRITE-LOCK END
           }
+  
+          TRI_FreeShapedJson(primary->_shaper, shaped);
 
           return res;
         }

@@ -204,16 +204,16 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
               (unsigned long long) n, 
               (int) zone->_zid
               ZONE_DEBUG_PARAMS); 
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }
 
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL("failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
-              (unsigned long long) n, 
-              (int) zone->_zid
-              ZONE_DEBUG_PARAMS); 
+    LOG_FATAL_AND_EXIT("failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+                       (unsigned long long) n, 
+                       (int) zone->_zid
+                       ZONE_DEBUG_PARAMS); 
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
     return TRI_AllocateZ(zone, n, set, file, line);
@@ -292,16 +292,16 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
               (unsigned long long) n, 
               zone->_zid
               ZONE_DEBUG_PARAMS); 
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }
 
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL("failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
-              (unsigned long long) n, 
-              (int) zone->_zid
-              ZONE_DEBUG_PARAMS);
+    LOG_FATAL_AND_EXIT("failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+                       (unsigned long long) n, 
+                       (int) zone->_zid
+                       ZONE_DEBUG_PARAMS);
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
     return TRI_ReallocateZ(zone, m, n, file, line);

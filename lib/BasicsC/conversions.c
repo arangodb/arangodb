@@ -106,8 +106,7 @@ double TRI_DoubleString (char const* str) {
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
-
-  if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
+  else if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -145,8 +144,7 @@ int32_t TRI_Int32String (char const* str) {
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
-
-  if (errno == ERANGE && (result == INT32_MIN || result == INT32_MAX)) {
+  else if (errno == ERANGE && (result == INT32_MIN || result == INT32_MAX)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -204,8 +202,7 @@ uint32_t TRI_UInt32String (char const* str) {
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
-
-  if (errno == ERANGE && (result == 0 || result == UINT32_MAX)) {
+  else if (errno == ERANGE && (result == 0 || result == UINT32_MAX)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -267,8 +264,7 @@ int64_t TRI_Int64String (char const* str) {
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
-
-  if (errno == ERANGE && (result == INT64_MIN || result == INT64_MAX)) {
+  else if (errno == ERANGE && (result == INT64_MIN || result == INT64_MAX)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -330,8 +326,7 @@ uint64_t TRI_UInt64String (char const* str) {
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
   }
-
-  if (errno == ERANGE && (result == 0 || result == UINT64_MAX)) {
+  else if (errno == ERANGE && (result == 0 || result == UINT64_MAX)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -576,7 +571,7 @@ size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
 
   if (attr >= 0 && (attr >> 32) == 0) {
     // shortcut
-    return TRI_StringInt32InPlace((int32_t) attr, buffer);
+    return TRI_StringUInt32InPlace((uint32_t) attr, buffer);
   }
 
   p = buffer;
@@ -584,10 +579,10 @@ size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
   if (attr < 0) {
     *p++ = '-';
     attr = -attr;
-  
+
     if ((attr >> 32) == 0) {
       // shortcut
-      return TRI_StringInt32InPlace((int32_t) attr, p) + 1;
+      return TRI_StringUInt32InPlace((uint32_t) attr, p) + 1;
     }
   }
 

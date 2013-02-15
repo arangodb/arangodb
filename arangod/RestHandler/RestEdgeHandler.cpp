@@ -209,7 +209,7 @@ bool RestEdgeHandler::createDocument () {
   
   // will hold the result
   TRI_doc_mptr_t* document = 0;
-  res = trx.createEdge(&document, json, extractWaitForSync(), &edge);
+  res = trx.createEdge(&document, json, extractWaitForSync(), &edge, true);
   res = trx.finish(res);
 
   // .............................................................................

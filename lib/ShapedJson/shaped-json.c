@@ -368,7 +368,8 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   dst->_sid = shaper->_sidBoolean;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
-  dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+  // no need to prefill dst->_value with 0, as it is overwritten directly afterwards
+  dst->_value = (char*)(ptr = TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
   if (dst->_value == NULL) {
     return false;
@@ -2172,7 +2173,8 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, TRI_json_t const* j
   printf("\n");
 #endif
 
-  shaped = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), true);
+  // no need to prefill shaped with 0's as all attributes are set directly afterwards
+  shaped = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false);
 
   if (shaped == NULL) {
     TRI_Free(shaper->_memoryZone, dst._value);

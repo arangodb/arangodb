@@ -540,6 +540,7 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr, const
 void HttpRequest::parseHeader (char* ptr, size_t length) {
   char* start = ptr;
   char* end = start + length;
+  const size_t versionLength = strlen("http/1.x");
 
   // current line number
   int lineNum = 0;
@@ -628,7 +629,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                 ++e;
               }
 
-              if ((size_t)(end - e) > strlen("http/1.x")) {
+              if ((size_t)(end - e) > versionLength) {
                 if ((e[0] == 'h' || e[0] == 'H') &&
                     (e[1] == 't' || e[1] == 'T') &&
                     (e[2] == 't' || e[2] == 'T') &&
@@ -643,7 +644,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                     _version = HTTP_1_0;
                   }
 
-                  e += strlen("http/1.x");
+                  e += versionLength;
                 }
               }
 
@@ -1074,7 +1075,7 @@ void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
       break;
     case HTTP_REQUEST_ILLEGAL:
       buffer->appendText("UNKNOWN ");
-      LOGGER_WARNING << "illegal http request method encountered in switch";
+      LOGGER_WARNING("illegal http request method encountered in switch");
       break;
   }
 }

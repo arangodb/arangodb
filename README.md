@@ -88,3 +88,4 @@ you report them:
 You can use the Google group for improvements, feature requests, comments 
 
     http://www.arangodb.org/connect
+

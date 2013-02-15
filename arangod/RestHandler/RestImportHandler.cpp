@@ -109,9 +109,10 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   _timing << *task;
-#ifdef TRI_ENABLE_LOGGER
+
   // if ifdef is not used, the compiler will complain
-  LOGGER_REQUEST_IN_START_I(_timing);
+#ifdef TRI_ENABLE_LOGGER
+  LOGGER_REQUEST_IN_START_I(_timing, "");
 #endif
 
   bool res = false;
@@ -171,7 +172,7 @@ void RestImportHandler::logDocument (const TRI_json_t* const json) const {
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
   int res = TRI_StringifyJson(&buffer, json);
   if (res == TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING << "offending document" << buffer._buffer;
+    LOGGER_WARNING("offending document" << buffer._buffer);
   }
   TRI_DestroyStringBuffer(&buffer);
 }
@@ -231,23 +232,24 @@ bool RestImportHandler::createByDocumentsLines () {
     return false;
   }
 
-  size_t start = 0;
-  size_t next = 0;
+  trx.lockWrite();
+
+  const char* ptr = _request->body();
+  const char* end = ptr + _request->bodySize();
   string line;
   
-  string body(_request->body(), _request->bodySize());
+  while (ptr < end) {
+    const char* pos = strchr(ptr, '\n');
 
-  while (next != string::npos && start < body.size()) {
-    next = body.find('\n', start);
-
-    if (next == string::npos) {
-      line = body.substr(start);
+    if (pos == 0) {
+      line.assign(ptr, (size_t) (end - ptr));
+      ptr = end;
     }
     else {
-      line = body.substr(start, next - start);
-      start = next + 1;      
+      line.assign(ptr, (size_t) (pos - ptr));
+      ptr = pos + 1;
     }
-
+    
     StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
       ++numEmpty;
@@ -260,19 +262,20 @@ bool RestImportHandler::createByDocumentsLines () {
       // now save the document
       TRI_doc_mptr_t* document = 0;
       
-      res = trx.createDocument(&document, values, forceSync);
+      // do not acquire an extra lock
+      res = trx.createDocument(&document, values, forceSync, false);
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
         logDocument(values);
         ++numError;
       }
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
     }
     else {
-      LOGGER_WARNING << "no valid JSON data in line " << line;            
+      LOGGER_WARNING("no valid JSON data in line " << line);            
       ++numError;
     }
   }
@@ -382,19 +385,19 @@ bool RestImportHandler::createByDocumentsList () {
     TRI_json_t* values = (TRI_json_t*) TRI_AtVector(&documents->_value._objects, i);
 
     if (values == 0 || values->_type != TRI_JSON_ARRAY) {
-      LOGGER_WARNING << "invalid JSON type (expecting array) at position " << i;
+      LOGGER_WARNING("invalid JSON type (expecting array) at position " << i);
       ++numError;
     }
     else {
       // now save the document
       TRI_doc_mptr_t* document = 0;
       
-      res = trx.createDocument(&document, values, forceSync);
+      res = trx.createDocument(&document, values, forceSync, true);
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
         logDocument(values);
         ++numError;
       }
@@ -479,7 +482,7 @@ bool RestImportHandler::createByKeyValueList () {
   if (line != "") { 
     keys = parseJsonLine(line);
     if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, keys)) {
-      LOGGER_WARNING << "no JSON data in first line";
+      LOGGER_WARNING("no JSON data in first line");
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "no JSON string list in first line found");
@@ -488,7 +491,7 @@ bool RestImportHandler::createByKeyValueList () {
     
     if (keys->_type == TRI_JSON_LIST) {
       if (! checkKeys(keys)) {
-        LOGGER_WARNING << "no JSON string list in first line found";
+        LOGGER_WARNING("no JSON string list in first line found");
         generateError(HttpResponse::BAD,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       "no JSON string list in first line found");
@@ -497,7 +500,7 @@ bool RestImportHandler::createByKeyValueList () {
       start = next + 1;
     }
     else {
-      LOGGER_WARNING << "no JSON string list in first line found";
+      LOGGER_WARNING("no JSON string list in first line found");
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "no JSON string list in first line found");
@@ -505,7 +508,7 @@ bool RestImportHandler::createByKeyValueList () {
     }        
   }
   else {
-    LOGGER_WARNING << "no JSON string list in first line found";
+    LOGGER_WARNING("no JSON string list in first line found");
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string list in first line found");
@@ -550,7 +553,7 @@ bool RestImportHandler::createByKeyValueList () {
       continue;
     }
     
-    //LOGGER_TRACE << "line = " << line;
+    //LOGGER_TRACE("line = " << line);
     
     TRI_json_t* values = parseJsonLine(line);
 
@@ -569,13 +572,13 @@ bool RestImportHandler::createByKeyValueList () {
 
       // now save the document
       TRI_doc_mptr_t* document = 0;
-      res = trx.createDocument(&document, json, forceSync);
+      res = trx.createDocument(&document, json, forceSync, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
         logDocument(json);
         ++numError;
       }
@@ -583,7 +586,7 @@ bool RestImportHandler::createByKeyValueList () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
     }
     else {
-      LOGGER_WARNING << "no valid JSON data in line: " << line;            
+      LOGGER_WARNING("no valid JSON data in line: " << line);            
       ++numError;
     }
             
@@ -647,18 +650,18 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
 TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line) {
   
   if (values->_type != TRI_JSON_LIST) {
-    LOGGER_WARNING << "no valid JSON list data in line: " << line;            
+    LOGGER_WARNING("no valid JSON list data in line: " << line);            
     return 0;
   }
   
   if (keys->_value._objects._length !=  values->_value._objects._length) {
-    LOGGER_WARNING << "wrong number of JSON values in line: " << line;            
+    LOGGER_WARNING("wrong number of JSON values in line: " << line);            
     return 0;
   }
   
   TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   if (result == 0) {
-    LOGGER_ERROR << "out of memory";
+    LOGGER_ERROR("out of memory");
     return 0;
   }
   
