@@ -17,6 +17,7 @@ var collectionView = Backbone.View.extend({
   events: {
     "click #save-modified-collection"    :    "saveModifiedCollection",
     "hidden #change-collection"          :    "hidden",
+    "click #delete-modified-collection"  :    "deleteCollection"
   },
   hidden: function () {
     window.location.hash = "#";
@@ -28,26 +29,44 @@ var collectionView = Backbone.View.extend({
     $('#change-collection-type').val(myCollection.type);
     $('#change-collection-status').val(myCollection.status);
 
-    if (myCollection.status == 'loaded') {
-      $('#collectionSizeBox').show();
-      $('#collectionSyncBox').show();
-      var data = window.arangoCollectionsStore.getProperties(this.options.colId);
-      if (data.waitForSync == false) {
-        $('#change-collection-sync').val('false');
-      }
-      else {
-        $('#change-collection-sync').val('true');
-      }
-      $('#change-collection-size').val(data.journalSize);
-      $('#change-collection').modal('show')
-    }
-    else if (myCollection.status == 'unloaded') {
+    if (myCollection.status == 'unloaded') {
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
+    else if (myCollection.status == 'loaded') {
+      var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
+      this.fillLoadedModal(data);
+    }
+  },
+  fillLoadedModal: function (data) {
+    $('#collectionSizeBox').show();
+    $('#collectionSyncBox').show();
+    if (data.waitForSync == false) {
+      $('#change-collection-sync').val('false');
+    }
+    else {
+      $('#change-collection-sync').val('true');
+    }
+    $('#change-collection-size').val(data.journalSize);
+    $('#change-collection').modal('show')
   },
   saveModifiedCollection: function() {
+  },
+  deleteCollection: function () {
+    var self = this;
+    var collName = $('#change-collection-name').val();
 
+    $.ajax({
+      type: 'DELETE',
+      url: "/_api/collection/" + collName,
+      success: function () {
+        $('#change-collection').modal('hide');
+      },
+      error: function () {
+        $('#change-collection').modal('hide');
+        alert('Error');
+      }
+    });
   }
 
 });

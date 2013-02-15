@@ -14,20 +14,23 @@ window.arangoCollections = Backbone.Collection.extend({
           return response.collections;
       },
       model: arangoCollection,
-      getProperties: function (id) {
+      getProperties: function (id, modal) {
+        var data2;
         $.ajax({
           type: "GET",
           url: "/_api/collection/" + id + "/properties",
           contentType: "application/json",
           processData: false,
+          async: false,
           success: function(data) {
-            return data;
+            data2 = data;
           },
           error: function(data) {
             console.log("get properties failed");
+            data2 = data;
           }
         });
-        return false;
+        return data2;
       },
       rename: function (id) {
 
