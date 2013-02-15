@@ -1033,7 +1033,7 @@ top_srcdir = @top_srcdir@
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
-BUILT_SOURCES = build_posix.h etc/arangodb/arangod-nouid.conf \
+BUILT_SOURCES = build_posix.h etc/arangodb/arangod-uid.conf \
 	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangosh.conf $(am__append_13) \
 	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
@@ -5507,8 +5507,8 @@ uninstall-man: uninstall-man1 uninstall-man8
 	uninstall-sbinPROGRAMS
 
 
-etc/arangodb/arangod-nouid.conf: @srcdir@/etc/arangodb/arangod.conf
-	grep -v '^\(uid\|gid\)' $< > $@
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:# \([ug]id\):\1:' $< > $@
 
 ################################################################################
 ### @brief /var data

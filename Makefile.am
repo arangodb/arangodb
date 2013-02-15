@@ -72,10 +72,10 @@ TRI_SBINDIR = ${sbindir}
 
 endif
 
-BUILT_SOURCES += etc/arangodb/arangod-nouid.conf
+BUILT_SOURCES += etc/arangodb/arangod-uid.conf
 
-etc/arangodb/arangod-nouid.conf: @srcdir@/etc/arangodb/arangod.conf
-	grep -v '^\(uid\|gid\)' $< > $@
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:# \([ug]id\):\1:' $< > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FLAGS
