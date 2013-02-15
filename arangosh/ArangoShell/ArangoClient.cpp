@@ -268,8 +268,7 @@ void ArangoClient::parse (ProgramOptions& options,
                           char* argv[],
                           string const& initFilename) {
   if (! options.parse(description, argc, argv)) {
-    cerr << options.lastError() << "\n";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT(options.lastError());
   }
 
   // check for help
@@ -277,7 +276,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! help.empty()) {
     cout << description.usage(help) << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // setup the logging
@@ -381,19 +380,16 @@ void ArangoClient::parse (ProgramOptions& options,
 
     // check connection args
     if (_connectTimeout <= 0) {
-      cerr << "invalid value for --server.connect-timeout, must be positive" << endl;
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("invalid value for --server.connect-timeout, must be positive");
     }
 
     if (_requestTimeout <= 0) {
-      cerr << "invalid value for --server.request-timeout, must be positive" << endl;
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("invalid value for --server.request-timeout, must be positive");
     }
   
     // must specify a user name
     if (_username.size() == 0) {
-      cerr << "no value specified for --server.username" << endl;
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("no value specified for --server.username");
     }
 
     // no password given on command-line

@@ -111,9 +111,8 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     ok = TRI_RenameDatafile(journal, filename);
 
     if (! ok) {
-      LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
       // TODO: remove disastrous call to exit() here
-      exit(1);
+      LOG_FATAL_AND_EXIT("failed to rename the journal to '%s': %s", filename, TRI_last_error());
     }
     else {
       LOG_TRACE("renamed journal to '%s'", filename);

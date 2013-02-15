@@ -170,9 +170,14 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
                                                     const TRI_col_type_e type) {
   bool found;
   char const* valueStr = _request->value("createCollection", found);
-  bool create = found ? StringUtils::boolean(valueStr) : false;
 
-  if (! create) {
+  if (! found) {
+    // "createCollection" parameter not specified
+    return true;
+  }
+
+  if (! StringUtils::boolean(valueStr)) {
+    // "createCollection" parameter specified, but with non-true value
     return true;
   }
 
@@ -191,8 +196,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
 
 void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode responseCode,
                                           const string& collectionName,
-                                          TRI_voc_key_t key,
-                                          TRI_voc_rid_t rid) {
+                                          const TRI_voc_key_t key,
+                                          const TRI_voc_rid_t rid) {
   const string handle = DocumentHelper::assembleDocumentId(collectionName, key);
   const string rev = StringUtils::itoa(rid);
 
@@ -206,7 +211,7 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     // handle does not need to be RFC 2047-encoded
     _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
   }
-
+ 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
@@ -216,55 +221,6 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
     .appendText("\",\"_key\":\"")
     .appendText(key)
     .appendText("\"}");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates ok message without content
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateOk () {
-  _response = createResponse(HttpResponse::NO_CONTENT);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates created message
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateCreated (const TRI_voc_cid_t cid,
-                                              TRI_voc_key_t key, 
-                                              TRI_voc_rid_t rid) {
-
-  generate20x(HttpResponse::CREATED, _resolver.getCollectionName(cid), key, rid);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates accepted message
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateAccepted (const TRI_voc_cid_t cid,
-                                               TRI_voc_key_t key, 
-                                               TRI_voc_rid_t rid) {
-  generate20x(HttpResponse::ACCEPTED, _resolver.getCollectionName(cid), key, rid);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates deleted message
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateDeleted (const TRI_voc_cid_t cid,
-                                              TRI_voc_key_t key, 
-                                              TRI_voc_rid_t rid) {
-  generate20x(HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates updated message
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateUpdated (const TRI_voc_cid_t cid,
-                                              TRI_voc_key_t key, 
-                                              TRI_voc_rid_t rid) {
-  generate20x(HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,9 +293,11 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const TRI_voc_cid_t cid
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotModified (const string& etag) {
+void RestVocbaseBaseHandler::generateNotModified (const TRI_voc_rid_t rid) {
+  const string rev = StringUtils::itoa(rid);
+
   _response = createResponse(HttpResponse::NOT_MODIFIED);
-  _response->setHeader("ETag", "\"" + etag + "\"");
+  _response->setHeader("ETag", "\"" + rev + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
