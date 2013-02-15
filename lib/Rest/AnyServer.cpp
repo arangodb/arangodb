@@ -364,7 +364,7 @@ int AnyServer::startupSupervisor () {
       TRI_pid_t pid = fork();
       
       if (pid < 0) {
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
       }
       
       // parent
@@ -460,7 +460,7 @@ int AnyServer::startupSupervisor () {
         }
 
         // and stop
-        exit(result);
+        TRI_EXIT_FUNCTION(result, NULL);
       }
     }
   }

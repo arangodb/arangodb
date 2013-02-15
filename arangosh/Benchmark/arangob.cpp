@@ -454,8 +454,7 @@ int main (int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == 0) {
-    cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')");
   }
 
   BenchmarkOperation* testCase;
@@ -470,8 +469,8 @@ int main (int argc, char* argv[]) {
     testCase = new CollectionCreationTest();
   }
   else {
-    cerr << "invalid test case name " << TestCase << endl;
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("invalid test case name " << TestCase);
+    return EXIT_FAILURE; // will not be reached
   }
 
   Status("starting threads...");

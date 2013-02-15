@@ -382,13 +382,13 @@ bool ApplicationServer::parse (int argc,
 
   if (! help.empty()) {
     cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // check for version request
   if (_options.has("version")) {
     cout << _version << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // .............................................................................

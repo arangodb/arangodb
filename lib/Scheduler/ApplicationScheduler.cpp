@@ -113,8 +113,7 @@ static SignalTask* localSignalTask;
           _server->beginShutdown();
         }
         else {
-          LOGGER_INFO("control-c received, terminating");
-          exit(EXIT_FAILURE);
+          LOGGER_FATAL_AND_EXIT("control-c received again, terminating");
         }
 
         ++_seen;
@@ -440,7 +439,7 @@ bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& option
   // show io backends
   if (options.has("show-io-backends")) {
     cout << "available io backends are: " << SchedulerLibev::availableBackends() << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   return true;

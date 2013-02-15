@@ -1145,6 +1145,7 @@ static void arangoshExitFunction (int, void*);
 // .............................................................................
 // Call this function to do various initialistions for windows only
 // .............................................................................
+
 void arangoshEntryFunction() {
   int maxOpenFiles = 1024; 
   int res = 0;
@@ -1157,16 +1158,19 @@ void arangoshEntryFunction() {
   //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+
   if (res != 0) {
     _exit(1);
   }
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+
   if (res != 0) {
     _exit(1);
   }
 
   res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+
   if (res != 0) {
     _exit(1);
   }
