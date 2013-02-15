@@ -408,8 +408,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
@@ -463,7 +463,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
   else if (ifNoneRid == rid) {
     if (ifRid == 0 || ifRid == rid) {
-      generateNotModified(StringUtils::itoa(rid));
+      generateNotModified(rid);
     }
     else {
       generatePreconditionFailed(cid, document->_key, rid);
@@ -760,8 +760,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -930,8 +930,8 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
