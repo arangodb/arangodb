@@ -82,13 +82,11 @@ namespace triagens {
 
         static inline string assembleDocumentId (const string& collectionName,
                                                  const TRI_voc_key_t key) {
-          static const string UnknownKey = "_deleted";
-
           if (key == 0) {
-            return assembleDocumentId(collectionName, UnknownKey);
+            return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_deleted";
           }
 
-          return assembleDocumentId(collectionName, string(key));
+          return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

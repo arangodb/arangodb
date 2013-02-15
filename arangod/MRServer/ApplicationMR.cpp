@@ -183,11 +183,11 @@ ApplicationMR::MRContext* ApplicationMR::enterContext () {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty()) {
-    LOGGER_DEBUG << "waiting for unused MRuby context";
+    LOGGER_DEBUG("waiting for unused MRuby context");
     guard.wait();
   }
 
-  LOGGER_TRACE << "found unused MRuby context";
+  LOGGER_TRACE("found unused MRuby context");
 
   MRContext* context = _freeContexts.back();
   _freeContexts.pop_back();
@@ -210,11 +210,11 @@ void ApplicationMR::exitContext (MRContext* context) {
     CONDITION_LOCKER(guard, _contextCondition);
 
     if (context->_lastGcStamp + _gcFrequency < lastGc) {
-      LOGGER_TRACE << "periodic gc interval reached";
+      LOGGER_TRACE("periodic gc interval reached");
       _dirtyContexts.push_back(context);
     }
     else if (context->_dirt >= _gcInterval) {
-      LOGGER_TRACE << "maximum number of requests reached";
+      LOGGER_TRACE("maximum number of requests reached");
       _dirtyContexts.push_back(context);
     }
     else {
@@ -224,7 +224,7 @@ void ApplicationMR::exitContext (MRContext* context) {
     guard.broadcast();
   }
 
-  LOGGER_TRACE << "returned dirty MR context";
+  LOGGER_TRACE("returned dirty MR context");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +270,7 @@ void ApplicationMR::collectGarbage () {
     gc->updateGcStamp(lastGc);
 
     if (context != 0) {
-      LOGGER_TRACE << "collecting MR garbage";
+      LOGGER_TRACE("collecting MR garbage");
 
       mrb_garbage_collect(context->_mrb);
 
@@ -333,35 +333,31 @@ bool ApplicationMR::prepare () {
 
   // check the startup modules
   if (_startupModules.empty()) {
-    LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no 'ruby.modules-path' has been supplied, giving up");
   }
   else {
-    LOGGER_INFO << "using Ruby modules path '" << _startupModules << "'";
+    LOGGER_INFO("using Ruby modules path '" << _startupModules << "'");
   }
 
   // set up the startup loader
   if (_startupPath.empty()) {
-    LOGGER_INFO << "using built-in Ruby startup files";
+    LOGGER_INFO("using built-in Ruby startup files");
 
     _startupLoader.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
     _startupLoader.defineScript("server/server.rb", MR_server_server);
   }
   else {
-    LOGGER_INFO << "using Ruby startup files at '" << _startupPath << "'";
+    LOGGER_INFO("using Ruby startup files at '" << _startupPath << "'");
 
     _startupLoader.setDirectory(_startupPath);
   }
 
   // set up action loader
   if (_actionPath.empty()) {
-    LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("no 'ruby.modules-path' has been supplied, giving up");
   }
   else {
-    LOGGER_INFO << "using Ruby action files at '" << _actionPath << "'";
+    LOGGER_INFO("using Ruby action files at '" << _actionPath << "'");
 
     _actionLoader.setDirectory(_actionPath);
   }
@@ -435,7 +431,7 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
                                  "server/server.rb"
   };
 
-  LOGGER_TRACE << "initialising MR context #" << i;
+  LOGGER_TRACE("initialising MR context #" << i);
 
   MRContext* context = _contexts[i] = new MRContext();
 
@@ -453,9 +449,7 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
     bool ok = _startupLoader.loadScript(context->_mrb, files[i]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load Ruby utilities from file '" << files[i] << "'";
-
-      return false;
+      LOGGER_FATAL_AND_EXIT("cannot load Ruby utilities from file '" << files[i] << "'");
     }
   }
 
@@ -464,16 +458,14 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
     bool ok = _actionLoader.executeAllScripts(context->_mrb);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load Ruby actions from directory '" << _actionLoader.getDirectory() << "'";
-
-      return false;
+      LOGGER_FATAL_AND_EXIT("cannot load Ruby actions from directory '" << _actionLoader.getDirectory() << "'");
     }
   }
 
   context->_lastGcStamp = TRI_microtime();
 
   // and return from the context
-  LOGGER_TRACE << "initialised MR context #" << i;
+  LOGGER_TRACE("initialised MR context #" << i);
 
   _freeContexts.push_back(context);
 
@@ -485,7 +477,7 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationMR::shutdownMRInstance (size_t i) {
-  LOGGER_TRACE << "shutting down MR context #" << i;
+  LOGGER_TRACE("shutting down MR context #" << i);
 
   MRContext* context = _contexts[i];
   mrb_state* mrb = context->_mrb;
@@ -494,7 +486,7 @@ void ApplicationMR::shutdownMRInstance (size_t i) {
 
   MR_CloseShell(mrb);
 
-  LOGGER_TRACE << "closed MR context #" << i;
+  LOGGER_TRACE("closed MR context #" << i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

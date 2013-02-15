@@ -254,7 +254,7 @@ static sig_atomic_t ShowFunction = 1;
 /// @brief show thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static sig_atomic_t ShowThreadIdentifier = 1;
+static sig_atomic_t ShowThreadIdentifier = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output prefix
@@ -532,6 +532,25 @@ static int GenerateMessage (char* buffer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief write to stderr
+////////////////////////////////////////////////////////////////////////////////
+
+void writeStderr (char const* line, size_t len) {
+  ssize_t n;
+
+  while (0 < len) {
+    n = TRI_WRITE(STDERR_FILENO, line, len);
+
+    if (n <= 0) {
+      return;
+    }
+
+    line += n;
+    len -= n;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs a message string to all appenders
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -541,8 +560,8 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t length,
                            bool copy) {
   if (! LoggingActive) {
-    write(2, message, length);
-    write(2, "\n", 1);
+    writeStderr(message, length);
+    writeStderr("\n", 1);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
@@ -558,8 +577,8 @@ static void OutputMessage (TRI_log_level_e level,
   TRI_LockSpin(&AppendersLock);
 
   if (Appenders._length == 0) {
-    write(2, message, length);
-    write(2, "\n", 1);
+    writeStderr(message, length);
+    writeStderr("\n", 1);
 
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);

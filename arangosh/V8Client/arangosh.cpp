@@ -954,13 +954,16 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     string i = triagens::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       break;
     }
 
     if (i == "help" || i == "help;") {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, input);
-      input = TRI_DuplicateString("help()");
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+      input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
+      if (input == 0) {
+        LOGGER_FATAL_AND_EXIT("out of memory");
+      }
     }
    
     console.addHistory(input);
@@ -1142,6 +1145,7 @@ static void arangoshExitFunction (int, void*);
 // .............................................................................
 // Call this function to do various initialistions for windows only
 // .............................................................................
+
 void arangoshEntryFunction() {
   int maxOpenFiles = 1024; 
   int res = 0;
@@ -1154,16 +1158,19 @@ void arangoshEntryFunction() {
   //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+
   if (res != 0) {
     _exit(1);
   }
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+
   if (res != 0) {
     _exit(1);
   }
 
   res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+
   if (res != 0) {
     _exit(1);
   }

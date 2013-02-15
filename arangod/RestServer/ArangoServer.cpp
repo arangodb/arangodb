@@ -241,14 +241,12 @@ void ArangoServer::buildApplicationServer () {
   
   _applicationServer->addFeature(_applicationScheduler);
 
-
   // .............................................................................
   // dispatcher
   // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   _applicationServer->addFeature(_applicationDispatcher);
-
 
   // .............................................................................
   // V8 engine
@@ -306,7 +304,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("no-upgrade", "skip a database upgrade")
-    ("show-markers", "show offset and sizes of markers")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -489,7 +486,7 @@ void ArangoServer::buildApplicationServer () {
 
     if (absoluteFile != 0) {
       _pidFile = string(absoluteFile);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
+      TRI_Free(TRI_CORE_MEM_ZONE, absoluteFile);
  
       LOGGER_DEBUG("using absolute pid file '" << _pidFile << "'");
     }
@@ -497,7 +494,6 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_FATAL_AND_EXIT("cannot determine current directory");
     }
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -581,22 +577,6 @@ int ArangoServer::startupServer () {
   TRI_InitialiseStatistics();
   
   // .............................................................................
-  // show markers
-  // .............................................................................
-
-  if (_applicationServer->programOptions().has("show-markers")) {
-    LOGGER_INFO("sizeof(TRI_df_marker_t): " << sizeof(TRI_df_marker_t));
-    LOGGER_INFO("sizeof(TRI_df_header_marker_t): " << sizeof(TRI_df_header_marker_t));
-    LOGGER_INFO("sizeof(TRI_df_footer_marker_t): " << sizeof(TRI_df_footer_marker_t));
-    LOGGER_INFO("sizeof(TRI_df_document_marker_t): " << sizeof(TRI_df_document_marker_t));
-    LOGGER_INFO("sizeof(TRI_df_skip_marker_t): " << sizeof(TRI_df_skip_marker_t));
-    LOGGER_INFO("sizeof(TRI_doc_document_key_marker_s): " << sizeof(TRI_doc_document_key_marker_s));
-    LOGGER_INFO("sizeof(TRI_doc_edge_key_marker_s): " << sizeof(TRI_doc_edge_key_marker_s));
-    LOGGER_INFO("sizeof(TRI_doc_deletion_key_marker_s): " << sizeof(TRI_doc_deletion_key_marker_s));
-  }
-
-
-  // .............................................................................
   // start the main event loop
   // .............................................................................
 
@@ -638,11 +618,6 @@ int ArangoServer::startupServer () {
 
 int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   bool ok;
-
-  // only simple logging
-  TRI_ShutdownLogging();
-  TRI_InitialiseLogging(false);
-  TRI_CreateLogAppenderFile("+");
 
   // open the database
   openDatabase();
@@ -966,11 +941,6 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
 
 int ArangoServer::executeRubyConsole () {
   bool ok;
-
-  // only simple logging
-  TRI_ShutdownLogging();
-  TRI_InitialiseLogging(false);
-  TRI_CreateLogAppenderFile("+");
 
   // open the database
   openDatabase();
