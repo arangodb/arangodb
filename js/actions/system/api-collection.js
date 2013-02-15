@@ -262,12 +262,11 @@ function get_api_collections (req, res) {
     var collection = collections[i];
     var rep = collectionRepresentation(collection);
 
-    if (excludeSystem && rep.name.substr(0, 1) === '_') {
-      continue;
+    // include system collections or exclude them?
+    if (! excludeSystem || rep.name.substr(0, 1) !== '_') {
+      list.push(rep);
+      names[rep.name] = rep;
     }
-
-    list.push(rep);
-    names[rep.name] = rep;
   }
 
   var result = { collections : list, names : names };

@@ -25,18 +25,18 @@ var collectionView = Backbone.View.extend({
     window.location.hash = "#";
   },
   fillModal: function() {
-    myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
-    $('#change-collection-name').val(myCollection.name);
-    $('#change-collection-id').val(myCollection.id);
-    $('#change-collection-type').val(myCollection.type);
-    $('#change-collection-status').val(myCollection.status);
+    this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
+    $('#change-collection-name').val(this.myCollection.name);
+    $('#change-collection-id').val(this.myCollection.id);
+    $('#change-collection-type').val(this.myCollection.type);
+    $('#change-collection-status').val(this.myCollection.status);
 
-    if (myCollection.status == 'unloaded') {
+    if (this.myCollection.status == 'unloaded') {
       $('#colFooter').append('<button id="load-modified-collection" class="btn">Load</button>');
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
-    else if (myCollection.status == 'loaded') {
+    else if (this.myCollection.status == 'loaded') {
       $('#colFooter').append('<button id="unload-modified-collection" class="btn">Unload</button>');
       var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
       this.fillLoadedModal(data);
@@ -51,19 +51,50 @@ var collectionView = Backbone.View.extend({
     else {
       $('#change-collection-sync').val('true');
     }
-    $('#change-collection-size').val(data.journalSize);
+    var calculatedSize = data.journalSize / 1024 / 1024;
+      $('#change-collection-size').val(calculatedSize);
     $('#change-collection').modal('show')
   },
   saveModifiedCollection: function() {
+    var collid = this.getCollectionId();
+    var status = this.getCollectionStatus();
+    if (status === 'loaded') {
+      var newname = $('#change-collection-name').val();
+      if (this.myCollection.name !== newname) {
+        window.arangoCollectionsStore.renameCollection(collid, newname );
+      }
+
+      var wfs = $('#change-collection-sync').val();
+      var journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
+      window.arangoCollectionsStore.changeCollection(collid, wfs, journalSize);
+      this.hideModal();
+    }
+    else if (status === 'unloaded') {
+      var newname = $('#change-collection-name').val();
+      if (this.myCollection.name !== newname) {
+        console.log("different name");
+        window.arangoCollectionsStore.renameCollection(collid, newname );
+        this.hideModal();
+      }
+    }
+  },
+  getCollectionId: function () {
+    return this.myCollection.id;
+  },
+  getCollectionStatus: function () {
+    return this.myCollection.status;
   },
   unloadCollection: function () {
-    var collid = $('#change-collection-name').val();
+    var collid = this.getCollectionId();
     window.arangoCollectionsStore.unloadCollection(collid);
-    $('#change-collection').modal('hide');
+    this.hideModal();
   },
   loadCollection: function () {
-    var collid = $('#change-collection-name').val();
+    var collid = this.getCollectionId();
     window.arangoCollectionsStore.loadCollection(collid);
+    this.hideModal();
+  },
+  hideModal: function () {
     $('#change-collection').modal('hide');
   },
   deleteCollection: function () {
@@ -74,10 +105,10 @@ var collectionView = Backbone.View.extend({
       type: 'DELETE',
       url: "/_api/collection/" + collName,
       success: function () {
-        $('#change-collection').modal('hide');
+        self.hideModal();
       },
       error: function () {
-        $('#change-collection').modal('hide');
+        self.hideModal();
         alert('Error');
       }
     });
