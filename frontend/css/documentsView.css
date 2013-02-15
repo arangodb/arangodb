@@ -1,10 +1,22 @@
+#documentsDiv {
+
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+#documentsTableID_wrapper {
+  margin-top: -30px !important;
+}
+
 #documentsTableID {
-  width: 940px;
+  padding-left: 30px !important;
+  padding-right: 30px !important;
+  padding-top: -30px !important;
+  width: 820px;
   table-layout:fixed !important;
 }
 
 #documentsTableID .odd, #documentsTableID .even {
-  border: 1px solid black;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 #documentsTableID .odd:hover {
@@ -19,6 +31,10 @@
 
 #documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
   visibility: hidden;
+}
+
+.snippet-container {
+  margin-top: 5px;
 }
 
 .snippet-no-num {

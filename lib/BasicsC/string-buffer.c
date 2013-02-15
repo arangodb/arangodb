@@ -58,7 +58,7 @@ static size_t Remaining (TRI_string_buffer_t * self) {
 /// @brief reserve space
 ////////////////////////////////////////////////////////////////////////////////
 
-static int Reserve (TRI_string_buffer_t * self, size_t size) {
+static int Reserve (TRI_string_buffer_t * self, const size_t size) {
   char* ptr;
 
   if (size < 1) {
@@ -213,6 +213,14 @@ void  TRI_FreeStringBuffer (TRI_memory_zone_t* zone, TRI_string_buffer_t * self)
 /// @addtogroup Strings
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure the string buffer has a specific capacity
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ReserveStringBuffer (TRI_string_buffer_t* self, const size_t length) {
+  return Reserve(self, length);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps content with another string buffer
