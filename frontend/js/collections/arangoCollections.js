@@ -32,8 +32,42 @@ window.arangoCollections = Backbone.Collection.extend({
         });
         return data2;
       },
-      rename: function (id) {
+      checkCollectionName: function (name) {
 
+      },
+      renameCollection: function (id, name) {
+        $.ajax({
+          type: "PUT",
+          async: false, // sequential calls!
+          url: "/_api/collection/" + id + "/rename",
+          data: '{"name":"' + name + '"}',
+          contentType: "application/json",
+          processData: false,
+          success: function(data) {
+            alert("Collection renamed");
+          },
+          error: function(data) {
+            alert(getErrorMessage(data));
+            failed = true;
+          }
+        });
+      },
+      changeCollection: function (id, wfs, journalSize) {
+        $.ajax({
+          type: "PUT",
+          async: false, // sequential calls!
+          url: "/_api/collection/" + id + "/properties",
+          data: '{"waitForSync":' + wfs + ',"journalSize":' + JSON.stringify(journalSize) + '}',
+          contentType: "application/json",
+          processData: false,
+          success: function(data) {
+            alert("Saved collection properties");
+          },
+          error: function(data) {
+            alert(getErrorMessage(data));
+            failed = true;
+          }
+        });
       },
       deleteCollection: function (id) {
 
