@@ -77,7 +77,7 @@ bool MRLoader::loadScript (mrb_state* mrb, string const& name) {
   map<string, string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
-    LOGGER_ERROR << "unknown script '" << name << "'";
+    LOGGER_ERROR("unknown script '" << name << "'");
     return false;
   }
 

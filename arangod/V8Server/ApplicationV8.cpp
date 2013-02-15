@@ -723,8 +723,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     context->_isolate->Exit();
     delete context->_locker;
     
-    TRI_ShutdownLogging();
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // load all actions
