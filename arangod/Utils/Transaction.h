@@ -695,6 +695,12 @@ namespace triagens {
                                       TRI_voc_rid_t* actualRevision,
                                       const bool forceSync,
                                       const bool lock) {
+          
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+          if (shaped == 0) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+          
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
           context._expectedRid = expectedRevision;
@@ -705,12 +711,14 @@ namespace triagens {
             this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
           }
 
-          int res = primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
+          int res = primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
           
           if (lock) {
             this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
             // WRITE-LOCK END
           }
+  
+          TRI_FreeShapedJson(primary->_shaper, shaped);
 
           return res;
         }

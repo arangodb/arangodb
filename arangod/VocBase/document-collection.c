@@ -847,33 +847,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from json
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateJson (TRI_doc_operation_context_t* context,
-                       TRI_doc_mptr_t** mptr,
-                       TRI_json_t const* json,
-                       TRI_voc_key_t key) {
-  TRI_shaped_json_t* shaped;
-  TRI_primary_collection_t* primary;
-  int res;
-
-  primary = context->_collection;
-
-  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-
-  if (shaped == 0) {
-    return TRI_ERROR_ARANGO_SHAPER_FAILED;
-  }
-  
-  res = primary->update(context, mptr, shaped, key);
-  
-  TRI_FreeShapedJson(primary->_shaper, shaped);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1846,8 +1819,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.update     = UpdateShapedJson;
   collection->base.destroy    = DeleteShapedJson;
   
-  collection->base.updateJson = UpdateJson;
-
   collection->cleanupIndexes  = CleanupIndexes;
 
   return true;

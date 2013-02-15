@@ -189,7 +189,7 @@ TRI_doc_collection_info_t;
 /// as the object is not deleted.
 ///
 /// It is important to use locks for create, read, update, and delete.  The
-/// functions @FN{create}, @FN{update}, @FN{updateJson}, and
+/// functions @FN{create}, @FN{update}, and
 /// @FN{destroy} are only allowed within a @FN{beginWrite} and
 /// @FN{endWrite}. The function @FN{read} is only allowed within a
 /// @FN{beginRead} and @FN{endRead}. Note that @FN{read} returns a copy of the
@@ -261,15 +261,7 @@ TRI_doc_collection_info_t;
 /// performed if the current revision matches the given. In any case the current
 /// revision after the updated of the document is returned in @FA{current}.
 ///
-/// @FUN{TRI_doc_mptr_t const updateJson (TRI_primary_collection_t*, TRI_json_t const*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but instead of a shaped json a json object must be given.
-///
-/// @FUN{int updateLock (TRI_primary_collection_t*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but the function will acquire and release the write lock.
 ///
 /// @FUN{int destroy (TRI_primary_collection_t*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -330,8 +322,6 @@ typedef struct TRI_primary_collection_s {
   int (*read) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_voc_key_t);
 
   int (*update) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_shaped_json_t const*, TRI_voc_key_t);
-  int (*updateJson) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_json_t const*, TRI_voc_key_t);
-
   int (*destroy) (struct TRI_doc_operation_context_s*, TRI_voc_key_t);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
