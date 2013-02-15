@@ -15,7 +15,8 @@ var documentsView = Backbone.View.extend({
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
-    "click #documents_next"      : "nextDocuments"
+    "click #documents_next"      : "nextDocuments",
+    "click #confirmDeleteBtn"    : "confirmDelete"
   },
   firstDocuments: function () {
     window.arangoDocumentsStore.getFirstDocuments();
@@ -30,19 +31,26 @@ var documentsView = Backbone.View.extend({
     window.arangoDocumentsStore.getNextDocuments();
   },
   remove: function (a) {
-    target = a.currentTarget;
+    this.target = a.currentTarget;
     var thiselement = a.currentTarget.parentElement;
-    var idelement = $(thiselement).next().text();
+    this.idelement = $(thiselement).next().text();
     this.alreadyClicked = true;
 
-    //TODO: ALERT
+    $('#docDeleteModal').modal('show');
+
+  },
+  confirmDelete: function () {
+    this.reallyDelete();
+  },
+  reallyDelete: function () {
+    var self = this;
     try {
       $.ajax({
         type: 'DELETE',
         contentType: "application/json",
-        url: "/_api/document/" + idelement,
+        url: "/_api/document/" + self.idelement,
         success: function () {
-          var row = $(target).closest("tr").get(0);
+          var row = $(self.target).closest("tr").get(0);
           $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
           var hash = window.location.hash.split("/");
           var page = hash[3];
@@ -56,6 +64,7 @@ var documentsView = Backbone.View.extend({
     }
     catch (e) {
     }
+    $('#docDeleteModal').modal('hide');
 
   },
   clicked: function (a) {

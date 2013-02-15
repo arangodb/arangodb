@@ -1,16 +1,23 @@
 #documentsDiv {
-
   background-color: rgba(0, 0, 0, 0.05);
 }
 
+#documentsTableID thead {
+  background-color: #F7F6F6 !important;
+}
+
+#documentsTableID_length, #documentsTableID_filter {
+  display: none;
+}
+
 #documentsTableID_wrapper {
-  margin-top: -30px !important;
+  padding-top: 40px !important;
+  padding-bottom: 20px !important;
 }
 
 #documentsTableID {
   padding-left: 30px !important;
   padding-right: 30px !important;
-  padding-top: -30px !important;
   width: 820px;
   table-layout:fixed !important;
 }
@@ -54,4 +61,16 @@
   padding: 0 !important;
   margin: 0 !important;
   font-size: 1em !important;
+}
+
+#documentsToolbar {
+  float: left !important;
+  padding-right: 20px;
+  background-color: rgba(0,0,0,0.05);
+  width: 920px;
+  border-bottom: 20px solid rgba(0,0,0,0.0);
+}
+
+#documentsToolbar button {
+  float:right;
 }
