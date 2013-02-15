@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #405: 1.2 compile warnings
+
 * fixed issue #333: [debian] Group "arangodb" is not used when starting vie init.d script
 
 * added optional parameter 'excludeSystem' to GET /_api/collection
