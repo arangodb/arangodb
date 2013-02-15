@@ -666,14 +666,13 @@ TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
 
 bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
   if (object && object->_type == TRI_JSON_ARRAY) {
-    size_t n;
+    const size_t n = object->_value._objects._length;
 
     // if we don't have attributes, we do not need to check for duplicates
     // if we only have one attribute, we don't need to check for duplicates in 
     // the array, but we need to recursively validate the array values (if 
     // array value itself is an array)
-    n = object->_value._objects._length;
-    if (n > 0) {
+    if (n > 2) {
       TRI_associative_pointer_t hash;
       size_t i;
 
