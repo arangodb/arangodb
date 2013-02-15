@@ -25,7 +25,7 @@ $release=${arangodb_release}
 
 d 0755 ${susr} ${sgrp} /etc/arangodb -
 d 0755 ${susr} ${sgrp} /etc/arangodb/ -
-c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod.conf
+c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod-uid.conf
 c 0644 ${susr} ${sgrp} /etc/arangodb/arangosh.conf ${project_dir}/etc/arangodb/arangosh.conf
 
 f 0755 ${susr} ${sgrp} ${sbindir}/arangod-${arangodb_version} ${project_dir}/bin/arangod
