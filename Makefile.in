@@ -5595,6 +5595,7 @@ unittests-brief: \
 	unittests-shell-client \
 	unittests-arangob \
 	unittests-import \
+	unittests-upgrade \
 	unittests-dfdb
 
 unittests-verbose:
@@ -5813,6 +5814,30 @@ unittests-import:
 
 	while test -f $(PIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+################################################################################
+### @brief UPGRADE TESTS
+###
+### invokes the --upgrade option twice and checks for errors
+################################################################################
+
+.PHONY: unittests-upgrade
+
+unittests-upgrade:
+	@echo
+	@echo "================================================================================"
+	@echo "<< UPGRADE TESTS                                                              >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
