@@ -251,8 +251,9 @@ void Dispatcher::reportStatus () {
     MUTEX_LOCKER(_accessDispatcher);
 
     for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-      string const& name = i->first;
       DispatcherQueue* q = i->second;
+#ifdef TRI_ENABLE_LOGGER
+      string const& name = i->first;
 
       LOGGER_DEBUG("dispatcher queue '" << name << "': "
                    << "threads = " << q->_nrThreads << " "
@@ -281,7 +282,7 @@ void Dispatcher::reportStatus () {
       << LoggerData::Extra("monopilizer")
       << LoggerData::Extra((q->_monopolizer ? "1" : "0"))
       << "dispatcher status");
-
+#endif
       CONDITION_LOCKER(guard, q->_accessQueue);
 
       for (set<DispatcherThread*>::iterator j = q->_startedThreads.begin();  j != q->_startedThreads.end(); ++j) {
