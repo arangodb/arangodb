@@ -1,6 +1,9 @@
+.docleftico {
+  width: 30px !important;
+}
+
 #deleteDoc, #documentsToolbar button {
   border: medium none;
-  padding-left: 10px;
   background-color: transparent;
 }
 
@@ -25,7 +28,7 @@
 }
 
 #documentsTableID_wrapper {
-  padding-top: 40px !important;
+  padding-top: 30px !important;
   padding-bottom: 20px !important;
 }
 
@@ -34,9 +37,8 @@
 }
 
 #documentsTableID {
-  padding-left: 30px !important;
-  padding-right: 30px !important;
-  width: 820px;
+  margin-left: 20px !important;
+  width: 900px; !important;
   table-layout:fixed !important;
 }
 

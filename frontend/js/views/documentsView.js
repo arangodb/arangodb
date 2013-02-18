@@ -12,11 +12,16 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
+    "click #plusIcon"            : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
     "click #documents_next"      : "nextDocuments",
     "click #confirmDeleteBtn"    : "confirmDelete"
+  },
+  addDocument: function () {
+    var collid  = window.location.hash.split("/")[1];
+    window.arangoDocumentStore.addDocument(collid);
   },
   firstDocuments: function () {
     window.arangoDocumentsStore.getFirstDocuments();
@@ -86,15 +91,14 @@ var documentsView = Backbone.View.extend({
       "bPaginate":false,
       "bSortable": false,
       "bLengthChange": false,
-      "bDeferRender": true,
-      "bAutoWidth": true,
+      "bAutoWidth": false,
       "iDisplayLength": -1,
-      "bJQueryUI": true,
+      "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"read_only leftCell", "bSortable": false, "sWidth":"40px"},
-        { "sClass":"read_only","bSortable": false, "sWidth": "200px"},
-        { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
-        { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
+        { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
+        { "sClass":"read_only","bSortable": false},
+      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
+      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
         { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
@@ -109,8 +113,8 @@ var documentsView = Backbone.View.extend({
       $(self.table).dataTable().fnAddData([
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>',
                                           value.attributes.id,
-                                          value.attributes.key,
-                                          value.attributes.rev,
+                                          //value.attributes.key,
+                                          //value.attributes.rev,
                                           '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>'
       ]);
     });
