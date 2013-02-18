@@ -623,7 +623,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
       
-      it "returns an error for fulltext query without query atttribte" do
+      it "returns an error for fulltext query without query attribute" do
         cmd = api + "/fulltext"
         body = "{ \"collection\" : \"#{@cn}\", \"attribute\" : \"text\" }"
         doc = ArangoDB.log_put("#{prefix}-fulltext-missing", cmd, :body => body)

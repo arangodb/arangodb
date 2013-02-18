@@ -1427,6 +1427,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       key = ((char*) d) + d->_offsetKey;
     }
     else {
+      
+#ifdef TRI_ENABLE_LOGGER
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
       LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
@@ -1437,7 +1439,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long long) d->_rid,
                 (unsigned long) d->_offsetJson,
                 (unsigned long) d->_offsetKey);
-      
+#endif      
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
       key = ((char*) d) + d->_offsetKey;
     }

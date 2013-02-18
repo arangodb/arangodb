@@ -237,7 +237,7 @@ Changed format for document handles (`_id`)
 
 ArangoDB 1.2 uses a modified format for the value returned in the `_id` attribute of
 a document. While ArangoDB 1.1 and earlier generated the `_id` value as a combination of
-collection name and server-generated document id, ArangoDB will return a combination
+server-generated collection id and document id, ArangoDB 1.2 will return a combination
 of collection name and user-defined document key.
 
 A document returned by ArangoDB 1.1 and earlier looked like this:
@@ -336,8 +336,8 @@ This change affects the AQL query and cursor cursor management REST API
 
 Clients that are strictly typed may need to be adjusted to work with this change.
 
-Index id returned as string
----------------------------
+Index ids returned as strings
+-----------------------------
 
 Index ids are also returned as numeric values encapsulated in strings starting with
 ArangoDB 1.2. They have been returned as simple integers in ArangoDB 1.1 and before.

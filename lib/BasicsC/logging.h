@@ -301,9 +301,9 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 /// @brief logs fatal errors
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_LOGGER
-
 void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
+
+#ifdef TRI_ENABLE_LOGGER
 
 #define LOG_FATAL_AND_EXIT(...)                                                                            \
   do {                                                                                                     \
@@ -315,6 +315,13 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
   } while (0)
 
 #else
+
+#define LOG_FATAL_AND_EXIT(...)                                                                            \
+  do {                                                                                                     \
+    fprintf(stderr, "fatal error. exiting.\n");                                                            \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
+  } while (0)
+
 
 #define LOG_FATAL(...) while (0)
 
