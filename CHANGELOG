@@ -1,6 +1,8 @@
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #413
+
 * updated bundled V8 version from 3.9.4 to 3.16.14.1
   Note: the Windows version used a more recent version (3.14.0.1) and was not updated.
 
