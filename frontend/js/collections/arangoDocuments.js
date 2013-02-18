@@ -34,8 +34,6 @@ window.arangoDocuments = Backbone.Collection.extend({
         if (this.currentPage != this.totalPages) {
           var link = window.location.hash.split("/");
           var page = parseInt(this.currentPage) + 1;
-          console.log(page);
-          console.log(link);
           window.location.hash = link[0]+"/"+link[1]+"/"+link[2]+"/"+page;
         }
       },

@@ -4,6 +4,11 @@
   background-color: transparent;
 }
 
+#documentsToolbarLeft {
+  float:left;
+  padding-left: 20px;
+}
+
 #documentsPlaceholder {
 }
 
