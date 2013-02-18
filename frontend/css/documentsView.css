@@ -1,3 +1,9 @@
+#deleteDoc, #documentsToolbar button {
+  border: medium none;
+  padding-left: 10px;
+  background-color: transparent;
+}
+
 #documentsPlaceholder {
 }
 

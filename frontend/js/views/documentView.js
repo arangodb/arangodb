@@ -119,6 +119,7 @@ var documentView = Backbone.View.extend({
           return ("<a class=\"sh_keyword\">" + value + "</a>");
         case 'object':
           if (value instanceof Array) {
+        window.arangoDocumentStore.saveDocument();
           return ("<a class=\"sh_array\">" + self.escaped(JSON.stringify(value)) + "</a>");
         }
         else {
@@ -142,6 +143,7 @@ var documentView = Backbone.View.extend({
       result[row_data[1]] = JSON.parse(row_data[3]);
     }
     window.arangoDocumentStore.updateLocalDocument(result);
+    this.saveDocument();
   },
 
   makeEditable: function () {
@@ -170,7 +172,7 @@ var documentView = Backbone.View.extend({
         var test = self.getTypedValue(value);
         if (String(value) == String(oldContent)) {
           // no change
-          return value2html(oldContent);
+          return self.value2html(oldContent);
         }
         else {
           // change update hidden row
