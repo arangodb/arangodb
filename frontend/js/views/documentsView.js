@@ -75,7 +75,7 @@ var documentsView = Backbone.View.extend({
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
     var rowContent = $(this.table).dataTable().fnGetData(aPos);
-    window.location.hash = "#collection/" + rowContent[1];
+    window.location.hash = "#collection/" + rowContent[0];
   },
 
   initTable: function (colid, pageid) {
@@ -107,11 +107,11 @@ var documentsView = Backbone.View.extend({
     var self = this;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
       $(self.table).dataTable().fnAddData([
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>',
                                           value.attributes.id,
                                           value.attributes.key,
                                           value.attributes.rev,
-                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>'
+                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
@@ -121,7 +121,16 @@ var documentsView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    this.breadcrumb();
     return this;
+  },
+  breadcrumb: function () {
+    var name = window.location.hash.split("/")[1];
+    $('#transparentHeader').append(
+      '<a class="activeBread" href="#">Collections</a>'+
+      '  >  '+
+      '<a class="disabledBread">'+name+'</a>'
+    );
   },
   cutByResolution: function (string) {
     if (string.length > 1024) {
