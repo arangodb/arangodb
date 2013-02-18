@@ -2867,7 +2867,10 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   }
 
   TRI_collection_t* col = &primary->base;
+
+#ifdef TRI_ENABLE_LOGGER
   const char* name = col->_info._name;
+#endif  
   TRI_col_version_t version = col->_info._version;
 
   if (version >= 3) {
