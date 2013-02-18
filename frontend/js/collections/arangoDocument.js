@@ -85,7 +85,7 @@ window.arangoDocument = Backbone.Collection.extend({
   },
 
   saveDocument: function (view) {
-    if (view == "source") {
+    if (view === "source") {
       var model = $('#documentSourceBox').val();
       var tmp1 = window.location.hash.split("/")[2];
       var tmp2 = window.location.hash.split("/")[1];
@@ -97,6 +97,7 @@ window.arangoDocument = Backbone.Collection.extend({
       var docID = this.models[0].attributes._id;
     }
 
+    var collid = window.location.hash.split("/")[1];
 
     $.ajax({
       type: "PUT",
@@ -105,7 +106,13 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        console.log("saved");
+        if (view === 'source') {
+          window.location.hash = "collection/"+collid+"/documents/1";
+          alert("saved");
+        }
+        else {
+          alert("saved");
+        }
       },
       error: function(data) {
         //alert(getErrorMessage(data));
