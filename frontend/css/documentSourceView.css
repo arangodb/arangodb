@@ -1,5 +1,27 @@
 #documentSourceBox {
-  width: 100%;
   min-height: 400px;
+  width: 885px;
   border: 1px solid black;
+  border-radius: 0;
+}
+
+#saveSourceDoc, #tableView {
+  float:right;
+  margin-right: 10px;
+  margin-top: 11px;
+  margin-right: 22px;
+  opacity: 0.3;
+}
+
+#saveSourceDoc:hover, #tableView:hover{
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+#sourceDiv {
+  margin-top: 10px;
+  padding: 20px 20px 20px 20px;
+  min-height: 400px;
+  background-color: rgba(0, 0, 0, 0.05);
+  
 }

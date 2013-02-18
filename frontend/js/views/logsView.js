@@ -129,10 +129,19 @@ var logsView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
     $.each(window.arangoLogsStore.models, function(key, value) {
-      $('#'+self.table).dataTable().fnAddData([value.attributes.level, value.attributes.text]);
+      var convertedLog = self.convertLogStatus(value.attributes.level);
+      $('#'+self.table).dataTable().fnAddData([convertedLog, value.attributes.text]);
     });
+    $('#logPages').html('Showing Page: '+this.page+' of '+this.totalPages);
   },
   clearTable: function () {
     $('#'+this.table).dataTable().fnClearTable();
+  },
+  convertLogStatus: function (status) {
+    if (status === 1) { return "Error" ;}
+    else if (status === 2) { return "Warning" ;}
+    else if (status === 3) { return "Info" ;}
+    else if (status === 4) { return "Debug" ;}
+    else { return "Unknown";}
   }
 });
