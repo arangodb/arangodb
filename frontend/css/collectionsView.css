@@ -1,3 +1,13 @@
+#newCollection {
+  margin-right: 22px;
+  margin-top: 11px;
+  opacity: 0.3;
+}
+
+#newCollection:hover {
+  opacity: 1;
+}
+
 .thumbnail, .navbar-inner, .btn, .btn-primary {
   border-radius:0;
   box-shadow: 0;
