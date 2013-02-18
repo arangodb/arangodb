@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,7 +10,6 @@ Verifies that stripping works.
 
 import TestGyp
 
-import os
 import re
 import subprocess
 import sys
@@ -32,7 +31,7 @@ if sys.platform == 'darwin':
     proc = subprocess.Popen(['otool', '-l', p], stdout=subprocess.PIPE)
     o = proc.communicate()[0]
     assert not proc.returncode
-    m = r.search(o, re.MULTILINE)
+    m = r.search(o)
     n = int(m.group(1))
     if n != n_expected:
       print 'Stripping: Expected %d symbols, got %d' % (n_expected, n)

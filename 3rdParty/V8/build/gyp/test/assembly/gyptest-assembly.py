@@ -13,7 +13,7 @@ import TestGyp
 
 if sys.platform != 'win32':
   # TODO(bradnelson): get this working for windows.
-  test = TestGyp.TestGyp(formats=['make', 'ninja', 'scons', 'xcode'])
+  test = TestGyp.TestGyp(formats=['!msvs'])
 
   test.run_gyp('assembly.gyp', chdir='src')
 

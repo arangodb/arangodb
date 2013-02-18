@@ -10,7 +10,6 @@ Verifies that app bundles are rebuilt correctly.
 
 import TestGyp
 
-import os
 import sys
 
 if sys.platform == 'darwin':

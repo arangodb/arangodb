@@ -23,7 +23,9 @@
         },
         {
           'action_name': 'shared_intermediate',
-          'inputs': [],
+          'inputs': [
+            'shared_infile.txt',
+          ],
           'outputs': [
             '<(SHARED_INTERMEDIATE_DIR)/intermediate_out.txt',
             'shared_outfile.txt',

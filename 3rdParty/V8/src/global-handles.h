@@ -108,8 +108,6 @@ class ImplicitRefGroup {
 };
 
 
-typedef void (*WeakReferenceGuest)(Object* object, void* parameter);
-
 class GlobalHandles {
  public:
   ~GlobalHandles();
@@ -128,19 +126,21 @@ class GlobalHandles {
   // reason is that Smi::FromInt(0) does not change during garage collection.
   void MakeWeak(Object** location,
                 void* parameter,
-                WeakReferenceCallback callback);
-
-  static void SetWrapperClassId(Object** location, uint16_t class_id);
-
-  // Returns the current number of weak handles.
-  int NumberOfWeakHandles() { return number_of_weak_handles_; }
+                WeakReferenceCallback weak_reference_callback,
+                NearDeathCallback near_death_callback);
 
   void RecordStats(HeapStats* stats);
 
+  // Returns the current number of weak handles.
+  int NumberOfWeakHandles();
+
   // Returns the current number of weak handles to global objects.
   // These handles are also included in NumberOfWeakHandles().
-  int NumberOfGlobalObjectWeakHandles() {
-    return number_of_global_object_weak_handles_;
+  int NumberOfGlobalObjectWeakHandles();
+
+  // Returns the current number of handles to global objects.
+  int NumberOfGlobalHandles() {
+    return number_of_global_handles_;
   }
 
   // Clear the weakness of a global handle.
@@ -148,6 +148,11 @@ class GlobalHandles {
 
   // Clear the weakness of a global handle.
   void MarkIndependent(Object** location);
+
+  // Mark the reference to this object externaly unreachable.
+  void MarkPartiallyDependent(Object** location);
+
+  static bool IsIndependent(Object** location);
 
   // Tells whether global handle is near death.
   static bool IsNearDeath(Object** location);
@@ -157,7 +162,8 @@ class GlobalHandles {
 
   // Process pending weak handles.
   // Returns true if next major GC is likely to collect more garbage.
-  bool PostGarbageCollectionProcessing(GarbageCollector collector);
+  bool PostGarbageCollectionProcessing(GarbageCollector collector,
+                                       GCTracer* tracer);
 
   // Iterates over all strong handles.
   void IterateStrongRoots(ObjectVisitor* v);
@@ -168,12 +174,12 @@ class GlobalHandles {
   // Iterates over all handles that have embedder-assigned class ID.
   void IterateAllRootsWithClassIds(ObjectVisitor* v);
 
+  // Iterates over all handles in the new space that have embedder-assigned
+  // class ID.
+  void IterateAllRootsInNewSpaceWithClassIds(ObjectVisitor* v);
+
   // Iterates over all weak roots in heap.
   void IterateWeakRoots(ObjectVisitor* v);
-
-  // Iterates over weak roots that are bound to a given callback.
-  void IterateWeakRoots(WeakReferenceGuest f,
-                        WeakReferenceCallback callback);
 
   // Find all weak handles satisfying the callback predicate, mark
   // them as pending.
@@ -187,16 +193,22 @@ class GlobalHandles {
   // Iterates over strong and dependent handles. See the node above.
   void IterateNewSpaceStrongAndDependentRoots(ObjectVisitor* v);
 
-  // Finds weak independent handles satisfying the callback predicate
-  // and marks them as pending. See the note above.
+  // Finds weak independent or partially independent handles satisfying
+  // the callback predicate and marks them as pending. See the note above.
   void IdentifyNewSpaceWeakIndependentHandles(WeakSlotCallbackWithHeap f);
 
-  // Iterates over weak independent handles. See the note above.
+  // Iterates over weak independent or partially independent handles.
+  // See the note above.
   void IterateNewSpaceWeakIndependentRoots(ObjectVisitor* v);
+
+  // Iterate over objects in object groups that have at least one object
+  // which requires visiting. The callback has to return true if objects
+  // can be skipped and false otherwise.
+  bool IterateObjectGroups(ObjectVisitor* v, WeakSlotCallbackWithHeap can_skip);
 
   // Add an object group.
   // Should be only used in GC callback function before a collection.
-  // All groups are destroyed after a mark-compact collection.
+  // All groups are destroyed after a garbage collection.
   void AddObjectGroup(Object*** handles,
                       size_t length,
                       v8::RetainedObjectInfo* info);
@@ -240,13 +252,8 @@ class GlobalHandles {
 
   Isolate* isolate_;
 
-  // Field always containing the number of weak and near-death handles.
-  int number_of_weak_handles_;
-
-  // Field always containing the number of weak and near-death handles
-  // to global objects.  These objects are also included in
-  // number_of_weak_handles_.
-  int number_of_global_object_weak_handles_;
+  // Field always containing the number of handles to global objects.
+  int number_of_global_handles_;
 
   // List of all allocated node blocks.
   NodeBlock* first_block_;

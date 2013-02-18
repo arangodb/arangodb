@@ -35,24 +35,18 @@
 namespace v8 {
 namespace internal {
 
-// Flags used for the AllocateInNewSpace functions.
-enum AllocationFlags {
-  // No special flags.
-  NO_ALLOCATION_FLAGS = 0,
-  // Return the pointer to the allocated already tagged as a heap object.
-  TAG_OBJECT = 1 << 0,
-  // The content of the result register already contains the allocation top in
-  // new space.
-  RESULT_CONTAINS_TOP = 1 << 1
-};
-
-
 // Convenience for platform-independent signatures.  We do not normally
 // distinguish memory operands from other operands on ia32.
 typedef Operand MemOperand;
 
 enum RememberedSetAction { EMIT_REMEMBERED_SET, OMIT_REMEMBERED_SET };
 enum SmiCheck { INLINE_SMI_CHECK, OMIT_SMI_CHECK };
+
+
+enum RegisterValueType {
+  REGISTER_VALUE_IS_SMI,
+  REGISTER_VALUE_IS_INT32
+};
 
 
 bool AreAliased(Register r1, Register r2, Register r3, Register r4);
@@ -89,6 +83,13 @@ class MacroAssembler: public Assembler {
                      Condition cc,
                      Label* condition_met,
                      Label::Distance condition_met_distance = Label::kFar);
+
+  void CheckPageFlagForMap(
+      Handle<Map> map,
+      int mask,
+      Condition cc,
+      Label* condition_met,
+      Label::Distance condition_met_distance = Label::kFar);
 
   // Check if object is in new space.  Jumps if the object is not in new space.
   // The register scratch can be object itself, but scratch will be clobbered.
@@ -194,6 +195,16 @@ class MacroAssembler: public Assembler {
       RememberedSetAction remembered_set_action = EMIT_REMEMBERED_SET,
       SmiCheck smi_check = INLINE_SMI_CHECK);
 
+  // For page containing |object| mark the region covering the object's map
+  // dirty. |object| is the object being stored into, |map| is the Map object
+  // that was stored.
+  void RecordWriteForMap(
+      Register object,
+      Handle<Map> map,
+      Register scratch1,
+      Register scratch2,
+      SaveFPRegsMode save_fp);
+
 #ifdef ENABLE_DEBUGGER_SUPPORT
   // ---------------------------------------------------------------------------
   // Debugger Support
@@ -222,8 +233,8 @@ class MacroAssembler: public Assembler {
   void LoadContext(Register dst, int context_chain_length);
 
   // Conditionally load the cached Array transitioned map of type
-  // transitioned_kind from the global context if the map in register
-  // map_in_out is the cached Array map in the global context of
+  // transitioned_kind from the native context if the map in register
+  // map_in_out is the cached Array map in the native context of
   // expected_kind.
   void LoadTransitionedArrayMapConditional(
       ElementsKind expected_kind,
@@ -235,7 +246,8 @@ class MacroAssembler: public Assembler {
   // Load the initial map for new Arrays from a JSFunction.
   void LoadInitialArrayMap(Register function_in,
                            Register scratch,
-                           Register map_out);
+                           Register map_out,
+                           bool can_have_holes);
 
   // Load the global function with the given index.
   void LoadGlobalFunction(int index, Register function);
@@ -357,9 +369,9 @@ class MacroAssembler: public Assembler {
 
   // Check if a map for a JSObject indicates that the object has fast smi only
   // elements.  Jump to the specified label if it does not.
-  void CheckFastSmiOnlyElements(Register map,
-                                Label* fail,
-                                Label::Distance distance = Label::kFar);
+  void CheckFastSmiElements(Register map,
+                            Label* fail,
+                            Label::Distance distance = Label::kFar);
 
   // Check to see if maybe_number can be stored as a double in
   // FastDoubleElements. If it can, store it at the index specified by key in
@@ -370,7 +382,8 @@ class MacroAssembler: public Assembler {
                                    Register scratch1,
                                    XMMRegister scratch2,
                                    Label* fail,
-                                   bool specialize_for_processor);
+                                   bool specialize_for_processor,
+                                   int offset = 0);
 
   // Compare an object's map with the specified map and its transitioned
   // elements maps if mode is ALLOW_ELEMENT_TRANSITION_MAPS. FLAGS are set with
@@ -449,6 +462,8 @@ class MacroAssembler: public Assembler {
     j(not_carry, is_smi);
   }
 
+  void LoadUint32(XMMRegister dst, Register src, XMMRegister scratch);
+
   // Jump the register contains a smi.
   inline void JumpIfSmi(Register value,
                         Label* smi_label,
@@ -472,36 +487,44 @@ class MacroAssembler: public Assembler {
   }
 
   void LoadInstanceDescriptors(Register map, Register descriptors);
+  void EnumLength(Register dst, Register map);
+  void NumberOfOwnDescriptors(Register dst, Register map);
 
+  template<typename Field>
+  void DecodeField(Register reg) {
+    static const int shift = Field::kShift;
+    static const int mask = (Field::kMask >> Field::kShift) << kSmiTagSize;
+    sar(reg, shift);
+    and_(reg, Immediate(mask));
+  }
   void LoadPowerOf2(XMMRegister dst, Register scratch, int power);
 
-  // Abort execution if argument is not a number. Used in debug code.
-  void AbortIfNotNumber(Register object);
+  // Abort execution if argument is not a number, enabled via --debug-code.
+  void AssertNumber(Register object);
 
-  // Abort execution if argument is not a smi. Used in debug code.
-  void AbortIfNotSmi(Register object);
+  // Abort execution if argument is not a smi, enabled via --debug-code.
+  void AssertSmi(Register object);
 
-  // Abort execution if argument is a smi. Used in debug code.
-  void AbortIfSmi(Register object);
+  // Abort execution if argument is a smi, enabled via --debug-code.
+  void AssertNotSmi(Register object);
 
-  // Abort execution if argument is a string. Used in debug code.
-  void AbortIfNotString(Register object);
+  // Abort execution if argument is not a string, enabled via --debug-code.
+  void AssertString(Register object);
 
   // ---------------------------------------------------------------------------
   // Exception handling
 
   // Push a new try handler and link it into try handler chain.
-  void PushTryHandler(CodeLocation try_location,
-                      HandlerType type,
-                      int handler_index);
+  void PushTryHandler(StackHandler::Kind kind, int handler_index);
 
   // Unlink the stack handler on top of the stack from the try handler chain.
   void PopTryHandler();
 
-  // Activate the top handler in the try hander chain.
+  // Throw to the top handler in the try hander chain.
   void Throw(Register value);
 
-  void ThrowUncatchable(UncatchableExceptionType type, Register value);
+  // Throw past all JS frames to the top JS entry frame.
+  void ThrowUncatchable(Register value);
 
   // ---------------------------------------------------------------------------
   // Inline caching support
@@ -547,6 +570,7 @@ class MacroAssembler: public Assembler {
   void AllocateInNewSpace(int header_size,
                           ScaleFactor element_size,
                           Register element_count,
+                          RegisterValueType element_count_type,
                           Register result,
                           Register result_end,
                           Register scratch,
@@ -671,7 +695,7 @@ class MacroAssembler: public Assembler {
   // Runtime calls
 
   // Call a code stub.  Generate the code if necessary.
-  void CallStub(CodeStub* stub, unsigned ast_id = kNoASTId);
+  void CallStub(CodeStub* stub, TypeFeedbackId ast_id = TypeFeedbackId::None());
 
   // Tail call a code stub (jump).  Generate the code if necessary.
   void TailCallStub(CodeStub* stub);
@@ -760,6 +784,7 @@ class MacroAssembler: public Assembler {
 
   // Push a handle value.
   void Push(Handle<Object> handle) { push(Immediate(handle)); }
+  void Push(Smi* smi) { Push(Handle<Smi>(smi)); }
 
   Handle<Object> CodeObject() {
     ASSERT(!code_object_.is_null());
@@ -830,6 +855,19 @@ class MacroAssembler: public Assembler {
   void EnterFrame(StackFrame::Type type);
   void LeaveFrame(StackFrame::Type type);
 
+  // Expects object in eax and returns map with validated enum cache
+  // in eax.  Assumes that any other register can be used as a scratch.
+  void CheckEnumCache(Label* call_runtime);
+
+  // AllocationSiteInfo support. Arrays may have an associated
+  // AllocationSiteInfo object that can be checked for in order to pretransition
+  // to another type.
+  // On entry, receiver_reg should point to the array object.
+  // scratch_reg gets clobbered.
+  // If allocation info is present, conditional code is set to equal
+  void TestJSArrayForAllocationSiteInfo(Register receiver_reg,
+                                        Register scratch_reg);
+
  private:
   bool generating_stub_;
   bool allow_stub_calls_;
@@ -890,9 +928,9 @@ class MacroAssembler: public Assembler {
   Operand SafepointRegisterSlot(Register reg);
   static int SafepointRegisterStackIndex(int reg_code);
 
-  // Needs access to SafepointRegisterStackIndex for optimized frame
+  // Needs access to SafepointRegisterStackIndex for compiled frame
   // traversal.
-  friend class OptimizedFrame;
+  friend class StandardFrame;
 };
 
 
@@ -940,7 +978,7 @@ inline Operand ContextOperand(Register context, int index) {
 
 
 inline Operand GlobalObjectOperand() {
-  return ContextOperand(esi, Context::GLOBAL_INDEX);
+  return ContextOperand(esi, Context::GLOBAL_OBJECT_INDEX);
 }
 
 

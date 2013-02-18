@@ -20,6 +20,7 @@ expect = """\
 FOO is defined
 VALUE is 1
 2*PAREN_VALUE is 12
+HASH_VALUE is a#1
 """
 test.run_built_executable('defines', stdout=expect)
 

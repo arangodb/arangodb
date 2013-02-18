@@ -22,5 +22,17 @@
         'configurations.c',
       ],
     },
+    {
+      'target_name': 'configurations64',
+      'type': 'executable',
+      'sources': [
+        'configurations.c',
+      ],
+      'configurations': {
+        'Debug': {
+          'msvs_target_platform': 'x64',
+        },
+      },
+    },
   ],
 }
