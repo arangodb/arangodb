@@ -1,7 +1,65 @@
 window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocument,
+  collectionInfo: {},
+  CollectionTypes: {},
+  addDocument: function (collectionID) {
+    var self = this;
+    var doctype = self.collectionApiType(collectionID);
+    if (doctype === 'edge') {
+      alert("adding edge not implemented");
+      return false;
+    }
+    else if (doctype === "document") {
+      self.createTypeDocument(collectionID);
+    }
+  },
+  createTypeDocument: function (collectionID) {
+    $.ajax({
+      type: "POST",
+      url: "/_api/document?collection=" + collectionID,
+      data: JSON.stringify({}),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        window.location.hash = "collection/"+data._id;
+      },
+      error: function(data) {
+        alert(JSON.stringify(data));
+      }
+    });
+  },
+  collectionApiType: function (identifier) {
+    if (this.CollectionTypes[identifier] == undefined) {
+      this.CollectionTypes[identifier] = this.getCollectionInfo(identifier).type;
+    }
 
+    if (this.CollectionTypes[identifier] == 3) {
+      return "edge";
+    }
+    return "document";
+  },
+  getCollectionInfo: function (identifier) {
+    var self = this;
+
+    $.ajax({
+      type: "GET",
+      url: "/_api/collection/" + identifier + "?" + self.getRandomToken(),
+      contentType: "application/json",
+      processData: false,
+      async: false,
+      success: function(data) {
+        self.collectionInfo = data;
+      },
+      error: function(data) {
+      }
+    });
+
+    return self.collectionInfo;
+  },
+  getRandomToken: function () {
+    return Math.round(new Date().getTime());
+  },
   getDocument: function (colid, docid, view) {
     this.clearDocument();
     var self = this;
@@ -27,7 +85,7 @@ window.arangoDocument = Backbone.Collection.extend({
   },
 
   saveDocument: function (view) {
-    if (view == "source") {
+    if (view === "source") {
       var model = $('#documentSourceBox').val();
       var tmp1 = window.location.hash.split("/")[2];
       var tmp2 = window.location.hash.split("/")[1];
@@ -39,6 +97,7 @@ window.arangoDocument = Backbone.Collection.extend({
       var docID = this.models[0].attributes._id;
     }
 
+    var collid = window.location.hash.split("/")[1];
 
     $.ajax({
       type: "PUT",
@@ -47,7 +106,13 @@ window.arangoDocument = Backbone.Collection.extend({
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        console.log("saved");
+        if (view === 'source') {
+          window.location.hash = "collection/"+collid+"/documents/1";
+          alert("saved");
+        }
+        else {
+          alert("saved");
+        }
       },
       error: function(data) {
         //alert(getErrorMessage(data));
