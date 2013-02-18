@@ -115,6 +115,13 @@ var documentsView = Backbone.View.extend({
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+    this.totalPages = window.arangoDocumentsStore.totalPages;
+    this.currentPage = window.arangoDocumentsStore.currentPage;
+    this.documentsCount = window.arangoDocumentsStore.documentsCount;
+    $('#documentsToolbarLeft').html(
+      'Showing Page '+this.currentPage+' of '+this.totalPages+
+      ', '+this.documentsCount+' entries'
+    );
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),
