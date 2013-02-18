@@ -886,19 +886,22 @@ function CollectionDocumentSuite () {
       assertEqual(3, figures.alive.count);
       assertEqual(0, figures.dead.count);
 
-      // now remove some
+      // now remove some documents
       collection.remove("a2");
       collection.remove("a3");
 
+      // we should see two live docs less
       figures = collection.figures();
       assertEqual(1, figures.alive.count);
       assertEqual(2, figures.dead.count);
 
+      // replacing one document does not change alive, but increases dead!
       collection.replace("a1", { });
       figures = collection.figures();
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
 
+      // this doc does not exist. should not change the figures
       try {
         collection.replace("a2", { });
         fail();
