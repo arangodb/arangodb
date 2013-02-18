@@ -44,9 +44,10 @@
   height: 18px;
   line-height: 18px;
   margin-top: 3px;
-  margin-left: 20px;
+  margin-left: 18px;
   padding: 2px;
   vertical-align: middle;
+  width: 435px;
 }
 
 #searchSubmit {
