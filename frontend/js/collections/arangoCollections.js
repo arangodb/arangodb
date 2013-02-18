@@ -1,6 +1,10 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 window.arangoCollections = Backbone.Collection.extend({
+      comparator : function(model) {
+        return model.get('name').toLowerCase();
+      },
+      
       url: '/_api/collection',
       parse: function(response)  {
           $.each(response.collections, function(key, val) {
@@ -14,7 +18,7 @@ window.arangoCollections = Backbone.Collection.extend({
           return response.collections;
       },
       model: arangoCollection,
-      getProperties: function (id, modal) {
+      getProperties: function (id) {
         var data2;
         $.ajax({
           type: "GET",
