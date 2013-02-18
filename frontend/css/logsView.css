@@ -6,6 +6,10 @@
   padding-bottom: 25px;
 }
 
+#logPages {
+  float:left;
+}
+
 .tab-content {
   min-height: 290px;
 }
@@ -27,7 +31,6 @@
 }
 
 #logToolbar {
-  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .tab-content {
@@ -51,9 +54,16 @@
 }
 
 #logToolbar {
+  background-color: rgba(0, 0, 0, 0.05);
   padding-top: 10px;
-  float:right;
   background-color: rgba(255, 255, 255, 0) !important;
+}
+
+#logToolbar button {
+  float:right;
+  border: medium none;
+  padding-left: 10px;
+  background-color: transparent;
 }
 
 #logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
