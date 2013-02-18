@@ -372,7 +372,7 @@ void StoreBuffer::GCPrologue() {
 }
 
 
-#ifdef DEBUG
+#ifdef VERIFY_HEAP
 static void DummyScavengePointer(HeapObject** p, HeapObject* o) {
   // Do nothing.
 }
@@ -415,7 +415,7 @@ void StoreBuffer::VerifyPointers(LargeObjectSpace* space) {
 
 
 void StoreBuffer::Verify() {
-#ifdef DEBUG
+#ifdef VERIFY_HEAP
   VerifyPointers(heap_->old_pointer_space(),
                  &StoreBuffer::FindPointersToNewSpaceInRegion);
   VerifyPointers(heap_->map_space(),
@@ -427,9 +427,11 @@ void StoreBuffer::Verify() {
 
 void StoreBuffer::GCEpilogue() {
   during_gc_ = false;
+#ifdef VERIFY_HEAP
   if (FLAG_verify_heap) {
     Verify();
   }
+#endif
 }
 
 
@@ -453,14 +455,14 @@ void StoreBuffer::FindPointersToNewSpaceInRegion(
 
 // Compute start address of the first map following given addr.
 static inline Address MapStartAlign(Address addr) {
-  Address page = Page::FromAddress(addr)->ObjectAreaStart();
+  Address page = Page::FromAddress(addr)->area_start();
   return page + (((addr - page) + (Map::kSize - 1)) / Map::kSize * Map::kSize);
 }
 
 
 // Compute end address of the first map preceding given addr.
 static inline Address MapEndAlign(Address addr) {
-  Address page = Page::FromAllocationTop(addr)->ObjectAreaStart();
+  Address page = Page::FromAllocationTop(addr)->area_start();
   return page + ((addr - page) / Map::kSize * Map::kSize);
 }
 
@@ -523,8 +525,8 @@ void StoreBuffer::FindPointersToNewSpaceOnPage(
     Page* page,
     RegionCallback region_callback,
     ObjectSlotCallback slot_callback) {
-  Address visitable_start = page->ObjectAreaStart();
-  Address end_of_page = page->ObjectAreaEnd();
+  Address visitable_start = page->area_start();
+  Address end_of_page = page->area_end();
 
   Address visitable_end = visitable_start;
 
@@ -685,10 +687,15 @@ void StoreBuffer::Compact() {
     uintptr_t int_addr = reinterpret_cast<uintptr_t>(*current);
     // Shift out the last bits including any tags.
     int_addr >>= kPointerSizeLog2;
-    int hash1 =
-        ((int_addr ^ (int_addr >> kHashSetLengthLog2)) & (kHashSetLength - 1));
+    // The upper part of an address is basically random because of ASLR and OS
+    // non-determinism, so we use only the bits within a page for hashing to
+    // make v8's behavior (more) deterministic.
+    uintptr_t hash_addr =
+        int_addr & (Page::kPageAlignmentMask >> kPointerSizeLog2);
+    int hash1 = ((hash_addr ^ (hash_addr >> kHashSetLengthLog2)) &
+                 (kHashSetLength - 1));
     if (hash_set_1_[hash1] == int_addr) continue;
-    uintptr_t hash2 = (int_addr - (int_addr >> kHashSetLengthLog2));
+    uintptr_t hash2 = (hash_addr - (hash_addr >> kHashSetLengthLog2));
     hash2 ^= hash2 >> (kHashSetLengthLog2 * 2);
     hash2 &= (kHashSetLength - 1);
     if (hash_set_2_[hash2] == int_addr) continue;

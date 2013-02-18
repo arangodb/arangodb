@@ -1,4 +1,4 @@
-// Copyright 2006-2008 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -55,9 +55,43 @@ double modulo(double x, double y) {
 }
 
 
+double fast_sin(double x) {
+  UNIMPLEMENTED();
+  return 0;
+}
+
+
+double fast_cos(double x) {
+  UNIMPLEMENTED();
+  return 0;
+}
+
+
+double fast_tan(double x) {
+  UNIMPLEMENTED();
+  return 0;
+}
+
+
+double fast_log(double x) {
+  UNIMPLEMENTED();
+  return 0;
+}
+
+
 // Initialize OS class early in the V8 startup.
 void OS::SetUp() {
   // Seed the random number generator.
+  UNIMPLEMENTED();
+}
+
+
+void OS::PostSetUp() {
+  UNIMPLEMENTED();
+}
+
+
+void OS::TearDown() {
   UNIMPLEMENTED();
 }
 
@@ -181,6 +215,11 @@ double OS::nan_value() {
 }
 
 
+CpuImplementer OS::GetCpuImplementer() {
+  UNIMPLEMENTED();
+}
+
+
 bool OS::ArmCpuHasFeature(CpuFeature feature) {
   UNIMPLEMENTED();
 }
@@ -238,6 +277,11 @@ void OS::DebugBreak() {
 }
 
 
+void OS::DumpBacktrace() {
+  // Currently unsupported.
+}
+
+
 OS::MemoryMappedFile* OS::MemoryMappedFile::open(const char* name) {
   UNIMPLEMENTED();
   return NULL;
@@ -291,6 +335,18 @@ bool VirtualMemory::Commit(void* address, size_t size, bool executable) {
 
 bool VirtualMemory::Uncommit(void* address, size_t size) {
   UNIMPLEMENTED();
+  return false;
+}
+
+
+bool VirtualMemory::Guard(void* address) {
+  UNIMPLEMENTED();
+  return false;
+}
+
+
+bool VirtualMemory::HasLazyCommits() {
+  // TODO(alph): implement for the platform.
   return false;
 }
 

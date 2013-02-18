@@ -51,6 +51,11 @@ inline double JunkStringValue() {
 }
 
 
+inline double SignedZero(bool negative) {
+  return negative ? uint64_to_double(Double::kSignMask) : 0.0;
+}
+
+
 // The fast double-to-unsigned-int conversion routine does not guarantee
 // rounding towards zero, or any reasonable value if the argument is larger
 // than what fits in an unsigned 32-bit integer.
@@ -207,7 +212,7 @@ double InternalStringToIntDouble(UnicodeCache* unicode_cache,
       }
 
       // Rounding up may cause overflow.
-      if ((number & ((int64_t)1 << 53)) != 0) {
+      if ((number & (static_cast<int64_t>(1) << 53)) != 0) {
         exponent++;
         number >>= 1;
       }
@@ -228,9 +233,7 @@ double InternalStringToIntDouble(UnicodeCache* unicode_cache,
   }
 
   ASSERT(number != 0);
-  // The double could be constructed faster from number (mantissa), exponent
-  // and sign. Assuming it's a rare case more simple code is used.
-  return static_cast<double>(negative ? -number : number) * pow(2.0, exponent);
+  return ldexp(static_cast<double>(negative ? -number : number), exponent);
 }
 
 
@@ -265,6 +268,7 @@ double InternalStringToInt(UnicodeCache* unicode_cache,
 
   if (radix == 0) {
     // Radix detection.
+    radix = 10;
     if (*current == '0') {
       ++current;
       if (current == end) return SignedZero(negative);
@@ -273,11 +277,8 @@ double InternalStringToInt(UnicodeCache* unicode_cache,
         ++current;
         if (current == end) return JunkStringValue();
       } else {
-        radix = 8;
         leading_zero = true;
       }
-    } else {
-      radix = 10;
     }
   } else if (radix == 16) {
     if (*current == '0') {
@@ -461,16 +462,23 @@ double InternalStringToDouble(UnicodeCache* unicode_cache,
   int insignificant_digits = 0;
   bool nonzero_digit_dropped = false;
 
-  bool negative = false;
+  enum Sign {
+    NONE,
+    NEGATIVE,
+    POSITIVE
+  };
+
+  Sign sign = NONE;
 
   if (*current == '+') {
     // Ignore leading sign.
     ++current;
     if (current == end) return JunkStringValue();
+    sign = POSITIVE;
   } else if (*current == '-') {
     ++current;
     if (current == end) return JunkStringValue();
-    negative = true;
+    sign = NEGATIVE;
   }
 
   static const char kInfinitySymbol[] = "Infinity";
@@ -485,34 +493,34 @@ double InternalStringToDouble(UnicodeCache* unicode_cache,
     }
 
     ASSERT(buffer_pos == 0);
-    return negative ? -V8_INFINITY : V8_INFINITY;
+    return (sign == NEGATIVE) ? -V8_INFINITY : V8_INFINITY;
   }
 
   bool leading_zero = false;
   if (*current == '0') {
     ++current;
-    if (current == end) return SignedZero(negative);
+    if (current == end) return SignedZero(sign == NEGATIVE);
 
     leading_zero = true;
 
     // It could be hexadecimal value.
     if ((flags & ALLOW_HEX) && (*current == 'x' || *current == 'X')) {
       ++current;
-      if (current == end || !isDigit(*current, 16)) {
+      if (current == end || !isDigit(*current, 16) || sign != NONE) {
         return JunkStringValue();  // "0x".
       }
 
       return InternalStringToIntDouble<4>(unicode_cache,
                                           current,
                                           end,
-                                          negative,
+                                          false,
                                           allow_trailing_junk);
     }
 
     // Ignore leading zeros in the integer part.
     while (*current == '0') {
       ++current;
-      if (current == end) return SignedZero(negative);
+      if (current == end) return SignedZero(sign == NEGATIVE);
     }
   }
 
@@ -557,7 +565,7 @@ double InternalStringToDouble(UnicodeCache* unicode_cache,
       // leading zeros (if any).
       while (*current == '0') {
         ++current;
-        if (current == end) return SignedZero(negative);
+        if (current == end) return SignedZero(sign == NEGATIVE);
         exponent--;  // Move this 0 into the exponent.
       }
     }
@@ -649,7 +657,7 @@ double InternalStringToDouble(UnicodeCache* unicode_cache,
     return InternalStringToIntDouble<3>(unicode_cache,
                                         buffer,
                                         buffer + buffer_pos,
-                                        negative,
+                                        sign == NEGATIVE,
                                         allow_trailing_junk);
   }
 
@@ -662,7 +670,7 @@ double InternalStringToDouble(UnicodeCache* unicode_cache,
   buffer[buffer_pos] = '\0';
 
   double converted = Strtod(Vector<const char>(buffer, buffer_pos), exponent);
-  return negative ? -converted : converted;
+  return (sign == NEGATIVE) ? -converted : converted;
 }
 
 } }  // namespace v8::internal

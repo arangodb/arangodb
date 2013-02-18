@@ -41,9 +41,13 @@ enum InterruptFlag {
   DEBUGCOMMAND = 1 << 2,
   PREEMPT = 1 << 3,
   TERMINATE = 1 << 4,
-  RUNTIME_PROFILER_TICK = 1 << 5,
-  GC_REQUEST = 1 << 6
+  GC_REQUEST = 1 << 5,
+  CODE_READY = 1 << 6
 };
+
+
+class Isolate;
+
 
 class Execution : public AllStatic {
  public:
@@ -141,7 +145,8 @@ class Execution : public AllStatic {
 
   // If the stack guard is triggered, but it is not an actual
   // stack overflow, then handle the interruption accordingly.
-  MUST_USE_RESULT static MaybeObject* HandleStackGuardInterrupt();
+  MUST_USE_RESULT static MaybeObject* HandleStackGuardInterrupt(
+      Isolate* isolate);
 
   // Get a function delegate (or undefined) for the given non-function
   // object. Used for support calling objects as functions.
@@ -158,7 +163,6 @@ class Execution : public AllStatic {
 
 
 class ExecutionAccess;
-class Isolate;
 
 
 // StackGuard contains the handling of the limits that are used to limit the
@@ -189,8 +193,8 @@ class StackGuard {
   void Interrupt();
   bool IsTerminateExecution();
   void TerminateExecution();
-  bool IsRuntimeProfilerTick();
-  void RequestRuntimeProfilerTick();
+  bool IsCodeReadyEvent();
+  void RequestCodeReadyEvent();
 #ifdef ENABLE_DEBUGGER_SUPPORT
   bool IsDebugBreak();
   void DebugBreak();
@@ -222,6 +226,7 @@ class StackGuard {
   Address address_of_real_jslimit() {
     return reinterpret_cast<Address>(&thread_local_.real_jslimit_);
   }
+  bool ShouldPostponeInterrupts();
 
  private:
   StackGuard();

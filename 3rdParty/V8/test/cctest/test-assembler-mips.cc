@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -219,21 +219,21 @@ TEST(MIPS2) {
 
   // Bit twiddling instructions & conditional moves.
   // Uses t0-t7 as set above.
-  __ clz(v0, t0);       // 29
-  __ clz(v1, t1);       // 19
+  __ Clz(v0, t0);       // 29
+  __ Clz(v1, t1);       // 19
   __ addu(v0, v0, v1);  // 48
-  __ clz(v1, t2);       // 3
+  __ Clz(v1, t2);       // 3
   __ addu(v0, v0, v1);  // 51
-  __ clz(v1, t7);       // 0
+  __ Clz(v1, t7);       // 0
   __ addu(v0, v0, v1);  // 51
   __ Branch(&error, ne, v0, Operand(51));
-  __ movn(a0, t3, t0);  // Move a0<-t3 (t0 is NOT 0).
+  __ Movn(a0, t3, t0);  // Move a0<-t3 (t0 is NOT 0).
   __ Ins(a0, t1, 12, 8);  // 0x7ff34fff
   __ Branch(&error, ne, a0, Operand(0x7ff34fff));
-  __ movz(a0, t6, t7);    // a0 not updated (t7 is NOT 0).
+  __ Movz(a0, t6, t7);    // a0 not updated (t7 is NOT 0).
   __ Ext(a1, a0, 8, 12);  // 0x34f
   __ Branch(&error, ne, a1, Operand(0x34f));
-  __ movz(a0, t6, v1);    // a0<-t6, v0 is 0, from 8 instr back.
+  __ Movz(a0, t6, v1);    // a0<-t6, v0 is 0, from 8 instr back.
   __ Branch(&error, ne, a0, Operand(t6));
 
   // Everything was correctly executed. Load the expected result.
@@ -276,6 +276,8 @@ TEST(MIPS3) {
     double e;
     double f;
     double g;
+    double h;
+    double i;
   } T;
   T t;
 
@@ -312,6 +314,13 @@ TEST(MIPS3) {
     __ sdc1(f14, MemOperand(a0, OFFSET_OF(T, g)) );
     // g = sqrt(f) = 10.97451593465515908537
 
+  if (kArchVariant == kMips32r2) {
+    __ ldc1(f4, MemOperand(a0, OFFSET_OF(T, h)) );
+    __ ldc1(f6, MemOperand(a0, OFFSET_OF(T, i)) );
+    __ madd_d(f14, f6, f4, f6);
+    __ sdc1(f14, MemOperand(a0, OFFSET_OF(T, h)) );
+  }
+
     __ jr(ra);
     __ nop();
 
@@ -329,6 +338,8 @@ TEST(MIPS3) {
     t.d = 0.0;
     t.e = 0.0;
     t.f = 0.0;
+    t.h = 1.5;
+    t.i = 2.75;
     Object* dummy = CALL_GENERATED_CODE(f, &t, 0, 0, 0, 0);
     USE(dummy);
     CHECK_EQ(1.5e14, t.a);
@@ -338,6 +349,7 @@ TEST(MIPS3) {
     CHECK_EQ(1.8066e16, t.e);
     CHECK_EQ(120.44, t.f);
     CHECK_EQ(10.97451593465515908537, t.g);
+    CHECK_EQ(6.875, t.h);
   }
 }
 
@@ -579,8 +591,13 @@ TEST(MIPS7) {
 
     __ bind(&neither_is_nan);
 
-    __ c(OLT, D, f6, f4, 2);
-    __ bc1t(&less_than, 2);
+    if (kArchVariant == kLoongson) {
+      __ c(OLT, D, f6, f4);
+      __ bc1t(&less_than);
+    } else {
+      __ c(OLT, D, f6, f4, 2);
+      __ bc1t(&less_than, 2);
+    }
     __ nop();
     __ sw(zero_reg, MemOperand(a0, OFFSET_OF(T, result)) );
     __ Branch(&outa_here);
@@ -774,7 +791,7 @@ TEST(MIPS10) {
   Assembler assm(Isolate::Current(), NULL, 0);
   Label L, C;
 
-  if (CpuFeatures::IsSupported(FPU) && mips32r2) {
+  if (CpuFeatures::IsSupported(FPU) && kArchVariant == kMips32r2) {
     CpuFeatures::Scope scope(FPU);
 
     // Load all structure elements to registers.

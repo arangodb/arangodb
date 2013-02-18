@@ -1,4 +1,4 @@
-// Copyright 2008 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -35,7 +35,10 @@
 namespace v8 {
 namespace internal {
 
-RegExpMacroAssembler::RegExpMacroAssembler() : slow_safe_compiler_(false) {
+RegExpMacroAssembler::RegExpMacroAssembler(Zone* zone)
+  : slow_safe_compiler_(false),
+    global_mode_(NOT_GLOBAL),
+    zone_(zone) {
 }
 
 
@@ -54,8 +57,8 @@ bool RegExpMacroAssembler::CanReadUnaligned() {
 
 #ifndef V8_INTERPRETED_REGEXP  // Avoid unused code, e.g., on ARM.
 
-NativeRegExpMacroAssembler::NativeRegExpMacroAssembler()
-    : RegExpMacroAssembler() {
+NativeRegExpMacroAssembler::NativeRegExpMacroAssembler(Zone* zone)
+    : RegExpMacroAssembler(zone) {
 }
 
 
@@ -64,11 +67,7 @@ NativeRegExpMacroAssembler::~NativeRegExpMacroAssembler() {
 
 
 bool NativeRegExpMacroAssembler::CanReadUnaligned() {
-#ifdef V8_TARGET_CAN_READ_UNALIGNED
-  return !slow_safe();
-#else
-  return false;
-#endif
+  return FLAG_enable_unaligned_accesses && !slow_safe();
 }
 
 const byte* NativeRegExpMacroAssembler::StringCharacterPosition(
@@ -78,14 +77,14 @@ const byte* NativeRegExpMacroAssembler::StringCharacterPosition(
   ASSERT(subject->IsExternalString() || subject->IsSeqString());
   ASSERT(start_index >= 0);
   ASSERT(start_index <= subject->length());
-  if (subject->IsAsciiRepresentation()) {
+  if (subject->IsOneByteRepresentation()) {
     const byte* address;
     if (StringShape(subject).IsExternal()) {
-      const char* data = ExternalAsciiString::cast(subject)->GetChars();
+      const uint8_t* data = ExternalAsciiString::cast(subject)->GetChars();
       address = reinterpret_cast<const byte*>(data);
     } else {
-      ASSERT(subject->IsSeqAsciiString());
-      char* data = SeqAsciiString::cast(subject)->GetChars();
+      ASSERT(subject->IsSeqOneByteString());
+      const uint8_t* data = SeqOneByteString::cast(subject)->GetChars();
       address = reinterpret_cast<const byte*>(data);
     }
     return address + start_index;
@@ -134,7 +133,7 @@ NativeRegExpMacroAssembler::Result NativeRegExpMacroAssembler::Match(
     slice_offset = slice->offset();
   }
   // Ensure that an underlying string has the same ASCII-ness.
-  bool is_ascii = subject_ptr->IsAsciiRepresentation();
+  bool is_ascii = subject_ptr->IsOneByteRepresentation();
   ASSERT(subject_ptr->IsExternalString() || subject_ptr->IsSeqString());
   // String is now either Sequential or External
   int char_size_shift = is_ascii ? 0 : 1;
@@ -149,6 +148,7 @@ NativeRegExpMacroAssembler::Result NativeRegExpMacroAssembler::Match(
                        input_start,
                        input_end,
                        offsets_vector,
+                       offsets_vector_length,
                        isolate);
   return res;
 }
@@ -161,6 +161,7 @@ NativeRegExpMacroAssembler::Result NativeRegExpMacroAssembler::Execute(
     const byte* input_start,
     const byte* input_end,
     int* output,
+    int output_size,
     Isolate* isolate) {
   ASSERT(isolate == Isolate::Current());
   // Ensure that the minimum stack has been allocated.
@@ -174,10 +175,10 @@ NativeRegExpMacroAssembler::Result NativeRegExpMacroAssembler::Execute(
                                           input_start,
                                           input_end,
                                           output,
+                                          output_size,
                                           stack_base,
                                           direct_call,
                                           isolate);
-  ASSERT(result <= SUCCESS);
   ASSERT(result >= RETRY);
 
   if (result == EXCEPTION && !isolate->has_pending_exception()) {
@@ -209,6 +210,26 @@ const byte NativeRegExpMacroAssembler::word_character_map[] = {
     0xffu, 0xffu, 0xffu, 0xffu, 0xffu, 0xffu, 0xffu, 0xffu,  // 'h' - 'o'
     0xffu, 0xffu, 0xffu, 0xffu, 0xffu, 0xffu, 0xffu, 0xffu,  // 'p' - 'w'
     0xffu, 0xffu, 0xffu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,  // 'x' - 'z'
+    // Latin-1 range
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+    0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
 };
 
 

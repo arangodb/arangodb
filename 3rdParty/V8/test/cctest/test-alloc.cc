@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -40,18 +40,7 @@ static MaybeObject* AllocateAfterFailures() {
   Heap* heap = Isolate::Current()->heap();
 
   // New space.
-  NewSpace* new_space = heap->new_space();
-  static const int kNewSpaceFillerSize = ByteArray::SizeFor(0);
-  while (new_space->Available() > kNewSpaceFillerSize) {
-    int available_before = static_cast<int>(new_space->Available());
-    CHECK(!heap->AllocateByteArray(0)->IsFailure());
-    if (available_before == new_space->Available()) {
-      // It seems that we are avoiding new space allocations when
-      // allocation is forced, so no need to fill up new space
-      // in order to make the test harder.
-      break;
-    }
-  }
+  SimulateFullSpace(heap->new_space());
   CHECK(!heap->AllocateByteArray(100)->IsFailure());
   CHECK(!heap->AllocateFixedArray(100, NOT_TENURED)->IsFailure());
 
@@ -65,30 +54,18 @@ static MaybeObject* AllocateAfterFailures() {
   CHECK(!heap->CopyJSObject(JSObject::cast(object))->IsFailure());
 
   // Old data space.
-  OldSpace* old_data_space = heap->old_data_space();
-  static const int kOldDataSpaceFillerSize = ByteArray::SizeFor(0);
-  while (old_data_space->Available() > kOldDataSpaceFillerSize) {
-    CHECK(!heap->AllocateByteArray(0, TENURED)->IsFailure());
-  }
-  CHECK(!heap->AllocateRawAsciiString(100, TENURED)->IsFailure());
+  SimulateFullSpace(heap->old_data_space());
+  CHECK(!heap->AllocateRawOneByteString(100, TENURED)->IsFailure());
 
   // Old pointer space.
-  OldSpace* old_pointer_space = heap->old_pointer_space();
-  static const int kOldPointerSpaceFillerLength = 10000;
-  static const int kOldPointerSpaceFillerSize = FixedArray::SizeFor(
-      kOldPointerSpaceFillerLength);
-  while (old_pointer_space->Available() > kOldPointerSpaceFillerSize) {
-    CHECK(!heap->AllocateFixedArray(kOldPointerSpaceFillerLength, TENURED)->
-          IsFailure());
-  }
-  CHECK(!heap->AllocateFixedArray(kOldPointerSpaceFillerLength, TENURED)->
-        IsFailure());
+  SimulateFullSpace(heap->old_pointer_space());
+  CHECK(!heap->AllocateFixedArray(10000, TENURED)->IsFailure());
 
   // Large object space.
   static const int kLargeObjectSpaceFillerLength = 300000;
   static const int kLargeObjectSpaceFillerSize = FixedArray::SizeFor(
       kLargeObjectSpaceFillerLength);
-  ASSERT(kLargeObjectSpaceFillerSize > heap->MaxObjectSizeInPagedSpace());
+  ASSERT(kLargeObjectSpaceFillerSize > heap->old_pointer_space()->AreaSize());
   while (heap->OldGenerationSpaceAvailable() > kLargeObjectSpaceFillerSize) {
     CHECK(!heap->AllocateFixedArray(kLargeObjectSpaceFillerLength, TENURED)->
           IsFailure());
@@ -97,16 +74,12 @@ static MaybeObject* AllocateAfterFailures() {
         IsFailure());
 
   // Map space.
-  MapSpace* map_space = heap->map_space();
-  static const int kMapSpaceFillerSize = Map::kSize;
-  InstanceType instance_type = JS_OBJECT_TYPE;
+  SimulateFullSpace(heap->map_space());
   int instance_size = JSObject::kHeaderSize;
-  while (map_space->Available() > kMapSpaceFillerSize) {
-    CHECK(!heap->AllocateMap(instance_type, instance_size)->IsFailure());
-  }
-  CHECK(!heap->AllocateMap(instance_type, instance_size)->IsFailure());
+  CHECK(!heap->AllocateMap(JS_OBJECT_TYPE, instance_size)->IsFailure());
 
   // Test that we can allocate in old pointer space and code space.
+  SimulateFullSpace(heap->code_space());
   CHECK(!heap->AllocateFixedArray(100, TENURED)->IsFailure());
   CHECK(!heap->CopyCode(Isolate::Current()->builtins()->builtin(
       Builtins::kIllegal))->IsFailure());
@@ -158,12 +131,21 @@ TEST(StressJS) {
   Handle<Map> map(function->initial_map());
   Handle<DescriptorArray> instance_descriptors(map->instance_descriptors());
   Handle<Foreign> foreign = FACTORY->NewForeign(&kDescriptor);
-  instance_descriptors = FACTORY->CopyAppendForeignDescriptor(
-      instance_descriptors,
-      FACTORY->NewStringFromAscii(Vector<const char>("get", 3)),
-      foreign,
-      static_cast<PropertyAttributes>(0));
-  map->set_instance_descriptors(*instance_descriptors);
+  Handle<String> name =
+      FACTORY->NewStringFromAscii(Vector<const char>("get", 3));
+  ASSERT(instance_descriptors->IsEmpty());
+
+  Handle<DescriptorArray> new_descriptors = FACTORY->NewDescriptorArray(0, 1);
+
+  v8::internal::DescriptorArray::WhitenessWitness witness(*new_descriptors);
+  map->set_instance_descriptors(*new_descriptors);
+
+  CallbacksDescriptor d(*name,
+                        *foreign,
+                        static_cast<PropertyAttributes>(0),
+                        v8::internal::PropertyDetails::kInitialIndex);
+  map->AppendDescriptor(&d, witness);
+
   // Add the Foo constructor the global object.
   env->Global()->Set(v8::String::New("Foo"), v8::Utils::ToLocal(function));
   // Call the accessor through JavaScript.
@@ -214,13 +196,17 @@ TEST(CodeRange) {
   while (total_allocated < 5 * code_range_size) {
     if (current_allocated < code_range_size / 10) {
       // Allocate a block.
-      // Geometrically distributed sizes, greater than Page::kMaxHeapObjectSize.
+      // Geometrically distributed sizes, greater than
+      // Page::kMaxNonCodeHeapObjectSize (which is greater than code page area).
       // TODO(gc): instead of using 3 use some contant based on code_range_size
       // kMaxHeapObjectSize.
-      size_t requested = (Page::kMaxHeapObjectSize << (Pseudorandom() % 3)) +
-           Pseudorandom() % 5000 + 1;
+      size_t requested =
+          (Page::kMaxNonCodeHeapObjectSize << (Pseudorandom() % 3)) +
+          Pseudorandom() % 5000 + 1;
       size_t allocated = 0;
-      Address base = code_range->AllocateRawMemory(requested, &allocated);
+      Address base = code_range->AllocateRawMemory(requested,
+                                                   requested,
+                                                   &allocated);
       CHECK(base != NULL);
       blocks.Add(Block(base, static_cast<int>(allocated)));
       current_allocated += static_cast<int>(allocated);

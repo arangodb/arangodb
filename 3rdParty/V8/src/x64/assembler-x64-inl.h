@@ -42,6 +42,9 @@ namespace internal {
 // Implementation of Assembler
 
 
+static const byte kCallOpcode = 0xE8;
+
+
 void Assembler::emitl(uint32_t x) {
   Memory::uint32_at(pc_) = x;
   pc_ += sizeof(uint32_t);
@@ -50,7 +53,7 @@ void Assembler::emitl(uint32_t x) {
 
 void Assembler::emitq(uint64_t x, RelocInfo::Mode rmode) {
   Memory::uint64_at(pc_) = x;
-  if (rmode != RelocInfo::NONE) {
+  if (!RelocInfo::IsNone(rmode)) {
     RecordRelocInfo(rmode, x);
   }
   pc_ += sizeof(uint64_t);
@@ -65,10 +68,10 @@ void Assembler::emitw(uint16_t x) {
 
 void Assembler::emit_code_target(Handle<Code> target,
                                  RelocInfo::Mode rmode,
-                                 unsigned ast_id) {
+                                 TypeFeedbackId ast_id) {
   ASSERT(RelocInfo::IsCodeTarget(rmode));
-  if (rmode == RelocInfo::CODE_TARGET && ast_id != kNoASTId) {
-    RecordRelocInfo(RelocInfo::CODE_TARGET_WITH_ID, ast_id);
+  if (rmode == RelocInfo::CODE_TARGET && !ast_id.IsNone()) {
+    RecordRelocInfo(RelocInfo::CODE_TARGET_WITH_ID, ast_id.ToInt());
   } else {
     RecordRelocInfo(rmode);
   }
@@ -195,6 +198,12 @@ void Assembler::set_target_address_at(Address pc, Address target) {
   CPU::FlushICache(pc, sizeof(int32_t));
 }
 
+
+Address Assembler::target_address_from_return_address(Address pc) {
+  return pc - kCallTargetAddressOffset;
+}
+
+
 Handle<Object> Assembler::code_target_object_handle_at(Address pc) {
   return code_targets_[Memory::int32_at(pc)];
 }
@@ -211,6 +220,12 @@ void RelocInfo::apply(intptr_t delta) {
   } else if (IsCodeTarget(rmode_)) {
     Memory::int32_at(pc_) -= static_cast<int32_t>(delta);
     CPU::FlushICache(pc_, sizeof(int32_t));
+  } else if (rmode_ == CODE_AGE_SEQUENCE) {
+    if (*pc_ == kCallOpcode) {
+      int32_t* p = reinterpret_cast<int32_t*>(pc_ + 1);
+      *p -= static_cast<int32_t>(delta);  // Relocate entry.
+      CPU::FlushICache(p, sizeof(uint32_t));
+    }
   }
 }
 
@@ -235,9 +250,9 @@ Address RelocInfo::target_address_address() {
 
 int RelocInfo::target_address_size() {
   if (IsCodedSpecially()) {
-    return Assembler::kCallTargetSize;
+    return Assembler::kSpecialTargetSize;
   } else {
-    return Assembler::kExternalTargetSize;
+    return kPointerSize;
   }
 }
 
@@ -309,10 +324,7 @@ Handle<JSGlobalPropertyCell> RelocInfo::target_cell_handle() {
 
 JSGlobalPropertyCell* RelocInfo::target_cell() {
   ASSERT(rmode_ == RelocInfo::GLOBAL_PROPERTY_CELL);
-  Address address = Memory::Address_at(pc_);
-  Object* object = HeapObject::FromAddress(
-      address - JSGlobalPropertyCell::kValueOffset);
-  return reinterpret_cast<JSGlobalPropertyCell*>(object);
+  return JSGlobalPropertyCell::FromValueAddress(Memory::Address_at(pc_));
 }
 
 
@@ -349,6 +361,21 @@ bool RelocInfo::IsPatchedReturnSequence() {
 
 bool RelocInfo::IsPatchedDebugBreakSlotSequence() {
   return !Assembler::IsNop(pc());
+}
+
+
+Code* RelocInfo::code_age_stub() {
+  ASSERT(rmode_ == RelocInfo::CODE_AGE_SEQUENCE);
+  ASSERT(*pc_ == kCallOpcode);
+  return Code::GetCodeFromTargetAddress(
+      Assembler::target_address_at(pc_ + 1));
+}
+
+
+void RelocInfo::set_code_age_stub(Code* stub) {
+  ASSERT(*pc_ == kCallOpcode);
+  ASSERT(rmode_ == RelocInfo::CODE_AGE_SEQUENCE);
+  Assembler::set_target_address_at(pc_ + 1, stub->instruction_start());
 }
 
 
@@ -405,6 +432,8 @@ void RelocInfo::Visit(ObjectVisitor* visitor) {
   } else if (mode == RelocInfo::EXTERNAL_REFERENCE) {
     visitor->VisitExternalReference(this);
     CPU::FlushICache(pc_, sizeof(Address));
+  } else if (RelocInfo::IsCodeAgeSequence(mode)) {
+    visitor->VisitCodeAgeSequence(this);
 #ifdef ENABLE_DEBUGGER_SUPPORT
   // TODO(isolates): Get a cached isolate below.
   } else if (((RelocInfo::IsJSReturn(mode) &&
@@ -433,6 +462,8 @@ void RelocInfo::Visit(Heap* heap) {
   } else if (mode == RelocInfo::EXTERNAL_REFERENCE) {
     StaticVisitor::VisitExternalReference(this);
     CPU::FlushICache(pc_, sizeof(Address));
+  } else if (RelocInfo::IsCodeAgeSequence(mode)) {
+    StaticVisitor::VisitCodeAgeSequence(heap, this);
 #ifdef ENABLE_DEBUGGER_SUPPORT
   } else if (heap->isolate()->debug()->has_break_points() &&
              ((RelocInfo::IsJSReturn(mode) &&
