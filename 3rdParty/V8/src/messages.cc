@@ -61,7 +61,7 @@ Handle<JSMessageObject> MessageHandler::MakeMessageObject(
     Vector< Handle<Object> > args,
     Handle<String> stack_trace,
     Handle<JSArray> stack_frames) {
-  Handle<String> type_handle = FACTORY->LookupAsciiSymbol(type);
+  Handle<String> type_handle = FACTORY->LookupUtf8Symbol(type);
   Handle<FixedArray> arguments_elements =
       FACTORY->NewFixedArray(args.length());
   for (int i = 0; i < args.length(); i++) {
@@ -106,11 +106,20 @@ void MessageHandler::ReportMessage(Isolate* isolate,
   // We are calling into embedder's code which can throw exceptions.
   // Thus we need to save current exception state, reset it to the clean one
   // and ignore scheduled exceptions callbacks can throw.
+
+  // We pass the exception object into the message handler callback though.
+  Object* exception_object = isolate->heap()->undefined_value();
+  if (isolate->has_pending_exception()) {
+    isolate->pending_exception()->ToObject(&exception_object);
+  }
+  Handle<Object> exception_handle(exception_object);
+
   Isolate::ExceptionScope exception_scope(isolate);
   isolate->clear_pending_exception();
   isolate->set_external_caught_exception(false);
 
   v8::Local<v8::Message> api_message_obj = v8::Utils::MessageToLocal(message);
+  v8::Local<v8::Value> api_exception_obj = v8::Utils::ToLocal(exception_handle);
 
   v8::NeanderArray global_listeners(FACTORY->message_listeners());
   int global_length = global_listeners.length();
@@ -123,15 +132,13 @@ void MessageHandler::ReportMessage(Isolate* isolate,
     for (int i = 0; i < global_length; i++) {
       HandleScope scope;
       if (global_listeners.get(i)->IsUndefined()) continue;
-      v8::NeanderObject listener(JSObject::cast(global_listeners.get(i)));
-      Handle<Foreign> callback_obj(Foreign::cast(listener.get(0)));
+      Handle<Foreign> callback_obj(Foreign::cast(global_listeners.get(i)));
       v8::MessageCallback callback =
           FUNCTION_CAST<v8::MessageCallback>(callback_obj->foreign_address());
-      Handle<Object> callback_data(listener.get(1));
       {
         // Do not allow exceptions to propagate.
         v8::TryCatch try_catch;
-        callback(api_message_obj, v8::Utils::ToLocal(callback_data));
+        callback(api_message_obj, api_exception_obj);
       }
       if (isolate->has_scheduled_exception()) {
         isolate->clear_scheduled_exception();
@@ -142,13 +149,16 @@ void MessageHandler::ReportMessage(Isolate* isolate,
 
 
 Handle<String> MessageHandler::GetMessage(Handle<Object> data) {
-  Handle<String> fmt_str = FACTORY->LookupAsciiSymbol("FormatMessage");
+  Handle<String> fmt_str =
+      FACTORY->LookupOneByteSymbol(STATIC_ASCII_VECTOR("FormatMessage"));
   Handle<JSFunction> fun =
       Handle<JSFunction>(
           JSFunction::cast(
               Isolate::Current()->js_builtins_object()->
               GetPropertyNoExceptionThrown(*fmt_str)));
-  Handle<Object> argv[] = { data };
+  Handle<JSMessageObject> message = Handle<JSMessageObject>::cast(data);
+  Handle<Object> argv[] = { Handle<Object>(message->type()),
+                            Handle<Object>(message->arguments()) };
 
   bool caught_exception;
   Handle<Object> result =
@@ -159,7 +169,7 @@ Handle<String> MessageHandler::GetMessage(Handle<Object> data) {
                          &caught_exception);
 
   if (caught_exception || !result->IsString()) {
-    return FACTORY->LookupAsciiSymbol("<error>");
+    return FACTORY->LookupOneByteSymbol(STATIC_ASCII_VECTOR("<error>"));
   }
   Handle<String> result_string = Handle<String>::cast(result);
   // A string that has been obtained from JS code in this way is

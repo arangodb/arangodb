@@ -59,7 +59,8 @@ bool SafepointEntry::HasRegisterAt(int reg_index) const {
 
 
 SafepointTable::SafepointTable(Code* code) {
-  ASSERT(code->kind() == Code::OPTIMIZED_FUNCTION);
+  ASSERT(code->kind() == Code::OPTIMIZED_FUNCTION ||
+         code->kind() == Code::COMPILED_STUB);
   code_ = code;
   Address header = code->instruction_start() + code->safepoint_table_offset();
   length_ = Memory::uint32_at(header + kLengthOffset);
@@ -116,8 +117,8 @@ void SafepointTable::PrintBits(uint8_t byte, int digits) {
 }
 
 
-void Safepoint::DefinePointerRegister(Register reg) {
-  registers_->Add(reg.code());
+void Safepoint::DefinePointerRegister(Register reg, Zone* zone) {
+  registers_->Add(reg.code(), zone);
 }
 
 
@@ -131,15 +132,16 @@ Safepoint SafepointTableBuilder::DefineSafepoint(
   info.pc = assembler->pc_offset();
   info.arguments = arguments;
   info.has_doubles = (kind & Safepoint::kWithDoubles);
-  deoptimization_info_.Add(info);
-  deopt_index_list_.Add(Safepoint::kNoDeoptimizationIndex);
+  deoptimization_info_.Add(info, zone_);
+  deopt_index_list_.Add(Safepoint::kNoDeoptimizationIndex, zone_);
   if (deopt_mode == Safepoint::kNoLazyDeopt) {
     last_lazy_safepoint_ = deopt_index_list_.length();
   }
-  indexes_.Add(new ZoneList<int>(8));
+  indexes_.Add(new(zone_) ZoneList<int>(8, zone_), zone_);
   registers_.Add((kind & Safepoint::kWithRegisters)
-      ? new ZoneList<int>(4)
-      : NULL);
+      ? new(zone_) ZoneList<int>(4, zone_)
+      : NULL,
+      zone_);
   return Safepoint(indexes_.last(), registers_.last());
 }
 
@@ -157,14 +159,6 @@ unsigned SafepointTableBuilder::GetCodeOffset() const {
 
 
 void SafepointTableBuilder::Emit(Assembler* assembler, int bits_per_entry) {
-  // For lazy deoptimization we need space to patch a call after every call.
-  // Ensure there is always space for such patching, even if the code ends
-  // in a call.
-  int target_offset = assembler->pc_offset() + Deoptimizer::patch_size();
-  while (assembler->pc_offset() < target_offset) {
-    assembler->nop();
-  }
-
   // Make sure the safepoint table is properly aligned. Pad with nops.
   assembler->Align(kIntSize);
   assembler->RecordComment(";;; Safepoint table.");
@@ -190,12 +184,12 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int bits_per_entry) {
   }
 
   // Emit table of bitmaps.
-  ZoneList<uint8_t> bits(bytes_per_entry);
+  ZoneList<uint8_t> bits(bytes_per_entry, zone_);
   for (int i = 0; i < length; i++) {
     ZoneList<int>* indexes = indexes_[i];
     ZoneList<int>* registers = registers_[i];
     bits.Clear();
-    bits.AddBlock(0, bytes_per_entry);
+    bits.AddBlock(0, bytes_per_entry, zone_);
 
     // Run through the registers (if any).
     ASSERT(IsAligned(kNumSafepointRegisters, kBitsPerByte));

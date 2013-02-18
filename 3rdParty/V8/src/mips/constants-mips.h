@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -39,11 +39,20 @@
 
 #define UNSUPPORTED_MIPS() v8::internal::PrintF("Unsupported instruction.\n")
 
+enum ArchVariants {
+  kMips32r2,
+  kMips32r1,
+  kLoongson
+};
 
 #ifdef _MIPS_ARCH_MIPS32R2
-  #define mips32r2 1
+  static const ArchVariants kArchVariant = kMips32r2;
+#elif _MIPS_ARCH_LOONGSON
+// The loongson flag refers to the LOONGSON architectures based on MIPS-III,
+// which predates (and is a subset of) the mips32r2 and r1 architectures.
+  static const ArchVariants kArchVariant = kLoongson;
 #else
-  #define mips32r2 0
+  static const ArchVariants kArchVariant = kMips32r1;
 #endif
 
 
@@ -90,7 +99,7 @@ const int kInvalidFPURegister = -1;
 // FPU (coprocessor 1) control registers. Currently only FCSR is implemented.
 const int kFCSRRegister = 31;
 const int kInvalidFPUControlRegister = -1;
-const uint32_t kFPUInvalidResult = (uint32_t) (1 << 31) - 1;
+const uint32_t kFPUInvalidResult = static_cast<uint32_t>(1 << 31) - 1;
 
 // FCSR constants.
 const uint32_t kFCSRInexactFlagBit = 2;
@@ -207,6 +216,8 @@ const int kImm28Bits  = 28;
 // and are therefore shifted by 2.
 const int kImmFieldShift = 2;
 
+const int kFrBits        = 5;
+const int kFrShift       = 21;
 const int kFsShift       = 11;
 const int kFsBits        = 5;
 const int kFtShift       = 16;
@@ -286,7 +297,9 @@ enum Opcode {
   LDC1      =   ((6 << 3) + 5) << kOpcodeShift,
 
   SWC1      =   ((7 << 3) + 1) << kOpcodeShift,
-  SDC1      =   ((7 << 3) + 5) << kOpcodeShift
+  SDC1      =   ((7 << 3) + 5) << kOpcodeShift,
+
+  COP1X     =   ((1 << 4) + 3) << kOpcodeShift
 };
 
 enum SecondaryField {
@@ -407,6 +420,8 @@ enum SecondaryField {
   CVT_S_L   =   ((4 << 3) + 0),
   CVT_D_L   =   ((4 << 3) + 1),
   // COP1 Encoding of Function Field When rs=PS.
+  // COP1X Encoding of Function Field.
+  MADD_D    =   ((4 << 3) + 1),
 
   NULLSF    =   0
 };
@@ -668,6 +683,10 @@ class Instruction {
     return Bits(kFtShift + kFtBits - 1, kFtShift);
   }
 
+  inline int FrValue() const {
+    return Bits(kFrShift + kFrBits -1, kFrShift);
+  }
+
   // Float Compare condition code instruction bits.
   inline int FCccValue() const {
     return Bits(kFCccShift + kFCccBits - 1, kFCccShift);
@@ -778,11 +797,6 @@ const int kJSArgsSlotsSize = 0 * Instruction::kInstrSize;
 const int kBArgsSlotsSize = 0 * Instruction::kInstrSize;
 
 const int kBranchReturnOffset = 2 * Instruction::kInstrSize;
-
-const int kDoubleAlignmentBits = 3;
-const int kDoubleAlignment = (1 << kDoubleAlignmentBits);
-const int kDoubleAlignmentMask = kDoubleAlignment - 1;
-
 
 } }   // namespace v8::internal
 

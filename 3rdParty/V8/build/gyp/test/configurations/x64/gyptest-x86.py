@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,20 +10,22 @@ Verifies build of an executable in three different configurations.
 
 import TestGyp
 
-test = TestGyp.TestGyp(formats=['msvs'])
+import sys
+
+formats = ['msvs']
+if sys.platform == 'win32':
+  formats += ['ninja']
+test = TestGyp.TestGyp(formats=formats)
 
 test.run_gyp('configurations.gyp')
+test.set_configuration('Debug|Win32')
+test.build('configurations.gyp', test.ALL)
 
-for platform in ['Win32', 'x64']:
-  test.set_configuration('Debug|%s' % platform)
-  test.build('configurations.gyp', rebuild=True)
-  try:
-    test.run_built_executable('configurations',
-                              stdout=('Running %s\n' % platform))
-  except WindowsError, e:
-    # Assume the exe is 64-bit if it can't load on 32-bit systems.
-    if platform == 'x64' and (e.errno == 193 or '[Error 193]' in str(e)):
-      continue
-    raise
+for machine, suffix in [('14C machine (x86)', ''),
+                        ('8664 machine (x64)', '64')]:
+  output = test.run_dumpbin(
+      '/headers', test.built_file_path('configurations%s.exe' % suffix))
+  if machine not in output:
+    test.fail_test()
 
 test.pass_test()

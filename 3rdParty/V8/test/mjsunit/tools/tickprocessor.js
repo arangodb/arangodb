@@ -376,8 +376,14 @@ function driveTickProcessorTest(
   }
   assertTrue(pathLen != -1);
   var testsPath = TEST_FILE_NAME.substr(0, pathLen + 1);
-  var tp = new TickProcessor(
-      new CppEntriesProviderMock(), separateIc, ignoreUnknown, stateFilter);
+  var tp = new TickProcessor(new CppEntriesProviderMock(),
+                             separateIc,
+                             TickProcessor.CALL_GRAPH_SIZE,
+                             ignoreUnknown,
+                             stateFilter,
+                             undefined,
+                             "0",
+                             "auto,auto");
   var pm = new PrintMonitor(testsPath + refOutput);
   tp.processLogFileInTest(testsPath + logInput);
   tp.printStatistics();

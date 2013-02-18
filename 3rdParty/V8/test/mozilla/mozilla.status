@@ -69,6 +69,9 @@ js1_5/Array/regress-465980-02: SKIP
 ecma_3/Date/15.9.3.2-1: SKIP
 js1_2/function/Number: SKIP
 
+# TODO(2018): Temporarily allow timeout in debug mode.
+js1_5/GC/regress-203278-2: PASS || (TIMEOUT || FAIL) if $mode == debug
+
 ##################### SLOW TESTS #####################
 
 # This takes a long time to run (~100 seconds). It should only be run
@@ -103,7 +106,6 @@ js1_5/extensions/regress-365527: PASS || TIMEOUT if $mode == debug
 
 js1_5/Regress/regress-280769-3: PASS || FAIL if $mode == debug
 js1_5/Regress/regress-203278-1: PASS || FAIL if $mode == debug
-js1_5/GC/regress-203278-2: PASS || FAIL if $mode == debug
 js1_5/Regress/regress-244470: PASS || FAIL if $mode == debug
 ecma_3/RegExp/regress-209067: PASS || FAIL if $mode == debug
 js1_5/GC/regress-278725: PASS || FAIL if $mode == debug
@@ -123,13 +125,12 @@ ecma/Date/15.9.2.2-5: PASS || FAIL
 ecma/Date/15.9.2.2-6: PASS || FAIL
 
 # 1026139: These date tests fail on arm and mips
-ecma/Date/15.9.5.29-1: PASS || (($ARM || $MIPS) && FAIL)
-ecma/Date/15.9.5.34-1: PASS || (($ARM || $MIPS) && FAIL)
-ecma/Date/15.9.5.28-1: PASS || (($ARM || $MIPS) && FAIL)
+ecma/Date/15.9.5.29-1: PASS || FAIL if ($arch == arm || $arch == mipsel)
+ecma/Date/15.9.5.28-1: PASS || FAIL if ($arch == arm || $arch == mipsel)
 
 # 1050186: Arm/MIPS vm is broken; probably unrelated to dates
-ecma/Array/15.4.4.5-3: PASS || (($ARM || $MIPS) && FAIL)
-ecma/Date/15.9.5.22-2: PASS || (($ARM || $MIPS) && FAIL)
+ecma/Array/15.4.4.5-3: PASS || FAIL if ($arch == arm || $arch == mipsel)
+ecma/Date/15.9.5.22-2: PASS || FAIL if ($arch == arm || $arch == mipsel)
 
 # Flaky test that fails due to what appears to be a bug in the test.
 # Occurs depending on current time
@@ -176,7 +177,6 @@ ecma/Date/15.9.5.34-1: PASS || FAIL
 # These tests sometimes pass (in particular on Windows). They build up
 # a lot of stuff on the stack, which normally causes a stack overflow,
 # but sometimes it makes it through?
-js1_5/Regress/regress-290575: PASS || FAIL
 js1_5/Regress/regress-98901: PASS || FAIL
 
 
@@ -209,9 +209,16 @@ js1_5/Array/regress-101964: PASS || FAIL if $mode == debug
 # This section is for tests that fail in both V8 and JSC.  Thus they
 # have been determined to be incompatible between Mozilla and V8/JSC.
 
+# toPrecision argument restricted to range 1..21 in JSC/V8 and ECMA-262
+js1_5/Regress/regress-452346: FAIL_OK
+
 # Fail because it calls builtins as functions and do not expect the
 # builtin to have undefined as the receiver.
 ecma/String/15.5.4.6-2: FAIL_OK
+
+# Fail because it expects String.prototype.split to distinguish whether
+# separator was undefined or not passed at all.
+ecma/String/15.5.4.8-2: FAIL_OK
 
 # Fail because of toLowerCase and toUpperCase conversion.
 ecma/String/15.5.4.11-2: FAIL_OK
@@ -237,16 +244,6 @@ js1_5/Function/regress-338121-03: FAIL_OK
 
 # Expectes 'prototype' property of functions to be enumerable.
 js1_5/Function/10.1.6-01: FAIL_OK
-
-# Length of objects whose prototype chain includes a function
-ecma_3/Function/regress-313570: FAIL_OK
-
-# toPrecision argument restricted to range 1..21 in JSC/V8
-js1_5/Regress/regress-452346: FAIL_OK
-ecma_3/Number/15.7.4.7-1: FAIL_OK
-
-# toExponential argument restricted to range 0..20 in JSC/V8
-ecma_3/Number/15.7.4.6-1: FAIL_OK
 
 #:=== RegExp:===
 # We don't match the syntax error message of Mozilla for invalid
@@ -364,6 +361,10 @@ ecma/GlobalObject/15.1.2.6: FAIL_OK
 ecma/GlobalObject/15.1.2.7: FAIL_OK
 
 
+# Leading zero no longer signal octal numbers (ECMA-262 Annex E 15.1.2.2).
+ecma/GlobalObject/15.1.2.2-2: FAIL_OK
+
+
 # Tests that rely on specific details of function decompilation or
 # print strings for errors. Non-ECMA behavior.
 js1_2/function/tostring-2: FAIL_OK
@@ -394,15 +395,6 @@ js1_5/decompilation/regress-460116-02: FAIL_OK
 js1_5/decompilation/regress-460501: FAIL_OK
 js1_5/decompilation/regress-460116-03: FAIL_OK
 js1_5/decompilation/regress-461110: FAIL_OK
-js1_5/decompilation/regress-456964-01: FAIL_OK
-js1_5/decompilation/regress-437288-02: FAIL_OK
-js1_5/decompilation/regress-457824: FAIL_OK
-js1_5/decompilation/regress-460116-01: FAIL_OK
-js1_5/decompilation/regress-460116-02: FAIL_OK
-js1_5/decompilation/regress-460116-03: FAIL_OK
-js1_5/decompilation/regress-460501: FAIL_OK
-js1_5/decompilation/regress-461110: FAIL_OK
-
 
 
 # Tests that use uneval.  Non-ECMA.
@@ -559,7 +551,7 @@ ecma_3/RegExp/15.10.2-1: PASS || FAIL_OK
 
 # This test requires a failure if we try to compile a function with more
 # than 65536 arguments.  This seems to be a Mozilla restriction.
-js1_5/Regress/regress-290575: FAIL_OK
+js1_5/Regress/regress-290575: PASS || FAIL_OK
 
 
 # Fails because of the way function declarations are
@@ -583,6 +575,24 @@ js1_5/Regress/regress-417893: FAIL_OK
 # Unsupported use of "[]" as function parameter. We match JSC.
 js1_5/Regress/regress-416737-01: FAIL_OK
 js1_5/Regress/regress-416737-02: FAIL_OK
+
+
+# Illegal escape-sequences in string literals. Has already been fixed
+# by most engines (i.e. V8, JSC, Opera and FF).
+ecma/Array/15.4.5.1-1: FAIL_OK
+ecma/LexicalConventions/7.7.4: FAIL_OK
+ecma_2/RegExp/hex-001: FAIL_OK
+js1_2/regexp/hexadecimal: FAIL_OK
+
+
+# The source field of RegExp objects is properly escaped. We match JSC.
+ecma_2/RegExp/constructor-001: FAIL_OK
+ecma_2/RegExp/function-001: FAIL_OK
+ecma_2/RegExp/properties-001: FAIL_OK
+
+
+# Negative hexadecimal literals are parsed as NaN. This test is outdated.
+ecma/TypeConversion/9.3.1-3: FAIL_OK
 
 
 ##################### FAILING TESTS #####################
@@ -615,7 +625,7 @@ js1_5/Expressions/regress-394673: FAIL
 
 # Bug 762: http://code.google.com/p/v8/issues/detail?id=762
 # We do not correctly handle assignments within "with"
-/ecma_3/Statements/12.10-01: FAIL
+ecma_3/Statements/12.10-01: FAIL
 
 # We do not throw an exception when a const is redeclared.
 # (We only fail section 1 of the test.)
@@ -730,13 +740,11 @@ js1_5/extensions/regress-90596-001: FAIL_OK
 js1_5/extensions/regress-90596-002: FAIL_OK
 js1_5/extensions/regress-96284-001: FAIL_OK
 js1_5/extensions/regress-96284-002: FAIL_OK
-js1_5/extensions/scope-001: FAIL_OK
 js1_5/extensions/toLocaleFormat-01: FAIL_OK
 js1_5/extensions/toLocaleFormat-02: FAIL_OK
 
 js1_5/extensions/regress-330569: TIMEOUT
 js1_5/extensions/regress-351448: TIMEOUT
-js1_5/extensions/regress-342960: FAIL_OK || TIMEOUT if $mode == debug
 # In the 64-bit version, this test takes longer to run out of memory
 # than it does in the 32-bit version when attempting to generate a huge
 # error message in debug mode.
@@ -801,19 +809,9 @@ js1_5/decompilation/regress-383721: PASS || FAIL
 js1_5/decompilation/regress-406555: PASS || FAIL
 js1_5/decompilation/regress-460870: PASS || FAIL
 
-# These tests take an unreasonable amount of time so we skip them
-# in fast mode.
-
-js1_5/Regress/regress-312588: TIMEOUT || SKIP if $FAST == yes
-js1_5/Regress/regress-271716-n: PASS || SKIP if $FAST == yes
-
 
 [ $arch == arm ]
 
-# Times out and print so much output that we need to skip it to not
-# hang the builder.
-js1_5/extensions/regress-342960: SKIP
-
 # BUG(3251229): Times out when running new crankshaft test script.
 ecma_3/RegExp/regress-311414: SKIP
 ecma/Date/15.9.5.8: SKIP
@@ -831,44 +829,7 @@ js1_5/Regress/regress-451322: SKIP
 js1_5/GC/regress-203278-2: PASS || TIMEOUT
 
 
-[ $fast == yes && $arch == arm ]
-
-# In fast mode on arm we try to skip all tests that would time out,
-# since running the tests takes so long in the first place.
-
-js1_5/Regress/regress-280769-2: SKIP
-js1_5/Regress/regress-280769-3: SKIP
-js1_5/Regress/regress-244470: SKIP
-js1_5/Regress/regress-203278-1: SKIP
-js1_5/Regress/regress-290575: SKIP
-js1_5/Regress/regress-159334: SKIP
-js1_5/Regress/regress-321971: SKIP
-js1_5/Regress/regress-347306-01: SKIP
-js1_5/Regress/regress-280769-1: SKIP
-js1_5/Regress/regress-280769-5: SKIP
-js1_5/GC/regress-306788: SKIP
-js1_5/GC/regress-278725: SKIP
-js1_5/GC/regress-203278-3: SKIP
-js1_5/GC/regress-311497: SKIP
-js1_5/Array/regress-99120-02: SKIP
-ecma/Date/15.9.5.22-1: SKIP
-ecma/Date/15.9.5.20: SKIP
-ecma/Date/15.9.5.12-2: SKIP
-ecma/Date/15.9.5.8: SKIP
-ecma/Date/15.9.5.9: SKIP
-ecma/Date/15.9.5.11-2: SKIP
-ecma/Expressions/11.7.2: SKIP
-ecma/Expressions/11.10-2: SKIP
-ecma/Expressions/11.7.3: SKIP
-ecma/Expressions/11.10-3: SKIP
-ecma/Expressions/11.7.1: SKIP
-ecma_3/RegExp/regress-209067: SKIP
-
-[ $arch == mips ]
-
-# Times out and print so much output that we need to skip it to not
-# hang the builder.
-js1_5/extensions/regress-342960: SKIP
+[ $arch == mipsel ]
 
 # BUG(3251229): Times out when running new crankshaft test script.
 ecma_3/RegExp/regress-311414: SKIP
@@ -885,37 +846,3 @@ js1_5/Regress/regress-451322: SKIP
 
 # BUG(1040): Allow this test to timeout.
 js1_5/GC/regress-203278-2: PASS || TIMEOUT
-
-
-[ $fast == yes && $arch == mips ]
-
-# In fast mode on mips we try to skip all tests that would time out,
-# since running the tests takes so long in the first place.
-
-js1_5/Regress/regress-280769-2: SKIP
-js1_5/Regress/regress-280769-3: SKIP
-js1_5/Regress/regress-244470: SKIP
-js1_5/Regress/regress-203278-1: SKIP
-js1_5/Regress/regress-290575: SKIP
-js1_5/Regress/regress-159334: SKIP
-js1_5/Regress/regress-321971: SKIP
-js1_5/Regress/regress-347306-01: SKIP
-js1_5/Regress/regress-280769-1: SKIP
-js1_5/Regress/regress-280769-5: SKIP
-js1_5/GC/regress-306788: SKIP
-js1_5/GC/regress-278725: SKIP
-js1_5/GC/regress-203278-3: SKIP
-js1_5/GC/regress-311497: SKIP
-js1_5/Array/regress-99120-02: SKIP
-ecma/Date/15.9.5.22-1: SKIP
-ecma/Date/15.9.5.20: SKIP
-ecma/Date/15.9.5.12-2: SKIP
-ecma/Date/15.9.5.8: SKIP
-ecma/Date/15.9.5.9: SKIP
-ecma/Date/15.9.5.11-2: SKIP
-ecma/Expressions/11.7.2: SKIP
-ecma/Expressions/11.10-2: SKIP
-ecma/Expressions/11.7.3: SKIP
-ecma/Expressions/11.10-3: SKIP
-ecma/Expressions/11.7.1: SKIP
-ecma_3/RegExp/regress-209067: SKIP

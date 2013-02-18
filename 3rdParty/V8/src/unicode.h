@@ -29,7 +29,7 @@
 #define V8_UNICODE_H_
 
 #include <sys/types.h>
-
+#include <globals.h>
 /**
  * \file
  * Definitions and convenience functions for working with unicode.
@@ -100,26 +100,57 @@ class UnicodeData {
   static const uchar kMaxCodePoint;
 };
 
-// --- U t f   8 ---
-
-template <typename Data>
-class Buffer {
+class Utf16 {
  public:
-  inline Buffer(Data data, unsigned length) : data_(data), length_(length) { }
-  inline Buffer() : data_(0), length_(0) { }
-  Data data() { return data_; }
-  unsigned length() { return length_; }
- private:
-  Data data_;
-  unsigned length_;
+  static inline bool IsLeadSurrogate(int code) {
+    if (code == kNoPreviousCharacter) return false;
+    return (code & 0xfc00) == 0xd800;
+  }
+  static inline bool IsTrailSurrogate(int code) {
+    if (code == kNoPreviousCharacter) return false;
+    return (code & 0xfc00) == 0xdc00;
+  }
+
+  static inline int CombineSurrogatePair(uchar lead, uchar trail) {
+    return 0x10000 + ((lead & 0x3ff) << 10) + (trail & 0x3ff);
+  }
+  static const int kNoPreviousCharacter = -1;
+  static const uchar kMaxNonSurrogateCharCode = 0xffff;
+  // Encoding a single UTF-16 code unit will produce 1, 2 or 3 bytes
+  // of UTF-8 data.  The special case where the unit is a surrogate
+  // trail produces 1 byte net, because the encoding of the pair is
+  // 4 bytes and the 3 bytes that were used to encode the lead surrogate
+  // can be reclaimed.
+  static const int kMaxExtraUtf8BytesForOneUtf16CodeUnit = 3;
+  // One UTF-16 surrogate is endoded (illegally) as 3 UTF-8 bytes.
+  // The illegality stems from the surrogate not being part of a pair.
+  static const int kUtf8BytesToCodeASurrogate = 3;
+  static inline uint16_t LeadSurrogate(uint32_t char_code) {
+    return 0xd800 + (((char_code - 0x10000) >> 10) & 0x3ff);
+  }
+  static inline uint16_t TrailSurrogate(uint32_t char_code) {
+    return 0xdc00 + (char_code & 0x3ff);
+  }
+};
+
+class Latin1 {
+ public:
+#ifndef ENABLE_LATIN_1
+  static const unsigned kMaxChar = 0x7f;
+#else
+  static const unsigned kMaxChar = 0xff;
+#endif
+  // Returns 0 if character does not convert to single latin-1 character
+  // or if the character doesn't not convert back to latin-1 via inverse
+  // operation (upper to lower, etc).
+  static inline uint16_t ConvertNonLatin1ToLatin1(uint16_t);
 };
 
 class Utf8 {
  public:
-  static inline uchar Length(uchar chr);
-  static inline unsigned Encode(char* out, uchar c);
-  static const byte* ReadBlock(Buffer<const char*> str, byte* buffer,
-      unsigned capacity, unsigned* chars_read, unsigned* offset);
+  static inline uchar Length(uchar chr, int previous);
+  static inline unsigned Encode(
+      char* out, uchar c, int previous);
   static uchar CalculateValue(const byte* str,
                               unsigned length,
                               unsigned* cursor);
@@ -130,85 +161,51 @@ class Utf8 {
   static const unsigned kMaxThreeByteChar = 0xffff;
   static const unsigned kMaxFourByteChar  = 0x1fffff;
 
- private:
-  template <unsigned s> friend class Utf8InputBuffer;
-  friend class Test;
+  // A single surrogate is coded as a 3 byte UTF-8 sequence, but two together
+  // that match are coded as a 4 byte UTF-8 sequence.
+  static const unsigned kBytesSavedByCombiningSurrogates = 2;
+  static const unsigned kSizeOfUnmatchedSurrogate = 3;
   static inline uchar ValueOf(const byte* str,
                               unsigned length,
                               unsigned* cursor);
 };
 
-// --- C h a r a c t e r   S t r e a m ---
 
-class CharacterStream {
+class Utf8DecoderBase {
  public:
-  inline uchar GetNext();
-  inline bool has_more() { return remaining_ != 0; }
-  // Note that default implementation is not efficient.
-  virtual void Seek(unsigned);
-  unsigned Length();
-  virtual ~CharacterStream() { }
-  static inline bool EncodeCharacter(uchar c, byte* buffer, unsigned capacity,
-      unsigned& offset);
-  static inline bool EncodeAsciiCharacter(uchar c, byte* buffer,
-      unsigned capacity, unsigned& offset);
-  static inline bool EncodeNonAsciiCharacter(uchar c, byte* buffer,
-      unsigned capacity, unsigned& offset);
-  static inline uchar DecodeCharacter(const byte* buffer, unsigned* offset);
-  virtual void Rewind() = 0;
+  // Initialization done in subclass.
+  inline Utf8DecoderBase();
+  inline Utf8DecoderBase(uint16_t* buffer,
+                         unsigned buffer_length,
+                         const uint8_t* stream,
+                         unsigned stream_length);
+  inline unsigned Utf16Length() const { return utf16_length_; }
  protected:
-  virtual void FillBuffer() = 0;
-  // The number of characters left in the current buffer
-  unsigned remaining_;
-  // The current offset within the buffer
-  unsigned cursor_;
-  // The buffer containing the decoded characters.
-  const byte* buffer_;
+  // This reads all characters and sets the utf16_length_.
+  // The first buffer_length utf16 chars are cached in the buffer.
+  void Reset(uint16_t* buffer,
+             unsigned buffer_length,
+             const uint8_t* stream,
+             unsigned stream_length);
+  static void WriteUtf16Slow(const uint8_t* stream,
+                             uint16_t* data,
+                             unsigned length);
+  const uint8_t* unbuffered_start_;
+  unsigned utf16_length_;
+  bool last_byte_of_buffer_unused_;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Utf8DecoderBase);
 };
 
-// --- I n p u t   B u f f e r ---
-
-/**
- * Provides efficient access to encoded characters in strings.  It
- * does so by reading characters one block at a time, rather than one
- * character at a time, which gives string implementations an
- * opportunity to optimize the decoding.
- */
-template <class Reader, class Input = Reader*, unsigned kSize = 256>
-class InputBuffer : public CharacterStream {
+template <unsigned kBufferSize>
+class Utf8Decoder : public Utf8DecoderBase {
  public:
-  virtual void Rewind();
-  inline void Reset(Input input);
-  void Seek(unsigned position);
-  inline void Reset(unsigned position, Input input);
- protected:
-  InputBuffer() { }
-  explicit InputBuffer(Input input) { Reset(input); }
-  virtual void FillBuffer();
-
-  // A custom offset that can be used by the string implementation to
-  // mark progress within the encoded string.
-  unsigned offset_;
-  // The input string
-  Input input_;
-  // To avoid heap allocation, we keep an internal buffer to which
-  // the encoded string can write its characters.  The string
-  // implementation is free to decide whether it wants to use this
-  // buffer or not.
-  byte util_buffer_[kSize];
-};
-
-// --- U t f 8   I n p u t   B u f f e r ---
-
-template <unsigned s = 256>
-class Utf8InputBuffer : public InputBuffer<Utf8, Buffer<const char*>, s> {
- public:
-  inline Utf8InputBuffer() { }
-  inline Utf8InputBuffer(const char* data, unsigned length);
-  inline void Reset(const char* data, unsigned length) {
-    InputBuffer<Utf8, Buffer<const char*>, s>::Reset(
-        Buffer<const char*>(data, length));
-  }
+  inline Utf8Decoder() {}
+  inline Utf8Decoder(const char* stream, unsigned length);
+  inline void Reset(const char* stream, unsigned length);
+  inline unsigned WriteUtf16(uint16_t* data, unsigned length) const;
+ private:
+  uint16_t buffer_[kBufferSize];
 };
 
 
