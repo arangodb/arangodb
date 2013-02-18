@@ -45,8 +45,8 @@ StaticVisitorBase::VisitorId StaticVisitorBase::GetVisitorId(
   if (instance_type < FIRST_NONSTRING_TYPE) {
     switch (instance_type & kStringRepresentationMask) {
       case kSeqStringTag:
-        if ((instance_type & kStringEncodingMask) == kAsciiStringTag) {
-          return kVisitSeqAsciiString;
+        if ((instance_type & kStringEncodingMask) == kOneByteStringTag) {
+          return kVisitSeqOneByteString;
         } else {
           return kVisitSeqTwoByteString;
         }
@@ -133,7 +133,9 @@ StaticVisitorBase::VisitorId StaticVisitorBase::GetVisitorId(
 
     case JS_OBJECT_TYPE:
     case JS_CONTEXT_EXTENSION_OBJECT_TYPE:
+    case JS_MODULE_TYPE:
     case JS_VALUE_TYPE:
+    case JS_DATE_TYPE:
     case JS_ARRAY_TYPE:
     case JS_GLOBAL_PROXY_TYPE:
     case JS_GLOBAL_OBJECT_TYPE:

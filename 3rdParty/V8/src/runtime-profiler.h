@@ -1,4 +1,4 @@
-// Copyright 2010 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -43,7 +43,7 @@ class RuntimeProfiler {
  public:
   explicit RuntimeProfiler(Isolate* isolate);
 
-  static void GlobalSetup();
+  static void GlobalSetUp();
 
   static inline bool IsEnabled() {
     ASSERT(has_been_globally_set_up_);
@@ -52,14 +52,14 @@ class RuntimeProfiler {
 
   void OptimizeNow();
 
-  void NotifyTick();
-
   void SetUp();
   void Reset();
   void TearDown();
 
   Object** SamplerWindowAddress();
   int SamplerWindowSize();
+
+  void NotifyICChanged() { any_ic_changed_ = true; }
 
   // Rate limiting support.
 
@@ -71,17 +71,12 @@ class RuntimeProfiler {
 
   // Profiler thread interface.
   //
-  // IsSomeIsolateInJS():
-  // The profiler thread can query whether some isolate is currently
-  // running JavaScript code.
-  //
   // WaitForSomeIsolateToEnterJS():
   // When no isolates are running JavaScript code for some time the
   // profiler thread suspends itself by calling the wait function. The
   // wait function returns true after it waited or false immediately.
   // While the function was waiting the profiler may have been
   // disabled so it *must check* whether it is allowed to continue.
-  static bool IsSomeIsolateInJS();
   static bool WaitForSomeIsolateToEnterJS();
 
   // Stops the runtime profiler thread when profiling support is being
@@ -92,14 +87,14 @@ class RuntimeProfiler {
   void RemoveDeadSamples();
   void UpdateSamplesAfterCompact(ObjectVisitor* visitor);
 
+  void AttemptOnStackReplacement(JSFunction* function);
+
  private:
   static const int kSamplerWindowSize = 16;
 
   static void HandleWakeUp(Isolate* isolate);
 
-  void Optimize(JSFunction* function);
-
-  void AttemptOnStackReplacement(JSFunction* function);
+  void Optimize(JSFunction* function, const char* reason);
 
   void ClearSampleBuffer();
 
@@ -119,34 +114,18 @@ class RuntimeProfiler {
   int sampler_window_position_;
   int sampler_window_weight_[kSamplerWindowSize];
 
+  bool any_ic_changed_;
+  bool code_generated_;
+
   // Possible state values:
   //   -1            => the profiler thread is waiting on the semaphore
   //   0 or positive => the number of isolates running JavaScript code.
   static Atomic32 state_;
-  static Semaphore* semaphore_;
 
 #ifdef DEBUG
   static bool has_been_globally_set_up_;
 #endif
   static bool enabled_;
-};
-
-
-// Rate limiter intended to be used in the profiler thread.
-class RuntimeProfilerRateLimiter BASE_EMBEDDED {
- public:
-  RuntimeProfilerRateLimiter() {}
-
-  // Suspends the current thread (which must be the profiler thread)
-  // when not executing JavaScript to minimize CPU usage. Returns
-  // whether the thread was suspended (and so must check whether
-  // profiling is still active.)
-  //
-  // Does nothing when runtime profiling is not enabled.
-  bool SuspendIfNecessary();
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(RuntimeProfilerRateLimiter);
 };
 
 

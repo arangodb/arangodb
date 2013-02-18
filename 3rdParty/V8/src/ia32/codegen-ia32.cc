@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -30,6 +30,7 @@
 #if defined(V8_TARGET_ARCH_IA32)
 
 #include "codegen.h"
+#include "heap.h"
 #include "macro-assembler.h"
 
 namespace v8 {
@@ -54,6 +55,122 @@ void StubRuntimeCallHelper::AfterCall(MacroAssembler* masm) const {
 
 
 #define __ masm.
+
+
+UnaryMathFunction CreateTranscendentalFunction(TranscendentalCache::Type type) {
+  size_t actual_size;
+  // Allocate buffer in executable space.
+  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB,
+                                                 &actual_size,
+                                                 true));
+  if (buffer == NULL) {
+    // Fallback to library function if function cannot be created.
+    switch (type) {
+      case TranscendentalCache::SIN: return &sin;
+      case TranscendentalCache::COS: return &cos;
+      case TranscendentalCache::TAN: return &tan;
+      case TranscendentalCache::LOG: return &log;
+      default: UNIMPLEMENTED();
+    }
+  }
+
+  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
+  // esp[1 * kPointerSize]: raw double input
+  // esp[0 * kPointerSize]: return address
+  // Move double input into registers.
+
+  __ push(ebx);
+  __ push(edx);
+  __ push(edi);
+  __ fld_d(Operand(esp, 4 * kPointerSize));
+  __ mov(ebx, Operand(esp, 4 * kPointerSize));
+  __ mov(edx, Operand(esp, 5 * kPointerSize));
+  TranscendentalCacheStub::GenerateOperation(&masm, type);
+  // The return value is expected to be on ST(0) of the FPU stack.
+  __ pop(edi);
+  __ pop(edx);
+  __ pop(ebx);
+  __ Ret();
+
+  CodeDesc desc;
+  masm.GetCode(&desc);
+  ASSERT(desc.reloc_size == 0);
+
+  CPU::FlushICache(buffer, actual_size);
+  OS::ProtectCode(buffer, actual_size);
+  return FUNCTION_CAST<UnaryMathFunction>(buffer);
+}
+
+
+UnaryMathFunction CreateExpFunction() {
+  if (!CpuFeatures::IsSupported(SSE2)) return &exp;
+  if (!FLAG_fast_math) return &exp;
+  size_t actual_size;
+  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB, &actual_size, true));
+  if (buffer == NULL) return &exp;
+  ExternalReference::InitializeMathExpData();
+
+  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
+  // esp[1 * kPointerSize]: raw double input
+  // esp[0 * kPointerSize]: return address
+  {
+    CpuFeatures::Scope use_sse2(SSE2);
+    XMMRegister input = xmm1;
+    XMMRegister result = xmm2;
+    __ movdbl(input, Operand(esp, 1 * kPointerSize));
+    __ push(eax);
+    __ push(ebx);
+
+    MathExpGenerator::EmitMathExp(&masm, input, result, xmm0, eax, ebx);
+
+    __ pop(ebx);
+    __ pop(eax);
+    __ movdbl(Operand(esp, 1 * kPointerSize), result);
+    __ fld_d(Operand(esp, 1 * kPointerSize));
+    __ Ret();
+  }
+
+  CodeDesc desc;
+  masm.GetCode(&desc);
+
+  CPU::FlushICache(buffer, actual_size);
+  OS::ProtectCode(buffer, actual_size);
+  return FUNCTION_CAST<UnaryMathFunction>(buffer);
+}
+
+
+UnaryMathFunction CreateSqrtFunction() {
+  size_t actual_size;
+  // Allocate buffer in executable space.
+  byte* buffer = static_cast<byte*>(OS::Allocate(1 * KB,
+                                                 &actual_size,
+                                                 true));
+  // If SSE2 is not available, we can use libc's implementation to ensure
+  // consistency since code by fullcodegen's calls into runtime in that case.
+  if (buffer == NULL || !CpuFeatures::IsSupported(SSE2)) return &sqrt;
+  MacroAssembler masm(NULL, buffer, static_cast<int>(actual_size));
+  // esp[1 * kPointerSize]: raw double input
+  // esp[0 * kPointerSize]: return address
+  // Move double input into registers.
+  {
+    CpuFeatures::Scope use_sse2(SSE2);
+    __ movdbl(xmm0, Operand(esp, 1 * kPointerSize));
+    __ sqrtsd(xmm0, xmm0);
+    __ movdbl(Operand(esp, 1 * kPointerSize), xmm0);
+    // Load result into floating point register as return value.
+    __ fld_d(Operand(esp, 1 * kPointerSize));
+    __ Ret();
+  }
+
+  CodeDesc desc;
+  masm.GetCode(&desc);
+  ASSERT(desc.reloc_size == 0);
+
+  CPU::FlushICache(buffer, actual_size);
+  OS::ProtectCode(buffer, actual_size);
+  return FUNCTION_CAST<UnaryMathFunction>(buffer);
+}
+
 
 static void MemCopyWrapper(void* dest, const void* src, size_t size) {
   memcpy(dest, src, size);
@@ -271,8 +388,10 @@ OS::MemCopyFunction CreateMemCopyFunction() {
 
 #define __ ACCESS_MASM(masm)
 
-void ElementsTransitionGenerator::GenerateSmiOnlyToObject(
-    MacroAssembler* masm) {
+
+void ElementsTransitionGenerator::GenerateMapChangeElementsTransition(
+    MacroAssembler* masm, AllocationSiteMode mode,
+    Label* allocation_site_info_found) {
   // ----------- S t a t e -------------
   //  -- eax    : value
   //  -- ebx    : target map
@@ -280,6 +399,12 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToObject(
   //  -- edx    : receiver
   //  -- esp[0] : return address
   // -----------------------------------
+  if (mode == TRACK_ALLOCATION_SITE) {
+    ASSERT(allocation_site_info_found != NULL);
+    __ TestJSArrayForAllocationSiteInfo(edx, edi);
+    __ j(equal, allocation_site_info_found);
+  }
+
   // Set transitioned map.
   __ mov(FieldOperand(edx, HeapObject::kMapOffset), ebx);
   __ RecordWriteField(edx,
@@ -292,8 +417,8 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToObject(
 }
 
 
-void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
-    MacroAssembler* masm, Label* fail) {
+void ElementsTransitionGenerator::GenerateSmiToDouble(
+    MacroAssembler* masm, AllocationSiteMode mode, Label* fail) {
   // ----------- S t a t e -------------
   //  -- eax    : value
   //  -- ebx    : target map
@@ -301,18 +426,32 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
   //  -- edx    : receiver
   //  -- esp[0] : return address
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required;
+  Label loop, entry, convert_hole, gc_required, only_change_map;
+
+  if (mode == TRACK_ALLOCATION_SITE) {
+    __ TestJSArrayForAllocationSiteInfo(edx, edi);
+    __ j(equal, fail);
+  }
+
+  // Check for empty arrays, which only require a map transition and no changes
+  // to the backing store.
+  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
+  __ cmp(edi, Immediate(masm->isolate()->factory()->empty_fixed_array()));
+  __ j(equal, &only_change_map);
+
   __ push(eax);
   __ push(ebx);
 
-  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
   __ mov(edi, FieldOperand(edi, FixedArray::kLengthOffset));
 
   // Allocate new FixedDoubleArray.
   // edx: receiver
   // edi: length of source FixedArray (smi-tagged)
-  __ lea(esi, Operand(edi, times_4, FixedDoubleArray::kHeaderSize));
-  __ AllocateInNewSpace(esi, eax, ebx, no_reg, &gc_required, TAG_OBJECT);
+  AllocationFlags flags =
+      static_cast<AllocationFlags>(TAG_OBJECT | DOUBLE_ALIGNMENT);
+  __ AllocateInNewSpace(FixedDoubleArray::kHeaderSize, times_8,
+                        edi, REGISTER_VALUE_IS_SMI,
+                        eax, ebx, no_reg, &gc_required, flags);
 
   // eax: destination FixedDoubleArray
   // edi: number of elements
@@ -399,6 +538,11 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
 
   __ pop(ebx);
   __ pop(eax);
+
+  // Restore esi.
+  __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
+
+  __ bind(&only_change_map);
   // eax: value
   // ebx: target map
   // Set transitioned map.
@@ -408,15 +552,13 @@ void ElementsTransitionGenerator::GenerateSmiOnlyToDouble(
                       ebx,
                       edi,
                       kDontSaveFPRegs,
-                      EMIT_REMEMBERED_SET,
+                      OMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
-  // Restore esi.
-  __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
 }
 
 
 void ElementsTransitionGenerator::GenerateDoubleToObject(
-    MacroAssembler* masm, Label* fail) {
+    MacroAssembler* masm, AllocationSiteMode mode, Label* fail) {
   // ----------- S t a t e -------------
   //  -- eax    : value
   //  -- ebx    : target map
@@ -424,12 +566,23 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   //  -- edx    : receiver
   //  -- esp[0] : return address
   // -----------------------------------
-  Label loop, entry, convert_hole, gc_required;
+  Label loop, entry, convert_hole, gc_required, only_change_map, success;
+
+  if (mode == TRACK_ALLOCATION_SITE) {
+    __ TestJSArrayForAllocationSiteInfo(edx, edi);
+    __ j(equal, fail);
+  }
+
+  // Check for empty arrays, which only require a map transition and no changes
+  // to the backing store.
+  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
+  __ cmp(edi, Immediate(masm->isolate()->factory()->empty_fixed_array()));
+  __ j(equal, &only_change_map);
+
   __ push(eax);
   __ push(edx);
   __ push(ebx);
 
-  __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
   __ mov(ebx, FieldOperand(edi, FixedDoubleArray::kLengthOffset));
 
   // Allocate new FixedArray.
@@ -445,6 +598,20 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   __ mov(edi, FieldOperand(edx, JSObject::kElementsOffset));
 
   __ jmp(&entry);
+
+  // ebx: target map
+  // edx: receiver
+  // Set transitioned map.
+  __ bind(&only_change_map);
+  __ mov(FieldOperand(edx, HeapObject::kMapOffset), ebx);
+  __ RecordWriteField(edx,
+                      HeapObject::kMapOffset,
+                      ebx,
+                      edi,
+                      kDontSaveFPRegs,
+                      OMIT_REMEMBERED_SET,
+                      OMIT_SMI_CHECK);
+  __ jmp(&success);
 
   // Call into runtime if GC is required.
   __ bind(&gc_required);
@@ -507,7 +674,7 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
                       ebx,
                       edi,
                       kDontSaveFPRegs,
-                      EMIT_REMEMBERED_SET,
+                      OMIT_REMEMBERED_SET,
                       OMIT_SMI_CHECK);
   // Replace receiver's backing store with newly created and filled FixedArray.
   __ mov(FieldOperand(edx, JSObject::kElementsOffset), eax);
@@ -522,6 +689,8 @@ void ElementsTransitionGenerator::GenerateDoubleToObject(
   // Restore registers.
   __ pop(eax);
   __ mov(esi, Operand(ebp, StandardFrameConstants::kContextOffset));
+
+  __ bind(&success);
 }
 
 
@@ -605,7 +774,7 @@ void StringCharLoadGenerator::Generate(MacroAssembler* masm,
   // Dispatch on the encoding: ASCII or two-byte.
   Label ascii;
   __ bind(&seq_string);
-  STATIC_ASSERT((kStringEncodingMask & kAsciiStringTag) != 0);
+  STATIC_ASSERT((kStringEncodingMask & kOneByteStringTag) != 0);
   STATIC_ASSERT((kStringEncodingMask & kTwoByteStringTag) == 0);
   __ test(result, Immediate(kStringEncodingMask));
   __ j(not_zero, &ascii, Label::kNear);
@@ -624,11 +793,173 @@ void StringCharLoadGenerator::Generate(MacroAssembler* masm,
   __ movzx_b(result, FieldOperand(string,
                                   index,
                                   times_1,
-                                  SeqAsciiString::kHeaderSize));
+                                  SeqOneByteString::kHeaderSize));
+  __ bind(&done);
+}
+
+
+void SeqStringSetCharGenerator::Generate(MacroAssembler* masm,
+                                         String::Encoding encoding,
+                                         Register string,
+                                         Register index,
+                                         Register value) {
+  if (FLAG_debug_code) {
+    __ test(index, Immediate(kSmiTagMask));
+    __ Check(zero, "Non-smi index");
+    __ test(value, Immediate(kSmiTagMask));
+    __ Check(zero, "Non-smi value");
+
+    __ cmp(index, FieldOperand(string, String::kLengthOffset));
+    __ Check(less, "Index is too large");
+
+    __ cmp(index, Immediate(Smi::FromInt(0)));
+    __ Check(greater_equal, "Index is negative");
+
+    __ push(value);
+    __ mov(value, FieldOperand(string, HeapObject::kMapOffset));
+    __ movzx_b(value, FieldOperand(value, Map::kInstanceTypeOffset));
+
+    __ and_(value, Immediate(kStringRepresentationMask | kStringEncodingMask));
+    static const uint32_t one_byte_seq_type = kSeqStringTag | kOneByteStringTag;
+    static const uint32_t two_byte_seq_type = kSeqStringTag | kTwoByteStringTag;
+    __ cmp(value, Immediate(encoding == String::ONE_BYTE_ENCODING
+                                ? one_byte_seq_type : two_byte_seq_type));
+    __ Check(equal, "Unexpected string type");
+    __ pop(value);
+  }
+
+  __ SmiUntag(value);
+  STATIC_ASSERT(kSmiTagSize == 1 && kSmiTag == 0);
+  if (encoding == String::ONE_BYTE_ENCODING) {
+    __ SmiUntag(index);
+    __ mov_b(FieldOperand(string, index, times_1, SeqString::kHeaderSize),
+             value);
+  } else {
+    // No need to untag a smi for two-byte addressing.
+    __ mov_w(FieldOperand(string, index, times_1, SeqString::kHeaderSize),
+             value);
+  }
+}
+
+
+static Operand ExpConstant(int index) {
+  return Operand::StaticVariable(ExternalReference::math_exp_constants(index));
+}
+
+
+void MathExpGenerator::EmitMathExp(MacroAssembler* masm,
+                                   XMMRegister input,
+                                   XMMRegister result,
+                                   XMMRegister double_scratch,
+                                   Register temp1,
+                                   Register temp2) {
+  ASSERT(!input.is(double_scratch));
+  ASSERT(!input.is(result));
+  ASSERT(!result.is(double_scratch));
+  ASSERT(!temp1.is(temp2));
+  ASSERT(ExternalReference::math_exp_constants(0).address() != NULL);
+
+  Label done;
+
+  __ movdbl(double_scratch, ExpConstant(0));
+  __ xorpd(result, result);
+  __ ucomisd(double_scratch, input);
+  __ j(above_equal, &done);
+  __ ucomisd(input, ExpConstant(1));
+  __ movdbl(result, ExpConstant(2));
+  __ j(above_equal, &done);
+  __ movdbl(double_scratch, ExpConstant(3));
+  __ movdbl(result, ExpConstant(4));
+  __ mulsd(double_scratch, input);
+  __ addsd(double_scratch, result);
+  __ movd(temp2, double_scratch);
+  __ subsd(double_scratch, result);
+  __ movdbl(result, ExpConstant(6));
+  __ mulsd(double_scratch, ExpConstant(5));
+  __ subsd(double_scratch, input);
+  __ subsd(result, double_scratch);
+  __ movsd(input, double_scratch);
+  __ mulsd(input, double_scratch);
+  __ mulsd(result, input);
+  __ mov(temp1, temp2);
+  __ mulsd(result, ExpConstant(7));
+  __ subsd(result, double_scratch);
+  __ add(temp1, Immediate(0x1ff800));
+  __ addsd(result, ExpConstant(8));
+  __ and_(temp2, Immediate(0x7ff));
+  __ shr(temp1, 11);
+  __ shl(temp1, 20);
+  __ movd(input, temp1);
+  __ pshufd(input, input, static_cast<uint8_t>(0xe1));  // Order: 11 10 00 01
+  __ movdbl(double_scratch, Operand::StaticArray(
+      temp2, times_8, ExternalReference::math_exp_log_table()));
+  __ por(input, double_scratch);
+  __ mulsd(result, input);
   __ bind(&done);
 }
 
 #undef __
+
+static const int kNoCodeAgeSequenceLength = 5;
+
+static byte* GetNoCodeAgeSequence(uint32_t* length) {
+  static bool initialized = false;
+  static byte sequence[kNoCodeAgeSequenceLength];
+  *length = kNoCodeAgeSequenceLength;
+  if (!initialized) {
+    // The sequence of instructions that is patched out for aging code is the
+    // following boilerplate stack-building prologue that is found both in
+    // FUNCTION and OPTIMIZED_FUNCTION code:
+    CodePatcher patcher(sequence, kNoCodeAgeSequenceLength);
+    patcher.masm()->push(ebp);
+    patcher.masm()->mov(ebp, esp);
+    patcher.masm()->push(esi);
+    patcher.masm()->push(edi);
+    initialized = true;
+  }
+  return sequence;
+}
+
+
+bool Code::IsYoungSequence(byte* sequence) {
+  uint32_t young_length;
+  byte* young_sequence = GetNoCodeAgeSequence(&young_length);
+  bool result = (!memcmp(sequence, young_sequence, young_length));
+  ASSERT(result || *sequence == kCallOpcode);
+  return result;
+}
+
+
+void Code::GetCodeAgeAndParity(byte* sequence, Age* age,
+                               MarkingParity* parity) {
+  if (IsYoungSequence(sequence)) {
+    *age = kNoAge;
+    *parity = NO_MARKING_PARITY;
+  } else {
+    sequence++;  // Skip the kCallOpcode byte
+    Address target_address = sequence + *reinterpret_cast<int*>(sequence) +
+        Assembler::kCallTargetAddressOffset;
+    Code* stub = GetCodeFromTargetAddress(target_address);
+    GetCodeAgeAndParity(stub, age, parity);
+  }
+}
+
+
+void Code::PatchPlatformCodeAge(byte* sequence,
+                                Code::Age age,
+                                MarkingParity parity) {
+  uint32_t young_length;
+  byte* young_sequence = GetNoCodeAgeSequence(&young_length);
+  if (age == kNoAge) {
+    memcpy(sequence, young_sequence, young_length);
+    CPU::FlushICache(sequence, young_length);
+  } else {
+    Code* stub = GetCodeAgeStub(age, parity);
+    CodePatcher patcher(sequence, young_length);
+    patcher.masm()->call(stub->instruction_start(), RelocInfo::NONE32);
+  }
+}
+
 
 } }  // namespace v8::internal
 

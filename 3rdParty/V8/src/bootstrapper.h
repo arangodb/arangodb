@@ -54,8 +54,8 @@ class SourceCodeCache BASE_EMBEDDED {
 
   bool Lookup(Vector<const char> name, Handle<SharedFunctionInfo>* handle) {
     for (int i = 0; i < cache_->length(); i+=2) {
-      SeqAsciiString* str = SeqAsciiString::cast(cache_->get(i));
-      if (str->IsEqualTo(name)) {
+      SeqOneByteString* str = SeqOneByteString::cast(cache_->get(i));
+      if (str->IsUtf8EqualTo(name)) {
         *handle = Handle<SharedFunctionInfo>(
             SharedFunctionInfo::cast(cache_->get(i + 1)));
         return true;
@@ -104,7 +104,7 @@ class Bootstrapper {
   void DetachGlobal(Handle<Context> env);
 
   // Reattach an outer global object to an environment.
-  void ReattachGlobal(Handle<Context> env, Handle<Object> global_object);
+  void ReattachGlobal(Handle<Context> env, Handle<JSGlobalProxy> global_proxy);
 
   // Traverses the pointers for memory management.
   void Iterate(ObjectVisitor* v);
@@ -126,7 +126,7 @@ class Bootstrapper {
   char* AllocateAutoDeletedArray(int bytes);
 
   // Used for new context creation.
-  bool InstallExtensions(Handle<Context> global_context,
+  bool InstallExtensions(Handle<Context> native_context,
                          v8::ExtensionConfiguration* extensions);
 
   SourceCodeCache* extensions_cache() { return &extensions_cache_; }

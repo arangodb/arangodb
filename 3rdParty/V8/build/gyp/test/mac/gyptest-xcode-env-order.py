@@ -31,6 +31,12 @@ if sys.platform == 'darwin':
   test.built_file_must_exist('action-copy-paren.txt', chdir=CHDIR)
   test.built_file_must_exist('action-copy-bare.txt', chdir=CHDIR)
 
+  # Env vars in 'rules' filenames and inline actions
+  test.built_file_must_exist('rule-copy-brace.txt', chdir=CHDIR)
+  test.built_file_must_exist('rule-copy-paren.txt', chdir=CHDIR)
+  # TODO: see comment in test.gyp for this file.
+  #test.built_file_must_exist('rule-copy-bare.txt', chdir=CHDIR)
+
   # Env vars in Info.plist.
   info_plist = test.built_file_path(INFO_PLIST_PATH, chdir=CHDIR)
   test.must_exist(info_plist)
