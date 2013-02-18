@@ -20,6 +20,9 @@ window.arangoLogs = Backbone.Collection.extend({
   clearLocalStorage: function () {
     window.arangoLogsStore.reset();
   },
+  returnElements: function () {
+    console.log(this.models.length);
+  },
   fillLocalStorage: function (table, offset, size) {
     var self = this;
     this.clearLocalStorage();

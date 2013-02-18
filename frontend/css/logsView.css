@@ -11,7 +11,7 @@
 }
 
 .tab-content {
-  min-height: 290px;
+  min-height: 390px;
 }
 
 .dataTables_info {
@@ -79,7 +79,7 @@
   background-color: rgba(255, 255, 255, 0.8) !important;
 }
 
-#logTableID td {
+#logTableID td, #infoTableID td, #debugTableID td, #critTableID td, #warnTableID td {
   padding-top: 8px;
   padding-bottom: 8px;
 }
