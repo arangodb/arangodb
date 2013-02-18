@@ -11,7 +11,18 @@ var documentSourceView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    this.breadcrumb();
     return this;
+  },
+  breadcrumb: function () {
+    var name = window.location.hash.split("/");
+    $('#transparentHeader').append(
+      '<a href="#" class="activeBread">Collections</a>'+
+      '  >  '+
+      '<a class="activeBread" href="#collection/'+name[1]+'/documents/1">'+name[1]+'</a>'+
+      '  >  '+
+      '<a class="disabledBread">'+name[2]+'</a>'
+    );
   },
   saveSourceDoc: function() {
     window.arangoDocumentStore.saveDocument("source");
