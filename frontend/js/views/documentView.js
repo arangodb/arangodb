@@ -17,6 +17,7 @@ var documentView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    this.breadcrumb();
     return this;
   },
   sourceView: function () {
@@ -25,7 +26,16 @@ var documentView = Backbone.View.extend({
   saveDocument: function () {
     window.arangoDocumentStore.saveDocument();
   },
-
+  breadcrumb: function () {
+    var name = window.location.hash.split("/");
+    $('#transparentHeader').append(
+      '<a href="#" class="activeBread">Collections</a>'+
+      '  >  '+
+      '<a class="activeBread" href="#collection/'+name[1]+'/documents/1">'+name[1]+'</a>'+
+      '  >  '+
+      '<a class="disabledBread">'+name[2]+'</a>'
+    );
+  },
   drawTable: function () {
     var self = this;
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
