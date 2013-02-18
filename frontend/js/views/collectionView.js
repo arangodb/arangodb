@@ -72,7 +72,6 @@ var collectionView = Backbone.View.extend({
     else if (status === 'unloaded') {
       var newname = $('#change-collection-name').val();
       if (this.myCollection.name !== newname) {
-        console.log("different name");
         window.arangoCollectionsStore.renameCollection(collid, newname );
         this.hideModal();
       }
