@@ -89,6 +89,7 @@ window.arangoDocuments = Backbone.Collection.extend({
             }
             else {
               window.documentsView.initTable();
+              window.documentsView.drawTable();
             }
           },
           error: function(data) {
