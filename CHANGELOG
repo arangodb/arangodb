@@ -1,4 +1,10 @@
-v1.2.beta1 (2013-02-01)
+v1.2.beta3 (XXXX-XX-XX)
+-----------------------
+
+* fixed issue #404: keep original request url in request object
+
+
+v1.2.beta2 (2013-02-15)
 -----------------------
 
 * fixed issue #405: 1.2 compile warnings
@@ -42,6 +48,9 @@ v1.2.beta1 (2013-02-01)
   them was returned from AQL queries only, the other got thrown by other parts of
   ArangoDB. Now, error 1203 (Collection not found) is used in AQL too in case a 
   non-existing collection is used.
+
+v1.2.beta1 (2013-02-01)
+-----------------------
 
 * fixed issue #382: [Documentation error] Maschine... should be Machine...
  
