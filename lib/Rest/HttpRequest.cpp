@@ -448,22 +448,6 @@ void HttpRequest::setRequestType (HttpRequestType newType) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether HTTP version is 1.0
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpRequest::isHttp10 () {
-  return _version == HTTP_1_0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether HTTP version is 1.1
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpRequest::isHttp11 () {
-  return _version == HTTP_1_1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -685,33 +669,41 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
             ++f;
           }
+            
+          pathEnd = f;
 
           // no space, question mark or end-of-line
           if (f == valueEnd) {
-            pathEnd = f;
             paramEnd = paramBegin = pathEnd;
+
+            // set full url = complete path
+            setFullUrl(pathBegin, pathEnd);
           }
 
           // no question mark
           else if (*f == ' ' || *f == '\n') {
-            pathEnd = f;
             *pathEnd = '\0';
 
             paramEnd = paramBegin = pathEnd;
+            
+            // set full url = complete path
+            setFullUrl(pathBegin, pathEnd);
           }
 
           // found a question mark
           else {
-            pathEnd = f;
-            *pathEnd = '\0';
-
             paramBegin = f + 1;
             paramEnd = paramBegin;
 
             while (paramEnd < valueEnd && *paramEnd != ' ' && *paramEnd != '\n') {
               ++paramEnd;
             }
+            
+            // set full url = complete path + url parameters
+            setFullUrl(pathBegin, paramEnd);
 
+            // now that the full url was saved, we can insert the null bytes
+            *pathEnd = '\0';
             *paramEnd = '\0';
           }
 
@@ -851,6 +843,20 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
     lineNum++;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the full url
+/// this will create a copy of the characters in the range, so the original
+/// range can be modified afterwards
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setFullUrl (char const* begin, char const* end) {
+  assert(begin != 0);
+  assert(end != 0);
+  assert(begin <= end);
+  
+  _fullUrl = string(begin, end - begin);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
