@@ -39,9 +39,12 @@ var collectionsView = Backbone.View.extend({
       this.render();
     }
   },
-  
   restrictToSearchPhrase: function() {
+    var searchPhrase = this.searchPhrase;
     this.searchPhrase = $('#searchInput').val().replace(/(^\s+|\s+$)/g, '');
+    if (searchPhrase === this.searchPhrase) {
+      return;
+    }
     this.render();
   },
 
