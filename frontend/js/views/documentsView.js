@@ -87,7 +87,7 @@ var documentsView = Backbone.View.extend({
       "bSortable": false,
       "bLengthChange": false,
       "bDeferRender": true,
-      "bAutoWidth": false,
+      "bAutoWidth": true,
       "iDisplayLength": -1,
       "bJQueryUI": true,
       "aoColumns": [
@@ -118,10 +118,16 @@ var documentsView = Backbone.View.extend({
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
-    $('#documentsToolbarLeft').html(
-      'Showing Page '+this.currentPage+' of '+this.totalPages+
-      ', '+this.documentsCount+' entries'
-    );
+
+    if (this.documentsCount === 0) {
+      $('#documentsToolbarLeft').html('No documents');
+    }
+    else {
+      $('#documentsToolbarLeft').html(
+        'Showing Page '+this.currentPage+' of '+this.totalPages+
+        ', '+this.documentsCount+' entries'
+      );
+    }
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),

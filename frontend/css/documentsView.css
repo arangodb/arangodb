@@ -29,6 +29,10 @@
   padding-bottom: 20px !important;
 }
 
+#documentsTableID_wrapper .fg-toolbar {
+  visibility: hidden;
+}
+
 #documentsTableID {
   padding-left: 30px !important;
   padding-right: 30px !important;
