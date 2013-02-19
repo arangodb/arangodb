@@ -453,6 +453,17 @@ void TRI_InitArrayJson (TRI_memory_zone_t* zone, TRI_json_t* result) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises an array, using a specific initial size
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_Init2ArrayJson (TRI_memory_zone_t* zone, 
+                         TRI_json_t* result, 
+                         size_t initialSize) {
+  result->_type = TRI_JSON_ARRAY;
+  TRI_InitVector2(&result->_value._objects, zone, sizeof(TRI_json_t), initialSize);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 

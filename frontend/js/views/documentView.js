@@ -64,7 +64,7 @@ var documentView = Backbone.View.extend({
 
   initTable: function () {
     var documentTable = $(this.table).dataTable({
-      "aaSorting": [[ 1, "desc" ]],
+      "aaSorting": [[ 1, "asc" ]],
       "bAutoWidth": false,
       "bFilter": false,
       "bPaginate":false,
