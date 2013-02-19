@@ -60,12 +60,12 @@ namespace triagens {
         ////////////////////////////////////////////////////////////////////////////////
 
         SslAsyncCommTask (S* server, 
-                          socket_t fd, 
+                          TRI_socket_t socket, 
                           ConnectionInfo const& info,
                           double keepAliveTimeout, 
                           BIO* bio) 
         : Task("SslAsyncCommTask"),
-          GeneralAsyncCommTask<S, HF, CT>(server, fd, info, keepAliveTimeout),
+          GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
           accepted(false),
           readBlocked(false),
           readBlockedOnWrite(false),
