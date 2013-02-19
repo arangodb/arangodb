@@ -219,7 +219,7 @@ function get_graph_graph (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
     return;
   }
 }
@@ -245,7 +245,7 @@ function delete_graph_graph (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
   }
 }
 
@@ -332,7 +332,7 @@ function get_graph_vertex (req, res, g) {
     actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
   }
 }
 
@@ -358,7 +358,7 @@ function delete_graph_vertex (req, res, g) {
     actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
   }
 }
 
@@ -384,9 +384,17 @@ function delete_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_vertex (req, res, g) {
-  try {
-    var v = vertex_by_request(req, g);
+  var v = null;
 
+  try {
+    v = vertex_by_request(req, g);
+  }
+  catch (err) {
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+    return;
+  }
+
+  try {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
 
     if (json === undefined) {
@@ -436,9 +444,17 @@ function put_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_vertex (req, res, g) {
-  try {
-    var v = vertex_by_request(req, g);
+  var v = null;
 
+  try {
+    v = vertex_by_request(req, g);
+  }
+  catch (err) {
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+    return;
+  }
+
+  try {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
 
     if (json === undefined) {
@@ -820,7 +836,7 @@ function get_graph_edge (req, res, g) {
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
   }
 }
 
@@ -845,7 +861,7 @@ function delete_graph_edge (req, res, g) {
     actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
   }
   catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
   }
 }
 
@@ -871,9 +887,17 @@ function delete_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_edge (req, res, g) {
-  try {
-    var e = edge_by_request(req, g);
+  var e = null;
 
+  try {
+    e = edge_by_request(req, g);
+  }
+  catch (err) {
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+    return;
+  }
+  
+  try {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
 
     if (json === undefined) {
@@ -924,9 +948,17 @@ function put_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_edge (req, res, g) {
-  try {
-    var e = edge_by_request(req, g);
+  var e = null;
 
+  try {
+    e = edge_by_request(req, g);
+  }
+  catch (err) {
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+    return;
+  }
+  
+  try {
     var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
 
     if (json === undefined) {
