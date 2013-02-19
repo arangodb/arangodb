@@ -1,6 +1,12 @@
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
 
+* added replaceByExample() Javascript and REST API method
+
+* added updateByExample() Javascript and REST API method
+
+* added optional "limit" parameter for removeByExample() Javascript and REST API method
+
 * fixed issue #413
 
 * updated bundled V8 version from 3.9.4 to 3.16.14.1

@@ -292,7 +292,7 @@ namespace triagens {
 /// @note @FA{header} must be lowercase.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_rid_t extractRevision (char const* header, char const* parameter);
+        TRI_voc_rid_t extractRevision (char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the update policy

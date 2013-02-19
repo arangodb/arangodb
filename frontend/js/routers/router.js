@@ -35,7 +35,6 @@ $(document).ready(function() {
       window.arangoLogsStore.fetch({
         success: function () {
           if (!window.logsView) {
-            console.log("not existing");
           }
           window.logsView = new window.logsView({
             collection: window.arangoLogsStore
@@ -127,7 +126,6 @@ $(document).ready(function() {
       window.arangoLogsStore.fetch({
         success: function () {
           if (!window.logsView) {
-            console.log("not exits");
           }
           window.logsView.render();
           $('#logNav a[href="#all"]').tab('show');

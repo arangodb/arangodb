@@ -38,7 +38,7 @@ var documentsView = Backbone.View.extend({
   remove: function (a) {
     this.target = a.currentTarget;
     var thiselement = a.currentTarget.parentElement;
-    this.idelement = $(thiselement).next().text();
+    this.idelement = $(thiselement).prev().prev();
     this.alreadyClicked = true;
 
     $('#docDeleteModal').modal('show');
@@ -49,11 +49,12 @@ var documentsView = Backbone.View.extend({
   },
   reallyDelete: function () {
     var self = this;
+    var todelete = $(self.idelement).text();
     try {
       $.ajax({
         type: 'DELETE',
         contentType: "application/json",
-        url: "/_api/document/" + self.idelement,
+        url: "/_api/document/" + todelete,
         success: function () {
           var row = $(self.target).closest("tr").get(0);
           $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
@@ -80,7 +81,7 @@ var documentsView = Backbone.View.extend({
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
     var rowContent = $(this.table).dataTable().fnGetData(aPos);
-    window.location.hash = "#collection/" + rowContent[1];
+    window.location.hash = "#collection/" + rowContent[0];
   },
 
   initTable: function (colid, pageid) {
@@ -111,11 +112,11 @@ var documentsView = Backbone.View.extend({
     var self = this;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
       $(self.table).dataTable().fnAddData([
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>',
                                           value.attributes.id,
                                           //value.attributes.key,
                                           //value.attributes.rev,
-                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>'
+                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});

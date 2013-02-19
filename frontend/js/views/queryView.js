@@ -18,7 +18,6 @@ var queryView = Backbone.View.extend({
     return this;
   },
   submitQuery: function() {
-    console.log("submit");
     var self = this;
     var data = {query:$('#queryInput').val()};
     var formattedJSON;
