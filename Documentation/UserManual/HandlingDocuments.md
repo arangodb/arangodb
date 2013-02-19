@@ -90,6 +90,14 @@ Collection Methods {#HandlingDocumentsCollectionMethods}
 @copydetails JSF_ArangoCollection_prototype_removeByExample
 
 @CLEARPAGE
+@anchor HandlingDocumentsReplaceByExample
+@copydetails JSF_ArangoCollection_prototype_replaceByExample
+
+@CLEARPAGE
+@anchor HandlingDocumentsUpdateByExample
+@copydetails JSF_ArangoCollection_prototype_updateByExample
+
+@CLEARPAGE
 Database Methods {#HandlingDocumentsDatabaseMethods}
 ----------------------------------------------------
 
