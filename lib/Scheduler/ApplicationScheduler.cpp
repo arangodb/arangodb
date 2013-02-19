@@ -257,7 +257,7 @@ static SignalTask* localSignalTask;
 
 
     if (ccTask->_seen == 0) {
-      LOGGER_INFO << shutdownMessage << ", beginning shut down sequence";
+      LOGGER_INFO(shutdownMessage << ", beginning shut down sequence");
       ccTask->_server->beginShutdown();
       ++ccTask->_seen;
       return true; 
@@ -267,7 +267,7 @@ static SignalTask* localSignalTask;
      // user is desperate to kill the server!
      // ............................................................................
 
-     LOGGER_INFO << shutdownMessage << ", terminating";
+     LOGGER_INFO(shutdownMessage << ", terminating");
      _exit(EXIT_FAILURE); // quick exit for windows
      return true;
   }
