@@ -7,7 +7,9 @@ Module "internal" {#JSModuleInternal}
 Internal Module {#JSModuleInternalIntro}
 ========================================
 
-The following functions are used internally.
+The "internal" module implements functions required internally by arangodb. You
+should normally not need these functions unless you are extending ArangoDB
+itself.
 
 @anchor JSModuleInternalExecute
 @copydetails JS_Execute
