@@ -13,8 +13,8 @@ will allow the administrator to restrict access to collections and queries to
 certain users, given them either read or write access.
 
 Currently, you can only secure the access to ArangoDB in an all-or-nothing
-fashion. The collection `_users` contains all user and the SHA256 of their
-passwords. A user can be active or inactive. A typical document of this
+fashion. The collection `_users` contains all users and a salted SHA256 hash
+of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
     {
@@ -23,7 +23,7 @@ collection is
       "_key" : "1675886"
       "active" : true,
       "user" : "admin",
-      "password" : "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+      "password" : "$1$96b646a9$c2162af67f82e1dc95877b9475ebc55f7abdacad58c2b57848b2bc84acf8ebb6"
     }
 
 Command-Line Options for the Authentication and Authorisation {#DbaManualAuthenticationCommandLine}
@@ -46,8 +46,16 @@ web interface.
 @copydetails JSF_saveUser
 
 @CLEARPAGE
+@anchor UserManagementDocument
+@copydetails JSF_documentUser
+
+@CLEARPAGE
 @anchor UserManagementReplace
 @copydetails JSF_replaceUser
+
+@CLEARPAGE
+@anchor UserManagementUpdate
+@copydetails JSF_updateUser
 
 @CLEARPAGE
 @anchor UserManagementRemove
