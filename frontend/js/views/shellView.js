@@ -66,7 +66,6 @@ var shellView = Backbone.View.extend({
     var client = "arangosh> " + escapeHTML(data) + "<br>";
     $(varContent).append('<b class="shellClient">' + client + '</b>');
     this.evaloutput(command);
-    console.log(command);
     $(varContent).animate({scrollTop:$(varContent)[0].scrollHeight}, 1);
     $(varInput).val('');
     return false;

@@ -13,8 +13,8 @@ will allow the administrator to restrict access to collections and queries to
 certain users, given them either read or write access.
 
 Currently, you can only secure the access to ArangoDB in an all-or-nothing
-fashion. The collection `_users` contains all user and the SHA256 of their
-passwords. A user can be active or inactive. A typical document of this
+fashion. The collection `_users` contains all users and a salted SHA256 hash
+of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
 @EXAMPLE_ARANGOSH_OUTPUT{AuthenticationExample1}
@@ -41,8 +41,16 @@ web interface.
 @copydetails JSF_saveUser
 
 @CLEARPAGE
+@anchor UserManagementDocument
+@copydetails JSF_documentUser
+
+@CLEARPAGE
 @anchor UserManagementReplace
 @copydetails JSF_replaceUser
+
+@CLEARPAGE
+@anchor UserManagementUpdate
+@copydetails JSF_updateUser
 
 @CLEARPAGE
 @anchor UserManagementRemove
