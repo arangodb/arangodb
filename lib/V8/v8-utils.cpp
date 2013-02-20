@@ -620,6 +620,46 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief md5 sum
+///
+/// @FUN{internal.md5(@FA{text})}
+///
+/// Computes an md5 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: md5(<text>)")));
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create md5
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslMD5(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file
 ///
 /// @FUN{fs.move(@FA{source}, @FA{destination})}
@@ -740,6 +780,46 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a random number using OpenSSL
+///
+/// @FUN{internal.rand()}
+///
+/// Generates a random number
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Rand (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // check arguments
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: rand()")));
+  }
+
+  int iterations = 0;
+  while (iterations++ < 5) {
+    int32_t value;
+    int result = SslInterface::sslRand(&value);
+
+    if (result != 0) {
+      // error
+      break;
+    }
+
+    // no error, now check what random number was produced
+
+    if (value != 0) {
+      // a number != 0 was produced. that is sufficient
+      return scope.Close(v8::Number::New(value));
+    }
+
+    // we don't want to return 0 as the result, so we try again
+  }
+
+  // we failed to produce a valid random number
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -962,14 +1042,14 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 ///
 /// @FUN{internal.sha256(@FA{text})}
 ///
-/// Computes a sha256 for the @FA{text}.
+/// Computes an sha256 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract arguments
-  if (argv.Length() != 1) {
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: sha256(<text>)")));
   }
 
@@ -1398,9 +1478,11 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);

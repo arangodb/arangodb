@@ -50,28 +50,22 @@ var documentsView = Backbone.View.extend({
   reallyDelete: function () {
     var self = this;
     var todelete = $(self.idelement).text();
-    try {
-      $.ajax({
-        type: 'DELETE',
-        contentType: "application/json",
-        url: "/_api/document/" + todelete,
-        success: function () {
-          var row = $(self.target).closest("tr").get(0);
-          $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
-          var hash = window.location.hash.split("/");
-          var page = hash[3];
-          var collection = hash[1];
-
-          //TODO: more elegant solution...
-          $('#documentsTableID').dataTable().fnClearTable();
-          window.arangoDocumentsStore.getDocuments(collection, page);
-        }
-      });
+    var deleted = window.arangoDocumentStore.deleteDocument(todelete);
+    if (deleted === true) {
+      var row = $(self.target).closest("tr").get(0);
+      $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
+      var hash = window.location.hash.split("/");
+      var page = hash[3];
+      var collection = hash[1];
+      //TODO: more elegant solution...
+      $('#documentsTableID').dataTable().fnClearTable();
+      window.arangoDocumentsStore.getDocuments(collection, page);
+      $('#docDeleteModal').modal('hide');
     }
-    catch (e) {
+    else {
+      alert("something wrong");
+      $('#docDeleteModal').modal('hide');
     }
-    $('#docDeleteModal').modal('hide');
-
   },
   clicked: function (a) {
     if (this.alreadyClicked == true) {
