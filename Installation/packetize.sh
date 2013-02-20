@@ -310,13 +310,8 @@ export systemddir
 echo 
 echo "########################################################"
 echo "Call EPM to build the package."
-if [ "$TRI_MACH" == "amd64" ] ; then
-  echo "  sudo -E epm -a ${EPM_ARCH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
-  sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
-else
-  echo "  sudo -E epm -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
-  sudo -E epm -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
-fi
+echo "  sudo -E epm -a ${EPM_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
+sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
 echo "########################################################"
 echo 
 
