@@ -101,6 +101,12 @@ static TRI_memory_zone_t TriUnknownMemZone;
 static void* CoreReserve;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the core was intialised
+////////////////////////////////////////////////////////////////////////////////
+  
+static int CoreInitialised = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -379,10 +385,9 @@ void TRI_SystemFree (void* p) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseMemory () {
-  static bool initialised = false;
   static size_t const reserveSize = 1024 * 1024 * 10;
 
-  if (! initialised) {
+  if (CoreInitialised == 0) {
     TriCoreMemZone._zid = 0;
     TriCoreMemZone._failed = false;
     TriCoreMemZone._failable = false;
@@ -398,6 +403,20 @@ void TRI_InitialiseMemory () {
               "FATAL: cannot allocate initial core reserve of size %llu, giving up!\n", 
               (unsigned long long) reserveSize);
     }
+    else {
+      CoreInitialised = 1;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown memory subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownMemory () {
+  if (CoreInitialised == 1) {
+    free(CoreReserve);
+    CoreInitialised = 0;
   }
 }
 
