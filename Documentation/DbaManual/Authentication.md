@@ -1,11 +1,11 @@
-Authentication and Authorisation {#DbaManualAuthentication}
-===========================================================
+Authentication and Authorisation{#DbaManualAuthentication}
+==========================================================
 
 @NAVIGATE_DbaManualAuthentication
 @EMBEDTOC{DbaManualAuthenticationTOC}
 
-Authentication and Authorisation {#DbaManualAuthenticationIntro}
-================================================================
+Authentication and Authorisation{#DbaManualAuthenticationIntro}
+===============================================================
 
 ArangoDB only provides a very simple authentication interface and no
 authorisation. We plan to add authorisation features in later releases, which
@@ -17,22 +17,17 @@ fashion. The collection `_users` contains all users and a salted SHA256 hash
 of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
-    {
-      "_id" : "_users/1675886",
-      "_rev" : "2147452",
-      "_key" : "1675886"
-      "active" : true,
-      "user" : "admin",
-      "password" : "$1$96b646a9$c2162af67f82e1dc95877b9475ebc55f7abdacad58c2b57848b2bc84acf8ebb6"
-    }
+@EXAMPLE_ARANGOSH_OUTPUT{AuthenticationExample1}
+    db._users.firstExample("user", "root")
+@END_EXAMPLE_ARANGOSH_OUTPUT
 
-Command-Line Options for the Authentication and Authorisation {#DbaManualAuthenticationCommandLine}
----------------------------------------------------------------------------------------------------
+Command-Line Options for the Authentication and Authorisation{#DbaManualAuthenticationCommandLine}
+--------------------------------------------------------------------------------------------------
 
 @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
 
-Introduction to User Management {#UserManagementIntro}
-======================================================
+Introduction to User Management{#UserManagementIntro}
+=====================================================
 
 ArangoDB provides basic functionality to add, modify and remove
 database users programmatically. The following functionality is
@@ -60,3 +55,7 @@ web interface.
 @CLEARPAGE
 @anchor UserManagementRemove
 @copydetails JSF_removeUser
+
+@CLEARPAGE
+@anchor UserManagementReload
+@copydetails JSF_reloadUsers

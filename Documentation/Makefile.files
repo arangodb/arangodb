@@ -305,7 +305,9 @@ examples:
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/Documentation/UserManual/*.md > /tmp/arangosh.examples
+		@srcdir@/Documentation/DbaManual/*.md \
+		@srcdir@/Documentation/UserManual/*.md \
+		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 
