@@ -64,36 +64,6 @@ case $TRI_OS_LONG in
     LDD_INFO="yes"
     ;;
 
-  Linux-LinuxMint-13*)
-    echo "Using configuration for LinuxMint 13"
-    OPTIONS="$OPTIONS --disable-mruby"
-    LDD_INFO="yes"
-    ;;
-
-  Linux-openSUSE-12*)
-    echo "Using configuration for openSuSE 12.X"
-    OPTIONS="$OPTIONS --disable-mruby "
-    LDD_INFO="yes"
-    ;;
-
-  Linux-openSUSE-11*)
-    echo "Using configuration for openSuSE 11.X"
-    OPTIONS="$OPTIONS --disable-mruby"
-    LDD_INFO="yes"
-    ;;
-
-  Linux-Debian-6*)
-    echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
-    LDD_INFO="yes"
-    ;;
-
-  Linux-Debian*)
-    echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
-    LDD_INFO="yes"
-    ;;
-
   Linux-CentOS-6*)
     echo "Using configuration for Centos"
     OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
@@ -108,12 +78,6 @@ case $TRI_OS_LONG in
     export READLINE_LDFLAGS="-lncurses"
     ;;
 
-  Linux-Ubuntu-*)
-    echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
-    LDD_INFO="yes"
-    ;;
-
   Darwin*)
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
@@ -123,6 +87,48 @@ case $TRI_OS_LONG in
     TRI_MACH="x86_64"
     X=$(uname -r)
     OPTIONS="$OPTIONS --build x86_64-apple-darwin${X}"
+    ;;
+
+  Linux-Debian-6*)
+    echo "Using configuration for Debian"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-Debian*)
+    echo "Using configuration for Debian"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-Fedora*)
+    echo "Using configuration for Fedora"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --disable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
+    LDD_INFO="yes"
+    ;;
+
+  Linux-LinuxMint-13*)
+    echo "Using configuration for LinuxMint 13"
+    OPTIONS="$OPTIONS --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-openSUSE-12*)
+    echo "Using configuration for openSuSE 12.X"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --disable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
+    LDD_INFO="yes"
+    ;;
+
+  Linux-openSUSE-11*)
+    echo "Using configuration for openSuSE 11.X"
+    OPTIONS="$OPTIONS --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-Ubuntu-*)
+    echo "Using configuration for Ubuntu"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
+    LDD_INFO="yes"
     ;;
 
   *)
