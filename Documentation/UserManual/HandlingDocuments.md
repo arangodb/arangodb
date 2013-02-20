@@ -15,7 +15,7 @@ corresponding language API.
 
 For example:
 
-@EXAMPLE_ARANGOSH_OUTPUT{HandlingDocuments1}
+@EXAMPLE_ARANGOSH_OUTPUT{HandlingDocumentsExample1}
     db.demo.document("demo/schlonz")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 

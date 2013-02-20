@@ -112,11 +112,11 @@ var getStorage = function () {
 /// @fn JSF_saveUser
 /// @brief create a new user
 ///
-/// @FUN{@FA{users}.save(@FA{username}, @FA{passwd})}
+/// @FUN{users.save(@FA{username}, @FA{passwd})}
 ///
-/// This will create a new ArangoDB user.
-/// The username must be a string and contain only the letters a-z (lower or 
-/// upper case), the digits 0-9, the dash or the underscore symbol.
+/// This will create a new ArangoDB user.  The username must be a string and
+/// contain only the letters a-z (lower or upper case), the digits 0-9, the dash
+/// or the underscore symbol.
 ///
 /// The password must be given as a string, too, but can be left empty if 
 /// required.
@@ -126,13 +126,16 @@ var getStorage = function () {
 /// the specified name.
 ///
 /// The new user account can only be used after the server is either restarted
-/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+/// or the server authentication cache is @ref UserManagementReload "reloaded".
 ///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-save,saving a new user}
+/// @code
+/// arangosh> require("users").save("my-user", "my-secret-password");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.save = function (username, passwd) {
@@ -163,7 +166,7 @@ exports.save = function (username, passwd) {
 /// @fn JSF_replaceUser
 /// @brief update an existing user
 ///
-/// @FUN{@FA{users}.replace(@FA{username}, @FA{passwd})}
+/// @FUN{users.replace(@FA{username}, @FA{passwd})}
 ///
 /// This will update an existing ArangoDB user with a new password.
 ///
@@ -179,13 +182,16 @@ exports.save = function (username, passwd) {
 /// found in the database.
 ///
 /// The update is effective only after the server is either restarted
-/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+/// or the server authentication cache is @ref UserManagementReload "reloaded".
 ///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-replace,replacing an existing user}
+/// @code
+/// arangosh> require("users").replace("my-user", "my-changed-password");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.replace =
@@ -219,7 +225,7 @@ exports.update = function (username, passwd) {
 /// @fn JSF_removeUser
 /// @brief delete an existing user
 ///
-/// @FUN{@FA{users}.remove(@FA{username}, @FA{passwd})}
+/// @FUN{users.remove(@FA{username}, @FA{passwd})}
 ///
 /// Removes an existing ArangoDB user from the database.
 ///
@@ -230,13 +236,16 @@ exports.update = function (username, passwd) {
 /// This method will fail if the user cannot be found in the database.
 ///
 /// The deletion is effective only after the server is either restarted
-/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+/// or the server authentication cache is @ref UserManagementReload "reloaded".
 ///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-remove,removing an existing user}
+/// @code
+/// arangosh> require("users").remove("my-user");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.remove = function (username) {
@@ -258,9 +267,10 @@ exports.remove = function (username) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_reloadUsers
 /// @brief reloads the user authentication data
 ///
-/// @FUN{@FA{users}.reload()}
+/// @FUN{users.reload()}
 ///
 /// Reloads the user authentication data on the server
 ///
@@ -269,7 +279,6 @@ exports.remove = function (username) {
 /// required, and this can be performed by called this method.
 ///
 /// Note: this function will not work from within the web interface
-/// @anchor JSF_reloadUsers
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.reload = function () {
