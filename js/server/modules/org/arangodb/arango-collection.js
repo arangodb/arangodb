@@ -252,11 +252,20 @@ ArangoCollection.prototype.firstExample = function (example) {
 /// @brief removes documents matching an example
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+ArangoCollection.prototype.removeByExample = function (example, 
+                                                       waitForSync, 
+                                                       limit) {
   var deleted = 0;
   var documents;
 
+  if (limit === 0) {
+    return 0;
+  }
+
   documents = this.byExample(example);
+  if (limit > 0) {
+    documents = documents.limit(limit);
+  }
 
   while (documents.hasNext()) {
     var document = documents.next();
@@ -267,6 +276,85 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
   }
 
   return deleted;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.replaceByExample = function (example, 
+                                                        newValue, 
+                                                        waitForSync, 
+                                                        limit) {
+  var replaced = 0;
+  var documents;
+  
+  if (limit === 0) {
+    return 0;
+  }
+
+  if (typeof newValue !== "object") {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "invalid value for parameter 'newValue'";
+
+    throw err;
+  }
+
+  documents = this.byExample(example);
+  if (limit > 0) {
+    documents = documents.limit(limit);
+  }
+
+  while (documents.hasNext()) {
+    var document = documents.next();
+
+    if (this.replace(document, newValue, true, waitForSync)) {
+      replaced++;
+    }
+  }
+
+  return replaced;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief partially updates documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.updateByExample = function (example, 
+                                                       newValue, 
+                                                       keepNull, 
+                                                       waitForSync, 
+                                                       limit) {
+  var updated = 0;
+  var documents;
+  
+  if (limit === 0) {
+    return 0;
+  }
+  
+  if (typeof newValue !== "object") {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "invalid value for parameter 'newValue'";
+
+    throw err;
+  }
+
+  documents = this.byExample(example);
+  if (limit > 0) {
+    documents = documents.limit(limit);
+  }
+
+  while (documents.hasNext()) {
+    var document = documents.next();
+
+    if (this.update(document, newValue, true, keepNull, waitForSync)) {
+      updated++;
+    }
+  }
+
+  return updated;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

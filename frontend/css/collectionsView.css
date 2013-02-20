@@ -1,3 +1,13 @@
+#newCollection {
+  margin-right: 22px;
+  margin-top: 11px;
+  opacity: 0.3;
+}
+
+#newCollection:hover {
+  opacity: 1;
+}
+
 .thumbnail, .navbar-inner, .btn, .btn-primary {
   border-radius:0;
   box-shadow: 0;
@@ -34,9 +44,10 @@
   height: 18px;
   line-height: 18px;
   margin-top: 3px;
-  margin-left: 20px;
+  margin-left: 18px;
   padding: 2px;
   vertical-align: middle;
+  width: 435px;
 }
 
 #searchSubmit {

@@ -336,7 +336,7 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-  size_t len = _request->suffix().size();
+  const size_t len = _request->suffix().size();
 
   switch (len) {
     case 0:
@@ -403,10 +403,6 @@ bool RestDocumentHandler::readDocument () {
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   vector<string> const& suffix = _request->suffix();
 
-  /// check for an etag
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
-  TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
-
   // split the document reference
   const string& collection = suffix[0];
   const string& key = suffix[1];
@@ -451,7 +447,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   assert(document);
   assert(document->_key);
 
-  TRI_voc_rid_t rid = document->_rid;
+  const TRI_voc_rid_t rid = document->_rid;
+  // check for an etag
+  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
+  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
@@ -772,10 +771,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
+  const TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or chose the update policy
-  TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const bool waitForSync = extractWaitForSync();
   
   TRI_doc_mptr_t* document = 0;
 
@@ -839,13 +839,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
       if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
         // do not acquire an extra lock
-        res = trx.updateDocument(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid, false);
+        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid, false);
       }
     }
   }
   else {
     // replacing an existing document, using a lock
-    res = trx.updateDocument(key, &document, json, policy, extractWaitForSync(), revision, &rid, true);
+    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid, true);
   }
   
   res = trx.finish(res);
@@ -934,10 +934,11 @@ bool RestDocumentHandler::deleteDocument () {
   const string& key = suffix[1];
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
+  const TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or choose the update policy
-  TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const bool waitForSync = extractWaitForSync();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
     generateError(HttpResponse::BAD, 
@@ -961,7 +962,7 @@ bool RestDocumentHandler::deleteDocument () {
   const TRI_voc_cid_t cid = trx.cid();
 
   TRI_voc_rid_t rid = 0;
-  res = trx.deleteDocument(key, policy, extractWaitForSync(), revision, &rid);
+  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }

@@ -49,6 +49,7 @@ var newCollectionView = Backbone.View.extend({
       return 0;
     }
 
+
     $.ajax({
       type: "POST",
       url: "/_api/collection",

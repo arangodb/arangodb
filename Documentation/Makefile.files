@@ -49,6 +49,7 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-query.c \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
+	Doxygen/js/actions/system/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
@@ -98,6 +99,7 @@ WIKI = \
 	HttpQuery \
 	HttpSimple \
 	HttpSystem \
+	HttpUser \
 	ImpManual \
 	ImpManualBasics \
 	ImplementorManual \
