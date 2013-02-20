@@ -381,6 +381,23 @@ void TRI_SystemFree (void* p) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapper for realloc
+///
+/// this wrapper is used together with libev, as the builtin libev allocator
+/// causes problems with Valgrind:
+/// - http://lists.schmorp.de/pipermail/libev/2012q2/001917.html
+/// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html 
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_WrappedReallocate (void* ptr, long size) {
+  if (ptr == NULL && size == 0) {
+    return NULL;
+  }
+
+  return realloc(ptr, (size_t) size);
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 

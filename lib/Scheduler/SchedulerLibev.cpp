@@ -240,6 +240,25 @@ int SchedulerLibev::availableBackends () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the libev allocator to our own allocator
+///
+/// this is done to avoid the numerous memory problems as reported by Valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+void SchedulerLibev::switchAllocator () {
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  static bool switched = false;
+  
+  if (! switched) {
+    // set the libev allocator to our own allocator
+    ev_set_allocator(&TRI_WrappedReallocate); 
+
+    switched = true;
+  }
+#endif  
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -259,6 +278,8 @@ int SchedulerLibev::availableBackends () {
 SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   : Scheduler(concurrency),
     _backend(backend) {
+
+  switchAllocator();
 
   //_backend = 1;
   // setup lock
