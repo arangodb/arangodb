@@ -32,6 +32,7 @@ var arangodb = require("org/arangodb");
 var internal = require("internal");
 var console = require("console");
 var moduleExists = function(name) { return module.exists; };
+var _ = require("underscore");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1009,7 +1010,8 @@ function reloadRouting () {
   // .............................................................................
 
   while (routes.hasNext()) {
-    var route = routes.next();
+    // clone the route object so the barrier for the collection can be removed soon
+    var route = _.clone(routes.next());
     var r;
 
     if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
@@ -1036,6 +1038,10 @@ function reloadRouting () {
       handleRoute(RoutingCache.routes, "", "", route);
     }
   }
+
+  // allow the collection to unload
+  routes  = null;
+  routing = null;
 
   // .............................................................................
   // compute the flat routes
