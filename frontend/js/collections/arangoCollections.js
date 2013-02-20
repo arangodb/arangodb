@@ -74,7 +74,20 @@ window.arangoCollections = Backbone.Collection.extend({
         });
       },
       deleteCollection: function (id) {
-
+        var returnval = false;
+        $.ajax({
+          type: 'DELETE',
+          url: "/_api/collection/" + id,
+          async: false,
+          success: function () {
+            returnval = true;
+          },
+          error: function () {
+            returnval = false;
+          }
+        });
+        console.log(returnval);
+        return returnval;
       },
       loadCollection: function (id) {
         $.ajax({
