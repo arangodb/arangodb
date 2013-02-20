@@ -3,6 +3,27 @@ window.arangoDocument = Backbone.Collection.extend({
   model: arangoDocument,
   collectionInfo: {},
   CollectionTypes: {},
+  deleteDocument: function (collectionID){
+    var returnval = false;
+    try {
+      $.ajax({
+        type: 'DELETE',
+        async: false,
+        contentType: "application/json",
+        url: "/_api/document/" + collectionID,
+        success: function () {
+          returnval = true;
+        },
+        error: function () {
+          returnval = false;
+        }
+      });
+    }
+    catch (e) {
+          returnval = false;
+    }
+    return returnval;
+  },
   addDocument: function (collectionID) {
     var self = this;
     var doctype = self.collectionApiType(collectionID);

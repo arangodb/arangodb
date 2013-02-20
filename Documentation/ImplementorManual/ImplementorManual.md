@@ -19,6 +19,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{HttpImport}
 @CHAPTER_REF{HttpBatch}
 @CHAPTER_REF{HttpSystem}
+@CHAPTER_REF{HttpUser}
 @CHAPTER_REF{HttpMisc}
 @CHAPTER_REF{Communication}
 @CHAPTER_REF{NamingConventions}

@@ -37,7 +37,24 @@ window.arangoCollections = Backbone.Collection.extend({
         return data2;
       },
       checkCollectionName: function (name) {
-
+      },
+      newCollection: function (collName, wfs, isSystem, journalSize, collType) {
+        var returnval = false;
+        $.ajax({
+          type: "POST",
+          url: "/_api/collection",
+          data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            returnval = true;
+          },
+          error: function(data) {
+            returnval = false;
+          }
+        });
+        return returnval;
       },
       renameCollection: function (id, name) {
         $.ajax({
@@ -74,7 +91,20 @@ window.arangoCollections = Backbone.Collection.extend({
         });
       },
       deleteCollection: function (id) {
-
+        var returnval = false;
+        $.ajax({
+          type: 'DELETE',
+          url: "/_api/collection/" + id,
+          async: false,
+          success: function () {
+            returnval = true;
+          },
+          error: function () {
+            returnval = false;
+          }
+        });
+        console.log(returnval);
+        return returnval;
       },
       loadCollection: function (id) {
         $.ajax({

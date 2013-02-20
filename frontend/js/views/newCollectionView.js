@@ -49,24 +49,17 @@ var newCollectionView = Backbone.View.extend({
       return 0;
     }
 
-
-    $.ajax({
-      type: "POST",
-      url: "/_api/collection",
-      data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
-      contentType: "application/json",
-      processData: false,
-      success: function(data) {
-        self.hidden();
-        $("#add-collection").modal('hide');
-        alert("Collection created");
-      },
-      error: function(data) {
-        alert(data);
-        $("#add-collection").modal('hide');
-        //alert(getErrorMessage(data));
-      }
-    });
+    var returnval = window.arangoCollectionsStore.newCollection(collName, wfs, isSystem, journalSizeString, collType);
+    if (returnval === true) {
+      self.hidden();
+      $("#add-collection").modal('hide');
+      alert("Collection created");
+    }
+    else {
+      self.hidden();
+      $("#add-collection").modal('hide');
+      alert("Collection error");
+    }
 
   }
 
