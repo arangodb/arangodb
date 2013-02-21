@@ -229,20 +229,20 @@ static void ListTreeRecursively (char const* full,
 
 #ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
 
-bool TRI_SetCloseOnExecFile (socket_t fd) {
+bool TRI_SetCloseOnExitFile (int fileDescriptor) {
   return true;
 }
 
 #else
 
-bool TRI_SetCloseOnExecFile (socket_t fd) {
-  long flags = fcntl(fd, F_GETFD, 0);
+bool TRI_SetCloseOnExitFile (int fileDescriptor) {
+  long flags = fcntl(fileDescriptor, F_GETFD, 0);
 
   if (flags < 0) {
     return false;
   }
 
-  flags = fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+  flags = fcntl(fileDescriptor, F_SETFD, flags | FD_CLOEXEC);
 
   if (flags < 0) {
     return false;

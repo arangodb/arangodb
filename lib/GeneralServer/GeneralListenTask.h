@@ -96,9 +96,9 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleConnected (socket_t socket, ConnectionInfo const& info) {
+        bool handleConnected (TRI_socket_t s, ConnectionInfo const& info) {
           ConnectionInfo newInfo = info;
-          server->handleConnected(socket, newInfo);
+          server->handleConnected(s, newInfo);
           return true;
         }
 

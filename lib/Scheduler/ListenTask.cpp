@@ -66,8 +66,9 @@ ListenTask::ListenTask (Endpoint* endpoint, bool reuseAddress)
     readWatcher(0),
     reuseAddress(reuseAddress),
     _endpoint(endpoint),
-    listenSocket(0),
     acceptFailures(0) {
+  _listenSocket.fileHandle = 0;
+  _listenSocket.fileDescriptor = 0;  
   bindSocket();
 }
 
@@ -95,6 +96,19 @@ bool ListenTask::isBound () const {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
+#ifdef _WIN32
+  // ..........................................................................
+  // The problem we have here is that this opening of the fs handle may fail.
+  // There is no mechanism to the calling function to report failure.
+  // ..........................................................................
+  LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
+  _listenSocket.fileDescriptor = _open_osfhandle (_listenSocket.fileHandle, 0);
+  if (_listenSocket.fileDescriptor == -1) {
+    LOGGER_ERROR << "could not convert socket handle to socket descriptor";
+    return false;
+  }
+#endif
+
   if (! isBound()) {
     return true;
   }
@@ -102,7 +116,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
   
-  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, listenSocket);
+  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
   
   if (readWatcher == -1) {
     return false;
@@ -120,6 +134,7 @@ void ListenTask::cleanup () {
 
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
+
   if (token == readWatcher) {
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
@@ -131,8 +146,11 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     memset(&addr, 0, sizeof(addr));
     
     // accept connection
-    socket_t connfd = accept(listenSocket, (sockaddr*) &addr, &len);
-    if (connfd == INVALID_SOCKET) {
+    TRI_socket_t connectionSocket;
+    connectionSocket.fileDescriptor = 0;
+    connectionSocket.fileHandle = accept(_listenSocket.fileHandle, (sockaddr*) &addr, &len);
+    
+    if (connectionSocket.fileHandle == INVALID_SOCKET) {
       ++acceptFailures;
       
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
@@ -152,10 +170,10 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     struct sockaddr_in addr_out;
     socklen_t len_out = sizeof(addr_out);
 
-    int res = getsockname(connfd, (sockaddr*) &addr_out, &len_out);
+    int res = getsockname(connectionSocket.fileHandle, (sockaddr*) &addr_out, &len_out);
 
     if (res != 0) {
-      TRI_CLOSE_SOCKET(connfd);
+      TRI_CLOSE_SOCKET(connectionSocket);
       
       LOGGER_WARNING("getsockname failed with " << errno << " (" << strerror(errno) << ")");
 
@@ -165,9 +183,9 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     }
  
     // disable nagle's algorithm, set to non-blocking and close-on-exec  
-    bool result = _endpoint->initIncoming(connfd); 
+    bool result = _endpoint->initIncoming(connectionSocket); 
     if (!result) {
-      TRI_CLOSE_SOCKET(connfd);
+      TRI_CLOSE_SOCKET(connectionSocket);
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
 
@@ -193,7 +211,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     info.serverAddress = _endpoint->getHost();
     info.serverPort = _endpoint->getPort();
     
-    return handleConnected(connfd, info);
+    return handleConnected(connectionSocket, info);
   }
   
   return true;
@@ -204,8 +222,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::bindSocket () {
-  listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
-  if (listenSocket == 0) {
+  _listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
+  if (_listenSocket.fileHandle == 0) {
     return false;
   }
   

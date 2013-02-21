@@ -142,7 +142,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        EventToken installSocketEvent (EventLoop, EventType, Task*, socket_t);
+        EventToken installSocketEvent (EventLoop, EventType, Task*, TRI_socket_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
