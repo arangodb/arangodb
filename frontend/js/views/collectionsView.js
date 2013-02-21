@@ -19,7 +19,6 @@ var collectionsView = Backbone.View.extend({
     if (this.searchOptions.searchPhrase !== null) {
       searchPhrase = this.searchOptions.searchPhrase.toLowerCase();
     }
-
     this.collection.each(function (arango_collection) {
       if (searchPhrase !== '' && arango_collection.get('name').toLowerCase().indexOf(searchPhrase) === -1) {
         // search phrase entered but current collection does not match?
@@ -34,7 +33,7 @@ var collectionsView = Backbone.View.extend({
       $('.thumbnails', this.el).append(new window.CollectionListItemView({model: arango_collection}).render().el);
     }, this);
 
-    $('#searchInput').val(this.searchPhrase);
+    $('#searchInput').val(this.searchOptions.searchPhrase);
     $('#searchInput').focus();
 
     return this;
@@ -60,6 +59,7 @@ var collectionsView = Backbone.View.extend({
   restrictToSearchPhraseKey: function (e) {
     // key pressed in search box
     if (e.keyCode == 13) {
+      e.preventDefault();
       // return pressed? this triggers the search
       this.search();
     }
