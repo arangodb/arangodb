@@ -1,11 +1,11 @@
-Authentication and Authorisation {#DbaManualAuthentication}
-===========================================================
+Authentication and Authorisation{#DbaManualAuthentication}
+==========================================================
 
 @NAVIGATE_DbaManualAuthentication
 @EMBEDTOC{DbaManualAuthenticationTOC}
 
-Authentication and Authorisation {#DbaManualAuthenticationIntro}
-================================================================
+Authentication and Authorisation{#DbaManualAuthenticationIntro}
+===============================================================
 
 ArangoDB only provides a very simple authentication interface and no
 authorisation. We plan to add authorisation features in later releases, which
@@ -13,26 +13,21 @@ will allow the administrator to restrict access to collections and queries to
 certain users, given them either read or write access.
 
 Currently, you can only secure the access to ArangoDB in an all-or-nothing
-fashion. The collection `_users` contains all user and the SHA256 of their
-passwords. A user can be active or inactive. A typical document of this
+fashion. The collection `_users` contains all users and a salted SHA256 hash
+of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
-    {
-      "_id" : "_users/1675886",
-      "_rev" : "2147452",
-      "_key" : "1675886"
-      "active" : true,
-      "user" : "admin",
-      "password" : "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
-    }
+@EXAMPLE_ARANGOSH_OUTPUT{AuthenticationExample1}
+    db._users.firstExample("user", "root")
+@END_EXAMPLE_ARANGOSH_OUTPUT
 
-Command-Line Options for the Authentication and Authorisation {#DbaManualAuthenticationCommandLine}
----------------------------------------------------------------------------------------------------
+Command-Line Options for the Authentication and Authorisation{#DbaManualAuthenticationCommandLine}
+--------------------------------------------------------------------------------------------------
 
 @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
 
-Introduction to User Management {#UserManagementIntro}
-======================================================
+Introduction to User Management{#UserManagementIntro}
+=====================================================
 
 ArangoDB provides basic functionality to add, modify and remove
 database users programmatically. The following functionality is
@@ -46,9 +41,21 @@ web interface.
 @copydetails JSF_saveUser
 
 @CLEARPAGE
+@anchor UserManagementDocument
+@copydetails JSF_documentUser
+
+@CLEARPAGE
 @anchor UserManagementReplace
 @copydetails JSF_replaceUser
 
 @CLEARPAGE
+@anchor UserManagementUpdate
+@copydetails JSF_updateUser
+
+@CLEARPAGE
 @anchor UserManagementRemove
 @copydetails JSF_removeUser
+
+@CLEARPAGE
+@anchor UserManagementReload
+@copydetails JSF_reloadUsers

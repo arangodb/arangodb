@@ -1,10 +1,9 @@
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """New implementation of Visual Studio project generation for SCons."""
 
-import common
 import os
 import random
 
@@ -208,7 +207,7 @@ class MSVSSolution:
     self.Write()
 
 
-  def Write(self, writer=common.WriteOnDiff):
+  def Write(self, writer=gyp.common.WriteOnDiff):
     """Writes the solution file to disk.
 
     Raises:

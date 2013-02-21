@@ -320,7 +320,21 @@ The `removeByExample` method returns the number of documents removed:
     arangosh> db.mycollection.removeByExample({ value: 1 });
     2
 
+The number of documents to remove can optionally be limited.
+
 The method is also available via the REST API (@ref HttpSimple).
+
+### Replace / Update by Example
+
+ArangoDB 1.2 also provides "Replace by Example" and "Update by Example" methods that 
+can be used to fully or partially update documents from a collection that match the 
+specified example. This can be used to replace document values easily with a single 
+operation.
+
+The `replaceByExample` and `updateByExaple` methods return the number of documents 
+modified. Both operations can be limited to a specific number of documents if required.
+
+Both methods are also available via the REST API (@ref HttpSimple).
 
 ### Collection revision id
 

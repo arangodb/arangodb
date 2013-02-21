@@ -1,11 +1,11 @@
-Hash Indexes {#IndexHash}
-=========================
+Hash Indexes{#IndexHash}
+========================
 
 @NAVIGATE_IndexHash
 @EMBEDTOC{IndexHashTOC}
 
-Hash Indexes {#IndexHashIntro}
-==============================
+Introduction to Hash Indexes{#IndexHashIntro}
+=============================================
 
 This is an introduction to ArangoDB's hash indexes.
 
@@ -14,8 +14,8 @@ documents. This hash is then used in queries to locate documents in O(1)
 operations. If the hash is unique, then no two documents are allowed to have the
 same set of attribute values.
 
-Accessing Hash Indexes from the Shell {#IndexHashShell}
-=======================================================
+Accessing Hash Indexes from the Shell{#IndexHashShell}
+======================================================
 
 @anchor IndexHashShellEnsureUniqueConstraint
 @copydetails JS_EnsureUniqueConstraintVocbaseCol

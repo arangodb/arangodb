@@ -70,8 +70,8 @@ PLUS          [+]
 #define STRING_CONSTANT_ASCII 13
 
 struct jsonData {
-  char const* _message;
   TRI_memory_zone_t* _memoryZone;
+  char const* _message;
 };
 
 #define YY_FATAL_ERROR(a) \

@@ -17,6 +17,7 @@ var documentView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    this.breadcrumb();
     return this;
   },
   sourceView: function () {
@@ -25,7 +26,16 @@ var documentView = Backbone.View.extend({
   saveDocument: function () {
     window.arangoDocumentStore.saveDocument();
   },
-
+  breadcrumb: function () {
+    var name = window.location.hash.split("/");
+    $('#transparentHeader').append(
+      '<a href="#" class="activeBread">Collections</a>'+
+      '  >  '+
+      '<a class="activeBread" href="#collection/'+name[1]+'/documents/1">'+name[1]+'</a>'+
+      '  >  '+
+      '<a class="disabledBread">'+name[2]+'</a>'
+    );
+  },
   drawTable: function () {
     var self = this;
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
@@ -54,7 +64,7 @@ var documentView = Backbone.View.extend({
 
   initTable: function () {
     var documentTable = $(this.table).dataTable({
-      "aaSorting": [[ 1, "desc" ]],
+      "aaSorting": [[ 1, "asc" ]],
       "bAutoWidth": false,
       "bFilter": false,
       "bPaginate":false,
@@ -109,6 +119,7 @@ var documentView = Backbone.View.extend({
           return ("<a class=\"sh_keyword\">" + value + "</a>");
         case 'object':
           if (value instanceof Array) {
+        window.arangoDocumentStore.saveDocument();
           return ("<a class=\"sh_array\">" + self.escaped(JSON.stringify(value)) + "</a>");
         }
         else {
@@ -132,6 +143,7 @@ var documentView = Backbone.View.extend({
       result[row_data[1]] = JSON.parse(row_data[3]);
     }
     window.arangoDocumentStore.updateLocalDocument(result);
+    this.saveDocument();
   },
 
   makeEditable: function () {
@@ -160,7 +172,7 @@ var documentView = Backbone.View.extend({
         var test = self.getTypedValue(value);
         if (String(value) == String(oldContent)) {
           // no change
-          return value2html(oldContent);
+          return self.value2html(oldContent);
         }
         else {
           // change update hidden row

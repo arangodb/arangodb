@@ -29,6 +29,7 @@
 #define V8_TYPE_INFO_H_
 
 #include "allocation.h"
+#include "ast.h"
 #include "globals.h"
 #include "zone-inl.h"
 
@@ -203,6 +204,7 @@ class TypeInfo {
     kNonPrimitive = 0x40,  // 1000000
     kUninitialized = 0x7f  // 1111111
   };
+
   explicit inline TypeInfo(Type t) : type_(t) { }
 
   Type type_;
@@ -225,26 +227,33 @@ class CompareOperation;
 class CompilationInfo;
 class CountOperation;
 class Expression;
+class ForInStatement;
+class ICStub;
 class Property;
 class SmallMapList;
 class UnaryOperation;
 
 
-class TypeFeedbackOracle BASE_EMBEDDED {
+class TypeFeedbackOracle: public ZoneObject {
  public:
   TypeFeedbackOracle(Handle<Code> code,
-                     Handle<Context> global_context,
-                     Isolate* isolate);
+                     Handle<Context> native_context,
+                     Isolate* isolate,
+                     Zone* zone);
 
   bool LoadIsMonomorphicNormal(Property* expr);
-  bool LoadIsMegamorphicWithTypeInfo(Property* expr);
-  bool StoreIsMonomorphicNormal(Expression* expr);
-  bool StoreIsMegamorphicWithTypeInfo(Expression* expr);
+  bool LoadIsUninitialized(Property* expr);
+  bool LoadIsPolymorphic(Property* expr);
+  bool StoreIsMonomorphicNormal(TypeFeedbackId ast_id);
+  bool StoreIsPolymorphic(TypeFeedbackId ast_id);
   bool CallIsMonomorphic(Call* expr);
   bool CallNewIsMonomorphic(CallNew* expr);
+  bool ObjectLiteralStoreIsMonomorphic(ObjectLiteral::Property* prop);
+
+  bool IsForInFastCase(ForInStatement* expr);
 
   Handle<Map> LoadMonomorphicReceiverType(Property* expr);
-  Handle<Map> StoreMonomorphicReceiverType(Expression* expr);
+  Handle<Map> StoreMonomorphicReceiverType(TypeFeedbackId ast_id);
 
   void LoadReceiverTypes(Property* expr,
                          Handle<String> name,
@@ -256,41 +265,52 @@ class TypeFeedbackOracle BASE_EMBEDDED {
                          Handle<String> name,
                          CallKind call_kind,
                          SmallMapList* types);
-  void CollectKeyedReceiverTypes(unsigned ast_id,
+  void CollectKeyedReceiverTypes(TypeFeedbackId ast_id,
                                  SmallMapList* types);
 
-  static bool CanRetainOtherContext(Map* map, Context* global_context);
+  static bool CanRetainOtherContext(Map* map, Context* native_context);
   static bool CanRetainOtherContext(JSFunction* function,
-                                    Context* global_context);
+                                    Context* native_context);
 
   CheckType GetCallCheckType(Call* expr);
   Handle<JSObject> GetPrototypeForPrimitiveCheck(CheckType check);
 
   Handle<JSFunction> GetCallTarget(Call* expr);
+  Handle<JSFunction> GetCallNewTarget(CallNew* expr);
+
+  Handle<Map> GetObjectLiteralStoreMap(ObjectLiteral::Property* prop);
 
   bool LoadIsBuiltin(Property* expr, Builtins::Name id);
+  bool LoadIsStub(Property* expr, ICStub* stub);
 
   // TODO(1571) We can't use ToBooleanStub::Types as the return value because
   // of various cylces in our headers. Death to tons of implementations in
   // headers!! :-P
-  byte ToBooleanTypes(unsigned ast_id);
+  byte ToBooleanTypes(TypeFeedbackId ast_id);
 
   // Get type information for arithmetic operations and compares.
   TypeInfo UnaryType(UnaryOperation* expr);
-  TypeInfo BinaryType(BinaryOperation* expr);
-  TypeInfo CompareType(CompareOperation* expr);
-  bool IsSymbolCompare(CompareOperation* expr);
+  void BinaryType(BinaryOperation* expr,
+                  TypeInfo* left,
+                  TypeInfo* right,
+                  TypeInfo* result);
+  void CompareType(CompareOperation* expr,
+                   TypeInfo* left_type,
+                   TypeInfo* right_type,
+                   TypeInfo* overall_type);
   Handle<Map> GetCompareMap(CompareOperation* expr);
   TypeInfo SwitchType(CaseClause* clause);
   TypeInfo IncrementType(CountOperation* expr);
 
+  Zone* zone() const { return zone_; }
+
  private:
-  void CollectReceiverTypes(unsigned ast_id,
+  void CollectReceiverTypes(TypeFeedbackId ast_id,
                             Handle<String> name,
                             Code::Flags flags,
                             SmallMapList* types);
 
-  void SetInfo(unsigned ast_id, Object* target);
+  void SetInfo(TypeFeedbackId ast_id, Object* target);
 
   void BuildDictionary(Handle<Code> code);
   void GetRelocInfos(Handle<Code> code, ZoneList<RelocInfo>* infos);
@@ -303,11 +323,12 @@ class TypeFeedbackOracle BASE_EMBEDDED {
 
   // Returns an element from the backing store. Returns undefined if
   // there is no information.
-  Handle<Object> GetInfo(unsigned ast_id);
+  Handle<Object> GetInfo(TypeFeedbackId ast_id);
 
-  Handle<Context> global_context_;
+  Handle<Context> native_context_;
   Isolate* isolate_;
   Handle<UnseededNumberDictionary> dictionary_;
+  Zone* zone_;
 
   DISALLOW_COPY_AND_ASSIGN(TypeFeedbackOracle);
 };

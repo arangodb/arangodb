@@ -1,14 +1,11 @@
-ArangoDB's Actions {#UserManualActions}
-=======================================
+ArangoDB's Actions{#UserManualActions}
+======================================
 
 @NAVIGATE_UserManualActions
 @EMBEDTOC{UserManualActionsTOC}
 
-Please note, that user Actions in ArangoDB are still preliminary and details
-are subject to change.
-
-Introduction to User Actions {#UserManualActionsIntro}
-======================================================
+Introduction to User Actions{#UserManualActionsIntro}
+=====================================================
 
 In some ways the communication layer of the ArangoDB server behaves like a Web
 server. Unlike a Web server, it normally responds to HTTP requests by delivering
@@ -57,8 +54,8 @@ Note that unlike node.js, ArangoDB is multi-threaded and there is no easy way to
 share state between queries inside the JavaScript engine. If such state
 information is required, you need to use the database itself.
 
-A Hello World Example {#UserManualActionsHelloWorld}
-====================================================
+A Hello World Example{#UserManualActionsHelloWorld}
+===================================================
 
 The client API or browser sends a HTTP request to the ArangoDB server and the
 server returns a HTTP response to the client. A HTTP request consists of a
@@ -103,8 +100,8 @@ Now use the browser and access
 
 You should see the `Hello World` in our browser.
 
-Matching a URL {#UserManualActionsMatches}
-==========================================
+Matching a URL{#UserManualActionsMatches}
+=========================================
 
 There are a lot of options for the `url` attribute. If you define different
 routing for the same path, then the following simple rule is applied in order to
@@ -112,8 +109,8 @@ determine which match wins: If there are two matches, then the more specific
 wins. I. e, if there is a wildcard match and an exact match, the exact match is
 prefered. If there is a short and a long match, the longer match wins.
 
-Exact Match {#UserManualActionsMatchesExact}
---------------------------------------------
+Exact Match{#UserManualActionsMatchesExact}
+-------------------------------------------
 
 If the definition is
 
@@ -137,8 +134,8 @@ will result in the URL being accessible via all supported HTTP methods (e.g.
 HTTP `HEAD` only, with all other HTTP methods being disabled. Calling a URL
 with an unsupported or disabled HTTP method will result in an HTTP 501 error.
 
-Prefix Match {#UserManualActionsMatchesPrefix}
-----------------------------------------------
+Prefix Match{#UserManualActionsMatchesPrefix}
+---------------------------------------------
 
 If the definition is
 
@@ -162,8 +159,8 @@ If you define two routes
 then the second route will be used for `/hello/world/emil` because it is more
 specific.
 
-Parameterized Match {#UserManualActionsMatchesParameterized}
-------------------------------------------------------------
+Parameterized Match{#UserManualActionsMatchesParameterized}
+-----------------------------------------------------------
 
 A parameterized match is similar to a prefix match, but the parameters are also
 allowed inside the URL path.
@@ -176,8 +173,8 @@ then the URL must have three parts, the first part being `hello` and the third
 part `world`. For example, `/hello/emil/world` will match, while
 `/hello/emil/meyer/world` will not.
 
-Constraint Match {#UserManualActionsMatchesConstraint}
-------------------------------------------------------
+Constraint Match{#UserManualActionsMatchesConstraint}
+-----------------------------------------------------
 
 A constraint match is similar to a parameterized match, but the parameters can
 carry constraints.
@@ -194,8 +191,8 @@ It is possible to use more then one constraint for the same URL part.
     { url: { match: "/hello/:name|:id/world",
 	     constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }
 
-Optional Match {#UserManualActionsMatchesOptional}
---------------------------------------------------
+Optional Match{#UserManualActionsMatchesOptional}
+-------------------------------------------------
 
 An optional match is similar to a parameterized match, but the last parameter is
 optional.
@@ -216,8 +213,8 @@ then the URL `/hello/world` will be matched by the first route, because it is
 the most specific. The URL `/hello/you` will be matched by the second route,
 because it is more specific than the prefix match.
 
-Method Restriction {#UserManualActionsMatchesMethod}
-----------------------------------------------------
+Method Restriction{#UserManualActionsMatchesMethod}
+---------------------------------------------------
 
 You can restrict the match to specific HTTP methods.
 
@@ -234,9 +231,8 @@ disabled:
 
     { url: "/hello/world" }
 
-
-More on Matching {#UserManualActionsMatching}
----------------------------------------------
+More on Matching{#UserManualActionsMatching}
+--------------------------------------------
 
 Remember that the more specific match wins. 
 
@@ -272,8 +268,8 @@ to test the above examples.
       ]
     }
 
-A Hello World Example for JSON {#UserManualActionsHelloJson}
-============================================================
+A Hello World Example for JSON{#UserManualActionsHelloJson}
+===========================================================
 
 If you change the example slightly, then a JSON object will be delivered.
 
@@ -297,15 +293,15 @@ a browser. Or use `curl` to access the server.
     bash> curl "http://127.0.0.1:8529/hello/json" && echo
     { "hello" : "world" }
 
-Delivering Content {#UserManualActionsContent}
-==============================================
+Delivering Content{#UserManualActionsContent}
+=============================================
 
 There are a lot of different ways on how to deliver content. We have already
 seen the simplest one, where static content is delivered. The fun, however,
 starts when delivering dynamic content.
 
-Static Content {#UserManualActionsContentStatic}
-------------------------------------------------
+Static Content{#UserManualActionsContentStatic}
+-----------------------------------------------
 
 You can specify a body and a content-type.
 
@@ -319,8 +315,8 @@ If the content type is `text/plain` then you can use the short-cut
 
     { content: "Hello World" }
 
-A Simple Action {#UserManualActionsContentAction}
-=================================================
+A Simple Action{#UserManualActionsContentAction}
+================================================
 
 The simplest dynamic action is:
 
@@ -384,13 +380,13 @@ will contain the following attribute
 
     urlParameters: { name: "emil", action: "jump" } }
 
-Action Controller {#UserManualActionsContentController}
--------------------------------------------------------
+Action Controller{#UserManualActionsContentController}
+------------------------------------------------------
 
-As an alternative to the simple action, you can use controllers. A
-controller is a module, defines the function `get`, `put`,
-`post`, `delete`, `head`, `patch`. If a request of
-the corresponding type is matched, the function will be called.
+As an alternative to the simple action, you can use controllers. A controller is
+a module, defines the function `get`, `put`, `post`, `delete`, `head`,
+`patch`. If a request of the corresponding type is matched, the function will be
+called.
 
 For example
 
@@ -398,12 +394,11 @@ For example
     ........>   url: "/hello/echo",
     ........>   action: { controller: "org/arangodb/actions/echoController" } });
 
-Prefix Action Controller {#UserManualActionsContentPrefix}
-----------------------------------------------------------
+Prefix Action Controller{#UserManualActionsContentPrefix}
+---------------------------------------------------------
 
-The controller is selected when the definition is read. There is a
-more flexible, but slower and maybe insecure variant, the prefix
-controller.
+The controller is selected when the definition is read. There is a more
+flexible, but slower and maybe insecure variant, the prefix controller.
 
 Assume that the url is a prefix match
 
@@ -413,11 +408,11 @@ You can use
 
     { action: { prefixController: "org/arangodb/actions" } }
 
-to define a prefix controller. If the URL `/hello/echoController` is
-given, then the module `org/arangodb/actions/echoController` is used.
+to define a prefix controller. If the URL `/hello/echoController` is given, then
+the module `org/arangodb/actions/echoController` is used.
 
-If you use a prefix controller, you should make certain that no unwanted
-actions are available under the prefix.
+If you use a prefix controller, you should make certain that no unwanted actions
+are available under the prefix.
 
 The definition
 
@@ -425,8 +420,8 @@ The definition
 
 is a short-cut for a prefix controller definition.
 
-Function Action {#UserManualActionsFunctionAction}
---------------------------------------------------
+Function Action{#UserManualActionsFunctionAction}
+-------------------------------------------------
 
 You can also store a function directly in the routing table.
 
@@ -436,14 +431,14 @@ For example
     ........>   url: "/hello/echo",
     ........>   action: { function: "function(req,res) {res.statusCode=200; res.body='Hello'}" } });
 
-Requests and Responses {#UserManualActionsReqRes}
-=================================================
+Requests and Responses{#UserManualActionsReqRes}
+================================================
 
 The controller must define handler functions which take a request object and
 fill the response object.
 
-A very simple example is the function `echoRequest` defined in
-the module `org/arangodb/actions`.
+A very simple example is the function `echoRequest` defined in the module
+`org/arangodb/actions`.
 
     function (req, res, options, next) {
       var result;
@@ -509,8 +504,8 @@ You should now see the options in the result.
 	}
     }
 
-Modifying Request and Response {#UserManualActionsModify}
-=========================================================
+Modifying Request and Response{#UserManualActionsModify}
+========================================================
 
 As we've seen in the previous examples, actions get called with the request and
 response objects (named `req` and `res` in the examples) passed as parameters to
@@ -568,8 +563,8 @@ and set the HTTP header `Content-Encoding: binary`. The opposite can be achieved
 with the `base64encode` transformation: ArangoDB will then automatically
 base64-encode the body and set a `Content-Encoding: base64` HTTP header.
 
-Writing dynamic action handlers {#UserManualActionsHandlers}
-============================================================
+Writing dynamic action handlers{#UserManualActionsHandlers}
+===========================================================
 
 To write your own dynamic action handlers, you must put them into modules.
 
@@ -602,13 +597,54 @@ Now use the browser and access
 
 You will see that the module's do function has been executed.
 
-Advanced Usages {#UserManualActionsAdvanced}
-============================================
+A Word about Caching{#UserManualActionsCache}
+=============================================
+
+Sometimes it might seem that your change do not take effect. In this case the
+culprit could be one of the caches. With dynamic actions there are two caches
+involved:
+
+The Routing Cache
+-----------------
+
+The routing cache stores the routing information computed from the `_routing`
+collection. Whenever you change this collection manually, you need to call
+
+    arangosh> require("internal").reloadRouting()
+
+in order to rebuild the cache.
+
+The Modules Cache
+-----------------
+
+If you use a dynamic action and this action is stored in module, then the
+module functions are also stored in a cache in order to avoid parsing the
+JavaScript code again and again.
+
+Whenever you change the `modules` collections manually, you need to call
+
+    arangosh> require("internal").flushServerModules()
+
+in order to rebuild the cache.
+
+Flush Order
+-----------
+
+If you define a dynamic routing and the controller, then you need to flush the
+caches in a particular order. In order to build the routes, the module
+information must be known. Therefore, you need to flush the modules caches
+first.
+
+    arangosh> require("internal").flushServerModules()
+    arangosh> require("internal").reloadRouting()
+
+Advanced Usages{#UserManualActionsAdvanced}
+===========================================
 
 For detailed information see the reference manual.
 
-Redirects {#UserManualActionsAdvancedRedirects}
------------------------------------------------
+Redirects{#UserManualActionsAdvancedRedirects}
+----------------------------------------------
 
 Use the following for a permanent redirect:
 
@@ -621,8 +657,8 @@ Use the following for a permanent redirect:
     ........>       permanently: true,
     ........>       destination: "http://somewhere.else/" } } });
 
-Routing Bundles {#UserManualActionsAdvancedBundles}
----------------------------------------------------
+Routing Bundles{#UserManualActionsAdvancedBundles}
+--------------------------------------------------
 
 Instead of adding all routes for package separately, you can
 specify a bundle.
@@ -652,8 +688,8 @@ and use a common prefix.
 
 will define the URL `/test/url1`, `/test/url2`, and `/test/url3`.
 
-Writing Middleware {#UserManualActionsAdvancedMiddleware}
----------------------------------------------------------
+Writing Middleware{#UserManualActionsAdvancedMiddleware}
+--------------------------------------------------------
 
 Assume, you want to log every request. In this case you can easily define an
 action for the whole url-space `/`. This action simply logs the requests, calls
@@ -675,8 +711,8 @@ should win in this case:
     ........>   ]
     ........> });
 
-Application Deployment {#UserManualActionsApplicationDeployment}
-================================================================
+Application Deployment{#UserManualActionsApplicationDeployment}
+===============================================================
 
 Using single routes or @ref UserManualActionsAdvancedBundles "bundles" can be
 become a bit messy in large applications. Therefore a deployment tool exists
@@ -732,8 +768,8 @@ Now check
     http://localhost:8529/example/version
     http://localhost:8529/example/author
 
-Deploying Static Pages {#UserManualActionsDeployingStaticPages}
----------------------------------------------------------------
+Deploying Static Pages{#UserManualActionsDeployingStaticPages}
+--------------------------------------------------------------
 
 Most of the time, static html pages and JavaScript content will be delivered by
 your web-server. But sometimes it is convenient to deliver these directly from
@@ -769,15 +805,14 @@ Check the index file
 
     http://localhost:8529/example/static/index.html
 
-Deploying Modules {#UserManualActionsDeployingModules}
-------------------------------------------------------
+Deploying Modules{#UserManualActionsDeployingModules}
+-----------------------------------------------------
 
 In general deploying static pages is nice for demos and administrative
 front-ends; but most of the time you will deploy JavaScript functions which will
 compute JSON objects implementing a RESTful interface or something similar.
 
-In order to deploy modules *not* belonging to a particular application
-use
+In order to deploy modules *not* belonging to a particular application use
 
     arangosh> var deploy = require("org/arangodb/deploy");
 
@@ -787,3 +822,5 @@ use
 This will upload all JavaScript files - which must end in `.js` - into the
 database.  The first argument to `uploadModules` is a prefix used for the module
 path.
+
+For more details check the modules chapter in the reference handbook.

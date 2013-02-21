@@ -31,6 +31,7 @@
 #include "deoptimizer.h"
 #include "frames-inl.h"
 #include "full-codegen.h"
+#include "lazy-instance.h"
 #include "mark-compact.h"
 #include "safepoint-table.h"
 #include "scopeinfo.h"
@@ -40,6 +41,22 @@
 
 namespace v8 {
 namespace internal {
+
+
+static ReturnAddressLocationResolver return_address_location_resolver = NULL;
+
+
+// Resolves pc_address through the resolution address function if one is set.
+static inline Address* ResolveReturnAddressLocation(Address* pc_address) {
+  if (return_address_location_resolver == NULL) {
+    return pc_address;
+  } else {
+    return reinterpret_cast<Address*>(
+        return_address_location_resolver(
+            reinterpret_cast<uintptr_t>(pc_address)));
+  }
+}
+
 
 // Iterator that supports traversing the stack handlers of a
 // particular frame. Needs to know the top of the handler chain.
@@ -155,8 +172,8 @@ void StackFrameIterator::Reset() {
     ASSERT(fp_ != NULL);
     state.fp = fp_;
     state.sp = sp_;
-    state.pc_address =
-        reinterpret_cast<Address*>(StandardFrame::ComputePCAddress(fp_));
+    state.pc_address = ResolveReturnAddressLocation(
+        reinterpret_cast<Address*>(StandardFrame::ComputePCAddress(fp_)));
     type = StackFrame::ComputeType(isolate(), &state);
   }
   if (SingletonFor(type) == NULL) return;
@@ -414,6 +431,13 @@ void StackFrame::IteratePc(ObjectVisitor* v,
 }
 
 
+void StackFrame::SetReturnAddressLocationResolver(
+    ReturnAddressLocationResolver resolver) {
+  ASSERT(return_address_location_resolver == NULL);
+  return_address_location_resolver = resolver;
+}
+
+
 StackFrame::Type StackFrame::ComputeType(Isolate* isolate, State* state) {
   ASSERT(state->fp != NULL);
   if (StandardFrame::IsArgumentsAdaptorFrame(state->fp)) {
@@ -445,8 +469,22 @@ StackFrame::Type StackFrame::GetCallerState(State* state) const {
 }
 
 
+Address StackFrame::UnpaddedFP() const {
+#if defined(V8_TARGET_ARCH_IA32)
+  if (!is_optimized()) return fp();
+  int32_t alignment_state = Memory::int32_at(
+    fp() + JavaScriptFrameConstants::kDynamicAlignmentStateOffset);
+
+  return (alignment_state == kAlignmentPaddingPushed) ?
+    (fp() + kPointerSize) : fp();
+#else
+  return fp();
+#endif
+}
+
+
 Code* EntryFrame::unchecked_code() const {
-  return HEAP->raw_unchecked_js_entry_code();
+  return HEAP->js_entry_code();
 }
 
 
@@ -469,7 +507,7 @@ StackFrame::Type EntryFrame::GetCallerState(State* state) const {
 
 
 Code* EntryConstructFrame::unchecked_code() const {
-  return HEAP->raw_unchecked_js_construct_entry_code();
+  return HEAP->js_construct_entry_code();
 }
 
 
@@ -488,8 +526,8 @@ void ExitFrame::ComputeCallerState(State* state) const {
   // Set up the caller state.
   state->sp = caller_sp();
   state->fp = Memory::Address_at(fp() + ExitFrameConstants::kCallerFPOffset);
-  state->pc_address
-      = reinterpret_cast<Address*>(fp() + ExitFrameConstants::kCallerPCOffset);
+  state->pc_address = ResolveReturnAddressLocation(
+      reinterpret_cast<Address*>(fp() + ExitFrameConstants::kCallerPCOffset));
 }
 
 
@@ -523,7 +561,8 @@ StackFrame::Type ExitFrame::GetStateForFramePointer(Address fp, State* state) {
 void ExitFrame::FillState(Address fp, Address sp, State* state) {
   state->sp = sp;
   state->fp = fp;
-  state->pc_address = reinterpret_cast<Address*>(sp - 1 * kPointerSize);
+  state->pc_address = ResolveReturnAddressLocation(
+      reinterpret_cast<Address*>(sp - 1 * kPointerSize));
 }
 
 
@@ -558,7 +597,8 @@ int StandardFrame::ComputeExpressionsCount() const {
 void StandardFrame::ComputeCallerState(State* state) const {
   state->sp = caller_sp();
   state->fp = caller_fp();
-  state->pc_address = reinterpret_cast<Address*>(ComputePCAddress(fp()));
+  state->pc_address = ResolveReturnAddressLocation(
+      reinterpret_cast<Address*>(ComputePCAddress(fp())));
 }
 
 
@@ -577,13 +617,7 @@ bool StandardFrame::IsExpressionInsideHandler(int n) const {
 }
 
 
-void OptimizedFrame::Iterate(ObjectVisitor* v) const {
-#ifdef DEBUG
-  // Make sure that optimized frames do not contain any stack handlers.
-  StackHandlerIterator it(this, top_handler());
-  ASSERT(it.done());
-#endif
-
+void StandardFrame::IterateCompiledFrame(ObjectVisitor* v) const {
   // Make sure that we're not doing "safe" stack frame iteration. We cannot
   // possibly find pointers in optimized frames in that state.
   ASSERT(!SafeStackFrameIterator::is_active(isolate()));
@@ -609,7 +643,9 @@ void OptimizedFrame::Iterate(ObjectVisitor* v) const {
 
   // Skip saved double registers.
   if (safepoint_entry.has_doubles()) {
-    parameters_base += DoubleRegister::kNumAllocatableRegisters *
+    // Number of doubles not known at snapshot time.
+    ASSERT(!Serializer::enabled());
+    parameters_base += DoubleRegister::NumAllocatableRegisters() *
         kDoubleSize / kPointerSize;
   }
 
@@ -641,14 +677,50 @@ void OptimizedFrame::Iterate(ObjectVisitor* v) const {
     }
   }
 
+  // Visit the return address in the callee and incoming arguments.
+  IteratePc(v, pc_address(), code);
+}
+
+
+void StubFrame::Iterate(ObjectVisitor* v) const {
+  IterateCompiledFrame(v);
+}
+
+
+Code* StubFrame::unchecked_code() const {
+  return static_cast<Code*>(isolate()->heap()->FindCodeObject(pc()));
+}
+
+
+Address StubFrame::GetCallerStackPointer() const {
+  return fp() + ExitFrameConstants::kCallerSPDisplacement;
+}
+
+
+int StubFrame::GetNumberOfIncomingArguments() const {
+  return 0;
+}
+
+
+void OptimizedFrame::Iterate(ObjectVisitor* v) const {
+#ifdef DEBUG
+  // Make sure that optimized frames do not contain any stack handlers.
+  StackHandlerIterator it(this, top_handler());
+  ASSERT(it.done());
+#endif
+
+  IterateCompiledFrame(v);
+
   // Visit the context and the function.
   Object** fixed_base = &Memory::Object_at(
       fp() + JavaScriptFrameConstants::kFunctionOffset);
   Object** fixed_limit = &Memory::Object_at(fp());
   v->VisitPointers(fixed_base, fixed_limit);
+}
 
-  // Visit the return address in the callee and incoming arguments.
-  IteratePc(v, pc_address(), code);
+
+void JavaScriptFrame::SetParameterValue(int index, Object* value) const {
+  Memory::Object_at(GetParameterSlot(index)) = value;
 }
 
 
@@ -749,7 +821,7 @@ void JavaScriptFrame::PrintTop(FILE* file,
                                          ROBUST_STRING_TRAVERSAL);
               PrintF(file, " at %s:%d", *c_script_name, line);
             } else {
-              PrintF(file, "at <unknown>:%d", line);
+              PrintF(file, " at <unknown>:%d", line);
             }
           } else {
             PrintF(file, " at <unknown>:<unknown>");
@@ -792,12 +864,23 @@ void FrameSummary::Print() {
 }
 
 
+JSFunction* OptimizedFrame::LiteralAt(FixedArray* literal_array,
+                                      int literal_id) {
+  if (literal_id == Translation::kSelfLiteralId) {
+    return JSFunction::cast(function());
+  }
+
+  return JSFunction::cast(literal_array->get(literal_id));
+}
+
+
 void OptimizedFrame::Summarize(List<FrameSummary>* frames) {
   ASSERT(frames->length() == 0);
   ASSERT(is_optimized());
 
   int deopt_index = Safepoint::kNoDeoptimizationIndex;
   DeoptimizationInputData* data = GetDeoptimizationData(&deopt_index);
+  FixedArray* literal_array = data->LiteralArray();
 
   // BUG(3243555): Since we don't have a lazy-deopt registered at
   // throw-statements, we can't use the translation at the call-site of
@@ -818,20 +901,15 @@ void OptimizedFrame::Summarize(List<FrameSummary>* frames) {
 
   // We create the summary in reverse order because the frames
   // in the deoptimization translation are ordered bottom-to-top.
+  bool is_constructor = IsConstructor();
   int i = jsframe_count;
   while (i > 0) {
     opcode = static_cast<Translation::Opcode>(it.Next());
     if (opcode == Translation::JS_FRAME) {
-      // We don't inline constructor calls, so only the first, outermost
-      // frame can be a constructor frame in case of inlining.
-      bool is_constructor = (i == jsframe_count) && IsConstructor();
-
       i--;
-      int ast_id = it.Next();
-      int function_id = it.Next();
+      BailoutId ast_id = BailoutId(it.Next());
+      JSFunction* function = LiteralAt(literal_array, it.Next());
       it.Next();  // Skip height.
-      JSFunction* function =
-          JSFunction::cast(data->LiteralArray()->get(function_id));
 
       // The translation commands are ordered and the receiver is always
       // at the first position. Since we are always at a call when we need
@@ -875,11 +953,18 @@ void OptimizedFrame::Summarize(List<FrameSummary>* frames) {
 
       FrameSummary summary(receiver, function, code, pc_offset, is_constructor);
       frames->Add(summary);
+      is_constructor = false;
+    } else if (opcode == Translation::CONSTRUCT_STUB_FRAME) {
+      // The next encountered JS_FRAME will be marked as a constructor call.
+      it.Skip(Translation::NumberOfOperandsFor(opcode));
+      ASSERT(!is_constructor);
+      is_constructor = true;
     } else {
       // Skip over operands to advance to the next opcode.
       it.Skip(Translation::NumberOfOperandsFor(opcode));
     }
   }
+  ASSERT(!is_constructor);
 }
 
 
@@ -931,6 +1016,7 @@ void OptimizedFrame::GetFunctions(List<JSFunction*>* functions) {
 
   int deopt_index = Safepoint::kNoDeoptimizationIndex;
   DeoptimizationInputData* data = GetDeoptimizationData(&deopt_index);
+  FixedArray* literal_array = data->LiteralArray();
 
   TranslationIterator it(data->TranslationByteArray(),
                          data->TranslationIndex(deopt_index)->value());
@@ -946,10 +1032,8 @@ void OptimizedFrame::GetFunctions(List<JSFunction*>* functions) {
     if (opcode == Translation::JS_FRAME) {
       jsframe_count--;
       it.Next();  // Skip ast id.
-      int function_id = it.Next();
+      JSFunction* function = LiteralAt(literal_array, it.Next());
       it.Next();  // Skip height.
-      JSFunction* function =
-          JSFunction::cast(data->LiteralArray()->get(function_id));
       functions->Add(function);
     } else {
       // Skip over operands to advance to the next opcode.
@@ -1174,7 +1258,7 @@ void EntryFrame::Iterate(ObjectVisitor* v) const {
   StackHandlerIterator it(this, top_handler());
   ASSERT(!it.done());
   StackHandler* handler = it.handler();
-  ASSERT(handler->is_entry());
+  ASSERT(handler->is_js_entry());
   handler->Iterate(v, LookupCode());
 #ifdef DEBUG
   // Make sure that the entry frame does not contain more than one
@@ -1216,6 +1300,42 @@ void InternalFrame::Iterate(ObjectVisitor* v) const {
   // as they never have any arguments.
   IterateExpressions(v);
   IteratePc(v, pc_address(), LookupCode());
+}
+
+
+void StubFailureTrampolineFrame::Iterate(ObjectVisitor* v) const {
+  Object** base = &Memory::Object_at(sp());
+  Object** limit = &Memory::Object_at(fp() +
+                                      kFirstRegisterParameterFrameOffset);
+  v->VisitPointers(base, limit);
+  base = &Memory::Object_at(fp() + StandardFrameConstants::kMarkerOffset);
+  const int offset = StandardFrameConstants::kContextOffset;
+  limit = &Memory::Object_at(fp() + offset) + 1;
+  v->VisitPointers(base, limit);
+  IteratePc(v, pc_address(), LookupCode());
+}
+
+
+Address StubFailureTrampolineFrame::GetCallerStackPointer() const {
+  return fp() + StandardFrameConstants::kCallerSPOffset;
+}
+
+
+Code* StubFailureTrampolineFrame::unchecked_code() const {
+  int i = 0;
+  for (; i <= StubFailureTrampolineStub::kMaxExtraExpressionStackCount; ++i) {
+    Code* trampoline;
+    StubFailureTrampolineStub(i).FindCodeInCache(&trampoline, isolate());
+    ASSERT(trampoline != NULL);
+    Address current_pc = pc();
+    Address code_start = trampoline->instruction_start();
+    Address code_end = code_start + trampoline->instruction_size();
+    if (code_start <= current_pc && current_pc < code_end) {
+      return trampoline;
+    }
+  }
+  UNREACHABLE();
+  return NULL;
 }
 
 
@@ -1272,7 +1392,7 @@ Code* InnerPointerToCodeCache::GcSafeFindCodeForInnerPointer(
     Address inner_pointer) {
   Heap* heap = isolate_->heap();
   // Check if the inner pointer points into a large object chunk.
-  LargePage* large_page = heap->lo_space()->FindPageContainingPc(inner_pointer);
+  LargePage* large_page = heap->lo_space()->FindPage(inner_pointer);
   if (large_page != NULL) {
     return GcSafeCastToCode(large_page->GetObject(), inner_pointer);
   }
@@ -1329,34 +1449,28 @@ InnerPointerToCodeCache::InnerPointerToCodeCacheEntry*
 // -------------------------------------------------------------------------
 
 int NumRegs(RegList reglist) {
-  int n = 0;
-  while (reglist != 0) {
-    n++;
-    reglist &= reglist - 1;  // clear one bit
-  }
-  return n;
+  return CompilerIntrinsics::CountSetBits(reglist);
 }
 
 
 struct JSCallerSavedCodeData {
-  JSCallerSavedCodeData() {
-    int i = 0;
-    for (int r = 0; r < kNumRegs; r++)
-      if ((kJSCallerSaved & (1 << r)) != 0)
-        reg_code[i++] = r;
-
-    ASSERT(i == kNumJSCallerSaved);
-  }
   int reg_code[kNumJSCallerSaved];
 };
 
+JSCallerSavedCodeData caller_saved_code_data;
 
-static const JSCallerSavedCodeData kCallerSavedCodeData;
+void SetUpJSCallerSavedCodeData() {
+  int i = 0;
+  for (int r = 0; r < kNumRegs; r++)
+    if ((kJSCallerSaved & (1 << r)) != 0)
+      caller_saved_code_data.reg_code[i++] = r;
 
+  ASSERT(i == kNumJSCallerSaved);
+}
 
 int JSCallerSavedCode(int n) {
   ASSERT(0 <= n && n < kNumJSCallerSaved);
-  return kCallerSavedCodeData.reg_code[n];
+  return caller_saved_code_data.reg_code[n];
 }
 
 
@@ -1370,11 +1484,11 @@ class field##_Wrapper : public ZoneObject {                      \
 STACK_FRAME_TYPE_LIST(DEFINE_WRAPPER)
 #undef DEFINE_WRAPPER
 
-static StackFrame* AllocateFrameCopy(StackFrame* frame) {
+static StackFrame* AllocateFrameCopy(StackFrame* frame, Zone* zone) {
 #define FRAME_TYPE_CASE(type, field) \
   case StackFrame::type: { \
     field##_Wrapper* wrapper = \
-        new field##_Wrapper(*(reinterpret_cast<field*>(frame))); \
+        new(zone) field##_Wrapper(*(reinterpret_cast<field*>(frame))); \
     return &wrapper->frame_; \
   }
 
@@ -1386,11 +1500,11 @@ static StackFrame* AllocateFrameCopy(StackFrame* frame) {
   return NULL;
 }
 
-Vector<StackFrame*> CreateStackMap() {
-  ZoneList<StackFrame*> list(10);
+Vector<StackFrame*> CreateStackMap(Zone* zone) {
+  ZoneList<StackFrame*> list(10, zone);
   for (StackFrameIterator it; !it.done(); it.Advance()) {
-    StackFrame* frame = AllocateFrameCopy(it.frame());
-    list.Add(frame);
+    StackFrame* frame = AllocateFrameCopy(it.frame(), zone);
+    list.Add(frame, zone);
   }
   return list.ToVector();
 }

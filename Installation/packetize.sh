@@ -95,6 +95,70 @@ case $TRI_OS_LONG in
     exit 0
     ;;
 
+  Linux-CentOS-*)
+    echo "Using configuration for Centos"
+    package_type="rpm"
+    START_SCRIPT="rc.arangod.Centos"
+    runlevels="0235"
+
+    # exports for the epm configuration file
+    export chkconf="true"
+    install_message="${install_message}${start_initd_message}"
+    ;;
+
+  Darwin*)
+    echo "Using configuration for DARWIN"
+    ostype="macosx"
+    osvers=`echo ${RELEASE} | awk -F"." '{print $1 "." $2}'`
+    TRI_RELEASE=$osvers
+    rusr=root
+    rgrp=wheel
+    susr=root
+    sgrp=wheel
+    package_type="osx"
+
+    # export "macosx" for the epm configuration file
+    export macosx="true"
+    ;;
+
+  Linux-Debian*)
+    echo "Using configuration for Debian"
+    package_type="deb"
+    START_SCRIPT="rc.arangod.Debian"
+    runlevels="035"
+
+    if [ ${TRI_MACH} == "x86_64" ] ; then
+      TRI_MACH="amd64"
+    fi
+    install_message="${install_message}${start_initd_message}"
+
+    ;;
+
+  Linux-Fedora*)
+    echo "Using configuration for Fedora"
+    package_type="rpm"
+    START_SCRIPT="rc.arangod.Centos"
+    runlevels="035"
+    docdir=${prefix}/share/doc/packages/${vers_dir}
+
+    # exports for the epm configuration file
+    export use_systemd="true"
+    install_message="${install_message}${start_systemd_message}"
+    ;;
+
+  Linux-LinuxMint-*)
+    echo "Using configuration for LinuxMint"
+    package_type="deb"
+    START_SCRIPT="rc.arangod.Ubuntu"
+    runlevels="02345"
+
+    if [ ${TRI_MACH} == "x86_64" ] ; then
+      TRI_MACH="amd64"
+    fi
+    install_message="${install_message}${start_initd_message}"
+
+    ;;
+
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12"
     package_type="rpm"
@@ -119,30 +183,6 @@ case $TRI_OS_LONG in
     install_message="${install_message}${start_initd_message}"
     ;;
 
-  Linux-Debian*)
-    echo "Using configuration for Debian"
-    package_type="deb"
-    START_SCRIPT="rc.arangod.Debian"
-    runlevels="035"
-
-    if [ ${TRI_MACH} == "x86_64" ] ; then
-      TRI_MACH="amd64"
-    fi
-    install_message="${install_message}${start_initd_message}"
-
-    ;;
-
-  Linux-CentOS-*)
-    echo "Using configuration for Centos"
-    package_type="rpm"
-    START_SCRIPT="rc.arangod.Centos"
-    runlevels="0235"
-
-    # exports for the epm configuration file
-    export chkconf="true"
-    install_message="${install_message}${start_initd_message}"
-    ;;
-
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
     package_type="deb"
@@ -154,34 +194,6 @@ case $TRI_OS_LONG in
     fi
     install_message="${install_message}${start_initd_message}"
 
-    ;;
-
-  Linux-LinuxMint-*)
-    echo "Using configuration for LinuxMint"
-    package_type="deb"
-    START_SCRIPT="rc.arangod.Ubuntu"
-    runlevels="02345"
-
-    if [ ${TRI_MACH} == "x86_64" ] ; then
-      TRI_MACH="amd64"
-    fi
-    install_message="${install_message}${start_initd_message}"
-
-    ;;
-
-  Darwin*)
-    echo "Using configuration for DARWIN"
-    ostype="macosx"
-    osvers=`echo ${RELEASE} | awk -F"." '{print $1 "." $2}'`
-    TRI_RELEASE=$osvers
-    rusr=root
-    rgrp=wheel
-    susr=root
-    sgrp=wheel
-    package_type="osx"
-
-    # export "macosx" for the epm configuration file
-    export macosx="true"
     ;;
 
   *)
@@ -310,13 +322,8 @@ export systemddir
 echo 
 echo "########################################################"
 echo "Call EPM to build the package."
-if [ "$TRI_MACH" == "amd64" ] ; then
-  echo "  sudo -E epm -a ${EPM_ARCH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
-  sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
-else
-  echo "  sudo -E epm -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
-  sudo -E epm -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
-fi
+echo "  sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST}"
+sudo -E epm -a ${TRI_MACH} -f ${package_type} ${product_name} ${sfolder_name}/${LIST} || exit 1
 echo "########################################################"
 echo 
 

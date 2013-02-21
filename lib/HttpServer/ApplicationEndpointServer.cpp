@@ -457,10 +457,12 @@ bool ApplicationEndpointServer::createSslContext () {
 
           X509_NAME_print_ex(bout._bio, cert, 0, (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | ASN1_STRFLGS_UTF8_CONVERT) & ~ASN1_STRFLGS_ESC_MSB);
 
+#ifdef TRI_ENABLE_LOGGER
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
           LOGGER_TRACE("name: " << string(r, len));
+#endif          
         }
       }
     }

@@ -28,11 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"); // OK: encodePassword, reloadAuth
+var internal = require("internal"); // OK: reloadAuth, time
 
-var encodePassword = internal.encodePassword;
 var reloadAuth = internal.reloadAuth;
 var arangodb = require("org/arangodb");
+var crypto = require("org/arangodb/crypto");
 var db = arangodb.db;
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
@@ -48,6 +48,30 @@ var ArangoError = require("org/arangodb/arango-error").ArangoError;
 /// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief encode password using SHA256
+////////////////////////////////////////////////////////////////////////////////
+
+var encodePassword = function (password) {
+  var salt;
+  var encoded;
+
+  var random = crypto.rand();
+  if (random === undefined) {
+    random = "time:" + internal.time();
+  }
+  else {
+    random = "random:" + random;
+  }
+
+  salt = crypto.sha256(random);
+  salt = salt.substr(0,8);
+
+  encoded = "$1$" + salt + "$" + crypto.sha256(salt + password);
+   
+  return encoded;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a username
@@ -112,30 +136,35 @@ var getStorage = function () {
 /// @fn JSF_saveUser
 /// @brief create a new user
 ///
-/// @FUN{@FA{users}.save(@FA{username}, @FA{passwd})}
+/// @FUN{users.save(@FA{username}, @FA{passwd}, @FA{active}, @FA{extra})}
 ///
-/// This will create a new ArangoDB user.
-/// The username must be a string and contain only the letters a-z (lower or 
-/// upper case), the digits 0-9, the dash or the underscore symbol.
+/// This will create a new ArangoDB user. The username must be specified and 
+/// must not be empty.
 ///
 /// The password must be given as a string, too, but can be left empty if 
 /// required.
+///
+/// If the @FA{active} attribute is not specified, it defaults to @LIT{true}.
+/// The @FA{extra} attribute can be used to save custom data with the user.
 /// 
 /// This method will fail if either the username or the passwords are not
 /// specified or given in a wrong format, or there already exists a user with 
 /// the specified name.
 ///
 /// The new user account can only be used after the server is either restarted
-/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+/// or the server authentication cache is @ref UserManagementReload "reloaded".
 ///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-save,saving a new user}
+/// @code
+/// arangosh> require("users").save("my-user", "my-secret-password");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
-exports.save = function (username, passwd) {
+exports.save = function (username, passwd, active, extra) {
   if (passwd === null || passwd === undefined) {
     passwd = "";
   }
@@ -147,9 +176,24 @@ exports.save = function (username, passwd) {
   var users = getStorage();
   var user = users.firstExample({ user: username });
 
+  if (active === undefined || active === null) {
+    // this is the default value for active
+    active = true;
+  }
+
   if (user === null) {
     var hash = encodePassword(passwd);
-    return users.save({ user: username, password: hash, active: true });
+    var data = { 
+      user: username,
+      password: hash,
+      active: active
+    };
+
+    if (extra !== undefined) {
+      data.extra = extra;
+    }
+
+    return users.save(data);
   }
     
   var err = new ArangoError();
@@ -161,18 +205,93 @@ exports.save = function (username, passwd) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_replaceUser
-/// @brief update an existing user
+/// @brief replace an existing user
 ///
-/// @FUN{@FA{users}.replace(@FA{username}, @FA{passwd})}
+/// @FUN{users.replace(@FA{username}, @FA{passwd}, @FA{active}, @FA{extra})}
 ///
-/// This will update an existing ArangoDB user with a new password.
+/// This will look up an existing ArangoDB user and replace its user data.
 ///
-/// The username must be a string and contain only the letters a-z (lower or 
-/// upper case), the digits 0-9, the dash or the underscore symbol. The user
-/// must already exist in the database.
+/// The username must be specified, and a user with the specified name must
+/// already exist in the database.
 ///
 /// The password must be given as a string, too, but can be left empty if 
 /// required.
+///
+/// If the @FA{active} attribute is not specified, it defaults to @LIT{true}.
+/// The @FA{extra} attribute can be used to save custom data with the user.
+///
+/// This method will fail if either the username or the passwords are not
+/// specified or given in a wrong format, or if the specified user cannot be
+/// found in the database.
+///
+/// The replace is effective only after the server is either restarted
+/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+///
+/// Note: this function will not work from within the web interface
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangosh> require("users").replace("my-user", "my-changed-password");
+/// arangosh> require("users").reload();
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.replace = function (username, passwd, active, extra) {
+  if (passwd === null || passwd === undefined) {
+    passwd = "";
+  }
+
+  // validate input
+  validateName(username);
+  validatePassword(passwd);
+
+  var users = getStorage();
+  var user = users.firstExample({ user: username });
+
+  if (active === undefined || active === null) {
+    // this is the default
+    active = true;
+  }
+
+  if (user === null) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+
+    throw err;
+  }
+
+  var hash = encodePassword(passwd);
+  var data = {
+    user: username,
+    password: hash,
+    active: active
+  };
+  if (extra !== undefined) {
+    data.extra = extra;
+  }
+
+  return users.replace(user, data);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_updateUser
+/// @brief update an existing user
+///
+/// @FUN{@FA{users}.update(@FA{username}, @FA{passwd}, @FA{active}, @FA{extra})}
+///
+/// This will update an existing ArangoDB user with a new password and other
+/// data.
+///
+/// The username must be specified and the user must already exist in the 
+/// database.
+///
+/// The password must be given as a string, too, but can be left empty if 
+/// required.
+///
+/// If the @FA{active} attribute is not specified, the current value saved for
+/// the user will not be changed. The same is true for the @FA{extra} attribute.
 ///
 /// This method will fail if either the username or the passwords are not
 /// specified or given in a wrong format, or if the specified user cannot be
@@ -187,20 +306,17 @@ exports.save = function (username, passwd) {
 ///
 /// @TINYEXAMPLE{user-replace,replacing an existing user}
 ////////////////////////////////////////////////////////////////////////////////
-  
-exports.replace =
-exports.update = function (username, passwd) {
-  if (passwd === null || passwd === undefined) {
-    passwd = "";
-  }
 
+exports.update = function (username, passwd, active, extra) {
   // validate input
   validateName(username);
-  validatePassword(passwd);
+  if (passwd !== undefined) {
+    validatePassword(passwd);
+  }
 
   var users = getStorage();
   var user = users.firstExample({ user: username });
-
+  
   if (user === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
@@ -209,34 +325,46 @@ exports.update = function (username, passwd) {
     throw err;
   }
 
-  var hash = encodePassword(passwd);
   var data = user.shallowCopy;
-  data.password = hash;
-  return users.replace(user, data);
+
+  if (passwd !== undefined) {
+    var hash = encodePassword(passwd);
+    data.password = hash;
+  }
+  if (active !== undefined && active !== null) {
+    data.active = active;
+  }
+  if (extra !== undefined) {
+    data.extra = extra;
+  }
+
+  return users.update(user, data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_removeUser
 /// @brief delete an existing user
 ///
-/// @FUN{@FA{users}.remove(@FA{username}, @FA{passwd})}
+/// @FUN{users.remove(@FA{username}, @FA{passwd})}
 ///
 /// Removes an existing ArangoDB user from the database.
 ///
-/// The username must be a string and contain only the letters a-z (lower or 
-/// upper case), the digits 0-9, the dash or the underscore symbol. The user
-/// must already exist in the database.
+/// The username must be a string and the specified user must exist in the 
+/// database.
 ///
 /// This method will fail if the user cannot be found in the database.
 ///
 /// The deletion is effective only after the server is either restarted
-/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+/// or the server authentication cache is @ref UserManagementReload "reloaded".
 ///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-remove,removing an existing user}
+/// @code
+/// arangosh> require("users").remove("my-user");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.remove = function (username) {
@@ -258,9 +386,43 @@ exports.remove = function (username) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_documentUser
+/// @brief get an existing user
+///
+/// @FUN{users.document(@FA{username})}
+///
+/// Fetches an existing ArangoDB user from the database.
+///
+/// This method will fail if the user cannot be found in the database.
+///
+/// Note: this function will not work from within the web interface
+////////////////////////////////////////////////////////////////////////////////
+  
+exports.document = function (username) {
+  // validate name
+  validateName(username);
+
+  var users = getStorage();
+  var user = users.firstExample({ user: username });
+  
+  if (user === null) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_USER_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_USER_NOT_FOUND.message;
+
+    throw err;
+  }
+
+  delete user.passwd;
+
+  return user;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_reloadUsers
 /// @brief reloads the user authentication data
 ///
-/// @FUN{@FA{users}.reload()}
+/// @FUN{users.reload()}
 ///
 /// Reloads the user authentication data on the server
 ///
@@ -269,7 +431,6 @@ exports.remove = function (username) {
 /// required, and this can be performed by called this method.
 ///
 /// Note: this function will not work from within the web interface
-/// @anchor JSF_reloadUsers
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.reload = function () {

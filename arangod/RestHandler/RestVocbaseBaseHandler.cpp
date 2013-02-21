@@ -207,9 +207,9 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
   if (responseCode != HttpResponse::OK) {
     // 200 OK is sent is case of delete or update. 
     // in these cases we do not return etag nor location
-    _response->setHeader("ETag", "\"" + rev + "\"");
+    _response->setHeader("etag", 4, "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
-    _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+    _response->setHeader("location", 8, DOCUMENT_PATH + "/" + handle);
   }
  
   // _id and _key are safe and do not need to be JSON-encoded
@@ -297,7 +297,7 @@ void RestVocbaseBaseHandler::generateNotModified (const TRI_voc_rid_t rid) {
   const string rev = StringUtils::itoa(rid);
 
   _response = createResponse(HttpResponse::NOT_MODIFIED);
-  _response->setHeader("ETag", "\"" + rev + "\"");
+  _response->setHeader("etag", 4, "\"" + rev + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,13 +315,10 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     return;
   }
 
-  // add document identifier to buffer
-  TRI_string_buffer_t buffer;
-
-  string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), document->_key);
+  const string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), document->_key);
 
   TRI_json_t augmented;
-  TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
+  TRI_Init2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, 8);
 
   TRI_json_t* _id = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str());
 
@@ -330,7 +327,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
   }
 
   // convert rid from uint64_t to string
-  string rid = StringUtils::itoa(document->_rid);
+  const string rid = StringUtils::itoa(document->_rid);
   TRI_json_t* _rev = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
   if (_rev) {
@@ -353,6 +350,9 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
   }
+
+  // add document identifier to buffer
+  TRI_string_buffer_t buffer;
 
   // convert object to string
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
@@ -378,7 +378,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
   // and generate a response
   _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
+  _response->setHeader("etag", 4, "\"" + rid + "\"");
 
   if (generateBody) {
     _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
@@ -447,7 +447,8 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char const* parameter) {
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, 
+                                                       char const* parameter) {
   bool found;
   char const* etag = _request->header(header, found);
 

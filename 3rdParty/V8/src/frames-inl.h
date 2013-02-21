@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -77,18 +77,18 @@ inline StackHandler* StackHandler::FromAddress(Address address) {
 }
 
 
-inline bool StackHandler::is_entry() const {
-  return kind() == ENTRY;
+inline bool StackHandler::is_js_entry() const {
+  return kind() == JS_ENTRY;
 }
 
 
-inline bool StackHandler::is_try_catch() const {
-  return kind() == TRY_CATCH;
+inline bool StackHandler::is_catch() const {
+  return kind() == CATCH;
 }
 
 
-inline bool StackHandler::is_try_finally() const {
-  return kind() == TRY_FINALLY;
+inline bool StackHandler::is_finally() const {
+  return kind() == FINALLY;
 }
 
 
@@ -191,7 +191,7 @@ inline bool StandardFrame::IsArgumentsAdaptorFrame(Address fp) {
 inline bool StandardFrame::IsConstructFrame(Address fp) {
   Object* marker =
       Memory::Object_at(fp + StandardFrameConstants::kMarkerOffset);
-  return marker == Smi::FromInt(CONSTRUCT);
+  return marker == Smi::FromInt(StackFrame::CONSTRUCT);
 }
 
 
@@ -235,6 +235,11 @@ inline Object* JavaScriptFrame::function() const {
 }
 
 
+inline StubFrame::StubFrame(StackFrameIterator* iterator)
+    : StandardFrame(iterator) {
+}
+
+
 inline OptimizedFrame::OptimizedFrame(StackFrameIterator* iterator)
     : JavaScriptFrame(iterator) {
 }
@@ -247,6 +252,11 @@ inline ArgumentsAdaptorFrame::ArgumentsAdaptorFrame(
 
 inline InternalFrame::InternalFrame(StackFrameIterator* iterator)
     : StandardFrame(iterator) {
+}
+
+
+inline StubFailureTrampolineFrame::StubFailureTrampolineFrame(
+    StackFrameIterator* iterator) : StandardFrame(iterator) {
 }
 
 

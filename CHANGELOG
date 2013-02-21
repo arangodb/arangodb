@@ -1,3 +1,31 @@
+v1.2.beta3 (XXXX-XX-XX)
+-----------------------
+
+* issue #319: Documentation missing for Emergency console and incomplete for datafile debugger.
+
+* issue #370: add documentation for reloadRouting and flushServerModules
+
+* issue #393: added REST API for user management at /_api/user
+
+* issue #393, #128: added simple cryptographic functions for user actions in module "crypto":
+  * require("org/arangodb/crypto").md5()
+  * require("org/arangodb/crypto").sha256()
+  * require("org/arangodb/crypto").rand()
+
+* added replaceByExample() Javascript and REST API method
+
+* added updateByExample() Javascript and REST API method
+
+* added optional "limit" parameter for removeByExample() Javascript and REST API method
+
+* fixed issue #413
+
+* updated bundled V8 version from 3.9.4 to 3.16.14.1
+  Note: the Windows version used a more recent version (3.14.0.1) and was not updated.
+
+* fixed issue #404: keep original request url in request object
+
+
 v1.2.beta2 (2013-02-15)
 -----------------------
 

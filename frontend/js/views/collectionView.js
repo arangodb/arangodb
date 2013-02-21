@@ -72,7 +72,6 @@ var collectionView = Backbone.View.extend({
     else if (status === 'unloaded') {
       var newname = $('#change-collection-name').val();
       if (this.myCollection.name !== newname) {
-        console.log("different name");
         window.arangoCollectionsStore.renameCollection(collid, newname );
         this.hideModal();
       }
@@ -100,18 +99,14 @@ var collectionView = Backbone.View.extend({
   deleteCollection: function () {
     var self = this;
     var collName = $('#change-collection-name').val();
-
-    $.ajax({
-      type: 'DELETE',
-      url: "/_api/collection/" + collName,
-      success: function () {
-        self.hideModal();
-      },
-      error: function () {
-        self.hideModal();
-        alert('Error');
-      }
-    });
+    var returnval = window.arangoCollectionsStore.deleteCollection(collName);
+    if (returnval === true) {
+      self.hideModal();
+    }
+    else {
+      self.hideModal();
+      alert("Error");
+    }
   }
 
 });

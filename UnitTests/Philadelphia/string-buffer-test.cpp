@@ -530,6 +530,9 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
 /// @brief tst_doubles
 ////////////////////////////////////////////////////////////////////////////////
 
+// try to turn off compiler warning for deliberate division by zero
+#pragma GCC diagnostic ignored "-Wdiv-by-zero"
+
 BOOST_AUTO_TEST_CASE (tst_doubles) {
   TRI_string_buffer_t sb;
   double value;
@@ -547,8 +550,9 @@ BOOST_AUTO_TEST_CASE (tst_doubles) {
   TRI_AppendDoubleStringBuffer(&sb, value);
   BOOST_CHECK_EQUAL("-inf", sb._buffer);
   
-  // div 0
+  // div 0. deliberately.
   value = 1.0 / 0.0;
+
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
   BOOST_CHECK_EQUAL("inf", sb._buffer);
