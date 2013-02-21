@@ -44,6 +44,7 @@ var documentView = Backbone.View.extend({
           key,
           self.value2html(value, true),
           JSON.stringify(value),
+          'edit',
           ""
         ]);
       }
@@ -52,6 +53,7 @@ var documentView = Backbone.View.extend({
           key,
           self.value2html(value),
           JSON.stringify(value),
+          'edit',
           '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>'
         ]);
       }
@@ -61,10 +63,11 @@ var documentView = Backbone.View.extend({
 
   addLine: function () {
     $(this.table).dataTable().fnAddData([
-      '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>',
       "somekey"+this.counter,
       this.value2html("editme"),
-      JSON.stringify("editme")
+      JSON.stringify("editme"),
+      'edit',
+      '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>'
     ]);
     this.makeEditable();
     this.updateLocalDocumentStorage();
@@ -91,6 +94,7 @@ var documentView = Backbone.View.extend({
         {"sClass":"writeable", "bSortable": false, "sWidth":"400px" },
         {"sClass":"writeable rightCell", "bSortable": false},
         {"bVisible": false },
+        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"},
         {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"}
       ],
       "oLanguage": {"sEmptyTable": "No documents"}
