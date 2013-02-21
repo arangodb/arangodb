@@ -62,12 +62,12 @@ follows
 
 - If no file can be found, ArangoDB will check if the collection `modules`
   contains a document of the form
-
-    {
-      path: "com/example/extension",
-      content: "...."
-    }
-
+  
+      {
+        path: "com/example/extension",
+        content: "...."
+      }
+  
   If such a document exists, then the value of the `content` attribute must
   contain the JavaScript code of the module. This string is executed in a new
   module context and the value of `exports` object is returned. This value is
@@ -77,8 +77,17 @@ Path Normalization{#JSModulesNormalization}
 -------------------------------------------
 
 If you `require` a module, the path is normalized according the CommonJS rules
-and an absolute path is used to look up the module. Therefore, you should always
-use absolute paths when storing modules in the `_modules` collection.
+and an absolute path is used to look up the module. However, the leading `/` is
+omitted.  Therefore, you should always use absolute paths without a leading `/`
+when storing modules in the `_modules` collection.
+
+For example, if you execute
+
+    require("./lib/../extra/world");
+
+within a module `com/example` the path used for look-up will be
+
+    com/example/extra/world
 
 Modules Cache{#JSModulesCache}
 ------------------------------
