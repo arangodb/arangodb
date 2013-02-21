@@ -498,7 +498,7 @@ Graph.prototype.getVertex = function (id) {
     + "/vertex/"
     + encodeURIComponent(id));
 
-  if (requestResult.error === true && requestResult.code === 400) {
+  if (requestResult.error === true && requestResult.code === 404) {
     return null;
   }
 
@@ -566,7 +566,7 @@ Graph.prototype.getEdge = function (id) {
     + "/edge/"
     + encodeURIComponent(id));
 
-  if (requestResult.error === true && requestResult.code === 400) {
+  if (requestResult.error === true && requestResult.code === 404) {
     return null;
   }
 

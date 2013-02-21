@@ -1,3 +1,20 @@
+.docleftico {
+  width: 30px !important;
+}
+
+#deleteDoc, #documentsToolbar button {
+  border: medium none;
+  background-color: transparent;
+}
+
+#documentsToolbarLeft {
+  float:left;
+  padding-left: 20px;
+}
+
+#documentsPlaceholder {
+}
+
 #documentsDiv {
   background-color: rgba(0, 0, 0, 0.05);
 }
@@ -11,14 +28,17 @@
 }
 
 #documentsTableID_wrapper {
-  padding-top: 40px !important;
+  padding-top: 30px !important;
   padding-bottom: 20px !important;
 }
 
+#documentsTableID_wrapper .fg-toolbar {
+  visibility: hidden;
+}
+
 #documentsTableID {
-  padding-left: 30px !important;
-  padding-right: 30px !important;
-  width: 820px;
+  margin-left: 20px !important;
+  width: 900px; !important;
   table-layout:fixed !important;
 }
 

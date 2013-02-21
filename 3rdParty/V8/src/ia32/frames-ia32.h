@@ -53,6 +53,10 @@ typedef Object* JSCallerSavedBuffer[kNumJSCallerSaved];
 // Number of registers for which space is reserved in safepoints.
 const int kNumSafepointRegisters = 8;
 
+const int kNoAlignmentPadding = 0;
+const int kAlignmentPaddingPushed = 2;
+const int kAlignmentZapValue = 0x12345678;  // Not heap object tagged.
+
 // ----------------------------------------------------
 
 
@@ -93,22 +97,6 @@ class ExitFrameConstants : public AllStatic {
 };
 
 
-class StandardFrameConstants : public AllStatic {
- public:
-  // Fixed part of the frame consists of return address, caller fp,
-  // context and function.
-  // StandardFrame::IterateExpressions assumes that kContextOffset is the last
-  // object pointer.
-  static const int kFixedFrameSize    =  4 * kPointerSize;
-  static const int kExpressionsOffset = -3 * kPointerSize;
-  static const int kMarkerOffset      = -2 * kPointerSize;
-  static const int kContextOffset     = -1 * kPointerSize;
-  static const int kCallerFPOffset    =  0 * kPointerSize;
-  static const int kCallerPCOffset    = +1 * kPointerSize;
-  static const int kCallerSPOffset    = +2 * kPointerSize;
-};
-
-
 class JavaScriptFrameConstants : public AllStatic {
  public:
   // FP-relative.
@@ -119,6 +107,8 @@ class JavaScriptFrameConstants : public AllStatic {
   // Caller SP-relative.
   static const int kParam0Offset   = -2 * kPointerSize;
   static const int kReceiverOffset = -1 * kPointerSize;
+
+  static const int kDynamicAlignmentStateOffset = kLocal0Offset;
 };
 
 

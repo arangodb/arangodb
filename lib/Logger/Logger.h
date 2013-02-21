@@ -68,7 +68,11 @@
 #else
 
 #define LOGGER_FATAL_AND_EXIT(a)                                                  \
-  CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR()
+  do {                                                                            \
+    fprintf(stderr, "fatal error. exiting.\n");                                   \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                    \
+  }                                                                               \
+  while (0)
 
 #endif
 

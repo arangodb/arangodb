@@ -27,11 +27,23 @@
 
 // Platform specific code for Win32.
 
+// Secure API functions are not available using MinGW with msvcrt.dll
+// on Windows XP. Make sure MINGW_HAS_SECURE_API is not defined to
+// disable definition of secure API functions in standard headers that
+// would conflict with our own implementation.
+#ifdef __MINGW32__
+#include <_mingw.h>
+#ifdef MINGW_HAS_SECURE_API
+#undef MINGW_HAS_SECURE_API
+#endif  // MINGW_HAS_SECURE_API
+#endif  // __MINGW32__
+
 #define V8_WIN32_HEADERS_FULL
 #include "win32-headers.h"
 
 #include "v8.h"
 
+#include "codegen.h"
 #include "platform.h"
 #include "vm-state-inl.h"
 
@@ -50,6 +62,20 @@ int strncasecmp(const char* s1, const char* s2, int n) {
 // the Microsoft Visual Studio C++ CRT.
 #ifdef __MINGW32__
 
+
+#ifndef __MINGW64_VERSION_MAJOR
+
+#define _TRUNCATE 0
+#define STRUNCATE 80
+
+inline void MemoryBarrier() {
+  int barrier = 0;
+  __asm__ __volatile__("xchgl %%eax,%0 ":"=r" (barrier));
+}
+
+#endif  // __MINGW64_VERSION_MAJOR
+
+
 int localtime_s(tm* out_tm, const time_t* time) {
   tm* posix_local_time_struct = localtime(time);
   if (posix_local_time_struct == NULL) return 1;
@@ -58,20 +84,10 @@ int localtime_s(tm* out_tm, const time_t* time) {
 }
 
 
-// Not sure this the correct interpretation of _mkgmtime
-time_t _mkgmtime(tm* timeptr) {
-  return mktime(timeptr);
-}
-
-
 int fopen_s(FILE** pFile, const char* filename, const char* mode) {
   *pFile = fopen(filename, mode);
   return *pFile != NULL ? 0 : 1;
 }
-
-
-#define _TRUNCATE 0
-#define STRUNCATE 80
 
 int _vsnprintf_s(char* buffer, size_t sizeOfBuffer, size_t count,
                  const char* format, va_list argptr) {
@@ -106,12 +122,6 @@ int strncpy_s(char* dest, size_t dest_size, const char* source, size_t count) {
   return 0;
 }
 
-
-inline void MemoryBarrier() {
-  int barrier = 0;
-  __asm__ __volatile__("xchgl %%eax,%0 ":"=r" (barrier));
-}
-
 #endif  // __MINGW32__
 
 // Generate a pseudo-random number in the range 0-2^31-1. Usually
@@ -138,20 +148,11 @@ static Mutex* limit_mutex = NULL;
 
 #if defined(V8_TARGET_ARCH_IA32)
 static OS::MemCopyFunction memcopy_function = NULL;
-static Mutex* memcopy_function_mutex = OS::CreateMutex();
 // Defined in codegen-ia32.cc.
 OS::MemCopyFunction CreateMemCopyFunction();
 
 // Copy memory area to disjoint memory area.
 void OS::MemCopy(void* dest, const void* src, size_t size) {
-  if (memcopy_function == NULL) {
-    ScopedLock lock(memcopy_function_mutex);
-    if (memcopy_function == NULL) {
-      OS::MemCopyFunction temp = CreateMemCopyFunction();
-      MemoryBarrier();
-      memcopy_function = temp;
-    }
-  }
   // Note: here we rely on dependent reads being ordered. This is true
   // on all architectures we currently support.
   (*memcopy_function)(dest, src, size);
@@ -164,19 +165,14 @@ void OS::MemCopy(void* dest, const void* src, size_t size) {
 #ifdef _WIN64
 typedef double (*ModuloFunction)(double, double);
 static ModuloFunction modulo_function = NULL;
-static Mutex* modulo_function_mutex = OS::CreateMutex();
 // Defined in codegen-x64.cc.
 ModuloFunction CreateModuloFunction();
 
+void init_modulo_function() {
+  modulo_function = CreateModuloFunction();
+}
+
 double modulo(double x, double y) {
-  if (modulo_function == NULL) {
-    ScopedLock lock(modulo_function_mutex);
-    if (modulo_function == NULL) {
-      ModuloFunction temp = CreateModuloFunction();
-      MemoryBarrier();
-      modulo_function = temp;
-    }
-  }
   // Note: here we rely on dependent reads being ordered. This is true
   // on all architectures we currently support.
   return (*modulo_function)(x, y);
@@ -195,6 +191,46 @@ double modulo(double x, double y) {
 }
 
 #endif  // _WIN64
+
+
+#define UNARY_MATH_FUNCTION(name, generator)             \
+static UnaryMathFunction fast_##name##_function = NULL;  \
+void init_fast_##name##_function() {                     \
+  fast_##name##_function = generator;                    \
+}                                                        \
+double fast_##name(double x) {                           \
+  return (*fast_##name##_function)(x);                   \
+}
+
+UNARY_MATH_FUNCTION(sin, CreateTranscendentalFunction(TranscendentalCache::SIN))
+UNARY_MATH_FUNCTION(cos, CreateTranscendentalFunction(TranscendentalCache::COS))
+UNARY_MATH_FUNCTION(tan, CreateTranscendentalFunction(TranscendentalCache::TAN))
+UNARY_MATH_FUNCTION(log, CreateTranscendentalFunction(TranscendentalCache::LOG))
+UNARY_MATH_FUNCTION(exp, CreateExpFunction())
+UNARY_MATH_FUNCTION(sqrt, CreateSqrtFunction())
+
+#undef UNARY_MATH_FUNCTION
+
+
+void lazily_initialize_fast_exp() {
+  if (fast_exp_function == NULL) {
+    init_fast_exp_function();
+  }
+}
+
+
+void MathSetup() {
+#ifdef _WIN64
+  init_modulo_function();
+#endif
+  init_fast_sin_function();
+  init_fast_cos_function();
+  init_fast_tan_function();
+  init_fast_log_function();
+  // fast_exp is initialized lazily.
+  init_fast_sqrt_function();
+}
+
 
 // ----------------------------------------------------------------------------
 // The Time class represents time on win32. A timestamp is represented as
@@ -440,6 +476,9 @@ void Time::SetToCurrentTime() {
   // Check if we need to resync due to elapsed time.
   needs_resync |= (time_now.t_ - init_time.t_) > kMaxClockElapsedTime;
 
+  // Check if we need to resync due to backwards time change.
+  needs_resync |= time_now.t_ < init_time.t_;
+
   // Resync the clock if necessary.
   if (needs_resync) {
     GetSystemTimeAsFileTime(&init_time.ft_);
@@ -481,11 +520,14 @@ int64_t Time::LocalOffset() {
   // Convert to local time, as struct with fields for day, hour, year, etc.
   tm posix_local_time_struct;
   if (localtime_s(&posix_local_time_struct, &posix_time)) return 0;
-  // Convert local time in struct to POSIX time as if it were a UTC time.
-  time_t local_posix_time = _mkgmtime(&posix_local_time_struct);
-  Time localtime(1000.0 * local_posix_time);
 
-  return localtime.Diff(&rounded_to_second);
+  if (posix_local_time_struct.tm_isdst > 0) {
+    return (tzinfo_.Bias + tzinfo_.DaylightBias) * -kMsPerMinute;
+  } else if (posix_local_time_struct.tm_isdst == 0) {
+    return (tzinfo_.Bias + tzinfo_.StandardBias) * -kMsPerMinute;
+  } else {
+    return tzinfo_.Bias * -kMsPerMinute;
+  }
 }
 
 
@@ -528,15 +570,13 @@ char* Time::LocalTimezone() {
 }
 
 
-void OS::SetUp() {
-  // Seed the random number generator.
-  // Convert the current time to a 64-bit integer first, before converting it
-  // to an unsigned. Going directly can cause an overflow and the seed to be
-  // set to all ones. The seed will be identical for different instances that
-  // call this setup code within the same millisecond.
-  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
-  srand(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
+void OS::PostSetUp() {
+  // Math functions depend on CPU features therefore they are initialized after
+  // CPU.
+  MathSetup();
+#if defined(V8_TARGET_ARCH_IA32)
+  memcopy_function = CreateMemCopyFunction();
+#endif
 }
 
 
@@ -600,6 +640,11 @@ double OS::DaylightSavingsOffset(double time) {
 
 int OS::GetLastError() {
   return ::GetLastError();
+}
+
+
+int OS::GetCurrentProcessId() {
+  return static_cast<int>(::GetCurrentProcessId());
 }
 
 
@@ -774,6 +819,9 @@ void OS::StrNCpy(Vector<char> dest, const char* src, size_t n) {
 }
 
 
+#undef _TRUNCATE
+#undef STRUNCATE
+
 // We keep the lowest and highest addresses mapped as a quick way of
 // determining that pointers are outside the heap (used mostly in assertions
 // and verification).  The estimate is conservative, i.e., not all addresses in
@@ -831,43 +879,62 @@ size_t OS::AllocateAlignment() {
 }
 
 
+static void* GetRandomAddr() {
+  Isolate* isolate = Isolate::UncheckedCurrent();
+  // Note that the current isolate isn't set up in a call path via
+  // CpuFeatures::Probe. We don't care about randomization in this case because
+  // the code page is immediately freed.
+  if (isolate != NULL) {
+    // The address range used to randomize RWX allocations in OS::Allocate
+    // Try not to map pages into the default range that windows loads DLLs
+    // Use a multiple of 64k to prevent committing unused memory.
+    // Note: This does not guarantee RWX regions will be within the
+    // range kAllocationRandomAddressMin to kAllocationRandomAddressMax
+#ifdef V8_HOST_ARCH_64_BIT
+    static const intptr_t kAllocationRandomAddressMin = 0x0000000080000000;
+    static const intptr_t kAllocationRandomAddressMax = 0x000003FFFFFF0000;
+#else
+    static const intptr_t kAllocationRandomAddressMin = 0x04000000;
+    static const intptr_t kAllocationRandomAddressMax = 0x3FFF0000;
+#endif
+    uintptr_t address = (V8::RandomPrivate(isolate) << kPageSizeBits)
+        | kAllocationRandomAddressMin;
+    address &= kAllocationRandomAddressMax;
+    return reinterpret_cast<void *>(address);
+  }
+  return NULL;
+}
+
+
+static void* RandomizedVirtualAlloc(size_t size, int action, int protection) {
+  LPVOID base = NULL;
+
+  if (protection == PAGE_EXECUTE_READWRITE || protection == PAGE_NOACCESS) {
+    // For exectutable pages try and randomize the allocation address
+    for (size_t attempts = 0; base == NULL && attempts < 3; ++attempts) {
+      base = VirtualAlloc(GetRandomAddr(), size, action, protection);
+    }
+  }
+
+  // After three attempts give up and let the OS find an address to use.
+  if (base == NULL) base = VirtualAlloc(NULL, size, action, protection);
+
+  return base;
+}
+
+
 void* OS::Allocate(const size_t requested,
                    size_t* allocated,
                    bool is_executable) {
-  // The address range used to randomize RWX allocations in OS::Allocate
-  // Try not to map pages into the default range that windows loads DLLs
-  // Use a multiple of 64k to prevent committing unused memory.
-  // Note: This does not guarantee RWX regions will be within the
-  // range kAllocationRandomAddressMin to kAllocationRandomAddressMax
-#ifdef V8_HOST_ARCH_64_BIT
-  static const intptr_t kAllocationRandomAddressMin = 0x0000000080000000;
-  static const intptr_t kAllocationRandomAddressMax = 0x000003FFFFFF0000;
-#else
-  static const intptr_t kAllocationRandomAddressMin = 0x04000000;
-  static const intptr_t kAllocationRandomAddressMax = 0x3FFF0000;
-#endif
-
   // VirtualAlloc rounds allocated size to page size automatically.
   size_t msize = RoundUp(requested, static_cast<int>(GetPageSize()));
-  intptr_t address = 0;
 
   // Windows XP SP2 allows Data Excution Prevention (DEP).
   int prot = is_executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE;
 
-  // For exectutable pages try and randomize the allocation address
-  if (prot == PAGE_EXECUTE_READWRITE &&
-      msize >= static_cast<size_t>(Page::kPageSize)) {
-    address = (V8::RandomPrivate(Isolate::Current()) << kPageSizeBits)
-      | kAllocationRandomAddressMin;
-    address &= kAllocationRandomAddressMax;
-  }
-
-  LPVOID mbase = VirtualAlloc(reinterpret_cast<void *>(address),
-                              msize,
-                              MEM_COMMIT | MEM_RESERVE,
-                              prot);
-  if (mbase == NULL && address != 0)
-    mbase = VirtualAlloc(NULL, msize, MEM_COMMIT | MEM_RESERVE, prot);
+  LPVOID mbase = RandomizedVirtualAlloc(msize,
+                                        MEM_COMMIT | MEM_RESERVE,
+                                        prot);
 
   if (mbase == NULL) {
     LOG(ISOLATE, StringEvent("OS::Allocate", "VirtualAlloc failed"));
@@ -912,15 +979,11 @@ void OS::Sleep(int milliseconds) {
 
 
 void OS::Abort() {
-  if (!IsDebuggerPresent()) {
-#ifdef _MSC_VER
-    // Make the MSVCRT do a silent abort.
-    _set_abort_behavior(0, _WRITE_ABORT_MSG);
-    _set_abort_behavior(0, _CALL_REPORTFAULT);
-#endif  // _MSC_VER
-    abort();
-  } else {
+  if (IsDebuggerPresent() || FLAG_break_on_abort) {
     DebugBreak();
+  } else {
+    // Make the MSVCRT do a silent abort.
+    raise(SIGABRT);
   }
 }
 
@@ -931,6 +994,11 @@ void OS::DebugBreak() {
 #else
   ::DebugBreak();
 #endif
+}
+
+
+void OS::DumpBacktrace() {
+  // Currently unsupported.
 }
 
 
@@ -1159,6 +1227,11 @@ TLHELP32_FUNCTION_LIST(DLL_FUNC_LOADED)
   // NOTE: The modules are never unloaded and will stay around until the
   // application is closed.
 }
+
+#undef DBGHELP_FUNCTION_LIST
+#undef TLHELP32_FUNCTION_LIST
+#undef DLL_FUNC_VAR
+#undef DLL_FUNC_TYPE
 
 
 // Load the symbols for generating stack traces.
@@ -1471,7 +1544,7 @@ bool VirtualMemory::Uncommit(void* address, size_t size) {
 
 
 void* VirtualMemory::ReserveRegion(size_t size) {
-  return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
+  return RandomizedVirtualAlloc(size, MEM_RESERVE, PAGE_NOACCESS);
 }
 
 
@@ -1486,6 +1559,17 @@ bool VirtualMemory::CommitRegion(void* base, size_t size, bool is_executable) {
 }
 
 
+bool VirtualMemory::Guard(void* address) {
+  if (NULL == VirtualAlloc(address,
+                           OS::CommitPageSize(),
+                           MEM_COMMIT,
+                           PAGE_READONLY | PAGE_GUARD)) {
+    return false;
+  }
+  return true;
+}
+
+
 bool VirtualMemory::UncommitRegion(void* base, size_t size) {
   return VirtualFree(base, size, MEM_DECOMMIT) != 0;
 }
@@ -1495,6 +1579,11 @@ bool VirtualMemory::ReleaseRegion(void* base, size_t size) {
   return VirtualFree(base, 0, MEM_RELEASE) != 0;
 }
 
+
+bool VirtualMemory::HasLazyCommits() {
+  // TODO(alph): implement for the platform.
+  return false;
+}
 
 
 // ----------------------------------------------------------------------------
@@ -1799,14 +1888,26 @@ bool Win32Socket::Shutdown() {
 
 
 int Win32Socket::Send(const char* data, int len) const {
-  int status = send(socket_, data, len, 0);
-  return status;
+  if (len <= 0) return 0;
+  int written = 0;
+  while (written < len) {
+    int status = send(socket_, data + written, len - written, 0);
+    if (status == 0) {
+      break;
+    } else if (status > 0) {
+      written += status;
+    } else {
+      return 0;
+    }
+  }
+  return written;
 }
 
 
 int Win32Socket::Receive(char* data, int len) const {
+  if (len <= 0) return 0;
   int status = recv(socket_, data, len, 0);
-  return status;
+  return (status == SOCKET_ERROR) ? 0 : status;
 }
 
 
@@ -1900,6 +2001,9 @@ class SamplerThread : public Thread {
       : Thread(Thread::Options("SamplerThread", kSamplerThreadStackSize)),
         interval_(interval) {}
 
+  static void SetUp() { if (!mutex_) mutex_ = OS::CreateMutex(); }
+  static void TearDown() { delete mutex_; }
+
   static void AddActiveSampler(Sampler* sampler) {
     ScopedLock lock(mutex_);
     SamplerRegistry::AddActiveSampler(sampler);
@@ -1926,23 +2030,12 @@ class SamplerThread : public Thread {
     SamplerRegistry::State state;
     while ((state = SamplerRegistry::GetState()) !=
            SamplerRegistry::HAS_NO_SAMPLERS) {
-      bool cpu_profiling_enabled =
-          (state == SamplerRegistry::HAS_CPU_PROFILING_SAMPLERS);
-      bool runtime_profiler_enabled = RuntimeProfiler::IsEnabled();
       // When CPU profiling is enabled both JavaScript and C++ code is
       // profiled. We must not suspend.
-      if (!cpu_profiling_enabled) {
-        if (rate_limiter_.SuspendIfNecessary()) continue;
-      }
-      if (cpu_profiling_enabled) {
-        if (!SamplerRegistry::IterateActiveSamplers(&DoCpuProfile, this)) {
-          return;
-        }
-      }
-      if (runtime_profiler_enabled) {
-        if (!SamplerRegistry::IterateActiveSamplers(&DoRuntimeProfile, NULL)) {
-          return;
-        }
+      if (state == SamplerRegistry::HAS_CPU_PROFILING_SAMPLERS) {
+        SamplerRegistry::IterateActiveSamplers(&DoCpuProfile, this);
+      } else {
+        if (RuntimeProfiler::WaitForSomeIsolateToEnterJS()) continue;
       }
       OS::Sleep(interval_);
     }
@@ -1954,11 +2047,6 @@ class SamplerThread : public Thread {
     SamplerThread* sampler_thread =
         reinterpret_cast<SamplerThread*>(raw_sampler_thread);
     sampler_thread->SampleContext(sampler);
-  }
-
-  static void DoRuntimeProfile(Sampler* sampler, void* ignored) {
-    if (!sampler->isolate()->IsInitialized()) return;
-    sampler->isolate()->runtime_profiler()->NotifyTick();
   }
 
   void SampleContext(Sampler* sampler) {
@@ -1995,7 +2083,6 @@ class SamplerThread : public Thread {
   }
 
   const int interval_;
-  RuntimeProfilerRateLimiter rate_limiter_;
 
   // Protects the process wide state below.
   static Mutex* mutex_;
@@ -2006,8 +2093,27 @@ class SamplerThread : public Thread {
 };
 
 
-Mutex* SamplerThread::mutex_ = OS::CreateMutex();
+Mutex* SamplerThread::mutex_ = NULL;
 SamplerThread* SamplerThread::instance_ = NULL;
+
+
+void OS::SetUp() {
+  // Seed the random number generator.
+  // Convert the current time to a 64-bit integer first, before converting it
+  // to an unsigned. Going directly can cause an overflow and the seed to be
+  // set to all ones. The seed will be identical for different instances that
+  // call this setup code within the same millisecond.
+  uint64_t seed = static_cast<uint64_t>(TimeCurrentMillis());
+  srand(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
+  SamplerThread::SetUp();
+}
+
+
+void OS::TearDown() {
+  SamplerThread::TearDown();
+  delete limit_mutex;
+}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -62,15 +62,12 @@ namespace internal {
   F(GetIndexedInterceptorElementNames, 1, 1) \
   F(GetArgumentsProperty, 1, 1) \
   F(ToFastProperties, 1, 1) \
-  F(ToSlowProperties, 1, 1) \
   F(FinishArrayPrototypeSetup, 1, 1) \
   F(SpecialArrayFunctions, 1, 1) \
   F(GetDefaultReceiver, 1, 1) \
   \
   F(GetPrototype, 1, 1) \
   F(IsInPrototypeChain, 2, 1) \
-  \
-  F(IsConstructCall, 0, 1) \
   \
   F(GetOwnProperty, 2, 1) \
   \
@@ -79,6 +76,7 @@ namespace internal {
   \
   /* Utilities */ \
   F(CheckIsBootstrapping, 0, 1) \
+  F(GetRootNaN, 0, 1) \
   F(Call, -1 /* >= 2 */, 1) \
   F(Apply, 5, 1) \
   F(GetFunctionDelegate, 1, 1) \
@@ -87,11 +85,16 @@ namespace internal {
   F(NewStrictArgumentsFast, 3, 1) \
   F(LazyCompile, 1, 1) \
   F(LazyRecompile, 1, 1) \
+  F(ParallelRecompile, 1, 1) \
+  F(ForceParallelRecompile, 1, 1) \
+  F(InstallRecompiledCode, 1, 1) \
   F(NotifyDeoptimized, 1, 1) \
+  F(NotifyStubFailure, 0, 1) \
   F(NotifyOSR, 0, 1) \
   F(DeoptimizeFunction, 1, 1) \
+  F(ClearFunctionTypeFeedback, 1, 1) \
   F(RunningInSimulator, 0, 1) \
-  F(OptimizeFunctionOnNextCall, 1, 1) \
+  F(OptimizeFunctionOnNextCall, -1, 1) \
   F(GetOptimizationStatus, 1, 1) \
   F(GetOptimizationCount, 1, 1) \
   F(CompileForOnStackReplacement, 1, 1) \
@@ -99,6 +102,9 @@ namespace internal {
   F(AllocateInNewSpace, 1, 1) \
   F(SetNativeFlag, 1, 1) \
   F(StoreArrayLiteralElement, 5, 1) \
+  F(DebugCallbackSupportsStepping, 1, 1) \
+  F(DebugPrepareStepInIfStepping, 1, 1) \
+  F(FlattenString, 1, 1) \
   \
   /* Array join support */ \
   F(PushIfAbsent, 2, 1) \
@@ -109,7 +115,6 @@ namespace internal {
   F(Typeof, 1, 1) \
   \
   F(StringToNumber, 1, 1) \
-  F(StringFromCharCodeArray, 1, 1) \
   F(StringParseInt, 2, 1) \
   F(StringParseFloat, 1, 1) \
   F(StringToLowerCase, 1, 1) \
@@ -118,9 +123,6 @@ namespace internal {
   F(CharFromCode, 1, 1) \
   F(URIEscape, 1, 1) \
   F(URIUnescape, 1, 1) \
-  F(QuoteJSONString, 1, 1) \
-  F(QuoteJSONStringComma, 1, 1) \
-  F(QuoteJSONStringArray, 1, 1) \
   \
   F(NumberToString, 1, 1) \
   F(NumberToStringSkipCache, 1, 1) \
@@ -189,6 +191,10 @@ namespace internal {
   \
   /* JSON */ \
   F(ParseJson, 1, 1) \
+  F(BasicJSONStringify, 1, 1) \
+  F(QuoteJSONString, 1, 1) \
+  F(QuoteJSONStringComma, 1, 1) \
+  F(QuoteJSONStringArray, 1, 1) \
   \
   /* Strings */ \
   F(StringCharCodeAt, 2, 1) \
@@ -202,6 +208,8 @@ namespace internal {
   F(StringTrim, 3, 1) \
   F(StringToArray, 2, 1) \
   F(NewStringWrapper, 1, 1) \
+  F(NewString, 2, 1) \
+  F(TruncateString, 2, 1) \
   \
   /* Numbers */ \
   F(NumberToRadixString, 2, 1) \
@@ -230,6 +238,9 @@ namespace internal {
   F(FunctionIsBuiltin, 1, 1) \
   F(GetScript, 1, 1) \
   F(CollectStackTrace, 3, 1) \
+  F(MarkOneShotGetter, 1, 1) \
+  F(GetOverflowedStackTrace, 1, 1) \
+  F(SetOverflowedStackTrace, 2, 1) \
   F(GetV8Version, 0, 1) \
   \
   F(ClassOf, 1, 1) \
@@ -246,10 +257,9 @@ namespace internal {
   F(DateCurrentTime, 0, 1) \
   F(DateParseString, 2, 1) \
   F(DateLocalTimezone, 1, 1) \
-  F(DateLocalTimeOffset, 0, 1) \
-  F(DateDaylightSavingsOffset, 1, 1) \
+  F(DateToUTC, 1, 1) \
   F(DateMakeDay, 2, 1) \
-  F(DateYMDFromTime, 2, 1) \
+  F(DateSetValue, 3, 1) \
   \
   /* Numbers */ \
   \
@@ -265,16 +275,15 @@ namespace internal {
   F(DefineOrRedefineDataProperty, 4, 1) \
   F(DefineOrRedefineAccessorProperty, 5, 1) \
   F(IgnoreAttributesAndSetProperty, -1 /* 3 or 4 */, 1) \
+  F(GetDataProperty, 2, 1) \
   \
   /* Arrays */ \
   F(RemoveArrayHoles, 2, 1) \
   F(GetArrayKeys, 2, 1) \
   F(MoveArrayContents, 2, 1) \
   F(EstimateNumberOfElements, 1, 1) \
-  F(SwapElements, 3, 1) \
   \
   /* Getters and Setters */ \
-  F(DefineAccessor, -1 /* 4 or 5 */, 1) \
   F(LookupAccessor, 3, 1) \
   \
   /* Literals */ \
@@ -283,6 +292,9 @@ namespace internal {
   F(CreateObjectLiteralShallow, 4, 1) \
   F(CreateArrayLiteral, 3, 1) \
   F(CreateArrayLiteralShallow, 3, 1) \
+  \
+  /* Harmony modules */ \
+  F(IsJSModule, 1, 1) \
   \
   /* Harmony proxies */ \
   F(CreateJSProxy, 2, 1) \
@@ -299,16 +311,30 @@ namespace internal {
   F(SetAdd, 2, 1) \
   F(SetHas, 2, 1) \
   F(SetDelete, 2, 1) \
+  F(SetGetSize, 1, 1) \
   \
   /* Harmony maps */ \
   F(MapInitialize, 1, 1) \
   F(MapGet, 2, 1) \
+  F(MapHas, 2, 1) \
+  F(MapDelete, 2, 1) \
   F(MapSet, 3, 1) \
+  F(MapGetSize, 1, 1) \
   \
   /* Harmony weakmaps */ \
   F(WeakMapInitialize, 1, 1) \
   F(WeakMapGet, 2, 1) \
+  F(WeakMapHas, 2, 1) \
+  F(WeakMapDelete, 2, 1) \
   F(WeakMapSet, 3, 1) \
+  \
+  /* Harmony observe */ \
+  F(IsObserved, 1, 1) \
+  F(SetIsObserved, 2, 1) \
+  F(SetObserverDeliveryPending, 0, 1) \
+  F(GetObservationState, 0, 1) \
+  F(ObservationWeakMapCreate, 0, 1) \
+  F(UnwrapGlobalProxy, 1, 1) \
   \
   /* Statements */ \
   F(NewClosure, 3, 1) \
@@ -318,14 +344,18 @@ namespace internal {
   F(Throw, 1, 1) \
   F(ReThrow, 1, 1) \
   F(ThrowReferenceError, 1, 1) \
+  F(ThrowNotDateError, 0, 1) \
   F(StackGuard, 0, 1) \
+  F(Interrupt, 0, 1) \
   F(PromoteScheduledException, 0, 1) \
   \
   /* Contexts */ \
+  F(NewGlobalContext, 2, 1) \
   F(NewFunctionContext, 1, 1) \
   F(PushWithContext, 2, 1) \
   F(PushCatchContext, 3, 1) \
   F(PushBlockContext, 2, 1) \
+  F(PushModuleContext, 2, 1) \
   F(DeleteContextSlot, 2, 1) \
   F(LoadContextSlot, 2, 2) \
   F(LoadContextSlotNoReferenceError, 2, 2) \
@@ -333,6 +363,7 @@ namespace internal {
   \
   /* Declarations and initialization */ \
   F(DeclareGlobals, 3, 1) \
+  F(DeclareModules, 1, 1) \
   F(DeclareContextSlot, 4, 1) \
   F(InitializeVarGlobal, -1 /* 2 or 3 */, 1) \
   F(InitializeConstGlobal, 2, 1) \
@@ -353,9 +384,6 @@ namespace internal {
   F(GetFromCache, 2, 1) \
   \
   /* Message objects */ \
-  F(NewMessageObject, 2, 1) \
-  F(MessageGetType, 1, 1) \
-  F(MessageGetArguments, 1, 1) \
   F(MessageGetStartPosition, 1, 1) \
   F(MessageGetScript, 1, 1) \
   \
@@ -363,9 +391,11 @@ namespace internal {
   F(IS_VAR, 1, 1) \
   \
   /* expose boolean functions from objects-inl.h */ \
-  F(HasFastSmiOnlyElements, 1, 1) \
-  F(HasFastElements, 1, 1) \
+  F(HasFastSmiElements, 1, 1) \
+  F(HasFastSmiOrObjectElements, 1, 1) \
+  F(HasFastObjectElements, 1, 1) \
   F(HasFastDoubleElements, 1, 1) \
+  F(HasFastHoleyElements, 1, 1) \
   F(HasDictionaryElements, 1, 1) \
   F(HasExternalPixelElements, 1, 1) \
   F(HasExternalArrayElements, 1, 1) \
@@ -377,6 +407,8 @@ namespace internal {
   F(HasExternalUnsignedIntElements, 1, 1) \
   F(HasExternalFloatElements, 1, 1) \
   F(HasExternalDoubleElements, 1, 1) \
+  F(HasFastProperties, 1, 1) \
+  F(TransitionElementsKind, 2, 1) \
   F(TransitionElementsSmiToDouble, 1, 1) \
   F(TransitionElementsDoubleToObject, 1, 1) \
   F(HaveSameMap, 2, 1) \
@@ -403,6 +435,9 @@ namespace internal {
   F(GetFrameDetails, 2, 1) \
   F(GetScopeCount, 2, 1) \
   F(GetScopeDetails, 4, 1) \
+  F(GetFunctionScopeCount, 1, 1) \
+  F(GetFunctionScopeDetails, 2, 1) \
+  F(SetScopeVariableValue, 6, 1) \
   F(DebugPrintScopes, 0, 1) \
   F(GetThreadCount, 1, 1) \
   F(GetThreadDetails, 2, 1) \
@@ -421,6 +456,7 @@ namespace internal {
   F(DebugReferencedBy, 3, 1) \
   F(DebugConstructedBy, 2, 1) \
   F(DebugGetPrototype, 1, 1) \
+  F(DebugSetScriptSource, 2, 1) \
   F(SystemBreak, 0, 1) \
   F(DebugDisassembleFunction, 1, 1) \
   F(DebugDisassembleConstructor, 1, 1) \
@@ -435,26 +471,13 @@ namespace internal {
   F(LiveEditPatchFunctionPositions, 2, 1) \
   F(LiveEditCheckAndDropActivations, 2, 1) \
   F(LiveEditCompareStrings, 2, 1) \
+  F(LiveEditRestartFrame, 2, 1) \
   F(GetFunctionCodePositionFromSource, 2, 1) \
   F(ExecuteInDebugContext, 2, 1) \
   \
   F(SetFlags, 1, 1) \
   F(CollectGarbage, 1, 1) \
   F(GetHeapUsage, 0, 1) \
-  \
-  /* LiveObjectList support*/ \
-  F(HasLOLEnabled, 0, 1) \
-  F(CaptureLOL, 0, 1) \
-  F(DeleteLOL, 1, 1) \
-  F(DumpLOL, 5, 1) \
-  F(GetLOLObj, 1, 1) \
-  F(GetLOLObjId, 1, 1) \
-  F(GetLOLObjRetainers, 6, 1) \
-  F(GetLOLPath, 3, 1) \
-  F(InfoLOL, 2, 1) \
-  F(PrintLOLObj, 1, 1) \
-  F(ResetLOL, 0, 1) \
-  F(SummarizeLOL, 3, 1)
 
 #else
 #define RUNTIME_FUNCTION_LIST_DEBUGGER_SUPPORT(F)
@@ -488,13 +511,17 @@ namespace internal {
   F(IsNonNegativeSmi, 1, 1)                                                  \
   F(IsArray, 1, 1)                                                           \
   F(IsRegExp, 1, 1)                                                          \
+  F(IsConstructCall, 0, 1)                                                   \
   F(CallFunction, -1 /* receiver + n args + function */, 1)                  \
   F(ArgumentsLength, 0, 1)                                                   \
   F(Arguments, 1, 1)                                                         \
   F(ValueOf, 1, 1)                                                           \
   F(SetValueOf, 2, 1)                                                        \
+  F(DateField, 2 /* date object, field index */, 1)                          \
   F(StringCharFromCode, 1, 1)                                                \
   F(StringCharAt, 2, 1)                                                      \
+  F(OneByteSeqStringSetChar, 3, 1)                                           \
+  F(TwoByteSeqStringSetChar, 3, 1)                                           \
   F(ObjectEquals, 2, 1)                                                      \
   F(RandomHeapNumber, 0, 1)                                                  \
   F(IsObject, 1, 1)                                                          \
@@ -520,7 +547,6 @@ namespace internal {
 // a corresponding runtime function, that is called for slow cases.
 // Entries have the form F(name, number of arguments, number of return values).
 #define INLINE_RUNTIME_FUNCTION_LIST(F) \
-  F(IsConstructCall, 0, 1)                                                   \
   F(ClassOf, 1, 1)                                                           \
   F(StringCharCodeAt, 2, 1)                                                  \
   F(Log, 3, 1)                                                               \
@@ -530,8 +556,7 @@ namespace internal {
   F(RegExpExec, 4, 1)                                                        \
   F(RegExpConstructResult, 3, 1)                                             \
   F(GetFromCache, 2, 1)                                                      \
-  F(NumberToString, 1, 1)                                                    \
-  F(SwapElements, 3, 1)
+  F(NumberToString, 1, 1)
 
 
 //---------------------------------------------------------------------------
@@ -539,8 +564,8 @@ namespace internal {
 
 class RuntimeState {
  public:
-  StaticResource<StringInputBuffer>* string_input_buffer() {
-    return &string_input_buffer_;
+  StaticResource<ConsStringIteratorOp>* string_iterator() {
+    return &string_iterator_;
   }
   unibrow::Mapping<unibrow::ToUppercase, 128>* to_upper_mapping() {
     return &to_upper_mapping_;
@@ -548,29 +573,29 @@ class RuntimeState {
   unibrow::Mapping<unibrow::ToLowercase, 128>* to_lower_mapping() {
     return &to_lower_mapping_;
   }
-  StringInputBuffer* string_input_buffer_compare_bufx() {
-    return &string_input_buffer_compare_bufx_;
+  ConsStringIteratorOp* string_iterator_compare_x() {
+    return &string_iterator_compare_x_;
   }
-  StringInputBuffer* string_input_buffer_compare_bufy() {
-    return &string_input_buffer_compare_bufy_;
+  ConsStringIteratorOp* string_iterator_compare_y() {
+    return &string_iterator_compare_y_;
   }
-  StringInputBuffer* string_locale_compare_buf1() {
-    return &string_locale_compare_buf1_;
+  ConsStringIteratorOp* string_locale_compare_it1() {
+    return &string_locale_compare_it1_;
   }
-  StringInputBuffer* string_locale_compare_buf2() {
-    return &string_locale_compare_buf2_;
+  ConsStringIteratorOp* string_locale_compare_it2() {
+    return &string_locale_compare_it2_;
   }
 
  private:
   RuntimeState() {}
   // Non-reentrant string buffer for efficient general use in the runtime.
-  StaticResource<StringInputBuffer> string_input_buffer_;
+  StaticResource<ConsStringIteratorOp> string_iterator_;
   unibrow::Mapping<unibrow::ToUppercase, 128> to_upper_mapping_;
   unibrow::Mapping<unibrow::ToLowercase, 128> to_lower_mapping_;
-  StringInputBuffer string_input_buffer_compare_bufx_;
-  StringInputBuffer string_input_buffer_compare_bufy_;
-  StringInputBuffer string_locale_compare_buf1_;
-  StringInputBuffer string_locale_compare_buf2_;
+  ConsStringIteratorOp string_iterator_compare_x_;
+  ConsStringIteratorOp string_iterator_compare_y_;
+  ConsStringIteratorOp string_locale_compare_it1_;
+  ConsStringIteratorOp string_locale_compare_it2_;
 
   friend class Isolate;
   friend class Runtime;
@@ -630,13 +655,6 @@ class Runtime : public AllStatic {
   // Get the intrinsic function with the given FunctionId.
   static const Function* FunctionForId(FunctionId id);
 
-  static Handle<String> StringReplaceOneCharWithString(Isolate* isolate,
-                                                       Handle<String> subject,
-                                                       Handle<String> search,
-                                                       Handle<String> replace,
-                                                       bool* found,
-                                                       int recursion_limit);
-
   // General-purpose helper functions for runtime system.
   static int StringMatch(Isolate* isolate,
                          Handle<String> sub,
@@ -678,11 +696,6 @@ class Runtime : public AllStatic {
       Isolate* isolate,
       Handle<Object> object,
       Handle<Object> key);
-
-  // This function is used in FunctionNameUsing* tests.
-  static Object* FindSharedFunctionInfoInScript(Isolate* isolate,
-                                                Handle<Script> script,
-                                                int position);
 
   // Helper functions used stubs.
   static void PerformGC(Object* result);

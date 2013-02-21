@@ -542,8 +542,8 @@ static yyconst flex_int16_t yy_chk[152] =
 #define STRING_CONSTANT_ASCII 13
 
 struct jsonData {
-  char const* _message;
   TRI_memory_zone_t* _memoryZone;
+  char const* _message;
 };
 
 #define YY_FATAL_ERROR(a) \
@@ -686,7 +686,11 @@ static int input (yyscan_t yyscanner );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
+<<<<<<< HEAD
 		size_t n; \
+=======
+		int n; \
+>>>>>>> e975265e9ff3c295b6d80ad1c0207888cf87dc3a
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
