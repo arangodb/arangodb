@@ -6,9 +6,11 @@ window.arangoCollections = Backbone.Collection.extend({
       comparator : function(model) {
         return model.get('name').toLowerCase();
       },
+
       isSystemCollection : function (name) {
         return name.substr(0, 1) === '_';
       },
+
       translateStatus : function (status) {
         if (status == 2) {
           return 'unloaded';
