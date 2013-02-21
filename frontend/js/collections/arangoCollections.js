@@ -1,22 +1,41 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 window.arangoCollections = Backbone.Collection.extend({
+      url: '/_api/collection',
+      
+      model: arangoCollection,
+
       comparator : function(model) {
         return model.get('name').toLowerCase();
       },
+<<<<<<< HEAD
       url: '/_api/collection',
-      parse: function(response)  {
-          $.each(response.collections, function(key, val) {
-            if (val.status == 2) {
-              val.status = 'unloaded';
-            }
-            else if (val.status == 3) {
-              val.status = 'loaded';
-            }
-          });
-          return response.collections;
+=======
+  
+      isSystemCollection : function (name) {
+        return name.substr(0, 1) === '_';
       },
-      model: arangoCollection,
+  
+      translateStatus : function (status) {
+        if (status == 2) {
+          return 'unloaded';
+        }
+        else if (status == 3) {
+          return 'loaded';
+        }
+      },
+      
+>>>>>>> 50977f9b7cf74e57102f3252340bf0d411c99b43
+      parse: function(response)  {
+        var that = this;
+
+        $.each(response.collections, function(key, val) {
+          val.isSystem = that.isSystemCollection(val.name); 
+          val.status = that.translateStatus(val.status);
+        });
+        return response.collections;
+      },
+
       getProperties: function (id) {
         var data2;
         $.ajax({
