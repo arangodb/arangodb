@@ -1008,7 +1008,7 @@ function reloadRouting () {
   // deep-copy a route object
   // .............................................................................
 
-  clone = function (obj) {
+  function clone (obj) {
     if (obj === null || typeof(obj) !== "object") {
       return obj;
     }
@@ -1030,7 +1030,7 @@ function reloadRouting () {
     }
 
     return copy;
-  };
+  }
 
   // .............................................................................
   // loop over the routes or routes bundle
