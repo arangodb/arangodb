@@ -77,9 +77,9 @@ namespace triagens {
 
       public:
 
-        GeneralAsyncCommTask (S* server, socket_t fd, ConnectionInfo const& info, double keepAliveTimeout)
+        GeneralAsyncCommTask (S* server, TRI_socket_t s, ConnectionInfo const& info, double keepAliveTimeout)
           : Task("GeneralAsyncCommTask"),
-            T(server, fd, info, keepAliveTimeout) {
+            T(server, s, info, keepAliveTimeout) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
