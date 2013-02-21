@@ -38,10 +38,10 @@ describe ArangoDB do
 
         cmd = "/_admin/routing/reload"
         doc = ArangoDB.log_get("api-routing-simple", cmd)
-      
-        cmd = "/_admin/routing/routes"
-        doc = ArangoDB.log_get("api-routing-simple", cmd)
-       
+     
+        # we need this because reloading the routing is asynchronous 
+        sleep(3)
+             
         cmd = "/hello/world"
         doc = ArangoDB.log_get("api-routing-simple", cmd, :format => :plain)
 
