@@ -413,6 +413,7 @@ describe ArangoDB do
         doc.parsed_response['active'].should eq(false)
         doc.parsed_response['extra'].should eq({ "foo" => true })
         doc.parsed_response.should_not have_key("passwd")
+        doc.parsed_response.should_not have_key("password")
       end
     end
 

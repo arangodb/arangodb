@@ -69,7 +69,6 @@ function GET_api_user (req, res) {
   var username = decodeURIComponent(req.suffix[0]);
   try {
     var result = users.document(username);
-  
     actions.resultOk(req, res, actions.HTTP_OK, result)
   }
   catch (err) {
