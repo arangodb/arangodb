@@ -184,7 +184,15 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_modules_flush
 /// @brief flushes the modules cache
+///
+/// @RESTHEADER{POST /_admin/modules/flush,flushs the module cache}
+///
+/// @REST{POST /_admin/modules/flush}
+///
+/// The call flushes the modules cache on the server. See @ref JSModulesCache
+/// for details about this cache.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
