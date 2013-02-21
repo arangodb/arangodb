@@ -115,3 +115,8 @@
   border: 1px solid black;
   height: 20px !important;
 }
+
+.jqconsole-blurred .jqconsole-header, .jqconsole-blurred .jssuccess, .jqconsole-blurred .jserror,
+.jqconsole-blurred .jqconsole-prompt, .jqconsole-blurred .jqconsole-old-prompt{
+  opacity: 0.5;
+}
