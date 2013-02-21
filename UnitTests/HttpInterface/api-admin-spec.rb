@@ -10,7 +10,47 @@ describe ArangoDB do
     before do
       # load the most current routing information
       cmd = "/_admin/routing/reload"
-      doc = ArangoDB.log_get("admin-interface-get", cmd)
+      doc = ArangoDB.get(cmd)
+    end
+
+################################################################################
+## load some routing
+################################################################################
+
+    context "dealing with the routing" do
+      before do
+        @id = nil
+      end
+
+      after do
+        if @id != nil 
+          ArangoDB.delete("/_api/document/" + @id)
+        end 
+      end
+      
+      it "checks a simple routing" do
+        cmd = "/_api/document?collection=_routing"
+        body = "{ \"url\" : { \"match\" : \"\/hello\/world\" }, \"content\" : { \"contentType\" : \"text\/html\", \"body\": \"moo!\" } }"
+        doc = ArangoDB.log_post("api-routing-simple", cmd, :body => body)
+
+        doc.code.should eq(202)
+        @id = doc.parsed_response['_id']
+
+        cmd = "/_admin/routing/reload"
+        doc = ArangoDB.log_get("api-routing-simple", cmd)
+      
+        cmd = "/_admin/routing/routes"
+        doc = ArangoDB.log_get("api-routing-simple", cmd)
+       
+        cmd = "/hello/world"
+        doc = ArangoDB.log_get("api-routing-simple", cmd, :format => :plain)
+
+        # check response code
+        doc.code.should eq(200)
+        # check whether HTML result contains expected title
+        doc.response.body.should include("moo!")
+      end
+
     end
 
 ################################################################################
@@ -18,6 +58,7 @@ describe ArangoDB do
 ################################################################################
 
     context "checks /_admin/echo" do
+
       prefix = "api-system"
 
       it "using GET" do
@@ -29,7 +70,6 @@ describe ArangoDB do
         doc.parsed_response['path'].should eq("/")
         doc.parsed_response['parameters'].should eq({})
         doc.parsed_response['requestType'].should eq("GET")
-
       end
       
       it "using GET, with URL parameter" do
@@ -76,46 +116,49 @@ describe ArangoDB do
 ## check whether admin interface is accessible
 ################################################################################
   
-    it "checks whether the admin interface is available at /_admin/html/index.html" do
-      cmd = "/_admin/html/index.html"
-      doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
+    context "dealing with the admin interface:" do
+  
+      it "checks whether the admin interface is available at /_admin/html/index.html" do
+        cmd = "/_admin/html/index.html"
+        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
 
-      # check response code
-      doc.code.should eq(200)
-      # check whether HTML result contains expected title
-      doc.response.body.should include("ArangoDB - WebAdmin")
-    end
-
-    it "checks whether the admin interface is available at /_admin/html" do
-      cmd = "/_admin/html"
-      begin
-        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
-      rescue HTTParty::RedirectionTooDeep => e
         # check response code
-        e.response.code.should eq("301")
-        e.response.header['location'].should eq("/_admin/html/index.html")
+        doc.code.should eq(200)
+        # check whether HTML result contains expected title
+        doc.response.body.should include("ArangoDB - WebAdmin")
       end
-    end
 
-    it "checks whether the admin interface is available at /_admin/html/" do
-      cmd = "/_admin/html/"
-      begin
-        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
-      rescue HTTParty::RedirectionTooDeep => e
-        # check response code
-        e.response.code.should eq("301")
-        e.response.header['location'].should eq("/_admin/html/index.html")
+      it "checks whether the admin interface is available at /_admin/html" do
+        cmd = "/_admin/html"
+        begin
+          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+        rescue HTTParty::RedirectionTooDeep => e
+          # check response code
+          e.response.code.should eq("301")
+          e.response.header['location'].should eq("/_admin/html/index.html")
+        end
       end
-    end
+
+      it "checks whether the admin interface is available at /_admin/html/" do
+        cmd = "/_admin/html/"
+        begin
+          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+        rescue HTTParty::RedirectionTooDeep => e
+          # check response code
+          e.response.code.should eq("301")
+          e.response.header['location'].should eq("/_admin/html/index.html")
+        end
+      end
     
-    it "checks whether the admin interface is available at /" do
-      cmd = "/"
-      begin
-        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
-      rescue HTTParty::RedirectionTooDeep => e
-        # check response code
-        e.response.code.should eq("301")
-        e.response.header['location'].should eq("/_admin/html/index.html")
+      it "checks whether the admin interface is available at /" do
+        cmd = "/"
+        begin
+          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+        rescue HTTParty::RedirectionTooDeep => e
+          # check response code
+          e.response.code.should eq("301")
+          e.response.header['location'].should eq("/_admin/html/index.html")
+        end
       end
     end
     
