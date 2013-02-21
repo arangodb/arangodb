@@ -28,10 +28,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"); // OK: reloadAuth, time
-var _ = require("underscore");
-
-var reloadAuth = internal.reloadAuth;
+var internal = require("internal"); // OK: time
 var arangodb = require("org/arangodb");
 var crypto = require("org/arangodb/crypto");
 var db = arangodb.db;
@@ -437,7 +434,7 @@ exports.document = function (username) {
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.reload = function () {
-  return reloadAuth();
+  throw "cannot use abstract reload function";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
