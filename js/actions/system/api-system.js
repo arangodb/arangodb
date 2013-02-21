@@ -156,7 +156,14 @@ actions.defineHttp({
   });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_routing_reloads
 /// @brief reloads the routing information
+///
+/// @RESTHEADER{POST /_admin/routing/reload,reloads the routing collection}
+///
+/// @REST{POST /_admin/routing/reload}
+///
+/// The reloads the routing information from the collection `routing`.
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

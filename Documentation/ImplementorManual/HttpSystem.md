@@ -19,6 +19,10 @@ monitoring of the server.
 @copydetails JSF_GET_admin_modules_flush
 
 @CLEARPAGE
+@anchor HttpSystemRoutingReloads
+@copydetails JSF_GET_admin_routing_reloads
+
+@CLEARPAGE
 @anchor HttpSystemConnectionStatistics
 @copydetails triagens::arango::ConnectionStatisticsHandler::compute
 
