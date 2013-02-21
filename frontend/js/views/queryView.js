@@ -15,6 +15,8 @@ var queryView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    $('#queryInput').addClass("focus");
+    $('#queryInput').focus();
     return this;
   },
   submitQuery: function() {

@@ -9,7 +9,7 @@
 
 #shell_workspace {
   width: 900px;
-  margin-top: 20px;
+  margin-top: 30px;
   margin-left: 20px;
   margin-bottom: -20px;
   height: 500px;
@@ -114,4 +114,9 @@
   padding-bottom: 2px;
   border: 1px solid black;
   height: 20px !important;
+}
+
+.jqconsole-blurred .jqconsole-header, .jqconsole-blurred .jssuccess, .jqconsole-blurred .jserror,
+.jqconsole-blurred .jqconsole-prompt, .jqconsole-blurred .jqconsole-old-prompt{
+  opacity: 0.7;
 }
