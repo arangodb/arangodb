@@ -2,20 +2,13 @@
 /*global require, exports */
 window.arangoCollections = Backbone.Collection.extend({
       url: '/_api/collection',
-      
       model: arangoCollection,
-
       comparator : function(model) {
         return model.get('name').toLowerCase();
       },
-<<<<<<< HEAD
-      url: '/_api/collection',
-=======
-  
       isSystemCollection : function (name) {
         return name.substr(0, 1) === '_';
       },
-  
       translateStatus : function (status) {
         if (status == 2) {
           return 'unloaded';
@@ -24,8 +17,6 @@ window.arangoCollections = Backbone.Collection.extend({
           return 'loaded';
         }
       },
-      
->>>>>>> 50977f9b7cf74e57102f3252340bf0d411c99b43
       parse: function(response)  {
         var that = this;
 
