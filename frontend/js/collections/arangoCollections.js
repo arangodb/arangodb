@@ -4,7 +4,6 @@ window.arangoCollections = Backbone.Collection.extend({
       comparator : function(model) {
         return model.get('name').toLowerCase();
       },
-      
       url: '/_api/collection',
       parse: function(response)  {
           $.each(response.collections, function(key, val) {
