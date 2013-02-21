@@ -1,6 +1,8 @@
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
 
+* issue #319: Documentation missing for Emergency console and incomplete for datafile debugger.
+
 * issue #370: add documentation for reloadRouting and flushServerModules
 
 * issue #393: added REST API for user management at /_api/user
