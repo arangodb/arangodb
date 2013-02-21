@@ -22,6 +22,7 @@ TOC {#UserManualActionsTOC}
   - @ref UserManualActionsReqRes
   - @ref UserManualActionsModify
   - @ref UserManualActionsHandlers
+  - @ref UserManualActionsCache
   - @ref UserManualActionsAdvanced
     - @ref UserManualActionsAdvancedRedirects
     - @ref UserManualActionsAdvancedBundles

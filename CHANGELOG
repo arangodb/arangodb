@@ -1,6 +1,8 @@
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
 
+* issue #370: add documentation for reloadRouting and flushServerModules
+
 * issue #393: added REST API for user management at /_api/user
 
 * issue #393, #128: added simple cryptographic functions for user actions in module "crypto":
