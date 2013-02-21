@@ -373,7 +373,7 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
-  if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
+  if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
     cerr << "file '" << FileName << "' is not a regular file." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }

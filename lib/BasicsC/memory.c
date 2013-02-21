@@ -101,6 +101,12 @@ static TRI_memory_zone_t TriUnknownMemZone;
 static void* CoreReserve;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the core was intialised
+////////////////////////////////////////////////////////////////////////////////
+  
+static int CoreInitialised = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -375,14 +381,30 @@ void TRI_SystemFree (void* p) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapper for realloc
+///
+/// this wrapper is used together with libev, as the builtin libev allocator
+/// causes problems with Valgrind:
+/// - http://lists.schmorp.de/pipermail/libev/2012q2/001917.html
+/// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html 
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_WrappedReallocate (void* ptr, long size) {
+  if (ptr == NULL && size == 0) {
+    return NULL;
+  }
+
+  return realloc(ptr, (size_t) size);
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseMemory () {
-  static bool initialised = false;
   static size_t const reserveSize = 1024 * 1024 * 10;
 
-  if (! initialised) {
+  if (CoreInitialised == 0) {
     TriCoreMemZone._zid = 0;
     TriCoreMemZone._failed = false;
     TriCoreMemZone._failable = false;
@@ -398,6 +420,20 @@ void TRI_InitialiseMemory () {
               "FATAL: cannot allocate initial core reserve of size %llu, giving up!\n", 
               (unsigned long long) reserveSize);
     }
+    else {
+      CoreInitialised = 1;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown memory subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownMemory () {
+  if (CoreInitialised == 1) {
+    free(CoreReserve);
+    CoreInitialised = 0;
   }
 }
 
