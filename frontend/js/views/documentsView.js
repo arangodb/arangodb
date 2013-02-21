@@ -91,7 +91,7 @@ var documentsView = Backbone.View.extend({
       "bJQueryUI": false,
       "aoColumns": [
         { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
-        { "sClass":"read_only","bSortable": false},
+        { "sClass":"read_only arangoTooltip","bSortable": false},
       //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
       //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
         { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
@@ -105,15 +105,20 @@ var documentsView = Backbone.View.extend({
   drawTable: function() {
     var self = this;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
+    console.log(JSON.stringify(value.attributes.content));
       $(self.table).dataTable().fnAddData([
                                           value.attributes.id,
                                           //value.attributes.key,
                                           //value.attributes.rev,
-                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
+                                          '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+    console.log(this);
+    $(".prettify").tooltip({
+      placement: "top"
+    });
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
