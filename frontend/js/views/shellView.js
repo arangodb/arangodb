@@ -33,6 +33,7 @@ var shellView = Backbone.View.extend({
         } catch (e) {
           jqconsole.Write('ReferenceError: ' + e.message + '\n', 'jserror');
       }
+      jqconsole.Focus();
   },
   replShell: function () {
     // Creating the console.
