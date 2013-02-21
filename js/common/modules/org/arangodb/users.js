@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal"); // OK: reloadAuth, time
+var _ = require("underscore");
 
 var reloadAuth = internal.reloadAuth;
 var arangodb = require("org/arangodb");
@@ -413,9 +414,11 @@ exports.document = function (username) {
     throw err;
   }
 
-  delete user.passwd;
-
-  return user;
+  return {
+    user: user.user,
+    active: user.active,
+    extra: user.extra || { }
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
