@@ -1,7 +1,8 @@
 var shellView = Backbone.View.extend({
   el: '#content',
   events: {
-    'click #editor-run' : 'submitEditor'
+    'click #editor-run'     : 'submitEditor',
+    'mouseleave .vsplitbar' : 'renderEditor'
   },
 
   template: new EJS({url: '/_admin/html/js/templates/shellView.ejs'}),
@@ -16,6 +17,10 @@ var shellView = Backbone.View.extend({
     $("#shell_workspace").trigger("resize", [ 200 ]);
     $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
     return this;
+  },
+  renderEditor: function () {
+    var editor = ace.edit("editor");
+    editor.resize()
   },
   editor: function () {
     var editor = ace.edit("editor");
