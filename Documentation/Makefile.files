@@ -307,6 +307,7 @@ examples:
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
+		@srcdir@/arangod/RestHandler/*.cpp \
 		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix

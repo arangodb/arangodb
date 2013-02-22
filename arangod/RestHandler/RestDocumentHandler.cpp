@@ -172,83 +172,177 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @RESTHEADER{POST /_api/document,creates a document}
 ///
-/// @REST{POST /_api/document?collection=@FA{collection-name}}
+/// @RESTQUERYPARAMETERS
+/// 
+/// @RESTQUERYPARAM{collection,string,required}
+/// The collection name.
 ///
-/// Creates a new document in the collection identified by @FA{collection-name}.
-/// A JSON representation of the document must be passed as the body of the POST 
+/// @RESTQUERYPARAM{createCollection,boolean,optional}
+/// If this parameter has a value of `true` or `yes`, then the collection is
+/// created if it does not yet exist. Other values will be ignored so the
+/// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTDESCRIPTION
+/// Creates a new document in the collection named `collection`.  A JSON
+/// representation of the document must be passed as the body of the POST
 /// request.
 ///
-/// If the document was created successfully, then a @LIT{HTTP 201} is returned
-/// and the "Location" header contains the path to the newly created
-/// document. The "ETag" header field contains the revision of the document.
+/// If the document was created successfully, then the "Location" header
+/// contains the path to the newly created document. The "ETag" header field
+/// contains the revision of the document.
 ///
-/// The body of the response contains a JSON object with the same information.
-/// The attribute @LIT{_id} contains the document handle of the newly created
-/// document, the attribute @LIT{_rev} contains the document revision.
+/// The body of the response contains a JSON object with the following
+/// attributes:
+/// 
+/// - `_id` contains the document handle of the newly created document
+/// - `_key` contains the document key
+/// - `_rev` contains the document revision
 ///
-/// If the collection parameter @LIT{waitForSync} is @LIT{false}, then a
-/// @LIT{HTTP 202} is returned in order to indicate that the document has been
-/// accepted but not yet stored.
+/// If the collection parameter `waitForSync` is `false`, then the call returns
+/// as soon as the document has been accepted. It will not wait, until the
+/// documents has been sync to disk.
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the document creation operation to disk even in case that
+/// the `waitForSync` flag had been disabled for the entire collection.  Thus,
+/// the `waitForSync` URL parameter can be used to force synchronisation of just
+/// this specific operations. To use this, set the `waitForSync` parameter to
+/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
+/// then the collection's default `waitForSync` behavior is applied. The
+/// `waitForSync` URL parameter cannot be used to disable synchronisation for
+/// collections that have a default `waitForSync` value of `true`.
 ///
-/// If the collection specified by @FA{collection-name} is unknown, then a 
-/// @LIT{HTTP 404} is returned and the body of the response contains an error 
-/// document.
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
 ///
-/// If the body does not contain a valid JSON representation of a document,
-/// then a @LIT{HTTP 400} is returned and the body of the response contains
-/// an error document.
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
 ///
-/// @REST{POST /_api/document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create-flag}}
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
 ///
-/// If @FA{create-flag} has a value of @LIT{true} or @LIT{yes}, then the 
-/// collection is created if it does not yet exist. Other values for @FA{create-flag}
-/// will be ignored so the collection must be present for the operation to succeed.
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
 ///
 /// @EXAMPLES
 ///
-/// Create a document given a collection identifier @LIT{161039} for the collection
-/// named @LIT{demo}. Note that the revision identifier might or might by equal to
-/// the last part of the document handle. It generally will be equal, but there is
-/// no guaranty.
+/// Create a document given a collection named `products`. Note that the
+/// revision identifier might or might not by equal to the auto-generated
+/// key.
 ///
-/// @EXAMPLE{rest-create-document,create a document}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate1}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Create a document in a collection with a collection-level @LIT{waitForSync} 
-/// value of @LIT{false}.
+/// Create a document in a collection named `products` with a collection-level
+/// `waitForSync` value of `false`.
 ///
-/// @EXAMPLE{rest-create-document-accept,accept a document}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
+///     var cn = "productsNoWait";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: false });
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 202);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Create a document in a collection with a collection-level @LIT{waitForSync} 
-/// value of @LIT{false}, but with using @FA{waitForSync} URL parameter.
+/// Create a document in a collection with a collection-level `waitForSync`
+/// value of `false`, but using the `waitForSync` URL parameter.
 ///
-/// @EXAMPLE{rest-create-document-wait,create a document}
-///
-/// Create a document in a known, named collection
-///
-/// @verbinclude rest-create-document-named-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
+///     var cn = "productsNoWait";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: false });
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn + "&waitForSync=true";
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Create a document in a new, named collection
 ///
-/// @verbinclude rest-create-document-create-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate1}
+///     var cn = "products";
+///     db._drop(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn + "&createCollection=true";
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 202);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Unknown collection identifier:
+/// Unknown collection name:
 ///
-/// @verbinclude rest-create-document-unknown-cid
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
+///     var cn = "productsUnknown";
+///     db._drop(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Illegal document:
 ///
-/// @verbinclude rest-create-document-bad-json
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJson1}
+///     var cn = "products";
+///     db._drop(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ 1: "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
