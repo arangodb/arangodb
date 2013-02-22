@@ -279,6 +279,7 @@ bool RestImportHandler::createByDocumentsLines () {
 
         if (from == 0) {
           LOGGER_WARNING("missing '_from' attribute at position " << i);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
           ++numError;
           continue;
         }
@@ -286,6 +287,7 @@ bool RestImportHandler::createByDocumentsLines () {
         const char* to = extractJsonStringValue(values, "_to");
         if (to == 0) {
           LOGGER_WARNING("missing '_to' attribute at position " << i);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
           ++numError;
           continue;
         }
@@ -325,6 +327,7 @@ bool RestImportHandler::createByDocumentsLines () {
         logDocument(values);
         ++numError;
       }
+
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
     }
   }
