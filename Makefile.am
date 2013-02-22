@@ -169,12 +169,9 @@ noinst_LIBRARIES = \
 ################################################################################
 
 bin_PROGRAMS = \
+	bin/arangob \
 	bin/arangosh \
-	bin/arangoimp
-
-if ENABLE_ARANGOB	
-bin_PROGRAMS += bin/arangob
-endif
+	bin/arangoimp 
 
 ################################################################################
 ### @brief /sbin programs

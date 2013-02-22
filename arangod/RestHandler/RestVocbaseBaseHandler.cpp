@@ -32,14 +32,8 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
-#include "ResultGenerator/OutputGenerator.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/DocumentHelper.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantBoolean.h"
-#include "Variant/VariantInt32.h"
-#include "Variant/VariantString.h"
-#include "Variant/VariantUInt64.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
 
@@ -263,30 +257,22 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const TRI_voc_cid_t cid
                                                          TRI_voc_key_t key, 
                                                          TRI_voc_rid_t rid) {
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
+  _response->setContentType("application/json; charset=utf-8");
 
-  VariantArray* result = new VariantArray();
-  result->add("error", new VariantBoolean(true));
-  result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
-  result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
-  result->add("errorMessage", new VariantString("precondition failed"));
-  // _id is safe and does not need to be JSON-encoded
-  result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key)));
-  // _rev is safe and does not need to be JSON-encoded
-  result->add("_rev", new VariantString(StringUtils::itoa(rid)));
-  // _key is safe and does not need to be JSON-encoded
-  result->add("_key", new VariantString(key));
-
-  string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
-
-  if (ok) {
-    _response->setContentType(contentType);
-  }
-  else {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "cannot generate response");
-  }
-
-  delete result;
+  // _id and _key are safe and do not need to be JSON-encoded
+  _response->body()
+    .appendText("{\"error\":true,\"code\":")  
+    .appendInteger((int32_t) HttpResponse::PRECONDITION_FAILED)
+    .appendText(",\"errorNum\":")
+    .appendInteger((int32_t) TRI_ERROR_ARANGO_CONFLICT)
+    .appendText(",\"errorMessage\":\"precondition failed\"")
+    .appendText(",\"_id\":\"") 
+    .appendText(DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key))
+    .appendText("\",\"_rev\":\"")
+    .appendText(StringUtils::itoa(rid))
+    .appendText("\",\"_key\":\"")
+    .appendText(key)
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

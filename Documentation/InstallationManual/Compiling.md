@@ -256,6 +256,3 @@ to the error messages file, which is converted to js and C header files using
 Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a `make unittests` run. You also need to
 install the Boost test framework for this.
-
-`--enable-arangob` tells the build system to also build the arangob benchmark
-tool. The binary will be built in the bin subdirectory.

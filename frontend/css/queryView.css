@@ -1,5 +1,26 @@
-#aqlEditor {
+#editorLabel {
   margin-top: 20px;
+  padding-left: 45px;
+}
+
+#outputLabel {
+  padding-left: 35px;
+}
+
+#editorLabel, #outputLabel {
+  border-left: 1px solid #A0A0A0;
+  border-right: 1px solid #A0A0A0;
+  border-top: 1px solid #A0A0A0;
+  width: 80px;
+  background-color: #F0F0F0;
+  border-radius: 3px 3px 0 0;
+}
+
+#aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
+  background:none;
+}
+
+#aqlEditor {
   width: 898px;
   height: 200px;
   border: 1px solid #C0C0C0;
@@ -27,24 +48,11 @@
   padding-top: 5px;
 }
 
-#queryInput {
-  border-radius: 0 0 0 0 !important;
-  margin-top: 5px;
-  margin-bottom: 8px;
-  border: 1px solid #DDDDDD;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075);
-  height: 100px !important;
-  font-family: Consolas,"Liberation Mono",Courier,monospace !important;
-  font-size: 12px !important;
-  width: 886px;
-  resize: vertical;
-}
-
 #queryOutput {
   width: 890px;
   background-color: white;
   height: 350px;
-  overflow-y: auto;
+  overflow-y: hidden;
   resize: vertical !important;
   border: 1px solid #c0c0c0;
 }
