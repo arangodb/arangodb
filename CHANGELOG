@@ -3,6 +3,9 @@ v1.2.beta4 (XXXX-XX-XX)
 
 * fixed issue #426: arangoimp should be able to import edges into edge collections
 
+* fixed issue #425: In case of conflict ArangoDB returns HTTP 400 Bad request 
+  (with 1207 Error) instead of HTTP 409 Conflict
+
 * fixed too greedy token consumption in AQL for negative values:
   e.g. in the statement `RETURN { a: 1 -2 }` the minus token was consumed as part 
   of the value `-2`, and not interpreted as the binary arithmetic operator

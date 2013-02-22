@@ -1501,7 +1501,13 @@ function resultException (req, res, err, headers) {
     }
 
     switch (num) {
-      case arangodb.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
+      case arangodb.ERROR_INTERNAL: 
+        code = exports.HTTP_SERVER_ERROR; 
+        break;
+      case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
+      case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
+        code = exports.HTTP_CONFLICT; 
+        break;
     }
 
     resultError(req, res, code, num, msg, headers);
