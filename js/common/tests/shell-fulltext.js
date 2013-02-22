@@ -592,7 +592,7 @@ function fulltextQuerySuite () {
 /// @brief case sensivity
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCaseSensivity: function () {
+    testCaseSensitivity: function () {
       var texts = [
         "sOMe rubbiSH texT",
         "MoRe rubbish test Data. The indeX should be able to handle alL this.",
