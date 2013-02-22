@@ -1,121 +1,108 @@
 var shellView = Backbone.View.extend({
   el: '#content',
-  shArray: [],
-  initialize: function () {
-    this.autocomplete();
-  },
   events: {
-    'click .reloadicon'       : 'reloadShell',
-    'click #submitShellButton': 'submitShell',
-    'submit form'             : 'submitShell',
-    'click #clearShellButton' : 'clearShell',
-    'click .clearicon'        : 'clearShell'
+    'click #editor-run'     : 'submitEditor',
+    'mouseleave .vsplitbar' : 'renderEditor'
   },
 
   template: new EJS({url: '/_admin/html/js/templates/shellView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);
-    this.drawWelcomeMsg();
+    this.replShell();
+    this.editor();
+    $("#shell_workspace").splitter({
+      dock: true
+    });
+    $("#shell_workspace").trigger("resize", [ 200 ]);
+    $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
     return this;
   },
+  renderEditor: function () {
+    var editor = ace.edit("editor");
+    editor.resize()
+  },
+  editor: function () {
+    var editor = ace.edit("editor");
+    editor.getSession().setMode("ace/mode/javascript");
+  },
+  submitEditor: function () {
+    var editor = ace.edit("editor");
+    var data = editor.getValue();
+        try {
+          if (window.eval(data) === undefined) {
+          }
+          else {
+            jqconsole.Write('==> ' + window.eval(data) + '\n', 'jssuccess');
+          }
+        } catch (e) {
+          jqconsole.Write('ReferenceError: ' + e.message + '\n', 'jserror');
+      }
+      jqconsole.Focus();
+  },
   replShell: function () {
-    $(function () {
-      var jqconsole = $('#replShell').jqconsole('Hi\n', '>>>');
-      var startPrompt = function () {
-        // Start the prompt with history enabled.
-        jqconsole.Prompt(true, function (input) {
-          // Output input with the class jqconsole-output.
-          jqconsole.Write(input + '\n', 'jqconsole-output');
-          // Restart the prompt.
-          startPrompt();
+    // Creating the console.
+    var header = 'Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.\n';
+    window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "hehe");
+
+    // Abort prompt on Ctrl+Z.
+    jqconsole.RegisterShortcut('Z', function() {
+      jqconsole.AbortPrompt();
+      handler();
+    });
+    // Move to line end Ctrl+E.
+    jqconsole.RegisterShortcut('E', function() {
+      jqconsole.MoveToEnd();
+      handler();
+    });
+    jqconsole.RegisterMatching('{', '}', 'brace');
+    jqconsole.RegisterMatching('(', ')', 'paran');
+    jqconsole.RegisterMatching('[', ']', 'bracket');
+    // Handle a command.
+    var handler = function(command) {
+      if (command === 'help') {
+        command = "require(\"arangosh\").HELP";
+      }
+      if (command === "exit") {
+        location.reload();
+      }
+        try {
+          if (window.eval(command) === undefined) {
+          }
+          else {
+            jqconsole.Write('==> ' + window.eval(command) + '\n', 'jssuccess');
+          }
+        } catch (e) {
+          jqconsole.Write('ReferenceError: ' + e.message + '\n', 'jserror');
+      }
+      jqconsole.Prompt(true, handler, function(command) {
+        // Continue line if can't compile the command.
+        try {
+          Function(command);
+        } catch (e) {
+          if (/[\[\{\(]$/.test(command)) {
+            return 1;
+          } else {
+            return 0;
+          }
+          }
+          return false;
         });
       };
-      startPrompt();
-    });
 
-
-
-  },
-  autocomplete: function () {
-    self = this;
-    $("#avocshContent").autocomplete({
-      source: self.shArray
-    });
-  },
-  submitShell: function () {
-    var varInput = "#shellInput";
-    var varContent = "#shellContent";
-    var data = $(varInput).val();
-
-    var r = [ ];
-    for (var i = 0; i < this.shArray.length; ++i) {
-      if (this.shArray[i] != data) {
-        r.push(this.shArray[i]);
+      // Initiate the first prompt.
+      handler();
+    },
+    evaloutput: function (data) {
+      try {
+        var result = eval(data); 
+        if (result !== undefined) {
+          print(result);
+        }
+      }
+      catch(e) {
+        $('#shellContent').append('<p class="shellError">Error:' + e + '</p>');
       }
     }
 
-    this.shArray = r;
-    if (this.shArray.length > 4) {
-      this.shArray.shift();
-    }
-    this.shArray.push(data);
-
-    $("#shellInput").autocomplete({
-      source: this.shArray
-    });
-
-    if (data == "exit") {
-      location.reload();
-      return;
-    }
-
-    var command;
-    if (data == "help") {
-      command = "require(\"arangosh\").HELP";
-    }
-    else if (data == "reset") {
-      command = "$('#shellContent').html(\"\");undefined;";
-    }
-    else {
-      command = data;
-    }
-
-    var client = "arangosh> " + escapeHTML(data) + "<br>";
-    $(varContent).append('<b class="shellClient">' + client + '</b>');
-    this.evaloutput(command);
-    $(varContent).animate({scrollTop:$(varContent)[0].scrollHeight}, 1);
-    $(varInput).val('');
-    return false;
-  },
-  clearShell: function () {
-    $('#shellContent').html("");
-  },
-  reloadShell: function () {
-    db._collections();
-    $('#shellContent').html("");
-    this.drawWelcomeMsg();
-    $('#shellContent').append("<p> --- Reloaded ---</p>");
-
-  },
-  drawWelcomeMsg: function () {
-    if ($('#shellContent').text().length == 0 ) {
-      $('#shellContent').append('<img src="img/arangodblogo.png" style="width:141px; height:24px; margin-left:0;"></img>');
-      print("Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.");
-      print(require("arangosh").HELP);
-      start_pretty_print();
-    }
-  },
-  evaloutput: function (data) {
-    try {
-      var result = eval(data); 
-      if (result !== undefined) {
-        print(result);
-      }
-    }
-    catch(e) {
-      $('#shellContent').append('<p class="shellError">Error:' + e + '</p>');
-    }
-  }
-
-});
+  });

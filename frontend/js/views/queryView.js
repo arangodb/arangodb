@@ -15,22 +15,27 @@ var queryView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    var editor = ace.edit("aqlEditor");
+    editor.getSession().setMode("ace/mode/javascript");
+    editor.resize();
+    $('#aqlEditor').focus();
     return this;
   },
   submitQuery: function() {
     var self = this;
-    var data = {query:$('#queryInput').val()};
-    var formattedJSON;
+    var editor = ace.edit("aqlEditor");
+    var data = {query: editor.getValue()};
 
     $("#queryOutput").empty();
     $("#queryOutput").append('<pre class="preQuery">Loading...</pre>>'); 
 
+
     $.ajax({
       type: "POST",
       url: "/_api/cursor",
-      data: JSON.stringify(data), 
+      data: JSON.stringify(data),
       contentType: "application/json",
-      processData: false, 
+      processData: false,
       success: function(data) {
         $("#queryOutput").empty();
         var formatQuestion = true;
@@ -42,6 +47,7 @@ var queryView = Backbone.View.extend({
         }
       },
       error: function(data) {
+        console.log(data);
         var temp = JSON.parse(data.responseText);
         $("#queryOutput").empty();
         $("#queryOutput").append('<a class="queryError"><font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font></a>'); 

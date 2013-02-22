@@ -22,6 +22,20 @@ describe ArangoDB do
     end
 
 ################################################################################
+## reloading auth info
+################################################################################
+
+    it "reloads the user info" do
+      doc = ArangoDB.log_get("#{prefix}-reload", "/_admin/auth/reload")
+
+      doc.code.should eq(200)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+    end
+
+
+################################################################################
 ## adding users 
 ################################################################################
 
@@ -413,6 +427,7 @@ describe ArangoDB do
         doc.parsed_response['active'].should eq(false)
         doc.parsed_response['extra'].should eq({ "foo" => true })
         doc.parsed_response.should_not have_key("passwd")
+        doc.parsed_response.should_not have_key("password")
       end
     end
 

@@ -12,7 +12,12 @@ var documentSourceView = Backbone.View.extend({
   render: function() {
     $(this.el).html(this.template.text);
     this.breadcrumb();
+    this.editor();
     return this;
+  },
+  editor: function () {
+    var editor = ace.edit("sourceEditor");
+    editor.getSession().setMode("ace/mode/javascript");
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/");
@@ -35,11 +40,12 @@ var documentSourceView = Backbone.View.extend({
     var data = arangoDocumentStore.models[0].attributes;
     var model = [];
     $.each(data, function(key, val) {
-      if (isSystemAttribute(key) === true) {
+      if (arangoHelper.isSystemAttribute(key) === true) {
         delete data[key];
       }
     });
-    $('#documentSourceBox').val(this.FormatJSON(data));
+    var editor = ace.edit("sourceEditor");
+    editor.setValue(this.FormatJSON(data));
   },
   stateReplace: function (value) {
     var inString = false;
@@ -152,7 +158,7 @@ var documentSourceView = Backbone.View.extend({
       switch (self.RealTypeOf(vValue)) {
         case "array":
           case "object":
-          sHTML += FormatJSON(vValue, (sIndent + sIndentStyle));
+          sHTML += self.FormatJSON(vValue, (sIndent + sIndentStyle));
         break;
         case "boolean":
           case "number":

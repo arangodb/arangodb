@@ -131,6 +131,7 @@ $(document).ready(function() {
           $('#logNav a[href="#all"]').tab('show');
           window.logsView.initLogTables();
           window.logsView.drawTable();
+          $('#all-switch').click();
         }
       });
       this.naviView.selectMenuItem('logs-menu');

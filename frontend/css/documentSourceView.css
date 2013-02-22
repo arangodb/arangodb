@@ -1,8 +1,11 @@
-#documentSourceBox {
-  min-height: 400px;
-  width: 885px;
-  border: 1px solid black;
-  border-radius: 0;
+#sourceEditor {
+  height: 400px;
+  width: 900px;
+  margin-left: 20px;
+  margin-top: 30px;
+  overflow:hidden;
+  padding-bottom: 20px;
+  border: 1px solid #A0A0A0;
 }
 
 #saveSourceDoc, #tableView {
@@ -24,4 +27,8 @@
   min-height: 400px;
   background-color: rgba(0, 0, 0, 0.05);
   
+}
+
+.sourceBox {
+  padding-bottom:20px;
 }

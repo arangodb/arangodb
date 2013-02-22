@@ -1,13 +1,18 @@
-#queryDiv {
-  position: relative;
-  width: 900px !important;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 0 0 4px 4px;
-  margin-top: 10px;
+#aqlEditor .ace_error, #aqlEditor .ace_info {
+  background:none;
 }
 
-#queryDiv form {
-  margin-bottom: 10px;
+#aqlEditor {
+  margin-top: 20px;
+  width: 898px;
+  height: 200px;
+  border: 1px solid #C0C0C0;
+  margin-bottom: 20px;
+}
+
+#queryDiv {
+  margin-top: 10px;
+  background-color: rgba(0,0,0,0.05);
 }
 
 #submitQueryButton {
