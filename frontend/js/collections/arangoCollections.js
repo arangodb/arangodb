@@ -7,10 +7,6 @@ window.arangoCollections = Backbone.Collection.extend({
         return model.get('name').toLowerCase();
       },
 
-      isSystemCollection : function (name) {
-        return name.substr(0, 1) === '_';
-      },
-
       translateStatus : function (status) {
         if (status == 2) {
           return 'unloaded';
@@ -23,7 +19,7 @@ window.arangoCollections = Backbone.Collection.extend({
         var that = this;
 
         $.each(response.collections, function(key, val) {
-          val.isSystem = that.isSystemCollection(val.name); 
+          val.isSystem = arangoHelper.isSystemCollection(val.name);
           val.status = that.translateStatus(val.status);
         });
         return response.collections;

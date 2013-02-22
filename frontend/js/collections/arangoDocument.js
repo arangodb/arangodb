@@ -26,7 +26,7 @@ window.arangoDocument = Backbone.Collection.extend({
   },
   addDocument: function (collectionID) {
     var self = this;
-    var doctype = self.collectionApiType(collectionID);
+    var doctype = arangoHelper.collectionApiType(collectionID);
     if (doctype === 'edge') {
       alert("adding edge not implemented");
       return false;
@@ -49,16 +49,6 @@ window.arangoDocument = Backbone.Collection.extend({
         alert(JSON.stringify(data));
       }
     });
-  },
-  collectionApiType: function (identifier) {
-    if (this.CollectionTypes[identifier] == undefined) {
-      this.CollectionTypes[identifier] = this.getCollectionInfo(identifier).type;
-    }
-
-    if (this.CollectionTypes[identifier] == 3) {
-      return "edge";
-    }
-    return "document";
   },
   getCollectionInfo: function (identifier) {
     var self = this;

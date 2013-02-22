@@ -40,7 +40,7 @@ var documentSourceView = Backbone.View.extend({
     var data = arangoDocumentStore.models[0].attributes;
     var model = [];
     $.each(data, function(key, val) {
-      if (isSystemAttribute(key) === true) {
+      if (arangoHelper.isSystemAttribute(key) === true) {
         delete data[key];
       }
     });
