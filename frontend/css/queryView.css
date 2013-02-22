@@ -1,3 +1,7 @@
+#aqlEditor .ace_error, #aqlEditor .ace_info {
+  background:none;
+}
+
 #aqlEditor {
   margin-top: 20px;
   width: 898px;
