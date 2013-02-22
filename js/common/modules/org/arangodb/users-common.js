@@ -302,7 +302,10 @@ exports.replace = function (username, passwd, active, extra) {
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-replace,replacing an existing user}
+/// @code
+/// arangosh> require("users").replace("my-user", "my-secret-password");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.update = function (username, passwd, active, extra) {
