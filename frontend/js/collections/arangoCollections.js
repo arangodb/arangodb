@@ -20,6 +20,7 @@ window.arangoCollections = Backbone.Collection.extend({
 
         $.each(response.collections, function(key, val) {
           val.isSystem = arangoHelper.isSystemCollection(val.name);
+          val.type = arangoHelper.collectionType(val);
           val.status = that.translateStatus(val.status);
         });
         return response.collections;
