@@ -27,9 +27,9 @@ var collectionView = Backbone.View.extend({
   fillModal: function() {
     this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
     $('#change-collection-name').val(this.myCollection.name);
-    $('#change-collection-id').val(this.myCollection.id);
-    $('#change-collection-type').val(this.myCollection.type);
-    $('#change-collection-status').val(this.myCollection.status);
+    $('#change-collection-id').text(this.myCollection.id);
+    $('#change-collection-type').text(this.myCollection.type);
+    $('#change-collection-status').text(this.myCollection.status);
 
     if (this.myCollection.status == 'unloaded') {
       $('#colFooter').append('<button id="load-modified-collection" class="btn">Load</button>');
