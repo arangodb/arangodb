@@ -12,19 +12,34 @@ var newCollectionView = Backbone.View.extend({
     $('#add-collection').on('hidden', function () {
       self.hidden();
     });
+    $('#edgeFrom').hide();
+    $('#edgeTo').hide();
+    $('.modalTooltips').tooltip({
+      placement: "right"
+    });
 
     return this;
   },
 
   events: {
-    "click #save-new-collection" : "saveNewCollection"
+    "click #save-new-collection" : "saveNewCollection",
+    "click #new-collection-type" : "displayEdge"
   },
 
   hidden: function () {
     window.location.hash = "#";
   },
 
-  clearModal: function() {
+  displayEdge: function () {
+    var collType = $('#new-collection-type').val();
+    if (collType == 3) {
+      $('#edgeFrom').show();
+      $('#edgeTo').show();
+    }
+    else {
+      $('#edgeFrom').hide();
+      $('#edgeTo').hide();
+    }
   },
 
   saveNewCollection: function() {

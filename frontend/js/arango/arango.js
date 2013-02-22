@@ -43,7 +43,6 @@ arangoHelper = {
     if (! val || val.name == '') {
       return "-";
     }
-
     var type;
     if (val.type == 2) {
       type = "document";
@@ -55,7 +54,7 @@ arangoHelper = {
       type = "unknown";
     }
 
-    if (isSystemCollection(val)) {
+    if (val.name.substr(0, 1) === '_') {
       type += " (system)";
     }
 
