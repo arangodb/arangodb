@@ -23,20 +23,21 @@
     <link href="css/documentSourceView.css" rel="stylesheet">
     <link href="css/jquery.snippet.css" rel="stylesheet">
     <link href="css/modal.css" rel="stylesheet">
+    <link href="css/ansi.css" rel="stylesheet">
 </head>
 
 <body>
 
-  <div class="header">
-  </div>
 
   <div class="container">
+  <div class="header">
+  </div>
 
     <div class="row">
       <div id="content" class="span12>"></div>
     </div>
 
-    <div id="modalPlaceholder" style:"display:none;">
+    <div id="modalPlaceholder" style:"display:none">
     </div>
 
     <footer class="footer">
@@ -58,7 +59,9 @@
   <script src="js/lib/ejs_0.9_alpha_1_production.js"></script>
   <script src="js/lib/jquery.snippet.js"></script>
   <script src="js/lib/bootstrap.js"></script>
+  <script src="src/ace.js"></script>
   <script src="js/lib/jqconsole.min.js"></script>
+  <script src="js/lib/splitter.js"></script>
 
   <!-- arango  -->
   <script src="js/arango/arango.js"></script>

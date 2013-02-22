@@ -39,21 +39,40 @@ var documentView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
-      if (self.isSystemAttribute(key)) {
-        $(self.table).dataTable().fnAddData(["", key, self.value2html(value, true), JSON.stringify(value)]);
+      if (arangoHelper.isSystemAttribute(key)) {
+        $(self.table).dataTable().fnAddData([
+          key,
+          self.value2html(value, true),
+          JSON.stringify(value),
+          'edit',
+          ""
+        ]);
       }
       else {
-        $(self.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>',key, self.value2html(value), JSON.stringify(value)]);
+        $(self.table).dataTable().fnAddData([
+          key,
+          self.value2html(value),
+          JSON.stringify(value),
+          'edit',
+          '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>'
+        ]);
       }
     });
     this.makeEditable();
   },
 
   addLine: function () {
-    $(this.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>', "somekey"+this.counter, this.value2html("editme"), JSON.stringify("editme")]);
+    $(this.table).dataTable().fnAddData([
+      "key"+arangoHelper.getRandomToken(),
+      this.value2html("editme"),
+      JSON.stringify("editme"),
+      'edit',
+      '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>'
+    ]);
     this.makeEditable();
     this.updateLocalDocumentStorage();
-    this.counter++;
+    $(this.table).dataTable().fnClearTable();
+    this.drawTable();
   },
 
   deleteLine: function (a) {
@@ -73,37 +92,14 @@ var documentView = Backbone.View.extend({
       "bDeferRender": true,
       "iDisplayLength": -1,
       "aoColumns": [
-        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"},
         {"sClass":"writeable", "bSortable": false, "sWidth":"400px" },
         {"sClass":"writeable rightCell", "bSortable": false},
-        {"bVisible": false }
+        {"bVisible": false },
+        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"},
+        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"}
       ],
       "oLanguage": {"sEmptyTable": "No documents"}
     });
-  },
-
-  systemAttributes: function () {
-    return {
-      '_id' : true,
-      '_rev' : true,
-      '_key' : true,
-      '_from' : true,
-      '_to' : true,
-      '_bidirectional' : true,
-      '_vertices' : true,
-      '_from' : true,
-      '_to' : true,
-      '$id' : true
-    };
-  },
-
-  isSystemAttribute: function (val) {
-    var a = this.systemAttributes();
-    return a[val];
-  },
-
-  isSystemCollection: function (val) {
-    return val && val.name && val.name.substr(0, 1) === '_';
   },
 
   value2html: function (value, isReadOnly) {
@@ -119,7 +115,6 @@ var documentView = Backbone.View.extend({
           return ("<a class=\"sh_keyword\">" + value + "</a>");
         case 'object':
           if (value instanceof Array) {
-        window.arangoDocumentStore.saveDocument();
           return ("<a class=\"sh_array\">" + self.escaped(JSON.stringify(value)) + "</a>");
         }
         else {
@@ -140,12 +135,11 @@ var documentView = Backbone.View.extend({
 
     for (row in data) {
       var row_data = data[row];
-      result[row_data[1]] = JSON.parse(row_data[3]);
+      result[row_data[0]] = JSON.parse(row_data[2]);
     }
     window.arangoDocumentStore.updateLocalDocument(result);
     this.saveDocument();
   },
-
   makeEditable: function () {
     var documentEditTable = $(this.table).dataTable();
     var self=this;
@@ -155,19 +149,19 @@ var documentView = Backbone.View.extend({
         $(this).removeClass('writeable');
         i = 0;
       }
-      if (self.isSystemAttribute(this.innerHTML)) {
+      if (arangoHelper.isSystemAttribute(this.innerHTML)) {
         $(this).removeClass('writeable');
         i = 1;
       }
     });
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
-      if (aPos[1] == 1) {
+      if (aPos[1] == 0) {
         documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
         self.updateLocalDocumentStorage();
         return value;
       }
-      if (aPos[1] == 2) {
+      if (aPos[1] == 1) {
         var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
         var test = self.getTypedValue(value);
         if (String(value) == String(oldContent)) {
@@ -186,11 +180,10 @@ var documentView = Backbone.View.extend({
       data: function() {
         var aPos = documentEditTable.fnGetPosition(this);
         var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
-
-        if (aPos[1] == 1) {
+        if (aPos[1] == 0) {
           return value;
         }
-        if (aPos[1] == 2) {
+        if (aPos[1] == 1) {
           var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
           if (typeof(oldContent) == 'object') {
             //grep hidden row and paste in visible row

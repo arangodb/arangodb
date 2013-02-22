@@ -1,6 +1,8 @@
 ArangoDB Importer {#ImpManualBasics}
 ====================================
 
+@NAVIGATE_ImpManual
+
 @EMBEDTOC{ImpManualBasicsTOC}
 
 This manual describes the ArangoDB importer _arangoimp_, which can be used for
@@ -24,29 +26,29 @@ example user records to import:
 To import these records, all you need to do is to put them into a file (with one
 line for each record to import) and run the following command:
 
-    ./arangoimp \-\-file "data.json" \-\-type json \-\-collection "users"
+    ./arangoimp --file "data.json" --type json --collection "users"
 
 This will transfer the data to the server, import the records, and print a
 status summary. To show the intermediate progress during the import process, the
-option `\-\-progress` can be added. This option will show the percentage of the
+option `--progress` can be added. This option will show the percentage of the
 input file that has been sent to the server. This will only be useful for big
 import files.
 
-    ./arangoimp \-\-file "data.json" \-\-type json \-\-collection "users" \-\-progress true
+    ./arangoimp --file "data.json" --type json --collection "users" --progress true
 
 By default, the endpoint `tcp://127.0.0.1:8529` will be used.  If you want to
-specify a different endpoint, you can use the \-\-server.endpoint option. You
+specify a different endpoint, you can use the --server.endpoint option. You
 probably want to specify a database user and password as well.  You can do so by
-using the options \-\-server.username and \-\-server.password.  If you do not
+using the options --server.username and --server.password.  If you do not
 specify a password, you will be prompted for one.
 
-    ./arangoimp \-\-server.endpoint tcp://127.0.0.1:8529 \-\-server.username root \-\-file "data.json" \-\-type json \-\-collection "users"
+    ./arangoimp --server.endpoint tcp://127.0.0.1:8529 --server.username root --file "data.json" --type json --collection "users"
 
 Note that the collection (`users` in this case) must already exist or the import
 will fail. If you want to create a new collection with the import data, you need
-to specify the \-\-create-collection option.
+to specify the --create-collection option.
 
-    ./arangoimp \-\-file "data.json" \-\-type json \-\-collection "users" \-\-create-collection true
+    ./arangoimp --file "data.json" --type json --collection "users" --create-collection true
 
 As the import file already contains the data in JSON format, attribute names and
 data types are fully preserved. As can be seen in the example data, there is no
@@ -79,12 +81,12 @@ We'll be using the following import for the CSV import:
 
 The command line to execute the import then is:
 
-    arangoimp \-\-file "data.csv" \-\-type csv \-\-collection "users"
+    arangoimp --file "data.csv" --type csv --collection "users"
 
 Note that the quote and separator characters can be adjusted via the
-@CA{\-\-quote} and @CA{\-\-separator} arguments when invoking _arangoimp_.  It
+`--quote` and `--separator` arguments when invoking _arangoimp_.  It
 is also possible to change the end-of-line character from the default value of
-`\\n` to another value using the @CA{\-\-eol} argument.
+`\n` to another value using the `--eol` argument.
 
 Importing TSV Data {#ImpManualBasicsTsv}
 ========================================
@@ -98,9 +100,9 @@ As with CSV, the first line in the TSV file must contain the attribute names,
 and all lines must have an identical number of values.
 
 If a different separator character or string should be used, it can be specified
-with the @CA{\-\-separator} argument. The end-of-line character can be adjusted
-using the @CA{\-\-eol} argument.
+with the `--separator` argument. The end-of-line character can be adjusted
+using the `--eol` argument.
 
 An example command line to execute the TSV import is:
 
-    arangoimp \-\-file "data.tsv" \-\-type tsv \-\-collection "users" \-\-eol "\\r\\n"
+    arangoimp --file "data.tsv" --type tsv --collection "users" --eol "\r\n"

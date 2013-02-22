@@ -21,7 +21,6 @@ window.arangoLogs = Backbone.Collection.extend({
     window.arangoLogsStore.reset();
   },
   returnElements: function () {
-    console.log(this.models.length);
   },
   fillLocalStorage: function (table, offset, size) {
     var self = this;

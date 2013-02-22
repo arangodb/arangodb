@@ -2,7 +2,6 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocument,
   collectionInfo: {},
-  CollectionTypes: {},
   deleteDocument: function (collectionID){
     var returnval = false;
     try {
@@ -26,7 +25,7 @@ window.arangoDocument = Backbone.Collection.extend({
   },
   addDocument: function (collectionID) {
     var self = this;
-    var doctype = self.collectionApiType(collectionID);
+    var doctype = arangoHelper.collectionApiType(collectionID);
     if (doctype === 'edge') {
       alert("adding edge not implemented");
       return false;
@@ -50,22 +49,12 @@ window.arangoDocument = Backbone.Collection.extend({
       }
     });
   },
-  collectionApiType: function (identifier) {
-    if (this.CollectionTypes[identifier] == undefined) {
-      this.CollectionTypes[identifier] = this.getCollectionInfo(identifier).type;
-    }
-
-    if (this.CollectionTypes[identifier] == 3) {
-      return "edge";
-    }
-    return "document";
-  },
   getCollectionInfo: function (identifier) {
     var self = this;
 
     $.ajax({
       type: "GET",
-      url: "/_api/collection/" + identifier + "?" + self.getRandomToken(),
+      url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
       contentType: "application/json",
       processData: false,
       async: false,
@@ -77,9 +66,6 @@ window.arangoDocument = Backbone.Collection.extend({
     });
 
     return self.collectionInfo;
-  },
-  getRandomToken: function () {
-    return Math.round(new Date().getTime());
   },
   getDocument: function (colid, docid, view) {
     this.clearDocument();
@@ -107,7 +93,8 @@ window.arangoDocument = Backbone.Collection.extend({
 
   saveDocument: function (view) {
     if (view === "source") {
-      var model = $('#documentSourceBox').val();
+      var editor = ace.edit("sourceEditor");
+      var model = editor.getValue();
       var tmp1 = window.location.hash.split("/")[2];
       var tmp2 = window.location.hash.split("/")[1];
       var docID = tmp2 + "/" + tmp1;
@@ -137,7 +124,6 @@ window.arangoDocument = Backbone.Collection.extend({
       },
       error: function(data) {
         //alert(getErrorMessage(data));
-        console.log(data);
       }
     });
 

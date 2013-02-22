@@ -1,114 +1,85 @@
-.shelltrashicon {
-  right:65px;
-}
-
-#submitShellButton {
-  position:absolute;
-  width: 14px;
-  height: 14px;
-  margin-top: -40px;
-  right: 27px;
-  z-index: 9999;
-  opacity: 0.2;
-}
-
-#submitShellButton:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-#shellInput {
-  border-radius: 0px 0px 0px 0px !important;
-}
-
-/*
-#shellInput:focus {
-  outline:none;
-  border-color:#8AA051;
-  box-shadow:0 0 3px #8AA051;
-}
-*/
-
-.shellnavbar {
-  background-color: red !important;
-  background-color: #FAFAFA !important;
-  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2) !important;
-  background-repeat: repeat-x;
-  margin-bottom: 20px;
-}
-
-.shellnavbar h3 {
-  padding-top: 5px;
-}
-
-#shellContent p, #shellContent b {
-  font-family: Consolas,"Liberation Mono",Courier,monospace !important;
-  font-size: 12px !important;
-}
-
-#shellFooter {
-  background-color:rgba(0,0,0,0.05);
-  position: relative;
-  margin-top: 10px;
-  padding-bottom: 2px;
-  border-radius: 0 0 4px 4px;
-}
-
-#shellInput {
-  width: 886px;
-  margin-top:5px;
-  margin-bottom:0px;
-  background-color: #FAFAFA;
-  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2);
-  background-repeat: repeat-x;
-}
-
-#shellContent {
-  background-color: #FAFAFA;
-  background-image: linear-gradient(to bottom, #FFFFFF, #F2F2F2);
-  background-repeat: repeat-x;
-  height: 400px;
-  width: 890px;
-  overflow-y: auto;
-  word-wrap: break-word;
-  border: 1px solid #c0c0c0;
-}
-
-.shellError {
-  color: red;
-  padding-left: 14px;
-}
-
 /* REPL SHELL */
 /* REPL SHELL */
-/* REPL SHELL */
-/* REPL SHELL */
-/* REPL SHELL */
-#console {
-  margin-top: 300px;
-  width: 400px;
+
+.shellul {
+  border-bottom: 20px solid rgba(0, 0, 0, 0.00);
+  padding-bottom: 20px;
+  background-color: black;
+}
+
+#shell_workspace {
+  width: 900px;
+  margin-top: 30px;
+  margin-left: 20px;
+  margin-bottom: -20px;
   height: 500px;
-  background-color:black;
+  background-color: black;
+}
+
+#editor {
+  float:left;
+  width: 300px;
+  height: 400px;
+  background-color:white;
+  overflow: hidden;
+  border: 1px solid black;
+}
+
+.vsplitbar {
+  border: 0;
+  width: 10px;
+  background-color: black;
+  border-bottom: 1px solid black;
+  border-top: 1px solid black;
+}
+
+/* REPL SHELL */
+/* REPL SHELL */
+/* REPL SHELL */
+#replShell {
+  float:left;
+  min-width: 100px;
+  width: 600px;
+  background-color: white;
+  position: relative;
+  height: 400px;
+  border-bottom: 2px solid black !important;
 }
 /* The inner console element. */
 .jqconsole {
+  background-color: black;
   padding: 10px;
+  border-radius: 0;
 }
+.jqconsole-header {
+  color: white;
+}
+
+.jserror {
+  color: #FF0066;
+  margin-left: -10px;
+}
+
+.jssuccess {
+  color: #66FF00;
+}
+
+
 /* The cursor. */
 .jqconsole-cursor {
   background-color: gray;
 }
 /* The cursor color when the console looses focus. */
-.jqconsole-blurred .jqconsole-cursor {
-  background-color: #666;
+.jqconsole-blurred .jqconsole-header .jqconsole-cursor {
+      color: #C4CCCC;
 }
 /* The current prompt text color */
 .jqconsole-prompt {
-  color: #0d0;
+  color: #BB9911;
 }
 /* The command history */
 .jqconsole-old-prompt {
-  color: #0b0;
+  color: #FF6600;
   font-weight: normal;
 }
 /* The text color when in input mode. */
@@ -125,3 +96,28 @@
   color: white;
 }
 
+#editor-run:hover {
+  opacity: 0.6;
+}
+
+#editor-run {
+  cursor: pointer !important;
+  position: absolute;
+  z-index: 5;
+  top: 4px;
+  right: 30px;
+  width: 20px;
+  height: 20px;
+  background-color: #8AA051;
+  opacity: 0.2;
+  padding-left: 6px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border: 1px solid black;
+  height: 20px !important;
+}
+
+.jqconsole-blurred .jqconsole-header, .jqconsole-blurred .jssuccess, .jqconsole-blurred .jserror,
+.jqconsole-blurred .jqconsole-prompt, .jqconsole-blurred .jqconsole-old-prompt{
+  opacity: 0.7;
+}

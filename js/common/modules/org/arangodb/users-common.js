@@ -28,9 +28,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"); // OK: reloadAuth, time
-
-var reloadAuth = internal.reloadAuth;
+var internal = require("internal"); // OK: time
 var arangodb = require("org/arangodb");
 var crypto = require("org/arangodb/crypto");
 var db = arangodb.db;
@@ -304,7 +302,10 @@ exports.replace = function (username, passwd, active, extra) {
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{user-replace,replacing an existing user}
+/// @code
+/// arangosh> require("users").replace("my-user", "my-secret-password");
+/// arangosh> require("users").reload();
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.update = function (username, passwd, active, extra) {
@@ -413,9 +414,11 @@ exports.document = function (username) {
     throw err;
   }
 
-  delete user.passwd;
-
-  return user;
+  return {
+    user: user.user,
+    active: user.active,
+    extra: user.extra || { }
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +437,7 @@ exports.document = function (username) {
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.reload = function () {
-  return reloadAuth();
+  throw "cannot use abstract reload function";
 };
 
 ////////////////////////////////////////////////////////////////////////////////

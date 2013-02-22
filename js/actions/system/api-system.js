@@ -150,7 +150,7 @@ actions.defineHttp({
     context : "admin",
     prefix : false,
     callback : function (req, res) {
-      internal.RELOAD_AUTH();
+      internal.reloadAuth();
       actions.resultOk(req, res, actions.HTTP_OK);
     }
   });

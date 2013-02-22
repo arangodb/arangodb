@@ -32,7 +32,6 @@ var arangodb = require("org/arangodb");
 var internal = require("internal");
 var console = require("console");
 var moduleExists = function(name) { return module.exists; };
-var _ = require("underscore");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1004,6 +1003,34 @@ function reloadRouting () {
 
     defineRoute(route, storage, url, callback);
   };
+  
+  // .............................................................................
+  // deep-copy a route object
+  // .............................................................................
+
+  function clone (obj) {
+    if (obj === null || typeof(obj) !== "object") {
+      return obj;
+    }
+
+    var copy, a; 
+    if (Array.isArray(obj)) {
+      copy = [ ];
+      obj.forEach(function (i) {
+        copy.push(clone(i));
+      });
+    }
+    else if (obj instanceof Object) {
+      copy = { };
+      for (a in obj) {
+        if (obj.hasOwnProperty(a)) {
+          copy[a] = clone(obj[a]);
+        }
+      }
+    }
+
+    return copy;
+  }
 
   // .............................................................................
   // loop over the routes or routes bundle
@@ -1011,7 +1038,7 @@ function reloadRouting () {
 
   while (routes.hasNext()) {
     // clone the route object so the barrier for the collection can be removed soon
-    var route = _.clone(routes.next());
+    var route = clone(routes.next());
     var r;
 
     if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {

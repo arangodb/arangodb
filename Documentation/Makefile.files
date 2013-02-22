@@ -58,7 +58,7 @@ DOXYGEN = \
 	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
-	Doxygen/js/common/modules/org/arangodb/users.c \
+	Doxygen/js/common/modules/org/arangodb/users-common.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
 	Doxygen/js/server/modules/org/arangodb/arango-database.c \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \

@@ -1,5 +1,7 @@
-v1.2.beta3 (XXXX-XX-XX)
+v1.2.beta3 (2013-02-22)
 -----------------------
+
+* issue #427: ArangoDB Importer Manual has no navigation links (previous|home|next)
 
 * issue #319: Documentation missing for Emergency console and incomplete for datafile debugger.
 
