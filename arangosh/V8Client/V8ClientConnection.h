@@ -178,36 +178,42 @@ namespace triagens {
 ///
 /// @param string location                     the request location
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> getData (std::string const& location,
-                                       map<string, string> const& headerFields);
+                                       map<string, string> const& headerFields,
+                                       bool raw);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "DELETE" request
 ///
 /// @param string location                     the request location
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> deleteData (std::string const& location,
-                                          map<string, string> const& headerFields);
+                                          map<string, string> const& headerFields,
+                                          bool raw);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "HEAD" request
 ///
 /// @param string location                     the request location
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> headData (std::string const& location,
-                                        map<string, string> const& headerFields);
+                                        map<string, string> const& headerFields,
+                                        bool raw);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do an "OPTIONS" request
@@ -215,13 +221,15 @@ namespace triagens {
 /// @param string location                     the request location
 /// @param string body                         the request body
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> optionsData (std::string const& location,
                                            std::string const& body,
-                                           map<string, string> const& headerFields);
+                                           map<string, string> const& headerFields,
+                                           bool raw);
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "POST" request
@@ -229,13 +237,15 @@ namespace triagens {
 /// @param string location                     the request location
 /// @param string body                         the request body
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> postData (std::string const& location,
                                         std::string const& body,
-                                        map<string, string> const& headerFields);
+                                        map<string, string> const& headerFields,
+                                        bool raw);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "PUT" request
@@ -243,13 +253,15 @@ namespace triagens {
 /// @param string location                     the request location
 /// @param string body                         the request body
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> putData (std::string const& location,
                                        std::string const& body,
-                                       map<string, string> const& headerFields);
+                                       map<string, string> const& headerFields,
+                                       bool raw);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "PATCH" request
@@ -257,13 +269,15 @@ namespace triagens {
 /// @param string location                     the request location
 /// @param string body                         the request body
 /// @param map<string, string> headerFields    additional header fields
+/// @param raw                                 return the raw response
 ///
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> patchData (std::string const& location,
                                          std::string const& body,
-                                         map<string, string> const& headerFields);
+                                         map<string, string> const& headerFields,
+                                         bool raw);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -288,6 +302,15 @@ namespace triagens {
                                          std::string const& location,
                                          std::string const& body,
                                          map<string, string> const& headerFields);
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a request and returns raw response
+////////////////////////////////////////////////////////////////////////////////
+
+      v8::Handle<v8::Value> requestDataRaw (rest::HttpRequest::HttpRequestType method, 
+                                            std::string const& location,
+                                            std::string const& body,
+                                            map<string, string> const& headerFields);
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -349,7 +372,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:
