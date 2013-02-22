@@ -26,6 +26,25 @@ var queryView = Backbone.View.extend({
     editor.resize();
     editor2.setValue('');
     editor2.resize();
+
+    $('#queryOutput').resizable({
+      handles: "n, s",
+      ghost: true,
+      stop: function () {
+        var editor2 = ace.edit("queryOutput");
+        editor2.resize();
+      }
+    });
+    $('#aqlEditor').resizable({
+      handles: "n, s",
+      ghost: true,
+      helper: "resizable-helper",
+      stop: function () {
+        var editor = ace.edit("aqlEditor");
+        editor.resize();
+      }
+    });
+
     $('#aqlEditor .ace_text-input').focus();
     return this;
   },
