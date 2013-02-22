@@ -161,6 +161,8 @@ var JavaScriptHighlightRules = function() {
             "JSON|Math|"                                                               + // Other
             "this|arguments|prototype|window|document"                                 , // Pseudo
         "keyword":
+            "FOR|RETURN|FILTER|SORT|LIMIT|LET|COLLECT|ASC|DESC|IN|INTO|NULL|TRUE|FALSE|" +
+            "for|return|filter|sort|limit|let|collect|asc|desc|in|into|null|true|false|" +
             "const|yield|import|get|set|" +
             "break|case|catch|continue|default|delete|do|else|finally|for|function|" +
             "if|in|instanceof|new|return|switch|throw|try|typeof|let|var|while|with|debugger|" +
