@@ -107,7 +107,8 @@ window.arangoDocument = Backbone.Collection.extend({
 
   saveDocument: function (view) {
     if (view === "source") {
-      var model = $('#documentSourceBox').val();
+      var editor = ace.edit("sourceEditor");
+      var model = editor.getValue();
       var tmp1 = window.location.hash.split("/")[2];
       var tmp2 = window.location.hash.split("/")[1];
       var docID = tmp2 + "/" + tmp1;

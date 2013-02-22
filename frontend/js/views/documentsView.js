@@ -115,7 +115,6 @@ var documentsView = Backbone.View.extend({
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-    console.log(this);
     $(".prettify").tooltip({
       placement: "top"
     });
