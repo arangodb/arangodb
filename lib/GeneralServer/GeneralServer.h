@@ -251,6 +251,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleConnected (TRI_socket_t s, ConnectionInfo& info) {
+          
           GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, _keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&_commTasksLock);
