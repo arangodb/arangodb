@@ -154,7 +154,9 @@ static int CopyDocument (TRI_document_collection_t* collection,
 
 static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_collection_t* collection;
+#ifdef TRI_ENABLE_LOGGER  
   char* old;
+#endif  
   char* filename;
   char* name;
   char* number;
@@ -169,7 +171,9 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
 
+#ifdef TRI_ENABLE_LOGGER
   old = datafile->_filename;
+#endif  
   ok = TRI_RenameDatafile(datafile, filename);
 
   if (! ok) {
