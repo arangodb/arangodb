@@ -1,6 +1,8 @@
 ArangoDB Importer {#ImpManualBasics}
 ====================================
 
+@NAVIGATE_ImpManual
+
 @EMBEDTOC{ImpManualBasicsTOC}
 
 This manual describes the ArangoDB importer _arangoimp_, which can be used for
