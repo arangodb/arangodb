@@ -191,6 +191,22 @@ function importTestSuite () {
       var actual = getQueryResults("FOR i IN UnitTestsImportTsv2 SORT i.`  fox` DESC RETURN i");
 
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test json edge import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonEdgesImport : function () {
+      var expected = [ 
+        { _from : "UnitTestsImportVertex/v1", _to: "UnitTestsImportVertex/v2", id: 1, what: "v1->v2" },
+        { _from : "UnitTestsImportVertex/v2", _to: "UnitTestsImportVertex/v3", id: 2, what: "v2->v3" },
+        { _from : "UnitTestsImportVertex/v9", _to: "UnitTestsImportVertex/v4", extra: "foo", id: 3, what: "v9->v4" },
+        { _from : "UnitTestsImportVertex/v12", _to: "UnitTestsImportVertex/what", id: 4 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportEdge SORT i.id RETURN i");
+      assertEqual(expected, actual);
     }
 
   }

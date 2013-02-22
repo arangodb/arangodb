@@ -9,6 +9,16 @@ v1.3 (XXXX-XX-XX)
   arangob is now always included in the build
 
 
+v1.2.beta4 (XXXX-XX-XX)
+-----------------------
+ 
+* fixed issue #426: arangoimp should be able to import edges into edge collections
+
+* fixed too greedy token consumption in AQL for negative values:
+  e.g. in the statement `RETURN { a: 1 -2 }` the minus token was consumed as part 
+  of the value `-2`, and not interpreted as the binary arithmetic operator
+
+
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
 
