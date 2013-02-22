@@ -63,7 +63,7 @@ var documentView = Backbone.View.extend({
 
   addLine: function () {
     $(this.table).dataTable().fnAddData([
-      "somekey"+this.counter,
+      "key"+arangoHelper.getRandomToken(),
       this.value2html("editme"),
       JSON.stringify("editme"),
       'edit',
@@ -71,7 +71,8 @@ var documentView = Backbone.View.extend({
     ]);
     this.makeEditable();
     this.updateLocalDocumentStorage();
-    this.counter++;
+    $(this.table).dataTable().fnClearTable();
+    this.drawTable();
   },
 
   deleteLine: function (a) {
@@ -156,7 +157,7 @@ var documentView = Backbone.View.extend({
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
       if (aPos[1] == 0) {
-        documentEditTable.fnUpdate(value, aPos[0], aPos[0]);
+        documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
         self.updateLocalDocumentStorage();
         return value;
       }

@@ -2,7 +2,6 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocument,
   collectionInfo: {},
-  CollectionTypes: {},
   deleteDocument: function (collectionID){
     var returnval = false;
     try {
@@ -55,7 +54,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
     $.ajax({
       type: "GET",
-      url: "/_api/collection/" + identifier + "?" + self.getRandomToken(),
+      url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
       contentType: "application/json",
       processData: false,
       async: false,
@@ -67,9 +66,6 @@ window.arangoDocument = Backbone.Collection.extend({
     });
 
     return self.collectionInfo;
-  },
-  getRandomToken: function () {
-    return Math.round(new Date().getTime());
   },
   getDocument: function (colid, docid, view) {
     this.clearDocument();
