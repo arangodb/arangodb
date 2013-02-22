@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, ArangoConnection, SYS_ARANGO */
+/*global require, ArangoConnection, print, SYS_ARANGO */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -195,13 +195,11 @@
       appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
 
       for (key in headers) {
-        if (key === 'http/1.1' || key === 'server' || key === 'connection'
-           || key === 'content-length') {
-          continue;
-        }
-
         if (headers.hasOwnProperty(key)) {
-          appender(key + ": " + headers[key] + "\n");
+          if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+              && key !== 'content-length') {
+            appender(key + ": " + headers[key] + "\n");
+          }
         }
       }
 
