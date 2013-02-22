@@ -39,7 +39,7 @@ var documentView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
-      if (self.isSystemAttribute(key)) {
+      if (arangoHelper.isSystemAttribute(key)) {
         $(self.table).dataTable().fnAddData([
           key,
           self.value2html(value, true),
@@ -101,30 +101,6 @@ var documentView = Backbone.View.extend({
     });
   },
 
-  systemAttributes: function () {
-    return {
-      '_id' : true,
-      '_rev' : true,
-      '_key' : true,
-      '_from' : true,
-      '_to' : true,
-      '_bidirectional' : true,
-      '_vertices' : true,
-      '_from' : true,
-      '_to' : true,
-      '$id' : true
-    };
-  },
-
-  isSystemAttribute: function (val) {
-    var a = this.systemAttributes();
-    return a[val];
-  },
-
-  isSystemCollection: function (val) {
-    return val && val.name && val.name.substr(0, 1) === '_';
-  },
-
   value2html: function (value, isReadOnly) {
     var self = this;
     var typify = function (value) {
@@ -172,7 +148,7 @@ var documentView = Backbone.View.extend({
         $(this).removeClass('writeable');
         i = 0;
       }
-      if (self.isSystemAttribute(this.innerHTML)) {
+      if (arangoHelper.isSystemAttribute(this.innerHTML)) {
         $(this).removeClass('writeable');
         i = 1;
       }
