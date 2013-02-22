@@ -88,7 +88,7 @@ namespace triagens {
 /// of a multi-threaded scheduler the event loop identifier is supplied.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupTask (Task*, Scheduler*, EventLoop loop);
+        bool setupTask (Task*, Scheduler*, EventLoop loop);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to clear the callback information
