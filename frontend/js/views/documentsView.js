@@ -105,7 +105,6 @@ var documentsView = Backbone.View.extend({
   drawTable: function() {
     var self = this;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
-    console.log(JSON.stringify(value.attributes.content));
       $(self.table).dataTable().fnAddData([
                                           value.attributes.id,
                                           //value.attributes.key,

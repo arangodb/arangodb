@@ -41,7 +41,6 @@ window.arangoCollections = Backbone.Collection.extend({
             data2 = data;
           },
           error: function(data) {
-            console.log("get properties failed");
             data2 = data;
           }
         });
@@ -114,7 +113,6 @@ window.arangoCollections = Backbone.Collection.extend({
             returnval = false;
           }
         });
-        console.log(returnval);
         return returnval;
       },
       loadCollection: function (id) {
