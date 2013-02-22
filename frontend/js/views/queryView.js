@@ -17,6 +17,7 @@ var queryView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     var editor = ace.edit("aqlEditor");
     editor.getSession().setMode("ace/mode/javascript");
+    editor.resize();
     $('#aqlEditor').focus();
     return this;
   },
