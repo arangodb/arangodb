@@ -46,7 +46,7 @@
 /// why so much memory is needed
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
 #endif
 
@@ -57,7 +57,7 @@
 /// mode, and will not include it if in non debug mode
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 
 #define ZONE_DEBUG_LOCATION "in %s:%d"
 #define ZONE_DEBUG_PARAMS ,file, line 
@@ -129,7 +129,7 @@ TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRI_ENABLE_ZONE_DEBUG
+#ifndef TRI_ENABLE_MAINTAINER_MODE
 TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 #endif
 
@@ -150,7 +150,7 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 /// @brief generates an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
 /*  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
          file,
@@ -181,14 +181,14 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, bool set, char const* file, int line) {
 #else
 void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
   char* m;
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   // warn in the case of very big malloc operations
   if (n >= MALLOC_WARNING_THRESHOLD) {
     LOG_WARNING("big malloc action: %llu bytes in %s:%d", (unsigned long long) n, file, line);
@@ -221,13 +221,13 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
                        (int) zone->_zid
                        ZONE_DEBUG_PARAMS); 
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     return TRI_AllocateZ(zone, n, set, file, line);
 #else
     return TRI_Allocate(zone, n, set);
 #endif
   }
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   else if (set) {
     memset(m, 0, (size_t) n + sizeof(uintptr_t));
   }
@@ -241,7 +241,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   }
 #endif
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   * (uintptr_t*) m = zone->_zid;
   // zone->_zid is a uint32_t but we'll advance sizeof(uintptr_t) bytes for good alignment everywhere
   m += sizeof(uintptr_t);
@@ -254,7 +254,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 void* TRI_ReallocateZ (TRI_memory_zone_t* zone, void* m, uint64_t n, char const* file, int line) {
 #else
 void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
@@ -262,7 +262,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   char* p;
 
   if (m == NULL) {
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     return TRI_AllocateZ(zone, n, false, file, line);
 #else
     return TRI_Allocate(zone, n, false);
@@ -271,7 +271,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
   p = (char*) m;
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   p -= sizeof(uintptr_t);
 
   if (* (uintptr_t*) p != zone->_zid) {
@@ -309,14 +309,14 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
                        (int) zone->_zid
                        ZONE_DEBUG_PARAMS);
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     return TRI_ReallocateZ(zone, m, n, file, line);
 #else
     return TRI_Reallocate(zone, m, n);
 #endif
   }
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   // zone->_zid is a uint32_t but we'll advance sizeof(uintptr_t) bytes for good alignment everywhere
   p += sizeof(uintptr_t);
 #endif
@@ -328,13 +328,13 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 void TRI_FreeZ (TRI_memory_zone_t* zone, void* m, char const* file, int line) {
 #else
 void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 #endif
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   char* p;
 
   p = (char*) m;
@@ -366,13 +366,13 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 /// by malloc et al
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 void TRI_SystemFreeZ (void* p, char const* file, int line) {
 #else
 void TRI_SystemFree (void* p) {
 #endif
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   if (p == NULL) {
     LOG_ERROR("freeing nil ptr in %s:%d", file, line);
   }

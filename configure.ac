@@ -85,18 +85,6 @@ else
 fi
 
 
-dnl ----------------------------------------------------------------------------
-dnl ARANGOB
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE([arangob],
-  AS_HELP_STRING([--enable-arangob], [install arangob benchmark tool (default: yes)]),
-  [tr_ARANGOB="${enableval:-yes}"],
-  [tr_ARANGOB=yes])
-
-AM_CONDITIONAL(ENABLE_ARANGOB, test "x$tr_ARANGOB" = xyes)
-
-
 dnl ============================================================================
 dnl --SECTION--                                                    CONFIGURATION
 dnl ============================================================================
@@ -105,7 +93,6 @@ m4_include([m4/configure.basics])
 AC_PROG_RANLIB
 
 m4_include([m4/configure.static])
-m4_include([m4/configure.memory])
 m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
