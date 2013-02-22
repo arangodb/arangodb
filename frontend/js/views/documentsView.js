@@ -82,9 +82,11 @@ var documentsView = Backbone.View.extend({
     this.collectionID = colid;
     this.currentPage = pageid;
     var documentsTable = $('#documentsTableID').dataTable({
+      "aaSorting": [[ 1, "asc" ]],
       "bFilter": false,
       "bPaginate":false,
       "bSortable": false,
+      "bSort": false,
       "bLengthChange": false,
       "bAutoWidth": false,
       "iDisplayLength": -1,
@@ -92,8 +94,6 @@ var documentsView = Backbone.View.extend({
       "aoColumns": [
         { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
         { "sClass":"read_only arangoTooltip","bSortable": false},
-      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
-      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
         { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}

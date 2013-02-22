@@ -56,8 +56,14 @@ var newCollectionView = Backbone.View.extend({
       journalSizeString = '';
     }
     else {
-      collSize = JSON.parse(collSize) * 1024 * 1024;
-      journalSizeString = ', "journalSize":' + collSize;
+      try {
+        collSize = JSON.parse(collSize) * 1024 * 1024;
+        journalSizeString = ', "journalSize":' + collSize;
+      }
+      catch (e) {
+        alert("please enter a valid number");
+        return 0;
+      }
     }
     if (collName == '') {
       alert("No collection name entered. Aborting...");

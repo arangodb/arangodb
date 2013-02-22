@@ -153,32 +153,15 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
   _response = createResponse(code);
+  _response->setContentType("application/json; charset=utf-8");
 
-  VariantArray* result = new VariantArray();
-  result->add("error", new VariantBoolean(true));
-  result->add("code", new VariantInt32((int32_t) code));
-  result->add("errorNum", new VariantInt32((int32_t) errorCode));
-  result->add("errorMessage", new VariantString(message));
-
-  string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
-
-  if (ok) {
-    _response->setContentType(contentType);
-  }
-  else {
-    _response->body().appendText("{ \"error\" : true, \"errorMessage\" : \"" );
-    _response->body().appendText(StringUtils::escapeUnicode(message));
-    _response->body().appendText("\", \"code\" : ");
-    _response->body().appendInteger(code);
-    _response->body().appendText("\", \"errorNum\" : ");
-    _response->body().appendInteger(errorCode);
-    _response->body().appendText("}");
-
-    _response->setContentType("application/json; charset=utf-8");
-  }
-
-  delete result;
+  _response->body().appendText("{\"error\":true,\"errorMessage\":\"");
+  _response->body().appendText(StringUtils::escapeUnicode(message));
+  _response->body().appendText("\",\"code\":");
+  _response->body().appendInteger(code);
+  _response->body().appendText(",\"errorNum\":");
+  _response->body().appendInteger(errorCode);
+  _response->body().appendText("}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
