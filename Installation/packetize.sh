@@ -481,7 +481,7 @@ if [ "x$answer" == "x$expect" ]; then
   echo "ok: $answer"
 else
   echo "error: $answer != $expect"
-  sudo tail -50 /var/log/rangodb/arangod.log
+  sudo tail -50 /var/log/arangodb/arangod.log
 fi
 echo "########################################################"
 echo 
