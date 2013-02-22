@@ -468,8 +468,8 @@ process=$(ps aux | grep arangod | grep -v grep)
 echo "$process"
 
 echo "Wait for server..."
-echo "    sleep 10"
-sleep 10
+echo "    sleep 15"
+sleep 15
 
 echo 
 echo "########################################################"
