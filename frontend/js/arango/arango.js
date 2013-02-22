@@ -1,4 +1,5 @@
 arangoHelper = {
+  CollectionTypes: {},
   systemAttributes: function () {
     return {
       '_id' : true,
@@ -13,6 +14,9 @@ arangoHelper = {
       '$id' : true
     };
   },
+  getRandomToken: function () {
+    return Math.round(new Date().getTime());
+  },
 
   isSystemAttribute: function (val) {
     var a = this.systemAttributes();
@@ -25,11 +29,11 @@ arangoHelper = {
   },
 
   collectionApiType: function (identifier) {
-    if (CollectionTypes[identifier] == undefined) {
-      CollectionTypes[identifier] = getCollectionInfo(identifier).type;
+    if (this.CollectionTypes[identifier] == undefined) {
+      this.CollectionTypes[identifier] = window.arangoDocumentStore.getCollectionInfo(identifier).type;
     }
 
-    if (CollectionTypes[identifier] == 3) {
+    if (this.CollectionTypes[identifier] == 3) {
       return "edge";
     }
     return "document";
