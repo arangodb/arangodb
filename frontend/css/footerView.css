@@ -49,6 +49,10 @@
   padding-bottom: 10px;
 }
 
+.footer span a {
+  color: white;
+}
+
 .footer a {
   color: #7E9246;
   font-size:14px;

@@ -321,8 +321,11 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     req->Set(v8g->UserKey, v8::Null());
   }
   else {
-    req->Set(v8g->UserKey, v8::String::New(user.c_str()));
+    req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
   }
+ 
+  string const& fullUrl = request->fullUrl(); 
+  req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), fullUrl.size()));
 
   // copy prefix
   string path = request->prefix();
@@ -337,7 +340,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   char const* sep = "";
 
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
-    suffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
+    suffixArray->Set(index++, v8::String::New(suffix[s].c_str(), suffix[s].size()));
 
     path += sep + suffix[s];
     sep = "/";
@@ -730,6 +733,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("suffix"));
   v8g->TransformationsKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("transformations"));
+  v8g->UrlKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("url"));
   v8g->UserKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("user"));
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("DELETE"));

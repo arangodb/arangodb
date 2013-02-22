@@ -1,0 +1,11 @@
+> curl --data @- -X PUT --dump - http://localhost:8529/_api/simple/replace-by-example
+{ "collection" : "test", "example" : { "age" : 37, "likes" : "tennis" }, "newValue" : { "foo" : "bar" }, "limit" : 3 }
+
+HTTP/1.1 200 Ok
+content-type: application/json
+
+{
+  "code": 200,
+  "replaced": 1,
+  "error": false
+}

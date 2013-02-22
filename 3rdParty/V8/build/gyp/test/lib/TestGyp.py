@@ -21,6 +21,24 @@ __all__.extend([
   'TestGyp',
 ])
 
+def remove_debug_line_numbers(contents):
+  """Function to remove the line numbers from the debug output
+  of gyp and thus remove the exremem fragility of the stdout
+  comparison tests.
+  """
+  lines = contents.splitlines()
+  # split each line on ":"
+  lines = [l.split(":", 3) for l in lines]
+  # join each line back together while ignoring the
+  # 3rd column which is the line number
+  lines = [len(l) > 3 and ":".join(l[3:]) or l for l in lines]
+  return "\n".join(lines)
+
+def match_modulo_line_numbers(contents_a, contents_b):
+  """File contents matcher that ignores line numbers."""
+  contents_a = remove_debug_line_numbers(contents_a)
+  contents_b = remove_debug_line_numbers(contents_b)
+  return TestCommon.match_exact(contents_a, contents_b)
 
 class TestGypBase(TestCommon.TestCommon):
   """
@@ -64,6 +82,7 @@ class TestGypBase(TestCommon.TestCommon):
 
   def __init__(self, gyp=None, *args, **kw):
     self.origin_cwd = os.path.abspath(os.path.dirname(sys.argv[0]))
+    self.extra_args = sys.argv[1:]
 
     if not gyp:
       gyp = os.environ.get('TESTGYP_GYP')
@@ -76,22 +95,18 @@ class TestGypBase(TestCommon.TestCommon):
 
     self.initialize_build_tool()
 
-    if not kw.has_key('match'):
-      kw['match'] = TestCommon.match_exact
+    kw.setdefault('match', TestCommon.match_exact)
 
     # Put test output in out/testworkarea by default.
     # Use temporary names so there are no collisions.
     workdir = os.path.join('out', kw.get('workdir', 'testworkarea'))
     # Create work area if it doesn't already exist.
-    try:
+    if not os.path.isdir(workdir):
       os.makedirs(workdir)
-    except OSError:
-      pass
+
     kw['workdir'] = tempfile.mktemp(prefix='testgyp.', dir=workdir)
 
-    formats = kw.get('formats', [])
-    if kw.has_key('formats'):
-      del kw['formats']
+    formats = kw.pop('formats', [])
 
     super(TestGypBase, self).__init__(*args, **kw)
 
@@ -222,13 +237,18 @@ class TestGypBase(TestCommon.TestCommon):
     """
     Runs gyp against the specified gyp_file with the specified args.
     """
+
+    # When running gyp, and comparing its output we use a comparitor
+    # that ignores the line numbers that gyp logs in its debug output.
+    if kw.pop('ignore_line_numbers', False):
+      kw.setdefault('match', match_modulo_line_numbers)
+
     # TODO:  --depth=. works around Chromium-specific tree climbing.
-    depth = '.'
-    if 'depth' in kw:
-      depth = kw['depth']
-      del kw['depth']
-    args = ('--depth='+depth, '--format='+self.format, gyp_file) + args
-    return self.run(program=self.gyp, arguments=args, **kw)
+    depth = kw.pop('depth', '.')
+    run_args = ['--depth='+depth, '--format='+self.format, gyp_file]
+    run_args.extend(self.extra_args)
+    run_args.extend(args)
+    return self.run(program=self.gyp, arguments=run_args, **kw)
 
   def run(self, *args, **kw):
     """
@@ -330,6 +350,173 @@ class TestGypGypd(TestGypBase):
   format = 'gypd'
 
 
+class TestGypCustom(TestGypBase):
+  """
+  Subclass for testing the GYP with custom generator
+  """
+
+  def __init__(self, gyp=None, *args, **kw):
+    self.format = kw.pop("format")
+    super(TestGypCustom, self).__init__(*args, **kw)
+
+
+class TestGypAndroid(TestGypBase):
+  """
+  Subclass for testing the GYP Android makefile generator. Note that
+  build/envsetup.sh and lunch must have been run before running tests.
+
+  TODO: This is currently an incomplete implementation. We do not support
+  run_built_executable(), so we pass only tests which do not use this. As a
+  result, support for host targets is not properly tested.
+  """
+  format = 'android'
+
+  # Note that we can't use mmm as the build tool because ...
+  # - it builds all targets, whereas we need to pass a target
+  # - it is a function, whereas the test runner assumes the build tool is a file
+  # Instead we use make and duplicate the logic from mmm.
+  build_tool_list = ['make']
+
+  # We use our custom target 'gyp_all_modules', as opposed to the 'all_modules'
+  # target used by mmm, to build only those targets which are part of the gyp
+  # target 'all'.
+  ALL = 'gyp_all_modules'
+
+  def __init__(self, gyp=None, *args, **kw):
+    # Android requires build and test output to be outside its source tree.
+    # We use the following working directory for the test's source, but the
+    # test's build output still goes to $ANDROID_PRODUCT_OUT.
+    # Note that some tests explicitly set format='gypd' to invoke the gypd
+    # backend. This writes to the source tree, but there's no way around this.
+    kw['workdir'] = os.path.join('/tmp', 'gyptest',
+                                 kw.get('workdir', 'testworkarea'))
+    # We need to remove all gyp outputs from out/. Ths is because some tests
+    # don't have rules to regenerate output, so they will simply re-use stale
+    # output if present. Since the test working directory gets regenerated for
+    # each test run, this can confuse things.
+    # We don't have a list of build outputs because we don't know which
+    # dependent targets were built. Instead we delete all gyp-generated output.
+    # This may be excessive, but should be safe.
+    out_dir = os.environ['ANDROID_PRODUCT_OUT']
+    obj_dir = os.path.join(out_dir, 'obj')
+    shutil.rmtree(os.path.join(obj_dir, 'GYP'), ignore_errors = True)
+    shutil.rmtree(os.path.join(obj_dir, 'NONE'), ignore_errors = True)
+    for x in ['EXECUTABLES', 'STATIC_LIBRARIES', 'SHARED_LIBRARIES']:
+      for d in os.listdir(os.path.join(obj_dir, x)):
+        if d.endswith('_gyp_intermediates'):
+          shutil.rmtree(os.path.join(obj_dir, x, d), ignore_errors = True)
+    for x in [os.path.join('obj', 'lib'), os.path.join('system', 'lib')]:
+      for d in os.listdir(os.path.join(out_dir, x)):
+        if d.endswith('_gyp.so'):
+          os.remove(os.path.join(out_dir, x, d))
+
+    super(TestGypAndroid, self).__init__(*args, **kw)
+
+  def target_name(self, target):
+    if target == self.ALL:
+      return self.ALL
+    # The default target is 'droid'. However, we want to use our special target
+    # to build only the gyp target 'all'.
+    if target in (None, self.DEFAULT):
+      return self.ALL
+    return target
+
+  def build(self, gyp_file, target=None, **kw):
+    """
+    Runs a build using the Android makefiles generated from the specified
+    gyp_file. This logic is taken from Android's mmm.
+    """
+    arguments = kw.get('arguments', [])[:]
+    arguments.append(self.target_name(target))
+    arguments.append('-C')
+    arguments.append(os.environ['ANDROID_BUILD_TOP'])
+    kw['arguments'] = arguments
+    chdir = kw.get('chdir', '')
+    makefile = os.path.join(self.workdir, chdir, 'GypAndroid.mk')
+    os.environ['ONE_SHOT_MAKEFILE'] = makefile
+    result = self.run(program=self.build_tool, **kw)
+    del os.environ['ONE_SHOT_MAKEFILE']
+    return result
+
+  def android_module(self, group, name, subdir):
+    if subdir:
+      name = '%s_%s' % (subdir, name)
+    if group == 'SHARED_LIBRARIES':
+      name = 'lib_%s' % name
+    return '%s_gyp' % name
+
+  def intermediates_dir(self, group, module_name):
+    return os.path.join(os.environ['ANDROID_PRODUCT_OUT'], 'obj', group,
+                        '%s_intermediates' % module_name)
+
+  def built_file_path(self, name, type=None, **kw):
+    """
+    Returns a path to the specified file name, of the specified type,
+    as built by Android. Note that we don't support the configuration
+    parameter.
+    """
+    # Built files are in $ANDROID_PRODUCT_OUT. This requires copying logic from
+    # the Android build system.
+    if type == None:
+      return os.path.join(os.environ['ANDROID_PRODUCT_OUT'], 'obj', 'GYP',
+                          'shared_intermediates', name)
+    subdir = kw.get('subdir')
+    if type == self.EXECUTABLE:
+      # We don't install executables
+      group = 'EXECUTABLES'
+      module_name = self.android_module(group, name, subdir)
+      return os.path.join(self.intermediates_dir(group, module_name), name)
+    if type == self.STATIC_LIB:
+      group = 'STATIC_LIBRARIES'
+      module_name = self.android_module(group, name, subdir)
+      return os.path.join(self.intermediates_dir(group, module_name),
+                          '%s.a' % module_name)
+    if type == self.SHARED_LIB:
+      group = 'SHARED_LIBRARIES'
+      module_name = self.android_module(group, name, subdir)
+      return os.path.join(self.intermediates_dir(group, module_name), 'LINKED',
+                          '%s.so' % module_name)
+    assert False, 'Unhandled type'
+
+  def run_built_executable(self, name, *args, **kw):
+    """
+    Runs an executable program built from a gyp-generated configuration.
+
+    This is not correctly implemented for Android. For now, we simply check
+    that the executable file exists.
+    """
+    # Running executables requires a device. Even if we build for target x86,
+    # the binary is not built with the correct toolchain options to actually
+    # run on the host.
+
+    # Copied from TestCommon.run()
+    match = kw.pop('match', self.match)
+    status = None
+    if os.path.exists(self.built_file_path(name)):
+      status = 1
+    self._complete(None, None, None, None, status, self.match)
+
+  def match_single_line(self, lines = None, expected_line = None):
+    """
+    Checks that specified line appears in the text.
+    """
+    for line in lines.split('\n'):
+        if line == expected_line:
+            return 1
+    return
+
+  def up_to_date(self, gyp_file, target=None, **kw):
+    """
+    Verifies that a build of the specified target is up to date.
+    """
+    kw['stdout'] = ("make: Nothing to be done for `%s'." %
+                    self.target_name(target))
+
+    # We need to supply a custom matcher, since we don't want to depend on the
+    # exact stdout string.
+    kw['match'] = self.match_single_line
+    return self.build(gyp_file, target, **kw)
+
 class TestGypMake(TestGypBase):
   """
   Subclass for testing the GYP Make generator.
@@ -373,7 +560,13 @@ class TestGypMake(TestGypBase):
     configuration = self.configuration_dirname()
     libdir = os.path.join('out', configuration, 'lib')
     # TODO(piman): when everything is cross-compile safe, remove lib.target
-    os.environ['LD_LIBRARY_PATH'] = libdir + '.host:' + libdir + '.target'
+    if sys.platform == 'darwin':
+      # Mac puts target shared libraries right in the product directory.
+      configuration = self.configuration_dirname()
+      os.environ['DYLD_LIBRARY_PATH'] = (
+          libdir + '.host:' + os.path.join('out', configuration))
+    else:
+      os.environ['LD_LIBRARY_PATH'] = libdir + '.host:' + libdir + '.target'
     # Enclosing the name in a list avoids prepending the original dir.
     program = [self.built_file_path(name, type=self.EXECUTABLE, **kw)]
     return self.run(program=program, *args, **kw)
@@ -405,10 +598,18 @@ class TestGypMake(TestGypBase):
     elif type == self.SHARED_LIB and sys.platform != 'darwin':
       result.append('lib.target')
     subdir = kw.get('subdir')
-    if subdir:
+    if subdir and type != self.SHARED_LIB:
       result.append(subdir)
     result.append(self.built_file_basename(name, type, **kw))
     return self.workpath(*result)
+
+
+def ConvertToCygpath(path):
+  """Convert to cygwin path if we are using cygwin."""
+  if sys.platform == 'cygwin':
+    p = subprocess.Popen(['cygpath', path], stdout=subprocess.PIPE)
+    path = p.communicate()[0].strip()
+  return path
 
 
 def FindVisualStudioInstallation():
@@ -425,7 +626,14 @@ def FindVisualStudioInstallation():
       '2010': r'Microsoft Visual Studio 10.0\Common7\IDE\devenv.com',
       '2008': r'Microsoft Visual Studio 9.0\Common7\IDE\devenv.com',
       '2005': r'Microsoft Visual Studio 8\Common7\IDE\devenv.com'}
-  msvs_version = os.environ.get('GYP_MSVS_VERSION', 'auto')
+
+  possible_roots = [ConvertToCygpath(r) for r in possible_roots]
+
+  msvs_version = 'auto'
+  for flag in (f for f in sys.argv if f.startswith('msvs_version=')):
+    msvs_version = flag.split('=')[-1]
+  msvs_version = os.environ.get('GYP_MSVS_VERSION', msvs_version)
+
   build_tool = None
   if msvs_version in possible_paths:
     # Check that the path to the specified GYP_MSVS_VERSION exists.
@@ -451,7 +659,8 @@ def FindVisualStudioInstallation():
     return build_tool, uses_msbuild
   # Neither GYP_MSVS_VERSION nor the path help us out.  Iterate through
   # the choices looking for a match.
-  for version, path in possible_paths.iteritems():
+  for version in sorted(possible_paths, reverse=True):
+    path = possible_paths[version]
     for r in possible_roots:
       bt = os.path.join(r, path)
       if os.path.exists(bt):
@@ -500,14 +709,6 @@ class TestGypNinja(TestGypOnMSToolchain):
   ALL = 'all'
   DEFAULT = 'all'
 
-  def initialize_build_tool(self):
-    super(TestGypNinja, self).initialize_build_tool()
-    if sys.platform == 'win32':
-      # Compiler and linker aren't in the path by default on Windows, so we
-      # make our "build tool" be set up + run ninja.
-      self.build_tool = os.environ.get('COMSPEC', 'cmd.exe')
-      self.helper_args = ['/c', self.vsvars_path, '&&', 'ninja']
-
   def run_gyp(self, gyp_file, *args, **kw):
     TestGypBase.run_gyp(self, gyp_file, *args, **kw)
 
@@ -522,9 +723,6 @@ class TestGypNinja(TestGypOnMSToolchain):
       target = 'all'
     arguments.append(target)
 
-    if sys.platform == 'win32':
-      arguments = self.helper_args + arguments
-
     kw['arguments'] = arguments
     return self.run(program=self.build_tool, **kw)
 
@@ -532,10 +730,8 @@ class TestGypNinja(TestGypOnMSToolchain):
     # Enclosing the name in a list avoids prepending the original dir.
     program = [self.built_file_path(name, type=self.EXECUTABLE, **kw)]
     if sys.platform == 'darwin':
-      libdir = os.path.join('out', 'Default')
-      if self.configuration:
-        libdir = os.path.join('out', self.configuration)
-      os.environ['DYLD_LIBRARY_PATH'] = libdir
+      configuration = self.configuration_dirname()
+      os.environ['DYLD_LIBRARY_PATH'] = os.path.join('out', configuration)
     return self.run(program=program, *args, **kw)
 
   def built_file_path(self, name, type=None, **kw):
@@ -552,7 +748,7 @@ class TestGypNinja(TestGypOnMSToolchain):
       if sys.platform != 'darwin' and sys.platform != 'win32':
         result.append('lib')
     subdir = kw.get('subdir')
-    if subdir:
+    if subdir and type != self.SHARED_LIB:
       result.append(subdir)
     result.append(self.built_file_basename(name, type, **kw))
     return self.workpath(*result)
@@ -628,7 +824,7 @@ class TestGypMSVS(TestGypOnMSToolchain):
       stdout = self.stdout()
 
       m = self.up_to_date_re.search(stdout)
-      up_to_date = m and m.group(1) == '1'
+      up_to_date = m and int(m.group(1)) > 0
       if not up_to_date:
         self.report_not_up_to_date()
         self.fail_test()
@@ -834,6 +1030,7 @@ class TestGypXcode(TestGypBase):
 
 format_class_list = [
   TestGypGypd,
+  TestGypAndroid,
   TestGypMake,
   TestGypMSVS,
   TestGypNinja,
@@ -845,11 +1042,7 @@ def TestGyp(*args, **kw):
   """
   Returns an appropriate TestGyp* instance for a specified GYP format.
   """
-  format = kw.get('format')
-  if format:
-    del kw['format']
-  else:
-    format = os.environ.get('TESTGYP_FORMAT')
+  format = kw.pop('format', os.environ.get('TESTGYP_FORMAT'))
   for format_class in format_class_list:
     if format == format_class.format:
       return format_class(*args, **kw)

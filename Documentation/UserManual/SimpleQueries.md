@@ -221,12 +221,23 @@ Sequential Access and Cursors {#SimpleQueriesCursor}
 Modification Queries {#SimpleQueriesModify}
 ===========================================
 
-ArangoDB also allows removing documents based on an example document.  Every
-document in the collection will be compared against the specified example
-document and be deleted if all attributes match.
+ArangoDB also allows removing, replacing, and updating documents based 
+on an example document.  Every document in the collection will be 
+compared against the specified example document and be deleted/replaced/
+updated if all attributes match.
 
-This method should be used with caution as it intended to remove lots of
-documents from a collection.
+These method should be used with caution as they are intended to remove or
+modify lots of documents in a collection.
+
+All methods can optionally be restricted to a specific number of operations.
+However, if a limit is specific but is less than the number of matches, it
+will be undefined which of the matching documents will get removed/modified.
 
 @anchor SimpleQueryRemoveByExample
 @copydetails JSF_ArangoCollection_prototype_removeByExample
+
+@anchor SimpleQueryReplaceByExample
+@copydetails JSF_ArangoCollection_prototype_replaceByExample
+
+@anchor SimpleQueryUpdateByExample
+@copydetails JSF_ArangoCollection_prototype_updateByExample

@@ -32,6 +32,7 @@
 #include "isolate.h"
 #include "list-inl.h"
 #include "objects.h"
+#include "platform.h"
 #include "v8-counters.h"
 #include "store-buffer.h"
 #include "store-buffer-inl.h"
@@ -49,7 +50,7 @@ void PromotionQueue::insert(HeapObject* target, int size) {
     NewSpacePage* rear_page =
         NewSpacePage::FromAddress(reinterpret_cast<Address>(rear_));
     ASSERT(!rear_page->prev_page()->is_anchor());
-    rear_ = reinterpret_cast<intptr_t*>(rear_page->prev_page()->body_limit());
+    rear_ = reinterpret_cast<intptr_t*>(rear_page->prev_page()->area_end());
     ActivateGuardIfOnTheSamePage();
   }
 
@@ -81,45 +82,67 @@ void PromotionQueue::ActivateGuardIfOnTheSamePage() {
 }
 
 
-int Heap::MaxObjectSizeInPagedSpace() {
-  return Page::kMaxHeapObjectSize;
-}
-
-
 MaybeObject* Heap::AllocateStringFromUtf8(Vector<const char> str,
                                           PretenureFlag pretenure) {
   // Check for ASCII first since this is the common case.
-  if (String::IsAscii(str.start(), str.length())) {
+  const char* start = str.start();
+  int length = str.length();
+  int non_ascii_start = String::NonAsciiStart(start, length);
+  if (non_ascii_start >= length) {
     // If the string is ASCII, we do not need to convert the characters
     // since UTF8 is backwards compatible with ASCII.
-    return AllocateStringFromAscii(str, pretenure);
+    return AllocateStringFromOneByte(str, pretenure);
   }
   // Non-ASCII and we need to decode.
-  return AllocateStringFromUtf8Slow(str, pretenure);
+  return AllocateStringFromUtf8Slow(str, non_ascii_start, pretenure);
 }
 
 
-MaybeObject* Heap::AllocateSymbol(Vector<const char> str,
-                                  int chars,
-                                  uint32_t hash_field) {
-  unibrow::Utf8InputBuffer<> buffer(str.start(),
-                                    static_cast<unsigned>(str.length()));
-  return AllocateInternalSymbol(&buffer, chars, hash_field);
+template<>
+bool inline Heap::IsOneByte(Vector<const char> str, int chars) {
+  // TODO(dcarney): incorporate Latin-1 check when Latin-1 is supported?
+  // ASCII only check.
+  return chars == str.length();
 }
 
 
-MaybeObject* Heap::AllocateAsciiSymbol(Vector<const char> str,
+template<>
+bool inline Heap::IsOneByte(String* str, int chars) {
+  return str->IsOneByteRepresentation();
+}
+
+
+MaybeObject* Heap::AllocateSymbolFromUtf8(Vector<const char> str,
+                                          int chars,
+                                          uint32_t hash_field) {
+  if (IsOneByte(str, chars)) {
+    return AllocateOneByteSymbol(Vector<const uint8_t>::cast(str), hash_field);
+  }
+  return AllocateInternalSymbol<false>(str, chars, hash_field);
+}
+
+
+template<typename T>
+MaybeObject* Heap::AllocateInternalSymbol(T t, int chars, uint32_t hash_field) {
+  if (IsOneByte(t, chars)) {
+    return AllocateInternalSymbol<true>(t, chars, hash_field);
+  }
+  return AllocateInternalSymbol<false>(t, chars, hash_field);
+}
+
+
+MaybeObject* Heap::AllocateOneByteSymbol(Vector<const uint8_t> str,
                                        uint32_t hash_field) {
-  if (str.length() > SeqAsciiString::kMaxLength) {
-    return Failure::OutOfMemoryException();
+  if (str.length() > SeqOneByteString::kMaxLength) {
+    return Failure::OutOfMemoryException(0x2);
   }
   // Compute map and object size.
   Map* map = ascii_symbol_map();
-  int size = SeqAsciiString::SizeFor(str.length());
+  int size = SeqOneByteString::SizeFor(str.length());
 
   // Allocate string.
   Object* result;
-  { MaybeObject* maybe_result = (size > MaxObjectSizeInPagedSpace())
+  { MaybeObject* maybe_result = (size > Page::kMaxNonCodeHeapObjectSize)
                    ? lo_space_->AllocateRaw(size, NOT_EXECUTABLE)
                    : old_data_space_->AllocateRaw(size);
     if (!maybe_result->ToObject(&result)) return maybe_result;
@@ -135,7 +158,7 @@ MaybeObject* Heap::AllocateAsciiSymbol(Vector<const char> str,
   ASSERT_EQ(size, answer->Size());
 
   // Fill in the characters.
-  memcpy(answer->address() + SeqAsciiString::kHeaderSize,
+  memcpy(answer->address() + SeqOneByteString::kHeaderSize,
          str.start(), str.length());
 
   return answer;
@@ -145,7 +168,7 @@ MaybeObject* Heap::AllocateAsciiSymbol(Vector<const char> str,
 MaybeObject* Heap::AllocateTwoByteSymbol(Vector<const uc16> str,
                                          uint32_t hash_field) {
   if (str.length() > SeqTwoByteString::kMaxLength) {
-    return Failure::OutOfMemoryException();
+    return Failure::OutOfMemoryException(0x3);
   }
   // Compute map and object size.
   Map* map = symbol_map();
@@ -153,7 +176,7 @@ MaybeObject* Heap::AllocateTwoByteSymbol(Vector<const uc16> str,
 
   // Allocate string.
   Object* result;
-  { MaybeObject* maybe_result = (size > MaxObjectSizeInPagedSpace())
+  { MaybeObject* maybe_result = (size > Page::kMaxNonCodeHeapObjectSize)
                    ? lo_space_->AllocateRaw(size, NOT_EXECUTABLE)
                    : old_data_space_->AllocateRaw(size);
     if (!maybe_result->ToObject(&result)) return maybe_result;
@@ -240,8 +263,9 @@ MaybeObject* Heap::NumberFromInt32(
 
 MaybeObject* Heap::NumberFromUint32(
     uint32_t value, PretenureFlag pretenure) {
-  if ((int32_t)value >= 0 && Smi::IsValid((int32_t)value)) {
-    return Smi::FromInt((int32_t)value);
+  if (static_cast<int32_t>(value) >= 0 &&
+      Smi::IsValid(static_cast<int32_t>(value))) {
+    return Smi::FromInt(static_cast<int32_t>(value));
   }
   // Bypass NumberFromDouble to avoid various redundant checks.
   return AllocateHeapNumber(FastUI2D(value), pretenure);
@@ -271,13 +295,6 @@ MaybeObject* Heap::AllocateRawMap() {
 #endif
   MaybeObject* result = map_space_->AllocateRaw(Map::kSize);
   if (result->IsFailure()) old_gen_exhausted_ = true;
-#ifdef DEBUG
-  if (!result->IsFailure()) {
-    // Maps have their own alignment.
-    CHECK((reinterpret_cast<intptr_t>(result) & kMapAlignmentMask) ==
-          static_cast<intptr_t>(kHeapObjectTag));
-  }
-#endif
   return result;
 }
 
@@ -464,17 +481,20 @@ MaybeObject* Heap::PrepareForCompare(String* str) {
 }
 
 
-int Heap::AdjustAmountOfExternalAllocatedMemory(int change_in_bytes) {
+intptr_t Heap::AdjustAmountOfExternalAllocatedMemory(
+    intptr_t change_in_bytes) {
   ASSERT(HasBeenSetUp());
-  int amount = amount_of_external_allocated_memory_ + change_in_bytes;
-  if (change_in_bytes >= 0) {
+  intptr_t amount = amount_of_external_allocated_memory_ + change_in_bytes;
+  if (change_in_bytes > 0) {
     // Avoid overflow.
     if (amount > amount_of_external_allocated_memory_) {
       amount_of_external_allocated_memory_ = amount;
+    } else {
+      // Give up and reset the counters in case of an overflow.
+      amount_of_external_allocated_memory_ = 0;
+      amount_of_external_allocated_memory_at_last_global_gc_ = 0;
     }
-    int amount_since_last_global_gc =
-        amount_of_external_allocated_memory_ -
-        amount_of_external_allocated_memory_at_last_global_gc_;
+    intptr_t amount_since_last_global_gc = PromotedExternalMemorySize();
     if (amount_since_last_global_gc > external_allocation_limit_) {
       CollectAllGarbage(kNoGCFlags, "external memory allocation limit reached");
     }
@@ -482,7 +502,18 @@ int Heap::AdjustAmountOfExternalAllocatedMemory(int change_in_bytes) {
     // Avoid underflow.
     if (amount >= 0) {
       amount_of_external_allocated_memory_ = amount;
+    } else {
+      // Give up and reset the counters in case of an overflow.
+      amount_of_external_allocated_memory_ = 0;
+      amount_of_external_allocated_memory_at_last_global_gc_ = 0;
     }
+  }
+  if (FLAG_trace_external_memory) {
+    PrintPID("%8.0f ms: ", isolate()->time_millis_since_init());
+    PrintF("Adjust amount of external memory: delta=%6" V8_PTR_PREFIX "d KB, "
+           " amount=%6" V8_PTR_PREFIX "d KB, isolate=0x%08" V8PRIxPTR ".\n",
+           change_in_bytes / 1024, amount_of_external_allocated_memory_ / 1024,
+           reinterpret_cast<intptr_t>(isolate()));
   }
   ASSERT(amount_of_external_allocated_memory_ >= 0);
   return amount_of_external_allocated_memory_;
@@ -598,12 +629,28 @@ void ExternalStringTable::Iterate(ObjectVisitor* v) {
 void ExternalStringTable::Verify() {
 #ifdef DEBUG
   for (int i = 0; i < new_space_strings_.length(); ++i) {
-    ASSERT(heap_->InNewSpace(new_space_strings_[i]));
-    ASSERT(new_space_strings_[i] != HEAP->raw_unchecked_the_hole_value());
+    Object* obj = Object::cast(new_space_strings_[i]);
+    // TODO(yangguo): check that the object is indeed an external string.
+    ASSERT(heap_->InNewSpace(obj));
+    ASSERT(obj != HEAP->the_hole_value());
+#ifndef ENABLE_LATIN_1
+    if (obj->IsExternalAsciiString()) {
+      ExternalAsciiString* string = ExternalAsciiString::cast(obj);
+      ASSERT(String::IsAscii(string->GetChars(), string->length()));
+    }
+#endif
   }
   for (int i = 0; i < old_space_strings_.length(); ++i) {
-    ASSERT(!heap_->InNewSpace(old_space_strings_[i]));
-    ASSERT(old_space_strings_[i] != HEAP->raw_unchecked_the_hole_value());
+    Object* obj = Object::cast(old_space_strings_[i]);
+    // TODO(yangguo): check that the object is indeed an external string.
+    ASSERT(!heap_->InNewSpace(obj));
+    ASSERT(obj != HEAP->the_hole_value());
+#ifndef ENABLE_LATIN_1
+    if (obj->IsExternalAsciiString()) {
+      ExternalAsciiString* string = ExternalAsciiString::cast(obj);
+      ASSERT(String::IsAscii(string->GetChars(), string->length()));
+    }
+#endif
   }
 #endif
 }
@@ -618,8 +665,23 @@ void ExternalStringTable::AddOldString(String* string) {
 
 void ExternalStringTable::ShrinkNewStrings(int position) {
   new_space_strings_.Rewind(position);
+#ifdef VERIFY_HEAP
   if (FLAG_verify_heap) {
     Verify();
+  }
+#endif
+}
+
+
+void ErrorObjectList::Add(JSObject* object) {
+  list_.Add(object);
+}
+
+
+void ErrorObjectList::Iterate(ObjectVisitor* v) {
+  if (!list_.is_empty()) {
+    Object** start = &list_[0];
+    v->VisitPointers(start, start + list_.length());
   }
 }
 
@@ -663,15 +725,15 @@ double TranscendentalCache::SubCache::Calculate(double input) {
     case ATAN:
       return atan(input);
     case COS:
-      return cos(input);
+      return fast_cos(input);
     case EXP:
       return exp(input);
     case LOG:
-      return log(input);
+      return fast_log(input);
     case SIN:
-      return sin(input);
+      return fast_sin(input);
     case TAN:
-      return tan(input);
+      return fast_tan(input);
     default:
       return 0.0;  // Never happens.
   }
@@ -719,28 +781,27 @@ AlwaysAllocateScope::~AlwaysAllocateScope() {
 }
 
 
-LinearAllocationScope::LinearAllocationScope() {
-  HEAP->linear_allocation_scope_depth_++;
+#ifdef VERIFY_HEAP
+NoWeakEmbeddedMapsVerificationScope::NoWeakEmbeddedMapsVerificationScope() {
+  HEAP->no_weak_embedded_maps_verification_scope_depth_++;
 }
 
 
-LinearAllocationScope::~LinearAllocationScope() {
-  HEAP->linear_allocation_scope_depth_--;
-  ASSERT(HEAP->linear_allocation_scope_depth_ >= 0);
+NoWeakEmbeddedMapsVerificationScope::~NoWeakEmbeddedMapsVerificationScope() {
+  HEAP->no_weak_embedded_maps_verification_scope_depth_--;
 }
+#endif
 
 
-#ifdef DEBUG
 void VerifyPointersVisitor::VisitPointers(Object** start, Object** end) {
   for (Object** current = start; current < end; current++) {
     if ((*current)->IsHeapObject()) {
       HeapObject* object = HeapObject::cast(*current);
-      ASSERT(HEAP->Contains(object));
-      ASSERT(object->map()->IsMap());
+      CHECK(HEAP->Contains(object));
+      CHECK(object->map()->IsMap());
     }
   }
 }
-#endif
 
 
 double GCTracer::SizeOfHeapObjects() {
@@ -748,37 +809,47 @@ double GCTracer::SizeOfHeapObjects() {
 }
 
 
-#ifdef DEBUG
 DisallowAllocationFailure::DisallowAllocationFailure() {
+#ifdef DEBUG
   old_state_ = HEAP->disallow_allocation_failure_;
   HEAP->disallow_allocation_failure_ = true;
+#endif
 }
 
 
 DisallowAllocationFailure::~DisallowAllocationFailure() {
+#ifdef DEBUG
   HEAP->disallow_allocation_failure_ = old_state_;
-}
 #endif
+}
 
 
 #ifdef DEBUG
 AssertNoAllocation::AssertNoAllocation() {
-  old_state_ = HEAP->allow_allocation(false);
+  Isolate* isolate = ISOLATE;
+  active_ = !isolate->optimizing_compiler_thread()->IsOptimizerThread();
+  if (active_) {
+    old_state_ = isolate->heap()->allow_allocation(false);
+  }
 }
 
 
 AssertNoAllocation::~AssertNoAllocation() {
-  HEAP->allow_allocation(old_state_);
+  if (active_) HEAP->allow_allocation(old_state_);
 }
 
 
 DisableAssertNoAllocation::DisableAssertNoAllocation() {
-  old_state_ = HEAP->allow_allocation(true);
+  Isolate* isolate = ISOLATE;
+  active_ = !isolate->optimizing_compiler_thread()->IsOptimizerThread();
+  if (active_) {
+    old_state_ = isolate->heap()->allow_allocation(true);
+  }
 }
 
 
 DisableAssertNoAllocation::~DisableAssertNoAllocation() {
-  HEAP->allow_allocation(old_state_);
+  if (active_) HEAP->allow_allocation(old_state_);
 }
 
 #else

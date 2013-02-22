@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -12,7 +12,7 @@ import shlex
 import sys
 
 if len(sys.argv) == 3 and ' ' in sys.argv[2]:
-  sys.argv[2], fourth = shlex.split(sys.argv[2])
+  sys.argv[2], fourth = shlex.split(sys.argv[2].replace('\\', '\\\\'))
   sys.argv.append(fourth)
 
 #print >>sys.stderr, sys.argv

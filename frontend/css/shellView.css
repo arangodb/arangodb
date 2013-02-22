@@ -49,9 +49,9 @@
 #shellFooter {
   background-color:rgba(0,0,0,0.05);
   position: relative;
-  margin-top: 0px;
+  margin-top: 10px;
   padding-bottom: 2px;
-  border-radius: 4px;
+  border-radius: 0 0 4px 4px;
 }
 
 #shellInput {
@@ -77,5 +77,51 @@
 .shellError {
   color: red;
   padding-left: 14px;
+}
+
+/* REPL SHELL */
+/* REPL SHELL */
+/* REPL SHELL */
+/* REPL SHELL */
+/* REPL SHELL */
+#console {
+  margin-top: 300px;
+  width: 400px;
+  height: 500px;
+  background-color:black;
+}
+/* The inner console element. */
+.jqconsole {
+  padding: 10px;
+}
+/* The cursor. */
+.jqconsole-cursor {
+  background-color: gray;
+}
+/* The cursor color when the console looses focus. */
+.jqconsole-blurred .jqconsole-cursor {
+  background-color: #666;
+}
+/* The current prompt text color */
+.jqconsole-prompt {
+  color: #0d0;
+}
+/* The command history */
+.jqconsole-old-prompt {
+  color: #0b0;
+  font-weight: normal;
+}
+/* The text color when in input mode. */
+.jqconsole-input {
+  color: #dd0;
+}
+/* Previously entered input. */
+.jqconsole-old-input {
+  color: #bb0;
+  font-weight: normal;
+}
+/* The text color of the output. */
+.jqconsole-output {
+  color: white;
 }
 

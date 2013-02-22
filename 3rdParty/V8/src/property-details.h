@@ -38,6 +38,10 @@ enum PropertyAttributes {
   READ_ONLY         = v8::ReadOnly,
   DONT_ENUM         = v8::DontEnum,
   DONT_DELETE       = v8::DontDelete,
+
+  SEALED            = DONT_ENUM | DONT_DELETE,
+  FROZEN            = SEALED | READ_ONLY,
+
   ABSENT            = 16  // Used in runtime to indicate a property is absent.
   // ABSENT can never be stored in or returned from a descriptor's attributes
   // bitfield.  It is only used as a return value meaning the attributes of
@@ -55,42 +59,19 @@ class Smi;
 // Must fit in the BitField PropertyDetails::TypeField.
 // A copy of this is in mirror-debugger.js.
 enum PropertyType {
-  NORMAL                    = 0,  // only in slow mode
-  FIELD                     = 1,  // only in fast mode
-  CONSTANT_FUNCTION         = 2,  // only in fast mode
+  // Only in slow mode.
+  NORMAL                    = 0,
+  // Only in fast mode.
+  FIELD                     = 1,
+  CONSTANT_FUNCTION         = 2,
   CALLBACKS                 = 3,
-  HANDLER                   = 4,  // only in lookup results, not in descriptors
-  INTERCEPTOR               = 5,  // only in lookup results, not in descriptors
-  // All properties before MAP_TRANSITION are real.
-  MAP_TRANSITION            = 6,  // only in fast mode
-  ELEMENTS_TRANSITION       = 7,
-  CONSTANT_TRANSITION       = 8,  // only in fast mode
-  NULL_DESCRIPTOR           = 9,  // only in fast mode
-  // There are no IC stubs for NULL_DESCRIPTORS. Therefore,
-  // NULL_DESCRIPTOR can be used as the type flag for IC stubs for
-  // nonexistent properties.
-  NONEXISTENT = NULL_DESCRIPTOR
+  // Only in lookup results, not in descriptors.
+  HANDLER                   = 4,
+  INTERCEPTOR               = 5,
+  TRANSITION                = 6,
+  // Only used as a marker in LookupResult.
+  NONEXISTENT               = 7
 };
-
-
-inline bool IsRealProperty(PropertyType type) {
-  switch (type) {
-    case NORMAL:
-    case FIELD:
-    case CONSTANT_FUNCTION:
-    case CALLBACKS:
-    case HANDLER:
-    case INTERCEPTOR:
-      return true;
-    case MAP_TRANSITION:
-    case ELEMENTS_TRANSITION:
-    case CONSTANT_TRANSITION:
-    case NULL_DESCRIPTOR:
-      return false;
-  }
-  UNREACHABLE();  // keep the compiler happy
-  return false;
-}
 
 
 // PropertyDetails captures type and attributes for a property.
@@ -100,18 +81,18 @@ class PropertyDetails BASE_EMBEDDED {
   PropertyDetails(PropertyAttributes attributes,
                   PropertyType type,
                   int index = 0) {
-    ASSERT(TypeField::is_valid(type));
-    ASSERT(AttributesField::is_valid(attributes));
-    ASSERT(StorageField::is_valid(index));
-
     value_ = TypeField::encode(type)
         | AttributesField::encode(attributes)
-        | StorageField::encode(index);
+        | DictionaryStorageField::encode(index);
 
     ASSERT(type == this->type());
     ASSERT(attributes == this->attributes());
-    ASSERT(index == this->index());
+    ASSERT(index == this->dictionary_index());
   }
+
+  int pointer() { return DescriptorPointer::decode(value_); }
+
+  PropertyDetails set_pointer(int i) { return PropertyDetails(value_, i); }
 
   // Conversion for storing details as Object*.
   explicit inline PropertyDetails(Smi* smi);
@@ -119,31 +100,45 @@ class PropertyDetails BASE_EMBEDDED {
 
   PropertyType type() { return TypeField::decode(value_); }
 
-  PropertyAttributes attributes() { return AttributesField::decode(value_); }
+  PropertyAttributes attributes() const {
+    return AttributesField::decode(value_);
+  }
 
-  int index() { return StorageField::decode(value_); }
+  int dictionary_index() {
+    return DictionaryStorageField::decode(value_);
+  }
+
+  int descriptor_index() {
+    return DescriptorStorageField::decode(value_);
+  }
 
   inline PropertyDetails AsDeleted();
 
   static bool IsValidIndex(int index) {
-    return StorageField::is_valid(index);
+    return DictionaryStorageField::is_valid(index);
   }
 
-  bool IsReadOnly() { return (attributes() & READ_ONLY) != 0; }
-  bool IsDontDelete() { return (attributes() & DONT_DELETE) != 0; }
-  bool IsDontEnum() { return (attributes() & DONT_ENUM) != 0; }
-  bool IsDeleted() { return DeletedField::decode(value_) != 0;}
+  bool IsReadOnly() const { return (attributes() & READ_ONLY) != 0; }
+  bool IsDontDelete() const { return (attributes() & DONT_DELETE) != 0; }
+  bool IsDontEnum() const { return (attributes() & DONT_ENUM) != 0; }
+  bool IsDeleted() const { return DeletedField::decode(value_) != 0;}
 
   // Bit fields in value_ (type, shift, size). Must be public so the
   // constants can be embedded in generated code.
-  class TypeField:       public BitField<PropertyType,       0, 4> {};
-  class AttributesField: public BitField<PropertyAttributes, 4, 3> {};
-  class DeletedField:    public BitField<uint32_t,           7, 1> {};
-  class StorageField:    public BitField<uint32_t,           8, 32-8> {};
+  class TypeField:                public BitField<PropertyType,       0,  3> {};
+  class AttributesField:          public BitField<PropertyAttributes, 3,  3> {};
+  class DeletedField:             public BitField<uint32_t,           6,  1> {};
+  class DictionaryStorageField:   public BitField<uint32_t,           7, 24> {};
+  class DescriptorStorageField:   public BitField<uint32_t,           7, 11> {};
+  class DescriptorPointer:        public BitField<uint32_t,          18, 11> {};
 
   static const int kInitialIndex = 1;
 
  private:
+  PropertyDetails(int value, int pointer) {
+      value_ = DescriptorPointer::update(value, pointer);
+  }
+
   uint32_t value_;
 };
 

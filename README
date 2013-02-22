@@ -1,6 +1,3 @@
- ArangoDB-Logo
-
-
 ArangoDB
 
 ArangoDB is a universal open-source database with flexible data model for
@@ -42,8 +39,7 @@ For Mac OSX execute
 
 For Linux use the distribution dependend package manager, see Installation
 Manual for details.
-For Windows users: we are working hard on a Windows version. A first version
-will become available soon.
+For Windows users: We provide an installer script on our download_page.
 If the package manager has not already started the ArangoDB server, use
 
   unix> /path/to/sbin/arangod

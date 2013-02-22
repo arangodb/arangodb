@@ -1427,6 +1427,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       key = ((char*) d) + d->_offsetKey;
     }
     else {
+      
+#ifdef TRI_ENABLE_LOGGER
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
       LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
@@ -1437,7 +1439,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long long) d->_rid,
                 (unsigned long) d->_offsetJson,
                 (unsigned long) d->_offsetKey);
-      
+#endif      
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
       key = ((char*) d) + d->_offsetKey;
     }
@@ -1482,15 +1484,17 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       // update the header info
       UpdateHeader(datafile, marker, found, &update);
       update._validTo = 0;
-
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
 
       if (dfi != NULL) {
         size_t length = LengthDataMasterPointer(found);
 
+/*
+        issue #411: if we decrease here, the counts might get negative!
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= length;
+*/
 
         dfi->_numberDead += 1;
         dfi->_sizeDead += length;
@@ -1502,7 +1506,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_numberAlive += 1;
         dfi->_sizeAlive += LengthDataMasterPointer(&update);
       }
-
       // update immediate indexes
       UpdateImmediateIndexes(collection, found, &update);
     }

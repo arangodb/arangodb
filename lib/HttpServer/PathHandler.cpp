@@ -183,7 +183,7 @@ namespace triagens {
         else if (suffix == ".css") {
           _response->setContentType("text/css");
         }
-        else if (suffix == ".html") {
+        else if (suffix == ".html" || suffix == ".htm") {
           _response->setContentType("text/html");
         }
         else if (suffix == ".ico") {
@@ -196,7 +196,9 @@ namespace triagens {
           _response->setContentType("text/plain");
         }
         else {
-          LOGGER_WARNING("unknown suffix = " << suffix);
+          // note: changed the log level to debug. an unknown content-type does not justify a warning
+          LOGGER_DEBUG("unknown suffix = " << suffix);
+
           _response->setContentType(contentType);
         }
       }

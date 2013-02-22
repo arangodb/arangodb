@@ -29,6 +29,7 @@
 #define V8_VARIABLES_H_
 
 #include "zone.h"
+#include "interface.h"
 
 namespace v8 {
 namespace internal {
@@ -54,7 +55,7 @@ class Variable: public ZoneObject {
     UNALLOCATED,
 
     // A slot in the parameter section on the stack.  index() is the
-    // parameter index, counting left-to-right.  The reciever is index -1;
+    // parameter index, counting left-to-right.  The receiver is index -1;
     // the first parameter is index 0.
     PARAMETER,
 
@@ -78,7 +79,8 @@ class Variable: public ZoneObject {
            VariableMode mode,
            bool is_valid_lhs,
            Kind kind,
-           InitializationFlag initialization_flag);
+           InitializationFlag initialization_flag,
+           Interface* interface = Interface::NewValue());
 
   // Printing support
   static const char* Mode2String(VariableMode mode);
@@ -116,27 +118,20 @@ class Variable: public ZoneObject {
   bool IsStackAllocated() const { return IsParameter() || IsStackLocal(); }
   bool IsContextSlot() const { return location_ == CONTEXT; }
   bool IsLookupSlot() const { return location_ == LOOKUP; }
+  bool IsGlobalObjectProperty() const;
 
-  bool is_dynamic() const {
-    return (mode_ == DYNAMIC ||
-            mode_ == DYNAMIC_GLOBAL ||
-            mode_ == DYNAMIC_LOCAL);
-  }
-  bool is_const_mode() const {
-    return (mode_ == CONST ||
-            mode_ == CONST_HARMONY);
-  }
+  bool is_dynamic() const { return IsDynamicVariableMode(mode_); }
+  bool is_const_mode() const { return IsImmutableVariableMode(mode_); }
   bool binding_needs_init() const {
     return initialization_flag_ == kNeedsInitialization;
   }
 
-  bool is_global() const;
   bool is_this() const { return kind_ == THIS; }
   bool is_arguments() const { return kind_ == ARGUMENTS; }
 
   // True if the variable is named eval and not known to be shadowed.
-  bool is_possibly_eval() const {
-    return IsVariable(FACTORY->eval_symbol());
+  bool is_possibly_eval(Isolate* isolate) const {
+    return IsVariable(isolate->factory()->eval_symbol());
   }
 
   Variable* local_if_not_shadowed() const {
@@ -153,6 +148,7 @@ class Variable: public ZoneObject {
   InitializationFlag initialization_flag() const {
     return initialization_flag_;
   }
+  Interface* interface() const { return interface_; }
 
   void AllocateTo(Location location, int index) {
     location_ = location;
@@ -183,6 +179,9 @@ class Variable: public ZoneObject {
   bool force_context_allocation_;  // set by variable resolver
   bool is_used_;
   InitializationFlag initialization_flag_;
+
+  // Module type info.
+  Interface* interface_;
 };
 
 

@@ -165,11 +165,11 @@ function URIDecodeOctets(octets, result, index) {
     throw new $URIError("URI malformed");
   }
   if (value < 0x10000) {
-    result[index++] = value;
+    %_TwoByteSeqStringSetChar(result, index++, value);
     return index;
   } else {
-    result[index++] = (value >> 10) + 0xd7c0;
-    result[index++] = (value & 0x3ff) + 0xdc00;
+    %_TwoByteSeqStringSetChar(result, index++, (value >> 10) + 0xd7c0);
+    %_TwoByteSeqStringSetChar(result, index++, (value & 0x3ff) + 0xdc00);
     return index;
   }
 }
@@ -178,43 +178,72 @@ function URIDecodeOctets(octets, result, index) {
 // ECMA-262, section 15.1.3
 function Encode(uri, unescape) {
   var uriLength = uri.length;
-  // We are going to pass result to %StringFromCharCodeArray
-  // which does not expect any getters/setters installed
-  // on the incoming array.
-  var result = new InternalArray(uriLength);
+  var array = new InternalArray(uriLength);
   var index = 0;
   for (var k = 0; k < uriLength; k++) {
     var cc1 = uri.charCodeAt(k);
     if (unescape(cc1)) {
-      result[index++] = cc1;
+      array[index++] = cc1;
     } else {
       if (cc1 >= 0xDC00 && cc1 <= 0xDFFF) throw new $URIError("URI malformed");
       if (cc1 < 0xD800 || cc1 > 0xDBFF) {
-        index = URIEncodeSingle(cc1, result, index);
+        index = URIEncodeSingle(cc1, array, index);
       } else {
         k++;
         if (k == uriLength) throw new $URIError("URI malformed");
         var cc2 = uri.charCodeAt(k);
         if (cc2 < 0xDC00 || cc2 > 0xDFFF) throw new $URIError("URI malformed");
-        index = URIEncodePair(cc1, cc2, result, index);
+        index = URIEncodePair(cc1, cc2, array, index);
       }
     }
   }
-  return %StringFromCharCodeArray(result);
+
+  var result = %NewString(array.length, NEW_ONE_BYTE_STRING);
+  for (var i = 0; i < array.length; i++) {
+    %_OneByteSeqStringSetChar(result, i, array[i]);
+  }
+  return result;
 }
 
 
 // ECMA-262, section 15.1.3
 function Decode(uri, reserved) {
   var uriLength = uri.length;
-  // We are going to pass result to %StringFromCharCodeArray
-  // which does not expect any getters/setters installed
-  // on the incoming array.
-  var result = new InternalArray(uriLength);
+  var one_byte = %NewString(uriLength, NEW_ONE_BYTE_STRING);
   var index = 0;
-  for (var k = 0; k < uriLength; k++) {
-    var ch = uri.charAt(k);
-    if (ch == '%') {
+  var k = 0;
+
+  // Optimistically assume ascii string.
+  for ( ; k < uriLength; k++) {
+    var code = uri.charCodeAt(k);
+    if (code == 37) {  // '%'
+      if (k + 2 >= uriLength) throw new $URIError("URI malformed");
+      var cc = URIHexCharsToCharCode(uri.charCodeAt(k+1), uri.charCodeAt(k+2));
+      if (cc >> 7) break;  // Assumption wrong, two byte string.
+      if (reserved(cc)) {
+        %_OneByteSeqStringSetChar(one_byte, index++, 37);  // '%'.
+        %_OneByteSeqStringSetChar(one_byte, index++, uri.charCodeAt(k+1));
+        %_OneByteSeqStringSetChar(one_byte, index++, uri.charCodeAt(k+2));
+      } else {
+        %_OneByteSeqStringSetChar(one_byte, index++, cc);
+      }
+      k += 2;
+    } else {
+      if (code > 0x7f) break;  // Assumption wrong, two byte string.
+      %_OneByteSeqStringSetChar(one_byte, index++, code);
+    }
+  }
+
+  one_byte = %TruncateString(one_byte, index);
+  if (k == uriLength) return one_byte;
+
+  // Write into two byte string.
+  var two_byte = %NewString(uriLength - k, NEW_TWO_BYTE_STRING);
+  index = 0;
+
+  for ( ; k < uriLength; k++) {
+    var code = uri.charCodeAt(k);
+    if (code == 37) {  // '%'
       if (k + 2 >= uriLength) throw new $URIError("URI malformed");
       var cc = URIHexCharsToCharCode(uri.charCodeAt(++k), uri.charCodeAt(++k));
       if (cc >> 7) {
@@ -229,28 +258,27 @@ function Decode(uri, reserved) {
           octets[i] = URIHexCharsToCharCode(uri.charCodeAt(++k),
                                             uri.charCodeAt(++k));
         }
-        index = URIDecodeOctets(octets, result, index);
+        index = URIDecodeOctets(octets, two_byte, index);
+      } else  if (reserved(cc)) {
+        %_TwoByteSeqStringSetChar(two_byte, index++, 37);  // '%'.
+        %_TwoByteSeqStringSetChar(two_byte, index++, uri.charCodeAt(k - 1));
+        %_TwoByteSeqStringSetChar(two_byte, index++, uri.charCodeAt(k));
       } else {
-        if (reserved(cc)) {
-          result[index++] = 37; // Char code of '%'.
-          result[index++] = uri.charCodeAt(k - 1);
-          result[index++] = uri.charCodeAt(k);
-        } else {
-          result[index++] = cc;
-        }
+        %_TwoByteSeqStringSetChar(two_byte, index++, cc);
       }
     } else {
-      result[index++] = ch.charCodeAt(0);
+      %_TwoByteSeqStringSetChar(two_byte, index++, code);
     }
   }
-  result.length = index;
-  return %StringFromCharCodeArray(result);
+
+  two_byte = %TruncateString(two_byte, index);
+  return one_byte + two_byte;
 }
 
 
 // ECMA-262 - 15.1.3.1.
 function URIDecode(uri) {
-  function reservedPredicate(cc) {
+  var reservedPredicate = function(cc) {
     // #$
     if (35 <= cc && cc <= 36) return true;
     // &
@@ -267,7 +295,7 @@ function URIDecode(uri) {
     if (63 <= cc && cc <= 64) return true;
 
     return false;
-  }
+  };
   var string = ToString(uri);
   return Decode(string, reservedPredicate);
 }
@@ -275,7 +303,7 @@ function URIDecode(uri) {
 
 // ECMA-262 - 15.1.3.2.
 function URIDecodeComponent(component) {
-  function reservedPredicate(cc) { return false; }
+  var reservedPredicate = function(cc) { return false; };
   var string = ToString(component);
   return Decode(string, reservedPredicate);
 }
@@ -296,7 +324,7 @@ function isAlphaNumeric(cc) {
 
 // ECMA-262 - 15.1.3.3.
 function URIEncode(uri) {
-  function unescapePredicate(cc) {
+  var unescapePredicate = function(cc) {
     if (isAlphaNumeric(cc)) return true;
     // !
     if (cc == 33) return true;
@@ -316,7 +344,7 @@ function URIEncode(uri) {
     if (cc == 126) return true;
 
     return false;
-  }
+  };
 
   var string = ToString(uri);
   return Encode(string, unescapePredicate);
@@ -325,7 +353,7 @@ function URIEncode(uri) {
 
 // ECMA-262 - 15.1.3.4
 function URIEncodeComponent(component) {
-  function unescapePredicate(cc) {
+  var unescapePredicate = function(cc) {
     if (isAlphaNumeric(cc)) return true;
     // !
     if (cc == 33) return true;
@@ -339,7 +367,7 @@ function URIEncodeComponent(component) {
     if (cc == 126) return true;
 
     return false;
-  }
+  };
 
   var string = ToString(component);
   return Encode(string, unescapePredicate);
