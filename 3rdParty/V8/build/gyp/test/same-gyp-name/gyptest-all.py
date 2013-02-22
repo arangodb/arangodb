@@ -12,7 +12,7 @@ import TestGyp
 
 # This causes a problem on XCode (duplicate ID).
 # See http://code.google.com/p/gyp/issues/detail?id=114
-test = TestGyp.TestGyp(formats=['msvs', 'scons', 'make', 'ninja'])
+test = TestGyp.TestGyp(formats=['!xcode'])
 
 test.run_gyp('all.gyp', chdir='src')
 

@@ -42,15 +42,11 @@ namespace internal {
 
 
 template <class C>
-static C* FindInPrototypeChain(Object* obj, bool* found_it) {
-  ASSERT(!*found_it);
-  Heap* heap = HEAP;
-  while (!Is<C>(obj)) {
-    if (obj == heap->null_value()) return NULL;
-    obj = obj->GetPrototype();
+static C* FindInstanceOf(Object* obj) {
+  for (Object* cur = obj; !cur->IsNull(); cur = cur->GetPrototype()) {
+    if (Is<C>(cur)) return C::cast(cur);
   }
-  *found_it = true;
-  return C::cast(obj);
+  return NULL;
 }
 
 
@@ -81,10 +77,8 @@ MaybeObject* Accessors::ReadOnlySetAccessor(JSObject*, Object* value, void*) {
 
 MaybeObject* Accessors::ArrayGetLength(Object* object, void*) {
   // Traverse the prototype chain until we reach an array.
-  bool found_it = false;
-  JSArray* holder = FindInPrototypeChain<JSArray>(object, &found_it);
-  if (!found_it) return Smi::FromInt(0);
-  return holder->length();
+  JSArray* holder = FindInstanceOf<JSArray>(object);
+  return holder == NULL ? Smi::FromInt(0) : holder->length();
 }
 
 
@@ -92,9 +86,9 @@ MaybeObject* Accessors::ArrayGetLength(Object* object, void*) {
 Object* Accessors::FlattenNumber(Object* value) {
   if (value->IsNumber() || !value->IsJSValue()) return value;
   JSValue* wrapper = JSValue::cast(value);
-  ASSERT(Isolate::Current()->context()->global_context()->number_function()->
+  ASSERT(Isolate::Current()->context()->native_context()->number_function()->
       has_initial_map());
-  Map* number_map = Isolate::Current()->context()->global_context()->
+  Map* number_map = Isolate::Current()->context()->native_context()->
       number_function()->initial_map();
   if (wrapper->map() == number_map) return wrapper->value();
   return value;
@@ -118,7 +112,7 @@ MaybeObject* Accessors::ArraySetLength(JSObject* object, Object* value, void*) {
   HandleScope scope(isolate);
 
   // Protect raw pointers.
-  Handle<JSObject> object_handle(object, isolate);
+  Handle<JSArray> array_handle(JSArray::cast(object), isolate);
   Handle<Object> value_handle(value, isolate);
 
   bool has_exception;
@@ -128,7 +122,7 @@ MaybeObject* Accessors::ArraySetLength(JSObject* object, Object* value, void*) {
   if (has_exception) return Failure::Exception();
 
   if (uint32_v->Number() == number_v->Number()) {
-    return Handle<JSArray>::cast(object_handle)->SetElementsLength(*uint32_v);
+    return array_handle->SetElementsLength(*uint32_v);
   }
   return isolate->Throw(
       *isolate->factory()->NewRangeError("invalid_array_length",
@@ -448,15 +442,12 @@ const AccessorDescriptor Accessors::ScriptEvalFromFunctionName = {
 
 MaybeObject* Accessors::FunctionGetPrototype(Object* object, void*) {
   Heap* heap = Isolate::Current()->heap();
-  bool found_it = false;
-  JSFunction* function = FindInPrototypeChain<JSFunction>(object, &found_it);
-  if (!found_it) return heap->undefined_value();
+  JSFunction* function = FindInstanceOf<JSFunction>(object);
+  if (function == NULL) return heap->undefined_value();
   while (!function->should_have_prototype()) {
-    found_it = false;
-    function = FindInPrototypeChain<JSFunction>(object->GetPrototype(),
-                                                &found_it);
+    function = FindInstanceOf<JSFunction>(function->GetPrototype());
     // There has to be one because we hit the getter.
-    ASSERT(found_it);
+    ASSERT(function != NULL);
   }
 
   if (!function->has_prototype()) {
@@ -474,25 +465,46 @@ MaybeObject* Accessors::FunctionGetPrototype(Object* object, void*) {
 
 
 MaybeObject* Accessors::FunctionSetPrototype(JSObject* object,
-                                             Object* value,
+                                             Object* value_raw,
                                              void*) {
-  Heap* heap = object->GetHeap();
-  bool found_it = false;
-  JSFunction* function = FindInPrototypeChain<JSFunction>(object, &found_it);
-  if (!found_it) return heap->undefined_value();
-  if (!function->should_have_prototype()) {
+  Isolate* isolate = object->GetIsolate();
+  Heap* heap = isolate->heap();
+  JSFunction* function_raw = FindInstanceOf<JSFunction>(object);
+  if (function_raw == NULL) return heap->undefined_value();
+  if (!function_raw->should_have_prototype()) {
     // Since we hit this accessor, object will have no prototype property.
     return object->SetLocalPropertyIgnoreAttributes(heap->prototype_symbol(),
-                                                    value,
+                                                    value_raw,
                                                     NONE);
   }
 
-  Object* prototype;
-  { MaybeObject* maybe_prototype = function->SetPrototype(value);
-    if (!maybe_prototype->ToObject(&prototype)) return maybe_prototype;
+  HandleScope scope(isolate);
+  Handle<JSFunction> function(function_raw, isolate);
+  Handle<Object> value(value_raw, isolate);
+
+  Handle<Object> old_value;
+  bool is_observed =
+      FLAG_harmony_observation &&
+      *function == object &&
+      function->map()->is_observed();
+  if (is_observed) {
+    if (function->has_prototype())
+      old_value = handle(function->prototype(), isolate);
+    else
+      old_value = isolate->factory()->NewFunctionPrototype(function);
   }
-  ASSERT(function->prototype() == value);
-  return function;
+
+  Handle<Object> result;
+  MaybeObject* maybe_result = function->SetPrototype(*value);
+  if (!maybe_result->ToHandle(&result, isolate)) return maybe_result;
+  ASSERT(function->prototype() == *value);
+
+  if (is_observed && !old_value->SameValue(*value)) {
+    JSObject::EnqueueChangeRecord(
+        function, "updated", isolate->factory()->prototype_symbol(), old_value);
+  }
+
+  return *function;
 }
 
 
@@ -509,22 +521,20 @@ const AccessorDescriptor Accessors::FunctionPrototype = {
 
 
 MaybeObject* Accessors::FunctionGetLength(Object* object, void*) {
-  bool found_it = false;
-  JSFunction* function = FindInPrototypeChain<JSFunction>(object, &found_it);
-  if (!found_it) return Smi::FromInt(0);
+  JSFunction* function = FindInstanceOf<JSFunction>(object);
+  if (function == NULL) return Smi::FromInt(0);
   // Check if already compiled.
-  if (!function->shared()->is_compiled()) {
-    // If the function isn't compiled yet, the length is not computed
-    // correctly yet. Compile it now and return the right length.
-    HandleScope scope;
-    Handle<JSFunction> handle(function);
-    if (!JSFunction::CompileLazy(handle, KEEP_EXCEPTION)) {
-      return Failure::Exception();
-    }
-    return Smi::FromInt(handle->shared()->length());
-  } else {
+  if (function->shared()->is_compiled()) {
     return Smi::FromInt(function->shared()->length());
   }
+  // If the function isn't compiled yet, the length is not computed correctly
+  // yet. Compile it now and return the right length.
+  HandleScope scope;
+  Handle<JSFunction> handle(function);
+  if (JSFunction::CompileLazy(handle, KEEP_EXCEPTION)) {
+    return Smi::FromInt(handle->shared()->length());
+  }
+  return Failure::Exception();
 }
 
 
@@ -541,10 +551,8 @@ const AccessorDescriptor Accessors::FunctionLength = {
 
 
 MaybeObject* Accessors::FunctionGetName(Object* object, void*) {
-  bool found_it = false;
-  JSFunction* holder = FindInPrototypeChain<JSFunction>(object, &found_it);
-  if (!found_it) return HEAP->undefined_value();
-  return holder->shared()->name();
+  JSFunction* holder = FindInstanceOf<JSFunction>(object);
+  return holder == NULL ? HEAP->undefined_value() : holder->shared()->name();
 }
 
 
@@ -589,9 +597,8 @@ static MaybeObject* ConstructArgumentsObjectForInlinedFunction(
 MaybeObject* Accessors::FunctionGetArguments(Object* object, void*) {
   Isolate* isolate = Isolate::Current();
   HandleScope scope(isolate);
-  bool found_it = false;
-  JSFunction* holder = FindInPrototypeChain<JSFunction>(object, &found_it);
-  if (!found_it) return isolate->heap()->undefined_value();
+  JSFunction* holder = FindInstanceOf<JSFunction>(object);
+  if (holder == NULL) return isolate->heap()->undefined_value();
   Handle<JSFunction> function(holder, isolate);
 
   if (function->shared()->native()) return isolate->heap()->null_value();
@@ -664,19 +671,6 @@ const AccessorDescriptor Accessors::FunctionArguments = {
 //
 
 
-static MaybeObject* CheckNonStrictCallerOrThrow(
-    Isolate* isolate,
-    JSFunction* caller) {
-  DisableAssertNoAllocation enable_allocation;
-  if (!caller->shared()->is_classic_mode()) {
-    return isolate->Throw(
-        *isolate->factory()->NewTypeError("strict_caller",
-                                          HandleVector<Object>(NULL, 0)));
-  }
-  return caller;
-}
-
-
 class FrameFunctionIterator {
  public:
   FrameFunctionIterator(Isolate* isolate, const AssertNoAllocation& promise)
@@ -727,9 +721,8 @@ MaybeObject* Accessors::FunctionGetCaller(Object* object, void*) {
   Isolate* isolate = Isolate::Current();
   HandleScope scope(isolate);
   AssertNoAllocation no_alloc;
-  bool found_it = false;
-  JSFunction* holder = FindInPrototypeChain<JSFunction>(object, &found_it);
-  if (!found_it) return isolate->heap()->undefined_value();
+  JSFunction* holder = FindInstanceOf<JSFunction>(object);
+  if (holder == NULL) return isolate->heap()->undefined_value();
   if (holder->shared()->native()) return isolate->heap()->null_value();
   Handle<JSFunction> function(holder, isolate);
 
@@ -755,13 +748,23 @@ MaybeObject* Accessors::FunctionGetCaller(Object* object, void*) {
     caller = potential_caller;
     potential_caller = it.next();
   }
+  if (!caller->shared()->native() && potential_caller != NULL) {
+    caller = potential_caller;
+  }
   // If caller is bound, return null. This is compatible with JSC, and
   // allows us to make bound functions use the strict function map
   // and its associated throwing caller and arguments.
   if (caller->shared()->bound()) {
     return isolate->heap()->null_value();
   }
-  return CheckNonStrictCallerOrThrow(isolate, caller);
+  // Censor if the caller is not a classic mode function.
+  // Change from ES5, which used to throw, see:
+  // https://bugs.ecmascript.org/show_bug.cgi?id=310
+  if (!caller->shared()->is_classic_mode()) {
+    return isolate->heap()->null_value();
+  }
+
+  return caller;
 }
 
 
@@ -777,7 +780,7 @@ const AccessorDescriptor Accessors::FunctionCaller = {
 //
 
 
-MaybeObject* Accessors::ObjectGetPrototype(Object* receiver, void*) {
+static inline Object* GetPrototypeSkipHiddenPrototypes(Object* receiver) {
   Object* current = receiver->GetPrototype();
   while (current->IsJSObject() &&
          JSObject::cast(current)->map()->is_hidden_prototype()) {
@@ -787,12 +790,36 @@ MaybeObject* Accessors::ObjectGetPrototype(Object* receiver, void*) {
 }
 
 
-MaybeObject* Accessors::ObjectSetPrototype(JSObject* receiver,
-                                           Object* value,
+MaybeObject* Accessors::ObjectGetPrototype(Object* receiver, void*) {
+  return GetPrototypeSkipHiddenPrototypes(receiver);
+}
+
+
+MaybeObject* Accessors::ObjectSetPrototype(JSObject* receiver_raw,
+                                           Object* value_raw,
                                            void*) {
-  const bool skip_hidden_prototypes = true;
+  const bool kSkipHiddenPrototypes = true;
   // To be consistent with other Set functions, return the value.
-  return receiver->SetPrototype(value, skip_hidden_prototypes);
+  if (!(FLAG_harmony_observation && receiver_raw->map()->is_observed()))
+    return receiver_raw->SetPrototype(value_raw, kSkipHiddenPrototypes);
+
+  Isolate* isolate = receiver_raw->GetIsolate();
+  HandleScope scope(isolate);
+  Handle<JSObject> receiver(receiver_raw);
+  Handle<Object> value(value_raw);
+  Handle<Object> old_value(GetPrototypeSkipHiddenPrototypes(*receiver));
+
+  MaybeObject* result = receiver->SetPrototype(*value, kSkipHiddenPrototypes);
+  Handle<Object> hresult;
+  if (!result->ToHandle(&hresult, isolate)) return result;
+
+  Handle<Object> new_value(GetPrototypeSkipHiddenPrototypes(*receiver));
+  if (!new_value->SameValue(*old_value)) {
+    JSObject::EnqueueChangeRecord(receiver, "prototype",
+                                  isolate->factory()->Proto_symbol(),
+                                  old_value);
+  }
+  return *hresult;
 }
 
 
@@ -801,5 +828,70 @@ const AccessorDescriptor Accessors::ObjectPrototype = {
   ObjectSetPrototype,
   0
 };
+
+
+//
+// Accessors::MakeModuleExport
+//
+
+static v8::Handle<v8::Value> ModuleGetExport(
+    v8::Local<v8::String> property,
+    const v8::AccessorInfo& info) {
+  JSModule* instance = JSModule::cast(*v8::Utils::OpenHandle(*info.Holder()));
+  Context* context = Context::cast(instance->context());
+  ASSERT(context->IsModuleContext());
+  int slot = info.Data()->Int32Value();
+  Object* value = context->get(slot);
+  if (value->IsTheHole()) {
+    Handle<String> name = v8::Utils::OpenHandle(*property);
+    Isolate* isolate = instance->GetIsolate();
+    isolate->ScheduleThrow(
+        *isolate->factory()->NewReferenceError("not_defined",
+                                               HandleVector(&name, 1)));
+    return v8::Handle<v8::Value>();
+  }
+  return v8::Utils::ToLocal(Handle<Object>(value));
+}
+
+
+static void ModuleSetExport(
+    v8::Local<v8::String> property,
+    v8::Local<v8::Value> value,
+    const v8::AccessorInfo& info) {
+  JSModule* instance = JSModule::cast(*v8::Utils::OpenHandle(*info.Holder()));
+  Context* context = Context::cast(instance->context());
+  ASSERT(context->IsModuleContext());
+  int slot = info.Data()->Int32Value();
+  Object* old_value = context->get(slot);
+  if (old_value->IsTheHole()) {
+    Handle<String> name = v8::Utils::OpenHandle(*property);
+    Isolate* isolate = instance->GetIsolate();
+    isolate->ScheduleThrow(
+        *isolate->factory()->NewReferenceError("not_defined",
+                                               HandleVector(&name, 1)));
+    return;
+  }
+  context->set(slot, *v8::Utils::OpenHandle(*value));
+}
+
+
+Handle<AccessorInfo> Accessors::MakeModuleExport(
+    Handle<String> name,
+    int index,
+    PropertyAttributes attributes) {
+  Factory* factory = name->GetIsolate()->factory();
+  Handle<AccessorInfo> info = factory->NewAccessorInfo();
+  info->set_property_attributes(attributes);
+  info->set_all_can_read(true);
+  info->set_all_can_write(true);
+  info->set_name(*name);
+  info->set_data(Smi::FromInt(index));
+  Handle<Object> getter = v8::FromCData(&ModuleGetExport);
+  Handle<Object> setter = v8::FromCData(&ModuleSetExport);
+  info->set_getter(*getter);
+  if (!(attributes & ReadOnly)) info->set_setter(*setter);
+  return info;
+}
+
 
 } }  // namespace v8::internal

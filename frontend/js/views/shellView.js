@@ -10,7 +10,7 @@ var shellView = Backbone.View.extend({
     'submit form'             : 'submitShell',
     'click #clearShellButton' : 'clearShell',
     'click .clearicon'        : 'clearShell'
-   },
+  },
 
   template: new EJS({url: '/_admin/html/js/templates/shellView.ejs'}),
 
@@ -18,6 +18,24 @@ var shellView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     this.drawWelcomeMsg();
     return this;
+  },
+  replShell: function () {
+    $(function () {
+      var jqconsole = $('#replShell').jqconsole('Hi\n', '>>>');
+      var startPrompt = function () {
+        // Start the prompt with history enabled.
+        jqconsole.Prompt(true, function (input) {
+          // Output input with the class jqconsole-output.
+          jqconsole.Write(input + '\n', 'jqconsole-output');
+          // Restart the prompt.
+          startPrompt();
+        });
+      };
+      startPrompt();
+    });
+
+
+
   },
   autocomplete: function () {
     self = this;
@@ -66,7 +84,6 @@ var shellView = Backbone.View.extend({
     var client = "arangosh> " + escapeHTML(data) + "<br>";
     $(varContent).append('<b class="shellClient">' + client + '</b>');
     this.evaloutput(command);
-    console.log(command);
     $(varContent).animate({scrollTop:$(varContent)[0].scrollHeight}, 1);
     $(varInput).val('');
     return false;

@@ -1,12 +1,13 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
-  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ,
-  SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, SYS_GETLINE,
-  SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_PROCESS_CSV_FILE,
-  SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, COLOR_OUTPUT_RESET, 
-  COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE,
-  COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE,
-  COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, UPGRADE */
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
+  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, 
+  SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, 
+  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, 
+  COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, 
+  COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, 
+  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, 
+  UPGRADE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -76,6 +77,11 @@
     internal.logLevel = SYS_LOG_LEVEL;
     delete SYS_LOG_LEVEL;
   }
+  
+  if (typeof SYS_MD5 !== "undefined") {
+    internal.md5 = SYS_MD5;
+    delete SYS_MD5;
+  }
 
   if (typeof SYS_OUTPUT !== "undefined") {
     internal.stdOutput = SYS_OUTPUT;
@@ -91,6 +97,11 @@
   if (typeof SYS_PROCESS_STAT !== "undefined") {
     internal.processStat = SYS_PROCESS_STAT;
     delete SYS_PROCESS_STAT;
+  }
+  
+  if (typeof SYS_RAND !== "undefined") {
+    internal.rand = SYS_RAND;
+    delete SYS_RAND;
   }
 
   if (typeof SYS_READ !== "undefined") {
@@ -796,22 +807,6 @@
     if (! oldColor) { 
       internal.stopColorPrint(true); 
     } 
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief encode password using SHA256
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.encodePassword = function (password) {
-    var salt;
-    var encoded;
-
-    salt = internal.sha256("time:" + internal.time());
-    salt = salt.substr(0,8);
-
-    encoded = "$1$" + salt + "$" + internal.sha256(salt + password);
-    
-    return encoded;
   };
 
 ////////////////////////////////////////////////////////////////////////////////

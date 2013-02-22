@@ -12,11 +12,16 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
+    "click #plusIcon"            : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
     "click #documents_next"      : "nextDocuments",
     "click #confirmDeleteBtn"    : "confirmDelete"
+  },
+  addDocument: function () {
+    var collid  = window.location.hash.split("/")[1];
+    window.arangoDocumentStore.addDocument(collid);
   },
   firstDocuments: function () {
     window.arangoDocumentsStore.getFirstDocuments();
@@ -33,7 +38,7 @@ var documentsView = Backbone.View.extend({
   remove: function (a) {
     this.target = a.currentTarget;
     var thiselement = a.currentTarget.parentElement;
-    this.idelement = $(thiselement).next().text();
+    this.idelement = $(thiselement).prev().prev();
     this.alreadyClicked = true;
 
     $('#docDeleteModal').modal('show');
@@ -44,28 +49,23 @@ var documentsView = Backbone.View.extend({
   },
   reallyDelete: function () {
     var self = this;
-    try {
-      $.ajax({
-        type: 'DELETE',
-        contentType: "application/json",
-        url: "/_api/document/" + self.idelement,
-        success: function () {
-          var row = $(self.target).closest("tr").get(0);
-          $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
-          var hash = window.location.hash.split("/");
-          var page = hash[3];
-          var collection = hash[1];
-
-          //TODO: more elegant solution...
-          $('#documentsTableID').dataTable().fnClearTable();
-          window.arangoDocumentsStore.getDocuments(collection, page);
-        }
-      });
+    var todelete = $(self.idelement).text();
+    var deleted = window.arangoDocumentStore.deleteDocument(todelete);
+    if (deleted === true) {
+      var row = $(self.target).closest("tr").get(0);
+      $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
+      var hash = window.location.hash.split("/");
+      var page = hash[3];
+      var collection = hash[1];
+      //TODO: more elegant solution...
+      $('#documentsTableID').dataTable().fnClearTable();
+      window.arangoDocumentsStore.getDocuments(collection, page);
+      $('#docDeleteModal').modal('hide');
     }
-    catch (e) {
+    else {
+      alert("something wrong");
+      $('#docDeleteModal').modal('hide');
     }
-    $('#docDeleteModal').modal('hide');
-
   },
   clicked: function (a) {
     if (this.alreadyClicked == true) {
@@ -75,7 +75,7 @@ var documentsView = Backbone.View.extend({
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
     var rowContent = $(this.table).dataTable().fnGetData(aPos);
-    window.location.hash = "#collection/" + rowContent[1];
+    window.location.hash = "#collection/" + rowContent[0];
   },
 
   initTable: function (colid, pageid) {
@@ -86,15 +86,14 @@ var documentsView = Backbone.View.extend({
       "bPaginate":false,
       "bSortable": false,
       "bLengthChange": false,
-      "bDeferRender": true,
       "bAutoWidth": false,
       "iDisplayLength": -1,
-      "bJQueryUI": true,
+      "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"read_only leftCell", "bSortable": false, "sWidth":"40px"},
-        { "sClass":"read_only","bSortable": false, "sWidth": "200px"},
-        { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
-        { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
+        { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
+        { "sClass":"read_only","bSortable": false},
+      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
+      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
         { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
@@ -107,21 +106,43 @@ var documentsView = Backbone.View.extend({
     var self = this;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
       $(self.table).dataTable().fnAddData([
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>',
                                           value.attributes.id,
-                                          value.attributes.key,
-                                          value.attributes.rev,
-                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>'
+                                          //value.attributes.key,
+                                          //value.attributes.rev,
+                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+    this.totalPages = window.arangoDocumentsStore.totalPages;
+    this.currentPage = window.arangoDocumentsStore.currentPage;
+    this.documentsCount = window.arangoDocumentsStore.documentsCount;
+
+    if (this.documentsCount === 0) {
+      $('#documentsToolbarLeft').html('No documents');
+    }
+    else {
+      $('#documentsToolbarLeft').html(
+        'Showing Page '+this.currentPage+' of '+this.totalPages+
+        ', '+this.documentsCount+' entries'
+      );
+    }
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);
+    this.breadcrumb();
     return this;
+  },
+  breadcrumb: function () {
+    var name = window.location.hash.split("/")[1];
+    $('#transparentHeader').append(
+      '<a class="activeBread" href="#">Collections</a>'+
+      '  >  '+
+      '<a class="disabledBread">'+name+'</a>'
+    );
   },
   cutByResolution: function (string) {
     if (string.length > 1024) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -33,7 +33,7 @@ test.built_file_must_not_exist('foolib1',
                                chdir=chdir)
 
 # TODO(mmoss) Make consistent with scons, with 'dir1' before 'out/Default'?
-if test.format in ('make', 'ninja'):
+if test.format in ('make', 'ninja', 'android'):
   chdir='relocate/src'
 else:
   chdir='relocate/src/dir1'
@@ -50,6 +50,7 @@ test.build('actions.gyp', 'foolib1', chdir=chdir)
 
 test.built_file_must_exist('foolib1',
                            type=test.SHARED_LIB,
-                           chdir=chdir)
+                           chdir=chdir,
+                           subdir='dir1')
 
 test.pass_test()

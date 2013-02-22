@@ -48,14 +48,9 @@ const intptr_t kObjectAlignmentMask = kObjectAlignment - 1;
 const intptr_t kPointerAlignment = (1 << kPointerSizeLog2);
 const intptr_t kPointerAlignmentMask = kPointerAlignment - 1;
 
-// Desired alignment for maps.
-#if V8_HOST_ARCH_64_BIT
-const intptr_t kMapAlignmentBits = kObjectAlignmentBits;
-#else
-const intptr_t kMapAlignmentBits = kObjectAlignmentBits + 3;
-#endif
-const intptr_t kMapAlignment = (1 << kMapAlignmentBits);
-const intptr_t kMapAlignmentMask = kMapAlignment - 1;
+// Desired alignment for double values.
+const intptr_t kDoubleAlignment = 8;
+const intptr_t kDoubleAlignmentMask = kDoubleAlignment - 1;
 
 // Desired alignment for generated code is 32 bytes (to improve cache line
 // utilization).
@@ -90,6 +85,7 @@ const uint32_t kDebugZapValue = 0xbadbaddb;
 const uint32_t kFreeListZapValue = 0xfeed1eaf;
 #endif
 
+const int kCodeZapValue = 0xbadc0de;
 
 // Number of bits to represent the page size for paged spaces. The value of 20
 // gives 1Mb bytes per page.
@@ -122,6 +118,7 @@ class Debugger;
 class DebugInfo;
 class Descriptor;
 class DescriptorArray;
+class TransitionArray;
 class ExternalReference;
 class FixedArray;
 class FunctionTemplateInfo;
@@ -263,10 +260,13 @@ enum InlineCacheState {
   // Like MONOMORPHIC but check failed due to prototype.
   MONOMORPHIC_PROTOTYPE_FAILURE,
   // Multiple receiver types have been seen.
+  POLYMORPHIC,
+  // Many receiver types have been seen.
   MEGAMORPHIC,
-  // Special states for debug break or step in prepare stubs.
-  DEBUG_BREAK,
-  DEBUG_PREPARE_STEP_IN
+  // A generic handler is installed and no extra typefeedback is recorded.
+  GENERIC,
+  // Special state for debug break or step in prepare stubs.
+  DEBUG_STUB
 };
 
 
@@ -305,14 +305,6 @@ typedef enum {
 typedef void (*StoreBufferCallback)(Heap* heap,
                                     MemoryChunk* page,
                                     StoreBufferEvent event);
-
-
-// Whether to remove map transitions and constant transitions from a
-// DescriptorArray.
-enum TransitionFlag {
-  REMOVE_TRANSITIONS,
-  KEEP_TRANSITIONS
-};
 
 
 // Union used for fast testing of specific double values.
@@ -362,19 +354,13 @@ struct AccessorDescriptor {
 // VMState object leaves a state by popping the current state from the
 // stack.
 
-#define STATE_TAG_LIST(V) \
-  V(JS)                   \
-  V(GC)                   \
-  V(COMPILER)             \
-  V(OTHER)                \
-  V(EXTERNAL)
-
 enum StateTag {
-#define DEF_STATE_TAG(name) name,
-  STATE_TAG_LIST(DEF_STATE_TAG)
-#undef DEF_STATE_TAG
-  // Pseudo-types.
-  state_tag_count
+  JS,
+  GC,
+  COMPILER,
+  PARALLEL_COMPILER,
+  OTHER,
+  EXTERNAL
 };
 
 
@@ -396,10 +382,6 @@ enum StateTag {
 // POINTER_SIZE_ALIGN returns the value aligned as a pointer.
 #define POINTER_SIZE_ALIGN(value)                               \
   (((value) + kPointerAlignmentMask) & ~kPointerAlignmentMask)
-
-// MAP_POINTER_ALIGN returns the value aligned as a map pointer.
-#define MAP_POINTER_ALIGN(value)                                \
-  (((value) + kMapAlignmentMask) & ~kMapAlignmentMask)
 
 // CODE_POINTER_ALIGN returns the value aligned as a generated code segment.
 #define CODE_POINTER_ALIGN(value)                               \
@@ -426,6 +408,13 @@ enum StateTag {
 #endif
 
 
+enum CpuImplementer {
+  UNKNOWN_IMPLEMENTER,
+  ARM_IMPLEMENTER,
+  QUALCOMM_IMPLEMENTER
+};
+
+
 // Feature flags bit positions. They are mostly based on the CPUID spec.
 // (We assign CPUID itself to one of the currently reserved bits --
 // feel free to change this if needed.)
@@ -438,6 +427,11 @@ enum CpuFeature { SSE4_1 = 32 + 19,  // x86
                   CPUID = 10,  // x86
                   VFP3 = 1,    // ARM
                   ARMv7 = 2,   // ARM
+                  VFP2 = 3,    // ARM
+                  SUDIV = 4,   // ARM
+                  UNALIGNED_ACCESSES = 5,  // ARM
+                  MOVW_MOVT_IMMEDIATE_LOADS = 6,  // ARM
+                  VFP32DREGS = 7,  // ARM
                   SAHF = 0,    // x86
                   FPU = 1};    // MIPS
 
@@ -461,6 +455,7 @@ enum CallKind {
 enum ScopeType {
   EVAL_SCOPE,      // The top-level scope for an eval source.
   FUNCTION_SCOPE,  // The top-level scope for a function.
+  MODULE_SCOPE,    // The scope introduced by a module literal
   GLOBAL_SCOPE,    // The top-level scope for a program or a top-level eval.
   CATCH_SCOPE,     // The scope introduced by catch.
   BLOCK_SCOPE,     // The scope introduced by a new block.
@@ -478,17 +473,26 @@ const uint64_t kLastNonNaNInt64 =
     (static_cast<uint64_t>(kNaNOrInfinityLowerBoundUpper32) << 32);
 
 
+// The order of this enum has to be kept in sync with the predicates below.
 enum VariableMode {
   // User declared variables:
   VAR,             // declared via 'var', and 'function' declarations
 
   CONST,           // declared via 'const' declarations
 
+  LET,             // declared via 'let' declarations (first lexical)
+
   CONST_HARMONY,   // declared via 'const' declarations in harmony mode
 
-  LET,             // declared via 'let' declarations
+  MODULE,          // declared via 'module' declaration (last lexical)
 
   // Variables introduced by the compiler:
+  INTERNAL,        // like VAR, but not user-visible (may or may not
+                   // be in a context)
+
+  TEMPORARY,       // temporary variables (not user-visible), never
+                   // in a context
+
   DYNAMIC,         // always require dynamic lookup (we don't know
                    // the declaration)
 
@@ -496,17 +500,31 @@ enum VariableMode {
                    // variable is global unless it has been shadowed
                    // by an eval-introduced variable
 
-  DYNAMIC_LOCAL,   // requires dynamic lookup, but we know that the
+  DYNAMIC_LOCAL    // requires dynamic lookup, but we know that the
                    // variable is local and where it is unless it
                    // has been shadowed by an eval-introduced
                    // variable
-
-  INTERNAL,        // like VAR, but not user-visible (may or may not
-                   // be in a context)
-
-  TEMPORARY        // temporary variables (not user-visible), never
-                   // in a context
 };
+
+
+inline bool IsDynamicVariableMode(VariableMode mode) {
+  return mode >= DYNAMIC && mode <= DYNAMIC_LOCAL;
+}
+
+
+inline bool IsDeclaredVariableMode(VariableMode mode) {
+  return mode >= VAR && mode <= MODULE;
+}
+
+
+inline bool IsLexicalVariableMode(VariableMode mode) {
+  return mode >= LET && mode <= MODULE;
+}
+
+
+inline bool IsImmutableVariableMode(VariableMode mode) {
+  return mode == CONST || (mode >= CONST_HARMONY && mode <= MODULE);
+}
 
 
 // ES6 Draft Rev3 10.2 specifies declarative environment records with mutable

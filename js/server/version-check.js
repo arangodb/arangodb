@@ -45,6 +45,7 @@
 (function() {
   var internal = require("internal");
   var console = require("console");
+  var userManager = require("org/arangodb/users");
   var db = internal.db;
 
   // path to the VERSION file
@@ -147,7 +148,7 @@
 
       if (users.count() === 0) {
         // only add account if user has not created his/her own accounts already
-        users.save({ user: "root", password: internal.encodePassword(""), active: true });
+        userManager.save("root", "", true);
       }
 
       return true;

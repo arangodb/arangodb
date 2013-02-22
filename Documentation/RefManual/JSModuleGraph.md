@@ -1,11 +1,11 @@
-Module "graph" {#JSModuleGraph}
-===============================
+Module "graph"{#JSModuleGraph}
+==============================
 
 @NAVIGATE_JSModuleGraph
 @EMBEDTOC{JSModuleGraphTOC}
 
-First Steps with Graphs {#JSModuleGraphIntro}
-=============================================
+First Steps with Graphs{#JSModuleGraphIntro}
+============================================
 
 A Graph consists of vertices and edges. The vertex collection contains the
 documents forming the vertices. The edge collection contains the documents
@@ -23,8 +23,8 @@ build a new graph with a different edge collection use
 It is, however, impossible to use different vertices with the same edges. Edges
 are tied to the vertices.
 
-Graph Constructors and Methods {#JSModuleGraphGraph}
-====================================================
+Graph Constructors and Methods{#JSModuleGraphGraph}
+===================================================
 
 The graph module provides basic functions dealing with graph structures.  The
 examples assume
@@ -67,8 +67,8 @@ examples assume
 @copydetails JSF_Graph_prototype_drop
 
 @CLEARPAGE
-Vertex Methods {#JSModuleGraphVertex}
-=====================================
+Vertex Methods{#JSModuleGraphVertex}
+====================================
 
 @anchor JSModuleGraphVertexAddInEdge
 @copydetails JSF_Vertex_prototype_addInEdge
@@ -114,8 +114,8 @@ Vertex Methods {#JSModuleGraphVertex}
 @copydetails JSF_Vertex_prototype_setProperty
 
 @CLEARPAGE
-Edge Methods {#JSModuleGraphEdge}
-=================================
+Edge Methods{#JSModuleGraphEdge}
+================================
 
 @anchor JSModuleGraphEdgeGetId
 @copydetails JSF_Edge_prototype_getId

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,8 +13,8 @@ import os
 import TestGyp
 
 # Regenerating build files when a gyp file changes is currently only supported
-# by the make generator.
-test = TestGyp.TestGyp(formats=['make'])
+# by the make and Android generators.
+test = TestGyp.TestGyp(formats=['make', 'android'])
 
 try:
   os.environ['GYP_DEFINES'] = 'value=50'
@@ -32,6 +32,7 @@ expect = """\
 FOO is defined
 VALUE is 1
 2*PAREN_VALUE is 12
+HASH_VALUE is a#1
 """
 test.run_built_executable('defines', stdout=expect)
 

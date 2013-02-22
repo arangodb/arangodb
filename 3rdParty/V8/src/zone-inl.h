@@ -39,20 +39,8 @@ namespace v8 {
 namespace internal {
 
 
-AssertNoZoneAllocation::AssertNoZoneAllocation()
-    : prev_(Isolate::Current()->zone_allow_allocation()) {
-  Isolate::Current()->set_zone_allow_allocation(false);
-}
-
-
-AssertNoZoneAllocation::~AssertNoZoneAllocation() {
-  Isolate::Current()->set_zone_allow_allocation(prev_);
-}
-
-
 inline void* Zone::New(int size) {
-  ASSERT(Isolate::Current()->zone_allow_allocation());
-  ASSERT(ZoneScope::nesting() > 0);
+  ASSERT(scope_nesting_ > 0);
   // Round up the requested size to fit the alignment.
   size = RoundUp(size, kAlignment);
 
@@ -102,30 +90,17 @@ ZoneSplayTree<Config>::~ZoneSplayTree() {
   // Reset the root to avoid unneeded iteration over all tree nodes
   // in the destructor.  For a zone-allocated tree, nodes will be
   // freed by the Zone.
-  SplayTree<Config, ZoneListAllocationPolicy>::ResetRoot();
+  SplayTree<Config, ZoneAllocationPolicy>::ResetRoot();
 }
 
-
-// TODO(isolates): for performance reasons, this should be replaced with a new
-//                 operator that takes the zone in which the object should be
-//                 allocated.
-void* ZoneObject::operator new(size_t size) {
-  return ZONE->New(static_cast<int>(size));
-}
 
 void* ZoneObject::operator new(size_t size, Zone* zone) {
   return zone->New(static_cast<int>(size));
 }
 
-
-inline void* ZoneListAllocationPolicy::New(int size) {
-  return ZONE->New(size);
-}
-
-
-template <typename T>
-void* ZoneList<T>::operator new(size_t size) {
-  return ZONE->New(static_cast<int>(size));
+inline void* ZoneAllocationPolicy::New(size_t size) {
+  ASSERT(zone_);
+  return zone_->New(static_cast<int>(size));
 }
 
 
@@ -135,19 +110,14 @@ void* ZoneList<T>::operator new(size_t size, Zone* zone) {
 }
 
 
-ZoneScope::ZoneScope(Isolate* isolate, ZoneScopeMode mode)
-    : isolate_(isolate), mode_(mode) {
-  isolate_->zone()->scope_nesting_++;
+ZoneScope::ZoneScope(Zone* zone, ZoneScopeMode mode)
+    : zone_(zone), mode_(mode) {
+  zone_->scope_nesting_++;
 }
 
 
 bool ZoneScope::ShouldDeleteOnExit() {
-  return isolate_->zone()->scope_nesting_ == 1 && mode_ == DELETE_ON_EXIT;
-}
-
-
-int ZoneScope::nesting() {
-  return Isolate::Current()->zone()->scope_nesting_;
+  return zone_->scope_nesting_ == 1 && mode_ == DELETE_ON_EXIT;
 }
 
 

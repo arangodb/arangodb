@@ -1,5 +1,9 @@
 TOC {#JSModulesTOC}
 ===================
 
-- @ref JSModulesIntro
-  - @ref JSModulesRequire "require"
+- @ref JSModules
+  - @ref JSModulesIntro
+    - @ref JSModulesRequire "require"
+  - @ref JSModulesPath
+    - @ref JSModulesNormalization
+    - @ref JSModulesCache

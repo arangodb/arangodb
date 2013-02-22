@@ -45,7 +45,7 @@ USAGE="""usage: %prog [OPTION]...
 Analyses V8 and perf logs to produce profiles.
 
 Perf logs can be collected using a command like:
-  $ perf record -R -e cycles -c 10000 -f -i ./shell bench.js --ll-prof
+  $ perf record -R -e cycles -c 10000 -f -i ./d8 bench.js --ll-prof
   # -R: collect all data
   # -e cycles: use cpu-cycles event (run "perf list" for details)
   # -c 10000: write a sample after each 10000 events
@@ -53,6 +53,16 @@ Perf logs can be collected using a command like:
   # -i: limit profiling to our process and the kernel
   # --ll-prof shell flag enables the right V8 logs
 This will produce a binary trace file (perf.data) that %prog can analyse.
+
+IMPORTANT:
+  The kernel has an internal maximum for events per second, it is 100K by
+  default. That's not enough for "-c 10000". Set it to some higher value:
+  $ echo 10000000 | sudo tee /proc/sys/kernel/perf_event_max_sample_rate
+  You can also make the warning about kernel address maps go away:
+  $ echo 0 | sudo tee /proc/sys/kernel/kptr_restrict
+
+We have a convenience script that handles all of the above for you:
+  $ tools/run-llprof.sh ./d8 bench.js
 
 Examples:
   # Print flat profile with annotated disassembly for the 10 top
@@ -68,19 +78,17 @@ Examples:
 """
 
 
-# Must match kGcFakeMmap.
-V8_GC_FAKE_MMAP = "/tmp/__v8_gc__"
-
 JS_ORIGIN = "js"
 JS_SNAPSHOT_ORIGIN = "js-snapshot"
-
-OBJDUMP_BIN = disasm.OBJDUMP_BIN
-
 
 class Code(object):
   """Code object."""
 
   _id = 0
+  UNKNOWN = 0
+  V8INTERNAL = 1
+  FULL_CODEGEN = 2
+  OPTIMIZED = 3
 
   def __init__(self, name, start_address, end_address, origin, origin_offset):
     self.id = Code._id
@@ -94,6 +102,14 @@ class Code(object):
     self.self_ticks = 0
     self.self_ticks_map = None
     self.callee_ticks = None
+    if name.startswith("LazyCompile:*"):
+      self.codetype = Code.OPTIMIZED
+    elif name.startswith("LazyCompile:"):
+      self.codetype = Code.FULL_CODEGEN
+    elif name.startswith("v8::internal::"):
+      self.codetype = Code.V8INTERNAL
+    else:
+      self.codetype = Code.UNKNOWN
 
   def AddName(self, name):
     assert self.name != name
@@ -191,7 +207,7 @@ class Code(object):
 class CodePage(object):
   """Group of adjacent code objects."""
 
-  SHIFT = 12  # 4K pages
+  SHIFT = 20  # 1M pages
   SIZE = (1 << SHIFT)
   MASK = ~(SIZE - 1)
 
@@ -513,6 +529,7 @@ class Descriptor(object):
 # for the gory details.
 
 
+# Reference: struct perf_file_header in kernel/tools/perf/util/header.h
 TRACE_HEADER_DESC = Descriptor([
   ("magic", "u64"),
   ("size", "u64"),
@@ -526,6 +543,7 @@ TRACE_HEADER_DESC = Descriptor([
 ])
 
 
+# Reference: /usr/include/linux/perf_event.h
 PERF_EVENT_ATTR_DESC = Descriptor([
   ("type", "u32"),
   ("size", "u32"),
@@ -535,12 +553,13 @@ PERF_EVENT_ATTR_DESC = Descriptor([
   ("read_format", "u64"),
   ("flags", "u64"),
   ("wakeup_events_or_watermark", "u32"),
-  ("bt_type", "u32"),
+  ("bp_type", "u32"),
   ("bp_addr", "u64"),
-  ("bp_len", "u64"),
+  ("bp_len", "u64")
 ])
 
 
+# Reference: /usr/include/linux/perf_event.h
 PERF_EVENT_HEADER_DESC = Descriptor([
   ("type", "u32"),
   ("misc", "u16"),
@@ -548,6 +567,7 @@ PERF_EVENT_HEADER_DESC = Descriptor([
 ])
 
 
+# Reference: kernel/events/core.c
 PERF_MMAP_EVENT_BODY_DESC = Descriptor([
   ("pid", "u32"),
   ("tid", "u32"),
@@ -572,6 +592,7 @@ PERF_SAMPLE_STREAM_ID = 1 << 9
 PERF_SAMPLE_RAW = 1 << 10
 
 
+# Reference: /usr/include/perf_event.h, the comment for PERF_RECORD_SAMPLE.
 PERF_SAMPLE_EVENT_BODY_FIELDS = [
   ("ip", "u64", PERF_SAMPLE_IP),
   ("pid", "u32", PERF_SAMPLE_TID),
@@ -639,7 +660,7 @@ class TraceReader(object):
     # Read null-terminated filename.
     filename = self.trace[offset + self.header_size + ctypes.sizeof(mmap_info):
                           offset + header.size]
-    mmap_info.filename = filename[:filename.find(chr(0))]
+    mmap_info.filename = HOST_ROOT + filename[:filename.find(chr(0))]
     return mmap_info
 
   def ReadSample(self, header, offset):
@@ -708,8 +729,12 @@ class LibraryRepo(object):
     # Unfortunately, section headers span two lines, so we have to
     # keep the just seen section name (from the first line in each
     # section header) in the after_section variable.
+    if mmap_info.filename.endswith(".ko"):
+      dynamic_symbols = ""
+    else:
+      dynamic_symbols = "-T"
     process = subprocess.Popen(
-      "%s -h -t -T -C %s" % (OBJDUMP_BIN, mmap_info.filename),
+      "%s -h -t %s -C %s" % (OBJDUMP_BIN, dynamic_symbols, mmap_info.filename),
       shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     pipe = process.stdout
     after_section = None
@@ -801,7 +826,7 @@ def PrintReport(code_map, library_repo, arch, ticks, options):
       code.PrintAnnotated(arch, options)
   print
   print "Ticks per library:"
-  mmap_infos = [m for m in library_repo.infos]
+  mmap_infos = [m for m in library_repo.infos if m.ticks > 0]
   mmap_infos.sort(key=lambda m: m.ticks, reverse=True)
   for mmap_info in mmap_infos:
     mmap_ticks = mmap_info.ticks
@@ -858,6 +883,15 @@ if __name__ == "__main__":
                     default=False,
                     action="store_true",
                     help="no auxiliary messages [default: %default]")
+  parser.add_option("--gc-fake-mmap",
+                    default="/tmp/__v8_gc__",
+                    help="gc fake mmap file [default: %default]")
+  parser.add_option("--objdump",
+                    default="/usr/bin/objdump",
+                    help="objdump tool to use [default: %default]")
+  parser.add_option("--host-root",
+                    default="",
+                    help="Path to the host root [default: %default]")
   options, args = parser.parse_args()
 
   if not options.quiet:
@@ -869,11 +903,22 @@ if __name__ == "__main__":
       print "V8 log: %s, %s.ll (no snapshot)" % (options.log, options.log)
     print "Perf trace file: %s" % options.trace
 
+  V8_GC_FAKE_MMAP = options.gc_fake_mmap
+  HOST_ROOT = options.host_root
+  if os.path.exists(options.objdump):
+    disasm.OBJDUMP_BIN = options.objdump
+    OBJDUMP_BIN = options.objdump
+  else:
+    print "Cannot find %s, falling back to default objdump" % options.objdump
+
   # Stats.
   events = 0
   ticks = 0
   missed_ticks = 0
   really_missed_ticks = 0
+  optimized_ticks = 0
+  generated_ticks = 0
+  v8_internal_ticks = 0
   mmap_time = 0
   sample_time = 0
 
@@ -905,7 +950,7 @@ if __name__ == "__main__":
     if header.type == PERF_RECORD_MMAP:
       start = time.time()
       mmap_info = trace_reader.ReadMmap(header, offset)
-      if mmap_info.filename == V8_GC_FAKE_MMAP:
+      if mmap_info.filename == HOST_ROOT + V8_GC_FAKE_MMAP:
         log_reader.ReadUpToGC()
       else:
         library_repo.Load(mmap_info, code_map, options)
@@ -917,6 +962,12 @@ if __name__ == "__main__":
       code = code_map.Find(sample.ip)
       if code:
         code.Tick(sample.ip)
+        if code.codetype == Code.OPTIMIZED:
+          optimized_ticks += 1
+        elif code.codetype == Code.FULL_CODEGEN:
+          generated_ticks += 1
+        elif code.codetype == Code.V8INTERNAL:
+          v8_internal_ticks += 1
       else:
         missed_ticks += 1
       if not library_repo.Tick(sample.ip) and not code:
@@ -936,12 +987,21 @@ if __name__ == "__main__":
     PrintReport(code_map, library_repo, log_reader.arch, ticks, options)
 
     if not options.quiet:
+      def PrintTicks(number, total, description):
+        print("%10d %5.1f%% ticks in %s" %
+              (number, 100.0*number/total, description))
       print
       print "Stats:"
       print "%10d total trace events" % events
       print "%10d total ticks" % ticks
       print "%10d ticks not in symbols" % missed_ticks
-      print "%10d unaccounted ticks" % really_missed_ticks
+      unaccounted = "unaccounted ticks"
+      if really_missed_ticks > 0:
+        unaccounted += " (probably in the kernel, try --kernel)"
+      PrintTicks(really_missed_ticks, ticks, unaccounted)
+      PrintTicks(optimized_ticks, ticks, "ticks in optimized code")
+      PrintTicks(generated_ticks, ticks, "ticks in other lazily compiled code")
+      PrintTicks(v8_internal_ticks, ticks, "ticks in v8::internal::*")
       print "%10d total symbols" % len([c for c in code_map.AllCode()])
       print "%10d used symbols" % len([c for c in code_map.UsedCode()])
       print "%9.2fs library processing time" % mmap_time

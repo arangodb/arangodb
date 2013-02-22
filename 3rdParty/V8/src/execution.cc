@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -100,7 +100,7 @@ static Handle<Object> Invoke(bool is_construct,
 
   // Make sure that the global object of the context we're about to
   // make the current one is indeed a global object.
-  ASSERT(function->context()->global()->IsGlobalObject());
+  ASSERT(function->context()->global_object()->IsGlobalObject());
 
   {
     // Save and restore context around invocation and block the
@@ -118,7 +118,7 @@ static Handle<Object> Invoke(bool is_construct,
         CALL_GENERATED_CODE(stub_entry, function_entry, func, recv, argc, argv);
   }
 
-#ifdef DEBUG
+#ifdef VERIFY_HEAP
   value->Verify();
 #endif
 
@@ -127,11 +127,17 @@ static Handle<Object> Invoke(bool is_construct,
   ASSERT(*has_pending_exception == Isolate::Current()->has_pending_exception());
   if (*has_pending_exception) {
     isolate->ReportPendingMessages();
-    if (isolate->pending_exception() == Failure::OutOfMemoryException()) {
+    if (isolate->pending_exception()->IsOutOfMemory()) {
       if (!isolate->ignore_out_of_memory()) {
         V8::FatalProcessOutOfMemory("JS", true);
       }
     }
+#ifdef ENABLE_DEBUGGER_SUPPORT
+    // Reset stepping state when script exits with uncaught exception.
+    if (isolate->debugger()->IsDebuggerActive()) {
+      isolate->debug()->ClearStepping();
+    }
+#endif  // ENABLE_DEBUGGER_SUPPORT
     return Handle<Object>();
   } else {
     isolate->clear_pending_message();
@@ -159,10 +165,10 @@ Handle<Object> Execution::Call(Handle<Object> callable,
   if (convert_receiver && !receiver->IsJSReceiver() &&
       !func->shared()->native() && func->shared()->is_classic_mode()) {
     if (receiver->IsUndefined() || receiver->IsNull()) {
-      Object* global = func->context()->global()->global_receiver();
+      Object* global = func->context()->global_object()->global_receiver();
       // Under some circumstances, 'global' can be the JSBuiltinsObject
-      // In that case, don't rewrite.
-      // (FWIW, the same holds for GetIsolate()->global()->global_receiver().)
+      // In that case, don't rewrite.  (FWIW, the same holds for
+      // GetIsolate()->global_object()->global_receiver().)
       if (!global->IsJSBuiltinsObject()) receiver = Handle<Object>(global);
     } else {
       receiver = ToObject(receiver, pending_exception);
@@ -178,7 +184,7 @@ Handle<Object> Execution::New(Handle<JSFunction> func,
                               int argc,
                               Handle<Object> argv[],
                               bool* pending_exception) {
-  return Invoke(true, func, Isolate::Current()->global(), argc, argv,
+  return Invoke(true, func, Isolate::Current()->global_object(), argc, argv,
                 pending_exception);
 }
 
@@ -205,6 +211,9 @@ Handle<Object> Execution::TryCall(Handle<JSFunction> func,
     Isolate* isolate = Isolate::Current();
     ASSERT(isolate->has_pending_exception());
     ASSERT(isolate->external_caught_exception());
+    if (isolate->is_out_of_memory() && !isolate->ignore_out_of_memory()) {
+      V8::FatalProcessOutOfMemory("OOM during Execution::TryCall");
+    }
     if (isolate->pending_exception() ==
         isolate->heap()->termination_exception()) {
       result = isolate->factory()->termination_exception();
@@ -240,7 +249,7 @@ Handle<Object> Execution::GetFunctionDelegate(Handle<Object> object) {
   if (fun->IsHeapObject() &&
       HeapObject::cast(fun)->map()->has_instance_call_handler()) {
     return Handle<JSFunction>(
-        isolate->global_context()->call_as_function_delegate());
+        isolate->native_context()->call_as_function_delegate());
   }
 
   return factory->undefined_value();
@@ -264,7 +273,7 @@ Handle<Object> Execution::TryGetFunctionDelegate(Handle<Object> object,
   if (fun->IsHeapObject() &&
       HeapObject::cast(fun)->map()->has_instance_call_handler()) {
     return Handle<JSFunction>(
-        isolate->global_context()->call_as_function_delegate());
+        isolate->native_context()->call_as_function_delegate());
   }
 
   // If the Object doesn't have an instance-call handler we should
@@ -297,7 +306,7 @@ Handle<Object> Execution::GetConstructorDelegate(Handle<Object> object) {
   if (fun->IsHeapObject() &&
       HeapObject::cast(fun)->map()->has_instance_call_handler()) {
     return Handle<JSFunction>(
-        isolate->global_context()->call_as_constructor_delegate());
+        isolate->native_context()->call_as_constructor_delegate());
   }
 
   return isolate->factory()->undefined_value();
@@ -325,7 +334,7 @@ Handle<Object> Execution::TryGetConstructorDelegate(
   if (fun->IsHeapObject() &&
       HeapObject::cast(fun)->map()->has_instance_call_handler()) {
     return Handle<JSFunction>(
-        isolate->global_context()->call_as_constructor_delegate());
+        isolate->native_context()->call_as_constructor_delegate());
   }
 
   // If the Object doesn't have an instance-call handler we should
@@ -376,6 +385,12 @@ void StackGuard::DisableInterrupts() {
 }
 
 
+bool StackGuard::ShouldPostponeInterrupts() {
+  ExecutionAccess access(isolate_);
+  return should_postpone_interrupts(access);
+}
+
+
 bool StackGuard::IsInterrupted() {
   ExecutionAccess access(isolate_);
   return (thread_local_.interrupt_flags_ & INTERRUPT) != 0;
@@ -415,22 +430,22 @@ void StackGuard::TerminateExecution() {
 }
 
 
-bool StackGuard::IsRuntimeProfilerTick() {
-  ExecutionAccess access(isolate_);
-  return (thread_local_.interrupt_flags_ & RUNTIME_PROFILER_TICK) != 0;
-}
-
-
-void StackGuard::RequestRuntimeProfilerTick() {
-  // Ignore calls if we're not optimizing or if we can't get the lock.
-  if (FLAG_opt && ExecutionAccess::TryLock(isolate_)) {
-    thread_local_.interrupt_flags_ |= RUNTIME_PROFILER_TICK;
+void StackGuard::RequestCodeReadyEvent() {
+  ASSERT(FLAG_parallel_recompilation);
+  if (ExecutionAccess::TryLock(isolate_)) {
+    thread_local_.interrupt_flags_ |= CODE_READY;
     if (thread_local_.postpone_interrupts_nesting_ == 0) {
       thread_local_.jslimit_ = thread_local_.climit_ = kInterruptLimit;
       isolate_->heap()->SetStackLimits();
     }
     ExecutionAccess::Unlock(isolate_);
   }
+}
+
+
+bool StackGuard::IsCodeReadyEvent() {
+  ExecutionAccess access(isolate_);
+  return (thread_local_.interrupt_flags_ & CODE_READY) != 0;
 }
 
 
@@ -649,7 +664,7 @@ Handle<JSRegExp> Execution::NewJSRegExp(Handle<String> pattern,
                                         Handle<String> flags,
                                         bool* exc) {
   Handle<JSFunction> function = Handle<JSFunction>(
-      pattern->GetIsolate()->global_context()->regexp_function());
+      pattern->GetIsolate()->native_context()->regexp_function());
   Handle<Object> re_obj = RegExpImpl::CreateRegExpLiteral(
       function, pattern, flags, exc);
   if (*exc) return Handle<JSRegExp>();
@@ -695,7 +710,7 @@ Handle<JSFunction> Execution::InstantiateFunction(
   // Fast case: see if the function has already been instantiated
   int serial_number = Smi::cast(data->serial_number())->value();
   Object* elm =
-      isolate->global_context()->function_cache()->
+      isolate->native_context()->function_cache()->
           GetElementNoExceptionThrown(serial_number);
   if (elm->IsJSFunction()) return Handle<JSFunction>(JSFunction::cast(elm));
   // The function has not yet been instantiated in this context; do it.
@@ -820,6 +835,16 @@ Object* Execution::DebugBreakHelper() {
     return isolate->heap()->undefined_value();
   }
 
+  // Ignore debug break if debugger is not active.
+  if (!isolate->debugger()->IsDebuggerActive()) {
+    return isolate->heap()->undefined_value();
+  }
+
+  StackLimitCheck check(isolate);
+  if (check.HasOverflowed()) {
+    return isolate->heap()->undefined_value();
+  }
+
   {
     JavaScriptFrameIterator it(isolate);
     ASSERT(!it.done());
@@ -829,7 +854,7 @@ Object* Execution::DebugBreakHelper() {
       if (JSFunction::cast(fun)->IsBuiltin()) {
         return isolate->heap()->undefined_value();
       }
-      GlobalObject* global = JSFunction::cast(fun)->context()->global();
+      GlobalObject* global = JSFunction::cast(fun)->context()->global_object();
       // Don't stop in debugger functions.
       if (isolate->debug()->IsDebugGlobal(global)) {
         return isolate->heap()->undefined_value();
@@ -856,6 +881,11 @@ void Execution::ProcessDebugMessages(bool debug_command_only) {
   // Clear the debug command request flag.
   isolate->stack_guard()->Continue(DEBUGCOMMAND);
 
+  StackLimitCheck check(isolate);
+  if (check.HasOverflowed()) {
+    return;
+  }
+
   HandleScope scope(isolate);
   // Enter the debugger. Just continue if we fail to enter the debugger.
   EnterDebugger debugger;
@@ -872,21 +902,33 @@ void Execution::ProcessDebugMessages(bool debug_command_only) {
 
 #endif
 
-MaybeObject* Execution::HandleStackGuardInterrupt() {
-  Isolate* isolate = Isolate::Current();
+MaybeObject* Execution::HandleStackGuardInterrupt(Isolate* isolate) {
   StackGuard* stack_guard = isolate->stack_guard();
+  if (stack_guard->ShouldPostponeInterrupts()) {
+    return isolate->heap()->undefined_value();
+  }
 
   if (stack_guard->IsGCRequest()) {
-    isolate->heap()->CollectAllGarbage(false, "StackGuard GC request");
+    isolate->heap()->CollectAllGarbage(Heap::kNoGCFlags,
+                                       "StackGuard GC request");
     stack_guard->Continue(GC_REQUEST);
   }
 
-  isolate->counters()->stack_interrupts()->Increment();
-  if (stack_guard->IsRuntimeProfilerTick()) {
-    isolate->counters()->runtime_profiler_ticks()->Increment();
-    stack_guard->Continue(RUNTIME_PROFILER_TICK);
-    isolate->runtime_profiler()->OptimizeNow();
+  if (stack_guard->IsCodeReadyEvent()) {
+    ASSERT(FLAG_parallel_recompilation);
+    if (FLAG_trace_parallel_recompilation) {
+      PrintF("  ** CODE_READY event received.\n");
+    }
+    stack_guard->Continue(CODE_READY);
   }
+  if (!stack_guard->IsTerminateExecution() &&
+      !FLAG_manual_parallel_recompilation) {
+    isolate->optimizing_compiler_thread()->InstallOptimizedFunctions();
+  }
+
+  isolate->counters()->stack_interrupts()->Increment();
+  isolate->counters()->runtime_profiler_ticks()->Increment();
+  isolate->runtime_profiler()->OptimizeNow();
 #ifdef ENABLE_DEBUGGER_SUPPORT
   if (stack_guard->IsDebugBreak() || stack_guard->IsDebugCommand()) {
     DebugBreakHelper();
@@ -903,5 +945,6 @@ MaybeObject* Execution::HandleStackGuardInterrupt() {
   }
   return isolate->heap()->undefined_value();
 }
+
 
 } }  // namespace v8::internal

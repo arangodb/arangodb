@@ -120,7 +120,7 @@ namespace triagens {
 /// @brief get the underlying collection's id
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_voc_cid_t cid () {
+        inline TRI_voc_cid_t cid () const {
           return this->_cid;
         }
 

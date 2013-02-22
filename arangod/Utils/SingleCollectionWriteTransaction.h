@@ -174,7 +174,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a single edge within a transaction, using shaped json
+/// @brief create a single document within a transaction, using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
         int createDocument (TRI_voc_key_t key,

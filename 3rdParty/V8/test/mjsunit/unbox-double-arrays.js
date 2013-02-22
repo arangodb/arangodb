@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -28,6 +28,8 @@
 // Test dictionary -> double elements -> dictionary elements round trip
 
 // Flags: --allow-natives-syntax --unbox-double-arrays --expose-gc
+// Flags: --noparallel-recompilation
+
 var large_array_size = 100000;
 var approx_dict_to_elements_threshold = 70000;
 
@@ -278,7 +280,8 @@ function testOneArrayType(allocator) {
                       expected_array_value(7));
 
   %DeoptimizeFunction(test_various_loads6);
-  gc();
+  %ClearFunctionTypeFeedback(test_various_stores);
+  %ClearFunctionTypeFeedback(test_various_loads7);
 
   // Test stores for non-NaN.
   var large_array = new allocator(large_array_size);
@@ -376,7 +379,7 @@ delete large_array2[5];
 // Convert back to fast elements and make sure the contents of the array are
 // unchanged.
 large_array2[25] = new Object();
-assertTrue(%HasFastElements(large_array2));
+assertTrue(%HasFastObjectElements(large_array2));
 for (var i= 0; i < approx_dict_to_elements_threshold; i += 500 ) {
   if (i != 25 && i != 5) {
     assertEquals(expected_array_value(i), large_array2[i]);

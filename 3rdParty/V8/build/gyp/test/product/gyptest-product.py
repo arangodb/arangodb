@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,7 +11,8 @@ using the default build target.
 
 import TestGyp
 
-test = TestGyp.TestGyp()
+# Android does not support setting the build directory.
+test = TestGyp.TestGyp(formats=['!android'])
 
 test.run_gyp('product.gyp')
 test.build('product.gyp')
