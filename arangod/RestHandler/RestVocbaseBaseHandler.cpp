@@ -563,6 +563,51 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a string attribute from a JSON array
+///
+/// if the attribute is not there or not a string, this returns 0
+////////////////////////////////////////////////////////////////////////////////
+
+char const* RestVocbaseBaseHandler::extractJsonStringValue (const TRI_json_t* const json,
+                                                            char const* name) {
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    return 0;
+  }
+
+  TRI_json_t* value = TRI_LookupArrayJson(json, name);
+  if (value == 0 || value->_type != TRI_JSON_STRING) {
+    return 0;
+  }
+
+  return value->_value._string.data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a document handle
+////////////////////////////////////////////////////////////////////////////////
+
+int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
+                                             TRI_voc_cid_t& cid,
+                                             TRI_voc_key_t& key) {
+  vector<string> split;
+
+  split = StringUtils::split(handle, '/');
+
+  if (split.size() != 2) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  cid = _resolver.getCollectionId(split[0]);
+  if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
