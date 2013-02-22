@@ -138,7 +138,6 @@ window.arangoDocument = Backbone.Collection.extend({
       },
       error: function(data) {
         //alert(getErrorMessage(data));
-        console.log(data);
       }
     });
 
