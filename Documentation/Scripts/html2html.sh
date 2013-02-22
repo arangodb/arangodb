@@ -33,7 +33,7 @@ if test -z "$INPUT" -o -z "$OUTPUT";  then
   exit 1
 fi
 
-if test "x$FULL_HTML" == "x0";  then
+if test "x$FULL_HTML" = "x0";  then
   HEADER=""
   FOOTER=""
 else
@@ -56,7 +56,7 @@ cat $INPUT \
   | sed -e 's:<\(/*\)h1>:<\1h2>:g' \
   | sed -e 's:<span class="comment">:<span class="doxy-comment">:g' >> $OUTPUT.tmp || exit 1
 
-if test "x$KEEP_TITLE" == "x0";  then
+if test "x$KEEP_TITLE" = "x0";  then
   mv $OUTPUT.tmp $OUTPUT.tmp1 || exit 1
   sed -e 's:<div class="title">\([^<]*\)</div>:<h1>\1</h1>:g' < $OUTPUT.tmp1 >> $OUTPUT.tmp || exit 1
   rm $OUTPUT.tmp1 || exit 1
