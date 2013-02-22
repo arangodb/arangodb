@@ -508,8 +508,6 @@ unittests-bitarray-index:
 
 .PHONY: unittests-arangob
 
-if ENABLE_ARANGOB
-
 unittests-arangob:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 
@@ -530,13 +528,6 @@ unittests-arangob:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
-
-else
-
-unittests-arangob:
-	@echo
-
-endif
 
 ################################################################################
 ### @brief CPPCHECK

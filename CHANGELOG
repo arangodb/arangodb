@@ -1,3 +1,10 @@
+v1.3 (XXXX-XX-XX)
+-----------------
+
+* removed configure option --enable-arangob
+  arangob is now always included
+
+
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
 
