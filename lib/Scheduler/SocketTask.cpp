@@ -34,6 +34,7 @@
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
+#include "BasicsC/socket-utils.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -411,18 +412,36 @@ bool SocketTask::hasWriteBuffer () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
-#ifdef _WIN32    
+
+#ifdef _WIN32
   // ..........................................................................
   // The problem we have here is that this opening of the fs handle may fail.
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
-  LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
-  _commSocket.fileDescriptor = _open_osfhandle (_commSocket.fileHandle, 0);
-  if (_commSocket.fileDescriptor == -1) {
-    LOGGER_ERROR << "could not convert socket handle to socket descriptor";
+  LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
+
+  if (_commSocket.fileHandle < 1) {
+    LOGGER_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
+    _commSocket.fileHandle = -1;
+    _commSocket.fileDescriptor = -1;
     return false;
   }
+
+  _commSocket.fileDescriptor = _open_osfhandle (_commSocket.fileHandle, 0);
+  if (_commSocket.fileDescriptor == -1) {
+    LOGGER_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
+    int res = closesocket(_commSocket.fileHandle);
+    if (res != 0) {
+      res = WSAGetLastError();
+      LOGGER_ERROR("In SocketTask::setup closesocket(...) failed with error code: " << res);
+    }
+    _commSocket.fileHandle = -1;
+    _commSocket.fileDescriptor = -1;
+    return false;
+  }
+
 #endif
+
 
   this->scheduler = scheduler;
   this->loop = loop;
@@ -447,6 +466,11 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::cleanup () {
+
+  if (scheduler == 0) {
+    return;
+  }
+
   scheduler->uninstallEvent(watcher);
   watcher = 0;
   

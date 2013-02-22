@@ -129,7 +129,7 @@ bool SslClientConnection::connectSocket () {
     return false;
   }
 
-  if (SSL_set_fd(_ssl, (int) _socket.fileDescriptor) != 1) {
+  if (SSL_set_fd(_ssl, (int) _socket.fileHandle) != 1) {
     _endpoint->disconnect();
     SSL_free(_ssl);
     _ssl = 0;
@@ -181,7 +181,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket.fileDescriptor, &fdset);
+  FD_SET(_socket.fileHandle, &fdset);
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;
@@ -193,7 +193,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
     readFds = &fdset;
   }
 
-  if (select(_socket.fileDescriptor + 1, readFds, writeFds, NULL, &tv) > 0) {
+  if (select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv) > 0) {
     return true;
   }
 
