@@ -24,6 +24,7 @@ var queryView = Backbone.View.extend({
     editor.getSession().setMode("ace/mode/javascript");
     editor2.getSession().setMode("ace/mode/javascript");
     editor.resize();
+    editor2.setValue('');
     editor2.resize();
     $('#aqlEditor .ace_text-input').focus();
     return this;
@@ -47,7 +48,6 @@ var queryView = Backbone.View.extend({
       error: function(data) {
         try {
           var temp = JSON.parse(data.responseText);
-          editor2.setValue('');
           editor2.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
         }
         catch (e) {
