@@ -16,7 +16,7 @@
   border-radius: 3px 3px 0 0;
 }
 
-#aqlEditor .ace_error, #aqlEditor .ace_info {
+#aqlEditor .ace_error, #aqlEditor .ace_info, #queryOutput .ace_error, #queryOutput .ace_info {
   background:none;
 }
 
