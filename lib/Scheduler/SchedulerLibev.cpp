@@ -246,7 +246,7 @@ int SchedulerLibev::availableBackends () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerLibev::switchAllocator () {
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   static bool switched = false;
   
   if (! switched) {

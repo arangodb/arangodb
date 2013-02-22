@@ -906,7 +906,7 @@ TRI_vector_string_t TRI_Split2String (char const* source, char const* delim) {
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 
 void TRI_FreeStringZ (TRI_memory_zone_t* zone, char* value, char const* file, int line) {
   TRI_FreeZ(zone, value, file, line);

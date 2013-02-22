@@ -1,8 +1,12 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
-* removed configure option --enable-arangob
-  arangob is now always included
+* removed configure option `--enable-zone-debug`
+  memory zone debugging is now automatically turned on when compiling with ArangoDB
+  `--enable-maintainer-mode`
+
+* removed configure option `--enable-arangob`
+  arangob is now always included in the build
 
 
 v1.2.beta3 (XXXX-XX-XX)
