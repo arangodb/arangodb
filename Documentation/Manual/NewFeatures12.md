@@ -419,6 +419,14 @@ option to an appropriate value. To set the buffer to 16 MB:
 
     > arangoimp --file "input.json" --type json --max-upload-size 16777216 --collection myimport --create-collection true
 
+### Importing into edge collections
+
+ArangoDB 1.2 also allows to import documents into edge collections. Previous versions
+only supported importing documents into document collections.
+
+When importing data into edge collections, it is mandatory that all imported documents
+contain the `_from` and `_to` attributes containing valid references.
+
 ### Logging of import failures
 
 When documents are imported via the REST bulk import API (@ref HttpImport), ArangoDB 
