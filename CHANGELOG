@@ -1,3 +1,11 @@
+v1.2.beta4 (XXXX-XX-XX)
+-----------------------
+
+* fixed too greedy token consumption in AQL for negative values:
+  e.g. in the statement `RETURN { a: 1 -2 }` the minus token was consumed as part 
+  of the value `-2`, and not interpreted as the binary arithmetic operator
+
+
 v1.2.beta3 (2013-02-22)
 -----------------------
 

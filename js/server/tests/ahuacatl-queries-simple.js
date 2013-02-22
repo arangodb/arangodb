@@ -923,6 +923,28 @@ function ahuacatlQuerySimpleTestSuite () {
 
       actual = getQueryResults("FOR i IN [ 2147483647, 2147483648, -2147483648, -2147483649 /*,  9223372036854775807,*/ /*-9223372036854775808*/ ] RETURN 1");
       assertEqual([ 1, 1, 1, 1 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief negative numbers
+////////////////////////////////////////////////////////////////////////////////
+
+    testNegativeNumbers1: function () {
+      var actual;
+
+      actual = getQueryResults("FOR i IN [ -1, -2, -2.5, -5.5, -1 - 3, -5.5 - 1.5, -5.5 - (-1.5) ] RETURN i");
+      assertEqual([ -1, -2, -2.5, -5.5, -4, -7, -4 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief negative numbers
+////////////////////////////////////////////////////////////////////////////////
+    
+    testNegativeNumbers2: function () {
+      var actual;
+
+      actual = getQueryResults("FOR i IN [ 1 ] RETURN { a: -1 -3, b: 2 - 0 }");
+      assertEqual([ { a: -4, b: 2 } ], actual);
     }
 
   };
