@@ -129,10 +129,10 @@ describe ArangoDB do
         body = "{ \"name\" : \"#{cn}\" }"
               doc = ArangoDB.log_post("#{prefix}-create-illegal-name", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1207)
       end
 
@@ -544,10 +544,10 @@ describe ArangoDB do
         body = "{ \"name\" : \"#{@cn}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-collection-existing", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
   
         ArangoDB.drop_collection(@cn)
       end
@@ -832,10 +832,10 @@ describe ArangoDB do
         cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-conflict", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1207)
 
         ArangoDB.size_collection(cid).should eq(10)
@@ -902,10 +902,10 @@ describe ArangoDB do
         cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-conflict", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1207)
 
         ArangoDB.drop_collection(cn)
