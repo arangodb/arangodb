@@ -117,12 +117,14 @@
 /* ************************************************************************** */
 
 #content div.arangodb div.restheader {
+  font-size: 18px;
   font-family: monospace,fixed;
   border-bottom: 1px dotted;
   margin-bottom: 14px;
 }
 
 #content div.arangodb div.restheaderremark {
+  font-size: 18px;
   float: right;
   font-family: "Helvetica",sans-serif;
 }
