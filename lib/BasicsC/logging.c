@@ -396,6 +396,7 @@ static int LidCompare (void const* l, void const* r) {
 
 static int GenerateMessage (char* buffer,
                             size_t size,
+                            int* offset,
                             char const* func,
                             char const* file,
                             int line,
@@ -409,6 +410,9 @@ static int GenerateMessage (char* buffer,
 
   char const* ll;
   bool sln;
+
+  // we store the "real" beginning of the message (without any prefixes) here
+  *offset = 0;
 
   // .............................................................................
   // append the time prefix and output prefix
@@ -521,7 +525,9 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
   // append the message
   // .............................................................................
-  
+
+  // store the "real" beginning of the message (without any prefixes) in offset
+  *offset = m;  
   n = vsnprintf(buffer + m, size - m, fmt, ap);
 
   if (n < 0) {
@@ -558,6 +564,7 @@ static void OutputMessage (TRI_log_level_e level,
                            TRI_log_severity_e severity,
                            char* message,
                            size_t length,
+                           size_t offset,
                            bool copy) {
   if (! LoggingActive) {
     writeStderr(message, length);
@@ -571,7 +578,10 @@ static void OutputMessage (TRI_log_level_e level,
   }
 
   if (severity == TRI_LOG_SEVERITY_HUMAN) {
-    StoreOutput(level, time(0), message, length);
+    // we start copying the message from the given offset to skip any irrelevant
+    // or redundant message parts such as date, info etc. The offset might be 0 though.
+    assert(length >= offset);
+    StoreOutput(level, time(0), message + offset, (size_t) (length - offset));
   }
 
   TRI_LockSpin(&AppendersLock);
@@ -738,10 +748,11 @@ static void LogThread (char const* func,
                        va_list ap) {
   static const int maxSize = 100 * 1024;
   va_list ap2;
-  char buffer[2048];   // try a static buffer first
+  char buffer[2048];  // try a static buffer first
   time_t tt;
   struct tm tb;
   size_t len;
+  int offset;
   int n;
   
   // .............................................................................
@@ -755,7 +766,7 @@ static void LogThread (char const* func,
 
 
   va_copy(ap2, ap);
-  n = GenerateMessage(buffer + len, sizeof(buffer) - len, func, file, line, level, processId, threadId, fmt, ap2);
+  n = GenerateMessage(buffer + len, sizeof(buffer) - len, &offset, func, file, line, level, processId, threadId, fmt, ap2);
   va_end(ap2);
 
 
@@ -765,7 +776,7 @@ static void LogThread (char const* func,
   }
   if (n < (int) (sizeof(buffer) - len)) {
     // static buffer was big enough
-    OutputMessage(level, severity, buffer, (size_t) (n + len), true);
+    OutputMessage(level, severity, buffer, (size_t) (n + len), (size_t) (offset + len), true);
     return;
   }
 
@@ -788,7 +799,7 @@ static void LogThread (char const* func,
     }
 
     va_copy(ap2, ap);
-    m = GenerateMessage(p + len, n + 1, func, file, line, level, processId, threadId, fmt, ap2);
+    m = GenerateMessage(p + len, n + 1, &offset, func, file, line, level, processId, threadId, fmt, ap2);
     va_end(ap2);
 
     if (m == -1) {
@@ -804,7 +815,7 @@ static void LogThread (char const* func,
     else {
       // finally got a buffer big enough. p is freed in OutputMessage
       if (m + len - 1 > 0) {
-        OutputMessage(level, severity, p, (size_t) (m + len), false);
+        OutputMessage(level, severity, p, (size_t) (m + len), (size_t) (offset + len), false);
       }
 
       return;
@@ -1180,7 +1191,7 @@ void TRI_RawLog (TRI_log_level_e level,
   union { char* v; char const* c; } cnv;
   cnv.c = text;
 
-  OutputMessage(level, severity, cnv.v, length, true);
+  OutputMessage(level, severity, cnv.v, length, 0, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
