@@ -550,6 +550,10 @@ int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t* object) {
 int TRI_PushBack3ListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t* object) {
   int res;
 
+  if (object == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+
   res = TRI_PushBack2ListJson(list, object);
   TRI_Free(zone, object);
 
