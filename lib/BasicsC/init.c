@@ -60,7 +60,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseSockets();
 
   LOG_TRACE("%s", "$Revision: BASICS-C " TRIAGENS_VERSION " (c) triAGENS GmbH $");
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +73,7 @@ void TRI_ShutdownC () {
   TRI_ShutdownHashes();
   TRI_ShutdownLogging();
   TRI_ShutdownError();
+  TRI_ShutdownMemory();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

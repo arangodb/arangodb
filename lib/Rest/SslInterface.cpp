@@ -31,6 +31,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/rand.h>
 
 #include <Basics/RandomGenerator.h>
 #include <Basics/StringUtils.h>
@@ -130,7 +131,6 @@ namespace triagens {
       }
 
 
-
       void sslSHA256 (char const* inputStr, char*& outputStr, size_t& outputLen) {
         sslSHA256(inputStr, strlen(inputStr), outputStr, outputLen);
       }
@@ -180,9 +180,8 @@ namespace triagens {
       void sslBASE64 (char const* inputStr, char*& outputStr, size_t& outputLen) {
         sslBASE64(inputStr, strlen(inputStr), outputStr, outputLen);
       }
-
-
-
+      
+      
       string sslHMAC (char const* key, char const* message, size_t messageLen) {
         const EVP_MD * evp_md = EVP_sha256();
         unsigned char* md = (unsigned char*) TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
@@ -212,7 +211,30 @@ namespace triagens {
         return false;
       }
 
+      
+      int sslRand (uint64_t* value) {
+        if (! RAND_pseudo_bytes((unsigned char *) value, sizeof(uint64_t))) {
+          return 1;
+        }
 
+        return 0;
+      }
+      
+      int sslRand (int64_t* value) {
+        if (! RAND_pseudo_bytes((unsigned char *) value, sizeof(int64_t))) {
+          return 1;
+        }
+
+        return 0;
+      }
+
+      int sslRand (int32_t* value) {
+        if (! RAND_pseudo_bytes((unsigned char *) value, sizeof(int32_t))) {
+          return 1;
+        }
+
+        return 0;
+      }
 
       void salt64 (uint64_t& result) {
         string salt = SaltGenerator.random(8);

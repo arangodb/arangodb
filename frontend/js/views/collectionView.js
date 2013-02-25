@@ -27,9 +27,9 @@ var collectionView = Backbone.View.extend({
   fillModal: function() {
     this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
     $('#change-collection-name').val(this.myCollection.name);
-    $('#change-collection-id').val(this.myCollection.id);
-    $('#change-collection-type').val(this.myCollection.type);
-    $('#change-collection-status').val(this.myCollection.status);
+    $('#change-collection-id').text(this.myCollection.id);
+    $('#change-collection-type').text(this.myCollection.type);
+    $('#change-collection-status').text(this.myCollection.status);
 
     if (this.myCollection.status == 'unloaded') {
       $('#colFooter').append('<button id="load-modified-collection" class="btn">Load</button>');
@@ -99,18 +99,14 @@ var collectionView = Backbone.View.extend({
   deleteCollection: function () {
     var self = this;
     var collName = $('#change-collection-name').val();
-
-    $.ajax({
-      type: 'DELETE',
-      url: "/_api/collection/" + collName,
-      success: function () {
-        self.hideModal();
-      },
-      error: function () {
-        self.hideModal();
-        alert('Error');
-      }
-    });
+    var returnval = window.arangoCollectionsStore.deleteCollection(collName);
+    if (returnval === true) {
+      self.hideModal();
+    }
+    else {
+      self.hideModal();
+      alert("Error");
+    }
   }
 
 });

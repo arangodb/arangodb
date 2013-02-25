@@ -15,7 +15,7 @@ corresponding language API.
 
 For example:
 
-@EXAMPLE_ARANGOSH_OUTPUT{HandlingDocuments1}
+@EXAMPLE_ARANGOSH_OUTPUT{HandlingDocumentsExample1}
     db.demo.document("demo/schlonz")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
@@ -88,6 +88,14 @@ Collection Methods {#HandlingDocumentsCollectionMethods}
 @CLEARPAGE
 @anchor HandlingDocumentsRemoveByExample
 @copydetails JSF_ArangoCollection_prototype_removeByExample
+
+@CLEARPAGE
+@anchor HandlingDocumentsReplaceByExample
+@copydetails JSF_ArangoCollection_prototype_replaceByExample
+
+@CLEARPAGE
+@anchor HandlingDocumentsUpdateByExample
+@copydetails JSF_ArangoCollection_prototype_updateByExample
 
 @CLEARPAGE
 Database Methods {#HandlingDocumentsDatabaseMethods}

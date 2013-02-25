@@ -32,14 +32,8 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
-#include "ResultGenerator/OutputGenerator.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/DocumentHelper.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantBoolean.h"
-#include "Variant/VariantInt32.h"
-#include "Variant/VariantString.h"
-#include "Variant/VariantUInt64.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
 
@@ -263,30 +257,22 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const TRI_voc_cid_t cid
                                                          TRI_voc_key_t key, 
                                                          TRI_voc_rid_t rid) {
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
+  _response->setContentType("application/json; charset=utf-8");
 
-  VariantArray* result = new VariantArray();
-  result->add("error", new VariantBoolean(true));
-  result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
-  result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
-  result->add("errorMessage", new VariantString("precondition failed"));
-  // _id is safe and does not need to be JSON-encoded
-  result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key)));
-  // _rev is safe and does not need to be JSON-encoded
-  result->add("_rev", new VariantString(StringUtils::itoa(rid)));
-  // _key is safe and does not need to be JSON-encoded
-  result->add("_key", new VariantString(key));
-
-  string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
-
-  if (ok) {
-    _response->setContentType(contentType);
-  }
-  else {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "cannot generate response");
-  }
-
-  delete result;
+  // _id and _key are safe and do not need to be JSON-encoded
+  _response->body()
+    .appendText("{\"error\":true,\"code\":")  
+    .appendInteger((int32_t) HttpResponse::PRECONDITION_FAILED)
+    .appendText(",\"errorNum\":")
+    .appendInteger((int32_t) TRI_ERROR_ARANGO_CONFLICT)
+    .appendText(",\"errorMessage\":\"precondition failed\"")
+    .appendText(",\"_id\":\"") 
+    .appendText(DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key))
+    .appendText("\",\"_rev\":\"")
+    .appendText(StringUtils::itoa(rid))
+    .appendText("\",\"_key\":\"")
+    .appendText(key)
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,6 +571,51 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 
 bool RestVocbaseBaseHandler::isDirect () {
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a string attribute from a JSON array
+///
+/// if the attribute is not there or not a string, this returns 0
+////////////////////////////////////////////////////////////////////////////////
+
+char const* RestVocbaseBaseHandler::extractJsonStringValue (const TRI_json_t* const json,
+                                                            char const* name) {
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    return 0;
+  }
+
+  TRI_json_t* value = TRI_LookupArrayJson(json, name);
+  if (value == 0 || value->_type != TRI_JSON_STRING) {
+    return 0;
+  }
+
+  return value->_value._string.data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a document handle
+////////////////////////////////////////////////////////////////////////////////
+
+int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
+                                             TRI_voc_cid_t& cid,
+                                             TRI_voc_key_t& key) {
+  vector<string> split;
+
+  split = StringUtils::split(handle, '/');
+
+  if (split.size() != 2) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  cid = _resolver.getCollectionId(split[0]);
+  if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

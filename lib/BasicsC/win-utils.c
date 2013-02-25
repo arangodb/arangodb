@@ -271,13 +271,6 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
 }
 
 
-int TRI_WIN_closesocket(SOCKET s) {
-  int res;
-  res = shutdown(s,2);
-  res = closesocket(s);
-  return res;
-}
-
 int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int    fileDescriptor;

@@ -45,7 +45,7 @@ ArangoDB's User Manuals {#ArangoDBUserManual}
 - also see the @ref Glossary
 
 @ifnot XML 
-- @EXTREF{arangodb_1.0_shell_reference_card.pdf,Cheat Sheet} 
+- @EXTREF{arangodb_1.2_shell_reference_card.pdf,Cheat Sheet} 
 @endif
 
 ArangoDB's Administrator Manuals {#ArangoDBAdminManual}

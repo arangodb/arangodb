@@ -47,16 +47,34 @@ argv.pop(0)
 DEBUG = False
 
 ################################################################################
+### @brief enable debug output in JavaScript
+################################################################################
+
+JS_DEBUG = False
+
+################################################################################
 ### @brief output directory
 ################################################################################
 
 OutputDir = "/tmp/"
 
 ################################################################################
-### @brief single line arangosh output
+### @brief arangosh output
 ################################################################################
 
-ArangoshExamples = {}
+ArangoshOutput = {}
+
+################################################################################
+### @brief arangosh run
+################################################################################
+
+ArangoshRun = {}
+
+################################################################################
+### @brief arangosh output files
+################################################################################
+
+ArangoshFiles = {}
 
 ################################################################################
 ### @brief global setup for arangosh
@@ -69,7 +87,8 @@ ArangoshSetup = ""
 ################################################################################
 
 STATE_BEGIN = 0
-STATE_EXAMPLE_ARANGOSH = 1
+STATE_ARANGOSH_OUTPUT = 1
+STATE_ARANGOSH_RUN = 2
 
 state = STATE_BEGIN
 
@@ -77,46 +96,73 @@ state = STATE_BEGIN
 ### @brief parse file
 ################################################################################
 
-r1 = re.compile(r'^@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
-r2 = re.compile(r'^@END_EXAMPLE_ARANGOSH_OUTPUT')
+r1 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
+r2 = re.compile(r'^(/// )?@END_EXAMPLE_ARANGOSH_OUTPUT')
+r3 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
+r4 = re.compile(r'^(/// )?@END_EXAMPLE_ARANGOSH_RUN')
 
 name = ""
 
-STATE_NORMAL = 0
-STATE_ARANGOSH_SETUP = 1
-STATE_OUTPUT_DIR = 2
+OPTION_NORMAL = 0
+OPTION_ARANGOSH_SETUP = 1
+OPTION_OUTPUT_DIR = 2
 
-fstate = STATE_NORMAL
+fstate = OPTION_NORMAL
+strip = None
 
 for filename in argv:
     if filename == "--arangosh-setup":
-        fstate = STATE_ARANGOSH_SETUP
+        fstate = OPTION_ARANGOSH_SETUP
         continue
 
     if filename == "--output-dir":
-        fstate = STATE_OUTPUT_DIR
+        fstate = OPTION_OUTPUT_DIR
         continue
 
     ## .............................................................................
     ## input file
     ## .............................................................................
     
-    if fstate == STATE_NORMAL:
+    if fstate == OPTION_NORMAL:
         f = open(filename, "r")
         state = STATE_BEGIN
 
         for line in f:
+            if strip is None:
+                strip = ""
+
             line = line.rstrip('\n')
 
             if state == STATE_BEGIN:
                 m = r1.match(line)
 
                 if m:
-                    name = m.group(1)
-                    state = STATE_EXAMPLE_ARANGOSH
+                    strip = m.group(1)
+                    name = m.group(2)
+
+                    if name in ArangoshFiles:
+                        print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
+                        
+                    ArangoshFiles[name] = True
+                    ArangoshOutput[name] = ""
+                    state = STATE_ARANGOSH_OUTPUT
                     continue
 
-            elif state == STATE_EXAMPLE_ARANGOSH:
+                m = r3.match(line)
+
+                if m:
+                    strip = m.group(1)
+                    name = m.group(2)
+
+                    if name in ArangoshFiles:
+                        print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
+                        
+                    ArangoshFiles[name] = True
+                    ArangoshRun[name] = ""
+                    state = STATE_ARANGOSH_RUN
+                    continue
+
+            elif state == STATE_ARANGOSH_OUTPUT:
                 m = r2.match(line)
 
                 if m:
@@ -124,10 +170,21 @@ for filename in argv:
                     state = STATE_BEGIN
                     continue
 
-                if not name in ArangoshExamples:
-                    ArangoshExamples[name] = ""
+                line = line[len(strip):]
 
-                ArangoshExamples[name] += line + "\n"
+                ArangoshOutput[name] += line + "\n"
+
+            elif state == STATE_ARANGOSH_RUN:
+                m = r4.match(line)
+
+                if m:
+                    name = ""
+                    state = STATE_BEGIN
+                    continue
+
+                line = line[len(strip):]
+
+                ArangoshRun[name] += line + "\n"
 
         f.close()
 
@@ -135,8 +192,8 @@ for filename in argv:
     ## arangosh setup file
     ## .............................................................................
 
-    elif fstate == STATE_EXAMPLE_ARANGOSH:
-        fstate = STATE_NORMAL
+    elif fstate == OPTION_ARANGOSH_SETUP:
+        fstate = OPTION_NORMAL
         f = open(filename, "r")
 
         for line in f:
@@ -149,37 +206,84 @@ for filename in argv:
     ## output directory
     ## .............................................................................
 
-    elif fstate == STATE_OUTPUT_DIR:
-        fstate = STATE_NORMAL
+    elif fstate == OPTION_OUTPUT_DIR:
+        fstate = OPTION_NORMAL
         OutputDir = filename
 
 ################################################################################
-### @brief generate single line arangosh examples
+### @brief generate arangosh example
 ################################################################################
 
-def generateExampleArangosh():
+def generateArangoshOutput():
     print "var internal = require('internal');"
-    print "var ArangoshExamples = {};"
+    print "var ArangoshOutput = {};"
     print "internal.startPrettyPrint(true);"
     print "internal.stopColorPrint(true);"
+
+    if JS_DEBUG:
+        print "internal.output('%s\\n');" % ('=' * 80)
+        print "internal.output('ARANGOSH EXAMPLE\\n');"
+        print "internal.output('%s\\n');" % ('=' * 80)
 
     print
     print "(function () {\n%s}());" % ArangoshSetup
     print
     
-    for key in ArangoshExamples:
-        value = ArangoshExamples[key]
+    for key in ArangoshOutput:
+        value = ArangoshOutput[key]
 
         print "(function() {"
         print "internal.startCaptureMode();";
         print "try { var value = %s; print(value); } catch (err) { print(err); }" % value
         print "var output = internal.stopCaptureMode();";
-        print "ArangoshExamples['%s'] = output;" % key
+        print "ArangoshOutput['%s'] = output;" % key
+        if JS_DEBUG:
+            print "internal.output('%s', ':\\n', output, '\\n%s\\n');" % (key, '-' * 80)
         print "}());"
 
+    for key in ArangoshOutput:
+        print "internal.write('%s/%s.generated', ArangoshOutput['%s']);" % (OutputDir, key, key)
+
+################################################################################
+### @brief generate arangosh run
+################################################################################
+
+def generateArangoshRun():
+    print "var internal = require('internal');"
+    print "var ArangoshRun = {};"
+    print "internal.startPrettyPrint(true);"
+    print "internal.stopColorPrint(true);"
+
+    if JS_DEBUG:
+        print "internal.output('%s\\n');" % ('=' * 80)
+        print "internal.output('ARANGOSH RUN\\n');"
+        print "internal.output('%s\\n');" % ('=' * 80)
+
     print
+    print "(function () {\n%s}());" % ArangoshSetup
+    print
+    
+    for key in ArangoshRun:
+        value = ArangoshRun[key]
 
-    for key in ArangoshExamples:
-        print "internal.write('%s/%s.generated', ArangoshExamples['%s']);" % (OutputDir, key, key)
+        print "(function() {"
+        print "var output = '';"
+        print "var appender = function(text) { output += text; };"
+        print "var logCurlRequest = require('internal').appendCurlRequest(appender);"
+        print "var logJsonResponse = require('internal').appendJsonResponse(appender);"
+        print "var assert = function(a) { if (! a) internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); };" % ('#' * 80, key, '#' * 80)
+        print "try { %s } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, '#' * 80, key, '#' * 80)
+        print "ArangoshRun['%s'] = output;" % key
+        if JS_DEBUG:
+            print "internal.output('%s', ':\\n', output, '\\n%s\\n');" % (key, '-' * 80)
+        print "}());"
 
-generateExampleArangosh()
+    for key in ArangoshRun:
+        print "internal.write('%s/%s.generated', ArangoshRun['%s']);" % (OutputDir, key, key)
+
+################################################################################
+### @brief main
+################################################################################
+
+generateArangoshOutput()
+generateArangoshRun()

@@ -160,10 +160,25 @@ namespace RandomHelper {
           THROW_INTERNAL_ERROR("cannot open random source '" + path + "'");
         }
 
-        if (! TRI_SetNonBlockingSocket(fd)) {
-          THROW_INTERNAL_ERROR("cannot switch random source '" + path + "' to non-blocking");
-        }
+        // ..............................................................................
+        // Set the random number generator file to be non-blocking (not for windows)
+        // ..............................................................................
+        {    
+          #ifdef _WIN32
+            abort();
+          #else               
+            long flags = fcntl(fd, F_GETFL, 0);
+            bool ok = (flags >= 0);
+            if (ok) {
+              flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+              ok = (flags >= 0);
+            }
+            if (! ok) {
 
+              THROW_INTERNAL_ERROR("cannot switch random source '" + path + "' to non-blocking");
+            }
+          #endif
+        }  
         fillBuffer();
       }
 

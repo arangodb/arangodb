@@ -49,7 +49,6 @@ bin_arangoimp_SOURCES = \
 ################################################################################
 ### @brief program "arangob"
 ################################################################################
-if ENABLE_ARANGOB
 
 bin_arangob_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
@@ -65,8 +64,6 @@ bin_arangob_LDADD = \
 bin_arangob_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/Benchmark/arangob.cpp
-
-endif
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

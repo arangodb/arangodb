@@ -21,19 +21,12 @@ DOXYGEN_TOC = \
 ################################################################################
 
 dist_man_MANS += \
+	Documentation/man/man1/arangob.1 \
 	Documentation/man/man1/arangoimp.1 \
 	Documentation/man/man1/arangosh.1 \
         Documentation/man/man8/rcarangod.8 \
         Documentation/man/man8/arangod.8 \
         Documentation/man/man8/arango-dfdb.8 
-
-
-if ENABLE_ARANGOB        
-
-dist_man_MANS += \
-	Documentation/man/man1/arangob.1 
-
-endif
 
 ################################################################################
 ### @brief JavaScript files
@@ -49,6 +42,7 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-query.c \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
+	Doxygen/js/actions/system/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
@@ -57,7 +51,7 @@ DOXYGEN = \
 	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
-	Doxygen/js/common/modules/org/arangodb/users.c \
+	Doxygen/js/common/modules/org/arangodb/users-common.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
 	Doxygen/js/server/modules/org/arangodb/arango-database.c \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \
@@ -98,6 +92,7 @@ WIKI = \
 	HttpQuery \
 	HttpSimple \
 	HttpSystem \
+	HttpUser \
 	ImpManual \
 	ImpManualBasics \
 	ImplementorManual \
@@ -131,7 +126,6 @@ WIKI = \
 	SimpleQueries \
 	Upgrading11 \
 	Upgrading12 \
-	UserManagement \
 	UserManual \
 	UserManualActions \
 	UserManualArangosh \
@@ -304,7 +298,10 @@ examples:
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/Documentation/UserManual/*.md > /tmp/arangosh.examples
+		@srcdir@/Documentation/DbaManual/*.md \
+		@srcdir@/Documentation/UserManual/*.md \
+		@srcdir@/arangod/RestHandler/*.cpp \
+		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 

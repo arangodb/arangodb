@@ -15,36 +15,63 @@ var queryView = Backbone.View.extend({
 
   render: function() {
     $(this.el).html(this.template.text);
+    var editor = ace.edit("aqlEditor");
+    var editor2 = ace.edit("queryOutput");
+
+    editor2.setReadOnly(true);
+    editor2.setHighlightActiveLine(false);
+
+    editor.getSession().setMode("ace/mode/javascript");
+    editor2.getSession().setMode("ace/mode/javascript");
+    editor.resize();
+    editor2.setValue('');
+    editor2.resize();
+
+    $('#queryOutput').resizable({
+      handles: "n, s",
+      ghost: true,
+      stop: function () {
+        var editor2 = ace.edit("queryOutput");
+        editor2.resize();
+      }
+    });
+    $('#aqlEditor').resizable({
+      handles: "n, s",
+      ghost: true,
+      helper: "resizable-helper",
+      stop: function () {
+        var editor = ace.edit("aqlEditor");
+        editor.resize();
+      }
+    });
+
+    $('#aqlEditor .ace_text-input').focus();
     return this;
   },
   submitQuery: function() {
     var self = this;
-    var data = {query:$('#queryInput').val()};
-    var formattedJSON;
+    var editor = ace.edit("aqlEditor");
+    var data = {query: editor.getValue()};
 
-    $("#queryOutput").empty();
-    $("#queryOutput").append('<pre class="preQuery">Loading...</pre>>'); 
+    var editor2 = ace.edit("queryOutput");
 
     $.ajax({
       type: "POST",
       url: "/_api/cursor",
-      data: JSON.stringify(data), 
+      data: JSON.stringify(data),
       contentType: "application/json",
-      processData: false, 
+      processData: false,
       success: function(data) {
-        $("#queryOutput").empty();
-        var formatQuestion = true;
-        if (formatQuestion === true) {
-          $("#queryOutput").append('<pre class="preQuery"><font color=green>' + self.FormatJSON(data.result) + '</font></pre>'); 
-        }
-        else {
-          $("#queryOutput").append('<a class="querySuccess"><font color=green>' + self.JSON.stringify(data.result) + '</font></a>'); 
-        }
+        editor2.setValue(self.FormatJSON(data.result));
       },
       error: function(data) {
-        var temp = JSON.parse(data.responseText);
-        $("#queryOutput").empty();
-        $("#queryOutput").append('<a class="queryError"><font color=red>[' + temp.errorNum + '] ' + temp.errorMessage + '</font></a>'); 
+        try {
+          var temp = JSON.parse(data.responseText);
+          editor2.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+        }
+        catch (e) {
+          editor2.setValue('ERROR');
+        }
       }
     });
   },

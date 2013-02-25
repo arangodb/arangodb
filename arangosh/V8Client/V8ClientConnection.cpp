@@ -230,8 +230,14 @@ triagens::httpclient::SimpleHttpClient* V8ClientConnection::getHttpClient() {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
-                                                   map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
+                                                   map<string, string> const& headerFields,
+                                                   bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
+  }
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,8 +245,14 @@ v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& location,
-                                                      map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
+                                                      map<string, string> const& headerFields,
+                                                      bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
+  }
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +260,14 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& locatio
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
-                                                    map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
+                                                    map<string, string> const& headerFields,
+                                                    bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,8 +276,14 @@ v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
 
 v8::Handle<v8::Value> V8ClientConnection::optionsData (std::string const& location,
                                                        std::string const& body,
-                                                       map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
+                                                       map<string, string> const& headerFields,
+                                                       bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_OPTIONS, location, body, headerFields);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,8 +292,14 @@ v8::Handle<v8::Value> V8ClientConnection::optionsData (std::string const& locati
 
 v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
                                                     std::string const& body,
-                                                    map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
+                                                    map<string, string> const& headerFields,
+                                                    bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
+  }
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,8 +308,14 @@ v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
 
 v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
                                                    std::string const& body, 
-                                                   map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
+                                                   map<string, string> const& headerFields,
+                                                   bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,8 +324,14 @@ v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
 
 v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location,
                                                      std::string const& body, 
-                                                     map<string, string> const& headerFields) {
-  return requestData(HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
+                                                     map<string, string> const& headerFields,
+                                                     bool raw) {
+  if (raw) {
+    return requestDataRaw(HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
+  }
+  else {
+    return requestData(HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,6 +454,113 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
 
       return scope.Close(result);
     }        
+  }      
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a request and returns raw response
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpRequestType method,
+                                                          string const& location,
+                                                          string const& body,
+                                                          map<string, string> const& headerFields) {
+  v8::HandleScope scope;
+
+  _lastErrorMessage = "";
+  _lastHttpReturnCode = 0;
+      
+  if (_httpResult) {
+    delete _httpResult;
+  }
+      
+  if (body.empty()) {
+    _httpResult = _client->request(method, location, 0, 0, headerFields);
+  }
+  else {
+    _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
+  }
+
+  if (!_httpResult->isComplete()) {
+    // not complete
+    _lastErrorMessage = _client->getErrorMessage();
+        
+    if (_lastErrorMessage.empty()) {
+      _lastErrorMessage = "Unknown error";
+    }
+        
+    _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
+        
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
+                
+    int errorNumber = 0;
+
+    switch (_httpResult->getResultType()) {
+      case (SimpleHttpResult::COULD_NOT_CONNECT) :
+        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
+        break;
+            
+      case (SimpleHttpResult::READ_ERROR) :
+        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
+        break;
+
+      case (SimpleHttpResult::WRITE_ERROR) :
+        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
+        break;
+
+      default:
+        errorNumber = TRI_SIMPLE_CLIENT_UNKNOWN_ERROR;
+        break;
+    }        
+        
+    result->Set(v8::String::New("errorNum"), v8::Integer::New(errorNumber));
+    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));        
+
+    return scope.Close(result);
+  }
+  else {
+    // complete        
+    _lastHttpReturnCode = _httpResult->getHttpReturnCode();
+        
+    // create raw response
+    v8::Handle<v8::Object> result = v8::Object::New();        
+
+    result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
+
+    if (_lastHttpReturnCode >= 400) {
+      string returnMessage(_httpResult->getHttpReturnMessage());
+
+      result->Set(v8::String::New("error"), v8::Boolean::New(true));
+      result->Set(v8::String::New("errorNum"), v8::Integer::New(_lastHttpReturnCode));
+      result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), returnMessage.size()));
+    }
+    else {
+      result->Set(v8::String::New("error"), v8::Boolean::New(false));
+    }
+
+    // got a body, copy it into the result
+    if (_httpResult->getBody().str().length() > 0) {
+      v8::Handle<v8::String> body = v8::String::New(_httpResult->getBody().str().c_str(), _httpResult->getBody().str().length());
+
+      result->Set(v8::String::New("body"), body);
+    }
+
+    // copy all headers
+    v8::Handle<v8::Object> headers = v8::Object::New();
+    const map<string, string>& headerFields = _httpResult->getHeaderFields();
+
+    for (map<string, string>::const_iterator i = headerFields.begin();  i != headerFields.end();  ++i) {
+      v8::Handle<v8::String> key = v8::String::New(i->first.c_str());
+      v8::Handle<v8::String> val = v8::String::New(i->second.c_str());
+
+      headers->Set(key, val);
+    }
+
+    result->Set(v8::String::New("headers"), headers);
+
+    // and returns
+    return scope.Close(result);
   }      
 }
 

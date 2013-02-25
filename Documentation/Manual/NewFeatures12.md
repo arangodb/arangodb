@@ -320,7 +320,21 @@ The `removeByExample` method returns the number of documents removed:
     arangosh> db.mycollection.removeByExample({ value: 1 });
     2
 
+The number of documents to remove can optionally be limited.
+
 The method is also available via the REST API (@ref HttpSimple).
+
+### Replace / Update by Example
+
+ArangoDB 1.2 also provides "Replace by Example" and "Update by Example" methods that 
+can be used to fully or partially update documents from a collection that match the 
+specified example. This can be used to replace document values easily with a single 
+operation.
+
+The `replaceByExample` and `updateByExaple` methods return the number of documents 
+modified. Both operations can be limited to a specific number of documents if required.
+
+Both methods are also available via the REST API (@ref HttpSimple).
 
 ### Collection revision id
 
@@ -404,6 +418,14 @@ The buffer size can be adjusted when invoking `arangoimp` by setting the `--max-
 option to an appropriate value. To set the buffer to 16 MB:
 
     > arangoimp --file "input.json" --type json --max-upload-size 16777216 --collection myimport --create-collection true
+
+### Importing into edge collections
+
+ArangoDB 1.2 also allows to import documents into edge collections. Previous versions
+only supported importing documents into document collections.
+
+When importing data into edge collections, it is mandatory that all imported documents
+contain the `_from` and `_to` attributes containing valid references.
 
 ### Logging of import failures
 

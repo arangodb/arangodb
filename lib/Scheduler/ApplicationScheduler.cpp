@@ -170,8 +170,8 @@ static SignalTask* localSignalTask;
 
   class SchedulerReporterTask : public PeriodicTask {
     public:
-      SchedulerReporterTask (Scheduler* scheduler, double _reportIntervall)
-        : Task("Scheduler-Reporter"), PeriodicTask(1.0, _reportIntervall), _scheduler(scheduler) {
+      SchedulerReporterTask (Scheduler* scheduler, double _reportInterval)
+        : Task("Scheduler-Reporter"), PeriodicTask(1.0, _reportInterval), _scheduler(scheduler) {
       }
 
     public:
@@ -257,7 +257,7 @@ static SignalTask* localSignalTask;
 
 
     if (ccTask->_seen == 0) {
-      LOGGER_INFO << shutdownMessage << ", beginning shut down sequence";
+      LOGGER_INFO(shutdownMessage << ", beginning shut down sequence");
       ccTask->_server->beginShutdown();
       ++ccTask->_seen;
       return true; 
@@ -267,7 +267,7 @@ static SignalTask* localSignalTask;
      // user is desperate to kill the server!
      // ............................................................................
 
-     LOGGER_INFO << shutdownMessage << ", terminating";
+     LOGGER_INFO(shutdownMessage << ", terminating");
      _exit(EXIT_FAILURE); // quick exit for windows
      return true;
   }
@@ -303,7 +303,7 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
     _applicationServer(applicationServer),
     _scheduler(0),
     _tasks(),
-    _reportIntervall(60.0),
+    _reportInterval(60.0),
     _multiSchedulerAllowed(true),
     _nrSchedulerThreads(4),
     _backend(0),
@@ -412,7 +412,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
 #else
     ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
 #endif
-    ("scheduler.report-interval", &_reportIntervall, "scheduler report interval")
+    ("scheduler.report-interval", &_reportInterval, "scheduler report interval")
     ("server.no-reuse-address", "do not try to reuse address")
 #ifdef TRI_HAVE_GETRLIMIT
     ("server.descriptors-minimum", &_descriptorMinimum, "minimum number of file descriptors needed to start")
@@ -583,8 +583,8 @@ void ApplicationScheduler::buildSchedulerReporter () {
     LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
 
-  if (0.0 < _reportIntervall) {
-    Task* reporter = new SchedulerReporterTask(_scheduler, _reportIntervall);
+  if (0.0 < _reportInterval) {
+    Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
 
     _scheduler->registerTask(reporter);
     _tasks.push_back(reporter);

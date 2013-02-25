@@ -1,11 +1,11 @@
-Geo Indexes {#IndexGeo}
-=======================
+Geo Indexes{#IndexGeo}
+======================
 
 @NAVIGATE_IndexGeo
 @EMBEDTOC{IndexGeoTOC}
 
-Geo Indexes {#IndexGeoIntro}
-============================
+Introduction to Geo Indexes{#IndexGeoIntro}
+===========================================
 
 This is an introduction to ArangoDB's geo indexes.
 
@@ -20,8 +20,8 @@ documents which do not fulfill these requirements.
 A geo-spatial constraint makes the same assumptions, but documents not
 fulfilling these requirements are rejected.
 
-Accessing Geo Indexes from the Shell {#IndexGeoShell}
-=====================================================
+Accessing Geo Indexes from the Shell{#IndexGeoShell}
+====================================================
 
 @anchor IndexGeoShellEnsureGeoIndex
 @copydetails JS_EnsureGeoIndexVocbaseCol
