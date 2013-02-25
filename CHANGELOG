@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* disabled DOT generation in `make doxygen`. this speeds up docs generation
+
 * renamed startup option `--dispatcher.report-intervall` to `--dispatcher.report-interval`
 
 * renamed startup option `--scheduler.report-intervall` to `--scheduler.report-interval`
