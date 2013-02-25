@@ -1,6 +1,10 @@
 v1.2.beta4 (XXXX-XX-XX)
 -----------------------
 
+* fixed dropping of indexes without collection name, e.g.
+  `db.xxx.dropIndex("123456");`
+  Dropping an index like this failed with an assertion error.
+
 * fixed issue #426: arangoimp should be able to import edges into edge collections
 
 * fixed issue #425: In case of conflict ArangoDB returns HTTP 400 Bad request 
