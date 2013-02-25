@@ -1,6 +1,10 @@
 v1.2.beta4 (XXXX-XX-XX)
 -----------------------
 
+* added server startup option `--server.disable-statistics` to turn off statistics
+  gathering without recompilation of ArangoDB.
+  This partly addresses issue #432.
+
 * fixed dropping of indexes without collection name, e.g.
   `db.xxx.dropIndex("123456");`
   Dropping an index like this failed with an assertion error.
