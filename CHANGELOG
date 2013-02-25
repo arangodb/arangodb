@@ -1,6 +1,12 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* slightly changed output of REST API method /_admin/log.
+  Previously, the log messages returned also contained the date and log level, now
+  they will only contain the log message, and no date and log level information.
+  This information can be re-created by API users from the `timestamp` and `level`
+  attributes of the result.
+
 * removed configure option `--enable-zone-debug`
   memory zone debugging is now automatically turned on when compiling with ArangoDB
   `--enable-maintainer-mode`
