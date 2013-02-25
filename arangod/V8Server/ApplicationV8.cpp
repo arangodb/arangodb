@@ -169,6 +169,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
   : ApplicationFeature("V8"),
     _startupPath(),
     _startupModules(),
+    _startupNodeModules(),
     _actionPath(),
     _useActions(true),
     _performUpgrade(false),
@@ -511,6 +512,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
+    ("javascript.package-path", &_startupNodeModules, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
@@ -534,6 +536,10 @@ bool ApplicationV8::prepare () {
   }
   else {
     LOGGER_INFO("using JavaScript modules path '" << _startupModules << "'");
+  }
+
+  if (! _startupNodeModules.empty()) {
+    LOGGER_INFO("using Node modules path '" << _startupNodeModules << "'");
   }
 
   // set up the startup loader
@@ -678,7 +684,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _startupModules);
+  TRI_InitV8Utils(context->_context, _startupModules, _startupNodeModules);
   TRI_InitV8Shell(context->_context);
 
   // set global flag before loading system files
