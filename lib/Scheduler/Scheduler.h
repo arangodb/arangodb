@@ -271,7 +271,7 @@ namespace triagens {
 /// @brief called to register a periodic event
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual EventToken installPeriodicEvent (EventLoop, Task*, double offset, double intervall) = 0;
+        virtual EventToken installPeriodicEvent (EventLoop, Task*, double offset, double interval) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rearms a periodic timer

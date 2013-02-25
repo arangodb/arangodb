@@ -1,6 +1,10 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* renamed startup option `--dispatcher.report-intervall` to `--dispatcher.report-interval`
+
+* renamed startup option `--scheduler.report-intervall` to `--scheduler.report-interval`
+
 * slightly changed output of REST API method /_admin/log.
   Previously, the log messages returned also contained the date and log level, now
   they will only contain the log message, and no date and log level information.
