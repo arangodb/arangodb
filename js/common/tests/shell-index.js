@@ -142,6 +142,34 @@ function indexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop index by id string
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndexString : function () {
+      // pick up the numeric part (starts after the slash)
+      var id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
+      var res = collection.dropIndex(collection.name() + "/" + id);
+      assertEqual(true, res);
+
+      res = collection.dropIndex(collection.name() + "/" + id);
+      assertEqual(false, res);
+
+      id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
+      res = collection.dropIndex(parseInt(id, 10));
+      assertEqual(true, res);
+
+      res = collection.dropIndex(parseInt(id, 10));
+      assertEqual(false, res);
+
+      id = collection.ensureGeoIndex("a").id.substr(cn.length + 1);
+      res = internal.db._dropIndex(collection.name() + "/" + id);
+      assertEqual(true, res);
+
+      res = internal.db._dropIndex(collection.name() + "/" + id);
+      assertEqual(false, res);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief access a non-existing index
 ////////////////////////////////////////////////////////////////////////////////
 

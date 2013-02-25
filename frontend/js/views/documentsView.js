@@ -94,7 +94,7 @@ var documentsView = Backbone.View.extend({
       "aoColumns": [
         { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
         { "sClass":"read_only arangoTooltip","bSortable": false},
-        { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
+        { "bSortable": false, "sClass": "cuttedContent rightCell"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
