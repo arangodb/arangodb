@@ -40,6 +40,13 @@ var documentView = Backbone.View.extend({
   },
   drawTable: function () {
     var self = this;
+    $(self.table).dataTable().fnAddData([
+      '<a class="add" class="notwriteable" id="addDocumentLine"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
+      '<div class="notwriteable"></div>',
+      '<div class="notwriteable"></div>',
+      '<div class="notwriteable"></div>',
+      '<div class="notwriteable"></div>'
+    ]);
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
         $(self.table).dataTable().fnAddData([
@@ -62,13 +69,6 @@ var documentView = Backbone.View.extend({
     });
     this.makeEditable();
 
-    $(self.table).dataTable().fnAddData([
-      '<a href="#new" class="add"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
-      '',
-      '',
-      '',
-      ''
-    ]);
   },
 
   addLine: function () {
@@ -156,6 +156,10 @@ var documentView = Backbone.View.extend({
     var self=this;
     var i = 0;
     $('.writeable', documentEditTable.fnGetNodes() ).each(function () {
+      var aPos = documentEditTable.fnGetPosition(this);
+      if (aPos[0] === 0) {
+        $(this).removeClass('writeable');
+      }
       if ( i == 1) {
         $(this).removeClass('writeable');
         i = 0;
@@ -167,6 +171,7 @@ var documentView = Backbone.View.extend({
     });
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
+      console.log(aPos);
       if (aPos[1] == 0) {
         documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
         self.updateLocalDocumentStorage();
