@@ -8,11 +8,34 @@ window.arangoCollections = Backbone.Collection.extend({
       },
 
       translateStatus : function (status) {
-        if (status == 2) {
+        if (status == 1) {
+          return 'new born collection';
+        }
+        else if (status == 2) {
           return 'unloaded';
         }
         else if (status == 3) {
           return 'loaded';
+        }
+        else if (status == 4) {
+          return 'in the process of being unloaded';
+        }
+        else if (status == 5) {
+          return 'deleted';
+        }
+      },
+      translateTypePicture : function (type) {
+        if (type === 'document') {
+          return "documentPicture.png";
+        }
+        else if (type === 'edge') {
+          return "edgePicture.png";
+        }
+        else if (type === 'unknown') {
+          return "unknownPicture.png";
+        }
+        else {
+          return "systemPicture.png";
         }
       },
       parse: function(response)  {
@@ -22,6 +45,7 @@ window.arangoCollections = Backbone.Collection.extend({
           val.isSystem = arangoHelper.isSystemCollection(val.name);
           val.type = arangoHelper.collectionType(val);
           val.status = that.translateStatus(val.status);
+          val.picture = that.translateTypePicture(val.type);
         });
         return response.collections;
       },

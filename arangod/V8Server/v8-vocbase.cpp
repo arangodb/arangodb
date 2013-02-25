@@ -6233,7 +6233,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
   assert(collection->_collection != 0);
 
   // extract the document identifier and revision from a string
-  if (val->IsString() || val->IsStringObject()) {
+  if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
                                    "<index-handle> must be an index-handle");
@@ -6255,14 +6255,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
     }
   }
 
-  if (collectionName == "") {
-    assert(false);
-    // no collection name passed by user
-    *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                 "collection of <index-handle> unknown");
-    return 0;
-  }
-  else {
+  if (collectionName != "") {
     if (collectionName != collection->_name) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
@@ -6271,8 +6264,6 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
       return 0;
     }
   }
-
-  assert(collectionName != "");
 
   TRI_index_t* idx = TRI_LookupIndex(collection->_collection, iid);
 
