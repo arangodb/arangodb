@@ -109,15 +109,15 @@ var documentsView = Backbone.View.extend({
                                           value.attributes.id,
                                           //value.attributes.key,
                                           //value.attributes.rev,
-<<<<<<< HEAD
-                                          '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_edit.png" width="16" height="16"></button><button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
-=======
                                           '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
->>>>>>> ee3cba8e6e520fdc9133880504ec6be446eab701
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
+	$(self.table).dataTable().fnAddData([
+										'',
+										'<a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png"class="pull-left"></img> Neu hinzuf&uuml;gen</a>',
+										''
+		]); 
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     $(".prettify").tooltip({
       placement: "top"
@@ -147,9 +147,11 @@ var documentsView = Backbone.View.extend({
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
     $('#transparentHeader').append(
+      '<div class="breadcrumb">'+
       '<a class="activeBread" href="#">Collections</a>'+
       '  >  '+
-      '<a class="disabledBread">'+name+'</a>'
+      '<a class="disabledBread">'+name+'</a>'+
+      '</div>'
     );
   },
   cutByResolution: function (string) {
