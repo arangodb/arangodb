@@ -43,14 +43,14 @@ var documentView = Backbone.View.extend({
         $(self.table).dataTable().fnAddData(["", key, self.value2html(value, true), JSON.stringify(value)]);
       }
       else {
-        $(self.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>',key, self.value2html(value), JSON.stringify(value)]);
+        $(self.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>',key, self.value2html(value), JSON.stringify(value)]);
       }
     });
     this.makeEditable();
   },
 
   addLine: function () {
-    $(this.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>', "somekey"+this.counter, this.value2html("editme"), JSON.stringify("editme")]);
+    $(this.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>', "somekey"+this.counter, this.value2html("editme"), JSON.stringify("editme")]);
     this.makeEditable();
     this.updateLocalDocumentStorage();
     this.counter++;

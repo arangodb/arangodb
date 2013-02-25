@@ -30,20 +30,20 @@
 }
 
 .odd {
-  background-color: #D3DDB8 !important;
+  background-color: /*#D3DDB8 !important*/;
 }
 
 .even {
-  background-color: rgba(255, 255, 255, 0.8) !important;
+  background-color: /*rgba(255, 255, 255, 0.8) !important*/;
 }
 
-.odd .sorting_1 {
-  background-color: #B3BF93 !important;
+/*.odd .sorting_1 {
+  background-color: none !important;
 }
 
 .even .sorting_1 {
-  background-color: #D3DDB8 !important;
-}
+  background-color: #F1F0EE !important;
+}*/
 
 #logToolbar {
   background-color: rgba(0, 0, 0, 0.05);
