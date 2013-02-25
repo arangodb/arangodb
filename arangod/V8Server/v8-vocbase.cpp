@@ -6233,7 +6233,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
   assert(collection->_collection != 0);
 
   // extract the document identifier and revision from a string
-  if (val->IsString() || val->IsStringObject()) {
+  if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
                                    "<index-handle> must be an index-handle");
