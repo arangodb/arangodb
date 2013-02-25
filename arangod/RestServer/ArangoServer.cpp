@@ -68,6 +68,7 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
+#include "Statistics/statistics.h"
 
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
@@ -366,6 +367,15 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
   ;
+  
+
+  bool disableStatistics = false;
+
+#if TRI_ENABLE_FIGURES  
+  additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+    ("server.disable-statistics", &disableStatistics, "turn off statistics gathering")
+  ;
+#endif
 
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
@@ -415,6 +425,10 @@ void ArangoServer::buildApplicationServer () {
 
   if (disableAdminInterface) {
     _applicationAdminServer->allowAdminDirectory(false);
+  }
+
+  if (disableStatistics) {
+    TRI_DisableStatistics();
   }
 
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
