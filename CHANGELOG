@@ -1,5 +1,60 @@
+v1.3 (XXXX-XX-XX)
+-----------------
+
+* disabled DOT generation in `make doxygen`. this speeds up docs generation
+
+* renamed startup option `--dispatcher.report-intervall` to `--dispatcher.report-interval`
+
+* renamed startup option `--scheduler.report-intervall` to `--scheduler.report-interval`
+
+* slightly changed output of REST API method /_admin/log.
+  Previously, the log messages returned also contained the date and log level, now
+  they will only contain the log message, and no date and log level information.
+  This information can be re-created by API users from the `timestamp` and `level`
+  attributes of the result.
+
+* removed configure option `--enable-zone-debug`
+  memory zone debugging is now automatically turned on when compiling with ArangoDB
+  `--enable-maintainer-mode`
+
+* removed configure option `--enable-arangob`
+  arangob is now always included in the build
+
+
+v1.2.beta4 (XXXX-XX-XX)
+-----------------------
+ 
+* fixed issue #426: arangoimp should be able to import edges into edge collections
+
+* fixed issue #425: In case of conflict ArangoDB returns HTTP 400 Bad request 
+  (with 1207 Error) instead of HTTP 409 Conflict
+
+* fixed too greedy token consumption in AQL for negative values:
+  e.g. in the statement `RETURN { a: 1 -2 }` the minus token was consumed as part 
+  of the value `-2`, and not interpreted as the binary arithmetic operator
+
+
 v1.2.beta3 (XXXX-XX-XX)
 -----------------------
+
+* issue #427: ArangoDB Importer Manual has no navigation links (previous|home|next)
+
+* issue #319: Documentation missing for Emergency console and incomplete for datafile debugger.
+
+* issue #370: add documentation for reloadRouting and flushServerModules
+
+* issue #393: added REST API for user management at /_api/user
+
+* issue #393, #128: added simple cryptographic functions for user actions in module "crypto":
+  * require("org/arangodb/crypto").md5()
+  * require("org/arangodb/crypto").sha256()
+  * require("org/arangodb/crypto").rand()
+
+* added replaceByExample() Javascript and REST API method
+
+* added updateByExample() Javascript and REST API method
+
+* added optional "limit" parameter for removeByExample() Javascript and REST API method
 
 * fixed issue #413
 

@@ -36,6 +36,8 @@
   db._drop("UnitTestsImportCsv2");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv2");
+  db._drop("UnitTestsImportVertex");
+  db._drop("UnitTestsImportEdge");
 })();
 
 return true;

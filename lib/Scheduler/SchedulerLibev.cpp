@@ -240,6 +240,25 @@ int SchedulerLibev::availableBackends () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the libev allocator to our own allocator
+///
+/// this is done to avoid the numerous memory problems as reported by Valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+void SchedulerLibev::switchAllocator () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  static bool switched = false;
+  
+  if (! switched) {
+    // set the libev allocator to our own allocator
+    ev_set_allocator(&TRI_WrappedReallocate); 
+
+    switched = true;
+  }
+#endif  
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -259,6 +278,8 @@ int SchedulerLibev::availableBackends () {
 SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   : Scheduler(concurrency),
     _backend(backend) {
+
+  switchAllocator();
 
   //_backend = 1;
   // setup lock
@@ -498,7 +519,7 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double intervall) {
+void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double interval) {
   PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(lookupWatcher(token));
   
   if (watcher == 0) {
@@ -506,7 +527,7 @@ void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double inte
   }
   
   ev_periodic* w = (ev_periodic*) watcher;
-  ev_periodic_set(w, offset, intervall, 0);
+  ev_periodic_set(w, offset, interval, 0);
   ev_periodic_again(watcher->loop, w);
 }
 
@@ -538,7 +559,7 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
   // likes to operate on file descriptors
   // ..........................................................................
 
-  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, socket_t socket) {
+  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, TRI_socket_t socket) {
     SocketWatcher* watcher = new SocketWatcher;
     watcher->loop = (struct ev_loop*) lookupLoop(loop);
     watcher->task = task;
@@ -553,30 +574,15 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
       flags |= EV_WRITE;
     }
   
-    // ..........................................................................
-    // The problem we have here is that this opening of the fs handle may fail.
-    // There is no mechanism to the calling function to report failure.
-    // ..........................................................................
-
-    LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
-
-    int fd = _open_osfhandle (socket, 0);
-    if (fd == -1) {
-      LOGGER_ERROR("could not convert socket handle to socket descriptor");
-      delete watcher;
-      abort();
-      // Dr. O TODO: return to calling function
-      return -1;
-    }
   
     watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
     ev_io* w = (ev_io*) watcher;
-    ev_io_init(w, socketCallback, fd, flags);
+    ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
     ev_io_start(watcher->loop, w);
     return watcher->token;
   }
 #else
-  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, socket_t fd) {
+  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, TRI_socket_t socket) {
     SocketWatcher* watcher = new SocketWatcher;
     watcher->loop = (struct ev_loop*) lookupLoop(loop);
     watcher->task = task;
@@ -593,7 +599,7 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
     }
   
     ev_io* w = (ev_io*) watcher;
-    ev_io_init(w, socketCallback, fd, flags);
+    ev_io_init(w, socketCallback, socket.fileDescriptor, flags);
     ev_io_start(watcher->loop, w);
 
     return watcher->token;

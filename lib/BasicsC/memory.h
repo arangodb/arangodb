@@ -80,7 +80,7 @@ extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__,__LINE__)
 TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line);
 #else
@@ -104,7 +104,7 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 /// @brief system memory allocation
 ///
 /// This will not add the memory zone information even when compiled with 
-/// --enable-zone-debug.
+/// --enable-maintainer-mode.
 /// Internally, this will call just malloc, and probably memset. 
 /// Using this function instead of malloc/memset allows us to track all memory 
 /// allocations easier.
@@ -116,7 +116,7 @@ void* TRI_SystemAllocate (uint64_t, bool);
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_Allocate(a,b,c) TRI_AllocateZ((a),(b),(c),__FILE__,__LINE__)
 void* TRI_AllocateZ (TRI_memory_zone_t*, uint64_t, bool, char const* file, int line);
 #else
@@ -127,7 +127,7 @@ void* TRI_Allocate (TRI_memory_zone_t*, uint64_t, bool);
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_Reallocate(a,b,c) TRI_ReallocateZ((a),(b),(c),__FILE__,__LINE__)
 void* TRI_ReallocateZ (TRI_memory_zone_t*, void*, uint64_t, char const* file, int line);
 #else
@@ -138,7 +138,7 @@ void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_Free(a,b) TRI_FreeZ((a),(b),__FILE__,__LINE__)
 void TRI_FreeZ (TRI_memory_zone_t*, void*, char const* file, int line);
 #else
@@ -151,10 +151,10 @@ void TRI_Free (TRI_memory_zone_t*, void*);
 /// this can be used to free memory that was not allocated by TRI_Allocate, but
 /// by system functions as malloc et al. This memory must not be passed to 
 /// TRI_Free because TRI_Free might subtract the memory zone from the original
-/// pointer if compiled with --enable-zone-debug.
+/// pointer if compiled with --enable-maintainer-mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_ZONE_DEBUG
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #define TRI_SystemFree(a) TRI_SystemFreeZ((a),__FILE__,__LINE__)
 void TRI_SystemFreeZ (void*, char const* file, int line);
 #else
@@ -162,10 +162,27 @@ void TRI_SystemFree (void*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapper for realloc
+///
+/// this wrapper is used together with libev, as the builtin libev allocator
+/// causes problems with Valgrind:
+/// - http://lists.schmorp.de/pipermail/libev/2012q2/001917.html
+/// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html 
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_WrappedReallocate (void*, long);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseMemory (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut down memory subsystem
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownMemory (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -50,28 +50,22 @@ var documentsView = Backbone.View.extend({
   reallyDelete: function () {
     var self = this;
     var todelete = $(self.idelement).text();
-    try {
-      $.ajax({
-        type: 'DELETE',
-        contentType: "application/json",
-        url: "/_api/document/" + todelete,
-        success: function () {
-          var row = $(self.target).closest("tr").get(0);
-          $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
-          var hash = window.location.hash.split("/");
-          var page = hash[3];
-          var collection = hash[1];
-
-          //TODO: more elegant solution...
-          $('#documentsTableID').dataTable().fnClearTable();
-          window.arangoDocumentsStore.getDocuments(collection, page);
-        }
-      });
+    var deleted = window.arangoDocumentStore.deleteDocument(todelete);
+    if (deleted === true) {
+      var row = $(self.target).closest("tr").get(0);
+      $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
+      var hash = window.location.hash.split("/");
+      var page = hash[3];
+      var collection = hash[1];
+      //TODO: more elegant solution...
+      $('#documentsTableID').dataTable().fnClearTable();
+      window.arangoDocumentsStore.getDocuments(collection, page);
+      $('#docDeleteModal').modal('hide');
     }
-    catch (e) {
+    else {
+      alert("something wrong");
+      $('#docDeleteModal').modal('hide');
     }
-    $('#docDeleteModal').modal('hide');
-
   },
   clicked: function (a) {
     if (this.alreadyClicked == true) {
@@ -88,18 +82,18 @@ var documentsView = Backbone.View.extend({
     this.collectionID = colid;
     this.currentPage = pageid;
     var documentsTable = $('#documentsTableID').dataTable({
+      "aaSorting": [[ 1, "asc" ]],
       "bFilter": false,
       "bPaginate":false,
       "bSortable": false,
+      "bSort": false,
       "bLengthChange": false,
       "bAutoWidth": false,
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
         { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
-        { "sClass":"read_only","bSortable": false},
-      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
-      //  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},
+        { "sClass":"read_only arangoTooltip","bSortable": false},
         { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
@@ -115,11 +109,19 @@ var documentsView = Backbone.View.extend({
                                           value.attributes.id,
                                           //value.attributes.key,
                                           //value.attributes.rev,
+<<<<<<< HEAD
                                           '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_edit.png" width="16" height="16"></button><button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+=======
+                                          '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
+>>>>>>> ee3cba8e6e520fdc9133880504ec6be446eab701
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+    $(".prettify").tooltip({
+      placement: "top"
+    });
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;

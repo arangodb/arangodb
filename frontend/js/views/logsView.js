@@ -116,7 +116,11 @@ var logsView = Backbone.View.extend({
         "bAutoWidth": false,
         "iDisplayLength": -1,
         "bJQueryUI": false,
-        "aoColumns": [{ "sClass":"center", "sWidth": "50px", "bSortable":false}, {"sWidth": "800px","bSortable":false, "sClass":"logContent"}],
+        "aoColumns": [
+          { "sClass":"center", "sWidth": "50px", "bSortable":false}, 
+          { "sClass":"center", "sWidth": "150px", "bSortable":false}, 
+          { "sWidth": "200px","bSortable": false, "sClass":"logContent"}
+        ],
         "oLanguage": {"sEmptyTable": "No logfiles available"}
       });
     });
@@ -129,9 +133,23 @@ var logsView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
 
+    function format (dt) {
+      var pad = function (n) { 
+        return n < 10 ? '0' + n : n 
+      };
+
+      return dt.getUTCFullYear() + '-' 
+             + pad(dt.getUTCMonth() + 1) + '-'
+             + pad(dt.getUTCDate()) + ' '
+             + pad(dt.getUTCHours()) + ':'
+             + pad(dt.getUTCMinutes()) + ':'
+             + pad(dt.getUTCSeconds());
+    }
+
     $.each(window.arangoLogsStore.models, function(key, value) {
       var convertedLog = self.convertLogStatus(value.attributes.level);
-      $('#'+self.table).dataTable().fnAddData([convertedLog, value.attributes.text]);
+      var dt = new Date(value.attributes.timestamp * 1000);
+      $('#'+self.table).dataTable().fnAddData([convertedLog, format(dt), value.attributes.text]);
     });
     try {
       this.totalAmount = this.collection.models[0].attributes.totalAmount;

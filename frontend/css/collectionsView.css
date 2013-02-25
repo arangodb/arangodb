@@ -1,6 +1,7 @@
 #newCollection {
-  margin-right: 22px;
-  margin-top: 11px;
+  margin-left: 22px;
+  margin-top: 2px;
+  margin-right: 10px;
   opacity: 0.3;
 }
 
@@ -30,7 +31,15 @@
 }
 
 .thumbnails li {
-  background-color: #FAFAFA;
+  background-color: #f4f3f3;
+  border: 8px solid #FFF;
+}
+
+.thumbnails a.add {
+	padding:40px 0;	
+	display:block;
+	font-weight:bold;
+	text-align:left;
 }
 
 .searchInput {
@@ -44,10 +53,10 @@
   height: 18px;
   line-height: 18px;
   margin-top: 3px;
-  margin-left: 18px;
+/*  margin-left: 18px;*/
   padding: 2px;
   vertical-align: middle;
-  width: 435px;
+/*  width: 435px;*/
 }
 
 #searchSubmit {
@@ -70,12 +79,26 @@
   margin-right: 0px;
   margin-left: 0px;
   margin-bottom: -10px !important;
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color:#686766;
+/*  background-color: rgba(0, 0, 0, 0.15);*/
   border-top: 1px solid #a0a0a0;
   border-bottom: 1px solid #a0a0a0;
+  color:#FFF;
+  padding:0 20px;
+}
+
+#transparentHeader a {
+	padding:10px 0;
+	display:inline-block;
+	color:#b9d375;
 }
 
 #transparentHeader i {
   margin-top: 2px;
   margin-right: 2px;
 }
+
+#transparentHeader a.disabledBread {
+	color:#fff;
+}
+

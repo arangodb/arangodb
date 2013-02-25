@@ -12,19 +12,34 @@ var newCollectionView = Backbone.View.extend({
     $('#add-collection').on('hidden', function () {
       self.hidden();
     });
+    $('#edgeFrom').hide();
+    $('#edgeTo').hide();
+    $('.modalTooltips').tooltip({
+      placement: "right"
+    });
 
     return this;
   },
 
   events: {
-    "click #save-new-collection" : "saveNewCollection"
+    "click #save-new-collection" : "saveNewCollection",
+    "click #new-collection-type" : "displayEdge"
   },
 
   hidden: function () {
     window.location.hash = "#";
   },
 
-  clearModal: function() {
+  displayEdge: function () {
+    var collType = $('#new-collection-type').val();
+    if (collType == 3) {
+      $('#edgeFrom').show();
+      $('#edgeTo').show();
+    }
+    else {
+      $('#edgeFrom').hide();
+      $('#edgeTo').hide();
+    }
   },
 
   saveNewCollection: function() {
@@ -41,32 +56,31 @@ var newCollectionView = Backbone.View.extend({
       journalSizeString = '';
     }
     else {
-      collSize = JSON.parse(collSize) * 1024 * 1024;
-      journalSizeString = ', "journalSize":' + collSize;
+      try {
+        collSize = JSON.parse(collSize) * 1024 * 1024;
+        journalSizeString = ', "journalSize":' + collSize;
+      }
+      catch (e) {
+        alert("please enter a valid number");
+        return 0;
+      }
     }
     if (collName == '') {
       alert("No collection name entered. Aborting...");
       return 0;
     }
 
-
-    $.ajax({
-      type: "POST",
-      url: "/_api/collection",
-      data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
-      contentType: "application/json",
-      processData: false,
-      success: function(data) {
-        self.hidden();
-        $("#add-collection").modal('hide');
-        alert("Collection created");
-      },
-      error: function(data) {
-        alert(data);
-        $("#add-collection").modal('hide');
-        //alert(getErrorMessage(data));
-      }
-    });
+    var returnval = window.arangoCollectionsStore.newCollection(collName, wfs, isSystem, journalSizeString, collType);
+    if (returnval === true) {
+      self.hidden();
+      $("#add-collection").modal('hide');
+      alert("Collection created");
+    }
+    else {
+      self.hidden();
+      $("#add-collection").modal('hide');
+      alert("Collection error");
+    }
 
   }
 

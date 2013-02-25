@@ -29,7 +29,7 @@ As the GCC uses a different padding for C structure under 32bit systems compared
 to 64bit systems, the 1.1 datafiles were not interchangeable. 1.2 fixes this
 problem.
 
-There is however one cave-at: If you already installed 1.2.beta1 on a 32bit
+There is however one caveat: If you already installed 1.2.beta1 on a 32bit
 system, the upgrade will no longer worker. In this case you need to export the
 data first, upgrade ArangoDB, and import the data again. There is no problem, if
 you upgrade from 1.1 to 1.2.beta2.
@@ -366,6 +366,11 @@ returned the error code `1520` (```Unable to open collection```). ArangoDB 1.2
 will instead return the standard error code `1203` (```Collection not found```),
 which is also returned by other parts of ArangoDB in case a non-existing collection
 is accessed.
+
+When a collection was created with a name that was already in use for another 
+collection, ArangoDB 1.1 returned an error code `1207` (```Duplicate name```) with
+an HTTP status code of `400` (```Bad request```). For this case, the HTTP status
+code has been changed to HTTP `409` (```Conflict```) in ArangoDB 1.2.
 
 Changes in available global variables and functions
 ===================================================

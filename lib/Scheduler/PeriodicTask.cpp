@@ -36,11 +36,11 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PeriodicTask::PeriodicTask (double offset, double intervall)
+PeriodicTask::PeriodicTask (double offset, double interval)
   : Task("PeriodicTask"),
     watcher(0),
     offset(offset),
-    intervall(intervall) {
+    interval(interval) {
 }
 
 
@@ -55,8 +55,8 @@ PeriodicTask::~PeriodicTask () {
 // Task methods
 // -----------------------------------------------------------------------------
 
-void PeriodicTask::resetTimer (double offset, double intervall) {
-  scheduler->rearmPeriodic(watcher, offset, intervall);
+void PeriodicTask::resetTimer (double offset, double interval) {
+  scheduler->rearmPeriodic(watcher, offset, interval);
 }
 
 // -----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
   
-  watcher = scheduler->installPeriodicEvent(loop, this, offset, intervall);
+  watcher = scheduler->installPeriodicEvent(loop, this, offset, interval);
   if (watcher == -1) {
     return false;
   }

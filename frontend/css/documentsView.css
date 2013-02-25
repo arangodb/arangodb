@@ -1,3 +1,11 @@
+#documentsTableID .sorting_asc, #documentsTableID .sorting, #documentsTableID .sorting_desc {
+  background: none;
+}
+
+table.dataTable thead th {
+  cursor: default !important;
+}
+
 .docleftico {
   width: 30px !important;
 }

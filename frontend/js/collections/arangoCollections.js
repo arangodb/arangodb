@@ -1,23 +1,31 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 window.arangoCollections = Backbone.Collection.extend({
+      url: '/_api/collection',
+      model: arangoCollection,
       comparator : function(model) {
         return model.get('name').toLowerCase();
       },
-      
-      url: '/_api/collection',
-      parse: function(response)  {
-          $.each(response.collections, function(key, val) {
-            if (val.status == 2) {
-              val.status = 'unloaded';
-            }
-            else if (val.status == 3) {
-              val.status = 'loaded';
-            }
-          });
-          return response.collections;
+
+      translateStatus : function (status) {
+        if (status == 2) {
+          return 'unloaded';
+        }
+        else if (status == 3) {
+          return 'loaded';
+        }
       },
-      model: arangoCollection,
+      parse: function(response)  {
+        var that = this;
+
+        $.each(response.collections, function(key, val) {
+          val.isSystem = arangoHelper.isSystemCollection(val.name);
+          val.type = arangoHelper.collectionType(val);
+          val.status = that.translateStatus(val.status);
+        });
+        return response.collections;
+      },
+
       getProperties: function (id) {
         var data2;
         $.ajax({
@@ -30,14 +38,30 @@ window.arangoCollections = Backbone.Collection.extend({
             data2 = data;
           },
           error: function(data) {
-            console.log("get properties failed");
             data2 = data;
           }
         });
         return data2;
       },
       checkCollectionName: function (name) {
-
+      },
+      newCollection: function (collName, wfs, isSystem, journalSize, collType) {
+        var returnval = false;
+        $.ajax({
+          type: "POST",
+          url: "/_api/collection",
+          data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function(data) {
+            returnval = true;
+          },
+          error: function(data) {
+            returnval = false;
+          }
+        });
+        return returnval;
       },
       renameCollection: function (id, name) {
         $.ajax({
@@ -74,7 +98,19 @@ window.arangoCollections = Backbone.Collection.extend({
         });
       },
       deleteCollection: function (id) {
-
+        var returnval = false;
+        $.ajax({
+          type: 'DELETE',
+          url: "/_api/collection/" + id,
+          async: false,
+          success: function () {
+            returnval = true;
+          },
+          error: function () {
+            returnval = false;
+          }
+        });
+        return returnval;
       },
       loadCollection: function (id) {
         $.ajax({

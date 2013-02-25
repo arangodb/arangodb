@@ -197,7 +197,7 @@ namespace triagens {
         }
         else {
           // note: changed the log level to debug. an unknown content-type does not justify a warning
-          LOGGER_DEBUG("unknown suffix = " << suffix);
+          LOGGER_TRACE("unknown suffix = " << suffix);
 
           _response->setContentType(contentType);
         }
