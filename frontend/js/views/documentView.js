@@ -29,11 +29,13 @@ var documentView = Backbone.View.extend({
   breadcrumb: function () {
     var name = window.location.hash.split("/");
     $('#transparentHeader').append(
+      '<div class="breadcrumb">'+
       '<a href="#" class="activeBread">Collections</a>'+
       '  >  '+
       '<a class="activeBread" href="#collection/'+name[1]+'/documents/1">'+name[1]+'</a>'+
       '  >  '+
-      '<a class="disabledBread">'+name[2]+'</a>'
+      '<a class="disabledBread">'+name[2]+'</a>'+
+      '</div>'
     );
   },
   drawTable: function () {
@@ -44,39 +46,39 @@ var documentView = Backbone.View.extend({
           key,
           self.value2html(value, true),
           JSON.stringify(value),
-          'edit',
+          '<i class="icon-edit"></i>',
           ""
         ]);
       }
       else {
-<<<<<<< HEAD
-        $(self.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>',key, self.value2html(value), JSON.stringify(value)]);
-=======
         $(self.table).dataTable().fnAddData([
           key,
           self.value2html(value),
           JSON.stringify(value),
-          'edit',
-          '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>'
+          '<i class="icon-edit"></i>',
+          '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
         ]);
->>>>>>> ee3cba8e6e520fdc9133880504ec6be446eab701
       }
     });
     this.makeEditable();
+
+	$(self.table).dataTable().fnAddData([
+										'<a href="#new" class="add"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
+										'',
+										''
+		]); 
+
   },
 
   addLine: function () {
-<<<<<<< HEAD
-    $(this.table).dataTable().fnAddData(['<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>', "somekey"+this.counter, this.value2html("editme"), JSON.stringify("editme")]);
-=======
     $(this.table).dataTable().fnAddData([
       "key"+arangoHelper.getRandomToken(),
       this.value2html("editme"),
       JSON.stringify("editme"),
       'edit',
-      '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/delete_icon16.png" width="16" height="16"></button>'
+      '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
     ]);
->>>>>>> ee3cba8e6e520fdc9133880504ec6be446eab701
+
     this.makeEditable();
     this.updateLocalDocumentStorage();
     $(this.table).dataTable().fnClearTable();
