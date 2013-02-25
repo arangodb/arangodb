@@ -4,7 +4,9 @@ var collectionsView = Backbone.View.extend({
 
   searchOptions: {
     searchPhrase: null,
-    excludeSystem: true
+    excludeSystem: true,
+    loaded: true,
+    unloaded: true
   },
 
   init: function () {
@@ -29,6 +31,13 @@ var collectionsView = Backbone.View.extend({
 
       if (this.searchOptions.excludeSystem && arango_collection.get('isSystem')) {
         // system collection?
+        return;
+      }
+      if (this.searchOptions.loaded === false && arango_collection.get('status') === 'loaded') {
+        return;
+      }
+
+      if (this.searchOptions.unloaded === false && arango_collection.get('status') === 'unloaded') {
         return;
       }
 
