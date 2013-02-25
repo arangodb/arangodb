@@ -37,6 +37,28 @@ var dashboardView = Backbone.View.extend({
       return chart;
     });
 
+    $('#dashboardCollectionsText').html('');
+    $('#dashboardCollectionsText').append(''
+      +'<table>'
+        +'<tr>'
+          +'<th>Total: </th>'
+          +'<th>'+this.collectionStats.totalCollections+'</th>'
+        +'</tr>'
+        +'<tr>'
+          +'<th>Loaded: </th>'
+          +'<th>'+this.collectionStats.loadedCollections+'</th>'
+        +'</tr>'
+        +'<tr>'
+          +'<th>Unloaded: </th>'
+          +'<th>'+this.collectionStats.unloadedCollections+'</th>'
+        +'</tr>'
+        +'<tr>'
+          +'<th>System: </th>'
+          +'<th>'+this.collectionStats.systemCollections+'</th>'
+        +'</tr>'
+      +'</table>'
+    );
+
   },
   updateCollectionsStats: function () {
     var self = this;
