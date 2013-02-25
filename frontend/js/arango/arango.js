@@ -25,7 +25,7 @@ arangoHelper = {
 
   isSystemCollection: function (val) {
     //return val && val.name && val.name.substr(0, 1) === '_';
-    return name.substr(0, 1) === '_';
+    return val.substr(0, 1) === '_';
   },
 
   collectionApiType: function (identifier) {

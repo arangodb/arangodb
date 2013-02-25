@@ -4,7 +4,7 @@ var collectionsView = Backbone.View.extend({
 
   searchOptions: {
     searchPhrase: null,
-    excludeSystem: false
+    excludeSystem: true
   },
 
   init: function () {
@@ -20,6 +20,8 @@ var collectionsView = Backbone.View.extend({
       searchPhrase = this.searchOptions.searchPhrase.toLowerCase();
     }
     this.collection.each(function (arango_collection) {
+      if (arango_collection.get('name').substr(0,1) === "_") {
+      }
       if (searchPhrase !== '' && arango_collection.get('name').toLowerCase().indexOf(searchPhrase) === -1) {
         // search phrase entered but current collection does not match?
         return;
