@@ -52,31 +52,32 @@ var documentView = Backbone.View.extend({
       }
       else {
         $(self.table).dataTable().fnAddData([
-          key,
-          self.value2html(value),
-          JSON.stringify(value),
-          '<i class="icon-edit"></i>',
-          '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+                                            key,
+                                            self.value2html(value),
+                                            JSON.stringify(value),
+                                            '<i class="icon-edit"></i>',
+                                            '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
         ]);
       }
     });
     this.makeEditable();
 
-	$(self.table).dataTable().fnAddData([
-										'<a href="#new" class="add"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
-										'',
-										''
-		]); 
-
+    $(self.table).dataTable().fnAddData([
+      '<a href="#new" class="add"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
+      '',
+      '',
+      '',
+      ''
+    ]);
   },
 
   addLine: function () {
     $(this.table).dataTable().fnAddData([
-      "key"+arangoHelper.getRandomToken(),
-      this.value2html("editme"),
-      JSON.stringify("editme"),
-      'edit',
-      '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+                                        "key"+arangoHelper.getRandomToken(),
+                                        this.value2html("editme"),
+                                        JSON.stringify("editme"),
+                                        'edit',
+                                        '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
     ]);
 
     this.makeEditable();
@@ -136,7 +137,7 @@ var documentView = Backbone.View.extend({
   },
 
   escaped: function (value) {
-      return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#38;");
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#38;");
   },
 
   updateLocalDocumentStorage: function () {
