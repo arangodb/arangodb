@@ -8,7 +8,8 @@
 
 .dashboardBox {
   min-height: 300px;
-  width: 100%;
+  width: 940px;
+  border: 1px solid black;
   padding-top: 10px;
   margin-bottom: 20px;
   background-color: rgba(0, 0, 0, 0.05);
@@ -19,4 +20,12 @@
   margin-top: 10px;
 }
 
+.leftBox {
+  width: 50%;
+  float: left;
+}
 
+.rightBox {
+  width: 50%;
+  float: left;
+}
