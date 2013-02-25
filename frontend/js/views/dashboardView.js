@@ -66,6 +66,8 @@ var dashboardView = Backbone.View.extend({
     var self = this;
     this.collectionStats.loadedCollections = 0;
     this.collectionStats.unloadedCollections = 0;
+    this.collectionStats.deletedCollections = 0;
+    this.collectionStats.newbornCollections = 0;
     this.collectionStats.totalCollections = this.collection.length;
 
     this.collection.each(function (arango_collection) {
@@ -78,11 +80,11 @@ var dashboardView = Backbone.View.extend({
       else if (arango_collection.get('status') === 'unloaded') {
         self.collectionStats.unloadedCollections++;
       }
-      else if (arango_collection.get('name').substr(0,1) === "_") {
-        self.collectionStats.systemCollections++;
-      }
       else if (arango_collection.get('status') === 'deleted') {
         self.collectionStats.deletedCollections++;
+      }
+      if (arango_collection.get('name').substr(0,1) === "_") {
+        self.collectionStats.systemCollections++;
       }
     });
   },
