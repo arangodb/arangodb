@@ -6255,14 +6255,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
     }
   }
 
-  if (collectionName == "") {
-    assert(false);
-    // no collection name passed by user
-    *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                 "collection of <index-handle> unknown");
-    return 0;
-  }
-  else {
+  if (collectionName != "") {
     if (collectionName != collection->_name) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
@@ -6271,8 +6264,6 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
       return 0;
     }
   }
-
-  assert(collectionName != "");
 
   TRI_index_t* idx = TRI_LookupIndex(collection->_collection, iid);
 
