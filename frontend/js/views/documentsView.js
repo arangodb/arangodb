@@ -116,7 +116,7 @@ var documentsView = Backbone.View.extend({
                                           //value.attributes.key,
                                           //value.attributes.rev,
                                           '<pre class=prettify>' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_edit.png" width="16" height="16"></button><button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
