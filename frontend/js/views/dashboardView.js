@@ -5,7 +5,9 @@ var dashboardView = Backbone.View.extend({
     totalCollections: 0,
     loadedCollections: 0,
     unloadedCollections: 0,
-    systemCollections: 0
+    systemCollections: 0,
+    deletedCollections: 0,
+    newbornCollections: 0
   },
 
   init: function () {
@@ -64,20 +66,27 @@ var dashboardView = Backbone.View.extend({
     var self = this;
     this.collectionStats.loadedCollections = 0;
     this.collectionStats.unloadedCollections = 0;
+    this.collectionStats.deletedCollections = 0;
+    this.collectionStats.newbornCollections = 0;
     this.collectionStats.totalCollections = this.collection.length;
 
     this.collection.each(function (arango_collection) {
-      if (arango_collection.get('status') === 'loaded') {
+      if (arango_collection.get('status') === 'new born collection') {
+        self.collectionStats.newbornCollections++;
+      }
+      else if (arango_collection.get('status') === 'loaded') {
         self.collectionStats.loadedCollections++;
       }
-      if (arango_collection.get('status') === 'unloaded') {
+      else if (arango_collection.get('status') === 'unloaded') {
         self.collectionStats.unloadedCollections++;
+      }
+      else if (arango_collection.get('status') === 'deleted') {
+        self.collectionStats.deletedCollections++;
       }
       if (arango_collection.get('name').substr(0,1) === "_") {
         self.collectionStats.systemCollections++;
       }
     });
-    console.log(this.collectionStats);
   },
   formatCollectionsStats: function () {
     return [{
@@ -98,6 +107,14 @@ var dashboardView = Backbone.View.extend({
         {
           "label" : "system",
           "value" : this.collectionStats.systemCollections
+        },
+        {
+          "label" : "new born",
+          "value" : this.collectionStats.newbornCollections
+        },
+        {
+          "label" : "deleted",
+          "value" : this.collectionStats.deletedCollections
         }
       ]
     }]

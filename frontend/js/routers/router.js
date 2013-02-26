@@ -20,6 +20,10 @@ $(document).ready(function() {
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
 
+      window.dashboardView = new window.dashboardView({
+        collection: window.arangoCollectionsStore
+      });
+
       window.documentsView = new window.documentsView({
         collection: window.arangoDocuments,
       });
@@ -139,19 +143,15 @@ $(document).ready(function() {
       var self = this;
       window.arangoCollectionsStore.fetch({
         success: function () {
-          window.dashboardView = new window.dashboardView({
-            collection: window.arangoCollectionsStore
-          });
           window.dashboardView.render();
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
-
-      }
-
-    });
-
-    window.App = new window.Router();
-    Backbone.history.start();
+    }
 
   });
+
+  window.App = new window.Router();
+  Backbone.history.start();
+
+});

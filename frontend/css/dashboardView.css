@@ -7,7 +7,7 @@
 }
 
 .dashboardBox {
-  min-height: 300px;
+  min-height: 200px;
   width: 940px;
   border: 1px solid black;
   padding-top: 10px;
@@ -21,11 +21,11 @@
 }
 
 .leftBox {
-  width: 50%;
+  width: 30%;
   float: left;
 }
 
 .rightBox {
-  width: 50%;
+  width: 70%;
   float: left;
 }

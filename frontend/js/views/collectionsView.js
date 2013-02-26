@@ -17,9 +17,6 @@ var collectionsView = Backbone.View.extend({
   render: function () {
     $(this.el).html(this.template.text);
 
-	$('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left"></img> Neu hinzufuegen</a></li>'
-	);
-
     var searchPhrase = '';
     if (this.searchOptions.searchPhrase !== null) {
       searchPhrase = this.searchOptions.searchPhrase.toLowerCase();
@@ -48,8 +45,13 @@ var collectionsView = Backbone.View.extend({
 
     }, this);
 
+    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left"></img> Neu hinzufuegen</a></li>');
     $('#searchInput').val(this.searchOptions.searchPhrase);
     $('#searchInput').focus();
+    var val = $('#searchInput').val();
+    $('#searchInput').val('');
+    $('#searchInput').val(val);
+    
 
     return this;
   },
@@ -57,6 +59,7 @@ var collectionsView = Backbone.View.extend({
     "click .icon-info-sign" : "details",
     "blur #searchInput" : "restrictToSearchPhrase",
     "keypress #searchInput" : "restrictToSearchPhraseKey",
+    "change #searchInput" : "restrictToSearchPhrase",
     "click #searchSubmit" : "restrictToSearchPhrase"
   },
 
@@ -73,11 +76,15 @@ var collectionsView = Backbone.View.extend({
 
   restrictToSearchPhraseKey: function (e) {
     // key pressed in search box
+    var self = this;
     if (e.keyCode == 13) {
       e.preventDefault();
       // return pressed? this triggers the search
       this.search();
     }
+    setTimeout(function (){
+      self.search();
+    }, 200);
   },
 
   restrictToSearchPhrase: function () {

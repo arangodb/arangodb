@@ -12,7 +12,7 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
-    "click #plusIcon"            : "addDocument",
+    "click #plusIconDoc"            : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
@@ -115,9 +115,9 @@ var documentsView = Backbone.View.extend({
     });
 	$(self.table).dataTable().fnAddData([
 										'',
-										'<a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png"class="pull-left"></img> Neu hinzuf&uuml;gen</a>',
+										'<a id="plusIconDoc"><img id="newCollection" src="/_admin/html/img/plus_icon.png"class="pull-left"></img> Neu hinzuf&uuml;gen</a>',
 										''
-		]); 
+		]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     $(".prettify").tooltip({
       placement: "top"
