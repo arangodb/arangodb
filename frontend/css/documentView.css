@@ -11,6 +11,9 @@
   margin-top: -40px;
   padding: 20px 20px 20px 20px;
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+#tableDiv .nav-tabs > li, #sourceDiv .nav-tabs > li  {
   position: relative;
   z-index: 900;
 }
@@ -110,7 +113,6 @@
 #tableDiv .nav-tabs,
 #sourceDiv .nav-tabs {
 	margin-bottom:-1px; border-bottom:#FFFFFF solid 1px;
-	z-index:2000;
 }
 
 #tableDiv .nav-tabs > li > a,
