@@ -160,8 +160,8 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
     if (options->Has(separatorKey)) {
       separator = TRI_ObjectToString(options->Get(separatorKey));
 
-      if (separator.size() < 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
+      if (separator.size() != 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be exactly one character")));
       }
     }
 
@@ -190,7 +190,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
                     ProcessCsvAdd,
                     ProcessCsvEnd);
 
-  TRI_SetSeparatorCsvParser(&parser, (char*) separator.c_str(), separator.size());
+  TRI_SetSeparatorCsvParser(&parser, separator[0]);
   if (quote.length() > 0) {
     TRI_SetQuoteCsvParser(&parser, quote[0], true);
   }

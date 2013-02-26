@@ -133,14 +133,6 @@ namespace triagens {
       }
       
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets the eol character(s)
-      ////////////////////////////////////////////////////////////////////////////////
-
-      void setEol (string eol) {
-        _eol = eol;
-      }
-
-      ////////////////////////////////////////////////////////////////////////////////
       /// @brief sets the createCollection flag
       ///
       /// @param bool value                create the collection if it does not exist
@@ -187,6 +179,14 @@ namespace triagens {
       size_t getErrorLines () {
         return _numberError;
       }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief increase the row counter
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void incRowsRead () {
+        ++_rowsRead;
+      }
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the error message
@@ -220,7 +220,6 @@ namespace triagens {
       
       string _separator;
       string _quote;
-      string _eol;
 
       bool _createCollection; 
       bool _progress; 
@@ -228,6 +227,9 @@ namespace triagens {
       size_t _numberLines;
       size_t _numberOk;
       size_t _numberError;
+
+      size_t _rowsRead;
+      size_t _rowOffset;
       
       string _collectionName;
       triagens::basics::StringBuffer _lineBuffer;
