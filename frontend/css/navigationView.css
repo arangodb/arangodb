@@ -13,10 +13,19 @@
   color: white !important;
   box-shadow: 0 0px 0px rgba(0, 0, 0, 0.0) inset !important;
 }
+.navbar .nav > li > a:focus {
+  background-color: #333232 !important;
+}
 
-.navbar .nav > li > a:focus, .navbar .nav > li > a:hover {
-  background-color: #8AA051;
+.navbar .nav > li > a:hover {
+  background-color: #8AA051 !important;
   color: white !important
+}
+
+.dropdown-toggle, .dropdown-toggle:hover, .dropdown:hover, .dropdown:active {
+  background-color: rgba(0, 0, 0, 0) !important;
+  color: white !important;
+  margin-bottom: -8px !important;
 }
 
 body, input, textarea, .page-title span, .pingback a.url {
