@@ -35,13 +35,21 @@ var documentsView = Backbone.View.extend({
 
   prevCollection : function () {
     if (this.collectionContext.prev !== null) {
+      $('#collectionPrev').parent().removeClass('disabledPag');
       window.location.hash = this.buildCollectionLink(this.collectionContext.prev);
+    }
+    else {
+      $('#collectionPrev').parent().addClass('disabledPag');
     }
   },
 
   nextCollection : function () {
     if (this.collectionContext.next !== null) {
+      $('#collectionNext').parent().removeClass('disabledPag');
       window.location.hash = this.buildCollectionLink(this.collectionContext.next);
+    }
+    else {
+      $('#collectionNext').parent().addClass('disabledPag');
     }
   },
 
@@ -177,6 +185,12 @@ var documentsView = Backbone.View.extend({
 
     $(this.el).html(this.template.text);
     this.breadcrumb();
+    if (this.collectionContext.prev === null) {
+      $('#collectionPrev').parent().addClass('disabledPag');
+    }
+    if (this.collectionContext.next === null) {
+      $('#collectionNext').parent().addClass('disabledPag');
+    }
     return this;
   },
 
