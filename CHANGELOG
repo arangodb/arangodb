@@ -24,6 +24,8 @@ v1.3 (XXXX-XX-XX)
 v1.2.beta4 (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #435: csv parser skips data at buffer border
+
 * added server startup option `--server.disable-statistics` to turn off statistics
   gathering without recompilation of ArangoDB.
   This partly addresses issue #432.
