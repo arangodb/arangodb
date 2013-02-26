@@ -22,7 +22,7 @@
   color: white !important
 }
 
-.dropdown-toggle, .dropdown-toggle:hover, .dropdown:hover, .dropdown:active {
+.arango-nav .dropdown-toggle, .arango-nav .dropdown-toggle:hover, .arango-nav .dropdown:hover, .arango-nav .dropdown:active {
   background-color: rgba(0, 0, 0, 0) !important;
   color: white !important;
   margin-bottom: -8px !important;
@@ -47,11 +47,3 @@ body, input, textarea, .page-title span, .pingback a.url {
   height: 34px;
   padding: 0 !important;
 }
-
-/*.dropdown-toggle:hover, .dropdown-toggle:focus {
-  color: white !important;
-  height:16px !important;
-  border: 0;
-  background-color: #333232 !important;
-}
-*/

@@ -52,8 +52,8 @@ table.dataTable td {
   margin-left: 20px !important;
   width: 900px; !important;
   table-layout:fixed !important;
-    border-collapse:separate;
-    border-spacing:0 5px;
+  border-collapse:separate;
+  border-spacing:0 5px;
 }
 
 table.dataTable thead th {
