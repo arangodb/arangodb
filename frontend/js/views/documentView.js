@@ -53,7 +53,7 @@ var documentView = Backbone.View.extend({
           key,
           self.value2html(value, true),
           JSON.stringify(value),
-          '<i class="icon-edit"></i>',
+          "",
           ""
         ]);
       }
@@ -76,7 +76,7 @@ var documentView = Backbone.View.extend({
                                         "key"+arangoHelper.getRandomToken(),
                                         this.value2html("editme"),
                                         JSON.stringify("editme"),
-                                        'edit',
+                                        '<i class="icon-edit"></i>',
                                         '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
     ]);
 
