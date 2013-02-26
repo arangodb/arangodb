@@ -22,11 +22,13 @@ var documentSourceView = Backbone.View.extend({
   breadcrumb: function () {
     var name = window.location.hash.split("/");
     $('#transparentHeader').append(
+      '<div class="breadcrumb">'+
       '<a href="#" class="activeBread">Collections</a>'+
       '  >  '+
       '<a class="activeBread" href="#collection/'+name[1]+'/documents/1">'+name[1]+'</a>'+
       '  >  '+
-      '<a class="disabledBread">'+name[2]+'</a>'
+      '<a class="disabledBread">'+name[2]+'</a>'+
+      '</div>'
     );
   },
   saveSourceDoc: function() {
