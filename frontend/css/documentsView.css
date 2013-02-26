@@ -274,3 +274,11 @@ table.dataTable tr td:last-child {
     position: absolute;
     width: 0;
 }
+
+.span3 .unloaded div {
+  border-bottom: 16px solid #FF8F35;
+}
+
+.span3 .deleted div {
+  border-bottom: 16px solid red;
+}
