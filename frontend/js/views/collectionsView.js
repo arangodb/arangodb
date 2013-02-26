@@ -4,9 +4,9 @@ var collectionsView = Backbone.View.extend({
 
   searchOptions: {
     searchPhrase: null,
-    excludeSystem: true,
-    loaded: true,
-    unloaded: true
+    includeSystem: false,
+    includeLoaded: true,
+    includeUnloaded: true
   },
 
   init: function () {
@@ -16,6 +16,7 @@ var collectionsView = Backbone.View.extend({
 
   render: function () {
     $(this.el).html(this.template.text);
+    this.setFilterValues();
 
     var searchPhrase = '';
     if (this.searchOptions.searchPhrase !== null) {
@@ -29,15 +30,15 @@ var collectionsView = Backbone.View.extend({
         return;
       }
 
-      if (this.searchOptions.excludeSystem && arango_collection.get('isSystem')) {
+      if (this.searchOptions.includeSystem === false && arango_collection.get('isSystem')) {
         // system collection?
         return;
       }
-      if (this.searchOptions.loaded === false && arango_collection.get('status') === 'loaded') {
+      if (this.searchOptions.includeLoaded === false && arango_collection.get('status') === 'loaded') {
         return;
       }
 
-      if (this.searchOptions.unloaded === false && arango_collection.get('status') === 'unloaded') {
+      if (this.searchOptions.includeUnloaded === false && arango_collection.get('status') === 'unloaded') {
         return;
       }
 
@@ -60,9 +61,52 @@ var collectionsView = Backbone.View.extend({
     "blur #searchInput" : "restrictToSearchPhrase",
     "keypress #searchInput" : "restrictToSearchPhraseKey",
     "change #searchInput" : "restrictToSearchPhrase",
-    "click #searchSubmit" : "restrictToSearchPhrase"
+    "click #searchSubmit" : "restrictToSearchPhrase",
+    "click #checkSystem" : "checkSystem",
+    "click #checkLoaded" : "checkLoaded",
+    "click #checkUnloaded" : "checkUnloaded"
   },
-
+  checkSystem: function () {
+    var oldValue = this.searchOptions.includeSystem;
+    if ($('#checkSystem').is(":checked") === true) {
+      this.searchOptions.includeSystem = true;
+    }
+    else {
+      this.searchOptions.includeSystem = false;
+    }
+    if (oldValue != this.searchOptions.includeSystem) {
+      this.render();
+    }
+  },
+  checkLoaded: function () {
+    var oldValue = this.searchOptions.includeLoaded;
+    if ($('#checkLoaded').is(":checked") === true) {
+      this.searchOptions.includeLoaded = true;
+    }
+    else {
+      this.searchOptions.includeLoaded = false;
+    }
+    if (oldValue != this.searchOptions.includeLoaded) {
+      this.render();
+    }
+  },
+  checkUnloaded: function () {
+    var oldValue = this.searchOptions.includeUnloaded;
+    if ($('#checkUnloaded').is(":checked") === true) {
+      this.searchOptions.includeUnloaded = true;
+    }
+    else {
+      this.searchOptions.includeUnloaded = false;
+    }
+    if (oldValue != this.searchOptions.includeUnloaded) {
+      this.render();
+    }
+  },
+  setFilterValues: function () {
+    $('#checkLoaded').attr('checked', this.searchOptions.includeLoaded);
+    $('#checkUnloaded').attr('checked', this.searchOptions.includeUnloaded);
+    $('#checkSystem').attr('checked', this.searchOptions.includeSystem);
+  },
   search: function () {
     var searchPhrase = $('#searchInput').val().replace(/(^\s+|\s+$)/g, '');
 
