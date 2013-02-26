@@ -6,6 +6,10 @@ table.dataTable td {
   padding:12px 10px;
 }
 
+#documentAddBtn {
+  margin-left: 6px;
+}
+
 .docleftico {
   width: 30px !important;
 }
