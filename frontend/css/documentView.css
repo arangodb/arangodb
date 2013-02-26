@@ -1,17 +1,13 @@
 #tableDiv {
-  margin-top: 10px;
+  margin-top: -40px;
   padding: 20px 20px 20px 20px;
   background-color: rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 900;
 }
 
-#addDocumentLine, #sourceView {
-  margin-right: 10px;
-  margin-right: 22px;
-  opacity: 0.3;
-}
 
 #addDocumentLine:hover, #sourceView:hover{
-  opacity: 0.8;
   cursor: pointer;
 }
 

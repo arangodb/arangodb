@@ -34,6 +34,11 @@ body {
   width: 100%;
 }
 
+.form-actions {
+  background-color: #FFFFFF;
+  border:none;
+}
+
 /* ICONS */
 .icon-info-sign:hover {
   cursor: pointer;
