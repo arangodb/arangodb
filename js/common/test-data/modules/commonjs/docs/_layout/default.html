@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>CommonJS: JavaScript Standard Library</title>
+<link href="{{page.root}}css/styles.css" rel="stylesheet" type="text/css">
+<link href="{{page.root}}css/colorful.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+.content {
+	background-image: url({{page.root}}images/banner_home.jpg);
+}
+.news_wrapper {
+	margin-top: 152px;
+}
+.content-left {
+	margin-left: 42px;
+	margin-top: 180px;
+}
+{% if page.urlparts|first == "impl" %}
+.nav2 {
+	background-image: url({{page.root}}images/nav_commonjs_on.png); /*turn on the corresponding nav item*/
+}
+.content-left h1 {
+	color: #4e5d2e; /*change the color of page headers*/
+}
+.content {
+	background-image: url({{page.root}}images/banner_green.jpg); /*change the color of the bg image*/
+}
+{% endif %}
+{% if page.urlparts|first == "specs" %}
+.nav1 {
+	background-image: url({{page.root}}images/nav_js_on.png); /*turn the corresponding nav item on*/
+}
+.content-left h1 {
+	color: #266790;  /*change the color of the page headers*/
+}
+.content {
+	background-image: url({{page.root}}images/banner_blue.jpg);  /*change the color of the bg image*/
+}
+{% endif %}
+</style>
+<script type="text/javascript">
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-125377-8']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+var ga = document.createElement('script');
+ga.src = ('https:' == document.location.protocol ?
+    'https://ssl' : 'http://www') +
+    '.google-analytics.com/ga.js';
+ga.setAttribute('async', 'true');
+document.documentElement.firstChild.appendChild(ga);
+})();
+</script>
+</head>
+<body>
+<div class="header_wrapper">
+  <div class="header_bg">
+    <div class="nav_wrapper">
+      <div class="nav_div"></div>
+      <div class="nav_item nav2"><a href="{{page.root}}impl/index.html">get it</a></div>
+      <div class="nav_div"></div>
+      <div class="nav_item nav1"><a href="{{page.root}}specs/0.1.html">spec</a></div>
+      <div class="nav_div"></div>
+    </div>
+    <a href="{{page.root}}index.html"><img border="0" class="logo" src="{{page.root}}images/logo.png" width="200" height="53"></a>
+    <div class="tagline">javascript: not just for browsers any more!</div>
+  </div>
+</div>
+<div class="content_wrapper">
+  <div class="content_bg">
+    <div class="content">
+      <div class="content-left">
+        {{content}}
+      </div>
+      <div class="news_wrapper">
+        <div class="news-top">
+          <h1>Site Updates</h1>
+        </div>
+        <div class="news_items">
+          <ul>
+            <li>// Work is ongoing in fleshing out the content and bringing in new CommonJS 0.5 specs.</li>
+            <li>// Formatting has been cleaned up around the site and on the <a href="{{page.root}}specs/modules/1.0.html">Modules 1.0</a> page.</a>
+            </li>
+          </ul>
+          <br>
+          <br>
+          <h1>CommonJS Links</h1>
+    			<ul>
+    			  <li>// <a href="http://wiki.commonjs.org/">Wiki</a> (standards-in-training!)</li>
+    			  <li>// <a href="http://groups.google.com/group/commonjs/">Mailing list</a></li>
+    			  <li>// <a href="http://twitter.com/commonjs">Twitter</a></li>
+    			  <li>// <a href="irc://irc.freenode.net/commonjs">#commonjs on irc.freenode.net</a></li>
+    			</ul>
+        </div>
+      </div>
+      <div class="col_level">&nbsp;</div>
+    </div>
+  </div>
+</div>
+<div class="footer_wrapper">© Copyright 2009 Kevin Dangoor and many <a href="{{page.root}}contributors.html">CommonJS contributors</a>. <a href="{{page.root}}license.html">MIT license</a>.</div>
+</body>
+</html>

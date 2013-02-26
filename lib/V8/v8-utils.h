@@ -166,8 +166,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context>, std::string const&);
-
+void TRI_InitV8Utils (v8::Handle<v8::Context>,
+                      std::string const& modules,
+                      std::string const& nodes);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
