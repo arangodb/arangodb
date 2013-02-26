@@ -81,7 +81,6 @@ var documentView = Backbone.View.extend({
     ]);
 
     this.makeEditable();
-    this.updateLocalDocumentStorage();
     $(this.table).dataTable().fnClearTable();
     this.drawTable();
   },
@@ -145,8 +144,12 @@ var documentView = Backbone.View.extend({
     var result = {};
 
     for (row in data) {
-      var row_data = data[row];
-      result[row_data[0]] = JSON.parse(row_data[2]);
+      console.log(data);
+      //Exclude "add-collection" row
+      if (row !== '0') {
+        var row_data = data[row];
+        result[row_data[0]] = JSON.parse(row_data[2]);
+      }
     }
     window.arangoDocumentStore.updateLocalDocument(result);
     this.saveDocument();
@@ -175,6 +178,7 @@ var documentView = Backbone.View.extend({
       if (aPos[1] == 0) {
         documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
         self.updateLocalDocumentStorage();
+          console.log("hit 1");
         return value;
       }
       if (aPos[1] == 1) {
@@ -188,6 +192,7 @@ var documentView = Backbone.View.extend({
           // change update hidden row
           documentEditTable.fnUpdate(JSON.stringify(test), aPos[0], aPos[1] + 1);
           self.updateLocalDocumentStorage();
+          console.log("hit 2");
           // return visible row
           return self.value2html(test);
         }
