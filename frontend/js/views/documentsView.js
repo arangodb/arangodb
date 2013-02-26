@@ -20,8 +20,6 @@ var documentsView = Backbone.View.extend({
 
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
-    "click #plusIconDoc"         : "addDocument",
-    "click #documentAddBtn"      : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
