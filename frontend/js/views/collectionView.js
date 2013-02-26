@@ -22,7 +22,7 @@ var collectionView = Backbone.View.extend({
     "click #unload-modified-collection" :    "unloadCollection"
   },
   hidden: function () {
-    window.location.hash = "#";
+    window.location.hash = "#collection/";
   },
   fillModal: function() {
     this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;

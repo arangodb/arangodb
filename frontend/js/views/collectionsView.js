@@ -19,7 +19,8 @@ var collectionsView = Backbone.View.extend({
 
     $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left"></img>Add Collection</a></li>');
     $('#searchInput').val(searchOptions.searchPhrase);
-    $('#searchInput').focus();
+    // to discuss
+    //$('#searchInput').focus();
     var val = $('#searchInput').val();
     $('#searchInput').val('');
     $('#searchInput').val(val);
