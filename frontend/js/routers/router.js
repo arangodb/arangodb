@@ -84,6 +84,7 @@ $(document).ready(function() {
       this.newCollectionView.render();
     },
     documents: function(colid, pageid) {
+      window.documentsView.colid = colid;
       window.documentsView.render();
       window.arangoDocumentsStore.getDocuments(colid, pageid);
       if (!window.documentsView) {
