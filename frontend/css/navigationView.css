@@ -39,9 +39,10 @@ body, input, textarea, .page-title span, .pingback a.url {
   padding: 0 !important;
 }
 
-.dropdown-toggle:hover, .dropdown-toggle:focus {
+/*.dropdown-toggle:hover, .dropdown-toggle:focus {
   color: white !important;
   height:16px !important;
   border: 0;
   background-color: #333232 !important;
 }
+*/

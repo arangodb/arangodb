@@ -29,13 +29,15 @@
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-
+  width: 264px;
   color: #fff;
   border: 0;
   background:#676665;
   padding: 4px 8px;
   margin:0;
   text-align:left;
+  position:absolute;
+  bottom:0px;
 }
 
 .thumbnail {
