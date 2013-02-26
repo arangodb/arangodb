@@ -1,8 +1,6 @@
 #sourceEditor {
   height: 400px;
   width: 900px;
-/*  margin-left: 20px;
-  margin-top: 30px;*/
   overflow:hidden;
   padding-bottom: 20px;
   border: 1px solid #A0A0A0;
@@ -25,11 +23,6 @@
   margin-top: -40px;
   padding: 20px 20px 20px 20px;
   min-height: 400px;
-  position: relative;
-  z-index: 900;
-
-/*  background-color: rgba(0, 0, 0, 0.05);*/
-  
 }
 
 .sourceBox {
