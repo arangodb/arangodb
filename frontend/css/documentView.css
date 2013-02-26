@@ -5,9 +5,9 @@
 }
 
 #addDocumentLine, #sourceView {
-  float:right;
+/*  float:right;*/
   margin-right: 10px;
-  margin-top: 11px;
+/*  margin-top: 11px;*/
   margin-right: 22px;
   opacity: 0.3;
 }
@@ -105,13 +105,16 @@
 	border:none;
 }
 
-#tableDiv .nav-tabs {
+#tableDiv .nav-tabs,
+#sourceDiv .nav-tabs {
 	margin-bottom:-1px; border-bottom:#FFFFFF solid 1px;
 	z-index:2000;
 }
 
 #tableDiv .nav-tabs > li > a,
-#tableDiv .nav-tabs > li:hover > a {
+#tableDiv .nav-tabs > li:hover > a,
+#sourceDiv .nav-tabs > li > a,
+#sourceDiv .nav-tabs > li:hover > a {
     background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3);
     border-top: 1px solid #F3EFEC;
     border-left: 1px solid #F3EFEC;
@@ -120,7 +123,9 @@
 }
 
 #tableDiv .nav-tabs > li.active > a,
-#tableDiv .nav-tabs > li:hover.active > a {
+#tableDiv .nav-tabs > li:hover.active > a,
+#sourceDiv .nav-tabs > li.active > a,
+#sourceDiv .nav-tabs > li:hover.active > a {
 	background: #FFF;
     border: 1px solid #FFF;
 }
