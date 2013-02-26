@@ -4,12 +4,20 @@ var documentsView = Backbone.View.extend({
   documentsPerPage: 10,
   totalPages: 1,
 
+  collectionContext : {
+    prev: null,
+    next: null
+  },
+
   alreadyClicked: false,
 
   el: '#content',
   table: '#documentsTableID',
 
   events: {
+    "click #collectionPrev"      : "prevCollection",
+    "click #collectionNext"      : "nextCollection",
+
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
     "click #plusIconDoc"         : "addDocument",
@@ -20,6 +28,23 @@ var documentsView = Backbone.View.extend({
     "click #documents_next"      : "nextDocuments",
     "click #confirmDeleteBtn"    : "confirmDelete"
   },
+
+  buildCollectionLink : function (collection) {
+    return "#collection/" + encodeURIComponent(collection.get('name')) + '/documents/1';
+  },
+
+  prevCollection : function () {
+    if (this.collectionContext.prev !== null) {
+      window.location.hash = this.buildCollectionLink(this.collectionContext.prev);
+    }
+  },
+
+  nextCollection : function () {
+    if (this.collectionContext.next !== null) {
+      window.location.hash = this.buildCollectionLink(this.collectionContext.next);
+    }
+  },
+
   addDocument: function () {
     var collid  = window.location.hash.split("/")[1];
     window.arangoDocumentStore.addDocument(collid);
@@ -148,7 +173,7 @@ var documentsView = Backbone.View.extend({
   template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),
 
   render: function() {
-    var position = window.arangoCollectionsStore.getPosition(this.colid);
+    this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
     $(this.el).html(this.template.text);
     this.breadcrumb();
@@ -160,7 +185,7 @@ var documentsView = Backbone.View.extend({
     $('#transparentHeader').append(
       '<div class="breadcrumb">'+
       '<a class="activeBread" href="#">Collections</a>'+
-      '  >  '+
+      '  &gt;  '+
       '<a class="disabledBread">'+name+'</a>'+
       '</div>'
     );
