@@ -148,10 +148,13 @@ var documentsView = Backbone.View.extend({
   template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),
 
   render: function() {
+    var position = window.arangoCollectionsStore.getPosition(this.colid);
+
     $(this.el).html(this.template.text);
     this.breadcrumb();
     return this;
   },
+
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
     $('#transparentHeader').append(
