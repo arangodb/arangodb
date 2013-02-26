@@ -1,0 +1,19 @@
+.modal-body .icon-info-sign {
+  margin-left: 10px;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  opacity: 0.7;
+}
+
+.modal-body .icon-info-sign:hover {
+  opacity: 1;
+}
+
+.modal-body table {
+  margin-left: 15px;
+}
+
+.modal-body .accordion-inner {
+  margin-left: 0;
+  padding-left: 0;
+}
