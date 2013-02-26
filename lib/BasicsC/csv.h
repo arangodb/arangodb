@@ -49,6 +49,7 @@ extern "C" {
 
 typedef enum {
   TRI_CSV_PARSER_BOL,
+  TRI_CSV_PARSER_BOL2,
   TRI_CSV_PARSER_BOF,
   TRI_CSV_PARSER_WITHIN_FIELD,
   TRI_CSV_PARSER_WITHIN_QUOTED_FIELD,
@@ -66,11 +67,8 @@ typedef struct TRI_csv_parser_s {
   TRI_memory_zone_t* _memoryZone;
 
   char _quote;
+  char _separator;
   bool _useQuote;
-  char* _separator;
-  size_t _separatorLength;
-  char* _eol;
-  size_t _eolLength;
 
   char* _begin;       // beginning of the input buffer
   char* _start;       // start of the unproccessed part
@@ -145,18 +143,7 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser, 
-                                char* separator,
-                                size_t separatorLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the eol character(s)
-///
-/// note that the eol string must be valid until the parser is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetEolCsvParser (TRI_csv_parser_t* parser, 
-                          char* eol,
-                          size_t eolLength);
+                                char separator);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the quote character

@@ -91,9 +91,8 @@ The command line to execute the import then is:
     arangoimp --file "data.csv" --type csv --collection "users"
 
 Note that the quote and separator characters can be adjusted via the
-`--quote` and `--separator` arguments when invoking _arangoimp_.  It
-is also possible to change the end-of-line character from the default value of
-`\n` to another value using the `--eol` argument.
+`--quote` and `--separator` arguments when invoking _arangoimp_.  The importer
+supports Windows (CRLF) and Unix (LF) line breaks.
 
 Importing TSV Data {#ImpManualBasicsTsv}
 ========================================
@@ -107,9 +106,8 @@ As with CSV, the first line in the TSV file must contain the attribute names,
 and all lines must have an identical number of values.
 
 If a different separator character or string should be used, it can be specified
-with the `--separator` argument. The end-of-line character can be adjusted
-using the `--eol` argument.
+with the `--separator` argument. 
 
 An example command line to execute the TSV import is:
 
-    arangoimp --file "data.tsv" --type tsv --collection "users" --eol "\r\n"
+    arangoimp --file "data.tsv" --type tsv --collection "users" 
