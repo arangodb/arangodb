@@ -17,3 +17,12 @@
   margin-left: 0;
   padding-left: 0;
 }
+
+.modal-body input {
+
+  width: 300px;
+}
+
+.modal-body select {
+  width: 314px;
+}
