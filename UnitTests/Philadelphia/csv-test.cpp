@@ -126,7 +126,7 @@ BOOST_FIXTURE_TEST_SUITE(CCsvTest, CCsvSetup)
 
 BOOST_AUTO_TEST_CASE (tst_csv_simple) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ",", 1);
+  TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -146,8 +146,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_simple) {
 
 BOOST_AUTO_TEST_CASE (tst_csv_crlf) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ",", 1);
-  TRI_SetEolCsvParser(&parser, (char*) CR LF, 2);
+  TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -167,7 +166,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_crlf) {
 
 BOOST_AUTO_TEST_CASE (tst_csv_whitespace) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ",", 1);
+  TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -188,7 +187,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_whitespace) {
 
 BOOST_AUTO_TEST_CASE (tst_csv_quotes1) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ",", 1);
+  TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -208,7 +207,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes1) {
 
 BOOST_AUTO_TEST_CASE (tst_csv_quotes2) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ",", 1);
+  TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -227,7 +226,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes2) {
 
 BOOST_AUTO_TEST_CASE (tst_csv_quotes_whitespace) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ",", 1);
+  TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -247,7 +246,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes_whitespace) {
 
 BOOST_AUTO_TEST_CASE (tst_tsv_simple) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) TAB, 1);
+  TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
 
   const char* tsv = 
@@ -266,7 +265,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_simple) {
 
 BOOST_AUTO_TEST_CASE (tst_tsv_whitespace) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) TAB, 1);
+  TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
 
   const char* tsv = 
@@ -287,7 +286,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_whitespace) {
 
 BOOST_AUTO_TEST_CASE (tst_tsv_quotes) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) TAB, 1);
+  TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
 
   const char* tsv = 
@@ -307,7 +306,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_quotes) {
 
 BOOST_AUTO_TEST_CASE (tst_tsv_separator) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) TAB, 1);
+  TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, ',', false);
 
   const char* tsv = 
@@ -327,8 +326,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_separator) {
 
 BOOST_AUTO_TEST_CASE (tst_tsv_crlf) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) TAB, 1);
-  TRI_SetEolCsvParser(&parser, (char*) CR LF, 2);
+  TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
 
   const char* tsv = 
@@ -347,7 +345,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_crlf) {
 
 BOOST_AUTO_TEST_CASE (tst_csv_semicolon) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ";", 1);
+  TRI_SetSeparatorCsvParser(&parser, ';');
   TRI_SetQuoteCsvParser(&parser, '"', true);
 
   const char* csv = 
@@ -363,33 +361,12 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test longer separator
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_csv_fox) {
-  INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) "FOX", 3);
-  TRI_SetQuoteCsvParser(&parser, '"', true);
-
-  const char* csv = 
-    "a FOX bFOXcFOXd FOX e f FOXg FOX hi j k FOX" LF
-    "FOX l m n FOX o p \"q r\" s FOX\"t uFOXFOX vFOX \"FOXy" LF
-    "\"FOX FOXFOX FOXFOXFOX\"FOXfox" LF;
-
-  TRI_ParseCsvString(&parser, csv);
-  BOOST_CHECK_EQUAL("0:a , b,c,d , e f ,g , hi j k ,\n1:, l m n , o p \"q r\" s ,ESCt uFOXFOX vFOX ESC,y\n2:ESCFOX FOXFOX FOXFOXFOXESC,fox\n", out.str());
-
-  TRI_DestroyCsvParser(&parser);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test semicolon separator, no quotes
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_csv_semicolon_noquote) {
   INIT_PARSER
-  TRI_SetSeparatorCsvParser(&parser, (char*) ";", 1);
-  TRI_SetEolCsvParser(&parser, (char*) CR LF, 2);
+  TRI_SetSeparatorCsvParser(&parser, ';');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
 
   const char* csv = 
