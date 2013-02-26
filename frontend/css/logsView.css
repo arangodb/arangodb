@@ -21,10 +21,8 @@
 }
 
 .logContent {
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-wrap: break-word;
+  word-break: break-all;
 }
 
 #logNav {
@@ -61,6 +59,7 @@
   background-color: transparent;
 }
 
+
 #logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
   border-bottom: 0 !important;
 }
@@ -91,6 +90,7 @@
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
   border-left:1px solid #c1bdba;
+  width: 30px !important;
 }
 
 .thirdcol {
@@ -104,6 +104,8 @@
   background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
   background-image: linear-gradient(top, #ffffff, #f5f5f5);
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+  max-width: 500px !important;
+
 }
 
 .seccol {
@@ -117,6 +119,7 @@
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
+  width: 30px !important;
 }
 
 #logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {

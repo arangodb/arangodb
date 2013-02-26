@@ -113,13 +113,13 @@ var logsView = Backbone.View.extend({
         "bLengthChange": false,
         "bDeferRender": true,
         "bProcessing": true,
-        "bAutoWidth": false,
+        "bAutoWidth": true,
         "iDisplayLength": -1,
         "bJQueryUI": false,
         "aoColumns": [
-          { "sClass":"center firstcol", "sWidth": "50px", "bSortable":false}, 
-          { "sClass":"center seccol", "sWidth": "150px", "bSortable":false}, 
-          { "sWidth": "200px","bSortable": false, "sClass":"logContent thirdcol"}
+          { "sClass":"center firstcol", "bSortable":false},
+          { "sClass":"center seccol", "bSortable":false},
+          { "bSortable": false, "sClass":"logContent thirdcol"}
         ],
         "oLanguage": {"sEmptyTable": "No logfiles available"}
       });
