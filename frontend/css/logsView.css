@@ -35,12 +35,8 @@
 
 
 
-.odd {
-  background-color: /*#D3DDB8 !important*/;
-}
-
-.even {
-  background-color: /*rgba(255, 255, 255, 0.8) !important*/;
+.sorting_1 {
+  background-color: #FBFBFB !important;
 }
 
 /*.odd .sorting_1 {
@@ -135,6 +131,7 @@ background-color: none !important;
 }
 
 #logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
+  background-color: #F4F4F4 !important;
   background-image: -moz-linear-gradient(center top , #F4F4F4, #E4E4E4);
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
