@@ -113,7 +113,7 @@ var logsView = Backbone.View.extend({
         "bLengthChange": false,
         "bDeferRender": true,
         "bProcessing": true,
-        "bAutoWidth": true,
+        "bAutoWidth": false,
         "iDisplayLength": -1,
         "bJQueryUI": false,
         "aoColumns": [
