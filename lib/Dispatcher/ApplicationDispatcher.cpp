@@ -57,8 +57,8 @@ namespace {
 
   class DispatcherReporterTask : public PeriodicTask {
     public:
-      DispatcherReporterTask (Dispatcher* dispatcher, double reportIntervall)
-        : Task("Dispatcher-Reporter"), PeriodicTask(0.0, reportIntervall), _dispatcher(dispatcher) {
+      DispatcherReporterTask (Dispatcher* dispatcher, double reportInterval)
+        : Task("Dispatcher-Reporter"), PeriodicTask(0.0, reportInterval), _dispatcher(dispatcher) {
       }
 
     public:
@@ -98,7 +98,7 @@ ApplicationDispatcher::ApplicationDispatcher (ApplicationScheduler* applicationS
     _applicationScheduler(applicationScheduler),
     _dispatcher(0),
     _dispatcherReporterTask(0),
-    _reportIntervall(60.0) {
+    _reportInterval(60.0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +180,7 @@ void ApplicationDispatcher::buildNamedQueue (string const& name, size_t nrThread
 void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>& options) {
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
-    ("dispatcher.report-intervall", &_reportIntervall, "dispatcher report intervall")
+    ("dispatcher.report-interval", &_reportInterval, "dispatcher report interval")
   ;
 }
 
@@ -288,8 +288,8 @@ void ApplicationDispatcher::buildDispatcherReporter () {
     LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
   }
 
-  if (0.0 < _reportIntervall) {
-    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportIntervall);
+  if (0.0 < _reportInterval) {
+    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportInterval);
 
     _applicationScheduler->scheduler()->registerTask(_dispatcherReporterTask);
   }

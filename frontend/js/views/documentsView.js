@@ -4,21 +4,55 @@ var documentsView = Backbone.View.extend({
   documentsPerPage: 10,
   totalPages: 1,
 
+  collectionContext : {
+    prev: null,
+    next: null
+  },
+
   alreadyClicked: false,
 
   el: '#content',
   table: '#documentsTableID',
 
   events: {
+    "click #collectionPrev"      : "prevCollection",
+    "click #collectionNext"      : "nextCollection",
+
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
-    "click #plusIcon"            : "addDocument",
+    "click #plusIconDoc"         : "addDocument",
+    "click #documentAddBtn"      : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
     "click #documents_next"      : "nextDocuments",
     "click #confirmDeleteBtn"    : "confirmDelete"
   },
+
+  buildCollectionLink : function (collection) {
+    return "#collection/" + encodeURIComponent(collection.get('name')) + '/documents/1';
+  },
+
+  prevCollection : function () {
+    if (this.collectionContext.prev !== null) {
+      $('#collectionPrev').parent().removeClass('disabledPag');
+      window.location.hash = this.buildCollectionLink(this.collectionContext.prev);
+    }
+    else {
+      $('#collectionPrev').parent().addClass('disabledPag');
+    }
+  },
+
+  nextCollection : function () {
+    if (this.collectionContext.next !== null) {
+      $('#collectionNext').parent().removeClass('disabledPag');
+      window.location.hash = this.buildCollectionLink(this.collectionContext.next);
+    }
+    else {
+      $('#collectionNext').parent().addClass('disabledPag');
+    }
+  },
+
   addDocument: function () {
     var collid  = window.location.hash.split("/")[1];
     window.arangoDocumentStore.addDocument(collid);
@@ -74,6 +108,13 @@ var documentsView = Backbone.View.extend({
     }
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
+
+    var checkData = $(this.table).dataTable().fnGetData(self);
+    if (checkData[0] === '') {
+      this.addDocument();
+      return;
+    }
+
     var rowContent = $(this.table).dataTable().fnGetData(aPos);
     window.location.hash = "#collection/" + rowContent[0];
   },
@@ -94,7 +135,7 @@ var documentsView = Backbone.View.extend({
       "aoColumns": [
         { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
         { "sClass":"read_only arangoTooltip","bSortable": false},
-        { "bSortable": false, "sClass": "cuttedContent rightCell", "sWidth": "500px"}
+        { "bSortable": false, "sClass": "cuttedContent rightCell"}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
@@ -110,9 +151,14 @@ var documentsView = Backbone.View.extend({
                                           //value.attributes.key,
                                           //value.attributes.rev,
                                           '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
-                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/doc_delete_icon16.png" width="16" height="16"></button>'
+                                          '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
+	$(self.table).dataTable().fnAddData([
+										'',
+										'<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+										'<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
+		]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     $(".prettify").tooltip({
       placement: "top"
@@ -135,16 +181,27 @@ var documentsView = Backbone.View.extend({
   template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),
 
   render: function() {
+    this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
+
     $(this.el).html(this.template.text);
     this.breadcrumb();
+    if (this.collectionContext.prev === null) {
+      $('#collectionPrev').parent().addClass('disabledPag');
+    }
+    if (this.collectionContext.next === null) {
+      $('#collectionNext').parent().addClass('disabledPag');
+    }
     return this;
   },
+
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
     $('#transparentHeader').append(
+      '<div class="breadcrumb">'+
       '<a class="activeBread" href="#">Collections</a>'+
-      '  >  '+
-      '<a class="disabledBread">'+name+'</a>'
+      '  &gt;  '+
+      '<a class="disabledBread">'+name+'</a>'+
+      '</div>'
     );
   },
   cutByResolution: function (string) {

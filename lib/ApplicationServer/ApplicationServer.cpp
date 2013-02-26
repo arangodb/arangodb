@@ -786,8 +786,8 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   ;
 
   options[OPTIONS_LOGGER + ":help-log"]
-    ("log.application", &_logApplicationName, "application name")
-    ("log.facility", &_logFacility, "facility name")
+    ("log.application", &_logApplicationName, "application name for syslog")
+    ("log.facility", &_logFacility, "facility name for syslog")
     ("log.filter", &_logFilter, "filter for debug and trace")
     ("log.format", &_logFormat, "log format")
     ("log.hostname", &_logHostName, "host name")

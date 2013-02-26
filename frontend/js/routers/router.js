@@ -17,9 +17,12 @@ $(document).ready(function() {
     },
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
-
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
+
+      window.dashboardView = new window.dashboardView({
+        collection: window.arangoCollectionsStore
+      });
 
       window.documentsView = new window.documentsView({
         collection: window.arangoDocuments,
@@ -75,24 +78,24 @@ $(document).ready(function() {
     },
     newCollection: function() {
       if (!this.newCollectionView) {
-        this.newCollectionView = new window.newCollectionView({
-        });
+        this.newCollectionView = new window.newCollectionView({});
       }
       this.newCollectionView.render();
     },
     documents: function(colid, pageid) {
-      window.documentsView.render();
-      window.arangoDocumentsStore.getDocuments(colid, pageid);
       if (!window.documentsView) {
         window.documentsView.initTable(colid, pageid);
       }
+      window.documentsView.colid = colid;
+      window.documentsView.render();
+      window.arangoDocumentsStore.getDocuments(colid, pageid);
     },
     document: function(colid, docid) {
-      window.documentView.render();
-      window.arangoDocumentStore.getDocument(colid, docid);
       if (!window.documentView) {
         window.documentView.initTable();
       }
+      window.documentView.render();
+      window.arangoDocumentStore.getDocument(colid, docid);
     },
     source: function(colid, docid) {
       window.documentSourceView.render();
@@ -107,17 +110,23 @@ $(document).ready(function() {
       }
     },
     shell: function() {
-      this.shellView = new window.shellView();
+      if (!this.shellView) {
+        this.shellView = new window.shellView();
+      }
       this.shellView.render();
       this.naviView.selectMenuItem('shell-menu');
     },
     query: function() {
-      this.queryView = new window.queryView();
+      if (!this.queryView) {
+        this.queryView = new window.queryView();
+      }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
     },
     about: function() {
-      this.aboutView = new window.aboutView();
+      if (!this.aboutView) {
+        this.aboutView = new window.aboutView();
+      }
       this.aboutView.render();
       this.naviView.selectMenuItem('about-menu');
     },
@@ -125,8 +134,6 @@ $(document).ready(function() {
       var self = this;
       window.arangoLogsStore.fetch({
         success: function () {
-          if (!window.logsView) {
-          }
           window.logsView.render();
           $('#logNav a[href="#all"]').tab('show');
           window.logsView.initLogTables();
@@ -137,9 +144,13 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('logs-menu');
     },
     dashboard: function() {
-      this.dashboardView = new window.dashboardView();
-      this.dashboardView.render();
-      this.naviView.selectMenuItem('dashboard-menu');
+      var self = this;
+      window.arangoCollectionsStore.fetch({
+        success: function () {
+          window.dashboardView.render();
+          self.naviView.selectMenuItem('dashboard-menu');
+        }
+      });
     }
 
   });

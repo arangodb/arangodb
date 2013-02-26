@@ -1,10 +1,17 @@
-<a href="#collection/<%= attributes.name %>/documents/1" class="thumbnail plain">                                                                                                                                        
-  <img src="img/database.gif" height="48" width="48" alt="" style="float:left; padding-right:20px; padding-left: 5px; padding-top: 5px; ">
-  <h5 class="collectionName"><%= attributes.name %></h5>
-    <%= attributes.status %>
-</a>
 
-<a href="#collection/<%= attributes.id %>" class="thumbnail plain pull-right" style="width:14px; height:14px;">
-  <i class="icon-info-sign"></i>
-</a>
+  <div class="pull-right">
+	<a href="#collection/<%= attributes.id %>">
+    	<i class="icon-info-sign"></i>
+  	</a>
+  </div>
+   
+  <a href="#collection/<%= attributes.name %>/documents/1" class="plain">                                                                                                                                    
+    <img src="<%= attributes.picture %>" height="60" width="60" alt="" class="icon">
+    <span class="badge badge-success"><div class="cornered"><%= attributes.status %></div></span>
+
+    <h5 class="collectionName">
+      <div class="pull-left"><%= attributes.name %></div>
+    </h5>
+
+  </a>
 

@@ -519,7 +519,7 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double intervall) {
+void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double interval) {
   PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(lookupWatcher(token));
   
   if (watcher == 0) {
@@ -527,7 +527,7 @@ void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double inte
   }
   
   ev_periodic* w = (ev_periodic*) watcher;
-  ev_periodic_set(w, offset, intervall, 0);
+  ev_periodic_set(w, offset, interval, 0);
   ev_periodic_again(watcher->loop, w);
 }
 

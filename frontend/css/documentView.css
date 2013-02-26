@@ -1,19 +1,24 @@
+#collectionPrev, #collectionNext{
+  cursor: pointer;
+}
+
+.disabledPag, .disabledPag a{
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
 #tableDiv {
-  margin-top: 10px;
+  margin-top: -40px;
   padding: 20px 20px 20px 20px;
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-#addDocumentLine, #sourceView {
-  float:right;
-  margin-right: 10px;
-  margin-top: 11px;
-  margin-right: 22px;
-  opacity: 0.3;
+#tableDiv .nav-tabs > li, #sourceDiv .nav-tabs > li  {
+  position: relative;
+  z-index: 900;
 }
 
 #addDocumentLine:hover, #sourceView:hover{
-  opacity: 0.8;
   cursor: pointer;
 }
 
@@ -21,4 +26,110 @@
   border: medium none;
   padding-left: 10px;
   background-color: transparent;
+}
+
+#documentTableID { 
+    border-collapse:separate;
+    border-spacing:0 2px;
+	padding:20px;
+	margin-bottom: 5px;
+    background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
+    background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: linear-gradient(top, #ffffff, #f5f5f5);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+	border:1px solid #c1bdba;
+    -webkit-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+}
+
+#documentTableID.dataTable thead tr {
+    background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
+    background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: linear-gradient(top, #f3efec, #ebe7e3);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
+    -webkit-box-shadow: 0 1px 2px  rgba(0, 0, 0, 0.4);
+    -moz-box-shadow: 0 1px 2px  rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 2px  rgba(0, 0, 0, 0.4);
+	border:1px solid #c1bdba;
+}
+
+#documentTableID.dataTable td {
+	padding: 13px 10px;
+}
+#documentTableID .odd,
+#documentTableID .even {
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+}
+
+#documentTableID .odd {
+/*    background-image: -moz-linear-gradient(top, #F1F0EE, #F1F0EE);
+	background-image: linear-gradient(top, #F1F0EE, #F1F0EE);*/
+	background:#FFFFFF;
+}
+#documentTableID .even {
+/*    background-image: -moz-linear-gradient(top, #F1F0EE, #F1F0EE);
+	background-image: linear-gradient(top, #F1F0EE, #F1F0EE);*/
+	background:#F1F0EE;
+}
+
+#documentTableID tr.odd td.sorting_1 {
+    background:#FFFFFF; /*#fdfaec*/
+}
+
+#documentTableID tr.even td.sorting_1 {
+    background:#F1F0EE;/* #fdf6df*/
+}
+
+
+/*#documentTableID tr.odd:hover {
+  	cursor: pointer;
+    background: #fdfaec;
+}
+
+#documentTableID tr.even:hover {
+  	cursor: pointer;
+    background: #fdf6df;
+}
+
+#documentTableID tr.odd:hover td.sorting_1,
+#documentTableID tr.even:hover td.sorting_1 {
+  	cursor: pointer;
+    background: #fff1ca;
+}*/
+
+#tableDiv .nav-tabs > .active > a, #tableDiv .nav-tabs > .active > a:hover {
+	border:none;
+}
+
+#tableDiv .nav-tabs,
+#sourceDiv .nav-tabs {
+	margin-bottom:-1px; border-bottom:#FFFFFF solid 1px;
+}
+
+#tableDiv .nav-tabs > li > a,
+#tableDiv .nav-tabs > li:hover > a,
+#sourceDiv .nav-tabs > li > a,
+#sourceDiv .nav-tabs > li:hover > a {
+    background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3);
+    border-top: 1px solid #F3EFEC;
+    border-left: 1px solid #F3EFEC;
+    border-right: 1px solid #F3EFEC;
+    border-bottom: 1px solid #F3EFEC;
+}
+
+#tableDiv .nav-tabs > li.active > a,
+#tableDiv .nav-tabs > li:hover.active > a,
+#sourceDiv .nav-tabs > li.active > a,
+#sourceDiv .nav-tabs > li:hover.active > a {
+	background: #FFF;
+    border: 1px solid #FFF;
 }
