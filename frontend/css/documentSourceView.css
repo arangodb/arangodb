@@ -8,7 +8,7 @@
   border: 1px solid #A0A0A0;
 }
 
-#saveSourceDoc, #tableView {
+#saveSourceDoc {
   float:right;
   margin-right: 10px;
   margin-top: 11px;
@@ -16,7 +16,7 @@
   opacity: 0.3;
 }
 
-#saveSourceDoc:hover, #tableView:hover{
+#saveSourceDoc:hover {
   opacity: 0.8;
   cursor: pointer;
 }

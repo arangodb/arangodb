@@ -435,10 +435,18 @@ there was no need to keep the `edges` variable any longer.
 
 ### arangoimp
 
-The parameter `--reuse-ids` for `arangoimp` was removed. This parameter was a
+The parameter `--reuse-ids` for _arangoimp_ was removed. This parameter was a
 workaround in ArangoDB 1.1 to re-import documents with a specific document id.
 This is not necessary in ArangoDB 1.2 as this version provides user-defined
 key values which can and should be used instead.
+
+The separator parameter `--separator` for _arangoimp_ was changed in 1.2 to
+allow exactly one separator character. In previous versions, separators longer
+than one character were supported.
+
+The parameter `--eol` for _arangoimp_ was also removed in 1.2. 
+Line endings are now detected automatically by _arangoimp_ as long as the 
+standard line endings CRLF (Windows) or LF (Unix) are used.
 
 ### arango-password
 
