@@ -60,7 +60,7 @@
   margin-top: 3px;
   padding: 2px;
   vertical-align: middle;
-
+  width:280px;
 }
 
 #searchSubmit {
@@ -105,6 +105,10 @@
 	position:absolute;
 	right:20px;
 	margin:5px 0;
+}
+
+#transparentHeader .pagination ul > li > a {
+	font-size:1.8em;
 }
 
 #transparentHeader .btn-group {

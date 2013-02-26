@@ -22,9 +22,12 @@
 }
 
 #sourceDiv {
-  margin-top: 10px;
+  margin-top: -40px;
   padding: 20px 20px 20px 20px;
   min-height: 400px;
+  position: relative;
+  z-index: 900;
+
 /*  background-color: rgba(0, 0, 0, 0.05);*/
   
 }
