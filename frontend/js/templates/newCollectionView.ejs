@@ -14,21 +14,13 @@
       </tr>
       <tr>
         <th class="collectionTh">Type:</th>
-        <th>
+        <th class="secondTh">
           <select id="new-collection-type">
             <option value="2">Document</option>
             <option value="3">Edge</option>
           </select>
         </th>
         <th><a class="modalTooltips" title="The type of the collection to create."><i class="icon-info-sign"></i></a></th>
-      </tr>
-      <tr id="edgeFrom">
-        <th class="collectionTh">From:</th>
-        <th><input type="text" id="new-collection-from" name="from" value=""/></th>
-      </tr>
-      <tr id="edgeTo">
-        <th class="collectionTh">To:</th>
-        <th><input type="text" id="new-collection-to" name="to" value=""/></th>
       </tr>
     </table>
 
@@ -69,7 +61,7 @@
 
   </div>
   <div class="modal-footer">
-    <button class="btn" data-dismiss="modal" aria-hidden="true">Abort</button>
-    <button id="save-new-collection" class="btn btn-primary">Create Collection</button>
+    <button class="arangoBtn" data-dismiss="modal" aria-hidden="true">Abort</button>
+    <button id="save-new-collection" style="margin-left: 320px" class="arangoBtnSuccess">Create Collection</button>
   </div>
 </div>

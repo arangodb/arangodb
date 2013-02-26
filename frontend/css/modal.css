@@ -3,6 +3,31 @@
   text-align:left;
 }
 
-.collectionTh input , .collectionTh select {
-  width: 100% !important;
+.modal-body .icon-info-sign {
+  margin-left: 10px;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  opacity: 0.7;
+}
+
+.modal-body .icon-info-sign:hover {
+  opacity: 1;
+}
+
+.modal-body table {
+  margin-left: 15px;
+}
+
+.modal-body .accordion-inner {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.modal-body input {
+
+  width: 300px;
+}
+
+.modal-body select {
+  width: 314px;
 }

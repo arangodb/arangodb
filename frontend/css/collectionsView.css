@@ -1,11 +1,11 @@
 #newCollection {
-  margin-right: 22px;
-  margin-top: 11px;
-  opacity: 0.3;
+  margin-left: 22px;
+  margin-top: 2px;
+  margin-right: 10px;
 }
 
-#newCollection:hover {
-  opacity: 1;
+.add  {
+  font-size: 16px !important;
 }
 
 .thumbnail, .navbar-inner, .btn, .btn-primary {
@@ -30,24 +30,36 @@
 }
 
 .thumbnails li {
-  background-color: #FAFAFA;
+  background-color: #f4f3f3;
+  border: 8px solid #FFF;
+}
+
+.thumbnails a.add {
+	padding:40px 0;	
+	display:block;
+	font-weight:bold;
+	text-align:left;
+}
+
+.thumbnails .icon {
+	padding-right:5px;
+	padding-left: 5px;
+	padding-top: 5px;
 }
 
 .searchInput {
   background-color: #FFFFFF;
   border: 1px solid #c0c0c0;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset;
-  /* border-radius: 4px; */
   color: #555555;
   display: inline-block;
   font-size: 12px;
   height: 18px;
   line-height: 18px;
   margin-top: 3px;
-  margin-left: 18px;
   padding: 2px;
   vertical-align: middle;
-  width: 435px;
+  width:280px;
 }
 
 #searchSubmit {
@@ -70,12 +82,34 @@
   margin-right: 0px;
   margin-left: 0px;
   margin-bottom: -10px !important;
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color:#686766;
   border-top: 1px solid #a0a0a0;
   border-bottom: 1px solid #a0a0a0;
+  color:#FFF;
+  padding:0 20px;
+  position:relative;
 }
+
 
 #transparentHeader i {
   margin-top: 2px;
   margin-right: 2px;
+}
+
+#transparentHeader a.disabledBread {
+	color:#fff;
+}
+
+#transparentHeader .pagination {
+	position:absolute;
+	right:20px;
+	margin:5px 0;
+}
+
+#transparentHeader .pagination ul > li > a {
+	font-size:1.8em;
+}
+
+#transparentHeader .btn-group {
+	margin-top:4px;
 }

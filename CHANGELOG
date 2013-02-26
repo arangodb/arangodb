@@ -1,6 +1,18 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* disabled DOT generation in `make doxygen`. this speeds up docs generation
+
+* renamed startup option `--dispatcher.report-intervall` to `--dispatcher.report-interval`
+
+* renamed startup option `--scheduler.report-intervall` to `--scheduler.report-interval`
+
+* slightly changed output of REST API method /_admin/log.
+  Previously, the log messages returned also contained the date and log level, now
+  they will only contain the log message, and no date and log level information.
+  This information can be re-created by API users from the `timestamp` and `level`
+  attributes of the result.
+
 * removed configure option `--enable-zone-debug`
   memory zone debugging is now automatically turned on when compiling with ArangoDB
   `--enable-maintainer-mode`
@@ -11,6 +23,16 @@ v1.3 (XXXX-XX-XX)
 
 v1.2.beta4 (XXXX-XX-XX)
 -----------------------
+
+* fixed issue #435: csv parser skips data at buffer border
+
+* added server startup option `--server.disable-statistics` to turn off statistics
+  gathering without recompilation of ArangoDB.
+  This partly addresses issue #432.
+
+* fixed dropping of indexes without collection name, e.g.
+  `db.xxx.dropIndex("123456");`
+  Dropping an index like this failed with an assertion error.
  
 * fixed issue #426: arangoimp should be able to import edges into edge collections
 
