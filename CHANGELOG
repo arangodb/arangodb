@@ -23,6 +23,14 @@ v1.3 (XXXX-XX-XX)
 
 v1.2.beta4 (XXXX-XX-XX)
 -----------------------
+
+* added server startup option `--server.disable-statistics` to turn off statistics
+  gathering without recompilation of ArangoDB.
+  This partly addresses issue #432.
+
+* fixed dropping of indexes without collection name, e.g.
+  `db.xxx.dropIndex("123456");`
+  Dropping an index like this failed with an assertion error.
  
 * fixed issue #426: arangoimp should be able to import edges into edge collections
 
