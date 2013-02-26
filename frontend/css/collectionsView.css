@@ -106,3 +106,7 @@
 	right:20px;
 	margin:5px 0;
 }
+
+#transparentHeader .btn-group {
+	margin-top:4px;
+}
