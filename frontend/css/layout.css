@@ -4,6 +4,18 @@
   box-shadow: 0;
 }
 
+.breadcrumb {
+  background-color: #F5F5F5;
+  background: transparent;
+  border-radius: 0px;
+  border:none;
+  padding:8px 0px;
+}
+
+.breadcrumb a.activeBread {
+  color:#b9d375;
+}
+
 
 #content {
   margin-top: 44px;
