@@ -1,0 +1,4 @@
+-e git://github.com/dangoor/growl.git#egg=growl
+PyYAML
+Jinja2
+Markdown

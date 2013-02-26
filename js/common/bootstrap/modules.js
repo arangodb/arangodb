@@ -208,11 +208,15 @@ function stop_color_print () {
   var GlobalPackage = new Package("/", {name: "ArangoDB"}, undefined, PACKAGE_PATH);
 
   Package.prototype.defineSystemModule = function (path) {
-    this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+    var result = this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+
+    return result;
   };
 
   Package.prototype.defineModule = function (path, module) {
     this._moduleCache[path] = module;
+
+    return module;
   };
 
   Package.prototype.clearModule = function (path) {
@@ -225,6 +229,19 @@ function stop_color_print () {
     }
 
     return null;
+  };
+
+  Package.prototype.moduleNames = function () {
+    var name;
+    var names = [];
+
+    for (name in this._moduleCache) {
+      if (this._moduleCache.hasOwnProperty(name)) {
+        names.push(name);
+      }
+    }
+
+    return names;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,6 +289,8 @@ function stop_color_print () {
 
   var internal = GlobalPackage.module("/internal").exports;
   var console = GlobalPackage.module("/console").exports;
+
+  internal.GlobalPackage = GlobalPackage;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes a module name
@@ -711,28 +730,27 @@ function stop_color_print () {
     }
 
     var norm = module.normalize(path);
+    var m = GlobalPackage.module(norm);
 
-    if (norm in ModuleCache) {
-      var m = ModuleCache[norm];
-
-      m._normalized = {};
-    
-      if (m._type === 'system') {
-        return;
-      }
-
-      if (   norm === "/org/arangodb"
-          || norm === "/org/arangodb/actions"
-          || norm === "/org/arangodb/arango-collection"
-          || norm === "/org/arangodb/arango-database"
-          || norm === "/org/arangodb/arango-error"
-          || norm === "/org/arangodb/arango-statement"
-          || norm === "/org/arangodb/shaped-json") {
-        return;
-      }
-
-      delete ModuleCache[norm];
+    if (m === null) {
+      return;
     }
+
+    if (m._type === 'system') {
+      return;
+    }
+
+    if (   norm === "/org/arangodb"
+        || norm === "/org/arangodb/actions"
+        || norm === "/org/arangodb/arango-collection"
+        || norm === "/org/arangodb/arango-database"
+        || norm === "/org/arangodb/arango-error"
+        || norm === "/org/arangodb/arango-statement"
+        || norm === "/org/arangodb/shaped-json") {
+      return;
+    }
+
+    GlobalPackage.clearModule(norm);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -741,17 +759,12 @@ function stop_color_print () {
 
   Module.prototype.unloadAll = function () {
     var i;
-    var path;
-    var unload = [];
+    var names;
 
-    for (path in ModuleCache) {
-      if (ModuleCache.hasOwnProperty(path)) {
-        unload.push(path);
-      }
-    }
+    names = GlobalPackage.moduleNames();
 
-    for (i = 0;  i < unload.length;  ++i) {
-      this.unload(unload[i]);
+    for (i = 0;  i < names.length;  ++i) {
+      this.unload(names[i]);
     }
   };
 
