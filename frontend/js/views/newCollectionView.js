@@ -15,7 +15,7 @@ var newCollectionView = Backbone.View.extend({
     $('#edgeFrom').hide();
     $('#edgeTo').hide();
     $('.modalTooltips').tooltip({
-      placement: "right"
+      placement: "left"
     });
 
     return this;
