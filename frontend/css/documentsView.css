@@ -6,6 +6,10 @@ table.dataTable td {
   padding:12px 10px;
 }
 
+#documentAddBtn {
+  margin-left: 6px;
+}
+
 .docleftico {
   width: 30px !important;
 }
@@ -273,4 +277,12 @@ table.dataTable tr td:last-child {
     height: 0;
     position: absolute;
     width: 0;
+}
+
+.span3 .unloaded div {
+  border-bottom: 16px solid #FF8F35;
+}
+
+.span3 .deleted div {
+  border-bottom: 16px solid red;
 }

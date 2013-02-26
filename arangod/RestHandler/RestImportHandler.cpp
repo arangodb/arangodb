@@ -561,6 +561,14 @@ bool RestImportHandler::createByKeyValueList () {
                   "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
+ 
+  // read line number (optional) 
+  const string& lineNumValue = _request->value("line", found);
+  int64_t lineNumber = 0;
+  if (found) {
+    lineNumber = StringUtils::int64(lineNumValue);
+  }
+
   
   size_t start = 0;
   string body(_request->body(), _request->bodySize());
@@ -644,9 +652,8 @@ bool RestImportHandler::createByKeyValueList () {
   // inside write transaction
   // .............................................................................
 
-  size_t i = 0;
   while (next != string::npos && start < body.length()) {
-    i++;
+    lineNumber++;
 
     next = body.find('\n', start);
 
@@ -686,7 +693,7 @@ bool RestImportHandler::createByKeyValueList () {
         const char* from = extractJsonStringValue(json, "_from");
 
         if (from == 0) {
-          LOGGER_WARNING("missing '_from' attribute at position " << (i + 1));
+          LOGGER_WARNING("missing '_from' attribute at line " << lineNumber);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
           ++numError;
           continue;
@@ -694,7 +701,7 @@ bool RestImportHandler::createByKeyValueList () {
 
         const char* to = extractJsonStringValue(json, "_to");
         if (to == 0) {
-          LOGGER_WARNING("missing '_to' attribute at position " << (i + 1));
+          LOGGER_WARNING("missing '_to' attribute at line " << lineNumber);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
           ++numError;
           continue;
@@ -800,7 +807,9 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
 /// @brief create a JSON object from a line containing a document
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line) {
+TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys, 
+                                                 const TRI_json_t* values, 
+                                                 const string& line) {
   
   if (values->_type != TRI_JSON_LIST) {
     LOGGER_WARNING("no valid JSON list data in line: " << line);            

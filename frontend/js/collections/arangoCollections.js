@@ -26,16 +26,16 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       translateTypePicture : function (type) {
         if (type === 'document') {
-          return "documentPicture.png";
+          return "img/icon_document.png";
         }
         else if (type === 'edge') {
-          return "edgePicture.png";
+          return "img/icon_node.png";
         }
         else if (type === 'unknown') {
-          return "unknownPicture.png";
+          return "img/icon_unknown.png";
         }
         else {
-          return "systemPicture.png";
+          return "img/icon_arango.png";
         }
       },
       parse: function(response)  {
