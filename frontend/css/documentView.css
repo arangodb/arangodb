@@ -1,3 +1,12 @@
+#collectionPrev, #collectionNext{
+  cursor: pointer;
+}
+
+.disabledPag, .disabledPag a{
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
 #tableDiv {
   margin-top: -40px;
   padding: 20px 20px 20px 20px;
