@@ -101,8 +101,8 @@ var documentsView = Backbone.View.extend({
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
 
-    // if row is the addnewdoc row
-    if (aPos === 10) {
+    var checkData = $(this.table).dataTable().fnGetData(self);
+    if (checkData[0] === '') {
       this.addDocument();
       return;
     }
@@ -148,7 +148,7 @@ var documentsView = Backbone.View.extend({
     });
 	$(self.table).dataTable().fnAddData([
 										'',
-										'<a id="plusIconDoc" style="padding-left: 30px">Neu hinzuf&uuml;gen</a>',
+										'<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
 										'<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
 		]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
