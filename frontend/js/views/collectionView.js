@@ -105,6 +105,7 @@ var collectionView = Backbone.View.extend({
     var returnval = window.arangoCollectionsStore.deleteCollection(collName);
     if (returnval === true) {
       self.hideModal();
+      window.location.hash="#";
     }
     else {
       self.hideModal();
