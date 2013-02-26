@@ -443,3 +443,22 @@ imported (for example, because of a unique constraint violation, malformed data 
 more easy to grasp.
 
 Note that colorised output may not be supported on all platforms.
+
+### Deactivatable statistics gathering
+
+ArangoDB normally includes functionality to automatically gather request and
+connection-related statistics. Gathering these statistics happens automatically
+in a background thread. Collecting statistics can be quite CPU-intensive, especially
+when multiple ArangoDB instances are run on the same physical host.
+
+Statistics features can be turned off at compile time using the `--enable-figures=no`
+configure option. However, this option affects compilation and thus was not available 
+when using any of th precompiled packages. 
+
+For those, ArangoDB 1.2 now provides a startup option `--server.disable-statistics` that
+allows turning off the statistics gathering for performance reasons even with an
+already compiled binary.
+
+Usage is:
+    
+    > arangod --server.disable-statistics true ...

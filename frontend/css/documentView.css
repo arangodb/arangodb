@@ -5,9 +5,7 @@
 }
 
 #addDocumentLine, #sourceView {
-/*  float:right;*/
   margin-right: 10px;
-/*  margin-top: 11px;*/
   margin-right: 22px;
   opacity: 0.3;
 }
