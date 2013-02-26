@@ -17,7 +17,6 @@ $(document).ready(function() {
     },
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
-
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
 
@@ -137,14 +136,22 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('logs-menu');
     },
     dashboard: function() {
-      this.dashboardView = new window.dashboardView();
-      this.dashboardView.render();
-      this.naviView.selectMenuItem('dashboard-menu');
-    }
+      var self = this;
+      window.arangoCollectionsStore.fetch({
+        success: function () {
+          window.dashboardView = new window.dashboardView({
+            collection: window.arangoCollectionsStore
+          });
+          window.dashboardView.render();
+          self.naviView.selectMenuItem('dashboard-menu');
+        }
+      });
+
+      }
+
+    });
+
+    window.App = new window.Router();
+    Backbone.history.start();
 
   });
-
-  window.App = new window.Router();
-  Backbone.history.start();
-
-});
