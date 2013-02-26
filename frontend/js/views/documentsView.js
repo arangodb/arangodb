@@ -12,7 +12,8 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
-    "click #plusIconDoc"            : "addDocument",
+    "click #plusIconDoc"         : "addDocument",
+    "click #documentAddBtn"      : "addDocument",
     "click #documents_first"     : "firstDocuments",
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
@@ -74,6 +75,13 @@ var documentsView = Backbone.View.extend({
     }
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
+
+    // if row is the addnewdoc row
+    if (aPos === 10) {
+      this.addDocument();
+      return;
+    }
+
     var rowContent = $(this.table).dataTable().fnGetData(aPos);
     window.location.hash = "#collection/" + rowContent[0];
   },
@@ -115,8 +123,8 @@ var documentsView = Backbone.View.extend({
     });
 	$(self.table).dataTable().fnAddData([
 										'',
-										'<a id="plusIconDoc"><img id="newCollection" src="/_admin/html/img/plus_icon.png"class="pull-left"></img> Neu hinzuf&uuml;gen</a>',
-										''
+										'<a id="plusIconDoc" style="padding-left: 30px">Neu hinzuf&uuml;gen</a>',
+										'<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
 		]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     $(".prettify").tooltip({
