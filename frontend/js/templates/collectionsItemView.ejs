@@ -1,13 +1,14 @@
 <a href="#collection/<%= attributes.name %>/documents/1" class="thumbnail plain">                                                                                                                                       
-  <h5 class="collectionName">
+  <img src="img/icon_arango.png" height="60" width="60" alt="" class="icon">
+  <span class="badge badge-success"><div class="cornered"><%= attributes.status %></div></span>
 
+  <h5 class="collectionName">
 	<a href="#collection/<%= attributes.id %>" class="pull-right" style="width:14px; height:14px;">
 	  <i class="icon-info-sign icon-white"></i>
 	</a>
     <div class="pull-left"><%= attributes.name %></div>
   </h5>
 
-  <img src="img/icon_arango.png" height="60" width="60" alt="" style="padding-right:20px; padding-left: 5px; padding-top: 5px; ">
-  <span class="badge badge-success" style="position:absolute; bottom:0px; right:0px;"><%= attributes.status %></span>
+
 </a>
 
