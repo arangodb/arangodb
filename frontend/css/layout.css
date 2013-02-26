@@ -1,13 +1,32 @@
 .arangoBtn {
- 
+  background: none repeat scroll 0 0 #FFFFFF;
+  color: #333232;
+  float: left;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 16px;
+  padding: 4px 10px;
+  text-decoration: none;
 }
 
 .arangoBtnError {
-
+  background-color: #DA4F49;
+  background-repeat: repeat-x;
+  color: #FFFFFF;
+  float: left;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 16px;
+  padding: 4px 10px;
+  text-decoration: none;
 }
 
-.arangoBtnSuccess
-
+.arangoBtnSuccess {
+  background: none repeat scroll 0 0 #5E7B36;
+  color: #FFFFFF;
+  float: left;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 16px;
+  padding: 4px 10px;
+  text-decoration: none;
 }
 
 /* Radius */
