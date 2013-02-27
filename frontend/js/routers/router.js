@@ -94,20 +94,20 @@ $(document).ready(function() {
       if (!window.documentView) {
         window.documentView.initTable();
       }
+      window.documentView.colid = colid;
+      window.documentView.docid = docid;
       window.documentView.render();
-      window.arangoDocumentStore.getDocument(colid, docid);
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentView.type = type;
+      window.documentView.typeCheck(type);
     },
     source: function(colid, docid) {
       window.documentSourceView.render();
-      if (window.arangoDocumentStore.models[0] == undefined) {
-        window.arangoDocumentStore.getDocument(colid, docid, "source");
-      }
-      else {
-        window.documentSourceView.fillSourceBox();
-      }
-      if (!window.documentSourceView) {
-        window.documentSourceView.initTable();
-      }
+      window.documentSourceView.colid = colid;
+      window.documentSourceView.docid = docid;
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentSourceView.type = type;
+      window.documentSourceView.typeCheck(type);
     },
     shell: function() {
       if (!this.shellView) {

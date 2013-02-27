@@ -1,7 +1,9 @@
 var documentView = Backbone.View.extend({
   el: '#content',
   table: '#documentTableID',
-  counter: 1,
+  colid: 0,
+  docid: 0,
+
   init: function () {
     this.initTable();
   },
@@ -17,6 +19,26 @@ var documentView = Backbone.View.extend({
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
 
+  typeCheck: function (type) {
+    if (type === 'edge') {
+      var result = window.arangoDocumentStore.getEdge(this.colid, this.docid);
+      if (result === true) {
+        this.initTable();
+        this.drawTable();
+      }
+      else if (result === false) {
+      }
+    }
+    else if (type === 'document') {
+      var result = window.arangoDocumentStore.getDocument(this.colid, this.docid);
+      if (result === true) {
+        this.initTable();
+        this.drawTable();
+      }
+      else if (result === false) {
+      }
+    }
+  },
   render: function() {
     $(this.el).html(this.template.text);
     this.breadcrumb();
@@ -36,7 +58,28 @@ var documentView = Backbone.View.extend({
     window.location.hash = window.location.hash + "/source";
   },
   saveDocument: function () {
-    window.arangoDocumentStore.saveDocument();
+    if (this.type === 'document') {
+      var model = window.arangoDocumentStore.models[0].attributes;
+      model = JSON.stringify(model);
+      var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
+      if (result === true) {
+        alert("saved");
+      }
+      else if (result === false) {
+        alert("error");
+      }
+    }
+    else if (this.type === 'edge') {
+      var model = window.arangoDocumentStore.models[0].attributes;
+      model = JSON.stringify(model);
+      var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
+      if (result === true) {
+        alert("saved");
+      }
+      else if (result === false) {
+        alert("error");
+      }
+    }
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/");
@@ -172,6 +215,7 @@ var documentView = Backbone.View.extend({
       }
     }
     window.arangoDocumentStore.updateLocalDocument(result);
+    //then sent to server
     this.saveDocument();
   },
   makeEditable: function () {
