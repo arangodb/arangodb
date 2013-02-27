@@ -217,10 +217,10 @@ var documentsView = Backbone.View.extend({
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
 
     if (this.documentsCount === 0) {
-      $('#documentsToolbarLeft').html('No documents');
+      $('#documentsStatus').html('No documents');
     }
     else {
-      $('#documentsToolbarLeft').html(
+      $('#documentsStatus').html(
         'Showing Page '+this.currentPage+' of '+this.totalPages+
         ', '+this.documentsCount+' entries'
       );
