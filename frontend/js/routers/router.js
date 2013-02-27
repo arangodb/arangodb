@@ -86,7 +86,9 @@ $(document).ready(function() {
       if (!window.documentsView) {
         window.documentsView.initTable(colid, pageid);
       }
+      var type = arangoHelper.collectionApiType(colid);
       window.documentsView.colid = colid;
+      window.documentsView.type = type;
       window.documentsView.render();
       window.arangoDocumentsStore.getDocuments(colid, pageid);
     },

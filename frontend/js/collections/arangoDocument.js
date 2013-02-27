@@ -2,14 +2,35 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocument,
   collectionInfo: {},
-  deleteDocument: function (collectionID){
+  deleteEdge: function (colid, docid) {
     var returnval = false;
     try {
       $.ajax({
         type: 'DELETE',
         async: false,
         contentType: "application/json",
-        url: "/_api/document/" + collectionID,
+        url: "/_api/edge/" + colid + "/" + docid,
+        success: function () {
+          returnval = true;
+        },
+        error: function () {
+          returnval = false;
+        }
+      });
+    }
+    catch (e) {
+          returnval = false;
+    }
+    return returnval;
+  },
+  deleteDocument: function (colid, docid){
+    var returnval = false;
+    try {
+      $.ajax({
+        type: 'DELETE',
+        async: false,
+        contentType: "application/json",
+        url: "/_api/document/" + colid + "/" + docid,
         success: function () {
           returnval = true;
         },

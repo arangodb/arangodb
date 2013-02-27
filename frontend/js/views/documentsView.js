@@ -112,23 +112,41 @@ var documentsView = Backbone.View.extend({
   },
   reallyDelete: function () {
     var self = this;
-    var todelete = $(self.idelement).text();
-    var deleted = window.arangoDocumentStore.deleteDocument(todelete);
+    var row = $(self.target).closest("tr").get(0);
+    var hash = window.location.hash.split("/");
+    var page = hash[3];
+    var deleted = false;
+    this.docid = $(self.idelement).text();
+
+    if (this.type === 'document') {
+      var result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
+      if (result === true) {
+        //on success
+        deleted = true;
+      }
+      else if (result === false) {
+        alert("error");
+      }
+    }
+    else if (this.type === 'edge') {
+      var result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
+      if (result === true) {
+        //on success
+        deleted = true;
+      }
+      else if (result === false) {
+        alert("error");
+      }
+    }
+
     if (deleted === true) {
-      var row = $(self.target).closest("tr").get(0);
       $('#documentsTableID').dataTable().fnDeleteRow($('#documentsTableID').dataTable().fnGetPosition(row));
-      var hash = window.location.hash.split("/");
-      var page = hash[3];
-      var collection = hash[1];
-      //TODO: more elegant solution...
       $('#documentsTableID').dataTable().fnClearTable();
-      window.arangoDocumentsStore.getDocuments(collection, page);
+      window.arangoDocumentsStore.getDocuments(this.colid, page);
       $('#docDeleteModal').modal('hide');
+      alert("deleted");
     }
-    else {
-      alert("something wrong");
-      $('#docDeleteModal').modal('hide');
-    }
+
   },
   clicked: function (a) {
     if (this.alreadyClicked == true) {
@@ -176,8 +194,8 @@ var documentsView = Backbone.View.extend({
     var self = this;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
       $(self.table).dataTable().fnAddData([
-                                          value.attributes.id,
-                                          //value.attributes.key,
+                                          //value.attributes.id,
+                                          value.attributes.key,
                                           //value.attributes.rev,
                                           '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
