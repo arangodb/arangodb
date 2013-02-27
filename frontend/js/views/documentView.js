@@ -10,7 +10,9 @@ var documentView = Backbone.View.extend({
     "click #saveDocument"    : "saveDocument",
     "click #addDocumentLine" : "addLine",
     "click #deleteRow"       : "deleteLine",
-    "click #sourceView"      : "sourceView"
+    "click #sourceView"      : "sourceView",
+    "click #editFirstRow"    : "editFirst",
+    "click #editSecondRow"   : "editSecond"
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
@@ -19,6 +21,16 @@ var documentView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     this.breadcrumb();
     return this;
+  },
+  editFirst: function (e) {
+    var element = e.currentTarget;
+    var prevElement = $(element).parent().prev();
+    $(prevElement).click();
+  },
+  editSecond: function (e) {
+    var element = e.currentTarget;
+    var prevElement = $(element).parent().prev();
+    $(prevElement).click();
   },
   sourceView: function () {
     window.location.hash = window.location.hash + "/source";
@@ -41,7 +53,8 @@ var documentView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
     $(self.table).dataTable().fnAddData([
-      '<a class="add" class="notwriteable" id="addDocumentLine"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
+      '<a class="add" class="notwriteable" id="addDocumentLine"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Add data</a>',
+      '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
@@ -51,6 +64,7 @@ var documentView = Backbone.View.extend({
       if (arangoHelper.isSystemAttribute(key)) {
         $(self.table).dataTable().fnAddData([
           key,
+          '',
           self.value2html(value, true),
           JSON.stringify(value),
           "",
@@ -58,32 +72,37 @@ var documentView = Backbone.View.extend({
         ]);
       }
       else {
-        $(self.table).dataTable().fnAddData([
-                                            key,
-                                            self.value2html(value),
-                                            JSON.stringify(value),
-                                            '<i class="icon-edit"></i>',
-                                            '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+        $(self.table).dataTable().fnAddData(
+          [
+            key,
+            '<i class="icon-edit" id="editFirstRow"></i>',
+            self.value2html(value),
+            JSON.stringify(value),
+            '<i class="icon-edit" id="editSecondRow"></i>',
+            '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
         ]);
       }
     });
     this.makeEditable();
+    $(this.table).dataTable().fnSort([ [0,'asc'] ]);
 
   },
 
   addLine: function () {
-    $(this.table).dataTable().fnAddData([
-                                        "key"+arangoHelper.getRandomToken(),
-                                        this.value2html("editme"),
-                                        JSON.stringify("editme"),
-                                        '<i class="icon-edit"></i>',
-                                        '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
-    ]);
+    $(this.table).dataTable().fnAddData(
+      [
+        "zkey"+arangoHelper.getRandomToken(),
+        '<i class="icon-edit" id="editFirstRow"></i>',
+        this.value2html("editme"),
+        JSON.stringify("editme"),
+        '<i class="icon-edit" id="editSecondRow"></i>',
+        '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+      ]
+    );
 
     this.makeEditable();
-    this.updateLocalDocumentStorage();
-    $(this.table).dataTable().fnClearTable();
-    this.drawTable();
+//    $(this.table).dataTable().fnClearTable();
+//    this.drawTable();
   },
 
   deleteLine: function (a) {
@@ -103,10 +122,11 @@ var documentView = Backbone.View.extend({
       "bDeferRender": true,
       "iDisplayLength": -1,
       "aoColumns": [
-        {"sClass":"writeable", "bSortable": false, "sWidth":"400px" },
+        {"sClass":"writeable", "bSortable": false, "sWidth":"200px" },
+        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "20px"},
         {"sClass":"writeable rightCell", "bSortable": false},
         {"bVisible": false },
-        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"},
+        {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "20px"},
         {"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"}
       ],
       "oLanguage": {"sEmptyTable": "No documents"}
@@ -145,8 +165,11 @@ var documentView = Backbone.View.extend({
     var result = {};
 
     for (row in data) {
-      var row_data = data[row];
-      result[row_data[0]] = JSON.parse(row_data[2]);
+      //Exclude "add-collection" row
+      if (row !== '0') {
+        var row_data = data[row];
+        result[row_data[0]] = JSON.parse(row_data[3]);
+      }
     }
     window.arangoDocumentStore.updateLocalDocument(result);
     this.saveDocument();
@@ -171,13 +194,12 @@ var documentView = Backbone.View.extend({
     });
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
-      console.log(aPos);
       if (aPos[1] == 0) {
         documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
         self.updateLocalDocumentStorage();
         return value;
       }
-      if (aPos[1] == 1) {
+      if (aPos[1] == 2) {
         var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
         var test = self.getTypedValue(value);
         if (String(value) == String(oldContent)) {
@@ -199,7 +221,7 @@ var documentView = Backbone.View.extend({
         if (aPos[1] == 0) {
           return value;
         }
-        if (aPos[1] == 1) {
+        if (aPos[1] == 2) {
           var oldContent = documentEditTable.fnGetData(aPos[0], aPos[1] + 1);
           if (typeof(oldContent) == 'object') {
             //grep hidden row and paste in visible row
