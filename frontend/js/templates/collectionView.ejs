@@ -8,10 +8,12 @@
       <tr>
         <th class="collectionTh">Name:</th>
         <th class="collectionTh"><input type="text" id="change-collection-name" name="name" value=""/></th>
+        <th><a class="modalTooltips" title="The name of the collection."><i class="icon-info-sign"></i></a></th>
       </tr>
       <tr id="collectionSizeBox" style="display:none">
         <th class="collectionTh">Size (MB):</th>
         <th class="collectionTh"><input type="text" id="change-collection-size" name="size" value=""/></th>
+        <th><a class="modalTooltips" title="The maximal size of a journal or datafile. Must be at least 1MB."><i class="icon-info-sign"></i></a></th>
       </tr>
       <tr id="collectionSyncBox" style="display:none">
         <th class="collectionTh">Sync:</th>
@@ -21,33 +23,34 @@
             <option value="true">Yes</option>
           </select> 
         </th> 
+        <th><a class="modalTooltips" title="Data is synchronised to disk before returning from a create or update of an document."><i class="icon-info-sign"></i></a></th>
       </tr> 
 
       <tr>
         <th class="collectionTh">ID:</th>
         <th class="collectionTh">
-          <div id="change-collection-id"/>
+          <div id="change-collection-id" class="modal-text"/>
         <th>
       </tr>
 
       <tr>
         <th class="collectionTh">Type:</th> 
         <th class="collectionTh">
-          <div id="change-collection-type"/>
+          <div id="change-collection-type" class="modal-text"/>
         </th>
       </tr>
 
       <tr>
         <th class="collectionTh">Status:</th> 
         <th class="collectionTh">
-          <div id="change-collection-status"/>
+          <div id="change-collection-status" class="modal-text"/>
         </th>
       </tr>
 
     </table>
   </div>
   <div id="colFooter" class="modal-footer">
-    <button id="save-modified-collection" class="btn btn-primary">Save</button>
-    <button id="delete-modified-collection" class="btn btn-danger">Delete</button>
+    <button id="save-modified-collection" class="arangoBtnSuccess" style="margin-right:10px">Save</button>
+    <button id="delete-modified-collection" class="arangoBtnError" style="float:right">Delete</button>
   </div>
 </div>

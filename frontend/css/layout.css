@@ -1,3 +1,11 @@
+select {
+  border-radius: 2px 2px 2px 2px !important;
+}
+
+input {
+  border-radius: 2px 2px 2px 2px !important;
+}
+
 .arangoBtn {
   background: none repeat scroll 0 0 #FFFFFF;
   color: #333232;

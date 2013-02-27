@@ -60,6 +60,7 @@ dnl ----------------------------------------------------------------------------
 
 LIB_INFO="$LIB_INFO|."
 if test "x$tr_ICU" = xyes;  then
+  LIB_INFO="$LIB_INFO|ICU: system version"
   LIB_INFO="$LIB_INFO|ICU VERSION: ${TRI_ICU_VERSION}"
 
   LIB_INFO="$LIB_INFO|ICU_CPPFLAGS: ${ICU_CPPFLAGS}"

@@ -31,3 +31,9 @@
 .modal-body select {
   width: 314px;
 }
+
+.modal-text {
+  font-weight: normal;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}

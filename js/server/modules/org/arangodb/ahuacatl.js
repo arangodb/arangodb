@@ -2018,10 +2018,14 @@ function LAST (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reverse the elements in a list
+/// @brief reverse the elements in a list or in a string
 ////////////////////////////////////////////////////////////////////////////////
 
 function REVERSE (value) {
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
+    return value.split("").reverse().join(""); 
+  }
+
   LIST(value);
 
   return value.reverse();
