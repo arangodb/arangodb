@@ -15,6 +15,20 @@ var documentSourceView = Backbone.View.extend({
     this.editor();
     return this;
   },
+  typeCheck: function (type) {
+    this.type = type;
+    if (type === 'edge') {
+      window.arangoDocumentStore.getEdge(this.colid, this.docid);
+      window.documentSourceView.fillSourceBox();
+    }
+    else if (type === 'document') {
+      window.arangoDocumentStore.getDocument(this.colid, this.docid);
+      window.documentSourceView.fillSourceBox();
+    }
+    else {
+      alert("unknown type: " + type);
+    }
+  },
   editor: function () {
     var editor = ace.edit("sourceEditor");
     editor.getSession().setMode("ace/mode/javascript");
@@ -32,7 +46,28 @@ var documentSourceView = Backbone.View.extend({
     );
   },
   saveSourceDoc: function() {
-    window.arangoDocumentStore.saveDocument("source");
+    if (this.type === 'document') {
+      var editor = ace.edit("sourceEditor");
+      var model = editor.getValue();
+      var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
+      if (result === true) {
+        alert("saved");
+      }
+      else if (result === false) {
+        alert("error");
+      }
+    }
+    else if (this.type === 'edge') {
+      var editor = ace.edit("sourceEditor");
+      var model = editor.getValue();
+      var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
+      if (result === true) {
+        alert("saved");
+      }
+      else if (result === false) {
+        alert("error");
+      }
+    }
   },
   tableView: function () {
     var hash = window.location.hash.split("/");

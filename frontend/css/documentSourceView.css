@@ -14,19 +14,6 @@
   border: 1px solid #A0A0A0;
 }
 
-#saveSourceDoc {
-  float:right;
-  margin-right: 10px;
-  margin-top: 11px;
-  margin-right: 22px;
-  opacity: 0.3;
-}
-
-#saveSourceDoc:hover {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
 #sourceDiv {
   margin-top: -40px;
   padding: 20px 20px 20px 20px;

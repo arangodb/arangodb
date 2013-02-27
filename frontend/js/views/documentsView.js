@@ -17,7 +17,7 @@ var documentsView = Backbone.View.extend({
   events: {
     "click #collectionPrev"      : "prevCollection",
     "click #collectionNext"      : "nextCollection",
-
+    "click #confirmCreateEdge"   : "addEdge",
     "click #documentsTableID tr" : "clicked",
     "click #deleteDoc"           : "remove",
     "click #documents_first"     : "firstDocuments",
@@ -50,10 +50,41 @@ var documentsView = Backbone.View.extend({
       $('#collectionNext').parent().addClass('disabledPag');
     }
   },
-
   addDocument: function () {
     var collid  = window.location.hash.split("/")[1];
-    window.arangoDocumentStore.addDocument(collid);
+    var doctype = arangoHelper.collectionApiType(collid);
+
+    if (doctype === 'edge') {
+      $('#edgeCreateModal').modal('show');
+      $('.modalTooltips').tooltip({
+        placement: "left"
+      });
+    }
+    else {
+      var result = window.arangoDocumentStore.createTypeDocument(collid);
+      //Success
+      if (result !== false) {
+        window.location.hash = "collection/"+result;
+      }
+      //Error
+      else {
+        alert("something wrong");
+      }
+    }
+  },
+  addEdge: function () {
+    var collid  = window.location.hash.split("/")[1];
+    var from = $('#new-document-from').val();
+    var to = $('#new-document-to').val();
+    var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
+
+    if (result !== false) {
+      window.location.hash = "collection/"+result;
+    }
+    //Error
+    else {
+      alert("something wrong");
+    }
   },
   firstDocuments: function () {
     window.arangoDocumentsStore.getFirstDocuments();
@@ -152,11 +183,11 @@ var documentsView = Backbone.View.extend({
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
-	$(self.table).dataTable().fnAddData([
-										'',
-										'<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-										'<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
-		]);
+    $(self.table).dataTable().fnAddData([
+                                        '',
+                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+                                        '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
+    ]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     $(".prettify").tooltip({
       placement: "top"
