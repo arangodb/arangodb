@@ -29,7 +29,7 @@ var collectionsView = Backbone.View.extend({
   },
   events: {
     "click .icon-info-sign" : "details",
-    "blur #searchInput" : "restrictToSearchPhrase",
+    //"blur #searchInput" : "restrictToSearchPhrase",
     "keypress #searchInput" : "restrictToSearchPhraseKey",
     "change #searchInput" : "restrictToSearchPhrase",
     "click #searchSubmit" : "restrictToSearchPhrase",
@@ -40,7 +40,7 @@ var collectionsView = Backbone.View.extend({
   checkSystem: function () {
     var searchOptions = this.collection.searchOptions;
     var oldValue = searchOptions.includeSystem;
-    
+
     searchOptions.includeSystem = ($('#checkSystem').is(":checked") === true);
 
     if (oldValue != searchOptions.includeSystem) {
@@ -60,9 +60,9 @@ var collectionsView = Backbone.View.extend({
   checkUnloaded: function () {
     var searchOptions = this.collection.searchOptions;
     var oldValue = searchOptions.includeUnloaded;
-    
+
     searchOptions.includeUnloaded = ($('#checkUnloaded').is(":checked") === true);
-    
+
     if (oldValue != searchOptions.includeUnloaded) {
       this.render();
     }
