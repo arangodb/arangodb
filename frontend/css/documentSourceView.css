@@ -1,3 +1,11 @@
+#sourceFooter {
+  margin-top: 0;
+  background: none;
+  margin-bottom: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
 #sourceEditor {
   height: 400px;
   width: 900px;
@@ -26,5 +34,4 @@
 }
 
 .sourceBox {
-  padding-bottom:20px;
 }
