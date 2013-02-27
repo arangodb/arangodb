@@ -79,10 +79,12 @@ var documentsView = Backbone.View.extend({
     var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
 
     if (result !== false) {
+      $('#edgeCreateModal').modal('hide');
       window.location.hash = "collection/"+result;
     }
     //Error
     else {
+      $('#edgeCreateModal').modal('hide');
       alert("something wrong");
     }
   },
