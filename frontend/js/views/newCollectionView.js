@@ -23,23 +23,10 @@ var newCollectionView = Backbone.View.extend({
 
   events: {
     "click #save-new-collection" : "saveNewCollection",
-    "click #new-collection-type" : "displayEdge"
   },
 
   hidden: function () {
-    window.location.hash = "#";
-  },
-
-  displayEdge: function () {
-    var collType = $('#new-collection-type').val();
-    if (collType == 3) {
-      $('#edgeFrom').show();
-      $('#edgeTo').show();
-    }
-    else {
-      $('#edgeFrom').hide();
-      $('#edgeTo').hide();
-    }
+    window.location.hash = "#collection/";
   },
 
   saveNewCollection: function() {
