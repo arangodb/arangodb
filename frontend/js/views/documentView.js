@@ -53,7 +53,7 @@ var documentView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
     $(self.table).dataTable().fnAddData([
-      '<a class="add" class="notwriteable" id="addDocumentLine"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Neu hinzuf&uuml;gen</a>',
+      '<a class="add" class="notwriteable" id="addDocumentLine"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Add data</a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
@@ -84,13 +84,14 @@ var documentView = Backbone.View.extend({
       }
     });
     this.makeEditable();
+    $(this.table).dataTable().fnSort([ [0,'asc'] ]);
 
   },
 
   addLine: function () {
     $(this.table).dataTable().fnAddData(
       [
-        "key"+arangoHelper.getRandomToken(),
+        "zkey"+arangoHelper.getRandomToken(),
         '<i class="icon-edit" id="editFirstRow"></i>',
         this.value2html("editme"),
         JSON.stringify("editme"),
