@@ -1,7 +1,5 @@
 #logContent {
-  margin-left: 20px;
   margin-top: 0;
-  margin-right: 20px;
   border: 20px solid rgba(0, 0, 0, 0.00);
   background-color: rgba(0, 0, 0, 0.05);
   min-height: 330px !important;
@@ -119,7 +117,7 @@ background-color: none !important;
 #logNav {
   padding-left: 20px;
   margin-left: -20px;
-  width: 880px;
+  width: 920px;
   padding-bottom: -10px;
   margin-bottom: 0;
   background-color: #686766;
