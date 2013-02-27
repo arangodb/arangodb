@@ -647,7 +647,7 @@ function stop_color_print () {
       else {
         return null;
       }
-  }
+    }
 
     // first check: we are talking about module within a package
     description = internal.loadPackageFile(path, this._package);
@@ -661,6 +661,18 @@ function stop_color_print () {
       }
     }
 
+    // check if already know a module with that name
+    module = GlobalPackage.module(path);
+
+    if (module) {
+      if (module.type !== 'package') {
+        return module;
+      }
+      else {
+        return null;
+      }
+    }
+
     // second check: we are talking about a global module
     description = internal.loadModuleFile(path);
 
@@ -668,7 +680,7 @@ function stop_color_print () {
       module = this.createModule(description, 'module', GlobalPackage);
 
       if (module !== null) {
-        this._package.defineModule(path, module);
+        GlobalPackage.defineModule(path, module);
         return module;
       }
     }
