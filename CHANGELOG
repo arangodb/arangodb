@@ -1,6 +1,10 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* fixed issue #436: GET /_api/document on edge
+ 
+* make AQL REVERSE() function work on strings, too
+
 * disabled DOT generation in `make doxygen`. this speeds up docs generation
 
 * renamed startup option `--dispatcher.report-intervall` to `--dispatcher.report-interval`
