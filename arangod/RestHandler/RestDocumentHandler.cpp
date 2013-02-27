@@ -394,6 +394,14 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  if (trx.primaryCollection()->base._info._type == TRI_COL_TYPE_EDGE) {
+    // check if we are inserting with the DOCUMENT handler into an EDGE collection
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "must not use the document handler to create an edge");
+    return false;
+  }
+
   const TRI_voc_cid_t cid = trx.cid();
   
   TRI_doc_mptr_t* document = 0;

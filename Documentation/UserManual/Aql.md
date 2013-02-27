@@ -881,6 +881,8 @@ For string processing, AQL offers the following functions:
   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
   start at position 0.
 
+- @FN{REVERSE(@FA{value})}: returns the reverse of the string @FA{value}.
+
 - @FN{CONTAINS(@FA{text}, @FA{search}, @FA{return-index})}: checks whether the string
   @FA{search} is contained in the string @FA{text}. By default, this function returns 
   `true` if @FA{search} is contained in @FA{text}, and `false` otherwise. By
