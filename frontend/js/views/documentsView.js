@@ -165,7 +165,7 @@ var documentsView = Backbone.View.extend({
     }
 
     var rowContent = $(this.table).dataTable().fnGetData(aPos);
-    window.location.hash = "#collection/" + rowContent[0];
+    window.location.hash = "#collection/" + this.colid + "/" + rowContent[0];
   },
 
   initTable: function (colid, pageid) {
