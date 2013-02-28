@@ -1117,11 +1117,14 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 /// @brief removes documents matching an example
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+ArangoCollection.prototype.removeByExample = function (example, 
+                                                       waitForSync, 
+                                                       limit) {
   var data = { 
     collection: this._name,
     example: example, 
-    waitForSync: waitForSync 
+    waitForSync: waitForSync,
+    limit: limit
   };
 
   var requestResult = this._database._connection.PUT(
@@ -1131,6 +1134,58 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.deleted;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.replaceByExample = function (example, 
+                                                        newValue, 
+                                                        waitForSync, 
+                                                        limit) {
+  var data = { 
+    collection: this._name,
+    example: example, 
+    newValue: newValue,
+    waitForSync: waitForSync,
+    limit: limit
+  };
+
+  var requestResult = this._database._connection.PUT(
+    "/_api/simple/replace-by-example",
+    JSON.stringify(data));
+  
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.replaced;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates documents matching an example
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.updateByExample = function (example, 
+                                                       newValue, 
+                                                       keepNull, 
+                                                       waitForSync, 
+                                                       limit) {
+  var data = { 
+    collection: this._name,
+    example: example, 
+    newValue: newValue,
+    keepNull: keepNull,
+    waitForSync: waitForSync,
+    limit: limit
+  };
+
+  var requestResult = this._database._connection.PUT(
+    "/_api/simple/update-by-example",
+    JSON.stringify(data));
+  
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.updated;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -358,6 +358,17 @@ namespace triagens {
         string _startupModules;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief semicolon separated list of module directories
+///
+/// @CMDOPT{\--javascript.package-path @CA{directory}}
+///
+/// Specifies the @CA{directory} path with user defined Node modules.
+/// Multiple paths can be specified separated with commas.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _startupNodeModules;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
 /// @CMDOPT{\--javascript.action-directory @CA{directory}}

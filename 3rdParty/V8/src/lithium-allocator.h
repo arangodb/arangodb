@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -48,7 +48,7 @@ class BitVector;
 class StringStream;
 
 class LArgument;
-class LChunk;
+class LPlatformChunk;
 class LOperand;
 class LUnallocated;
 class LConstantOperand;
@@ -216,7 +216,7 @@ class UseInterval: public ZoneObject {
 
   // Split this interval at the given position without effecting the
   // live range that owns it. The interval must contain the position.
-  void SplitAt(LifetimePosition pos);
+  void SplitAt(LifetimePosition pos, Zone* zone);
 
   // If this interval intersects with other return smallest position
   // that belongs to both of them.
@@ -277,7 +277,7 @@ class LiveRange: public ZoneObject {
  public:
   static const int kInvalidAssignment = 0x7fffffff;
 
-  explicit LiveRange(int id);
+  LiveRange(int id, Zone* zone);
 
   UseInterval* first_interval() const { return first_interval_; }
   UsePosition* first_pos() const { return first_pos_; }
@@ -288,11 +288,13 @@ class LiveRange: public ZoneObject {
   int id() const { return id_; }
   bool IsFixed() const { return id_ < 0; }
   bool IsEmpty() const { return first_interval() == NULL; }
-  LOperand* CreateAssignedOperand();
+  LOperand* CreateAssignedOperand(Zone* zone);
   int assigned_register() const { return assigned_register_; }
   int spill_start_index() const { return spill_start_index_; }
-  void set_assigned_register(int reg, RegisterKind register_kind);
-  void MakeSpilled();
+  void set_assigned_register(int reg,
+                             RegisterKind register_kind,
+                             Zone* zone);
+  void MakeSpilled(Zone* zone);
 
   // Returns use position in this live range that follows both start
   // and last processed use position.
@@ -316,7 +318,7 @@ class LiveRange: public ZoneObject {
   // the range.
   // All uses following the given position will be moved from this
   // live range to the result live range.
-  void SplitAt(LifetimePosition position, LiveRange* result);
+  void SplitAt(LifetimePosition position, LiveRange* result, Zone* zone);
 
   bool IsDouble() const { return is_double_; }
   bool HasRegisterAssigned() const {
@@ -355,9 +357,15 @@ class LiveRange: public ZoneObject {
   LifetimePosition FirstIntersection(LiveRange* other);
 
   // Add a new interval or a new use position to this live range.
-  void EnsureInterval(LifetimePosition start, LifetimePosition end);
-  void AddUseInterval(LifetimePosition start, LifetimePosition end);
-  UsePosition* AddUsePosition(LifetimePosition pos, LOperand* operand);
+  void EnsureInterval(LifetimePosition start,
+                      LifetimePosition end,
+                      Zone* zone);
+  void AddUseInterval(LifetimePosition start,
+                      LifetimePosition end,
+                      Zone* zone);
+  UsePosition* AddUsePosition(LifetimePosition pos,
+                              LOperand* operand,
+                              Zone* zone);
 
   // Shorten the most recently added interval by setting a new start.
   void ShortenTo(LifetimePosition start);
@@ -369,7 +377,7 @@ class LiveRange: public ZoneObject {
 #endif
 
  private:
-  void ConvertOperands();
+  void ConvertOperands(Zone* zone);
   UseInterval* FirstSearchIntervalForPosition(LifetimePosition position) const;
   void AdvanceLastProcessedMarker(UseInterval* to_start_of,
                                   LifetimePosition but_not_past) const;
@@ -388,40 +396,6 @@ class LiveRange: public ZoneObject {
   UsePosition* last_processed_use_;
   LOperand* spill_operand_;
   int spill_start_index_;
-};
-
-
-class GrowableBitVector BASE_EMBEDDED {
- public:
-  GrowableBitVector() : bits_(NULL) { }
-
-  bool Contains(int value) const {
-    if (!InBitsRange(value)) return false;
-    return bits_->Contains(value);
-  }
-
-  void Add(int value) {
-    EnsureCapacity(value);
-    bits_->Add(value);
-  }
-
- private:
-  static const int kInitialLength = 1024;
-
-  bool InBitsRange(int value) const {
-    return bits_ != NULL && bits_->length() > value;
-  }
-
-  void EnsureCapacity(int value) {
-    if (InBitsRange(value)) return;
-    int new_length = bits_ == NULL ? kInitialLength : bits_->length();
-    while (new_length <= value) new_length *= 2;
-    BitVector* new_bits = new BitVector(new_length);
-    if (bits_ != NULL) new_bits->CopyFrom(*bits_);
-    bits_ = new_bits;
-  }
-
-  BitVector* bits_;
 };
 
 
@@ -447,8 +421,9 @@ class LAllocator BASE_EMBEDDED {
     return &fixed_double_live_ranges_;
   }
 
-  LChunk* chunk() const { return chunk_; }
+  LPlatformChunk* chunk() const { return chunk_; }
   HGraph* graph() const { return graph_; }
+  Zone* zone() const { return zone_; }
 
   int GetVirtualRegister() {
     if (next_virtual_register_ > LUnallocated::kMaxVirtualRegisters) {
@@ -469,6 +444,13 @@ class LAllocator BASE_EMBEDDED {
 #ifdef DEBUG
   void Verify() const;
 #endif
+
+  BitVector* assigned_registers() {
+    return assigned_registers_;
+  }
+  BitVector* assigned_double_registers() {
+    return assigned_double_registers_;
+  }
 
  private:
   void MeetRegisterConstraints();
@@ -562,6 +544,11 @@ class LAllocator BASE_EMBEDDED {
                           HBasicBlock* block,
                           HBasicBlock* pred);
 
+  inline void SetLiveRangeAssignedRegister(LiveRange* range,
+                                           int reg,
+                                           RegisterKind register_kind,
+                                           Zone* zone);
+
   // Return parallel move that should be used to connect ranges split at the
   // given position.
   LParallelMove* GetConnectingParallelMove(LifetimePosition pos);
@@ -587,10 +574,9 @@ class LAllocator BASE_EMBEDDED {
 
   inline LGap* GapAt(int index);
 
-  LChunk* chunk_;
+  Zone* zone_;
 
-  // Indicates success or failure during register allocation.
-  bool allocation_ok_;
+  LPlatformChunk* chunk_;
 
   // During liveness analysis keep a mapping from block id to live_in sets
   // for blocks already analyzed.
@@ -600,9 +586,9 @@ class LAllocator BASE_EMBEDDED {
   ZoneList<LiveRange*> live_ranges_;
 
   // Lists of live ranges
-  EmbeddedVector<LiveRange*, Register::kNumAllocatableRegisters>
+  EmbeddedVector<LiveRange*, Register::kMaxNumAllocatableRegisters>
       fixed_live_ranges_;
-  EmbeddedVector<LiveRange*, DoubleRegister::kNumAllocatableRegisters>
+  EmbeddedVector<LiveRange*, DoubleRegister::kMaxNumAllocatableRegisters>
       fixed_double_live_ranges_;
   ZoneList<LiveRange*> unhandled_live_ranges_;
   ZoneList<LiveRange*> active_live_ranges_;
@@ -617,9 +603,15 @@ class LAllocator BASE_EMBEDDED {
   RegisterKind mode_;
   int num_registers_;
 
+  BitVector* assigned_registers_;
+  BitVector* assigned_double_registers_;
+
   HGraph* graph_;
 
   bool has_osr_entry_;
+
+  // Indicates success or failure during register allocation.
+  bool allocation_ok_;
 
   DISALLOW_COPY_AND_ASSIGN(LAllocator);
 };

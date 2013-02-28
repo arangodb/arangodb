@@ -48,16 +48,17 @@ _DISASM_LINE_RE = re.compile(r"\s*([a-f0-9]+):\s*(\S.*)")
 _ARCH_MAP = {
   "ia32": "-m i386",
   "x64": "-m i386 -M x86-64",
-  "arm": "-m arm"  # Not supported by our objdump build.
+  "arm": "-m arm",  # Not supported by our objdump build.
+  "mips": "-m mips"  # Not supported by our objdump build.
 }
 
 
-def GetDisasmLines(filename, offset, size, arch, inplace):
+def GetDisasmLines(filename, offset, size, arch, inplace, arch_flags=""):
   tmp_name = None
   if not inplace:
     # Create a temporary file containing a copy of the code.
     assert arch in _ARCH_MAP, "Unsupported architecture '%s'" % arch
-    arch_flags = _ARCH_MAP[arch]
+    arch_flags = arch_flags + " " +  _ARCH_MAP[arch]
     tmp_name = tempfile.mktemp(".v8code")
     command = "dd if=%s of=%s bs=1 count=%d skip=%d && " \
               "%s %s -D -b binary %s %s" % (
@@ -65,8 +66,8 @@ def GetDisasmLines(filename, offset, size, arch, inplace):
       OBJDUMP_BIN, ' '.join(_COMMON_DISASM_OPTIONS), arch_flags,
       tmp_name)
   else:
-    command = "%s %s --start-address=%d --stop-address=%d -d %s " % (
-      OBJDUMP_BIN, ' '.join(_COMMON_DISASM_OPTIONS),
+    command = "%s %s %s --start-address=%d --stop-address=%d -d %s " % (
+      OBJDUMP_BIN, ' '.join(_COMMON_DISASM_OPTIONS), arch_flags,
       offset,
       offset + size,
       filename)

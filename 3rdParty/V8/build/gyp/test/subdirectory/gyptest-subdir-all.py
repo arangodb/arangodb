@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,10 +11,9 @@ and using the subdirectory's solution or project file as the entry point.
 """
 
 import TestGyp
-import errno
 
-# Ninja doesn't support running from subdirectories.
-test = TestGyp.TestGyp(formats=['!ninja'])
+# Ninja and Android don't support running from subdirectories.
+test = TestGyp.TestGyp(formats=['!ninja', '!android'])
 
 test.run_gyp('prog1.gyp', chdir='src')
 

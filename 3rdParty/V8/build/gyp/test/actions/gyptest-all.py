@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -22,7 +22,8 @@ test.relocate('src', 'relocate/src')
 # writes it as a means to making the action run on every build.  That
 # doesn't mesh well with ninja's semantics.  TODO(evan): figure out
 # how to work always-run actions in to ninja.
-if test.format == 'ninja':
+# Android also can't do this as it doesn't have order-only dependencies.
+if test.format in ['ninja', 'android']:
   test.build('actions.gyp', test.ALL, chdir='relocate/src')
 else:
   # Test that an "always run" action increases a counter on multiple

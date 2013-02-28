@@ -7,47 +7,59 @@ Upgrading to ArangoDB 1.2 {#Upgrading12}
 Upgrading {#Upgrading12Introduction}
 ====================================
 
-ArangoDB 1.2 provides a lot of new features and APIs when compared to ArangoDB 1.1.
+ArangoDB 1.2 provides a lot of new features and APIs when compared to ArangoDB
+1.1.
 
-In addition, a few of the existing APIs have changed in ArangoDB 1.2 to exploit some
-of the new features and to make using ArangoDB even easier.
-This causes some backwards-incompatibilities but is unavoidable to make the new
-features available to end users.
+In addition, a few of the existing APIs have changed in ArangoDB 1.2 to exploit
+some of the new features and to make using ArangoDB even easier.  This causes
+some backwards-incompatibilities but is unavoidable to make the new features
+available to end users.
 
 The following list contains changes in ArangoDB 1.2 that are not 100%
 downwards-compatible to ArangoDB 1.1 (and partly, to ArangoDB 1.0).
 
-Existing users of ArangoDB 1.1 should read the list carefully and make
-sure they have undertaken all necessary steps and precautions before
-upgrading from ArangoDB 1.1 to ArangoDB 1.2. Please also check
-@ref Upgrading12Troubleshooting.
+Existing users of ArangoDB 1.1 should read the list carefully and make sure they
+have undertaken all necessary steps and precautions before upgrading from
+ArangoDB 1.1 to ArangoDB 1.2. Please also check @ref Upgrading12Troubleshooting.
+
+32 Bit Systems
+--------------
+
+As the GCC uses a different padding for C structure under 32bit systems compared
+to 64bit systems, the 1.1 datafiles were not interchangeable. 1.2 fixes this
+problem.
+
+There is however one caveat: If you already installed 1.2.beta1 on a 32bit
+system, the upgrade will no longer worker. In this case you need to export the
+data first, upgrade ArangoDB, and import the data again. There is no problem, if
+you upgrade from 1.1 to 1.2.beta2.
+
 
 Database Directory Version Check and Upgrade {#Upgrading12VersionCheck}
 -----------------------------------------------------------------------
 
-Starting with ArangoDB 1.1, _arangod_ will perform a database version
-check at startup. This has not changed in ArangoDB 1.2.
+Starting with ArangoDB 1.1, _arangod_ will perform a database version check at
+startup. This has not changed in ArangoDB 1.2.
 
-The version check will look for a file named _VERSION_ in its database 
-directory. If the file is not present, _arangod_ in version 1.2 will 
-perform an auto-upgrade (can also be considered a database "initialisation"). 
-This auto-upgrade will create the system collections necessary to run
-ArangoDB, and it will also create the VERSION file with a version number
-of `1.2` inside.
+The version check will look for a file named _VERSION_ in its database
+directory. If the file is not present, _arangod_ in version 1.2 will perform an
+auto-upgrade (can also be considered a database "initialisation"). This
+auto-upgrade will create the system collections necessary to run ArangoDB, and
+it will also create the VERSION file with a version number of `1.2` inside.
 
-If the _VERSION_ file is present but is from a non-matching version of
-ArangoDB (e.g. ArangoDB 1.1 if you upgrade), _arangod_ will refuse to 
-start. Instead, it will ask you start the server with the option `--upgrade`.
-Using the `--upgrade` option will make the server trigger any required
-upgrade tasks to migrate data from ArangoDB 1.1 to ArangoDB 1.2.
+If the _VERSION_ file is present but is from a non-matching version of ArangoDB
+(e.g. ArangoDB 1.1 if you upgrade), _arangod_ will refuse to start. Instead, it
+will ask you start the server with the option `--upgrade`.  Using the
+`--upgrade` option will make the server trigger any required upgrade tasks to
+migrate data from ArangoDB 1.1 to ArangoDB 1.2.
 
-This manual invocation of an upgrade shall ensure that users have full 
-control over when they perform any updates/upgrades of their data, and 
-do not risk running an incompatible tandem of server and database versions.
+This manual invocation of an upgrade shall ensure that users have full control
+over when they perform any updates/upgrades of their data, and do not risk
+running an incompatible tandem of server and database versions.
 
-If you try starting an ArangoDB 1.2 server with a database created by an
-earlier version of ArangoDB, and did not invoke the upgrade procedure, the
-output of ArangoDB will look like this:
+If you try starting an ArangoDB 1.2 server with a database created by an earlier
+version of ArangoDB, and did not invoke the upgrade procedure, the output of
+ArangoDB will look like this:
 
     > bin/arangod --server.endpoint tcp://127.0.0.1:8529 --database.directory /tmp/11
 
@@ -57,12 +69,12 @@ output of ArangoDB will look like this:
     2013-02-06T14:44:35Z [4399] FATAL Database version check failed. Please start the server with the --upgrade option
     ...
 
-So it is really necessary to forcefully invoke the upgrade procedure. 
-Please create a backup of your database directory before upgrading. Please also
-make sure that the database directory and all subdirectories and files in it
-are writeable for the user you run ArangoDB with.
+So it is really necessary to forcefully invoke the upgrade procedure. Please
+create a backup of your database directory before upgrading. Please also make
+sure that the database directory and all subdirectories and files in it are
+writeable for the user you run ArangoDB with.
 
-As mentioned, invoking the upgrade procedure can be done by specifying the 
+As mentioned, invoking the upgrade procedure can be done by specifying the
 additional command line option `--upgrade` as follows:
 
     > bin/arangod --server.endpoint tcp://127.0.0.1:8529 --database.directory /tmp/11 --upgrade
@@ -79,26 +91,56 @@ additional command line option `--upgrade` as follows:
     2013-02-06T14:48:19Z [4482] INFO Upgrade successfully finished
     ...
 
-The upgrade procecure will execute the defined tasks to run _arangod_
-with all new features and data formats. It should normally run without
-problems and indicate success at its end. If it detects a problem that
-it cannot fix, it will halt on the first error and warn you.
+The upgrade procecure will execute the defined tasks to run _arangod_ with all
+new features and data formats. It should normally run without problems and
+indicate success at its end. If it detects a problem that it cannot fix, it will
+halt on the first error and warn you.
 
-Re-starting arangod with the `--upgrade` option will execute only the 
-previously failed and not yet executed tasks.
+Re-starting arangod with the `--upgrade` option will execute only the previously
+failed and not yet executed tasks.
 
-Upgrading from ArangoDB 1.1 to ArangoDB 1.2 will modify some header data
-inside the collection datafiles. The upgrade procedure will create a backup
-of all collection files it processes, in case something goes wrong.
+Upgrading from ArangoDB 1.1 to ArangoDB 1.2 will modify some header data inside
+the collection datafiles. The upgrade procedure will create a backup of all
+collection files it processes, in case something goes wrong.
 
-In case the upgrade did not produce any problems and ArangoDB works well
-for you after the upgrade, you may want to remove these backup files
-manually.
+In case the upgrade did not produce any problems and ArangoDB works well for you
+after the upgrade, you may want to remove these backup files manually.
 
 All collection datafiles will be backed up in the original collection
-directories in the database directory. You can easily detect the backup 
-files because they have a file ending of `.old`.
+directories in the database directory. You can easily detect the backup files
+because they have a filename ending in `.old`.
 
+Please note that the upgrade behavior in 1.2 was slightly changed compared to
+1.1:
+
+- in 1.1, when starting `arangod` with `--upgrade`, the server performed the
+  upgrade, and if the upgrade was successfully, continued to work in either
+  daemon or console mode.
+
+- in 1.2, when started with the `--upgrade` option, the server will perfom
+  the upgrade, and then exit with a status code indicating the result of the
+  upgrade (0 = success, 1 = failure). To start the server regularly in either 
+  daemon or console mode, the `--upgrade` option must not be specified.
+  This change was introduced to allow init.d scripts check the result of
+  the upgrade procedure, even in case an upgrade was successful.
+
+Upgrade a binary package {#UpgradingBinaryPackage}
+---------------------------------------------------
+
+Linux:
+- Upgrade ArangoDB by package manager (Example `zypper update arangodb`)
+- check configuration file: `/etc/arangodb/arangod.conf`
+- Upgrade database files with `/etc/init.d/arangodb upgrade`
+
+Mac OS X binary package
+- You can find the new Mac OS X packages here: `http://www.arangodb.org/repositories/MacOSX`
+- check configuration file: `/etc/arangodb/arangod.conf`
+- Upgrade database files `/usr/sbin/arangod --upgrade'
+
+Mac OS X with homebrew
+- Upgrade ArangoDB by `brew upgrade arangodb'
+- check configuration file: `/usr/local/Cellar/1.X.Y/etc/arangodb/arangod.conf`
+- Upgrade database files `/usr/local/sbin/arangod --upgrade`
 
 Troubleshooting{#Upgrading12Troubleshooting}
 ============================================
@@ -195,7 +237,7 @@ Changed format for document handles (`_id`)
 
 ArangoDB 1.2 uses a modified format for the value returned in the `_id` attribute of
 a document. While ArangoDB 1.1 and earlier generated the `_id` value as a combination of
-collection name and server-generated document id, ArangoDB will return a combination
+server-generated collection id and document id, ArangoDB 1.2 will return a combination
 of collection name and user-defined document key.
 
 A document returned by ArangoDB 1.1 and earlier looked like this:
@@ -294,8 +336,8 @@ This change affects the AQL query and cursor cursor management REST API
 
 Clients that are strictly typed may need to be adjusted to work with this change.
 
-Index id returned as string
----------------------------
+Index ids returned as strings
+-----------------------------
 
 Index ids are also returned as numeric values encapsulated in strings starting with
 ArangoDB 1.2. They have been returned as simple integers in ArangoDB 1.1 and before.
@@ -324,6 +366,11 @@ returned the error code `1520` (```Unable to open collection```). ArangoDB 1.2
 will instead return the standard error code `1203` (```Collection not found```),
 which is also returned by other parts of ArangoDB in case a non-existing collection
 is accessed.
+
+When a collection was created with a name that was already in use for another 
+collection, ArangoDB 1.1 returned an error code `1207` (```Duplicate name```) with
+an HTTP status code of `400` (```Bad request```). For this case, the HTTP status
+code has been changed to HTTP `409` (```Conflict```) in ArangoDB 1.2.
 
 Changes in available global variables and functions
 ===================================================
@@ -388,10 +435,18 @@ there was no need to keep the `edges` variable any longer.
 
 ### arangoimp
 
-The parameter `--reuse-ids` for `arangoimp` was removed. This parameter was a
+The parameter `--reuse-ids` for _arangoimp_ was removed. This parameter was a
 workaround in ArangoDB 1.1 to re-import documents with a specific document id.
 This is not necessary in ArangoDB 1.2 as this version provides user-defined
 key values which can and should be used instead.
+
+The separator parameter `--separator` for _arangoimp_ was changed in 1.2 to
+allow exactly one separator character. In previous versions, separators longer
+than one character were supported.
+
+The parameter `--eol` for _arangoimp_ was also removed in 1.2. 
+Line endings are now detected automatically by _arangoimp_ as long as the 
+standard line endings CRLF (Windows) or LF (Unix) are used.
 
 ### arango-password
 

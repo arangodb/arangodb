@@ -52,17 +52,27 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_FATAL                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsFatalLogging())                               \
-    triagens::basics::Logger::_singleton                                          \
-    << TRI_LOG_LEVEL_FATAL                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_FATAL_AND_EXIT(a)                                                  \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                           \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_FATAL                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                    \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_FATAL \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_FATAL_AND_EXIT(a)                                                  \
+  do {                                                                            \
+    fprintf(stderr, "fatal error. exiting.\n");                                   \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                    \
+  }                                                                               \
+  while (0)
 
 #endif
 
@@ -72,18 +82,24 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_FATAL_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsFatalLogging())                               \
-    triagens::basics::Logger::_singleton                                          \
-    << (a)                                                                        \
-    << TRI_LOG_LEVEL_FATAL                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_FATAL_AND_EXIT_I(i,a)                                              \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                           \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << TRI_LOG_LEVEL_FATAL                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                    \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_FATAL_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_FATAL_AND_EXIT_I(i,a)                                              \
+  CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR()
 
 #endif
 
@@ -93,17 +109,22 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_ERROR                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsErrorLogging())                               \
-    triagens::basics::Logger::_singleton                                          \
-    << TRI_LOG_LEVEL_ERROR                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_ERROR(a)                                                           \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                           \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_ERROR                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_ERROR \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_ERROR(a)                                                           \
+  while (0)
 
 #endif
 
@@ -113,18 +134,23 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_ERROR_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsErrorLogging())                               \
-    triagens::basics::Logger::_singleton                                          \
-    << (a)                                                                        \
-    << TRI_LOG_LEVEL_ERROR                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_ERROR_I(i,a)                                                       \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                           \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << TRI_LOG_LEVEL_ERROR                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_ERROR_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_ERROR_I(i,a)                                                       \
+  while (0)
 
 #endif
 
@@ -134,17 +160,22 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_WARNING                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsWarningLogging())                               \
-    triagens::basics::Logger::_singleton                                            \
-    << TRI_LOG_LEVEL_WARNING                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                       \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_WARNING(a)                                                         \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {                         \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_WARNING                                                    \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_WARNING \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_WARNING(a)                                                         \
+  while (0)
 
 #endif
 
@@ -154,18 +185,23 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_WARNING_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsWarningLogging())                               \
-    triagens::basics::Logger::_singleton                                            \
-    << (a)                                                                          \
-    << TRI_LOG_LEVEL_WARNING                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                       \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_WARNING_I(i,a)                                                     \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {                         \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << TRI_LOG_LEVEL_WARNING                                                    \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_WARNING_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_WARNING_I(i,a)                                                     \
+  while (0)
 
 #endif
 
@@ -175,17 +211,22 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_INFO                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsInfoLogging())                               \
-    triagens::basics::Logger::_singleton                                         \
-    << TRI_LOG_LEVEL_INFO                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                    \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_INFO(a)                                                            \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                            \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_INFO                                                       \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_INFO \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_INFO(a)                                                            \
+  while (0)
 
 #endif
 
@@ -195,18 +236,23 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_INFO_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsInfoLogging())                               \
-    triagens::basics::Logger::_singleton                                         \
-    << (a)                                                                       \
-    << TRI_LOG_LEVEL_INFO                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                    \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_INFO_I(i,a)                                                        \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                            \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << TRI_LOG_LEVEL_INFO                                                       \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_INFO_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_INFO_I(i,a)                                                        \
+  while (0)
 
 #endif
 
@@ -216,17 +262,22 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_DEBUG                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__))                       \
-    triagens::basics::Logger::_singleton                                          \
-    << TRI_LOG_LEVEL_DEBUG                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_DEBUG(a)                                                           \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {                   \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_DEBUG                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_DEBUG \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_DEBUG(a)                                                           \
+  while (0)
 
 #endif
 
@@ -236,18 +287,23 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_DEBUG_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__))                       \
-    triagens::basics::Logger::_singleton                                          \
-    << (a)                                                                        \
-    << TRI_LOG_LEVEL_DEBUG                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_DEBUG_I(i,a)                                                       \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {                   \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << TRI_LOG_LEVEL_DEBUG                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_DEBUG_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_DEBUG_I(i,a)                                                       \
+  while (0)
 
 #endif
 
@@ -257,17 +313,22 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_TRACE                                                              \
-  if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__))                       \
-    triagens::basics::Logger::_singleton                                          \
-    << TRI_LOG_LEVEL_TRACE                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_TRACE(a)                                                           \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {                   \
+      triagens::basics::Logger::_singleton                                        \
+      << TRI_LOG_LEVEL_TRACE                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_TRACE \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_TRACE(a)                                                           \
+  while (0)
 
 #endif
 
@@ -277,18 +338,23 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_TRACE_I(a)                                                         \
-  if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__))                       \
-    triagens::basics::Logger::_singleton                                          \
-    << (a)                                                                        \
-    << TRI_LOG_LEVEL_TRACE                                                        \
-    << TRI_LOG_SEVERITY_HUMAN                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_TRACE_I(i,a)                                                       \
+  do {                                                                            \
+    if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {                   \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << TRI_LOG_LEVEL_TRACE                                                      \
+      << TRI_LOG_SEVERITY_HUMAN                                                   \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_TRACE_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_TRACE_I(i,a)                                                       \
+  while (0)
 
 #endif
 
@@ -298,15 +364,20 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define VOC_LOGGER(severity)                                                   \
-  if (TRI_Is ## severity ## Logging ())                                        \
-    triagens::basics::Logger::_singleton                                       \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define VOC_LOGGER(severity,a)                                                    \
+  do {                                                                            \
+    if (TRI_Is ## severity ## Logging ()) {                                       \
+      triagens::basics::Logger::_singleton                                        \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define VOC_LOGGER(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define VOC_LOGGER(severity,a)                                                    \
+  while (0)
 
 #endif
 
@@ -316,16 +387,21 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define VOC_LOGGER_I(severity, a)                                              \
-  if (TRI_Is ## severity ## Logging ())                                        \
-    triagens::basics::Logger::_singleton                                       \
-    << (a)                                                                     \
-    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define VOC_LOGGER_I(severity,i,a)                                                \
+  do {                                                                            \
+    if (TRI_Is ## severity ## Logging ()) {                                       \
+      triagens::basics::Logger::_singleton                                        \
+      << (i)                                                                      \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a;                                                                       \
+    }                                                                             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define VOC_LOGGER_I(a,b) \
-  if (false) triagens::basics::Logger::_singleton
+#define VOC_LOGGER_I(severity,i,a)                                                \
+  while (0)
 
 #endif
 
@@ -335,14 +411,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_IN_START                                                \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_REQUEST_IN_START
+#define LOGGER_REQUEST_IN_START(a)                                                \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_REQUEST_IN_START << a);                \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_IN_START \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_IN_START(a)                                                \
+  while (0)
 
 #endif
 
@@ -352,14 +430,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_IN_START_I(a)                                           \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_REQUEST_IN_START
+#define LOGGER_REQUEST_IN_START_I(i,a)                                            \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_REQUEST_IN_START << a);           \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_IN_START_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_IN_START_I(i,a)                                            \
+  while (0)
 
 #endif
 
@@ -369,14 +449,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_IN_END                                                  \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_REQUEST_IN_END
+#define LOGGER_REQUEST_IN_END(a)                                                  \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_REQUEST_IN_END << a);                  \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_IN_END \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_IN_END(a)                                                  \
+  while (0)
 
 #endif
 
@@ -386,14 +468,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_IN_END_I(a)                                             \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_REQUEST_IN_END
+#define LOGGER_REQUEST_IN_END_I(i,a)                                              \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_REQUEST_IN_END << a);             \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_IN_END_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_IN_END_I(i,a)                                              \
+  while (0)
 
 #endif
 
@@ -403,14 +487,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_OUT_START                                               \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_REQUEST_OUT_START
+#define LOGGER_REQUEST_OUT_START(a)                                               \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_REQUEST_OUT_START << a);               \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_OUT_START \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_OUT_START(a)                                               \
+  while (0)
 
 #endif
 
@@ -420,14 +506,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_OUT_START_I(a)                                          \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_REQUEST_OUT_START
+#define LOGGER_REQUEST_OUT_START_I(i,a)                                           \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_REQUEST_OUT_START << a);          \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_OUT_START_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_OUT_START_I(i,a)                                           \
+  while (0)
 
 #endif
 
@@ -437,14 +525,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_OUT_END                                                 \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_REQUEST_OUT_END
+#define LOGGER_REQUEST_OUT_END(a)                                                 \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_REQUEST_OUT_END << a);                 \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_OUT_END \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_OUT_END(a)                                                 \
+  while (0)
 
 #endif
 
@@ -454,14 +544,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_REQUEST_OUT_END_I(a)                                            \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_REQUEST_OUT_END
+#define LOGGER_REQUEST_OUT_END_I(i,a)                                             \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_REQUEST_OUT_END << a);            \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_REQUEST_OUT_END_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_REQUEST_OUT_END_I(i,a)                                             \
+  while (0)
 
 #endif
 
@@ -471,14 +563,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_MODULE_IN_START                                                 \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_MODULE_IN_START
+#define LOGGER_MODULE_IN_START(a)                                                 \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_MODULE_IN_START << a);                 \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_MODULE_IN_START \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_MODULE_IN_START(a)                                                 \
+  while (0)
 
 #endif
 
@@ -488,14 +582,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_MODULE_IN_START_I(a)                                            \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_MODULE_IN_START
+#define LOGGER_MODULE_IN_START_I(i,a)                                             \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_MODULE_IN_START << a);            \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_MODULE_IN_START_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_MODULE_IN_START_I(i,a)                                             \
+  while (0)
 
 #endif
 
@@ -505,14 +601,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_MODULE_IN_END                                                   \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_MODULE_IN_END
+#define LOGGER_MODULE_IN_END(a)                                                   \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_MODULE_IN_END  << a);                  \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_MODULE_IN_END \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_MODULE_IN_END(a)                                                   \
+  while (0)
 
 #endif
 
@@ -522,14 +620,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_MODULE_IN_END_I(a)                                              \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_MODULE_IN_END
+#define LOGGER_MODULE_IN_END_I(i,a)                                               \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_MODULE_IN_END << a);              \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_MODULE_IN_END_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_MODULE_IN_END_I(i,a)                                               \
+  while (0)
 
 #endif
 
@@ -539,14 +639,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_FUNCTION_IN_START                                               \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_FUNCTION_IN_START
+#define LOGGER_FUNCTION_IN_START(a)                                               \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_FUNCTION_IN_START << a);               \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_FUNCTION_IN_START \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_FUNCTION_IN_START(a)                                               \
+  while (0)
 
 #endif
 
@@ -556,14 +658,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_FUNCTION_IN_START_I(a)                                          \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_FUNCTION_IN_START
+#define LOGGER_FUNCTION_IN_START_I(i,a)                                           \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_FUNCTION_IN_START << a);          \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_FUNCTION_IN_START_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_FUNCTION_IN_START_I(i,a)                                           \
+  while (0)
 
 #endif
 
@@ -573,14 +677,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_FUNCTION_IN_END                                                 \
-  VOC_LOGGER(Technical)                                                        \
-    << TRI_LOG_CATEGORY_FUNCTION_IN_END
+#define LOGGER_FUNCTION_IN_END(a)                                                 \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_FUNCTION_IN_END << a);                 \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_FUNCTION_IN_END \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_FUNCTION_IN_END(a)                                                 \
+  while (0)
 
 #endif
 
@@ -590,14 +696,16 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_FUNCTION_IN_END_I(a)                                            \
-  VOC_LOGGER_I(Technical, a)                                                   \
-    << TRI_LOG_CATEGORY_FUNCTION_IN_END
+#define LOGGER_FUNCTION_IN_END_I(i,a)                                             \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_FUNCTION_IN_END << a);            \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_FUNCTION_IN_END_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_FUNCTION_IN_END_I(i,a)                                             \
+  while (0)
 
 #endif
 
@@ -607,15 +715,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_STEP                                                            \
-  VOC_LOGGER(Development)                                                      \
-  << TRI_LOG_CATEGORY_STEP                                                     \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_STEP(a)                                                            \
+  do {                                                                            \
+    VOC_LOGGER(Development, TRI_LOG_CATEGORY_STEP                                 \
+    << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)   \
+    << a);                                                                        \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_STEP \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_STEP(a)                                                            \
+  while (0)
 
 #endif
 
@@ -625,15 +736,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_STEP_I(a)                                                       \
-  VOC_LOGGER_I(Development, a)                                                 \
-  << TRI_LOG_CATEGORY_STEP                                                     \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_STEP_I(i,a)                                                        \
+  do {                                                                            \
+    VOC_LOGGER_I(Development, i, TRI_LOG_CATEGORY_STEP                            \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_STEP_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_STEP_I(i,a)                                                        \
+  while (0)
 
 #endif
 
@@ -643,15 +757,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_LOOP                                                            \
-  VOC_LOGGER(Development)                                                      \
-  << TRI_LOG_CATEGORY_LOOP                                                     \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_LOOP(a)                                                            \
+  do {                                                                            \
+    VOC_LOGGER(Development, TRI_LOG_CATEGORY_LOOP                                 \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_LOOP \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_LOOP(a)                                                            \
+  while (0)
 
 #endif
 
@@ -661,15 +778,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_LOOP_I(a)                                                       \
-  VOC_LOGGER_I(Development, a)                                                 \
-  << TRI_LOG_CATEGORY_LOOP                                                     \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_LOOP_I(i,a)                                                        \
+  do {                                                                            \
+    VOC_LOGGER_I(Development, i, TRI_LOG_CATEGORY_LOOP                            \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_LOOP_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_LOOP_I(i,a)                                                        \
+  while (0)
 
 #endif
 
@@ -679,15 +799,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_HEARTBEAT                                                       \
-  VOC_LOGGER(Technical)                                                        \
-  << TRI_LOG_CATEGORY_HEARTBEAT                                                \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_HEARTBEAT(a)                                                       \
+  do {                                                                            \
+    VOC_LOGGER(Technical, TRI_LOG_CATEGORY_HEARTBEAT                              \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_HEARTBEAT \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_HEARTBEAT(a)                                                       \
+  while (0)
 
 #endif
 
@@ -697,15 +820,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_HEARTBEAT_I(a)                                                  \
-  VOC_LOGGER_I(Technical, a)                                                   \
-  << TRI_LOG_CATEGORY_HEARTBEAT                                                \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_HEARTBEAT_I(i,a)                                                   \
+  do {                                                                            \
+    VOC_LOGGER_I(Technical, i, TRI_LOG_CATEGORY_HEARTBEAT                         \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_HEARTBEAT_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_HEARTBEAT_I(i,a)                                                   \
+  while (0)
 
 #endif
 
@@ -715,15 +841,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_HEARTPULSE                                                      \
-  VOC_LOGGER(Development)                                                      \
-  << TRI_LOG_CATEGORY_HEARTPULSE                                               \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_HEARTPULSE(a)                                                      \
+  do {                                                                            \
+    VOC_LOGGER(Development, TRI_LOG_CATEGORY_HEARTPULSE                           \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_HEARTPULSE \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_HEARTPULSE(a)                                                      \
+  while (0)
 
 #endif
 
@@ -733,15 +862,18 @@
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOGGER_HEARTPULSE_I(a)                                                 \
-  VOC_LOGGER_I(Development, a)                                                 \
-  << TRI_LOG_CATEGORY_HEARTPULSE                                               \
-  << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__)
+#define LOGGER_HEARTPULSE_I(i,a)                                                  \
+  do {                                                                            \
+    VOC_LOGGER_I(Development, i, TRI_LOG_CATEGORY_HEARTPULSE                      \
+      << triagens::basics::LoggerData::Position(__FUNCTION__, __FILE__, __LINE__) \
+      << a);                                                                      \
+  }                                                                               \
+  while (0)
 
 #else
 
-#define LOGGER_HEARTPULSE_I(a) \
-  if (false) triagens::basics::Logger::_singleton
+#define LOGGER_HEARTPULSE_I(i,a)                                                  \
+  while (0)
 
 #endif
 

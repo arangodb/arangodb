@@ -3,6 +3,16 @@
 # found in the LICENSE file.
 
 {
+  'target_defaults': {
+    # This test shouldn't ever actually need to execute its rules: there's no
+    # command line that generates any output anyway. However, there's something
+    # slightly broken in either ninja or (maybe more likely?) on the win32 VM
+    # gypbots that breaks dependency checking and causes this rule to want to
+    # run. When it does run, the cygwin path is wrong, so the do-nothing step
+    # fails.
+    # TODO: Investigate and fix whatever's actually failing and remove this.
+    'msvs_cygwin_dirs': ['../../../../../../<(DEPTH)/third_party/cygwin'],
+  },
   'targets': [
     {
       'target_name': 'all_rule_variables',

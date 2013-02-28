@@ -468,7 +468,249 @@ function SimpleQueryByExampleSuite () {
       collection.truncate();
       deleted = collection.removeByExample({ value1: 3 });
       assertEqual(0, deleted);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: removeByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveByExampleLimit : function () {
+      var deleted;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : 1 });
+      }
+
+      deleted = collection.removeByExample({ value : 1 }, false, 10);
+      assertEqual(10, deleted);
+
+      assertEqual(40, collection.count());
+
+      deleted = collection.removeByExample({ value : 1 }, false, 20);
+      assertEqual(20, deleted);
+      
+      assertEqual(20, collection.count());
+      
+      deleted = collection.removeByExample({ value : 1 }, false, 20);
+      assertEqual(20, deleted);
+      
+      assertEqual(0, collection.count());
+      
+      deleted = collection.removeByExample({ value : 1 }, false, 20);
+      assertEqual(0, deleted);
+      
+      assertEqual(0, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: replaceByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceByExample : function () {
+      var replaced;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : i });
+      }
+
+      replaced = collection.replaceByExample({ value : 2 }, { foo : "bar", bar : "baz" });
+      assertEqual(1, replaced);
+
+      assertEqual(50, collection.count());
+
+      var doc = collection.firstExample({ foo : "bar", bar : "baz" });
+      assertEqual("bar", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(undefined, doc.value);
+
+      // not existing documents
+      replaced = collection.replaceByExample({ meow : true }, { });
+      assertEqual(0, replaced);
+      
+      replaced = collection.replaceByExample({ value : null }, { });
+      assertEqual(0, replaced);
+      
+      collection.truncate();
+      replaced = collection.replaceByExample({ value : 6 }, { });
+      assertEqual(0, replaced);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: replaceByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceByExampleLimit : function () {
+      var replaced, docs;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : 1 });
+      }
+
+      replaced = collection.replaceByExample({ value : 1 }, { foo : "bar", bar : "baz" }, false, 10);
+      assertEqual(10, replaced);
+
+      assertEqual(50, collection.count());
+
+      docs = collection.byExample({ foo : "bar", bar : "baz" }).toArray();
+      assertEqual(10, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(40, docs.length);
+      
+      replaced = collection.replaceByExample({ value : 1 }, { meow : false }, false, 15);
+      assertEqual(15, replaced);
+
+      assertEqual(50, collection.count());
+
+      docs = collection.byExample({ foo : "bar", bar : "baz" }).toArray();
+      assertEqual(10, docs.length);
+      docs = collection.byExample({ meow : false }).toArray();
+      assertEqual(15, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(25, docs.length);
+      
+      // not existing documents
+      replaced = collection.replaceByExample({ meow : true }, { }, false, 99);
+      assertEqual(0, replaced);
+      
+      replaced = collection.replaceByExample({ value : null }, { }, false, 99);
+      assertEqual(0, replaced);
+      
+      // check counts
+      docs = collection.byExample({ foo : "bar", bar : "baz" }).toArray();
+      assertEqual(10, docs.length);
+      docs = collection.byExample({ meow : false }).toArray();
+      assertEqual(15, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(25, docs.length);
+      
+      collection.truncate();
+      replaced = collection.replaceByExample({ value : 1 }, { }, false);
+      assertEqual(0, replaced);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExample : function () {
+      var updated;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : i });
+      }
+
+      // update and keep old values
+      updated = collection.updateByExample({ value : 2 }, { foo : "bar", bar : "baz" });
+      assertEqual(1, updated);
+
+      assertEqual(50, collection.count());
+
+      var doc = collection.firstExample({ foo : "bar", bar : "baz" });
+      assertEqual("bar", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(2, doc.value);
+      
+      // update and remove old values
+      updated = collection.updateByExample({ value : 5 }, { foo : "bart", bar : "baz", value : null }, false);
+      assertEqual(1, updated);
+      
+      var doc = collection.firstExample({ foo : "bart", bar : "baz" });
+      assertEqual("bart", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(undefined, doc.value);
+      
+      // update and overwrite old values
+      updated = collection.updateByExample({ value : 17 }, { foo : "barw", bar : "baz", value : 9 }, false);
+      assertEqual(1, updated);
+      
+      var doc = collection.firstExample({ foo : "barw", bar : "baz" });
+      assertEqual("barw", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(9, doc.value);
+
+      // not existing documents
+      updated = collection.updateByExample({ meow : true }, { });
+      assertEqual(0, updated);
+      
+      updated = collection.updateByExample({ value : null }, { });
+      assertEqual(0, updated);
+      
+      collection.truncate();
+      updated = collection.updateByExample({ value : 6 }, { });
+      assertEqual(0, updated);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleLimit : function () {
+      var updated, docs;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : 1 });
+      }
+
+      // update some, keep old values
+      updated = collection.updateByExample({ value : 1 }, { foo : "bar", bar : "baz" }, false, false, 10);
+      assertEqual(10, updated);
+
+      assertEqual(50, collection.count());
+
+      docs = collection.byExample({ foo : "bar", bar : "baz" }).toArray();
+      assertEqual(10, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(50, docs.length);
+      
+      // update some others
+      updated = collection.updateByExample({ value : 1 }, { meow : false }, false, false, 15);
+      assertEqual(15, updated);
+
+      assertEqual(50, collection.count());
+
+      docs = collection.byExample({ foo : "bar", bar : "baz" }).toArray();
+      assertEqual(10, docs.length);
+      docs = collection.byExample({ meow : false }).toArray();
+      assertEqual(15, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(50, docs.length);
+
+      // update some, remove old values
+      updated = collection.updateByExample({ value : 1 }, { value : null, fox : true }, false, false, 5);
+      assertEqual(5, updated);
+
+      assertEqual(50, collection.count());
+
+      docs = collection.byExample({ fox : true }).toArray();
+      assertEqual(5, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(45, docs.length);
+      
+      // update some, overwrite old values
+      updated = collection.updateByExample({ value : 1 }, { value : 16 }, false, false, 10);
+      assertEqual(10, updated);
+
+      assertEqual(50, collection.count());
+
+      docs = collection.byExample({ value : 16 }).toArray();
+      assertEqual(10, docs.length);
+      docs = collection.byExample({ fox : true }).toArray();
+      assertEqual(5, docs.length);
+      docs = collection.byExample({ value : 1 }).toArray();
+      assertEqual(35, docs.length);
+      
+      // not existing documents
+      updated = collection.updateByExample({ meow : true }, { }, false, false, 99);
+      assertEqual(0, updated);
+      
+      updated = collection.updateByExample({ value : null }, { }, false, false, 99);
+      assertEqual(0, updated);
+      
+      collection.truncate();
+      updated = collection.updateByExample({ value : 1 }, { });
+      assertEqual(0, updated);
     }
+
   };
 }
 

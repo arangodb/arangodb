@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -20,12 +20,12 @@ os.environ['GYP_GENERATORS'] = 'foo'
 os.environ['GYP_GENERATOR_FLAGS'] = 'genflag=foo'
 os.environ['GYP_GENERATOR_OUTPUT'] = 'somedir'
 
-expect = test.read('commands.gyp.ignore-env.stdout').replace('\r', '')
+expect = test.read('commands.gyp.ignore-env.stdout').replace('\r\n', '\n')
 
 test.run_gyp('commands.gyp',
-             '--debug', 'variables', '--debug', 'general',
+             '--debug', 'variables',
              '--ignore-environment',
-             stdout=expect)
+             stdout=expect, ignore_line_numbers=True)
 
 # Verify the commands.gypd against the checked-in expected contents.
 #

@@ -119,7 +119,7 @@ namespace triagens {
         _errorMessage = message;
        
         if (_warn || forceWarn) { 
-          LOGGER_WARNING << _errorMessage;
+          LOGGER_WARNING(_errorMessage);
         }
       }
       

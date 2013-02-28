@@ -54,7 +54,7 @@ namespace triagens {
       Random::selectVersion(v);
 
       string revision = "$Revision: BASICS " TRIAGENS_VERSION " (c) triAGENS GmbH $";
-      LOGGER_TRACE << revision;
+      LOGGER_TRACE(revision);
 
 #ifdef TRI_BROKEN_CXA_GUARD
       pthread_cond_t cond;

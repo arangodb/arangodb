@@ -14,5 +14,10 @@ int main(int argc, char *argv[])
 #ifdef PAREN_VALUE
   printf("2*PAREN_VALUE is %d\n", 2*PAREN_VALUE);
 #endif
+
+#ifdef HASH_VALUE
+  printf("HASH_VALUE is %s\n", HASH_VALUE);
+#endif
+
   return 0;
 }

@@ -1,7 +1,116 @@
-v1.2.alpha (XXXX-XX-XX)
+v1.3 (XXXX-XX-XX)
+-----------------
+
+* fixed issue #436: GET /_api/document on edge
+ 
+* make AQL REVERSE() function work on strings, too
+
+* disabled DOT generation in `make doxygen`. this speeds up docs generation
+
+* renamed startup option `--dispatcher.report-intervall` to `--dispatcher.report-interval`
+
+* renamed startup option `--scheduler.report-intervall` to `--scheduler.report-interval`
+
+* slightly changed output of REST API method /_admin/log.
+  Previously, the log messages returned also contained the date and log level, now
+  they will only contain the log message, and no date and log level information.
+  This information can be re-created by API users from the `timestamp` and `level`
+  attributes of the result.
+
+* removed configure option `--enable-zone-debug`
+  memory zone debugging is now automatically turned on when compiling with ArangoDB
+  `--enable-maintainer-mode`
+
+* removed configure option `--enable-arangob`
+  arangob is now always included in the build
+
+
+v1.2.beta4 (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #435: csv parser skips data at buffer border
+
+* added server startup option `--server.disable-statistics` to turn off statistics
+  gathering without recompilation of ArangoDB.
+  This partly addresses issue #432.
+
+* fixed dropping of indexes without collection name, e.g.
+  `db.xxx.dropIndex("123456");`
+  Dropping an index like this failed with an assertion error.
+ 
+* fixed issue #426: arangoimp should be able to import edges into edge collections
+
+* fixed issue #425: In case of conflict ArangoDB returns HTTP 400 Bad request 
+  (with 1207 Error) instead of HTTP 409 Conflict
+
+* fixed too greedy token consumption in AQL for negative values:
+  e.g. in the statement `RETURN { a: 1 -2 }` the minus token was consumed as part 
+  of the value `-2`, and not interpreted as the binary arithmetic operator
+
+
+v1.2.beta3 (XXXX-XX-XX)
+-----------------------
+
+* issue #427: ArangoDB Importer Manual has no navigation links (previous|home|next)
+
+* issue #319: Documentation missing for Emergency console and incomplete for datafile debugger.
+
+* issue #370: add documentation for reloadRouting and flushServerModules
+
+* issue #393: added REST API for user management at /_api/user
+
+* issue #393, #128: added simple cryptographic functions for user actions in module "crypto":
+  * require("org/arangodb/crypto").md5()
+  * require("org/arangodb/crypto").sha256()
+  * require("org/arangodb/crypto").rand()
+
+* added replaceByExample() Javascript and REST API method
+
+* added updateByExample() Javascript and REST API method
+
+* added optional "limit" parameter for removeByExample() Javascript and REST API method
+
+* fixed issue #413
+
+* updated bundled V8 version from 3.9.4 to 3.16.14.1
+  Note: the Windows version used a more recent version (3.14.0.1) and was not updated.
+
+* fixed issue #404: keep original request url in request object
+
+
+v1.2.beta2 (2013-02-15)
+-----------------------
+
+* fixed issue #405: 1.2 compile warnings
+
+* fixed issue #333: [debian] Group "arangodb" is not used when starting vie init.d script
+
+* added optional parameter 'excludeSystem' to GET /_api/collection
+  This parameter can be used to disable returning system collections in the list
+  of all collections.
+
+* added AQL functions KEEP() and UNSET()
+
+* fixed issue #348: "HTTP Interface for Administration and Monitoring" 
+  documentation errors.
+
+* fix stringification of specific positive int64 values. Stringification of int64
+  values with the upper 32 bits cleared and the 33rd bit set were broken.
+
+* issue #395:  Collection properties() function should return 'isSystem' for 
+  Javascript and REST API
+
+* make server stop after upgrade procedure when invoked with `--upgrade option`.
+  When started with the `--upgrade` option, the server will perfom
+  the upgrade, and then exit with a status code indicating the result of the
+  upgrade (0 = success, 1 = failure). To start the server regularly in either 
+  daemon or console mode, the `--upgrade` option must not be specified.
+  This change was introduced to allow init.d scripts check the result of
+  the upgrade procedure, even in case an upgrade was successful.
+  this was introduced as part of issue #391.
+
 * added AQL function EDGES()
+
 * added more crash-protection when reading corrupted collections at startup
 
 * added documentation for AQL function CONTAINS()
@@ -13,6 +122,9 @@ v1.2.alpha (XXXX-XX-XX)
   them was returned from AQL queries only, the other got thrown by other parts of
   ArangoDB. Now, error 1203 (Collection not found) is used in AQL too in case a 
   non-existing collection is used.
+
+v1.2.beta1 (2013-02-01)
+-----------------------
 
 * fixed issue #382: [Documentation error] Maschine... should be Machine...
  

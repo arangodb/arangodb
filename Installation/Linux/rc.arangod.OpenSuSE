@@ -43,10 +43,17 @@ ARANGO_PIDFILE=/var/run/arangodb/arangod.pid
 # First reset status of this service
 rc_reset
 
-action="$1"
-shift
+start () {
+    ARANGO_PIDDIR=`dirname $ARANGO_PIDFILE`
+    test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
+ 
+    startproc $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor $@ 
 
-case "$action" in
+    # Remember status and be verbose
+    rc_status -v
+}
+
+case "$1" in
 
   ################################################################################
   ## Start daemon with startproc(8). If this fails
@@ -54,15 +61,9 @@ case "$action" in
   ################################################################################
 
   start)
-    echo -n "Starting ARANGODB daemon"
+    echo -n "Starting ArangoDB daemon"
 
-    ARANGO_PIDDIR=`dirname $ARANGO_PIDFILE`
-    test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
- 
-    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arangodb $@ 
-
-    # Remember status and be verbose
-    rc_status -v
+    start
     ;;
 
   ################################################################################
@@ -71,7 +72,7 @@ case "$action" in
   ################################################################################
 
   stop)
-    echo -n "Shutting down ARANGODB daemon"
+    echo -n "Shutting down ArangoDB daemon"
 
     killproc -t $ARANGO_TIMEOUT -p $ARANGO_PIDFILE -TERM $ARANGO_BIN
 
@@ -111,7 +112,7 @@ case "$action" in
   ################################################################################
 
   force-reload|reload)
-    echo -n "Reload service ARANGODB"
+    echo -n "Reload service ArangoDB"
 
     echo "reload is currently not supported"
 
@@ -131,7 +132,7 @@ case "$action" in
   ################################################################################
 
   status)
-    echo -n "Checking for service ARANGODB"
+    echo -n "Checking for service ArangoDB"
 
     checkproc -p $ARANGO_PIDFILE $ARANGO_BIN
 
@@ -140,25 +141,21 @@ case "$action" in
     ;;
 
   ################################################################################
+  ## upgrade database
+  ################################################################################
+
+  upgrade)
+    echo -n "Upgrading ArangoDB database files"
+
+    start --upgrade
+    ;;
+
+  ################################################################################
   ## print usage message
   ################################################################################
 
   *)
-    cat >&2 <<-EOF 
-        Usage: $0 <command> <server options>
-
-        where <command> is one of:
-                start              - start arangod
-                stop               - stop arangod
-                try-restart        - stop arangod and if this succeeds (i.e. if
-                                     it was running before), start it again.
-                status             - check whether arangod is running
-                restart            - stop arangod if running; start service
-                help               - this screen
-        
-        optional server options are passed through to arangod.
-        
-        EOF
+    echo "Usage: $0 {start|stop|restart|force-reload|status|upgrade}"
     exit 1
 
     ;;

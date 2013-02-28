@@ -50,8 +50,7 @@ void TRI_InitMutex (TRI_mutex_t* mutex) {
   mutex->_mutex = CreateMutex(NULL, FALSE, NULL);
 
   if (mutex->_mutex == NULL) {
-    LOG_FATAL("cannot create the mutex");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("cannot create the mutex");
   }
 }
 
@@ -118,8 +117,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
   BOOL ok = ReleaseMutex(mutex->_mutex);
 
   if (! ok) {
-    LOG_FATAL("could not unlock the mutex");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not unlock the mutex");
   }
 }
 
@@ -313,8 +311,7 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
     SetEvent(lock->_readersEvent);
   }
   else if (lock->_readers < 0) {
-    LOG_FATAL("reader count is negative");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("reader count is negative");
   }
 }
 
@@ -406,8 +403,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   /* this is wrong since it is possible for the write locker to block this event
   // a write lock eists
   if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
-    LOG_FATAL("write lock, but trying to unlock read");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("write lock, but trying to unlock read");
   }
   
   // at least one reader exists
@@ -418,8 +414,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   // ups, no writer and no reader
   else {
     LeaveCriticalSection(&lock->_lockReaders);
-    LOG_FATAL("no reader and no writer, but trying to unlock");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("no reader and no writer, but trying to unlock");
   }
 */
  
@@ -430,8 +425,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   // oops no reader
   else {
     LeaveCriticalSection(&lock->_lockReaders);
-    LOG_FATAL("no reader, but trying to unlock read lock");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("no reader, but trying to unlock read lock");
   }
  
   LeaveCriticalSection(&lock->_lockReaders);
@@ -576,8 +570,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   
   else if (0 < lock->_readers) {
     LeaveCriticalSection(&lock->_lockReaders);
-    LOG_FATAL("read lock, but trying to unlock write");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("read lock, but trying to unlock write");
   }
 
   
@@ -588,8 +581,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   
   else {
     LeaveCriticalSection(&lock->_lockReaders);
-    LOG_FATAL("no reader and no writer, but trying to unlock");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("no reader and no writer, but trying to unlock");
   }
 
 
@@ -909,8 +901,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   BOOL ok = ReleaseMutex(cond->_mutex);
 
   if (! ok) {
-    LOG_FATAL("could not unlock the condition");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not unlock the mutex");
   }
 }
 

@@ -21,13 +21,15 @@
 # toplevel Makefile.  It may make sense to generate some .mk files on
 # the side to keep the the files readable.
 
+import os
+import re
+import sys
+import subprocess
 import gyp
 import gyp.common
 import gyp.system_test
 import gyp.xcode_emulation
-import os
-import re
-import sys
+from gyp.common import GetEnvironFallback
 
 generator_default_variables = {
   'EXECUTABLE_PREFIX': '',
@@ -43,8 +45,6 @@ generator_default_variables = {
   'RULE_INPUT_PATH': '$(abspath $<)',
   'RULE_INPUT_EXT': '$(suffix $<)',
   'RULE_INPUT_NAME': '$(notdir $<)',
-
-  # This appears unused --- ?
   'CONFIGURATION_NAME': '$(BUILDTYPE)',
 }
 
@@ -54,10 +54,14 @@ generator_supports_multiple_toolsets = True
 # Request sorted dependencies in the order from dependents to dependencies.
 generator_wants_sorted_dependencies = False
 
+# Placates pylint.
+generator_additional_non_configuration_keys = []
+generator_additional_path_sections = []
+generator_extra_sources_for_rules = []
+
 
 def CalculateVariables(default_variables, params):
   """Calculate additional variables for use in the build (called by gyp)."""
-  cc_target = os.environ.get('CC.target', os.environ.get('CC', 'cc'))
   flavor = gyp.common.GetFlavor(params)
   if flavor == 'mac':
     default_variables.setdefault('OS', 'mac')
@@ -79,7 +83,6 @@ def CalculateVariables(default_variables, params):
     global generator_extra_sources_for_rules
     generator_extra_sources_for_rules = getattr(xcode_generator,
         'generator_extra_sources_for_rules', [])
-    global COMPILABLE_EXTENSIONS
     COMPILABLE_EXTENSIONS.update({'.m': 'objc', '.mm' : 'objcxx'})
   else:
     operating_system = flavor
@@ -156,7 +159,7 @@ cmd_solink_module = $(LINK.$(TOOLSET)) -shared $(GYP_LDFLAGS) $(LDFLAGS.$(TOOLSE
 
 LINK_COMMANDS_MAC = """\
 quiet_cmd_alink = LIBTOOL-STATIC $@
-cmd_alink = rm -f $@ && ./gyp-mac-tool filter-libtool libtool -static -o $@ $(filter %.o,$^)
+cmd_alink = rm -f $@ && ./gyp-mac-tool filter-libtool libtool $(GYP_LIBTOOLFLAGS) -static -o $@ $(filter %.o,$^)
 
 quiet_cmd_link = LINK($(TOOLSET)) $@
 cmd_link = $(LINK.$(TOOLSET)) $(GYP_LDFLAGS) $(LDFLAGS.$(TOOLSET)) -o "$@" $(LD_INPUTS) $(LIBS)
@@ -253,11 +256,11 @@ all_deps :=
 # This will allow make to invoke N linker processes as specified in -jN.
 LINK ?= %(flock)s $(builddir)/linker.lock $(CXX)
 
-CC.target ?= $(CC)
+CC.target ?= %(CC.target)s
 CFLAGS.target ?= $(CFLAGS)
-CXX.target ?= $(CXX)
+CXX.target ?= %(CXX.target)s
 CXXFLAGS.target ?= $(CXXFLAGS)
-LINK.target ?= $(LINK)
+LINK.target ?= %(LINK.target)s
 LDFLAGS.target ?= $(LDFLAGS)
 AR.target ?= $(AR)
 ARFLAGS.target ?= %(ARFLAGS.target)s
@@ -266,13 +269,13 @@ ARFLAGS.target ?= %(ARFLAGS.target)s
 # in gyp's make.py where ARFLAGS.host etc. is computed.
 # TODO(evan): move all cross-compilation logic to gyp-time so we don't need
 # to replicate this environment fallback in make as well.
-CC.host ?= gcc
+CC.host ?= %(CC.host)s
 CFLAGS.host ?=
-CXX.host ?= g++
+CXX.host ?= %(CXX.host)s
 CXXFLAGS.host ?=
-LINK.host ?= g++
+LINK.host ?= %(LINK.host)s
 LDFLAGS.host ?=
-AR.host ?= ar
+AR.host ?= %(AR.host)s
 ARFLAGS.host := %(ARFLAGS.host)s
 
 # Define a dir function that can handle spaces.
@@ -438,6 +441,11 @@ endef
 .PHONY: %(default_target)s
 %(default_target)s:
 
+# make looks for ways to re-generate included makefiles, but in our case, we
+# don't have a direct way. Explicitly telling make that it has nothing to do
+# for them makes it go faster.
+%%.d: ;
+
 # Use FORCE_DO_CMD to force a target to run.  Should be coupled with
 # do_cmd.
 .PHONY: FORCE_DO_CMD
@@ -523,18 +531,7 @@ all:
 # target in our tree. Only consider the ones with .d (dependency) info:
 d_files := $(wildcard $(foreach f,$(all_deps),$(depsdir)/$(f).d))
 ifneq ($(d_files),)
-  # Rather than include each individual .d file, concatenate them into a
-  # single file which make is able to load faster.  We split this into
-  # commands that take 1000 files at a time to avoid overflowing the
-  # command line.
-  $(shell cat $(wordlist 1,1000,$(d_files)) > $(depsdir)/all.deps)
-%(generate_all_deps)s
-  # make looks for ways to re-generate included makefiles, but in our case, we
-  # don't have a direct way. Explicitly telling make that it has nothing to do
-  # for them makes it go faster.
-  $(depsdir)/all.deps: ;
-
-  include $(depsdir)/all.deps
+  include $(d_files)
 endif
 """
 
@@ -589,7 +586,9 @@ def EscapeCppDefine(s):
   """Escapes a CPP define so that it will reach the compiler unaltered."""
   s = EscapeShellArgument(s)
   s = EscapeMakeVariableExpansion(s)
-  return s
+  # '#' characters must be escaped even embedded in a string, else Make will
+  # treat it as the start of a comment.
+  return s.replace('#', r'\#')
 
 
 def QuoteIfNecessary(string):
@@ -602,8 +601,7 @@ def QuoteIfNecessary(string):
 
 def StringToMakefileVariable(string):
   """Convert a string to a value that is acceptable as a make variable name."""
-  # TODO: replace other metacharacters that we encounter.
-  return re.sub('[ {}$]', '_', string)
+  return re.sub('[^a-zA-Z0-9_]', '_', string)
 
 
 srcdir_prefix = ''
@@ -618,6 +616,21 @@ def Sourceify(path):
 
 def QuoteSpaces(s, quote=r'\ '):
   return s.replace(' ', quote)
+
+
+def InvertRelativePath(path):
+  """Given a relative path like foo/bar, return the inverse relative path:
+  the path from the relative path back to the origin dir.
+
+  E.g. os.path.normpath(os.path.join(path, InvertRelativePath(path)))
+  should always produce the empty string."""
+
+  if not path:
+    return path
+  # Only need to handle relative paths into subdirectories for now.
+  assert '..' not in path, path
+  depth = len(path.split(os.path.sep))
+  return os.path.sep.join(['..'] * depth)
 
 
 # Map from qualified target to path to output.
@@ -638,8 +651,6 @@ class MakefileWriter:
   def __init__(self, generator_flags, flavor):
     self.generator_flags = generator_flags
     self.flavor = flavor
-    # Keep track of the total number of outputs for this makefile.
-    self._num_outputs = 0
 
     self.suffix_rules_srcdir = {}
     self.suffix_rules_objdir1 = {}
@@ -664,10 +675,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
 """ % (ext, COMPILABLE_EXTENSIONS[ext]))})
 
 
-  def NumOutputs(self):
-    return self._num_outputs
-
-
   def Write(self, qualified_target, base_path, output_filename, spec, configs,
             part_of_all):
     """The main entry point: writes a .mk file for a single target.
@@ -686,6 +693,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
 
     self.fp.write(header)
 
+    self.qualified_target = qualified_target
     self.path = base_path
     self.target = spec['target_name']
     self.type = spec['type']
@@ -753,7 +761,8 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
           configs, deps, all_sources, extra_outputs,
           extra_link_deps, part_of_all,
           gyp.xcode_emulation.MacPrefixHeader(
-              self.xcode_settings, self.Absolutify, self.Pchify))
+              self.xcode_settings, lambda p: Sourceify(self.Absolutify(p)),
+              self.Pchify))
       sources = filter(Compilable, all_sources)
       if sources:
         self.WriteLn(SHARED_HEADER_SUFFIX_RULES_COMMENT1)
@@ -830,8 +839,10 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                    actions)
     part_of_all: flag indicating this target is part of 'all'
     """
+    env = self.GetSortedXcodeEnv()
     for action in actions:
-      name = self.target + '_' + StringToMakefileVariable(action['action_name'])
+      name = StringToMakefileVariable('%s_%s' % (self.qualified_target,
+                                                 action['action_name']))
       self.WriteLn('### Rules for action "%s":' % action['action_name'])
       inputs = action['inputs']
       outputs = action['outputs']
@@ -849,7 +860,11 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
         extra_mac_bundle_resources += outputs
 
       # Write the actual command.
-      command = gyp.common.EncodePOSIXShellList(action['action'])
+      action_commands = action['action']
+      if self.flavor == 'mac':
+        action_commands = [gyp.xcode_emulation.ExpandEnvVars(command, env)
+                          for command in action_commands]
+      command = gyp.common.EncodePOSIXShellList(action_commands)
       if 'message' in action:
         self.WriteLn('quiet_cmd_%s = ACTION %s $@' % (name, action['message']))
       else:
@@ -888,7 +903,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
       # Same for environment.
       self.WriteLn("%s: obj := $(abs_obj)" % QuoteSpaces(outputs[0]))
       self.WriteLn("%s: builddir := $(abs_builddir)" % QuoteSpaces(outputs[0]))
-      self.WriteXcodeEnv(outputs[0], self.GetXcodeEnv())
+      self.WriteSortedXcodeEnv(outputs[0], self.GetSortedXcodeEnv())
 
       for input in inputs:
         assert ' ' not in input, (
@@ -898,7 +913,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
             "Spaces in action output filenames not supported (%s)"  % output)
 
       # See the comment in WriteCopies about expanding env vars.
-      env = self.GetXcodeEnv()
       outputs = [gyp.xcode_emulation.ExpandEnvVars(o, env) for o in outputs]
       inputs = [gyp.xcode_emulation.ExpandEnvVars(i, env) for i in inputs]
 
@@ -924,8 +938,10 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                    rules (used to make other pieces dependent on these rules)
     part_of_all: flag indicating this target is part of 'all'
     """
+    env = self.GetSortedXcodeEnv()
     for rule in rules:
-      name = self.target + '_' + StringToMakefileVariable(rule['rule_name'])
+      name = StringToMakefileVariable('%s_%s' % (self.qualified_target,
+                                                 rule['rule_name']))
       count = 0
       self.WriteLn('### Generated for rule %s:' % name)
 
@@ -941,12 +957,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                                         rule_source_dirname)
                    for out in rule['outputs']]
 
-        # If an output is just the file name, turn it into a path so
-        # FixupArgPath() will know to Absolutify() it.
-        outputs = map(
-            lambda x : os.path.dirname(x) and x or os.path.join('.', x),
-            outputs)
-
         for out in outputs:
           dir = os.path.dirname(out)
           if dir:
@@ -955,7 +965,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
           extra_sources += outputs
         if int(rule.get('process_outputs_as_mac_bundle_resources', False)):
           extra_mac_bundle_resources += outputs
-        all_outputs += outputs
         inputs = map(Sourceify, map(self.Absolutify, [rule_source] +
                                     rule.get('inputs', [])))
         actions = ['$(call do_cmd,%s_%d)' % (name, count)]
@@ -969,6 +978,12 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
           # amount of pain.
           actions += ['@touch --no-create $@']
 
+        # See the comment in WriteCopies about expanding env vars.
+        outputs = [gyp.xcode_emulation.ExpandEnvVars(o, env) for o in outputs]
+        inputs = [gyp.xcode_emulation.ExpandEnvVars(i, env) for i in inputs]
+
+        outputs = map(self.Absolutify, outputs)
+        all_outputs += outputs
         # Only write the 'obj' and 'builddir' rules for the "primary" output
         # (:1); it's superfluous for the "extra outputs", and this avoids
         # accidentally writing duplicate dummy rules for those outputs.
@@ -979,7 +994,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
           assert ' ' not in output, (
               "Spaces in rule filenames not yet supported (%s)"  % output)
         self.WriteLn('all_deps += %s' % ' '.join(outputs))
-        self._num_outputs += len(outputs)
 
         action = [self.ExpandInputRoot(ac, rule_source_root,
                                        rule_source_dirname)
@@ -992,6 +1006,9 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
         # action, cd_action, and mkdirs get written to a toplevel variable
         # called cmd_foo. Toplevel variables can't handle things that change
         # per makefile like $(TARGET), so hardcode the target.
+        if self.flavor == 'mac':
+          action = [gyp.xcode_emulation.ExpandEnvVars(command, env)
+                    for command in action]
         action = gyp.common.EncodePOSIXShellList(action)
         action = action.replace('$(TARGET)', self.target)
         cd_action = cd_action.replace('$(TARGET)', self.target)
@@ -1041,11 +1058,11 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     """
     self.WriteLn('### Generated for copy rule.')
 
-    variable = self.target + '_copies'
+    variable = StringToMakefileVariable(self.qualified_target + '_copies')
     outputs = []
     for copy in copies:
       for path in copy['files']:
-        # Absolutify() calls normpath, stripping trailing slashes.
+        # Absolutify() may call normpath, and will strip trailing slashes.
         path = Sourceify(self.Absolutify(path))
         filename = os.path.split(path)[1]
         output = Sourceify(self.Absolutify(os.path.join(copy['destination'],
@@ -1060,7 +1077,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
         # As a workaround, manually expand variables at gyp time. Since 'copies'
         # can't run scripts, there's no need to write the env then.
         # WriteDoCmd() will escape spaces for .d files.
-        env = self.GetXcodeEnv()
+        env = self.GetSortedXcodeEnv()
         output = gyp.xcode_emulation.ExpandEnvVars(output, env)
         path = gyp.xcode_emulation.ExpandEnvVars(path, env)
         self.WriteDoCmd([output], [path], 'copy', part_of_all)
@@ -1086,7 +1103,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     """Write Makefile code for bundle Info.plist files."""
     info_plist, out, defines, extra_env = gyp.xcode_emulation.GetMacInfoPlist(
         generator_default_variables['PRODUCT_DIR'], self.xcode_settings,
-        self.Absolutify)
+        lambda p: Sourceify(self.Absolutify(p)))
     if not info_plist:
       return
     if defines:
@@ -1102,7 +1119,8 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
            '@plutil -convert xml1 $@ $@'])
       info_plist = intermediate_plist
     # plists can contain envvars and substitute them into the file.
-    self.WriteXcodeEnv(out, self.GetXcodeEnv(additional_settings=extra_env))
+    self.WriteSortedXcodeEnv(
+        out, self.GetSortedXcodeEnv(additional_settings=extra_env))
     self.WriteDoCmd([out], [info_plist], 'mac_tool,,,copy-info-plist',
                     part_of_all=True)
     bundle_deps.append(out)
@@ -1165,7 +1183,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     self.WriteLn('# Add to the list of files we specially track '
                  'dependencies for.')
     self.WriteLn('all_deps += $(OBJS)')
-    self._num_outputs += len(objs)
     self.WriteLn()
 
     # Make sure our dependencies are built first.
@@ -1225,7 +1242,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                      "$(CFLAGS_CC_$(BUILDTYPE)) "
                      "$(CFLAGS_OBJCC_$(BUILDTYPE))")
 
-    self.WritePchTargets(precompiled_header.GetGchBuildCommands())
+    self.WritePchTargets(precompiled_header.GetPchBuildCommands())
 
     # If there are any object files in our input file list, link them into our
     # output.
@@ -1384,8 +1401,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
       self.WriteMakeRule(extra_outputs, deps,
                          comment=('Preserve order dependency of '
                                   'special output on deps.'),
-                         order_only = True,
-                         multiple_output_trick = False)
+                         order_only = True)
 
     target_postbuilds = {}
     if self.type != 'none':
@@ -1393,13 +1409,17 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
         config = configs[configname]
         if self.flavor == 'mac':
           ldflags = self.xcode_settings.GetLdflags(configname,
-              generator_default_variables['PRODUCT_DIR'], self.Absolutify)
+              generator_default_variables['PRODUCT_DIR'],
+              lambda p: Sourceify(self.Absolutify(p)))
 
           # TARGET_POSTBUILDS_$(BUILDTYPE) is added to postbuilds later on.
+          gyp_to_build = InvertRelativePath(self.path)
           target_postbuild = self.xcode_settings.GetTargetPostbuilds(
               configname,
-              QuoteSpaces(self.output),
-              QuoteSpaces(self.output_binary))
+              QuoteSpaces(os.path.normpath(os.path.join(gyp_to_build,
+                                                        self.output))),
+              QuoteSpaces(os.path.normpath(os.path.join(gyp_to_build,
+                                                        self.output_binary))))
           if target_postbuild:
             target_postbuilds[configname] = target_postbuild
         else:
@@ -1412,6 +1432,9 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
             ldflags.append(r'-Wl,-rpath-link=\$(builddir)/lib.%s/' %
                            self.toolset)
         self.WriteList(ldflags, 'LDFLAGS_%s' % configname)
+        if self.flavor == 'mac':
+          self.WriteList(self.xcode_settings.GetLibtoolflags(configname),
+                         'LIBTOOLFLAGS_%s' % configname)
       libraries = spec.get('libraries')
       if libraries:
         # Remove duplicate entries
@@ -1423,6 +1446,10 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
           QuoteSpaces(self.output_binary))
       self.WriteLn('%s: LIBS := $(LIBS)' % QuoteSpaces(self.output_binary))
 
+      if self.flavor == 'mac':
+        self.WriteLn('%s: GYP_LIBTOOLFLAGS := $(LIBTOOLFLAGS_$(BUILDTYPE))' %
+            QuoteSpaces(self.output_binary))
+
     # Postbuild actions. Like actions, but implicitly depend on the target's
     # output.
     postbuilds = []
@@ -1430,13 +1457,13 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
       if target_postbuilds:
         postbuilds.append('$(TARGET_POSTBUILDS_$(BUILDTYPE))')
       postbuilds.extend(
-          gyp.xcode_emulation.GetSpecPostbuildCommands(spec, self.Absolutify))
+          gyp.xcode_emulation.GetSpecPostbuildCommands(spec))
 
     if postbuilds:
       # Envvars may be referenced by TARGET_POSTBUILDS_$(BUILDTYPE),
       # so we must output its definition first, since we declare variables
       # using ":=".
-      self.WriteXcodeEnv(self.output, self.GetXcodePostbuildEnv())
+      self.WriteSortedXcodeEnv(self.output, self.GetSortedXcodePostbuildEnv())
 
       for configname in target_postbuilds:
         self.WriteLn('%s: TARGET_POSTBUILDS_%s := %s' %
@@ -1444,6 +1471,9 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
              configname,
              gyp.common.EncodePOSIXShellList(target_postbuilds[configname])))
 
+      # Postbuilds expect to be run in the gyp file's directory, so insert an
+      # implicit postbuild to cd to there.
+      postbuilds.insert(0, gyp.common.EncodePOSIXShellList(['cd', self.path]))
       for i in xrange(len(postbuilds)):
         if not postbuilds[i].startswith('$'):
           postbuilds[i] = EscapeShellArgument(postbuilds[i])
@@ -1580,18 +1610,19 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                            phony = True)
 
 
-  def WriteList(self, list, variable=None, prefix='', quoter=QuoteIfNecessary):
+  def WriteList(self, value_list, variable=None, prefix='',
+                quoter=QuoteIfNecessary):
     """Write a variable definition that is a list of values.
 
     E.g. WriteList(['a','b'], 'foo', prefix='blah') writes out
          foo = blaha blahb
     but in a pretty-printed style.
     """
-    self.fp.write(variable + " := ")
-    if list:
-      list = [quoter(prefix + l) for l in list]
-      self.fp.write(" \\\n\t".join(list))
-    self.fp.write("\n\n")
+    values = ''
+    if value_list:
+      value_list = [quoter(prefix + l) for l in value_list]
+      values = ' \\\n\t' + ' \\\n\t'.join(value_list)
+    self.fp.write('%s :=%s\n\n' % (variable, values))
 
 
   def WriteDoCmd(self, outputs, inputs, command, part_of_all, comment=None,
@@ -1615,12 +1646,10 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     # other functions.
     outputs = [QuoteSpaces(o, SPACE_REPLACEMENT) for o in outputs]
     self.WriteLn('all_deps += %s' % ' '.join(outputs))
-    self._num_outputs += len(outputs)
 
 
   def WriteMakeRule(self, outputs, inputs, actions=None, comment=None,
-                    order_only=False, force=False, phony=False,
-                    multiple_output_trick=True):
+                    order_only=False, force=False, phony=False):
     """Write a Makefile rule, with some extra tricks.
 
     outputs: a list of outputs for the rule (note: this is not directly
@@ -1633,8 +1662,6 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     force: if true, include FORCE_DO_CMD as an order-only dep
     phony: if true, the rule does not actually generate the named output, the
            output is just a name to run the rule
-    multiple_output_trick: if true (the default), perform tricks such as dummy
-           rules to avoid problems with multiple outputs.
     """
     outputs = map(QuoteSpaces, outputs)
     inputs = map(QuoteSpaces, inputs)
@@ -1646,20 +1673,22 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     # TODO(evanm): just make order_only a list of deps instead of these hacks.
     if order_only:
       order_insert = '| '
+      pick_output = ' '.join(outputs)
     else:
       order_insert = ''
+      pick_output = outputs[0]
     if force:
       force_append = ' FORCE_DO_CMD'
     else:
       force_append = ''
     if actions:
       self.WriteLn("%s: TOOLSET := $(TOOLSET)" % outputs[0])
-    self.WriteLn('%s: %s%s%s' % (outputs[0], order_insert, ' '.join(inputs),
+    self.WriteLn('%s: %s%s%s' % (pick_output, order_insert, ' '.join(inputs),
                                  force_append))
     if actions:
       for action in actions:
         self.WriteLn('\t%s' % action)
-    if multiple_output_trick and len(outputs) > 1:
+    if not order_only and len(outputs) > 1:
       # If we have more than one output, a rule like
       #   foo bar: baz
       # that for *each* output we must run the action, potentially
@@ -1769,45 +1798,42 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     self.fp.write(text + '\n')
 
 
-  def GetXcodeEnv(self, additional_settings=None):
-    return gyp.xcode_emulation.GetXcodeEnv(
+  def GetSortedXcodeEnv(self, additional_settings=None):
+    return gyp.xcode_emulation.GetSortedXcodeEnv(
         self.xcode_settings, "$(abs_builddir)",
         os.path.join("$(abs_srcdir)", self.path), "$(BUILDTYPE)",
         additional_settings)
 
 
-  def GetXcodePostbuildEnv(self):
+  def GetSortedXcodePostbuildEnv(self):
     # CHROMIUM_STRIP_SAVE_FILE is a chromium-specific hack.
     # TODO(thakis): It would be nice to have some general mechanism instead.
     strip_save_file = self.xcode_settings.GetPerTargetSetting(
-        'CHROMIUM_STRIP_SAVE_FILE')
-    if strip_save_file:
-      strip_save_file = self.Absolutify(strip_save_file)
-    else:
-      # Explicitly clear this out, else a postbuild might pick up an export
-      # from an earlier target.
-      strip_save_file = ''
-    return self.GetXcodeEnv(
+        'CHROMIUM_STRIP_SAVE_FILE', '')
+    # Even if strip_save_file is empty, explicitly write it. Else a postbuild
+    # might pick up an export from an earlier target.
+    return self.GetSortedXcodeEnv(
         additional_settings={'CHROMIUM_STRIP_SAVE_FILE': strip_save_file})
 
 
-  def WriteXcodeEnv(self, target, env):
-    for k in gyp.xcode_emulation.TopologicallySortedEnvVarKeys(env):
+  def WriteSortedXcodeEnv(self, target, env):
+    for k, v in env:
       # For
       #  foo := a\ b
       # the escaped space does the right thing. For
       #  export foo := a\ b
       # it does not -- the backslash is written to the env as literal character.
       # So don't escape spaces in |env[k]|.
-      self.WriteLn('%s: export %s := %s' % (QuoteSpaces(target), k, env[k]))
+      self.WriteLn('%s: export %s := %s' % (QuoteSpaces(target), k, v))
 
 
   def Objectify(self, path):
     """Convert a path to its output directory form."""
     if '$(' in path:
       path = path.replace('$(obj)/', '$(obj).%s/$(TARGET)/' % self.toolset)
-      return path
-    return '$(obj).%s/$(TARGET)/%s' % (self.toolset, path)
+    if not '$(obj)' in path:
+      path = '$(obj).%s/$(TARGET)/%s' % (self.toolset, path)
+    return path
 
 
   def Pchify(self, path, lang):
@@ -1824,16 +1850,11 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
     """Convert a subdirectory-relative path into a base-relative path.
     Skips over paths that contain variables."""
     if '$(' in path:
-      # path is no existing file in this case, but calling normpath is still
-      # important for trimming trailing slashes.
-      return os.path.normpath(path)
+      # Don't call normpath in this case, as it might collapse the
+      # path too aggressively if it features '..'. However it's still
+      # important to strip trailing slashes.
+      return path.rstrip('/')
     return os.path.normpath(os.path.join(self.path, path))
-
-
-  def FixupArgPath(self, arg):
-    if '/' in arg or '.h.' in arg:
-      return self.Absolutify(arg)
-    return arg
 
 
   def ExpandInputRoot(self, template, expansion, dirname):
@@ -1892,8 +1913,8 @@ def RunSystemTests(flavor):
   # Compute flags used for building static archives.
   # N.B.: this fallback logic should match the logic in SHARED_HEADER.
   # See comment there for more details.
-  ar_target = os.environ.get('AR.target', os.environ.get('AR', 'ar'))
-  cc_target = os.environ.get('CC.target', os.environ.get('CC', 'cc'))
+  ar_target = GetEnvironFallback(('AR_target', 'AR'), 'ar')
+  cc_target = GetEnvironFallback(('CC_target', 'CC'), 'cc')
   arflags_target = 'crs'
   # ar -T enables thin archives on Linux. OS X's ar supports a -T flag, but it
   # does something useless (it limits filenames in the archive to 15 chars).
@@ -1901,12 +1922,12 @@ def RunSystemTests(flavor):
                                                          cc_command=cc_target):
     arflags_target = 'crsT'
 
-  ar_host = os.environ.get('AR.host', 'ar')
-  cc_host = os.environ.get('CC.host', 'gcc')
+  ar_host = os.environ.get('AR_host', 'ar')
+  cc_host = os.environ.get('CC_host', 'gcc')
   arflags_host = 'crs'
   # It feels redundant to compute this again given that most builds aren't
-  # cross-compiles, but due to quirks of history CC.host defaults to 'gcc'
-  # while CC.target defaults to 'cc', so the commands really are different
+  # cross-compiles, but due to quirks of history CC_host defaults to 'gcc'
+  # while CC_target defaults to 'cc', so the commands really are different
   # even though they're nearly guaranteed to run the same code underneath.
   if flavor != 'mac' and gyp.system_test.TestArSupportsT(ar_command=ar_host,
                                                          cc_command=cc_host):
@@ -1914,6 +1935,17 @@ def RunSystemTests(flavor):
 
   return { 'ARFLAGS.target': arflags_target,
            'ARFLAGS.host': arflags_host }
+
+
+def PerformBuild(data, configurations, params):
+  options = params['options']
+  for config in configurations:
+    arguments = ['make']
+    if options.toplevel_dir and options.toplevel_dir != '.':
+      arguments += '-C', options.toplevel_dir
+    arguments.append('BUILDTYPE=' + config)
+    print 'Building [%s]: %s' % (config, arguments)
+    subprocess.check_call(arguments)
 
 
 def GenerateOutput(target_list, target_dicts, data, params):
@@ -1995,18 +2027,29 @@ def GenerateOutput(target_list, target_dicts, data, params):
     header_params.update({
         'flock': 'lockf',
     })
+
   header_params.update(RunSystemTests(flavor))
+  header_params.update({
+    'CC.target':   GetEnvironFallback(('CC_target', 'CC'), '$(CC)'),
+    'AR.target':   GetEnvironFallback(('AR_target', 'AR'), '$(AR)'),
+    'CXX.target':  GetEnvironFallback(('CXX_target', 'CXX'), '$(CXX)'),
+    'LINK.target': GetEnvironFallback(('LD_target', 'LD'), '$(LINK)'),
+    'CC.host':     GetEnvironFallback(('CC_host',), 'gcc'),
+    'AR.host':     GetEnvironFallback(('AR_host',), 'ar'),
+    'CXX.host':    GetEnvironFallback(('CXX_host',), 'g++'),
+    'LINK.host':   GetEnvironFallback(('LD_host',), 'g++'),
+  })
 
   build_file, _, _ = gyp.common.ParseQualifiedTarget(target_list[0])
-  make_global_settings_dict = data[build_file].get('make_global_settings', {})
+  make_global_settings_array = data[build_file].get('make_global_settings', [])
   make_global_settings = ''
-  for key, value in make_global_settings_dict:
+  for key, value in make_global_settings_array:
     if value[0] != '$':
       value = '$(abspath %s)' % value
     if key == 'LINK':
       make_global_settings += ('%s ?= %s $(builddir)/linker.lock %s\n' %
                                (key, flock_command, value))
-    elif key in ['CC', 'CXX']:
+    elif key in ('CC', 'CC.host', 'CXX', 'CXX.host'):
       make_global_settings += (
           'ifneq (,$(filter $(origin %s), undefined default))\n' % key)
       # Let gyp-time envvars win over global settings.
@@ -2042,15 +2085,14 @@ def GenerateOutput(target_list, target_dicts, data, params):
     for target in gyp.common.AllTargets(target_list, target_dicts, build_file):
       needed_targets.add(target)
 
-  num_outputs = 0
   build_files = set()
   include_list = set()
   for qualified_target in target_list:
     build_file, target, toolset = gyp.common.ParseQualifiedTarget(
         qualified_target)
 
-    this_make_global_settings = data[build_file].get('make_global_settings', {})
-    assert make_global_settings_dict == this_make_global_settings, (
+    this_make_global_settings = data[build_file].get('make_global_settings', [])
+    assert make_global_settings_array == this_make_global_settings, (
         "make_global_settings needs to be the same for all targets.")
 
     build_files.add(gyp.common.RelativePath(build_file, options.toplevel_dir))
@@ -2083,7 +2125,6 @@ def GenerateOutput(target_list, target_dicts, data, params):
     writer = MakefileWriter(generator_flags, flavor)
     writer.Write(qualified_target, base_path, output_file, spec, configs,
                  part_of_all=qualified_target in needed_targets)
-    num_outputs += writer.NumOutputs()
 
     # Our root_makefile lives at the source root.  Compute the relative path
     # from there to the output_file for including.
@@ -2127,25 +2168,10 @@ def GenerateOutput(target_list, target_dicts, data, params):
     root_makefile.write("endif\n")
   root_makefile.write('\n')
 
-  if generator_flags.get('auto_regeneration', True):
+  if (not generator_flags.get('standalone')
+      and generator_flags.get('auto_regeneration', True)):
     WriteAutoRegenerationRule(params, root_makefile, makefile_name, build_files)
 
-  # Write the rule to load dependencies.  We batch 1000 files at a time to
-  # avoid overflowing the command line.
-  all_deps = ""
-  for i in range(1001, num_outputs, 1000):
-    all_deps += ("""
-  ifneq ($(word %(start)d,$(d_files)),)
-    $(shell cat $(wordlist %(start)d,%(end)d,$(d_files)) >> $(depsdir)/all.deps)
-  endif""" % { 'start': i, 'end': i + 999 })
-
-  # Add a check to make sure we tried to process all the .d files.
-  all_deps += """
-  ifneq ($(word %(last)d,$(d_files)),)
-    $(error Found unprocessed dependency files (gyp didn't generate enough rules!))
-  endif
-""" % { 'last': ((num_outputs / 1000) + 1) * 1000 + 1 }
-
-  root_makefile.write(SHARED_FOOTER % { 'generate_all_deps': all_deps })
+  root_makefile.write(SHARED_FOOTER)
 
   root_makefile.close()

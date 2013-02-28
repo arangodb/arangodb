@@ -14,3 +14,9 @@ test $PRODUCT_NAME = nonbundle_none
 [[ ! $EXECUTABLE_NAME && ${EXECUTABLE_NAME-_} ]]
 [[ ! $EXECUTABLE_PATH && ${EXECUTABLE_PATH-_} ]]
 [[ ! $WRAPPER_NAME && ${WRAPPER_NAME-_} ]]
+
+[[ ! $DYLIB_INSTALL_NAME_BASE && ${DYLIB_INSTALL_NAME_BASE-_} ]]
+[[ ! $LD_DYLIB_INSTALL_NAME && ${LD_DYLIB_INSTALL_NAME-_} ]]
+
+# Should be set, but empty.
+[[ ! $SDKROOT && ! ${SDKROOT-_} ]]

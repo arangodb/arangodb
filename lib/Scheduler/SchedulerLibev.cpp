@@ -240,6 +240,25 @@ int SchedulerLibev::availableBackends () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the libev allocator to our own allocator
+///
+/// this is done to avoid the numerous memory problems as reported by Valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+void SchedulerLibev::switchAllocator () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  static bool switched = false;
+  
+  if (! switched) {
+    // set the libev allocator to our own allocator
+    ev_set_allocator(&TRI_WrappedReallocate); 
+
+    switched = true;
+  }
+#endif  
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,15 +279,17 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   : Scheduler(concurrency),
     _backend(backend) {
 
+  switchAllocator();
+
   //_backend = 1;
   // setup lock
   SCHEDULER_INIT(&_watcherLock);
 
   // report status
-  LOGGER_TRACE << "supported backends: " << ev_supported_backends();
-  LOGGER_TRACE << "recommended backends: " << ev_recommended_backends();
-  LOGGER_TRACE << "embeddable backends: " << ev_embeddable_backends();
-  LOGGER_TRACE << "backend flags: " << backend;
+  LOGGER_TRACE("supported backends: " << ev_supported_backends());
+  LOGGER_TRACE("recommended backends: " << ev_recommended_backends());
+  LOGGER_TRACE("embeddable backends: " << ev_embeddable_backends());
+  LOGGER_TRACE("backend flags: " << backend);
   
   // construct the loops
   _loops = new struct ev_loop*[nrThreads];
@@ -498,7 +519,7 @@ EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, dou
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double intervall) {
+void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double interval) {
   PeriodicWatcher* watcher = reinterpret_cast<PeriodicWatcher*>(lookupWatcher(token));
   
   if (watcher == 0) {
@@ -506,7 +527,7 @@ void SchedulerLibev::rearmPeriodic (EventToken token, double offset, double inte
   }
   
   ev_periodic* w = (ev_periodic*) watcher;
-  ev_periodic_set(w, offset, intervall, 0);
+  ev_periodic_set(w, offset, interval, 0);
   ev_periodic_again(watcher->loop, w);
 }
 
@@ -552,7 +573,6 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
     if (type & EVENT_SOCKET_WRITE) {
       flags |= EV_WRITE;
     }
-   
     watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
     ev_io* w = (ev_io*) watcher;
     ev_io_init(w, socketCallback, socket.fileDescriptor, flags);

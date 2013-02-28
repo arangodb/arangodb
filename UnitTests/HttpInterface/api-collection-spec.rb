@@ -63,6 +63,23 @@ describe ArangoDB do
           realNames[collection['name']].should eq(collection)
         end
       end
+
+      it "returns all collections, exclude system collections" do
+        cmd = api + '/?excludeSystem=true'
+        doc = ArangoDB.log_get("#{prefix}-all-collections-nosystem", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+
+        collections = doc.parsed_response['collections']
+        names = doc.parsed_response['names']
+
+        collections.length.should eq(3)
+        names.length.should eq(3)
+      end
+
     end
 
 ################################################################################
@@ -112,10 +129,10 @@ describe ArangoDB do
         body = "{ \"name\" : \"#{cn}\" }"
               doc = ArangoDB.log_post("#{prefix}-create-illegal-name", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1207)
       end
 
@@ -243,6 +260,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
         doc.parsed_response['journalSize'].should be_kind_of(Integer)
       end
 
@@ -491,6 +509,7 @@ describe ArangoDB do
         doc.parsed_response['name'].should eq(@cn)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(true)
+        doc.parsed_response['isSystem'].should eq(false)
 
         cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
@@ -525,10 +544,10 @@ describe ArangoDB do
         body = "{ \"name\" : \"#{@cn}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-collection-existing", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
   
         ArangoDB.drop_collection(@cn)
       end
@@ -813,10 +832,10 @@ describe ArangoDB do
         cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-conflict", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1207)
 
         ArangoDB.size_collection(cid).should eq(10)
@@ -883,10 +902,10 @@ describe ArangoDB do
         cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-conflict", cmd, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(409)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1207)
 
         ArangoDB.drop_collection(cn)
@@ -927,6 +946,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
 
         cmd = api + "/" + cn + "/properties"
         body = "{ \"waitForSync\" : false }"
@@ -941,6 +961,7 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(false)
         doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['isSystem'].should eq(false)
 
         ArangoDB.drop_collection(cn)
       end

@@ -21,13 +21,7 @@ CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
-action="$1"
-shift
-
-case "$action" in
-  start)
-    log_begin_msg "Starting $DESC" "$NAME"
-
+start () {
     pid=$( pidofproc -p $PIDFILE $DAEMON )
 
     if [ -n "$pid" ] ; then
@@ -39,8 +33,15 @@ case "$action" in
     ARANGO_PIDDIR=`dirname $PIDFILE`
     test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb $@
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor $@
     log_end_msg $?
+}
+
+case "$1" in
+  start)
+    log_begin_msg "Starting $DESC" "$NAME"
+
+    start
     ;;
 
   stop)
@@ -66,8 +67,14 @@ case "$action" in
     status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
     ;;
 
+  upgrade)
+    log_begin_msg "Upgrading $DESC" "$NAME"
+
+    start --upgrade
+    ;;
+
   *)
-    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status} <server options>"
+    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status|upgrade}"
     exit 1
     ;;
 esac

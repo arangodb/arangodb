@@ -1,0 +1,16 @@
+{ 
+  "firstName" : "Hugo", 
+  "_key" : "schlonz", 
+  "lastName" : "Schlonz", 
+  "address" : { 
+    "city" : "Hier", 
+    "street" : "Strasse 1" 
+  }, 
+  "hobbies" : [ 
+    "swimming", 
+    "biking", 
+    "programming" 
+  ], 
+  "_id" : "demo/schlonz", 
+  "_rev" : "10961319" 
+}

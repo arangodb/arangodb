@@ -1,12 +1,13 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
-  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ,
-  SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, SYS_GETLINE,
-  SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_PROCESS_CSV_FILE,
-  SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, COLOR_OUTPUT_RESET, 
-  COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, COLOR_BOLD_BLUE,
-  COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, COLOR_BOLD_WHITE,
-  COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, UPGRADE */
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
+  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, 
+  SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
+  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, 
+  COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, 
+  COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, 
+  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, 
+  UPGRADE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -76,6 +77,11 @@
     internal.logLevel = SYS_LOG_LEVEL;
     delete SYS_LOG_LEVEL;
   }
+  
+  if (typeof SYS_MD5 !== "undefined") {
+    internal.md5 = SYS_MD5;
+    delete SYS_MD5;
+  }
 
   if (typeof SYS_OUTPUT !== "undefined") {
     internal.stdOutput = SYS_OUTPUT;
@@ -91,6 +97,11 @@
   if (typeof SYS_PROCESS_STAT !== "undefined") {
     internal.processStat = SYS_PROCESS_STAT;
     delete SYS_PROCESS_STAT;
+  }
+  
+  if (typeof SYS_RAND !== "undefined") {
+    internal.rand = SYS_RAND;
+    delete SYS_RAND;
   }
 
   if (typeof SYS_READ !== "undefined") {
@@ -190,6 +201,17 @@
   if (typeof MODULES_PATH !== "undefined") {
     internal.MODULES_PATH = MODULES_PATH;
     delete MODULES_PATH;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief node modules path
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.PACKAGE_PATH = "";
+
+  if (typeof PACKAGE_PATH !== "undefined") {
+    internal.PACKAGE_PATH = PACKAGE_PATH;
+    delete PACKAGE_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -733,7 +755,7 @@
   internal.startCaptureMode = function () {
     internal.outputBuffer = "";
     internal.output = internal.bufferOutput;
-  }
+  };
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop capture mode
@@ -746,7 +768,7 @@
     internal.output = internal.stdOutput;
 
     return buffer;
-  }
+  };
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start color printing
@@ -799,22 +821,6 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief encode password using SHA256
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.encodePassword = function (password) {
-    var salt;
-    var encoded;
-
-    salt = internal.sha256("time:" + internal.time());
-    salt = salt.substr(0,8);
-
-    encoded = "$1$" + salt + "$" + internal.sha256(salt + password);
-    
-    return encoded;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extends a prototype
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -826,63 +832,6 @@
       });
 
     return target;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a file from the module path or the database
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.loadDatabaseFile = function (path) {
-    var i;
-    var mc;
-    var n;
-
-    // try to load the file
-    var paths = internal.MODULES_PATH;
-
-    for (i = 0;  i < paths.length;  ++i) {
-      var p = paths[i];
-
-      if (p === "") {
-        n = "." + path + ".js";
-      }
-      else {
-        n = p + "/" + path + ".js";
-      }
-
-      if (internal.exists(n)) {
-        module.ModuleExistsCache[path] = true;
-        return { path : n, content : internal.read(n) };
-      }
-    }
-
-    // try to load the module from the database
-    if (internal.db !== undefined) {
-      mc = internal.db._collection("_modules");
-
-      if (mc !== null && typeof mc.firstExample === "function") {
-        n = mc.firstExample({ path: path });
-
-        if (n !== null) {
-          if (n.hasOwnProperty('content')) {
-            module.ModuleExistsCache[path] = true;
-            return { path : "_collection/" + path, content : n.content };
-          }
-
-          if (module.ModuleExistsCache.hasOwnProperty("/console")) {
-            var console = module.ModuleExistsCache["/console"];
-            console.error("found empty content in '%s'", JSON.stringify(n));
-          }
-        }
-      }
-    }
-
-    module.ModuleExistsCache[path] = false;
-
-    throw "cannot find a file named '"
-        + path
-        + "' using the module path(s) '" 
-        + internal.MODULES_PATH + "'";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -934,7 +883,7 @@
       mc = internal.db._create("_modules", { isSystem: true });
     }
 
-    path = module.normalise(path);
+    path = module.normalize(path);
     m = mc.firstExample({ path: path });
 
     if (m === null) {

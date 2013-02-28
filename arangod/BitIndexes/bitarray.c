@@ -588,7 +588,7 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   block = &(mt->_blocks[position->_blockNum]);
  
   // TODO: comparison is always false due to limited range of data type [-Wtype-limits] 
-  if (block->_free ==  BITARRAY_COLUMN_FREE_MARKER) {
+  if (block->_free == BITARRAY_COLUMN_FREE_MARKER) {
     if (ba->_lastBlockUsed == position->_blockNum) {
       --ba->_lastBlockUsed;
     }

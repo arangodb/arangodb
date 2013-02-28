@@ -136,7 +136,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the cid
-  string collection = _request->value("collection", found);
+  const string& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -144,6 +144,8 @@ bool RestEdgeHandler::createDocument () {
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
+
+  const bool waitForSync = extractWaitForSync();
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -209,7 +211,7 @@ bool RestEdgeHandler::createDocument () {
   
   // will hold the result
   TRI_doc_mptr_t* document = 0;
-  res = trx.createEdge(&document, json, extractWaitForSync(), &edge);
+  res = trx.createEdge(&document, json, waitForSync, &edge, true);
   res = trx.finish(res);
 
   // .............................................................................
@@ -233,31 +235,6 @@ bool RestEdgeHandler::createDocument () {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a document handle
-////////////////////////////////////////////////////////////////////////////////
-
-int RestEdgeHandler::parseDocumentId (string const& handle,
-                                      TRI_voc_cid_t& cid,
-                                      TRI_voc_key_t& key) {
-  vector<string> split;
-
-  split = StringUtils::split(handle, '/');
-
-  if (split.size() != 2) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
-  cid = _resolver.getCollectionId(split[0]);
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-  
-  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -66,7 +66,6 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
 #endif
     ownBuffer(true),
     writeLength(0) {
-  
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
 
@@ -163,7 +162,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   else if (nr == 0) {
     closed = true;
 
-    LOGGER_TRACE << "read returned 0";
+    LOGGER_TRACE("read returned 0");
 
     return false;
   }
@@ -173,12 +172,12 @@ bool SocketTask::fillReadBuffer (bool& closed) {
       return fillReadBuffer(closed);
     }
     else if (errno != EWOULDBLOCK) {
-      LOGGER_TRACE << "read failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_TRACE("read failed with " << errno << " (" << strerror(errno) << ")");
 
       return false;
     }
     else {
-      LOGGER_TRACE << "read would block with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_TRACE("read would block with " << errno << " (" << strerror(errno) << ")");
 
       return true;
     }
@@ -216,7 +215,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
           return handleWrite(closed, noWrite);
         }
         else if (errno != EWOULDBLOCK) {
-          LOGGER_DEBUG << "write failed with " << errno << " (" << strerror(errno) << ")";
+          LOGGER_DEBUG("write failed with " << errno << " (" << strerror(errno) << ")");
 
           return false;
         }
@@ -418,10 +417,10 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   // The problem we have here is that this opening of the fs handle may fail.
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
-  LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
+  LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
 
   if (_commSocket.fileHandle < 1) {
-    LOGGER_ERROR << "In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
+    LOGGER_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
     _commSocket.fileHandle = -1;
     _commSocket.fileDescriptor = -1;
     return false;
@@ -429,11 +428,11 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   _commSocket.fileDescriptor = _open_osfhandle (_commSocket.fileHandle, 0);
   if (_commSocket.fileDescriptor == -1) {
-    LOGGER_ERROR << "In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
+    LOGGER_ERROR("In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
     int res = closesocket(_commSocket.fileHandle);
     if (res != 0) {
       res = WSAGetLastError();
-      LOGGER_ERROR << "In SocketTask::setup closesocket(...) failed with error code: " << res;
+      LOGGER_ERROR("In SocketTask::setup closesocket(...) failed with error code: " << res);
     }
     _commSocket.fileHandle = -1;
     _commSocket.fileDescriptor = -1;
@@ -468,14 +467,14 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 void SocketTask::cleanup () {
 
   if (scheduler == 0) {
-    LOGGER_WARNING << "In SocketTask::cleanup the scheduler has disappeared -- invalid pointer";
+    LOGGER_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     keepAliveWatcher = 0;
     readWatcher = 0;
     writeWatcher = 0;
     return;
   }
-  
+
   scheduler->uninstallEvent(watcher);
   watcher = 0;
   
@@ -499,7 +498,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
   if (token == keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
-    LOGGER_TRACE << "got keep-alive timeout signal, closing connection";
+    LOGGER_TRACE("got keep-alive timeout signal, closing connection");
 
     // TODO: do we need some lock before we modify the scheduler?
     scheduler->clearTimer(token);

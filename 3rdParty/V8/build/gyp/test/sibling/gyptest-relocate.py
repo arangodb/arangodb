@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -28,13 +28,13 @@ if test.format in ('make', 'ninja'):
 
 if test.format == 'xcode':
   chdir = 'relocate/src/prog1'
-test.run_built_executable('prog1',
+test.run_built_executable('program1',
                           chdir=chdir,
                           stdout="Hello from prog1.c\n")
 
 if test.format == 'xcode':
   chdir = 'relocate/src/prog2'
-test.run_built_executable('prog2',
+test.run_built_executable('program2',
                           chdir=chdir,
                           stdout="Hello from prog2.c\n")
 

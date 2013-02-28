@@ -74,6 +74,43 @@ void Builtins::Generate_Adaptor(MacroAssembler* masm,
 }
 
 
+static void GenerateTailCallToSharedCode(MacroAssembler* masm) {
+  __ mov(eax, FieldOperand(edi, JSFunction::kSharedFunctionInfoOffset));
+  __ mov(eax, FieldOperand(eax, SharedFunctionInfo::kCodeOffset));
+  __ lea(eax, FieldOperand(eax, Code::kHeaderSize));
+  __ jmp(eax);
+}
+
+
+void Builtins::Generate_InRecompileQueue(MacroAssembler* masm) {
+  GenerateTailCallToSharedCode(masm);
+}
+
+
+void Builtins::Generate_ParallelRecompile(MacroAssembler* masm) {
+  {
+    FrameScope scope(masm, StackFrame::INTERNAL);
+
+    // Push a copy of the function onto the stack.
+    __ push(edi);
+    // Push call kind information.
+    __ push(ecx);
+
+    __ push(edi);  // Function is also the parameter to the runtime call.
+    __ CallRuntime(Runtime::kParallelRecompile, 1);
+
+    // Restore call kind information.
+    __ pop(ecx);
+    // Restore receiver.
+    __ pop(edi);
+
+    // Tear down internal frame.
+  }
+
+  GenerateTailCallToSharedCode(masm);
+}
+
+
 static void Generate_JSConstructStubHelper(MacroAssembler* masm,
                                            bool is_api_function,
                                            bool count_constructions) {
@@ -220,6 +257,7 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
       __ AllocateInNewSpace(FixedArray::kHeaderSize,
                             times_pointer_size,
                             edx,
+                            REGISTER_VALUE_IS_INT32,
                             edi,
                             ecx,
                             no_reg,
@@ -322,6 +360,11 @@ static void Generate_JSConstructStubHelper(MacroAssembler* masm,
       ParameterCount actual(eax);
       __ InvokeFunction(edi, actual, CALL_FUNCTION,
                         NullCallWrapper(), CALL_AS_METHOD);
+    }
+
+    // Store offset of return address for deoptimizer.
+    if (!is_api_function && !count_constructions) {
+      masm->isolate()->heap()->SetConstructStubDeoptPCOffset(masm->pc_offset());
     }
 
     // Restore context from the frame.
@@ -496,6 +539,61 @@ void Builtins::Generate_LazyRecompile(MacroAssembler* masm) {
 }
 
 
+static void GenerateMakeCodeYoungAgainCommon(MacroAssembler* masm) {
+  // For now, we are relying on the fact that make_code_young doesn't do any
+  // garbage collection which allows us to save/restore the registers without
+  // worrying about which of them contain pointers. We also don't build an
+  // internal frame to make the code faster, since we shouldn't have to do stack
+  // crawls in MakeCodeYoung. This seems a bit fragile.
+
+  // Re-execute the code that was patched back to the young age when
+  // the stub returns.
+  __ sub(Operand(esp, 0), Immediate(5));
+  __ pushad();
+  __ mov(eax, Operand(esp, 8 * kPointerSize));
+  {
+    FrameScope scope(masm, StackFrame::MANUAL);
+    __ PrepareCallCFunction(1, ebx);
+    __ mov(Operand(esp, 0), eax);
+    __ CallCFunction(
+        ExternalReference::get_make_code_young_function(masm->isolate()), 1);
+  }
+  __ popad();
+  __ ret(0);
+}
+
+#define DEFINE_CODE_AGE_BUILTIN_GENERATOR(C)                 \
+void Builtins::Generate_Make##C##CodeYoungAgainEvenMarking(  \
+    MacroAssembler* masm) {                                  \
+  GenerateMakeCodeYoungAgainCommon(masm);                    \
+}                                                            \
+void Builtins::Generate_Make##C##CodeYoungAgainOddMarking(   \
+    MacroAssembler* masm) {                                  \
+  GenerateMakeCodeYoungAgainCommon(masm);                    \
+}
+CODE_AGE_LIST(DEFINE_CODE_AGE_BUILTIN_GENERATOR)
+#undef DEFINE_CODE_AGE_BUILTIN_GENERATOR
+
+
+void Builtins::Generate_NotifyStubFailure(MacroAssembler* masm) {
+  // Enter an internal frame.
+  {
+    FrameScope scope(masm, StackFrame::INTERNAL);
+
+    // Preserve registers across notification, this is important for compiled
+    // stubs that tail call the runtime on deopts passing their parameters in
+    // registers.
+    __ pushad();
+    __ CallRuntime(Runtime::kNotifyStubFailure, 0);
+    __ popad();
+    // Tear down internal frame.
+  }
+
+  __ pop(MemOperand(esp, 0));  // Ignore state offset
+  __ ret(0);  // Return to IC Miss stub, continuation still on stack.
+}
+
+
 static void Generate_NotifyDeoptimizedHelper(MacroAssembler* masm,
                                              Deoptimizer::BailoutType type) {
   {
@@ -636,9 +734,9 @@ void Builtins::Generate_FunctionCall(MacroAssembler* masm) {
     // receiver.
     __ bind(&use_global_receiver);
     const int kGlobalIndex =
-        Context::kHeaderSize + Context::GLOBAL_INDEX * kPointerSize;
+        Context::kHeaderSize + Context::GLOBAL_OBJECT_INDEX * kPointerSize;
     __ mov(ebx, FieldOperand(esi, kGlobalIndex));
-    __ mov(ebx, FieldOperand(ebx, GlobalObject::kGlobalContextOffset));
+    __ mov(ebx, FieldOperand(ebx, GlobalObject::kNativeContextOffset));
     __ mov(ebx, FieldOperand(ebx, kGlobalIndex));
     __ mov(ebx, FieldOperand(ebx, GlobalObject::kGlobalReceiverOffset));
 
@@ -814,9 +912,9 @@ void Builtins::Generate_FunctionApply(MacroAssembler* masm) {
     // Use the current global receiver object as the receiver.
     __ bind(&use_global_receiver);
     const int kGlobalOffset =
-        Context::kHeaderSize + Context::GLOBAL_INDEX * kPointerSize;
+        Context::kHeaderSize + Context::GLOBAL_OBJECT_INDEX * kPointerSize;
     __ mov(ebx, FieldOperand(esi, kGlobalOffset));
-    __ mov(ebx, FieldOperand(ebx, GlobalObject::kGlobalContextOffset));
+    __ mov(ebx, FieldOperand(ebx, GlobalObject::kNativeContextOffset));
     __ mov(ebx, FieldOperand(ebx, kGlobalOffset));
     __ mov(ebx, FieldOperand(ebx, GlobalObject::kGlobalReceiverOffset));
 
@@ -826,7 +924,7 @@ void Builtins::Generate_FunctionApply(MacroAssembler* masm) {
 
     // Copy all arguments from the array to the stack.
     Label entry, loop;
-    __ mov(eax, Operand(ebp, kIndexOffset));
+    __ mov(ecx, Operand(ebp, kIndexOffset));
     __ jmp(&entry);
     __ bind(&loop);
     __ mov(edx, Operand(ebp, kArgumentsOffset));  // load arguments
@@ -843,16 +941,17 @@ void Builtins::Generate_FunctionApply(MacroAssembler* masm) {
     __ push(eax);
 
     // Update the index on the stack and in register eax.
-    __ mov(eax, Operand(ebp, kIndexOffset));
-    __ add(eax, Immediate(1 << kSmiTagSize));
-    __ mov(Operand(ebp, kIndexOffset), eax);
+    __ mov(ecx, Operand(ebp, kIndexOffset));
+    __ add(ecx, Immediate(1 << kSmiTagSize));
+    __ mov(Operand(ebp, kIndexOffset), ecx);
 
     __ bind(&entry);
-    __ cmp(eax, Operand(ebp, kLimitOffset));
+    __ cmp(ecx, Operand(ebp, kLimitOffset));
     __ j(not_equal, &loop);
 
     // Invoke the function.
     Label call_proxy;
+    __ mov(eax, ecx);
     ParameterCount actual(eax);
     __ SmiUntag(eax);
     __ mov(edi, Operand(ebp, kFunctionOffset));
@@ -894,7 +993,7 @@ static void AllocateEmptyJSArray(MacroAssembler* masm,
   const int initial_capacity = JSArray::kPreallocatedArrayElements;
   STATIC_ASSERT(initial_capacity >= 0);
 
-  __ LoadInitialArrayMap(array_function, scratch2, scratch1);
+  __ LoadInitialArrayMap(array_function, scratch2, scratch1, false);
 
   // Allocate the JSArray object together with space for a fixed array with the
   // requested elements.
@@ -997,14 +1096,16 @@ static void AllocateJSArray(MacroAssembler* masm,
   ASSERT(!fill_with_hole || array_size.is(ecx));  // rep stos count
   ASSERT(!fill_with_hole || !result.is(eax));  // result is never eax
 
-  __ LoadInitialArrayMap(array_function, scratch, elements_array);
+  __ LoadInitialArrayMap(array_function, scratch,
+                         elements_array, fill_with_hole);
 
   // Allocate the JSArray object together with space for a FixedArray with the
   // requested elements.
   STATIC_ASSERT(kSmiTagSize == 1 && kSmiTag == 0);
   __ AllocateInNewSpace(JSArray::kSize + FixedArray::kHeaderSize,
-                        times_half_pointer_size,  // array_size is a smi.
+                        times_pointer_size,
                         array_size,
+                        REGISTER_VALUE_IS_SMI,
                         result,
                         elements_array_end,
                         scratch,
@@ -1088,7 +1189,7 @@ static void ArrayNativeCode(MacroAssembler* masm,
                             bool construct_call,
                             Label* call_generic_code) {
   Label argc_one_or_more, argc_two_or_more, prepare_generic_code_call,
-        empty_array, not_empty_array;
+      empty_array, not_empty_array, finish, cant_transition_map, not_double;
 
   // Push the constructor and argc. No need to tag argc as a smi, as there will
   // be no garbage collection with this on the stack.
@@ -1247,6 +1348,7 @@ static void ArrayNativeCode(MacroAssembler* masm,
   // esp[8]: constructor (only if construct_call)
   // esp[12]: return address
   // esp[16]: last argument
+  __ bind(&finish);
   __ mov(ecx, Operand(esp, last_arg_offset - kPointerSize));
   __ pop(eax);
   __ pop(ebx);
@@ -1255,9 +1357,43 @@ static void ArrayNativeCode(MacroAssembler* masm,
   __ jmp(ecx);
 
   __ bind(&has_non_smi_element);
+  // Double values are handled by the runtime.
+  __ CheckMap(eax,
+              masm->isolate()->factory()->heap_number_map(),
+              &not_double,
+              DONT_DO_SMI_CHECK);
+  __ bind(&cant_transition_map);
   // Throw away the array that's only been partially constructed.
   __ pop(eax);
   __ UndoAllocationInNewSpace(eax);
+  __ jmp(&prepare_generic_code_call);
+
+  __ bind(&not_double);
+  // Transition FAST_SMI_ELEMENTS to FAST_ELEMENTS.
+  __ mov(ebx, Operand(esp, 0));
+  __ mov(edi, FieldOperand(ebx, HeapObject::kMapOffset));
+  __ LoadTransitionedArrayMapConditional(
+      FAST_SMI_ELEMENTS,
+      FAST_ELEMENTS,
+      edi,
+      eax,
+      &cant_transition_map);
+  __ mov(FieldOperand(ebx, HeapObject::kMapOffset), edi);
+  __ RecordWriteField(ebx, HeapObject::kMapOffset, edi, eax,
+                      kDontSaveFPRegs, OMIT_REMEMBERED_SET, OMIT_SMI_CHECK);
+
+  // Prepare to re-enter the loop
+  __ lea(edi, Operand(esp, last_arg_offset));
+
+  // Finish the array initialization loop.
+  Label loop2;
+  __ bind(&loop2);
+  __ mov(eax, Operand(edi, ecx, times_pointer_size, 0));
+  __ mov(Operand(edx, 0), eax);
+  __ add(edx, Immediate(kPointerSize));
+  __ dec(ecx);
+  __ j(greater_equal, &loop2);
+  __ jmp(&finish);
 
   // Restore argc and constructor before running the generic code.
   __ bind(&prepare_generic_code_call);
@@ -1604,7 +1740,9 @@ void Builtins::Generate_ArgumentsAdaptorTrampoline(MacroAssembler* masm) {
   __ mov(edi, Operand(ebp, JavaScriptFrameConstants::kFunctionOffset));
   __ call(edx);
 
+  // Store offset of return address for deoptimizer.
   masm->isolate()->heap()->SetArgumentsAdaptorDeoptPCOffset(masm->pc_offset());
+
   // Leave frame and return.
   LeaveArgumentsAdaptorFrame(masm);
   __ ret(0);
@@ -1659,8 +1797,9 @@ void Builtins::Generate_OnStackReplacement(MacroAssembler* masm) {
   __ j(not_equal, &skip, Label::kNear);
   __ ret(0);
 
-  // If we decide not to perform on-stack replacement we perform a
-  // stack guard check to enable interrupts.
+  // Insert a stack guard check so that if we decide not to perform
+  // on-stack replacement right away, the function calling this stub can
+  // still be interrupted.
   __ bind(&stack_check);
   Label ok;
   ExternalReference stack_limit =

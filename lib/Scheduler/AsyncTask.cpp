@@ -62,7 +62,6 @@ void AsyncTask::signal () {
 bool AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
-  
   watcher = scheduler->installAsyncEvent(loop, this);
   if (watcher == -1) {
     return false;
@@ -74,7 +73,7 @@ bool AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void AsyncTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING << "In AsyncTask::cleanup the scheduler has disappeared -- invalid pointer";
+    LOGGER_WARNING("In AsyncTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;
   }

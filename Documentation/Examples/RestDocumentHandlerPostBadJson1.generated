@@ -1,0 +1,13 @@
+unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products
+{ 1: "World" }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 600, 
+  "errorMessage" : "expecting attribute name" 
+}
+

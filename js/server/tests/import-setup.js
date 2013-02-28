@@ -36,6 +36,8 @@
   db._drop("UnitTestsImportCsv2");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv2");
+  db._drop("UnitTestsImportVertex");
+  db._drop("UnitTestsImportEdge");
 
   db._create("UnitTestsImportJson1");
   db._create("UnitTestsImportJson2");
@@ -43,6 +45,8 @@
   db._create("UnitTestsImportJson4");
   db._create("UnitTestsImportTsv1");
   db._create("UnitTestsImportTsv2");
+  db._create("UnitTestsImportVertex");
+  db._createEdgeCollection("UnitTestsImportEdge");
 })();
 
 return true;

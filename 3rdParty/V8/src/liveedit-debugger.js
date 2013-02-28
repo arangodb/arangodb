@@ -1,4 +1,4 @@
-// Copyright 2010 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -47,6 +47,8 @@ Debug.LiveEdit = new function() {
   // Forward declaration for minifier.
   var FunctionStatus;
 
+  var NEEDS_STEP_IN_PROPERTY_NAME = "stack_update_needs_step_in";
+
   // Applies the change to the script.
   // The change is in form of list of chunks encoded in a single array as
   // a series of triplets (pos1_start, pos1_end, pos2_end)
@@ -74,7 +76,17 @@ Debug.LiveEdit = new function() {
     try {
       new_compile_info = GatherCompileInfo(new_source, script);
     } catch (e) {
-      throw new Failure("Failed to compile new version of script: " + e);
+      var failure =
+          new Failure("Failed to compile new version of script: " + e);
+      if (e instanceof SyntaxError) {
+        var details = {
+          type: "liveedit_compile_error",
+          syntaxErrorMessage: e.message
+        };
+        CopyErrorPositionToDetails(e, details);
+        failure.details = details;
+      }
+      throw failure;
     }
     var root_new_node = BuildCodeInfoTree(new_compile_info);
 
@@ -158,6 +170,11 @@ Debug.LiveEdit = new function() {
         CheckStackActivations(replaced_function_infos, change_log);
 
     preview_description.stack_modified = dropped_functions_number != 0;
+
+    // Our current implementation requires client to manually issue "step in"
+    // command for correct stack state.
+    preview_description[NEEDS_STEP_IN_PROPERTY_NAME] =
+        preview_description.stack_modified;
 
     // Start with breakpoints. Convert their line/column positions and
     // temporary remove.
@@ -971,6 +988,31 @@ Debug.LiveEdit = new function() {
     return "LiveEdit Failure: " + this.message;
   };
 
+  function CopyErrorPositionToDetails(e, details) {
+    function createPositionStruct(script, position) {
+      if (position == -1) return;
+      var location = script.locationFromPosition(position, true);
+      if (location == null) return;
+      return {
+        line: location.line + 1,
+        column: location.column + 1,
+        position: position
+      };
+    }
+
+    if (!("scriptObject" in e) || !("startPosition" in e)) {
+      return;
+    }
+
+    var script = e.scriptObject;
+
+    var position_struct = {
+      start: createPositionStruct(script, e.startPosition),
+      end: createPositionStruct(script, e.endPosition)
+    };
+    details.position = position_struct;
+  }
+
   // A testing entry.
   function GetPcFromSourcePos(func, source_pos) {
     return %GetFunctionCodePositionFromSource(func, source_pos);
@@ -1073,6 +1115,18 @@ Debug.LiveEdit = new function() {
     return ProcessOldNode(old_code_tree);
   }
 
+  // Restarts call frame and returns value similar to what LiveEdit returns.
+  function RestartFrame(frame_mirror) {
+    var result = frame_mirror.restart();
+    if (IS_STRING(result)) {
+      throw new Failure("Failed to restart frame: " + result);
+    }
+    var result = {};
+    result[NEEDS_STEP_IN_PROPERTY_NAME] = true;
+    return result;
+  }
+  // Function is public.
+  this.RestartFrame = RestartFrame;
 
   // Functions are public for tests.
   this.TestApi = {

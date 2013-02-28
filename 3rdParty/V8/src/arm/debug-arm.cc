@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -48,7 +48,7 @@ void BreakLocationIterator::SetDebugBreakAtReturn() {
   //   add sp, sp, #4
   //   bx lr
   // to a call to the debug break return code.
-  // #if USE_BLX
+  // #ifdef USE_BLX
   //   ldr ip, [pc, #0]
   //   blx ip
   // #else
@@ -99,7 +99,7 @@ void BreakLocationIterator::SetDebugBreakAtSlot() {
   //   mov r2, r2
   //   mov r2, r2
   // to a call to the debug break slot code.
-  // #if USE_BLX
+  // #ifdef USE_BLX
   //   ldr ip, [pc, #0]
   //   blx ip
   // #else
@@ -124,6 +124,8 @@ void BreakLocationIterator::ClearDebugBreakAtSlot() {
   rinfo()->PatchCode(original_rinfo()->pc(),
                      Assembler::kDebugBreakSlotInstructions);
 }
+
+const bool Debug::FramePaddingLayout::kIsSupported = false;
 
 
 #define __ ACCESS_MASM(masm)
@@ -159,7 +161,7 @@ static void Generate_DebugBreakCallHelper(MacroAssembler* masm,
 #ifdef DEBUG
     __ RecordComment("// Calling from debug break to runtime - come in - over");
 #endif
-    __ mov(r0, Operand(0, RelocInfo::NONE));  // no arguments
+    __ mov(r0, Operand::Zero());  // no arguments
     __ mov(r1, Operand(ExternalReference::debug_break(masm->isolate())));
 
     CEntryStub ceb(1);

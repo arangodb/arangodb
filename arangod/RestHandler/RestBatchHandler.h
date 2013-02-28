@@ -77,9 +77,9 @@ namespace triagens {
       char* searchStart;
       char* foundStart;
       size_t foundLength;
-      bool containsMore;
       char* contentId;
       size_t contentIdLength;
+      bool containsMore;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

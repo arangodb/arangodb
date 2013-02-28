@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -17,8 +17,8 @@ test = TestGyp.TestGyp(format='gypd')
 expect = test.read('commands.gyp.stdout').replace('\r', '')
 
 test.run_gyp('commands.gyp',
-             '--debug', 'variables', '--debug', 'general',
-             stdout=expect)
+             '--debug', 'variables',
+             stdout=expect, ignore_line_numbers=True)
 
 # Verify the commands.gypd against the checked-in expected contents.
 #

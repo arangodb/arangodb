@@ -268,8 +268,7 @@ void ArangoClient::parse (ProgramOptions& options,
                           char* argv[],
                           string const& initFilename) {
   if (! options.parse(description, argc, argv)) {
-    cerr << options.lastError() << "\n";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT(options.lastError());
   }
 
   // check for help
@@ -277,7 +276,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! help.empty()) {
     cout << description.usage(help) << endl;
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS,0);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // setup the logging
@@ -291,7 +290,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! _configFile.empty()) {
     if (StringUtils::tolower(_configFile) == string("none")) {
-      LOGGER_INFO << "using no init file at all";
+      LOGGER_INFO("using no init file at all");
     }
     else {
       configFile = _configFile;
@@ -316,7 +315,7 @@ void ArangoClient::parse (ProgramOptions& options,
         configFile = sysDir;
       }
       else {
-        LOGGER_DEBUG << "no system init file '" << sysDir << "'";
+        LOGGER_DEBUG("no system init file '" << sysDir << "'");
       }
     }
   }
@@ -324,11 +323,10 @@ void ArangoClient::parse (ProgramOptions& options,
 #endif
 
   if (! configFile.empty()) {
-    LOGGER_DEBUG << "using init file '" << configFile << "'";
+    LOGGER_DEBUG("using init file '" << configFile << "'");
 
     if (! options.parse(description, configFile)) {
-      cout << "cannot parse config file '" << configFile << "': " << options.lastError() << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("cannot parse config file '" << configFile << "': " << options.lastError());
     }
   }
 
@@ -382,24 +380,21 @@ void ArangoClient::parse (ProgramOptions& options,
 
     // check connection args
     if (_connectTimeout <= 0) {
-      cerr << "invalid value for --server.connect-timeout, must be positive" << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("invalid value for --server.connect-timeout, must be positive");
     }
 
     if (_requestTimeout <= 0) {
-      cerr << "invalid value for --server.request-timeout, must be positive" << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("invalid value for --server.request-timeout, must be positive");
     }
   
     // must specify a user name
     if (_username.size() == 0) {
-      cerr << "no value specified for --server.username" << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("no value specified for --server.username");
     }
 
     // no password given on command-line
     if (! _hasPassword) {
-      TRI_FlushLogging();
+      usleep(10 * 1000);
       cout << "Please specify a password: " << flush;
 
       // now prompt for it

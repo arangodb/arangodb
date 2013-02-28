@@ -72,6 +72,11 @@ TRI_SBINDIR = ${sbindir}
 
 endif
 
+BUILT_SOURCES += etc/arangodb/arangod-uid.conf
+
+etc/arangodb/arangod-uid.conf: @srcdir@/etc/arangodb/arangod.conf
+	sed -e 's:# \([ug]id\):\1:' $< > $@
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FLAGS
 ## -----------------------------------------------------------------------------
@@ -164,12 +169,9 @@ noinst_LIBRARIES = \
 ################################################################################
 
 bin_PROGRAMS = \
+	bin/arangob \
 	bin/arangosh \
-	bin/arangoimp
-
-if ENABLE_ARANGOB	
-bin_PROGRAMS += bin/arangob
-endif
+	bin/arangoimp 
 
 ################################################################################
 ### @brief /sbin programs
@@ -373,9 +375,11 @@ BUILT_SOURCES += README
 
 README: README.md
 	fgrep -v "[Build Status]" $< \
+		| fgrep -v "ArangoDB-Logo" \
 		| @MARKDOWN_EXEC@ \
 		| @HTML2TEXT_EXEC@ -style pretty -nobs \
 		| sed -e 's:&gt;:>:g' \
+                | awk 'BEGIN { s = 0; } { if (length($0) == 0) {if (s != 0) print $0;} else {s = 1; print $0; }}' \
 		> $@.tmp
 	mv $@.tmp $@
 

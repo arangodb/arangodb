@@ -92,7 +92,6 @@ int ftruncate (int, long);
 int getpagesize (void);
 
 
-
 // .............................................................................
 // This function uses the CreateFile windows method rather than _open which
 // then will allow the application to rename files on the fly.

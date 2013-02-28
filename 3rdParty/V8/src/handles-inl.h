@@ -63,7 +63,16 @@ template <typename T>
 inline T* Handle<T>::operator*() const {
   ASSERT(location_ != NULL);
   ASSERT(reinterpret_cast<Address>(*location_) != kHandleZapValue);
+  SLOW_ASSERT(ISOLATE->allow_handle_deref());
   return *BitCast<T**>(location_);
+}
+
+template <typename T>
+inline T** Handle<T>::location() const {
+  ASSERT(location_ == NULL ||
+         reinterpret_cast<Address>(*location_) != kZapValue);
+  SLOW_ASSERT(ISOLATE->allow_handle_deref());
+  return location_;
 }
 
 
@@ -149,25 +158,63 @@ T** HandleScope::CreateHandle(T* value, Isolate* isolate) {
 
 #ifdef DEBUG
 inline NoHandleAllocation::NoHandleAllocation() {
+  Isolate* isolate = Isolate::Current();
   v8::ImplementationUtilities::HandleScopeData* current =
-      Isolate::Current()->handle_scope_data();
+      isolate->handle_scope_data();
 
-  // Shrink the current handle scope to make it impossible to do
-  // handle allocations without an explicit handle scope.
-  current->limit = current->next;
+  active_ = !isolate->optimizing_compiler_thread()->IsOptimizerThread();
+  if (active_) {
+    // Shrink the current handle scope to make it impossible to do
+    // handle allocations without an explicit handle scope.
+    current->limit = current->next;
 
-  level_ = current->level;
-  current->level = 0;
+    level_ = current->level;
+    current->level = 0;
+  }
 }
 
 
 inline NoHandleAllocation::~NoHandleAllocation() {
-  // Restore state in current handle scope to re-enable handle
-  // allocations.
-  v8::ImplementationUtilities::HandleScopeData* data =
-      Isolate::Current()->handle_scope_data();
-  ASSERT_EQ(0, data->level);
-  data->level = level_;
+  if (active_) {
+    // Restore state in current handle scope to re-enable handle
+    // allocations.
+    v8::ImplementationUtilities::HandleScopeData* data =
+        Isolate::Current()->handle_scope_data();
+    ASSERT_EQ(0, data->level);
+    data->level = level_;
+  }
+}
+
+
+NoHandleDereference::NoHandleDereference() {
+  // The guard is set on a per-isolate basis, so it affects all threads.
+  // That's why we can only use it when running without parallel recompilation.
+  if (FLAG_parallel_recompilation) return;
+  Isolate* isolate = Isolate::Current();
+  old_state_ = isolate->allow_handle_deref();
+  isolate->set_allow_handle_deref(false);
+}
+
+
+NoHandleDereference::~NoHandleDereference() {
+  if (FLAG_parallel_recompilation) return;
+  Isolate::Current()->set_allow_handle_deref(old_state_);
+}
+
+
+AllowHandleDereference::AllowHandleDereference() {
+  // The guard is set on a per-isolate basis, so it affects all threads.
+  // That's why we can only use it when running without parallel recompilation.
+  if (FLAG_parallel_recompilation) return;
+  Isolate* isolate = Isolate::Current();
+  old_state_ = isolate->allow_handle_deref();
+  isolate->set_allow_handle_deref(true);
+}
+
+
+AllowHandleDereference::~AllowHandleDereference() {
+  if (FLAG_parallel_recompilation) return;
+  Isolate::Current()->set_allow_handle_deref(old_state_);
 }
 #endif
 

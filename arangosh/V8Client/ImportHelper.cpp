@@ -74,7 +74,6 @@ namespace triagens {
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
       _quote = "\"";
       _separator = ",";
-      _eol = "\\n";
       _createCollection = false;
       _progress = false;
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_EXTENDED);
@@ -139,13 +138,6 @@ namespace triagens {
         return false;
       }
       
-      size_t eolLength;
-      char* eol = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _eol.c_str(), _eol.size(), &eolLength);
-      if (eol == NULL) {
-        _errorMessage = "out of memory";
-        return false;
-      }
-
       TRI_csv_parser_t parser;
 
       TRI_InitCsvParser(&parser,
@@ -154,8 +146,7 @@ namespace triagens {
                         ProcessCsvAdd,
                         ProcessCsvEnd);
 
-      TRI_SetSeparatorCsvParser(&parser, separator, separatorLength); 
-      TRI_SetEolCsvParser(&parser, eol, eolLength); 
+      TRI_SetSeparatorCsvParser(&parser, separator[0]);
 
       // in csv, we'll use the quote char if set
       // in tsv, we do not use the quote char
@@ -166,6 +157,8 @@ namespace triagens {
         TRI_SetQuoteCsvParser(&parser, '\0', false);
       }
       parser._dataAdd = this;
+      _rowOffset = 0;
+      _rowsRead  = 0;
 
       char buffer[32768];
 
@@ -174,7 +167,6 @@ namespace triagens {
 
         if (n < 0) {
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, eol);
           TRI_DestroyCsvParser(&parser);
           _errorMessage = TRI_LAST_ERROR_STR;
           return false;
@@ -185,7 +177,7 @@ namespace triagens {
         
         totalRead += (int64_t) n;
         reportProgress(totalLength, totalRead, nextProgress); 
-        
+       
         TRI_ParseCsvString2(&parser, buffer, n);
       }
 
@@ -195,7 +187,6 @@ namespace triagens {
 
       TRI_DestroyCsvParser(&parser);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, eol);
 
       if (fileName != "-") {
         TRI_CLOSE(fd);
@@ -314,7 +305,7 @@ namespace triagens {
 
       double pct = 100.0 * ((double) totalRead / (double) totalLength);
       if (pct >= nextProgress) {
-        LOGGER_INFO << "processed " << totalRead << " bytes (" << std::fixed << std::setprecision(2) << pct << " %) of input file";
+        LOGGER_INFO("processed " << totalRead << " bytes (" << std::fixed << std::setprecision(2) << pct << " %) of input file");
         nextProgress = pct + ProgressStep;
       }
     }
@@ -367,7 +358,9 @@ namespace triagens {
     void ImportHelper::ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
 
-      if (ih) ih->addField(field, row, column, escaped);
+      if (ih) {
+        ih->addField(field, row, column, escaped);
+      }
     }
 
     void ImportHelper::addField (char const* field, size_t row, size_t column, bool escaped) {
@@ -423,7 +416,8 @@ namespace triagens {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
 
       if (ih) {
-       ih->addLastField(field, row, column, escaped);
+        ih->addLastField(field, row, column, escaped);
+        ih->incRowsRead();
       }
     }
 
@@ -473,11 +467,13 @@ namespace triagens {
       }
 
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?" + getCollectionUrlPart(), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
+      string url("/_api/import?" + getCollectionUrlPart() + "&line=" + StringUtils::itoa(_rowOffset));
+      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
 
       handleResult(result);
 
       _outputBuffer.clear();
+      _rowOffset = _rowsRead;
     }
 
     void ImportHelper::sendJsonBuffer (char const* str, size_t len, bool isArray) {
@@ -498,7 +494,7 @@ namespace triagens {
     }
 
     void ImportHelper::handleResult (SimpleHttpResult* result) {
-      if (!result) {
+      if (! result) {
         return;
       }
 

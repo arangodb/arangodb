@@ -12,6 +12,9 @@ import TestGyp
 
 test = TestGyp.TestGyp()
 
+test.run_gyp('no_action_with_rules_fails.gyp', chdir='src/noaction', status=1,
+             stderr=None)
+
 test.run_gyp('actions.gyp', chdir='src')
 
 test.relocate('src', 'relocate/src')

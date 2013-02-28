@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -62,50 +62,38 @@ void CodeGenerator::MakeCodePrologue(CompilationInfo* info) {
 #ifdef DEBUG
   bool print_source = false;
   bool print_ast = false;
-  bool print_json_ast = false;
   const char* ftype;
 
   if (Isolate::Current()->bootstrapper()->IsActive()) {
     print_source = FLAG_print_builtin_source;
     print_ast = FLAG_print_builtin_ast;
-    print_json_ast = FLAG_print_builtin_json_ast;
     ftype = "builtin";
   } else {
     print_source = FLAG_print_source;
     print_ast = FLAG_print_ast;
-    print_json_ast = FLAG_print_json_ast;
-    Vector<const char> filter = CStrVector(FLAG_hydrogen_filter);
-    if (print_source && !filter.is_empty()) {
-      print_source = info->function()->name()->IsEqualTo(filter);
-    }
-    if (print_ast && !filter.is_empty()) {
-      print_ast = info->function()->name()->IsEqualTo(filter);
-    }
-    if (print_json_ast && !filter.is_empty()) {
-      print_json_ast = info->function()->name()->IsEqualTo(filter);
-    }
     ftype = "user-defined";
   }
 
   if (FLAG_trace_codegen || print_source || print_ast) {
     PrintF("*** Generate code for %s function: ", ftype);
-    info->function()->name()->ShortPrint();
+    if (info->IsStub()) {
+      const char* name =
+          CodeStub::MajorName(info->code_stub()->MajorKey(), true);
+      PrintF("%s", name == NULL ? "<unknown>" : name);
+    } else {
+      info->function()->name()->ShortPrint();
+    }
     PrintF(" ***\n");
   }
 
-  if (print_source) {
+  if (!info->IsStub() && print_source) {
     PrintF("--- Source from AST ---\n%s\n",
            PrettyPrinter().PrintProgram(info->function()));
   }
 
-  if (print_ast) {
+  if (!info->IsStub() && print_ast) {
     PrintF("--- AST ---\n%s\n",
            AstPrinter().PrintProgram(info->function()));
-  }
-
-  if (print_json_ast) {
-    JsonAstBuilder builder;
-    PrintF("%s", builder.BuildProgram(info->function()));
   }
 #endif  // DEBUG
 }
@@ -125,6 +113,7 @@ Handle<Code> CodeGenerator::MakeCodeEpilogue(MacroAssembler* masm,
   if (!code.is_null()) {
     isolate->counters()->total_compiled_code_size()->Increment(
         code->instruction_size());
+    code->set_prologue_offset(info->prologue_offset());
   }
   return code;
 }
@@ -134,25 +123,29 @@ void CodeGenerator::PrintCode(Handle<Code> code, CompilationInfo* info) {
 #ifdef ENABLE_DISASSEMBLER
   bool print_code = Isolate::Current()->bootstrapper()->IsActive()
       ? FLAG_print_builtin_code
-      : (FLAG_print_code || (info->IsOptimizing() && FLAG_print_opt_code));
-  Vector<const char> filter = CStrVector(FLAG_hydrogen_filter);
-  FunctionLiteral* function = info->function();
-  bool match = filter.is_empty() || function->debug_name()->IsEqualTo(filter);
-  if (print_code && match) {
+      : (FLAG_print_code ||
+         (info->IsStub() && FLAG_print_code_stubs) ||
+         (info->IsOptimizing() && FLAG_print_opt_code));
+  if (print_code) {
     // Print the source code if available.
-    Handle<Script> script = info->script();
-    if (!script->IsUndefined() && !script->source()->IsUndefined()) {
-      PrintF("--- Raw source ---\n");
-      StringInputBuffer stream(String::cast(script->source()));
-      stream.Seek(function->start_position());
-      // fun->end_position() points to the last character in the stream. We
-      // need to compensate by adding one to calculate the length.
-      int source_len =
-          function->end_position() - function->start_position() + 1;
-      for (int i = 0; i < source_len; i++) {
-        if (stream.has_more()) PrintF("%c", stream.GetNext());
+    FunctionLiteral* function = info->function();
+    if (code->kind() != Code::COMPILED_STUB) {
+      Handle<Script> script = info->script();
+      if (!script->IsUndefined() && !script->source()->IsUndefined()) {
+        PrintF("--- Raw source ---\n");
+        ConsStringIteratorOp op;
+        StringCharacterStream stream(String::cast(script->source()),
+                                     &op,
+                                     function->start_position());
+        // fun->end_position() points to the last character in the stream. We
+        // need to compensate by adding one to calculate the length.
+        int source_len =
+            function->end_position() - function->start_position() + 1;
+        for (int i = 0; i < source_len; i++) {
+          if (stream.HasMore()) PrintF("%c", stream.GetNext());
+        }
+        PrintF("\n\n");
       }
-      PrintF("\n\n");
     }
     if (info->IsOptimizing()) {
       if (FLAG_print_unopt_code) {
@@ -164,7 +157,12 @@ void CodeGenerator::PrintCode(Handle<Code> code, CompilationInfo* info) {
     } else {
       PrintF("--- Code ---\n");
     }
-    code->Disassemble(*function->debug_name()->ToCString());
+    if (info->IsStub()) {
+      CodeStub::Major major_key = info->code_stub()->MajorKey();
+      code->Disassemble(CodeStub::MajorName(major_key, false));
+    } else {
+      code->Disassemble(*function->debug_name()->ToCString());
+    }
   }
 #endif  // ENABLE_DISASSEMBLER
 }
@@ -178,7 +176,7 @@ bool CodeGenerator::ShouldGenerateLog(Expression* type) {
   }
   Handle<String> name = Handle<String>::cast(type->AsLiteral()->handle());
   if (FLAG_log_regexp) {
-    if (name->IsEqualTo(CStrVector("regexp")))
+    if (name->IsOneByteEqualTo(STATIC_ASCII_VECTOR("regexp")))
       return true;
   }
   return false;

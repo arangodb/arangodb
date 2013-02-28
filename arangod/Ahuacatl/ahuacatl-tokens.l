@@ -243,10 +243,16 @@
   return T_QUOTED_STRING;
 }
 
-(0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?)? {  
-  /* a numeric value */
+(0|[1-9][0-9]*) {  
+  /* a numeric integer value */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext, yyleng, false); 
-  return T_NUMBER;
+  return T_INTEGER;
+}
+
+(0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?) {  
+  /* a numeric double value */
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, yyleng, false); 
+  return T_DOUBLE;
 }
 
  /* ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -165,7 +165,7 @@ void SetExpectedNofProperties(Handle<JSFunction> func, int nof) {
   func->shared()->set_expected_nof_properties(nof);
   if (func->has_initial_map()) {
     Handle<Map> new_initial_map =
-        func->GetIsolate()->factory()->CopyMapDropTransitions(
+        func->GetIsolate()->factory()->CopyMap(
             Handle<Map>(func->initial_map()));
     new_initial_map->set_unused_property_fields(nof);
     func->set_initial_map(*new_initial_map);
@@ -229,12 +229,12 @@ Handle<Object> SetPrototype(Handle<JSFunction> function,
 }
 
 
-Handle<Object> SetProperty(Handle<Object> object,
+Handle<Object> SetProperty(Isolate* isolate,
+                           Handle<Object> object,
                            Handle<Object> key,
                            Handle<Object> value,
                            PropertyAttributes attributes,
                            StrictModeFlag strict_mode) {
-  Isolate* isolate = Isolate::Current();
   CALL_HEAP_FUNCTION(
       isolate,
       Runtime::SetObjectProperty(
@@ -282,7 +282,7 @@ Handle<Object> SetPropertyWithInterceptor(Handle<JSObject> object,
 Handle<Object> GetProperty(Handle<JSReceiver> obj,
                            const char* name) {
   Isolate* isolate = obj->GetIsolate();
-  Handle<String> str = isolate->factory()->LookupAsciiSymbol(name);
+  Handle<String> str = isolate->factory()->LookupUtf8Symbol(name);
   CALL_HEAP_FUNCTION(isolate, obj->GetProperty(*str), Object);
 }
 
@@ -350,14 +350,16 @@ Handle<Object> SetAccessor(Handle<JSObject> obj, Handle<AccessorInfo> info) {
 // collector will call the weak callback on the global handle
 // associated with the wrapper and get rid of both the wrapper and the
 // handle.
-static void ClearWrapperCache(Persistent<v8::Value> handle, void*) {
+static void ClearWrapperCache(v8::Isolate* v8_isolate,
+                              Persistent<v8::Value> handle,
+                              void*) {
   Handle<Object> cache = Utils::OpenHandle(*handle);
   JSValue* wrapper = JSValue::cast(*cache);
   Foreign* foreign = Script::cast(wrapper->value())->wrapper();
   ASSERT(foreign->foreign_address() ==
          reinterpret_cast<Address>(cache.location()));
   foreign->set_foreign_address(0);
-  Isolate* isolate = Isolate::Current();
+  Isolate* isolate = reinterpret_cast<Isolate*>(v8_isolate);
   isolate->global_handles()->Destroy(cache.location());
   isolate->counters()->script_wrappers()->Decrement();
 }
@@ -375,13 +377,24 @@ Handle<JSValue> GetScriptWrapper(Handle<Script> script) {
   Handle<JSFunction> constructor = isolate->script_function();
   Handle<JSValue> result =
       Handle<JSValue>::cast(isolate->factory()->NewJSObject(constructor));
+
+  // The allocation might have triggered a GC, which could have called this
+  // function recursively, and a wrapper has already been created and cached.
+  // In that case, simply return the cached wrapper.
+  if (script->wrapper()->foreign_address() != NULL) {
+    return Handle<JSValue>(
+        reinterpret_cast<JSValue**>(script->wrapper()->foreign_address()));
+  }
+
   result->set_value(*script);
 
   // Create a new weak global handle and use it to cache the wrapper
   // for future use. The cache will automatically be cleared by the
   // garbage collector when it is not used anymore.
   Handle<Object> handle = isolate->global_handles()->Create(*result);
-  isolate->global_handles()->MakeWeak(handle.location(), NULL,
+  isolate->global_handles()->MakeWeak(handle.location(),
+                                      NULL,
+                                      NULL,
                                       &ClearWrapperCache);
   script->wrapper()->set_foreign_address(
       reinterpret_cast<Address>(handle.location()));
@@ -423,7 +436,7 @@ static void CalculateLineEnds(Isolate* isolate,
                               Vector<const SourceChar> src,
                               bool with_last_line) {
   const int src_len = src.length();
-  StringSearch<char, SourceChar> search(isolate, CStrVector("\n"));
+  StringSearch<uint8_t, SourceChar> search(isolate, STATIC_ASCII_VECTOR("\n"));
 
   // Find and record line ends.
   int position = 0;
@@ -457,7 +470,7 @@ Handle<FixedArray> CalculateLineEnds(Handle<String> src,
     if (content.IsAscii()) {
       CalculateLineEnds(isolate,
                         &line_ends,
-                        content.ToAsciiVector(),
+                        content.ToOneByteVector(),
                         with_last_line);
     } else {
       CalculateLineEnds(isolate,
@@ -561,6 +574,9 @@ v8::Handle<v8::Array> GetKeysForNamedInterceptor(Handle<JSReceiver> receiver,
       result = enum_fun(info);
     }
   }
+#if ENABLE_EXTRA_CHECKS
+  CHECK(result.IsEmpty() || v8::Utils::OpenHandle(*result)->IsJSObject());
+#endif
   return result;
 }
 
@@ -581,7 +597,30 @@ v8::Handle<v8::Array> GetKeysForIndexedInterceptor(Handle<JSReceiver> receiver,
       // Leaving JavaScript.
       VMState state(isolate, EXTERNAL);
       result = enum_fun(info);
+#if ENABLE_EXTRA_CHECKS
+      CHECK(result.IsEmpty() || v8::Utils::OpenHandle(*result)->IsJSObject());
+#endif
     }
+  }
+  return result;
+}
+
+
+Handle<Object> GetScriptNameOrSourceURL(Handle<Script> script) {
+  Isolate* isolate = script->GetIsolate();
+  Handle<String> name_or_source_url_key =
+      isolate->factory()->LookupOneByteSymbol(
+          STATIC_ASCII_VECTOR("nameOrSourceURL"));
+  Handle<JSValue> script_wrapper = GetScriptWrapper(script);
+  Handle<Object> property = GetProperty(script_wrapper,
+                                        name_or_source_url_key);
+  ASSERT(property->IsJSFunction());
+  Handle<JSFunction> method = Handle<JSFunction>::cast(property);
+  bool caught_exception;
+  Handle<Object> result = Execution::TryCall(method, script_wrapper, 0,
+                                             NULL, &caught_exception);
+  if (caught_exception) {
+    result = isolate->factory()->undefined_value();
   }
   return result;
 }
@@ -604,7 +643,7 @@ Handle<FixedArray> GetKeysInFixedArrayFor(Handle<JSReceiver> object,
   Isolate* isolate = object->GetIsolate();
   Handle<FixedArray> content = isolate->factory()->empty_fixed_array();
   Handle<JSObject> arguments_boilerplate = Handle<JSObject>(
-      isolate->context()->global_context()->arguments_boilerplate(),
+      isolate->context()->native_context()->arguments_boilerplate(),
       isolate);
   Handle<JSFunction> arguments_function = Handle<JSFunction>(
       JSFunction::cast(arguments_boilerplate->map()->constructor()),
@@ -699,46 +738,134 @@ Handle<JSArray> GetKeysFor(Handle<JSReceiver> object, bool* threw) {
 }
 
 
+Handle<FixedArray> ReduceFixedArrayTo(Handle<FixedArray> array, int length) {
+  ASSERT(array->length() >= length);
+  if (array->length() == length) return array;
+
+  Handle<FixedArray> new_array =
+      array->GetIsolate()->factory()->NewFixedArray(length);
+  for (int i = 0; i < length; ++i) new_array->set(i, array->get(i));
+  return new_array;
+}
+
+
 Handle<FixedArray> GetEnumPropertyKeys(Handle<JSObject> object,
                                        bool cache_result) {
-  int index = 0;
   Isolate* isolate = object->GetIsolate();
   if (object->HasFastProperties()) {
     if (object->map()->instance_descriptors()->HasEnumCache()) {
-      isolate->counters()->enum_cache_hits()->Increment();
+      int own_property_count = object->map()->EnumLength();
+      // If we have an enum cache, but the enum length of the given map is set
+      // to kInvalidEnumCache, this means that the map itself has never used the
+      // present enum cache. The first step to using the cache is to set the
+      // enum length of the map by counting the number of own descriptors that
+      // are not DONT_ENUM.
+      if (own_property_count == Map::kInvalidEnumCache) {
+        own_property_count = object->map()->NumberOfDescribedProperties(
+            OWN_DESCRIPTORS, DONT_ENUM);
+
+        if (cache_result) object->map()->SetEnumLength(own_property_count);
+      }
+
       DescriptorArray* desc = object->map()->instance_descriptors();
-      return Handle<FixedArray>(FixedArray::cast(desc->GetEnumCache()),
-                                isolate);
+      Handle<FixedArray> keys(desc->GetEnumCache(), isolate);
+
+      // In case the number of properties required in the enum are actually
+      // present, we can reuse the enum cache. Otherwise, this means that the
+      // enum cache was generated for a previous (smaller) version of the
+      // Descriptor Array. In that case we regenerate the enum cache.
+      if (own_property_count <= keys->length()) {
+        isolate->counters()->enum_cache_hits()->Increment();
+        return ReduceFixedArrayTo(keys, own_property_count);
+      }
     }
+
+    Handle<Map> map(object->map());
+
+    if (map->instance_descriptors()->IsEmpty()) {
+      isolate->counters()->enum_cache_hits()->Increment();
+      if (cache_result) map->SetEnumLength(0);
+      return isolate->factory()->empty_fixed_array();
+    }
+
     isolate->counters()->enum_cache_misses()->Increment();
-    int num_enum = object->NumberOfLocalProperties(DONT_ENUM);
+    int num_enum = map->NumberOfDescribedProperties(ALL_DESCRIPTORS, DONT_ENUM);
+
     Handle<FixedArray> storage = isolate->factory()->NewFixedArray(num_enum);
-    Handle<FixedArray> sort_array = isolate->factory()->NewFixedArray(num_enum);
+    Handle<FixedArray> indices = isolate->factory()->NewFixedArray(num_enum);
+
     Handle<DescriptorArray> descs =
         Handle<DescriptorArray>(object->map()->instance_descriptors(), isolate);
+
+    int real_size = map->NumberOfOwnDescriptors();
+    int enum_size = 0;
+    int index = 0;
+
     for (int i = 0; i < descs->number_of_descriptors(); i++) {
-      if (descs->IsProperty(i) && !descs->IsDontEnum(i)) {
-        (*storage)->set(index, descs->GetKey(i));
-        PropertyDetails details(descs->GetDetails(i));
-        (*sort_array)->set(index, Smi::FromInt(details.index()));
+      PropertyDetails details = descs->GetDetails(i);
+      if (!details.IsDontEnum()) {
+        if (i < real_size) ++enum_size;
+        storage->set(index, descs->GetKey(i));
+        if (!indices.is_null()) {
+          if (details.type() != FIELD) {
+            indices = Handle<FixedArray>();
+          } else {
+            int field_index = Descriptor::IndexFromValue(descs->GetValue(i));
+            if (field_index >= map->inobject_properties()) {
+              field_index = -(field_index - map->inobject_properties() + 1);
+            }
+            indices->set(index, Smi::FromInt(field_index));
+          }
+        }
         index++;
       }
     }
-    (*storage)->SortPairs(*sort_array, sort_array->length());
+    ASSERT(index == storage->length());
+
+    Handle<FixedArray> bridge_storage =
+        isolate->factory()->NewFixedArray(
+            DescriptorArray::kEnumCacheBridgeLength);
+    DescriptorArray* desc = object->map()->instance_descriptors();
+    desc->SetEnumCache(*bridge_storage,
+                       *storage,
+                       indices.is_null() ? Object::cast(Smi::FromInt(0))
+                                         : Object::cast(*indices));
     if (cache_result) {
-      Handle<FixedArray> bridge_storage =
-          isolate->factory()->NewFixedArray(
-              DescriptorArray::kEnumCacheBridgeLength);
-      DescriptorArray* desc = object->map()->instance_descriptors();
-      desc->SetEnumCache(*bridge_storage, *storage);
+      object->map()->SetEnumLength(enum_size);
     }
-    ASSERT(storage->length() == index);
-    return storage;
+
+    return ReduceFixedArrayTo(storage, enum_size);
   } else {
-    int num_enum = object->NumberOfLocalProperties(DONT_ENUM);
-    Handle<FixedArray> storage = isolate->factory()->NewFixedArray(num_enum);
-    Handle<FixedArray> sort_array = isolate->factory()->NewFixedArray(num_enum);
-    object->property_dictionary()->CopyEnumKeysTo(*storage, *sort_array);
+    Handle<StringDictionary> dictionary(object->property_dictionary());
+
+    int length = dictionary->NumberOfElements();
+    if (length == 0) {
+      return Handle<FixedArray>(isolate->heap()->empty_fixed_array());
+    }
+
+    // The enumeration array is generated by allocating an array big enough to
+    // hold all properties that have been seen, whether they are are deleted or
+    // not. Subsequently all visible properties are added to the array. If some
+    // properties were not visible, the array is trimmed so it only contains
+    // visible properties. This improves over adding elements and sorting by
+    // index by having linear complexity rather than n*log(n).
+
+    // By comparing the monotonous NextEnumerationIndex to the NumberOfElements,
+    // we can predict the number of holes in the final array. If there will be
+    // more than 50% holes, regenerate the enumeration indices to reduce the
+    // number of holes to a minimum. This avoids allocating a large array if
+    // many properties were added but subsequently deleted.
+    int next_enumeration = dictionary->NextEnumerationIndex();
+    if (!object->IsGlobalObject() && next_enumeration > (length * 3) / 2) {
+      StringDictionary::DoGenerateNewEnumerationIndices(dictionary);
+      next_enumeration = dictionary->NextEnumerationIndex();
+    }
+
+    Handle<FixedArray> storage =
+        isolate->factory()->NewFixedArray(next_enumeration);
+
+    storage = Handle<FixedArray>(dictionary->CopyEnumKeysTo(*storage));
+    ASSERT(storage->length() == object->NumberOfLocalProperties(DONT_ENUM));
     return storage;
   }
 }
@@ -766,6 +893,48 @@ Handle<ObjectHashTable> PutIntoObjectHashTable(Handle<ObjectHashTable> table,
   CALL_HEAP_FUNCTION(table->GetIsolate(),
                      table->Put(*key, *value),
                      ObjectHashTable);
+}
+
+
+DeferredHandleScope::DeferredHandleScope(Isolate* isolate)
+    : impl_(isolate->handle_scope_implementer()) {
+  ASSERT(impl_->isolate() == Isolate::Current());
+  impl_->BeginDeferredScope();
+  v8::ImplementationUtilities::HandleScopeData* data =
+      impl_->isolate()->handle_scope_data();
+  Object** new_next = impl_->GetSpareOrNewBlock();
+  Object** new_limit = &new_next[kHandleBlockSize];
+  ASSERT(data->limit == &impl_->blocks()->last()[kHandleBlockSize]);
+  impl_->blocks()->Add(new_next);
+
+#ifdef DEBUG
+  prev_level_ = data->level;
+#endif
+  data->level++;
+  prev_limit_ = data->limit;
+  prev_next_ = data->next;
+  data->next = new_next;
+  data->limit = new_limit;
+}
+
+
+DeferredHandleScope::~DeferredHandleScope() {
+  impl_->isolate()->handle_scope_data()->level--;
+  ASSERT(handles_detached_);
+  ASSERT(impl_->isolate()->handle_scope_data()->level == prev_level_);
+}
+
+
+DeferredHandles* DeferredHandleScope::Detach() {
+  DeferredHandles* deferred = impl_->Detach(prev_limit_);
+  v8::ImplementationUtilities::HandleScopeData* data =
+      impl_->isolate()->handle_scope_data();
+  data->next = prev_next_;
+  data->limit = prev_limit_;
+#ifdef DEBUG
+  handles_detached_ = true;
+#endif
+  return deferred;
 }
 
 

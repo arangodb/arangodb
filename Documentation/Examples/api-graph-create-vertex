@@ -1,7 +1,7 @@
 > curl --data @- -X POST --dump - http://localhost:8529/_api/graph/graph1/vertex
 {"_key" : "v1", "optional1" : "val1", "optional2" : "val2"}
 
-HTTP/1.1 200 OK
+HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 {
@@ -13,5 +13,5 @@ content-type: application/json; charset=utf-8
     "optional2": "val2"
   },
   "error": false,
-  "code": 200
+  "code": 201
 }

@@ -1,4 +1,4 @@
-# Copyright 2011 the V8 project authors. All rights reserved.
+# Copyright 2012 the V8 project authors. All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
@@ -59,7 +59,7 @@ LIBRARY_FLAGS = {
       'CPPDEFINES': ['V8_INTERPRETED_REGEXP']
     },
     'mode:debug': {
-      'CPPDEFINES': ['V8_ENABLE_CHECKS', 'OBJECT_PRINT']
+      'CPPDEFINES': ['V8_ENABLE_CHECKS', 'OBJECT_PRINT', 'VERIFY_HEAP']
     },
     'objectprint:on': {
       'CPPDEFINES':   ['OBJECT_PRINT'],
@@ -67,16 +67,9 @@ LIBRARY_FLAGS = {
     'debuggersupport:on': {
       'CPPDEFINES':   ['ENABLE_DEBUGGER_SUPPORT'],
     },
-    'inspector:on': {
-      'CPPDEFINES':   ['INSPECTOR'],
-    },
     'fasttls:off': {
       'CPPDEFINES':   ['V8_NO_FAST_TLS'],
     },
-    'liveobjectlist:on': {
-      'CPPDEFINES':   ['ENABLE_DEBUGGER_SUPPORT', 'INSPECTOR',
-                       'LIVE_OBJECT_LIST', 'OBJECT_PRINT'],
-    }
   },
   'gcc': {
     'all': {
@@ -101,14 +94,14 @@ LIBRARY_FLAGS = {
     'os:linux': {
       'CCFLAGS':      ['-ansi'] + GCC_EXTRA_CCFLAGS,
       'library:shared': {
-        'CPPDEFINES': ['V8_SHARED'],
+        'CPPDEFINES': ['V8_SHARED', 'BUILDING_V8_SHARED'],
         'LIBS': ['pthread']
       }
     },
     'os:macos': {
       'CCFLAGS':      ['-ansi', '-mmacosx-version-min=10.4'],
       'library:shared': {
-        'CPPDEFINES': ['V8_SHARED']
+        'CPPDEFINES': ['V8_SHARED', 'BUILDING_V8_SHARED'],
       }
     },
     'os:freebsd': {
@@ -185,6 +178,9 @@ LIBRARY_FLAGS = {
       'mips_arch_variant:mips32r2': {
         'CPPDEFINES':    ['_MIPS_ARCH_MIPS32R2']
       },
+      'mips_arch_variant:loongson': {
+        'CPPDEFINES':    ['_MIPS_ARCH_LOONGSON']
+      },
       'simulator:none': {
         'CCFLAGS':      ['-EL'],
         'LINKFLAGS':    ['-EL'],
@@ -193,6 +189,9 @@ LIBRARY_FLAGS = {
         },
         'mips_arch_variant:mips32r1': {
           'CCFLAGS':      ['-mips32', '-Wa,-mips32']
+        },
+        'mips_arch_variant:loongson': {
+          'CCFLAGS':      ['-march=mips3', '-Wa,-march=mips3']
         },
         'library:static': {
           'LINKFLAGS':    ['-static', '-static-libgcc']
@@ -212,9 +211,12 @@ LIBRARY_FLAGS = {
       'LINKFLAGS':    ['-m32'],
       'mipsabi:softfloat': {
         'CPPDEFINES':    ['__mips_soft_float=1'],
+        'fpu:on': {
+          'CPPDEFINES' : ['CAN_USE_FPU_INSTRUCTIONS']
+        }
       },
       'mipsabi:hardfloat': {
-        'CPPDEFINES':    ['__mips_hard_float=1'],
+        'CPPDEFINES':    ['__mips_hard_float=1', 'CAN_USE_FPU_INSTRUCTIONS'],
       }
     },
     'arch:x64': {
@@ -296,10 +298,16 @@ V8_EXTRA_FLAGS = {
                        '-Werror',
                        '-W',
                        '-Wno-unused-parameter',
+                       '-Woverloaded-virtual',
                        '-Wnon-virtual-dtor']
     },
     'os:win32': {
-      'WARNINGFLAGS': ['-pedantic', '-Wno-long-long']
+      'WARNINGFLAGS': ['-pedantic',
+                       '-Wno-long-long',
+                       '-Wno-pedantic-ms-format'],
+      'library:shared': {
+        'LIBS': ['winmm', 'ws2_32']
+      }
     },
     'os:linux': {
       'WARNINGFLAGS': ['-pedantic'],
@@ -539,6 +547,9 @@ SAMPLE_FLAGS = {
       'mips_arch_variant:mips32r2': {
         'CPPDEFINES':    ['_MIPS_ARCH_MIPS32R2']
       },
+      'mips_arch_variant:loongson': {
+        'CPPDEFINES':    ['_MIPS_ARCH_LOONGSON']
+      },
       'simulator:none': {
         'CCFLAGS':      ['-EL'],
         'LINKFLAGS':    ['-EL'],
@@ -547,6 +558,9 @@ SAMPLE_FLAGS = {
         },
         'mips_arch_variant:mips32r1': {
           'CCFLAGS':      ['-mips32', '-Wa,-mips32']
+        },
+        'mips_arch_variant:loongson': {
+          'CCFLAGS':      ['-march=mips3', '-Wa,-march=mips3']
         },
         'library:static': {
           'LINKFLAGS':    ['-static', '-static-libgcc']
@@ -557,7 +571,10 @@ SAMPLE_FLAGS = {
         },
         'mipsabi:hardfloat': {
           'CCFLAGS':      ['-mhard-float'],
-          'LINKFLAGS':    ['-mhard-float']
+          'LINKFLAGS':    ['-mhard-float'],
+          'fpu:on': {
+            'CPPDEFINES' : ['CAN_USE_FPU_INSTRUCTIONS']
+          }
         }
       }
     },
@@ -691,6 +708,9 @@ PREPARSER_FLAGS = {
       'mips_arch_variant:mips32r2': {
         'CPPDEFINES':    ['_MIPS_ARCH_MIPS32R2']
       },
+      'mips_arch_variant:loongson': {
+        'CPPDEFINES':    ['_MIPS_ARCH_LOONGSON']
+      },
       'simulator:none': {
         'CCFLAGS':      ['-EL'],
         'LINKFLAGS':    ['-EL'],
@@ -699,6 +719,9 @@ PREPARSER_FLAGS = {
         },
         'mips_arch_variant:mips32r1': {
           'CCFLAGS':      ['-mips32', '-Wa,-mips32']
+        },
+        'mips_arch_variant:loongson': {
+          'CCFLAGS':      ['-march=mips3', '-Wa,-march=mips3']
         },
         'library:static': {
           'LINKFLAGS':    ['-static', '-static-libgcc']
@@ -1021,16 +1044,6 @@ SIMPLE_OPTIONS = {
     'default': 'on',
     'help': 'enable debugging of JavaScript code'
   },
-  'inspector': {
-    'values': ['on', 'off'],
-    'default': 'off',
-    'help': 'enable inspector features'
-  },
-  'liveobjectlist': {
-    'values': ['on', 'off'],
-    'default': 'off',
-    'help': 'enable live object list features in the debugger'
-  },
   'soname': {
     'values': ['on', 'off'],
     'default': 'off',
@@ -1108,7 +1121,7 @@ SIMPLE_OPTIONS = {
     'help': 'generate calling conventiont according to selected mips ABI'
   },
   'mips_arch_variant': {
-    'values': ['mips32r2', 'mips32r1'],
+    'values': ['mips32r2', 'mips32r1', 'loongson'],
     'default': 'mips32r2',
     'help': 'mips variant'
   },
@@ -1122,6 +1135,16 @@ SIMPLE_OPTIONS = {
     'default': 'on',
     'help': 'use vfp3 instructions when building the snapshot [Arm only]'
   },
+  'fpu': {
+    'values': ['on', 'off'],
+    'default': 'on',
+    'help': 'use fpu instructions when building the snapshot [MIPS only]'
+  },
+  'I_know_I_should_build_with_GYP': {
+    'values': ['yes', 'no'],
+    'default': 'no',
+    'help': 'grace period: temporarily override SCons deprecation'
+  }
 
 }
 
@@ -1222,7 +1245,35 @@ def IsLegal(env, option, values):
   return True
 
 
+def WarnAboutDeprecation():
+  print """
+    #####################################################################
+    #                                                                   #
+    #  LAST WARNING: Building V8 with SCons is deprecated.              #
+    #                                                                   #
+    #  This only works because you have overridden the kill switch.     #
+    #                                                                   #
+    #              MIGRATE TO THE GYP-BASED BUILD NOW!                  #
+    #                                                                   #
+    #  Instructions: http://code.google.com/p/v8/wiki/BuildingWithGYP.  #
+    #                                                                   #
+    #####################################################################
+  """
+
+
 def VerifyOptions(env):
+  if env['I_know_I_should_build_with_GYP'] != 'yes':
+    Abort("Building V8 with SCons is no longer supported. Please use GYP "
+          "instead; you can find instructions are at "
+          "http://code.google.com/p/v8/wiki/BuildingWithGYP.\n\n"
+          "Quitting.\n\n"
+          "For a limited grace period, you can specify "
+          "\"I_know_I_should_build_with_GYP=yes\" to override.")
+  else:
+    WarnAboutDeprecation()
+    import atexit
+    atexit.register(WarnAboutDeprecation)
+
   if not IsLegal(env, 'mode', ['debug', 'release']):
     return False
   if not IsLegal(env, 'sample', ["shell", "process", "lineprocessor"]):
@@ -1350,13 +1401,6 @@ def PostprocessOptions(options, os):
     options['msvcltcg'] = 'on'
   if (options['mipsabi'] != 'none') and (options['arch'] != 'mips') and (options['simulator'] != 'mips'):
     options['mipsabi'] = 'none'
-  if options['liveobjectlist'] == 'on':
-    if (options['debuggersupport'] != 'on') or (options['mode'] == 'release'):
-      # Print a warning that liveobjectlist will implicitly enable the debugger
-      print "Warning: forcing debuggersupport on for liveobjectlist"
-    options['debuggersupport'] = 'on'
-    options['inspector'] = 'on'
-    options['objectprint'] = 'on'
 
 
 def ParseEnvOverrides(arg, imports):
@@ -1564,6 +1608,5 @@ try:
   SetOption('warn', 'no-deprecated')
 except:
   pass
-
 
 Build()

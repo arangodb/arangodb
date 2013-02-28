@@ -59,9 +59,9 @@ using ::v8::V8;
 class KangarooThread : public v8::internal::Thread {
  public:
   KangarooThread(v8::Isolate* isolate,
-                 v8::Handle<v8::Context> context, int value)
+                 v8::Handle<v8::Context> context)
       : Thread("KangarooThread"),
-        isolate_(isolate), context_(context), value_(value) {
+        isolate_(isolate), context_(context) {
   }
 
   void Run() {
@@ -90,7 +90,6 @@ class KangarooThread : public v8::internal::Thread {
  private:
   v8::Isolate* isolate_;
   Persistent<v8::Context> context_;
-  int value_;
 };
 
 // Migrates an isolate from one thread to another
@@ -106,7 +105,7 @@ TEST(KangarooIsolates) {
     CHECK_EQ(isolate, v8::internal::Isolate::Current());
     CompileRun("function getValue() { return 30; }");
   }
-  KangarooThread thread1(isolate, context, 1);
+  KangarooThread thread1(isolate, context);
   thread1.Start();
   thread1.Join();
 }
@@ -537,7 +536,7 @@ class LockUnlockLockThread : public JoinableThread {
   virtual void Run() {
     v8::Locker lock1(isolate_);
     CHECK(v8::Locker::IsLocked(isolate_));
-    CHECK(!v8::Locker::IsLocked());
+    CHECK(!v8::Locker::IsLocked(CcTest::default_isolate()));
     {
       v8::Isolate::Scope isolate_scope(isolate_);
       v8::HandleScope handle_scope;
@@ -547,13 +546,13 @@ class LockUnlockLockThread : public JoinableThread {
     {
       v8::Unlocker unlock1(isolate_);
       CHECK(!v8::Locker::IsLocked(isolate_));
-      CHECK(!v8::Locker::IsLocked());
+      CHECK(!v8::Locker::IsLocked(CcTest::default_isolate()));
       {
         v8::Locker lock2(isolate_);
         v8::Isolate::Scope isolate_scope(isolate_);
         v8::HandleScope handle_scope;
         CHECK(v8::Locker::IsLocked(isolate_));
-        CHECK(!v8::Locker::IsLocked());
+        CHECK(!v8::Locker::IsLocked(CcTest::default_isolate()));
         v8::Context::Scope context_scope(context_);
         CalcFibAndCheck();
       }
@@ -595,16 +594,16 @@ class LockUnlockLockDefaultIsolateThread : public JoinableThread {
   }
 
   virtual void Run() {
-    v8::Locker lock1;
+    v8::Locker lock1(CcTest::default_isolate());
     {
       v8::HandleScope handle_scope;
       v8::Context::Scope context_scope(context_);
       CalcFibAndCheck();
     }
     {
-      v8::Unlocker unlock1;
+      v8::Unlocker unlock1(CcTest::default_isolate());
       {
-        v8::Locker lock2;
+        v8::Locker lock2(CcTest::default_isolate());
         v8::HandleScope handle_scope;
         v8::Context::Scope context_scope(context_);
         CalcFibAndCheck();
@@ -625,7 +624,7 @@ TEST(LockUnlockLockDefaultIsolateMultithreaded) {
 #endif
   Persistent<v8::Context> context;
   {
-    v8::Locker locker_;
+    v8::Locker locker_(CcTest::default_isolate());
     v8::HandleScope handle_scope;
     context = v8::Context::New();
   }
@@ -650,7 +649,7 @@ TEST(Regress1433) {
       v8::Handle<Script> script = v8::Script::Compile(source);
       v8::Handle<Value> result = script->Run();
       v8::String::AsciiValue ascii(result);
-      context.Dispose();
+      context.Dispose(isolate);
     }
     isolate->Dispose();
   }
@@ -678,7 +677,7 @@ class IsolateGenesisThread : public JoinableThread {
       v8::ExtensionConfiguration extensions(count_, extension_names_);
       v8::Persistent<v8::Context> context = v8::Context::New(&extensions);
       CHECK(i::Isolate::Current()->has_installed_extensions());
-      context.Dispose();
+      context.Dispose(isolate);
     }
     isolate->Dispose();
   }

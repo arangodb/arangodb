@@ -95,6 +95,7 @@ bool ListenTask::isBound () const {
 // Task methods
 // -----------------------------------------------------------------------------
 
+
 bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   if (! isBound()) {
@@ -129,9 +130,37 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   }
 #endif
   
+#ifdef _WIN32
+  // ..........................................................................
+  // The problem we have here is that this opening of the fs handle may fail.
+  // There is no mechanism to the calling function to report failure.
+  // ..........................................................................
+  LOGGER_TRACE("attempting to convert socket handle to socket descriptor");
+
+  if (_listenSocket.fileHandle < 1) {
+    LOGGER_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
+    _listenSocket.fileHandle = -1;
+    _listenSocket.fileDescriptor = -1;
+    return false;
+  }
+
+  _listenSocket.fileDescriptor = _open_osfhandle (_listenSocket.fileHandle, 0);
+  if (_listenSocket.fileDescriptor == -1) {
+    LOGGER_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed");
+    int res = closesocket(_listenSocket.fileHandle);
+    if (res != 0) {
+      res = WSAGetLastError();
+      LOGGER_ERROR("In ListenTask::setup closesocket(...) failed with error code: ",res);
+    }
+    _listenSocket.fileHandle = -1;
+    _listenSocket.fileDescriptor = -1;
+    return false;
+  }
+
+#endif
+
   this->scheduler = scheduler;
   this->loop = loop;
-    
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
   
   if (readWatcher == -1) {
@@ -155,7 +184,6 @@ void ListenTask::cleanup () {
 
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
-  
   if (token == readWatcher) {
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
@@ -171,14 +199,14 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     connectionSocket.fileDescriptor = 0;
     connectionSocket.fileHandle = accept(_listenSocket.fileHandle, (sockaddr*) &addr, &len);
     
-    if (connectionSocket.fileHandle  == INVALID_SOCKET) {
+    if (connectionSocket.fileHandle == INVALID_SOCKET) {
       ++acceptFailures;
       
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOGGER_WARNING << "accept failed with " << errno << " (" << strerror(errno) << ")";
+        LOGGER_WARNING("accept failed with " << errno << " (" << strerror(errno) << ")");
       }
       else if (acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOGGER_ERROR << "too many accept failures, stopping logging";
+        LOGGER_ERROR("too many accept failures, stopping logging");
       }
       
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
@@ -196,7 +224,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     if (res != 0) {
       TRI_CLOSE_SOCKET(connectionSocket);
       
-      LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_WARNING("getsockname failed with " << errno << " (" << strerror(errno) << ")");
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
@@ -205,7 +233,6 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
  
     // disable nagle's algorithm, set to non-blocking and close-on-exec  
     bool result = _endpoint->initIncoming(connectionSocket); 
-
     if (!result) {
       TRI_CLOSE_SOCKET(connectionSocket);
 

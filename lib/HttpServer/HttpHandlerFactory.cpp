@@ -247,7 +247,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOGGER_TRACE << "no direct handler found, trying prefixes";
+    LOGGER_TRACE("no direct handler found, trying prefixes");
 
     // find longest match
     string prefix;
@@ -268,11 +268,11 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
 
     if (prefix.empty()) {
-      LOGGER_TRACE << "no prefix handler found, trying catch all";
+      LOGGER_TRACE("no prefix handler found, trying catch all");
 
       i = ii.find("/");
       if (i != ii.end()) {
-        LOGGER_TRACE << "found catch all handler '/'";
+        LOGGER_TRACE("found catch all handler '/'");
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
@@ -293,7 +293,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
 
     else {
-      LOGGER_TRACE << "found prefix match '" << prefix << "'";
+      LOGGER_TRACE("found prefix match '" << prefix << "'");
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
@@ -324,7 +324,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
       return notFoundHandler;
     }
     else {
-      LOGGER_TRACE << "no not-found handler, giving up";
+      LOGGER_TRACE("no not-found handler, giving up");
       return 0;
     }
   }
@@ -338,7 +338,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     data = j->second;
   }
 
-  LOGGER_TRACE << "found handler for path '" << path << "'";
+  LOGGER_TRACE("found handler for path '" << path << "'");
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);

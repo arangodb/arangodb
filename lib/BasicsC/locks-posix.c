@@ -110,12 +110,10 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
   rc = pthread_mutex_lock(mutex);
 
   if (rc != 0) {
-    LOG_ERROR("could not lock the mutex: %s", strerror(rc));
     if (rc == EDEADLK) {
       LOG_ERROR("mutex deadlock detected"); 
     }
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
   }
 }
 
@@ -129,9 +127,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
   rc = pthread_mutex_unlock(mutex);
 
   if (rc != 0) {
-    LOG_ERROR("could not release the mutex: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not release the mutex: %s", strerror(rc));
   }
 }
 
@@ -193,12 +189,10 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
   rc = pthread_spin_lock(spinLock);
 
  if (rc != 0) {
-    LOG_ERROR("could not lock the spin-lock: %s", strerror(rc));
     if (rc == EDEADLK) {
       LOG_ERROR("spinlock deadlock detected"); 
     }
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not lock the spin-lock: %s", strerror(rc));
   }
 }
 
@@ -212,9 +206,7 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
   rc = pthread_spin_unlock(spinLock);
 
   if (rc != 0) {
-    LOG_ERROR("could not release the spin-lock: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not release the spin-lock: %s", strerror(rc));
   }
 }
 
@@ -308,12 +300,11 @@ again:
       goto again;
     }
 
-    LOG_ERROR("could not read-lock the read-write lock: %s", strerror(rc));
     if (rc == EDEADLK) {
       LOG_ERROR("rw-lock deadlock detected"); 
     }
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+
+    LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s", strerror(rc));
   }
 }
 
@@ -327,9 +318,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-    LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s", strerror(rc));
   }
 }
 
@@ -355,12 +344,10 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
   rc = pthread_rwlock_wrlock(lock);
 
   if (rc != 0) {
-    LOG_ERROR("could not write-lock the read-write lock: %s", strerror(rc));
     if (rc == EDEADLK) {
       LOG_ERROR("rw-lock deadlock detected"); 
     }
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s", strerror(rc));
   }
 }
 
@@ -374,9 +361,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   rc  = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-    LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s", strerror(rc));
   }
 }
 
@@ -408,9 +393,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
   cond->_mutex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false);
 
   if (cond->_mutex == NULL) {
-    LOG_ERROR("could not allocate memory for condition variable mutex");
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not allocate memory for condition variable mutex");
   }
 
   pthread_mutex_init(cond->_mutex, 0);
@@ -465,9 +448,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
   rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
-    LOG_ERROR("could not signal the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not signal the condition: %s", strerror(rc));
   }
 }
 
@@ -483,9 +464,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
   rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
-    LOG_ERROR("could not croadcast the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not croadcast the condition: %s", strerror(rc));
   }
 }
 
@@ -501,9 +480,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
   rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
 
   if (rc != 0) {
-    LOG_ERROR("could not wait for the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not wait for the condition: %s", strerror(rc));
   }
 }
 
@@ -522,9 +499,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   rc = gettimeofday(&tp, NULL);
 
   if (rc != 0) {
-    LOG_ERROR("could not get time of day for the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not get time of day for the condition: %s", strerror(rc));
   }
 
   // Convert from timeval to timespec
@@ -542,9 +517,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
       return false;
     }
 
-    LOG_ERROR("could not wait for the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not wait for the condition: %s", strerror(rc));
   }
 
   return true;
@@ -560,9 +533,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
   rc = pthread_mutex_lock(cond->_mutex);
 
   if (rc != 0) {
-    LOG_ERROR("could not lock the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not lock the condition: %s", strerror(rc));
   }
 }
 
@@ -576,9 +547,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   rc = pthread_mutex_unlock(cond->_mutex);
 
   if (rc != 0) {
-    LOG_ERROR("could not unlock the condition: %s", strerror(rc));
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOG_FATAL_AND_EXIT("could not unlock the condition: %s", strerror(rc));
   }
 }
 
@@ -587,6 +556,10 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

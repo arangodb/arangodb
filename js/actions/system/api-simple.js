@@ -831,6 +831,11 @@ actions.defineHttp({
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
+/// - @LIT{limit}: an optional value that determines how many documents to 
+///   delete at most. If @LIT{limit} is specified but is less than the number
+///   of documents in the collection, it is undefined which of the documents 
+///   will be deleted.
+///
 /// Returns the number of documents that were deleted
 ///
 /// @EXAMPLES
@@ -857,6 +862,7 @@ actions.defineHttp({
         var example = body.example;
         var name = body.collection;
         var collection = db._collection(name);
+        var limit = body.limit || null;
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -865,8 +871,181 @@ actions.defineHttp({
           actions.badParameter(req, res, "example");
         }
         else {
-          var result = collection.removeByExample(example, body.waitForSync);
+          var result = collection.removeByExample(example, body.waitForSync, limit);
           actions.resultOk(req, res, actions.HTTP_OK, { deleted: result });
+        }
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_replace_by_example
+/// @brief replaces the body of all documents of a collection that match an 
+/// example
+///
+/// @RESTHEADER{PUT /_api/simple/replace-by-example,replaces documents by example}
+///
+/// @REST{PUT /_api/simple/replace-by-example}
+///
+/// This will find all documents in the collection that match the specified 
+/// example object, and replace the entire document body with the new value
+/// specified. Note that document meta-attributes such as @LIT{_id}, @LIT{_key},
+/// @LIT{_from}, @LIT{_to} etc. cannot be replaced. 
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{collection}: The name of the collection to replace within.
+///
+/// - @LIT{example}: An example object that all collection objects are compared
+///   against.
+///
+/// - @LIT{newValue}: The replacement document that will get inserted in place
+///   of the "old" documents.
+///
+/// - @LIT{waitForSync}: if set to true, then all removal operations will 
+///   instantly be synchronised to disk. If this is not specified, then the
+///   collection's default sync behavior will be applied.
+///
+/// - @LIT{limit}: an optional value that determines how many documents to 
+///   replace at most. If @LIT{limit} is specified but is less than the number
+///   of documents in the collection, it is undefined which of the documents 
+///   will be replaced.
+///
+/// Returns the number of documents that were replaced
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-simple-replace-by-example
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "replace-by-example",
+  context : "api",
+
+  callback : function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+  
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
+      }
+      else {
+        var example = body.example;
+        var newValue = body.newValue;
+        var name = body.collection;
+        var collection = db._collection(name);
+        var limit = body.limit || null;
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (typeof example !== "object") {
+          actions.badParameter(req, res, "example");
+        }
+        else if (typeof newValue !== "object") {
+          actions.badParameter(req, res, "newValue");
+        }
+        else {
+          var result = collection.replaceByExample(example, newValue, body.waitForSync, limit);
+          actions.resultOk(req, res, actions.HTTP_OK, { replaced: result });
+        }
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_update_by_example
+/// @brief partially updates the body of all documents of a collection that
+/// match an example
+///
+/// @RESTHEADER{PUT /_api/simple/update-by-example,updates documents by example}
+///
+/// @REST{PUT /_api/simple/update-by-example}
+///
+/// This will find all documents in the collection that match the specified 
+/// example object, and partially update the document body with the new value
+/// specified. Note that document meta-attributes such as @LIT{_id}, @LIT{_key},
+/// @LIT{_from}, @LIT{_to} etc. cannot be replaced. 
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{collection}: The name of the collection to update within.
+///
+/// - @LIT{example}: An example object that all collection objects are compared
+///   against.
+///
+/// - @LIT{newValue}: The update value that will get inserted in place
+///   of the "old" version of the found documents.
+///
+/// - @LIT{keepNull}: This parameter can be used to modify the behavior when
+///   handling @LIT{null} values. Normally, @LIT{null} values are stored in the
+///   database. By setting the @FA{keepNull} parameter to @LIT{false}, this 
+///   behavior can be changed so that all attributes in @FA{data} with @LIT{null} 
+///   values will be removed from the updated document.
+///
+/// - @LIT{waitForSync}: if set to true, then all removal operations will 
+///   instantly be synchronised to disk. If this is not specified, then the
+///   collection's default sync behavior will be applied.
+///
+/// - @LIT{limit}: an optional value that determines how many documents to 
+///   update at most. If @LIT{limit} is specified but is less than the number
+///   of documents in the collection, it is undefined which of the documents 
+///   will be updated.
+///
+/// Returns the number of documents that were updated
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-simple-update-by-example
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "update-by-example",
+  context : "api",
+
+  callback : function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+  
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
+      }
+      else {
+        var example = body.example;
+        var newValue = body.newValue;
+        var name = body.collection;
+        var collection = db._collection(name);
+        var limit = body.limit || null;
+        var keepNull = body.keepNull || null;
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (typeof example !== "object") {
+          actions.badParameter(req, res, "example");
+        }
+        else if (typeof newValue !== "object") {
+          actions.badParameter(req, res, "newValue");
+        }
+        else {
+          var result = collection.updateByExample(example, newValue, keepNull, body.waitForSync, limit);
+          actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
         }
       }
     }

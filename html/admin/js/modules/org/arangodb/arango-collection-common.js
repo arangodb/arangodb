@@ -673,6 +673,13 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
+/// @FUN{@FA{collection}.removeByExample(@FA{document}, @FA{waitForSync}, @FA{limit})}
+///
+/// The optional @FA{limit} parameter can be used to restrict the number of 
+/// removals to the specified value. If @FA{limit} is specified but less than the
+/// number of documents in the collection, it is undefined which documents are
+/// removed.
+///
 /// @EXAMPLES
 ///
 /// @code
@@ -680,8 +687,97 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+ArangoCollection.prototype.removeByExample = function (example, waitForSync, limit) {
   throw "cannot call abstract removeByExample function";
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces documents matching an example
+///
+/// @FUN{@FA{collection}.replaceByExample(@FA{example}, @FA{newValue})}
+///
+/// Replaces all documents matching an example with a new document body.
+/// The entire document body of each document matching the @FA{example} will be 
+/// replaced with @FA{newValue}. The document meta-attributes such as @LIT{_id},
+/// @LIT{_key}, @LIT{_from}, @LIT{_to} will not be replaced.
+///
+/// @FUN{@FA{collection}.replaceByExample(@FA{document}, @FA{newValue}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document replacement operation to disk even in case that the
+/// @LIT{waitForSync} flag had been disabled for the entire collection.  Thus,
+/// the @FA{waitForSync} parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the @FA{waitForSync} parameter to
+/// @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @FUN{@FA{collection}.replaceByExample(@FA{document}, @FA{newValue}, @FA{waitForSync}, @FA{limit})}
+///
+/// The optional @FA{limit} parameter can be used to restrict the number of 
+/// replacements to the specified value. If @FA{limit} is specified but less than 
+/// the number of documents in the collection, it is undefined which documents are
+/// replaced.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.replaceByExample = function (example, newValue, waitForSync, limit) {
+  throw "cannot call abstract replaceByExample function";
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief partially updates documents matching an example
+///
+/// @FUN{@FA{collection}.updateByExample(@FA{example}, @FA{newValue})}
+///
+/// Partially updates all documents matching an example with a new document body.
+/// Specific attributes in the document body of each document matching the 
+/// @FA{example} will be updated with the values from @FA{newValue}. 
+/// The document meta-attributes such as @LIT{_id}, @LIT{_key}, @LIT{_from}, 
+/// @LIT{_to} cannot be updated.
+///
+/// @FUN{@FA{collection}.updateByExample(@FA{document}, @FA{newValue}, @FA{keepNull}, @FA{waitForSync})}
+///
+/// The optional @FA{keepNull} parameter can be used to modify the behavior when
+/// handling @LIT{null} values. Normally, @LIT{null} values are stored in the
+/// database. By setting the @FA{keepNull} parameter to @LIT{false}, this behavior
+/// can be changed so that all attributes in @FA{data} with @LIT{null} values will 
+/// be removed from the target document.
+///
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document replacement operation to disk even in case that the
+/// @LIT{waitForSync} flag had been disabled for the entire collection.  Thus,
+/// the @FA{waitForSync} parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the @FA{waitForSync} parameter to
+/// @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @FUN{@FA{collection}.updateByExample(@FA{document}, @FA{newValue}, @FA{keepNull}, @FA{waitForSync}, @FA{limit})}
+///
+/// The optional @FA{limit} parameter can be used to restrict the number of 
+/// updates to the specified value. If @FA{limit} is specified but less than 
+/// the number of documents in the collection, it is undefined which documents are
+/// updated.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
+  throw "cannot call abstract updateExample function";
 };
 
 ////////////////////////////////////////////////////////////////////////////////

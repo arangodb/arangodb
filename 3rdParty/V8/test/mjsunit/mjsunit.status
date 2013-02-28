@@ -1,4 +1,4 @@
-# Copyright 2011 the V8 project authors. All rights reserved.
+# Copyright 2012 the V8 project authors. All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
@@ -28,50 +28,74 @@
 prefix mjsunit
 
 # All tests in the bug directory are expected to fail.
-bugs: FAIL
+bugs/*: FAIL
 
 ##############################################################################
 # Fails.
 regress/regress-1119: FAIL
 
-##############################################################################
-
-# NewGC: BUG(1719) slow to collect arrays over several contexts.
+# Issue 1719: Slow to collect arrays over several contexts.
 regress/regress-524: SKIP
+# When that bug is fixed, revert the expectation to:
+# Skip long running test in debug and allow it to timeout in release mode.
+# regress/regress-524: (PASS || TIMEOUT), SKIP if $mode == debug
+
+# Deferred stack trace formatting is temporarily disabled.
+stack-traces-gc: PASS || FAIL
 
 ##############################################################################
 # Too slow in debug mode with --stress-opt
 compiler/regress-stacktrace-methods: PASS, SKIP if $mode == debug
 compiler/regress-funcaller: PASS, SKIP if $mode == debug
+regress/regress-2318: PASS, SKIP if $mode == debug
 regress/regress-create-exception: PASS, SKIP if $mode == debug
 
 ##############################################################################
-# This one uses a built-in that's only present in debug mode. It takes
+# These use a built-in that's only present in debug mode. They take
 # too long to run in debug mode on ARM and MIPS.
-fuzz-natives: PASS, SKIP if ($mode == release || $arch == arm || $arch == mips)
+fuzz-natives-part*: PASS, SKIP if ($mode == release || $arch == arm || $arch == android_arm || $arch == mipsel)
 
-big-object-literal: PASS, SKIP if ($arch == arm)
+big-object-literal: PASS, SKIP if ($arch == arm || $arch == android_arm)
 
 # Issue 488: this test sometimes times out.
 array-constructor: PASS || TIMEOUT
 
 # Very slow on ARM and MIPS, contains no architecture dependent code.
-unicode-case-overoptimization: PASS, TIMEOUT if ($arch == arm || $arch == mips)
-
-# Skip long running test in debug and allow it to timeout in release mode.
-regress/regress-524: (PASS || TIMEOUT), SKIP if $mode == debug
-
-# Stack manipulations in LiveEdit are buggy - see bug 915
-debug-liveedit-check-stack: SKIP
-debug-liveedit-patch-positions-replace: SKIP
+unicode-case-overoptimization: PASS, TIMEOUT if ($arch == arm || $arch == android_arm || $arch == mipsel)
 
 ##############################################################################
-[ $arch == arm ]
+# This test expects to reach a certain recursion depth, which may not work
+# for debug mode.
+json-recursive: PASS, (PASS || FAIL) if $mode == debug
+
+##############################################################################
+# Skip long running test that times out in debug mode.
+regress/regress-crbug-160010: PASS, SKIP if $mode == debug
+generated-transition-stub: PASS, SKIP if $mode == debug
+
+##############################################################################
+# This test sets the umask on a per-process basis and hence cannot be
+# used in multi-threaded runs.
+# On android there is no /tmp directory.
+d8-os: PASS, SKIP if ($isolates || $arch == android_arm || $arch == android_ia32)
+tools/tickprocessor: PASS, SKIP if ($arch == android_arm || $arch == android_ia32)
+
+##############################################################################
+# This test is the same as math-floor-of-div for non ARM architectures.
+math-floor-of-div-nosudiv: PASS, SKIP if ($arch != arm && $arch != android_arm)
+
+##############################################################################
+# Long running test that reproduces memory leak and should be run manually.
+regress/regress-2073: SKIP
+
+##############################################################################
+[ $arch == arm || $arch == android_arm ]
 
 # Slow tests which times out in debug mode.
 try: PASS, SKIP if $mode == debug
 debug-scripts-request: PASS, SKIP if $mode == debug
 array-constructor: PASS, SKIP if $mode == debug
+regress/regress-1122: PASS, SKIP if ($mode == debug && $arch == android_arm)
 
 # Flaky test that can hit compilation-time stack overflow in debug mode.
 unicode-test: PASS, (PASS || FAIL) if $mode == debug
@@ -81,8 +105,8 @@ compiler/regress-stacktrace-methods: PASS, PASS || TIMEOUT if $mode == release
 array-splice: PASS || TIMEOUT
 
 # Long running test.
-mirror-object: PASS || TIMEOUT
 string-indexof-2: PASS || TIMEOUT
+mirror-object: PASS || TIMEOUT
 
 # BUG(3251035): Timeouts in long looping crankshaft optimization
 # tests. Skipping because having them timeout takes too long on the
@@ -99,11 +123,9 @@ compiler/property-calls: SKIP
 compiler/recursive-deopt: SKIP
 compiler/regress-4: SKIP
 compiler/regress-funcaller: SKIP
-compiler/regress-gvn: SKIP
 compiler/regress-rep-change: SKIP
 compiler/regress-arguments: SKIP
 compiler/regress-funarguments: SKIP
-compiler/regress-or: SKIP
 compiler/regress-3249650: SKIP
 compiler/simple-deopt: SKIP
 regress/regress-490: SKIP
@@ -117,8 +139,17 @@ regress/regress-3247124: SKIP
 # should be platform-independent.
 regress/regress-1132: SKIP
 
+# Stack manipulations in LiveEdit is not implemented for this arch.
+debug-liveedit-check-stack: SKIP
+debug-liveedit-stack-padding: SKIP
+debug-liveedit-restart-frame: SKIP
+debug-liveedit-double-call: SKIP
+
+# Currently always deopt on minus zero
+math-floor-of-div-minus-zero: SKIP
+
 ##############################################################################
-[ $arch == mips ]
+[ $arch == mipsel ]
 
 # Slow tests which times out in debug mode.
 try: PASS, SKIP if $mode == debug
@@ -148,11 +179,9 @@ compiler/property-calls: SKIP
 compiler/recursive-deopt: SKIP
 compiler/regress-4: SKIP
 compiler/regress-funcaller: SKIP
-compiler/regress-gvn: SKIP
 compiler/regress-rep-change: SKIP
 compiler/regress-arguments: SKIP
 compiler/regress-funarguments: SKIP
-compiler/regress-or: SKIP
 compiler/regress-3249650: SKIP
 compiler/simple-deopt: SKIP
 regress/regress-490: SKIP
@@ -165,3 +194,10 @@ regress/regress-3247124: SKIP
 # the test requires too much time to run.  However, the problem test covers
 # should be platform-independent.
 regress/regress-1132: SKIP
+
+# Stack manipulations in LiveEdit is not implemented for this arch.
+debug-liveedit-check-stack: SKIP
+debug-liveedit-stack-padding: SKIP
+debug-liveedit-restart-frame: SKIP
+debug-liveedit-double-call: SKIP
+

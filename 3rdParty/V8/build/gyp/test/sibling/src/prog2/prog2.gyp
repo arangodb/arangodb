@@ -5,7 +5,7 @@
 {
   'targets': [
     {
-      'target_name': 'prog2',
+      'target_name': 'program2',
       'type': 'executable',
       'sources': [
         'prog2.c',

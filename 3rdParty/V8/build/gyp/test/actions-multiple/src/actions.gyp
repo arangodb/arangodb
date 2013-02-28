@@ -161,5 +161,66 @@
         },
       ],
     },
+    {
+      'target_name': 'multiple_dependent_target',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'action1',
+          'inputs': [
+            'copy.py',
+            'input.txt',
+          ],
+          'outputs': [
+            'multi1.txt',
+          ],
+          'action': [
+            'python', '<@(_inputs)', '<(_outputs)', '<(long_string)',
+          ],
+          # Allows the test to run without hermetic cygwin on windows.
+          'msvs_cygwin_shell': 0,
+        },
+        {
+          'action_name': 'action2',
+          'inputs': [
+            'copy.py',
+            'input.txt',
+          ],
+          'outputs': [
+            'multi2.txt',
+          ],
+          'action': [
+            'python', '<@(_inputs)', '<(_outputs)', '<(long_string)',
+          ],
+          # Allows the test to run without hermetic cygwin on windows.
+          'msvs_cygwin_shell': 0,
+        },
+      ],
+      'dependencies': [
+        'multiple_required_target',
+      ],
+    },
+    {
+      'target_name': 'multiple_required_target',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'multi_dep',
+          'inputs': [
+            'copy.py',
+            'input.txt',
+          ],
+          'outputs': [
+            'multi_dep.txt',
+          ],
+          'process_outputs_as_sources': 1,
+          'action': [
+            'python', '<@(_inputs)', '<(_outputs)', '<(long_string)',
+          ],
+          # Allows the test to run without hermetic cygwin on windows.
+          'msvs_cygwin_shell': 0,
+        },
+      ],
+    },
   ],
 }

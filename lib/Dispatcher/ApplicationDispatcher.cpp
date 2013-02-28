@@ -57,8 +57,8 @@ namespace {
 
   class DispatcherReporterTask : public PeriodicTask {
     public:
-      DispatcherReporterTask (Dispatcher* dispatcher, double reportIntervall)
-        : Task("Dispatcher-Reporter"), PeriodicTask(0.0, reportIntervall), _dispatcher(dispatcher) {
+      DispatcherReporterTask (Dispatcher* dispatcher, double reportInterval)
+        : Task("Dispatcher-Reporter"), PeriodicTask(0.0, reportInterval), _dispatcher(dispatcher) {
       }
 
     public:
@@ -98,7 +98,7 @@ ApplicationDispatcher::ApplicationDispatcher (ApplicationScheduler* applicationS
     _applicationScheduler(applicationScheduler),
     _dispatcher(0),
     _dispatcherReporterTask(0),
-    _reportIntervall(60.0) {
+    _reportInterval(60.0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,11 +138,10 @@ Dispatcher* ApplicationDispatcher::dispatcher () const {
 
 void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
   if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher queue";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOGGER_TRACE << "setting up a standard queue with " << nrThreads << " threads ";
+  LOGGER_TRACE("setting up a standard queue with " << nrThreads << " threads ");
 
   _dispatcher->addQueue("STANDARD", nrThreads);
 }
@@ -153,11 +152,10 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
 
 void ApplicationDispatcher::buildNamedQueue (string const& name, size_t nrThreads) {
   if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher queue";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
-  LOGGER_TRACE << "setting up a named queue '" << name << "' with " << nrThreads << " threads ";
+  LOGGER_TRACE("setting up a named queue '" << name << "' with " << nrThreads << " threads ");
 
   _dispatcher->addQueue(name, nrThreads);
 }
@@ -182,7 +180,7 @@ void ApplicationDispatcher::buildNamedQueue (string const& name, size_t nrThread
 void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>& options) {
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
-    ("dispatcher.report-intervall", &_reportIntervall, "dispatcher report intervall")
+    ("dispatcher.report-interval", &_reportInterval, "dispatcher report interval")
   ;
 }
 
@@ -206,16 +204,11 @@ bool ApplicationDispatcher::start () {
   bool ok = _dispatcher->start();
 
   if (! ok) {
-    LOGGER_FATAL << "cannot start dispatcher";
-
-    delete _dispatcher;
-    _dispatcher = 0;
-
-    return false;
+    LOGGER_FATAL_AND_EXIT("cannot start dispatcher");
   }
 
   while (! _dispatcher->isStarted()) {
-    LOGGER_DEBUG << "waiting for dispatcher to start";
+    LOGGER_DEBUG("waiting for dispatcher to start");
     usleep(500 * 1000);
   }
 
@@ -250,8 +243,8 @@ void ApplicationDispatcher::stop () {
     _dispatcher->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
-      LOGGER_TRACE << "waiting for dispatcher to stop";
-      TRI_SLEEP(1);
+      LOGGER_TRACE("waiting for dispatcher to stop");
+      sleep(1);
     }
 
     _dispatcher->shutdown();
@@ -280,8 +273,7 @@ void ApplicationDispatcher::stop () {
 
 void ApplicationDispatcher::buildDispatcher () {
   if (_dispatcher != 0) {
-    LOGGER_FATAL << "a dispatcher has already been created";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("a dispatcher has already been created");
   }
 
   _dispatcher = new Dispatcher();
@@ -293,12 +285,11 @@ void ApplicationDispatcher::buildDispatcher () {
 
 void ApplicationDispatcher::buildDispatcherReporter () {
   if (_dispatcher == 0) {
-    LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher reporter";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
   }
 
-  if (0.0 < _reportIntervall) {
-    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportIntervall);
+  if (0.0 < _reportInterval) {
+    _dispatcherReporterTask = new DispatcherReporterTask(_dispatcher, _reportInterval);
 
     _applicationScheduler->scheduler()->registerTask(_dispatcherReporterTask);
   }

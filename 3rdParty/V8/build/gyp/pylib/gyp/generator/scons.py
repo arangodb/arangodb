@@ -1,4 +1,4 @@
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +8,7 @@ import gyp.SCons as SCons
 import os.path
 import pprint
 import re
+import subprocess
 
 
 # TODO:  remove when we delete the last WriteList() call in this module
@@ -462,8 +463,7 @@ def GenerateSConscript(output_filename, spec, build_file, build_file_data):
 
   rules = spec.get('rules', [])
   for rule in rules:
-    name = rule['rule_name']
-    a = ['cd', src_subdir, '&&'] + rule['action']
+    name = re.sub('[^a-zA-Z0-9_]', '_', rule['rule_name'])
     message = rule.get('message')
     if message:
         message = repr(message)
@@ -473,6 +473,10 @@ def GenerateSConscript(output_filename, spec, build_file, build_file_data):
       poas_line = '_processed_input_files.append(infile)'
     inputs = [FixPath(f, src_subdir_) for f in rule.get('inputs', [])]
     outputs = [FixPath(f, src_subdir_) for f in rule.get('outputs', [])]
+    # Skip a rule with no action and no inputs.
+    if 'action' not in rule and not rule.get('rule_sources', []):
+      continue
+    a = ['cd', src_subdir, '&&'] + rule['action']
     fp.write(_rule_template % {
                  'inputs' : pprint.pformat(inputs),
                  'outputs' : pprint.pformat(outputs),
@@ -955,6 +959,30 @@ def TargetFilename(target, build_file=None, output_suffix=''):
   output_file = os.path.join(os.path.dirname(build_file),
                              target + output_suffix + '.scons')
   return output_file
+
+
+def PerformBuild(data, configurations, params):
+  options = params['options']
+
+  # Due to the way we test gyp on the chromium typbots
+  # we need to look for 'scons.py' as well as the more common 'scons'
+  # TODO(sbc): update the trybots to have a more normal install
+  # of scons.
+  scons = 'scons'
+  paths = os.environ['PATH'].split(os.pathsep)
+  for scons_name in ['scons', 'scons.py']:
+    for path in paths:
+      test_scons = os.path.join(path, scons_name)
+      print 'looking for: %s' % test_scons
+      if os.path.exists(test_scons):
+        print "found scons: %s" % scons
+        scons = test_scons
+        break
+
+  for config in configurations:
+    arguments = [scons, '-C', options.toplevel_dir, '--mode=%s' % config]
+    print "Building [%s]: %s" % (config, arguments)
+    subprocess.check_call(arguments)
 
 
 def GenerateOutput(target_list, target_dicts, data, params):

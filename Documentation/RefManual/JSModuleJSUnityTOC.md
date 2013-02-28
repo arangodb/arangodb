@@ -1,6 +1,7 @@
 TOC {#jsUnityTOC}
 =================
 
-- @ref jsUnityIntro
-- @ref jsUnityRunningTest
-- @ref jsUnityRunningCoverage
+- @ref jsUnity
+   - @ref jsUnityIntro
+   - @ref jsUnityRunningTest
+   - @ref jsUnityRunningCoverage

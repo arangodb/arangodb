@@ -33,6 +33,7 @@
 #include "Rest/HttpRequest.h"
 #include "Utilities/ResourceHolder.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -109,9 +110,10 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   _timing << *task;
-#ifdef TRI_ENABLE_LOGGER
+
   // if ifdef is not used, the compiler will complain
-  LOGGER_REQUEST_IN_START_I(_timing);
+#ifdef TRI_ENABLE_LOGGER
+  LOGGER_REQUEST_IN_START_I(_timing, "");
 #endif
 
   bool res = false;
@@ -171,7 +173,7 @@ void RestImportHandler::logDocument (const TRI_json_t* const json) const {
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
   int res = TRI_StringifyJson(&buffer, json);
   if (res == TRI_ERROR_NO_ERROR) {
-    LOGGER_WARNING << "offending document" << buffer._buffer;
+    LOGGER_WARNING("offending document" << buffer._buffer);
   }
   TRI_DestroyStringBuffer(&buffer);
 }
@@ -192,7 +194,6 @@ bool RestImportHandler::createByDocumentsLines () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
-  const bool forceSync = false;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -202,10 +203,12 @@ bool RestImportHandler::createByDocumentsLines () {
                   "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=documents&collection=<identifier>");
     return false;
   }
+  
+  const bool waitForSync = extractWaitForSync();
 
   // extract the collection name
   bool found;
-  string collection = _request->value("collection", found);
+  const string& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -230,24 +233,31 @@ bool RestImportHandler::createByDocumentsLines () {
     generateTransactionError(collection, res);
     return false;
   }
-
-  size_t start = 0;
-  size_t next = 0;
-  string line;
   
-  string body(_request->body(), _request->bodySize());
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  const TRI_voc_cid_t cid = trx.cid();
+  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
 
-  while (next != string::npos && start < body.size()) {
-    next = body.find('\n', start);
+  trx.lockWrite();
 
-    if (next == string::npos) {
-      line = body.substr(start);
+  const char* ptr = _request->body();
+  const char* end = ptr + _request->bodySize();
+  string line;
+  size_t i = 0;
+  
+  while (ptr < end) {
+    i++;
+    const char* pos = strchr(ptr, '\n');
+
+    if (pos == 0) {
+      line.assign(ptr, (size_t) (end - ptr));
+      ptr = end;
     }
     else {
-      line = body.substr(start, next - start);
-      start = next + 1;      
+      line.assign(ptr, (size_t) (pos - ptr));
+      ptr = pos + 1;
     }
-
+    
     StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
       ++numEmpty;
@@ -256,24 +266,69 @@ bool RestImportHandler::createByDocumentsLines () {
     
     TRI_json_t* values = parseJsonLine(line);
 
-    if (values) {      
+    if (values == 0 || values->_type != TRI_JSON_ARRAY) {
+      LOGGER_WARNING("invalid JSON type (expecting array) at position " << i);
+      ++numError;
+    }
+    else {      
       // now save the document
       TRI_doc_mptr_t* document = 0;
-      
-      res = trx.createDocument(&document, values, forceSync);
+
+      if (isEdgeCollection) {
+        const char* from = extractJsonStringValue(values, "_from");
+
+        if (from == 0) {
+          LOGGER_WARNING("missing '_from' attribute at position " << i);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
+          ++numError;
+          continue;
+        }
+
+        const char* to = extractJsonStringValue(values, "_to");
+        if (to == 0) {
+          LOGGER_WARNING("missing '_to' attribute at position " << i);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
+          ++numError;
+          continue;
+        }
+
+        TRI_document_edge_t edge;
+  
+        edge._fromCid = cid;
+        edge._toCid = cid;
+        edge._fromKey = 0;
+        edge._toKey = 0;
+  
+        int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
+        int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
+
+        if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
+          res = trx.createEdge(&document, values, waitForSync, &edge, false);
+        }
+
+        if (edge._fromKey != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
+        }
+        if (edge._toKey != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
+        }
+      }
+      else {
+        // do not acquire an extra lock
+        res = trx.createDocument(&document, values, waitForSync, false);
+      }
+
+
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
         logDocument(values);
         ++numError;
       }
+
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-    }
-    else {
-      LOGGER_WARNING << "no valid JSON data in line " << line;            
-      ++numError;
     }
   }
 
@@ -310,7 +365,6 @@ bool RestImportHandler::createByDocumentsLines () {
 bool RestImportHandler::createByDocumentsList () {
   size_t numCreated = 0;
   size_t numError = 0;
-  const bool forceSync = false;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -320,10 +374,12 @@ bool RestImportHandler::createByDocumentsList () {
                   "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=array&collection=<identifier>");
     return false;
   }
+  
+  const bool waitForSync = extractWaitForSync();
 
   // extract the collection name
   bool found;
-  string collection = _request->value("collection", found);
+  const string& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -331,7 +387,6 @@ bool RestImportHandler::createByDocumentsList () {
                   "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
-
 
   ResourceHolder holder;
   
@@ -377,24 +432,72 @@ bool RestImportHandler::createByDocumentsList () {
     generateTransactionError(collection, res);
     return false;
   }
+  
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  const TRI_voc_cid_t cid = trx.cid();
+  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  
+  trx.lockWrite();
 
   for (size_t i = 0; i < documents->_value._objects._length; ++i) {
     TRI_json_t* values = (TRI_json_t*) TRI_AtVector(&documents->_value._objects, i);
 
     if (values == 0 || values->_type != TRI_JSON_ARRAY) {
-      LOGGER_WARNING << "invalid JSON type (expecting array) at position " << i;
+      LOGGER_WARNING("invalid JSON type (expecting array) at position " << (i + 1));
       ++numError;
     }
     else {
       // now save the document
       TRI_doc_mptr_t* document = 0;
-      
-      res = trx.createDocument(&document, values, forceSync);
+  
+      if (isEdgeCollection) {
+        const char* from = extractJsonStringValue(values, "_from");
+
+        if (from == 0) {
+          LOGGER_WARNING("missing '_from' attribute at position " << (i + 1));
+          ++numError;
+          continue;
+        }
+
+        const char* to = extractJsonStringValue(values, "_to");
+        if (to == 0) {
+          LOGGER_WARNING("missing '_to' attribute at position " << (i + 1));
+          ++numError;
+          continue;
+        }
+
+        TRI_document_edge_t edge;
+  
+        edge._fromCid = cid;
+        edge._toCid = cid;
+        edge._fromKey = 0;
+        edge._toKey = 0;
+  
+        int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
+        int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
+
+        if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
+          res = trx.createEdge(&document, values, waitForSync, &edge, false);
+        }
+
+        if (edge._fromKey != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
+        }
+        if (edge._toKey != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
+        }
+      }
+      else {
+        // do not acquire an extra lock
+        res = trx.createDocument(&document, values, waitForSync, false);
+      }
+
+
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
         logDocument(values);
         ++numError;
       }
@@ -436,7 +539,6 @@ bool RestImportHandler::createByKeyValueList () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
-  const bool forceSync = false;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -446,10 +548,12 @@ bool RestImportHandler::createByKeyValueList () {
                   "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
+  
+  const bool waitForSync = extractWaitForSync();
 
   // extract the collection name
   bool found;
-  string collection = _request->value("collection", found);
+  const string& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -457,6 +561,14 @@ bool RestImportHandler::createByKeyValueList () {
                   "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
+ 
+  // read line number (optional) 
+  const string& lineNumValue = _request->value("line", found);
+  int64_t lineNumber = 0;
+  if (found) {
+    lineNumber = StringUtils::int64(lineNumValue);
+  }
+
   
   size_t start = 0;
   string body(_request->body(), _request->bodySize());
@@ -479,7 +591,7 @@ bool RestImportHandler::createByKeyValueList () {
   if (line != "") { 
     keys = parseJsonLine(line);
     if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, keys)) {
-      LOGGER_WARNING << "no JSON data in first line";
+      LOGGER_WARNING("no JSON data in first line");
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "no JSON string list in first line found");
@@ -488,7 +600,7 @@ bool RestImportHandler::createByKeyValueList () {
     
     if (keys->_type == TRI_JSON_LIST) {
       if (! checkKeys(keys)) {
-        LOGGER_WARNING << "no JSON string list in first line found";
+        LOGGER_WARNING("no JSON string list in first line found");
         generateError(HttpResponse::BAD,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       "no JSON string list in first line found");
@@ -497,7 +609,7 @@ bool RestImportHandler::createByKeyValueList () {
       start = next + 1;
     }
     else {
-      LOGGER_WARNING << "no JSON string list in first line found";
+      LOGGER_WARNING("no JSON string list in first line found");
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "no JSON string list in first line found");
@@ -505,7 +617,7 @@ bool RestImportHandler::createByKeyValueList () {
     }        
   }
   else {
-    LOGGER_WARNING << "no JSON string list in first line found";
+    LOGGER_WARNING("no JSON string list in first line found");
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string list in first line found");
@@ -515,6 +627,7 @@ bool RestImportHandler::createByKeyValueList () {
   if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
     return false;
   }
+
   
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, _resolver, collection);
@@ -528,12 +641,20 @@ bool RestImportHandler::createByKeyValueList () {
     generateTransactionError(collection, res);
     return false;
   }
+  
+  TRI_primary_collection_t* primary = trx.primaryCollection();
+  const TRI_voc_cid_t cid = trx.cid();
+  const bool isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+
+  trx.lockWrite();
       
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
   while (next != string::npos && start < body.length()) {
+    lineNumber++;
+
     next = body.find('\n', start);
 
     if (next == string::npos) {
@@ -550,8 +671,6 @@ bool RestImportHandler::createByKeyValueList () {
       continue;
     }
     
-    //LOGGER_TRACE << "line = " << line;
-    
     TRI_json_t* values = parseJsonLine(line);
 
     if (values) {
@@ -562,20 +681,64 @@ bool RestImportHandler::createByKeyValueList () {
       json = createJsonObject(keys, values, line);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
         
-      if (! json) {
+      if (json == 0) {
         ++numError;          
         continue;
       }
 
       // now save the document
       TRI_doc_mptr_t* document = 0;
-      res = trx.createDocument(&document, json, forceSync);
+
+      if (isEdgeCollection) {
+        const char* from = extractJsonStringValue(json, "_from");
+
+        if (from == 0) {
+          LOGGER_WARNING("missing '_from' attribute at line " << lineNumber);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
+          ++numError;
+          continue;
+        }
+
+        const char* to = extractJsonStringValue(json, "_to");
+        if (to == 0) {
+          LOGGER_WARNING("missing '_to' attribute at line " << lineNumber);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
+          ++numError;
+          continue;
+        }
+
+        TRI_document_edge_t edge;
+  
+        edge._fromCid = cid;
+        edge._toCid = cid;
+        edge._fromKey = 0;
+        edge._toKey = 0;
+  
+        int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
+        int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
+
+        if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
+          res = trx.createEdge(&document, json, waitForSync, &edge, false);
+        }
+
+        if (edge._fromKey != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
+        }
+        if (edge._toKey != 0) {
+          TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
+        }
+      }
+      else {
+        // do not acquire an extra lock
+        res = trx.createDocument(&document, json, waitForSync, false);
+      }
+
 
       if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
-        LOGGER_WARNING << "creating document failed with error: " << TRI_errno_string(res);
+        LOGGER_WARNING("creating document failed with error: " << TRI_errno_string(res));
         logDocument(json);
         ++numError;
       }
@@ -583,7 +746,7 @@ bool RestImportHandler::createByKeyValueList () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
     }
     else {
-      LOGGER_WARNING << "no valid JSON data in line: " << line;            
+      LOGGER_WARNING("no valid JSON data in line: " << line);            
       ++numError;
     }
             
@@ -644,21 +807,23 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
 /// @brief create a JSON object from a line containing a document
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line) {
+TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys, 
+                                                 const TRI_json_t* values, 
+                                                 const string& line) {
   
   if (values->_type != TRI_JSON_LIST) {
-    LOGGER_WARNING << "no valid JSON list data in line: " << line;            
+    LOGGER_WARNING("no valid JSON list data in line: " << line);            
     return 0;
   }
   
   if (keys->_value._objects._length !=  values->_value._objects._length) {
-    LOGGER_WARNING << "wrong number of JSON values in line: " << line;            
+    LOGGER_WARNING("wrong number of JSON values in line: " << line);            
     return 0;
   }
   
   TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   if (result == 0) {
-    LOGGER_ERROR << "out of memory";
+    LOGGER_ERROR("out of memory");
     return 0;
   }
   

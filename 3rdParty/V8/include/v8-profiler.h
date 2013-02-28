@@ -50,11 +50,12 @@
 
 // Setup for Linux shared library export. See v8.h in this directory for
 // information on how to build/use V8 as shared library.
-#if defined(__GNUC__) && (__GNUC__ >= 4) && defined(V8_SHARED)
+#if defined(__GNUC__) && ((__GNUC__ >= 4) || \
+    (__GNUC__ == 3 && __GNUC_MINOR__ >= 3)) && defined(V8_SHARED)
 #define V8EXPORT __attribute__ ((visibility("default")))
-#else  // defined(__GNUC__) && (__GNUC__ >= 4)
+#else
 #define V8EXPORT
-#endif  // defined(__GNUC__) && (__GNUC__ >= 4)
+#endif
 
 #endif  // _WIN32
 
@@ -64,6 +65,7 @@
  */
 namespace v8 {
 
+typedef uint32_t SnapshotObjectId;
 
 /**
  * CpuProfileNode represents a node in a call graph.
@@ -274,42 +276,16 @@ class V8EXPORT HeapGraphNode {
    * Returns node id. For the same heap object, the id remains the same
    * across all snapshots.
    */
-  uint64_t GetId() const;
+  SnapshotObjectId GetId() const;
 
   /** Returns node's own size, in bytes. */
   int GetSelfSize() const;
-
-  /**
-   * Returns node's retained size, in bytes. That is, self + sizes of
-   * the objects that are reachable only from this object. In other
-   * words, the size of memory that will be reclaimed having this node
-   * collected.
-   *
-   * Exact retained size calculation has O(N) (number of nodes)
-   * computational complexity, while approximate has O(1). It is
-   * assumed that initially heap profiling tools provide approximate
-   * sizes for all nodes, and then exact sizes are calculated for the
-   * most 'interesting' nodes.
-   */
-  int GetRetainedSize(bool exact) const;
 
   /** Returns child nodes count of the node. */
   int GetChildrenCount() const;
 
   /** Retrieves a child by index. */
   const HeapGraphEdge* GetChild(int index) const;
-
-  /** Returns retainer nodes count of the node. */
-  int GetRetainersCount() const;
-
-  /** Returns a retainer by index. */
-  const HeapGraphEdge* GetRetainer(int index) const;
-
-  /**
-   * Returns a dominator node. This is the node that participates in every
-   * path from the snapshot root to the current node.
-   */
-  const HeapGraphNode* GetDominatorNode() const;
 
   /**
    * Finds and returns a value from the heap corresponding to this node,
@@ -344,13 +320,16 @@ class V8EXPORT HeapSnapshot {
   const HeapGraphNode* GetRoot() const;
 
   /** Returns a node by its id. */
-  const HeapGraphNode* GetNodeById(uint64_t id) const;
+  const HeapGraphNode* GetNodeById(SnapshotObjectId id) const;
 
   /** Returns total nodes count in the snapshot. */
   int GetNodesCount() const;
 
   /** Returns a node by index. */
   const HeapGraphNode* GetNode(int index) const;
+
+  /** Returns a max seen JS object Id. */
+  SnapshotObjectId GetMaxSnapshotJSObjectId() const;
 
   /**
    * Deletes the snapshot and removes it from HeapProfiler's list.
@@ -370,16 +349,20 @@ class V8EXPORT HeapSnapshot {
    * with the following structure:
    *
    *  {
-   *    snapshot: {title: "...", uid: nnn},
-   *    nodes: [
-   *      meta-info (JSON string),
-   *      nodes themselves
-   *    ],
-   *    strings: [strings]
+   *    snapshot: {
+   *      title: "...",
+   *      uid: nnn,
+   *      meta: { meta-info },
+   *      node_count: nnn,
+   *      edge_count: nnn
+   *    },
+   *    nodes: [nodes array],
+   *    edges: [edges array],
+   *    strings: [strings array]
    *  }
    *
-   * Outgoing node links are stored after each node. Nodes reference strings
-   * and other nodes by their indexes in corresponding arrays.
+   * Nodes reference strings, other nodes, and edges by their indexes
+   * in corresponding arrays.
    */
   void Serialize(OutputStream* stream, SerializationFormat format) const;
 };
@@ -411,13 +394,69 @@ class V8EXPORT HeapProfiler {
   static const HeapSnapshot* FindSnapshot(unsigned uid);
 
   /**
+   * Returns SnapshotObjectId for a heap object referenced by |value| if
+   * it has been seen by the heap profiler, kUnknownObjectId otherwise.
+   */
+  static SnapshotObjectId GetSnapshotObjectId(Handle<Value> value);
+
+  /**
+   * A constant for invalid SnapshotObjectId. GetSnapshotObjectId will return
+   * it in case heap profiler cannot find id  for the object passed as
+   * parameter. HeapSnapshot::GetNodeById will always return NULL for such id.
+   */
+  static const SnapshotObjectId kUnknownObjectId = 0;
+
+  /**
+   * Callback interface for retrieving user friendly names of global objects.
+   */
+  class ObjectNameResolver {
+  public:
+    /**
+     * Returns name to be used in the heap snapshot for given node. Returned
+     * string must stay alive until snapshot collection is completed.
+     */
+    virtual const char* GetName(Handle<Object> object) = 0;
+  protected:
+    virtual ~ObjectNameResolver() {}
+  };
+
+  /**
    * Takes a heap snapshot and returns it. Title may be an empty string.
    * See HeapSnapshot::Type for types description.
    */
   static const HeapSnapshot* TakeSnapshot(
       Handle<String> title,
       HeapSnapshot::Type type = HeapSnapshot::kFull,
-      ActivityControl* control = NULL);
+      ActivityControl* control = NULL,
+      ObjectNameResolver* global_object_name_resolver = NULL);
+
+  /**
+   * Starts tracking of heap objects population statistics. After calling
+   * this method, all heap objects relocations done by the garbage collector
+   * are being registered.
+   */
+  static void StartHeapObjectsTracking();
+
+  /**
+   * Adds a new time interval entry to the aggregated statistics array. The
+   * time interval entry contains information on the current heap objects
+   * population size. The method also updates aggregated statistics and
+   * reports updates for all previous time intervals via the OutputStream
+   * object. Updates on each time interval are provided as a stream of the
+   * HeapStatsUpdate structure instances.
+   * The return value of the function is the last seen heap object Id.
+   *
+   * StartHeapObjectsTracking must be called before the first call to this
+   * method.
+   */
+  static SnapshotObjectId PushHeapObjectsStats(OutputStream* stream);
+
+  /**
+   * Stops tracking of heap objects population statistics, cleans up all
+   * collected data. StartHeapObjectsTracking must be called again prior to
+   * calling PushHeapObjectsStats next time.
+   */
+  static void StopHeapObjectsTracking();
 
   /**
    * Deletes all snapshots taken. All previously returned pointers to
@@ -436,6 +475,12 @@ class V8EXPORT HeapProfiler {
    * handle.
    */
   static const uint16_t kPersistentHandleNoClassId = 0;
+
+  /** Returns the number of currently existing persistent handles. */
+  static int GetPersistentHandleCount();
+
+  /** Returns memory used for profiler internal data and snapshots. */
+  static size_t GetMemorySizeUsedByProfiler();
 };
 
 
@@ -510,6 +555,19 @@ class V8EXPORT RetainedObjectInfo {  // NOLINT
  private:
   RetainedObjectInfo(const RetainedObjectInfo&);
   RetainedObjectInfo& operator=(const RetainedObjectInfo&);
+};
+
+
+/**
+ * A struct for exporting HeapStats data from V8, using "push" model.
+ * See HeapProfiler::PushHeapObjectsStats.
+ */
+struct HeapStatsUpdate {
+  HeapStatsUpdate(uint32_t index, uint32_t count, uint32_t size)
+    : index(index), count(count), size(size) { }
+  uint32_t index;  // Index of the time interval that was changed.
+  uint32_t count;  // New value of count field for the interval with this index.
+  uint32_t size;  // New value of size field for the interval with this index.
 };
 
 

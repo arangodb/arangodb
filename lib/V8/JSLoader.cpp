@@ -82,7 +82,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Persistent<v8::Context>
 
   if (i == _scripts.end()) {
     // correct the path/name 
-    LOGGER_ERROR << "unknown script '" << StringUtils::correctPath(name) << "'";
+    LOGGER_ERROR("unknown script '" << StringUtils::correctPath(name) << "'");
     return scope.Close(v8::Undefined());
   }
 
@@ -113,7 +113,7 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
 
   if (i == _scripts.end()) {
     // correct the path/name 
-    LOGGER_ERROR << "unknown script '" << StringUtils::correctPath(name) << "'";
+    LOGGER_ERROR("unknown script '" << StringUtils::correctPath(name) << "'");
     return false;
   }
 

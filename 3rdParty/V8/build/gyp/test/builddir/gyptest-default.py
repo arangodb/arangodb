@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -23,9 +23,17 @@ import TestGyp
 # its sources. I'm not sure if make is wrong for writing outside the current
 # directory, or if the test is wrong for assuming everything generated is under
 # the current directory.
-test = TestGyp.TestGyp(formats=['!make', '!ninja'])
+# Android does not support setting the build directory.
+test = TestGyp.TestGyp(formats=['!make', '!ninja', '!android'])
 
 test.run_gyp('prog1.gyp', '--depth=..', chdir='src')
+if test.format == 'msvs':
+  if test.uses_msbuild:
+    test.must_contain('src/prog1.vcxproj',
+      '<OutDir>..\\builddir\\Default\\</OutDir>')
+  else:
+    test.must_contain('src/prog1.vcproj',
+      'OutputDirectory="..\\builddir\\Default\\"')
 
 test.relocate('src', 'relocate/src')
 

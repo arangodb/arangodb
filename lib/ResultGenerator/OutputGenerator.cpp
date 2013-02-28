@@ -49,27 +49,27 @@ namespace triagens {
         static XmlResultGenerator xml;
 
         if (name == "application/json" || name == "json") {
-          LOGGER_TRACE << "using json result generator";
+          LOGGER_TRACE("using json result generator");
           return &json;
         }
         else if (name == "application/jsonx" || name == "jsonx") {
-          LOGGER_TRACE << "using json result generator";
+          LOGGER_TRACE("using json result generator");
           return &jsonx;
         }
         else if (name == "application/php" || name == "php") {
-          LOGGER_TRACE << "using php result generator";
+          LOGGER_TRACE("using php result generator");
           return &php;
         }
         else if (name == "application/xml" || name == "xml") {
-          LOGGER_TRACE << "using xml result generator";
+          LOGGER_TRACE("using xml result generator");
           return &xml;
         }
         else if (name == "text/html" || name == "html") {
-          LOGGER_TRACE << "using html result generator";
+          LOGGER_TRACE("using html result generator");
           return &html;
         }
         else {
-          LOGGER_TRACE << "using json result generator per default (accept: '" << name << "')";
+          LOGGER_TRACE("using json result generator per default (accept: '" << name << "')");
           return &json;
         }
       }

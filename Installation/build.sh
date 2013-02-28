@@ -62,41 +62,6 @@ case $TRI_OS_LONG in
     echo "Using configuration for Arch Linux"
     OPTIONS="$OPTIONS --disable-mruby"
     LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-LinuxMint-13*)
-    echo "Using configuration for LinuxMint 13"
-    OPTIONS="$OPTIONS --disable-mruby"
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-openSUSE-12*)
-    echo "Using configuration for openSuSE 12.X"
-    OPTIONS="$OPTIONS --disable-mruby "
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-openSUSE-11*)
-    echo "Using configuration for openSuSE 11.X"
-    OPTIONS="$OPTIONS --disable-mruby"
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-Debian-6*)
-    echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-Debian*)
-    echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
-    LDD_INFO="yes"
     ;;
 
   Linux-CentOS-6*)
@@ -113,23 +78,57 @@ case $TRI_OS_LONG in
     export READLINE_LDFLAGS="-lncurses"
     ;;
 
+  Darwin*)
+    echo "Using configuration for DARWIN"
+    CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
+    LDFLAGS='-L/usr/lib '
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
+    # we need 64 bits
+    TRI_MACH="x86_64"
+    X=$(uname -r)
+    OPTIONS="$OPTIONS --build x86_64-apple-darwin${X}"
+    ;;
+
+  Linux-Debian-6*)
+    echo "Using configuration for Debian"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-Debian*)
+    echo "Using configuration for Debian"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-Fedora*)
+    echo "Using configuration for Fedora"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --disable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
+    LDD_INFO="yes"
+    ;;
+
+  Linux-LinuxMint-13*)
+    echo "Using configuration for LinuxMint 13"
+    OPTIONS="$OPTIONS --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
+  Linux-openSUSE-12*)
+    echo "Using configuration for openSuSE 12.X"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --disable-all-in-one-v8 --disable-all-in-one-icu --disable-mruby "
+    LDD_INFO="yes"
+    ;;
+
+  Linux-openSUSE-11*)
+    echo "Using configuration for openSuSE 11.X"
+    OPTIONS="$OPTIONS --disable-mruby"
+    LDD_INFO="yes"
+    ;;
+
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
     OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
     LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Darwin*)
-    echo "Using configuration for DARWIN"
-    CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
-    LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
-    RESULTS="$RESULTS arangoirb"
-    if [ "${TRI_MACH}" == "x86_64" ]; then
-       X=$(uname -r)
-       OPTIONS="$OPTIONS --build x86_64-apple-darwin${X}"
-    fi
     ;;
 
   *)

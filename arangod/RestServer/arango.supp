@@ -1,7 +1,0 @@
-{
-   REGEX
-   Memcheck:Cond
-   fun:re_compile_fastmap_iter
-   fun:re_compile_fastmap
-   fun:regcomp
-}

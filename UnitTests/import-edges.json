@@ -1,0 +1,5 @@
+{"id": 1, "_from": "UnitTestsImportVertex/v1", "_to": "UnitTestsImportVertex/v2", "what": "v1->v2"}
+{"id": 2, "_from": "UnitTestsImportVertex/v2", "_to": "UnitTestsImportVertex/v3", "what": "v2->v3"}
+{"id": 3, "_from": "UnitTestsImportVertex/v9", "_to": "UnitTestsImportVertex/v4", "what": "v9->v4", "extra": "foo"}
+
+{"id": 4, "_from": "UnitTestsImportVertex/v12", "_to": "UnitTestsImportVertex/what"}

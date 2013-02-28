@@ -183,46 +183,56 @@ namespace triagens {
 
         void generate20x (const rest::HttpResponse::HttpResponseCode,
                           const string&,
-                          TRI_voc_key_t,
-                          TRI_voc_rid_t);
+                          const TRI_voc_key_t,
+                          const TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates ok message without content
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateOk ();
+        void generateOk () {
+          _response = createResponse(rest::HttpResponse::NO_CONTENT);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (const TRI_voc_cid_t, 
-                              TRI_voc_key_t, 
-                              TRI_voc_rid_t);
+        void generateCreated (const TRI_voc_cid_t cid, 
+                              TRI_voc_key_t key, 
+                              TRI_voc_rid_t rid) {
+          generate20x(rest::HttpResponse::CREATED, _resolver.getCollectionName(cid), key, rid);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateAccepted (const TRI_voc_cid_t,
-                               TRI_voc_key_t, 
-                               TRI_voc_rid_t);
+        void generateAccepted (const TRI_voc_cid_t cid,
+                               const TRI_voc_key_t key, 
+                               const TRI_voc_rid_t rid) {
+          generate20x(rest::HttpResponse::ACCEPTED, _resolver.getCollectionName(cid), key, rid);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (const TRI_voc_cid_t,
-                              TRI_voc_key_t, 
-                              TRI_voc_rid_t);
+        void generateDeleted (const TRI_voc_cid_t cid,
+                              const TRI_voc_key_t key, 
+                              const TRI_voc_rid_t rid) {
+          generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateUpdated (const TRI_voc_cid_t,
-                              TRI_voc_key_t, 
-                              TRI_voc_rid_t);
+        void generateUpdated (const TRI_voc_cid_t cid,
+                              const TRI_voc_key_t key, 
+                              const TRI_voc_rid_t rid) {
+          generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates document not found error message
@@ -255,7 +265,7 @@ namespace triagens {
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateNotModified (const string&);
+        void generateNotModified (const TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates first entry from a result set
@@ -282,7 +292,7 @@ namespace triagens {
 /// @note @FA{header} must be lowercase.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_rid_t extractRevision (char const* header, char const* parameter);
+        TRI_voc_rid_t extractRevision (char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the update policy
@@ -301,6 +311,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_json_s* parseJsonBody ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a string attribute from a JSON array
+///
+/// if the attribute is not there or not a string, this returns 0
+////////////////////////////////////////////////////////////////////////////////
+
+        char const* extractJsonStringValue (const TRI_json_t* const,
+                                            char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a document handle
+////////////////////////////////////////////////////////////////////////////////
+
+        int parseDocumentId (string const&, TRI_voc_cid_t&, TRI_voc_key_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

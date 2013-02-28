@@ -131,7 +131,7 @@ Thread::Thread (std::string const& name)
 
 Thread::~Thread () {
   if (_running != 0) {
-    LOGGER_WARNING << "forcefully shutting down thread '" << _name << "'";
+    LOGGER_WARNING("forcefully shutting down thread '" << _name << "'");
     TRI_StopThread(&_thread);
   }
 
@@ -175,8 +175,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
   _finishedCondition = finishedCondition;
 
   if (_started != 0) {
-    LOGGER_FATAL << "called started on an already started thread";
-    return false;
+    LOGGER_FATAL_AND_EXIT("called started on an already started thread");
   }
 
   _started = 1;
@@ -185,7 +184,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
   bool ok = TRI_StartThread(&_thread, text.c_str(), &startThread, this);
 
   if (! ok) {
-    LOGGER_ERROR << "could not start thread '" << _name << "': " << strerror(errno);
+    LOGGER_ERROR("could not start thread '" << _name << "': " << strerror(errno));
   }
 
   return ok;
@@ -197,7 +196,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
 void Thread::stop () {
   if (_running != 0) {
-    LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
+    LOGGER_TRACE("trying to cancel (aka stop) the thread " << _name);
     TRI_StopThread(&_thread);
   }
 }
@@ -227,7 +226,7 @@ void Thread::shutdown () {
   }
 
   if (_running != 0) {
-    LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
+    LOGGER_TRACE("trying to cancel (aka stop) the thread " << _name);
     TRI_StopThread(&_thread);
   }
 
@@ -265,15 +264,15 @@ void Thread::allowAsynchronousCancelation () {
   if (_started) {
     if (_running) {
       if (TRI_IsSelfThread(&_thread)) {
-        LOGGER_DEBUG << "set asynchronous cancelation for " << _name;
+        LOGGER_DEBUG("set asynchronous cancelation for " << _name);
         TRI_AllowCancelation();
       }
       else {
-        LOGGER_ERROR << "cannot change cancelation type of an already running thread from the outside";
+        LOGGER_ERROR("cannot change cancelation type of an already running thread from the outside");
       }
     }
     else {
-      LOGGER_WARNING << "thread has already stop, it is useless to change the cancelation type";
+      LOGGER_WARNING("thread has already stop, it is useless to change the cancelation type");
     }
   }
   else {
@@ -296,7 +295,7 @@ void Thread::allowAsynchronousCancelation () {
 
 void Thread::runMe () {
   if (_asynchronousCancelation) {
-    LOGGER_DEBUG << "set asynchronous cancelation for " << _name;
+    LOGGER_DEBUG("set asynchronous cancelation for " << _name);
     TRI_AllowCancelation();
   }
 

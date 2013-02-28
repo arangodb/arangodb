@@ -51,6 +51,7 @@
 
 #include "v8.h"
 
+#include "platform-posix.h"
 #include "platform.h"
 #include "v8threads.h"
 #include "vm-state-inl.h"
@@ -99,11 +100,8 @@ static void* GetRandomMmapAddr() {
 }
 
 
-void OS::SetUp() {
-  // Seed the random number generator. We preserve microsecond resolution.
-  uint64_t seed = Ticks() ^ (getpid() << 16);
-  srandom(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
+void OS::PostSetUp() {
+  POSIXPostSetUp();
 }
 
 
@@ -217,6 +215,11 @@ void OS::DebugBreak() {
 }
 
 
+void OS::DumpBacktrace() {
+  // Currently unsupported.
+}
+
+
 class PosixMemoryMappedFile : public OS::MemoryMappedFile {
  public:
   PosixMemoryMappedFile(FILE* file, void* memory, int size)
@@ -325,9 +328,6 @@ void OS::LogSharedLibraryAddresses() {
 }
 
 
-static const char kGCFakeMmap[] = "/tmp/__v8_gc__";
-
-
 void OS::SignalCodeMovingGC() {
   // Support for ll_prof.py.
   //
@@ -338,7 +338,7 @@ void OS::SignalCodeMovingGC() {
   // by the kernel and allows us to synchronize V8 code log and the
   // kernel log.
   int size = sysconf(_SC_PAGESIZE);
-  FILE* f = fopen(kGCFakeMmap, "w+");
+  FILE* f = fopen(FLAG_gc_fake_mmap, "w+");
   void* addr = mmap(NULL, size, PROT_READ | PROT_EXEC, MAP_PRIVATE,
                     fileno(f), 0);
   ASSERT(addr != MAP_FAILED);
@@ -458,6 +458,12 @@ bool VirtualMemory::Uncommit(void* address, size_t size) {
 }
 
 
+bool VirtualMemory::Guard(void* address) {
+  OS::Guard(address, OS::CommitPageSize());
+  return true;
+}
+
+
 void* VirtualMemory::ReserveRegion(size_t size) {
   void* result = mmap(GetRandomMmapAddr(),
                       size,
@@ -500,6 +506,12 @@ bool VirtualMemory::UncommitRegion(void* base, size_t size) {
 
 bool VirtualMemory::ReleaseRegion(void* base, size_t size) {
   return munmap(base, size) == 0;
+}
+
+
+bool VirtualMemory::HasLazyCommits() {
+  // TODO(alph): implement for the platform.
+  return false;
 }
 
 
@@ -777,17 +789,15 @@ class Sampler::PlatformData : public Malloced {
 
 class SignalSender : public Thread {
  public:
-  enum SleepInterval {
-    HALF_INTERVAL,
-    FULL_INTERVAL
-  };
-
   static const int kSignalSenderStackSize = 64 * KB;
 
   explicit SignalSender(int interval)
       : Thread(Thread::Options("SignalSender", kSignalSenderStackSize)),
         vm_tgid_(getpid()),
         interval_(interval) {}
+
+  static void SetUp() { if (!mutex_) mutex_ = OS::CreateMutex(); }
+  static void TearDown() { delete mutex_; }
 
   static void InstallSignalHandler() {
     struct sigaction sa;
@@ -834,43 +844,16 @@ class SignalSender : public Thread {
     SamplerRegistry::State state;
     while ((state = SamplerRegistry::GetState()) !=
            SamplerRegistry::HAS_NO_SAMPLERS) {
-      bool cpu_profiling_enabled =
-          (state == SamplerRegistry::HAS_CPU_PROFILING_SAMPLERS);
-      bool runtime_profiler_enabled = RuntimeProfiler::IsEnabled();
-      if (cpu_profiling_enabled && !signal_handler_installed_) {
-        InstallSignalHandler();
-      } else if (!cpu_profiling_enabled && signal_handler_installed_) {
-        RestoreSignalHandler();
-      }
       // When CPU profiling is enabled both JavaScript and C++ code is
       // profiled. We must not suspend.
-      if (!cpu_profiling_enabled) {
-        if (rate_limiter_.SuspendIfNecessary()) continue;
-      }
-      if (cpu_profiling_enabled && runtime_profiler_enabled) {
-        if (!SamplerRegistry::IterateActiveSamplers(&DoCpuProfile, this)) {
-          return;
-        }
-        Sleep(HALF_INTERVAL);
-        if (!SamplerRegistry::IterateActiveSamplers(&DoRuntimeProfile, NULL)) {
-          return;
-        }
-        Sleep(HALF_INTERVAL);
+      if (state == SamplerRegistry::HAS_CPU_PROFILING_SAMPLERS) {
+        if (!signal_handler_installed_) InstallSignalHandler();
+        SamplerRegistry::IterateActiveSamplers(&DoCpuProfile, this);
       } else {
-        if (cpu_profiling_enabled) {
-          if (!SamplerRegistry::IterateActiveSamplers(&DoCpuProfile,
-                                                      this)) {
-            return;
-          }
-        }
-        if (runtime_profiler_enabled) {
-          if (!SamplerRegistry::IterateActiveSamplers(&DoRuntimeProfile,
-                                                      NULL)) {
-            return;
-          }
-        }
-        Sleep(FULL_INTERVAL);
+        if (signal_handler_installed_) RestoreSignalHandler();
+        if (RuntimeProfiler::WaitForSomeIsolateToEnterJS()) continue;
       }
+      Sleep();  // TODO(svenpanne) Figure out if OS:Sleep(interval_) is enough.
     }
   }
 
@@ -880,21 +863,15 @@ class SignalSender : public Thread {
     sender->SendProfilingSignal(sampler->platform_data()->vm_tid());
   }
 
-  static void DoRuntimeProfile(Sampler* sampler, void* ignored) {
-    if (!sampler->isolate()->IsInitialized()) return;
-    sampler->isolate()->runtime_profiler()->NotifyTick();
-  }
-
   void SendProfilingSignal(pthread_t tid) {
     if (!signal_handler_installed_) return;
     pthread_kill(tid, SIGPROF);
   }
 
-  void Sleep(SleepInterval full_or_half) {
+  void Sleep() {
     // Convert ms to us and subtract 100 us to compensate delays
     // occuring during signal delivery.
     useconds_t interval = interval_ * 1000 - 100;
-    if (full_or_half == HALF_INTERVAL) interval /= 2;
     int result = usleep(interval);
 #ifdef DEBUG
     if (result != 0 && errno != EINTR) {
@@ -910,7 +887,6 @@ class SignalSender : public Thread {
 
   const int vm_tgid_;
   const int interval_;
-  RuntimeProfilerRateLimiter rate_limiter_;
 
   // Protects the process wide state below.
   static Mutex* mutex_;
@@ -923,10 +899,25 @@ class SignalSender : public Thread {
 };
 
 
-Mutex* SignalSender::mutex_ = OS::CreateMutex();
+Mutex* SignalSender::mutex_ = NULL;
 SignalSender* SignalSender::instance_ = NULL;
 struct sigaction SignalSender::old_signal_handler_;
 bool SignalSender::signal_handler_installed_ = false;
+
+
+void OS::SetUp() {
+  // Seed the random number generator. We preserve microsecond resolution.
+  uint64_t seed = Ticks() ^ (getpid() << 16);
+  srandom(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
+  SignalSender::SetUp();
+}
+
+
+void OS::TearDown() {
+  SignalSender::TearDown();
+  delete limit_mutex;
+}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

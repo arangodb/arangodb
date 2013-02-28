@@ -50,16 +50,16 @@ namespace internal {
   entry(p0, p1, p2, p3, p4)
 
 typedef int (*mips_regexp_matcher)(String*, int, const byte*, const byte*,
-                                   void*, int*, Address, int, Isolate*);
+                                   void*, int*, int, Address, int, Isolate*);
 
 
 // Call the generated regexp code directly. The code at the entry address
 // should act as a function matching the type arm_regexp_matcher.
 // The fifth argument is a dummy that reserves the space used for
 // the return address added by the ExitFrame in native calls.
-#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7) \
+#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7, p8) \
   (FUNCTION_CAST<mips_regexp_matcher>(entry)( \
-      p0, p1, p2, p3, NULL, p4, p5, p6, p7))
+      p0, p1, p2, p3, NULL, p4, p5, p6, p7, p8))
 
 #define TRY_CATCH_FROM_ADDRESS(try_catch_address) \
   reinterpret_cast<TryCatch*>(try_catch_address)
@@ -184,7 +184,9 @@ class Simulator {
   // architecture specification and is off by a 8 from the currently executing
   // instruction.
   void set_register(int reg, int32_t value);
+  void set_dw_register(int dreg, const int* dbl);
   int32_t get_register(int reg) const;
+  double get_double_from_register_pair(int reg);
   // Same for FPURegisters.
   void set_fpu_register(int fpureg, int32_t value);
   void set_fpu_register_float(int fpureg, float value);
@@ -214,6 +216,8 @@ class Simulator {
   // generated RegExp code with 7 parameters. This is a convenience function,
   // which sets up the simulator state and grabs the result on return.
   int32_t Call(byte* entry, int argument_count, ...);
+  // Alternative: call a 2-argument double function.
+  double CallFP(byte* entry, double d0, double d1);
 
   // Push an address onto the JS stack.
   uintptr_t PushAddress(uintptr_t address);
@@ -309,6 +313,14 @@ class Simulator {
   void InstructionDecode(Instruction* instr);
   // Execute one instruction placed in a branch delay slot.
   void BranchDelayInstructionDecode(Instruction* instr) {
+    if (instr->InstructionBits() == nopInstr) {
+      // Short-cut generic nop instructions. They are always valid and they
+      // never change the simulator state.
+      set_register(pc, reinterpret_cast<int32_t>(instr) +
+                       Instruction::kInstrSize);
+      return;
+    }
+
     if (instr->IsForbiddenInBranchDelay()) {
       V8_Fatal(__FILE__, __LINE__,
                "Eror:Unexpected %i opcode in a branch delay slot.",
@@ -345,6 +357,7 @@ class Simulator {
   void GetFpArgs(double* x, int32_t* y);
   void SetFpResult(const double& result);
 
+  void CallInternal(byte* entry);
 
   // Architecture state.
   // Registers.
@@ -395,9 +408,9 @@ class Simulator {
     reinterpret_cast<Object*>(Simulator::current(Isolate::Current())->Call( \
       FUNCTION_ADDR(entry), 5, p0, p1, p2, p3, p4))
 
-#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7) \
+#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7, p8) \
     Simulator::current(Isolate::Current())->Call( \
-        entry, 9, p0, p1, p2, p3, NULL, p4, p5, p6, p7)
+        entry, 10, p0, p1, p2, p3, NULL, p4, p5, p6, p7, p8)
 
 #define TRY_CATCH_FROM_ADDRESS(try_catch_address)                              \
   try_catch_address == NULL ?                                                  \

@@ -126,12 +126,10 @@ namespace RandomHelper {
           ssize_t r = TRI_READ(fd, ptr, n);
 
           if (r == 0) {
-            LOGGER_FATAL << "read on random device failed: nothing read";
-            THROW_INTERNAL_ERROR("read on random device failed");
+            LOGGER_FATAL_AND_EXIT("read on random device failed: nothing read");
           }
           else if (r < 0) {
-            LOGGER_FATAL << "read on random device failed: " << strerror(errno);
-            THROW_INTERNAL_ERROR("read on random device failed");
+            LOGGER_FATAL_AND_EXIT("read on random device failed: " << strerror(errno));
           }
 
           ptr += r;
@@ -178,7 +176,6 @@ namespace RandomHelper {
             }
           #endif
         }  
-
         fillBuffer();
       }
 
@@ -207,16 +204,14 @@ namespace RandomHelper {
           ssize_t r = TRI_READ(fd, ptr, n);
 
           if (r == 0) {
-            LOGGER_FATAL << "read on random device failed: nothing read";
-            THROW_INTERNAL_ERROR("read on random device failed");
+            LOGGER_FATAL_AND_EXIT("read on random device failed: nothing read");
           }
           else if (errno == EWOULDBLOCK) {
-            LOGGER_INFO << "not enough entropy (got " << (sizeof(buffer) - n) << " bytes), switching to pseudo-random";
+            LOGGER_INFO("not enough entropy (got " << (sizeof(buffer) - n) << " bytes), switching to pseudo-random");
             break;
           }
           else if (r < 0) {
-            LOGGER_FATAL << "read on random device failed: " << strerror(errno);
-            THROW_INTERNAL_ERROR("read on random device failed");
+            LOGGER_FATAL_AND_EXIT("read on random device failed: " << strerror(errno));
           }
 
           ptr += r;
@@ -224,7 +219,7 @@ namespace RandomHelper {
 
           rseed = buffer[0];
 
-          LOGGER_TRACE << "using seed " << rseed;
+          LOGGER_TRACE("using seed " << rseed);
         }
 
         if (0 < n) {
@@ -261,7 +256,6 @@ namespace RandomHelper {
         BOOL result;
         result = CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT); 
         if (cryptoHandle == 0 || result == FALSE) {
-          printf("%s:%s:%d:%d",__FILE__,__FUNCTION__,__LINE__,GetLastError());
           THROW_INTERNAL_ERROR("cannot create cryptographic windows handle");
         }
         fillBuffer();
@@ -291,8 +285,7 @@ namespace RandomHelper {
         // fill the buffer with random characters
         int result = CryptGenRandom(cryptoHandle, n, ptr);
         if (result == 0) {
-          LOGGER_FATAL << "read on random device failed: nothing read";
-          THROW_INTERNAL_ERROR("read on random device failed");
+          LOGGER_FATAL_AND_EXIT("read on random device failed: nothing read");
         }
         pos = 0;
       }
@@ -395,12 +388,12 @@ namespace RandomHelper {
 
         while (r >= g) {
           if (++count >= MAX_COUNT) {
-            LOGGER_ERROR << "cannot generate small random number after " << count << " tries";
+            LOGGER_ERROR("cannot generate small random number after " << count << " tries");
             r %= g;
             continue;
           }
 
-          LOGGER_DEBUG << "random number too large, trying again";
+          LOGGER_DEBUG("random number too large, trying again");
           r = device->random();
         }
 

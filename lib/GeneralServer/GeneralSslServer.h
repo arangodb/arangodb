@@ -133,7 +133,7 @@ namespace triagens {
               break;
 
             default:
-              LOGGER_ERROR << "unknown SSL protocol method";
+              LOGGER_ERROR("unknown SSL protocol method");
               return 0;
           }
 
@@ -141,14 +141,14 @@ namespace triagens {
 
           // load our keys and certificates
           if (! SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-            LOGGER_ERROR << "cannot read certificate from '" << keyfile << "'";
-            LOGGER_ERROR << triagens::basics::lastSSLError();
+            LOGGER_ERROR("cannot read certificate from '" << keyfile << "'");
+            LOGGER_ERROR(triagens::basics::lastSSLError());
             return 0;
           }
 
           if (! SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-            LOGGER_ERROR << "cannot read key from '" << keyfile << "'";
-            LOGGER_ERROR << triagens::basics::lastSSLError();
+            LOGGER_ERROR("cannot read key from '" << keyfile << "'");
+            LOGGER_ERROR(triagens::basics::lastSSLError());
             return 0;
           }
 
@@ -275,13 +275,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleConnected (TRI_socket_t socket, ConnectionInfo& info) {
-          LOGGER_DEBUG << "trying to establish secure connection";
+          LOGGER_DEBUG("trying to establish secure connection");
 
           // convert in a SSL BIO structure
-          BIO * sbio = BIO_new_socket((int)(socket.fileHandle), BIO_NOCLOSE);
+          BIO * sbio = BIO_new_socket((int) socket.fileHandle, BIO_NOCLOSE);
 
           if (sbio == 0) {
-            LOGGER_WARNING << "cannot build new SSL BIO: " << triagens::basics::lastSSLError();
+            LOGGER_WARNING("cannot build new SSL BIO: " << triagens::basics::lastSSLError());
             TRI_CLOSE_SOCKET(socket);
             return;
           }
@@ -293,7 +293,7 @@ namespace triagens {
 
           if (ssl == 0) {
             BIO_free_all(sbio);
-            LOGGER_WARNING << "cannot build new SSL connection: " << triagens::basics::lastSSLError();
+            LOGGER_WARNING("cannot build new SSL connection: " << triagens::basics::lastSSLError());
             TRI_CLOSE_SOCKET(socket);
             return;
           }

@@ -154,7 +154,9 @@ static int CopyDocument (TRI_document_collection_t* collection,
 
 static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_collection_t* collection;
+#ifdef TRI_ENABLE_LOGGER  
   char* old;
+#endif  
   char* filename;
   char* name;
   char* number;
@@ -169,7 +171,9 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
 
+#ifdef TRI_ENABLE_LOGGER
   old = datafile->_filename;
+#endif  
   ok = TRI_RenameDatafile(datafile, filename);
 
   if (! ok) {
@@ -260,8 +264,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
-      return false;
+      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
     }
 
     // check if the document is still active
@@ -304,8 +307,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
-      return false;
+      LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
     }
 
     // update datafile info

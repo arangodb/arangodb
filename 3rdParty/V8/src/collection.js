@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -25,10 +25,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"use strict";
 
-const $Set = global.Set;
-const $Map = global.Map;
-const $WeakMap = global.WeakMap;
+var $Set = global.Set;
+var $Map = global.Map;
+var $WeakMap = global.WeakMap;
 
 //-------------------------------------------------------------------
 
@@ -78,7 +79,31 @@ function SetDelete(key) {
   if (IS_UNDEFINED(key)) {
     key = undefined_sentinel;
   }
-  return %SetDelete(this, key);
+  if (%SetHas(this, key)) {
+    %SetDelete(this, key);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+function SetGetSize() {
+  if (!IS_SET(this)) {
+    throw MakeTypeError('incompatible_method_receiver',
+                        ['Set.prototype.size', this]);
+  }
+  return %SetGetSize(this);
+}
+
+
+function SetClear() {
+  if (!IS_SET(this)) {
+    throw MakeTypeError('incompatible_method_receiver',
+                        ['Set.prototype.clear', this]);
+  }
+  // Replace the internal table with a new empty table.
+  %SetInitialize(this);
 }
 
 
@@ -123,7 +148,7 @@ function MapHas(key) {
   if (IS_UNDEFINED(key)) {
     key = undefined_sentinel;
   }
-  return !IS_UNDEFINED(%MapGet(this, key));
+  return %MapHas(this, key);
 }
 
 
@@ -135,12 +160,26 @@ function MapDelete(key) {
   if (IS_UNDEFINED(key)) {
     key = undefined_sentinel;
   }
-  if (!IS_UNDEFINED(%MapGet(this, key))) {
-    %MapSet(this, key, void 0);
-    return true;
-  } else {
-    return false;
+  return %MapDelete(this, key);
+}
+
+
+function MapGetSize() {
+  if (!IS_MAP(this)) {
+    throw MakeTypeError('incompatible_method_receiver',
+                        ['Map.prototype.size', this]);
   }
+  return %MapGetSize(this);
+}
+
+
+function MapClear() {
+  if (!IS_MAP(this)) {
+    throw MakeTypeError('incompatible_method_receiver',
+                        ['Map.prototype.clear', this]);
+  }
+  // Replace the internal table with a new empty table.
+  %MapInitialize(this);
 }
 
 
@@ -185,7 +224,7 @@ function WeakMapHas(key) {
   if (!IS_SPEC_OBJECT(key)) {
     throw %MakeTypeError('invalid_weakmap_key', [this, key]);
   }
-  return !IS_UNDEFINED(%WeakMapGet(this, key));
+  return %WeakMapHas(this, key);
 }
 
 
@@ -197,12 +236,7 @@ function WeakMapDelete(key) {
   if (!IS_SPEC_OBJECT(key)) {
     throw %MakeTypeError('invalid_weakmap_key', [this, key]);
   }
-  if (!IS_UNDEFINED(%WeakMapGet(this, key))) {
-    %WeakMapSet(this, key, void 0);
-    return true;
-  } else {
-    return false;
-  }
+  return %WeakMapDelete(this, key);
 }
 
 // -------------------------------------------------------------------
@@ -219,18 +253,22 @@ function WeakMapDelete(key) {
   %SetProperty($Map.prototype, "constructor", $Map, DONT_ENUM);
 
   // Set up the non-enumerable functions on the Set prototype object.
+  InstallGetter($Set.prototype, "size", SetGetSize);
   InstallFunctions($Set.prototype, DONT_ENUM, $Array(
     "add", SetAdd,
     "has", SetHas,
-    "delete", SetDelete
+    "delete", SetDelete,
+    "clear", SetClear
   ));
 
   // Set up the non-enumerable functions on the Map prototype object.
+  InstallGetter($Map.prototype, "size", MapGetSize);
   InstallFunctions($Map.prototype, DONT_ENUM, $Array(
     "get", MapGet,
     "set", MapSet,
     "has", MapHas,
-    "delete", MapDelete
+    "delete", MapDelete,
+    "clear", MapClear
   ));
 
   // Set up the WeakMap constructor function.

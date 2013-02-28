@@ -753,6 +753,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
 
     case TRI_NE_INDEX_OPERATOR: {
       // todo
+      result = TRI_ERROR_INTERNAL;
       assert(false);
       break;    
     }
@@ -760,6 +761,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     
     case TRI_LE_INDEX_OPERATOR: {
       // todo -- essentially (since finite number) take the union
+      result = TRI_ERROR_INTERNAL;
       assert(false);
       break;    
     }  
@@ -767,6 +769,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     
     case TRI_LT_INDEX_OPERATOR: {
       // todo
+      result = TRI_ERROR_INTERNAL;
       assert(false);
       break;    
     }  
@@ -774,6 +777,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
 
     case TRI_GE_INDEX_OPERATOR: {
       // todo
+      result = TRI_ERROR_INTERNAL;
       assert(false);
       break;    
     }  
@@ -781,11 +785,13 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
   
     case TRI_GT_INDEX_OPERATOR: {
       // todo
+      result = TRI_ERROR_INTERNAL;
       assert(false);
       break;    
     }  
     
     default: {
+      result = TRI_ERROR_INTERNAL;
       assert(0);
     }
     

@@ -72,20 +72,23 @@ namespace internal {
 // Core register.
 struct Register {
   static const int kNumRegisters = v8::internal::kNumRegisters;
-  static const int kNumAllocatableRegisters = 14;  // v0 through t7.
+  static const int kMaxNumAllocatableRegisters = 14;  // v0 through t7.
   static const int kSizeInBytes = 4;
+  static const int kGPRsPerNonFPUDouble = 2;
+
+  inline static int NumAllocatableRegisters();
 
   static int ToAllocationIndex(Register reg) {
     return reg.code() - 2;  // zero_reg and 'at' are skipped.
   }
 
   static Register FromAllocationIndex(int index) {
-    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    ASSERT(index >= 0 && index < kMaxNumAllocatableRegisters);
     return from_code(index + 2);  // zero_reg and 'at' are skipped.
   }
 
   static const char* AllocationIndexToString(int index) {
-    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    ASSERT(index >= 0 && index < kMaxNumAllocatableRegisters);
     const char* const names[] = {
       "v0",
       "v1",
@@ -125,40 +128,59 @@ struct Register {
   int code_;
 };
 
-const Register no_reg = { -1 };
+#define REGISTER(N, C) \
+  const int kRegister_ ## N ## _Code = C; \
+  const Register N = { C }
 
-const Register zero_reg = { 0 };  // Always zero.
-const Register at = { 1 };   // at: Reserved for synthetic instructions.
-const Register v0 = { 2 };   // v0, v1: Used when returning multiple values
-const Register v1 = { 3 };   //   from subroutines.
-const Register a0 = { 4 };   // a0 - a4: Used to pass non-FP parameters.
-const Register a1 = { 5 };
-const Register a2 = { 6 };
-const Register a3 = { 7 };
-const Register t0 = { 8 };   // t0 - t9: Can be used without reservation, act
-const Register t1 = { 9 };   //   as temporary registers and are allowed to
-const Register t2 = { 10 };  //   be destroyed by subroutines.
-const Register t3 = { 11 };
-const Register t4 = { 12 };
-const Register t5 = { 13 };
-const Register t6 = { 14 };
-const Register t7 = { 15 };
-const Register s0 = { 16 };  // s0 - s7: Subroutine register variables.
-const Register s1 = { 17 };  //   Subroutines that write to these registers
-const Register s2 = { 18 };  //   must restore their values before exiting so
-const Register s3 = { 19 };  //   that the caller can expect the values to be
-const Register s4 = { 20 };  //   preserved.
-const Register s5 = { 21 };
-const Register s6 = { 22 };
-const Register s7 = { 23 };
-const Register t8 = { 24 };
-const Register t9 = { 25 };
-const Register k0 = { 26 };  // k0, k1: Reserved for system calls and
-const Register k1 = { 27 };  // interrupt handlers.
-const Register gp = { 28 };  // gp: Reserved.
-const Register sp = { 29 };  // sp: Stack pointer.
-const Register s8_fp = { 30 };  // fp: Frame pointer.
-const Register ra = { 31 };  // ra: Return address pointer.
+REGISTER(no_reg, -1);
+// Always zero.
+REGISTER(zero_reg, 0);
+// at: Reserved for synthetic instructions.
+REGISTER(at, 1);
+// v0, v1: Used when returning multiple values from subroutines.
+REGISTER(v0, 2);
+REGISTER(v1, 3);
+// a0 - a4: Used to pass non-FP parameters.
+REGISTER(a0, 4);
+REGISTER(a1, 5);
+REGISTER(a2, 6);
+REGISTER(a3, 7);
+// t0 - t9: Can be used without reservation, act as temporary registers and are
+// allowed to be destroyed by subroutines.
+REGISTER(t0, 8);
+REGISTER(t1, 9);
+REGISTER(t2, 10);
+REGISTER(t3, 11);
+REGISTER(t4, 12);
+REGISTER(t5, 13);
+REGISTER(t6, 14);
+REGISTER(t7, 15);
+// s0 - s7: Subroutine register variables. Subroutines that write to these
+// registers must restore their values before exiting so that the caller can
+// expect the values to be preserved.
+REGISTER(s0, 16);
+REGISTER(s1, 17);
+REGISTER(s2, 18);
+REGISTER(s3, 19);
+REGISTER(s4, 20);
+REGISTER(s5, 21);
+REGISTER(s6, 22);
+REGISTER(s7, 23);
+REGISTER(t8, 24);
+REGISTER(t9, 25);
+// k0, k1: Reserved for system calls and interrupt handlers.
+REGISTER(k0, 26);
+REGISTER(k1, 27);
+// gp: Reserved.
+REGISTER(gp, 28);
+// sp: Stack pointer.
+REGISTER(sp, 29);
+// fp: Frame pointer.
+REGISTER(fp, 30);
+// ra: Return address pointer.
+REGISTER(ra, 31);
+
+#undef REGISTER
 
 
 int ToNumber(Register reg);
@@ -178,36 +200,17 @@ struct FPURegister {
   //  f28: 0.0
   //  f30: scratch register.
   static const int kNumReservedRegisters = 2;
-  static const int kNumAllocatableRegisters = kNumRegisters / 2 -
+  static const int kMaxNumAllocatableRegisters = kNumRegisters / 2 -
       kNumReservedRegisters;
 
-
+  inline static int NumRegisters();
+  inline static int NumAllocatableRegisters();
   inline static int ToAllocationIndex(FPURegister reg);
+  static const char* AllocationIndexToString(int index);
 
   static FPURegister FromAllocationIndex(int index) {
-    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
+    ASSERT(index >= 0 && index < kMaxNumAllocatableRegisters);
     return from_code(index * 2);
-  }
-
-  static const char* AllocationIndexToString(int index) {
-    ASSERT(index >= 0 && index < kNumAllocatableRegisters);
-    const char* const names[] = {
-      "f0",
-      "f2",
-      "f4",
-      "f6",
-      "f8",
-      "f10",
-      "f12",
-      "f14",
-      "f16",
-      "f18",
-      "f20",
-      "f22",
-      "f24",
-      "f26"
-    };
-    return names[index];
   }
 
   static FPURegister from_code(int code) {
@@ -297,15 +300,20 @@ const FPURegister f29 = { 29 };
 const FPURegister f30 = { 30 };
 const FPURegister f31 = { 31 };
 
+const Register sfpd_lo  = { kRegister_t6_Code };
+const Register sfpd_hi  = { kRegister_t7_Code };
+
 // Register aliases.
 // cp is assumed to be a callee saved register.
-static const Register& kLithiumScratchReg = s3;  // Scratch register.
-static const Register& kLithiumScratchReg2 = s4;  // Scratch register.
-static const Register& kRootRegister = s6;  // Roots array pointer.
-static const Register& cp = s7;     // JavaScript context pointer.
-static const Register& fp = s8_fp;  // Alias for fp.
-static const DoubleRegister& kLithiumScratchDouble = f30;
-static const FPURegister& kDoubleRegZero = f28;
+// Defined using #define instead of "static const Register&" because Clang
+// complains otherwise when a compilation unit that includes this header
+// doesn't use the variables.
+#define kRootRegister s6
+#define cp s7
+#define kLithiumScratchReg s3
+#define kLithiumScratchReg2 s4
+#define kLithiumScratchDouble f30
+#define kDoubleRegZero f28
 
 // FPU (coprocessor 1) control registers.
 // Currently only FCSR (#31) is implemented.
@@ -340,7 +348,7 @@ class Operand BASE_EMBEDDED {
  public:
   // Immediate.
   INLINE(explicit Operand(int32_t immediate,
-         RelocInfo::Mode rmode = RelocInfo::NONE));
+         RelocInfo::Mode rmode = RelocInfo::NONE32));
   INLINE(explicit Operand(const ExternalReference& f));
   INLINE(explicit Operand(const char* s));
   INLINE(explicit Operand(Object** opp));
@@ -482,6 +490,7 @@ class CpuFeatures : public AllStatic {
   static unsigned supported_;
   static unsigned found_by_runtime_probing_;
 
+  friend class ExternalReference;
   DISALLOW_COPY_AND_ASSIGN(CpuFeatures);
 };
 
@@ -502,10 +511,7 @@ class Assembler : public AssemblerBase {
   // is too small, a fatal error occurs. No deallocation of the buffer is done
   // upon destruction of the assembler.
   Assembler(Isolate* isolate, void* buffer, int buffer_size);
-  ~Assembler();
-
-  // Overrides the default provided by FLAG_debug_code.
-  void set_emit_debug_code(bool value) { emit_debug_code_ = value; }
+  virtual ~Assembler() { }
 
   // GetCode emits any pending (non-emitted) code and fills the descriptor
   // desc. GetCode() is idempotent; it returns the same result if no other
@@ -550,13 +556,22 @@ class Assembler : public AssemblerBase {
   static Address target_address_at(Address pc);
   static void set_target_address_at(Address pc, Address target);
 
+  // Return the code target address at a call site from the return address
+  // of that call in the instruction stream.
+  inline static Address target_address_from_return_address(Address pc);
+
   static void JumpLabelToJumpRegister(Address pc);
 
+  static void QuietNaN(HeapObject* nan);
+
   // This sets the branch destination (which gets loaded at the call address).
-  // This is for calls and branches within generated code.
-  inline static void set_target_at(Address instruction_payload,
-                                   Address target) {
-    set_target_address_at(instruction_payload, target);
+  // This is for calls and branches within generated code.  The serializer
+  // has already deserialized the lui/ori instructions etc.
+  inline static void deserialization_set_special_target_at(
+      Address instruction_payload, Address target) {
+    set_target_address_at(
+        instruction_payload - kInstructionsFor32BitConstant * kInstrSize,
+        target);
   }
 
   // This sets the branch destination.
@@ -578,8 +593,7 @@ class Assembler : public AssemblerBase {
   // are split across two consecutive instructions and don't exist separately
   // in the code, so the serializer should not step forwards in memory after
   // a target is resolved and written.
-  static const int kCallTargetSize = 0 * kInstrSize;
-  static const int kExternalTargetSize = 0 * kInstrSize;
+  static const int kSpecialTargetSize = 0;
 
   // Number of consecutive instructions used to store 32bit constant.
   // Before jump-optimizations, this constant was used in
@@ -605,6 +619,8 @@ class Assembler : public AssemblerBase {
   // Difference between address of current opcode and value read from pc
   // register.
   static const int kPcLoadDelta = 4;
+
+  static const int kPatchDebugBreakSlotReturnOffset = 4 * kInstrSize;
 
   // Number of instructions used for the JS return sequence. The constant is
   // used by the debugger to patch the JS return sequence.
@@ -635,13 +651,18 @@ class Assembler : public AssemblerBase {
     PROPERTY_ACCESS_INLINED_CONTEXT_DONT_DELETE,
     // Helper values.
     LAST_CODE_MARKER,
-    FIRST_IC_MARKER = PROPERTY_ACCESS_INLINED
+    FIRST_IC_MARKER = PROPERTY_ACCESS_INLINED,
+    // Code aging
+    CODE_AGE_MARKER_NOP = 6
   };
 
-  // Type == 0 is the default non-marking type.
+  // Type == 0 is the default non-marking nop. For mips this is a
+  // sll(zero_reg, zero_reg, 0). We use rt_reg == at for non-zero
+  // marking, to avoid conflict with ssnop and ehb instructions.
   void nop(unsigned int type = 0) {
     ASSERT(type < 32);
-    sll(zero_reg, zero_reg, type, true);
+    Register nop_rt_reg = (type == 0) ? zero_reg : at;
+    sll(zero_reg, nop_rt_reg, type, true);
   }
 
 
@@ -785,6 +806,7 @@ class Assembler : public AssemblerBase {
   void add_d(FPURegister fd, FPURegister fs, FPURegister ft);
   void sub_d(FPURegister fd, FPURegister fs, FPURegister ft);
   void mul_d(FPURegister fd, FPURegister fs, FPURegister ft);
+  void madd_d(FPURegister fd, FPURegister fr, FPURegister fs, FPURegister ft);
   void div_d(FPURegister fd, FPURegister fs, FPURegister ft);
   void abs_d(FPURegister fd, FPURegister fs);
   void mov_d(FPURegister fd, FPURegister fs);
@@ -887,17 +909,17 @@ class Assembler : public AssemblerBase {
 
   // Record the AST id of the CallIC being compiled, so that it can be placed
   // in the relocation information.
-  void SetRecordedAstId(unsigned ast_id) {
-    ASSERT(recorded_ast_id_ == kNoASTId);
+  void SetRecordedAstId(TypeFeedbackId ast_id) {
+    ASSERT(recorded_ast_id_.IsNone());
     recorded_ast_id_ = ast_id;
   }
 
-  unsigned RecordedAstId() {
-    ASSERT(recorded_ast_id_ != kNoASTId);
+  TypeFeedbackId RecordedAstId() {
+    ASSERT(!recorded_ast_id_.IsNone());
     return recorded_ast_id_;
   }
 
-  void ClearRecordedAstId() { recorded_ast_id_ = kNoASTId; }
+  void ClearRecordedAstId() { recorded_ast_id_ = TypeFeedbackId::None(); }
 
   // Record a comment relocation entry that can be used by a disassembler.
   // Use --code-comments to enable.
@@ -909,8 +931,6 @@ class Assembler : public AssemblerBase {
   // inline tables, e.g., jump-tables.
   void db(uint8_t data);
   void dd(uint32_t data);
-
-  int32_t pc_offset() const { return pc_ - buffer_; }
 
   PositionsRecorder* positions_recorder() { return &positions_recorder_; }
 
@@ -994,9 +1014,7 @@ class Assembler : public AssemblerBase {
   // Relocation for a type-recording IC has the AST id added to it.  This
   // member variable is a way to pass the information from the call site to
   // the relocation info.
-  unsigned recorded_ast_id_;
-
-  bool emit_debug_code() const { return emit_debug_code_; }
+  TypeFeedbackId recorded_ast_id_;
 
   int32_t buffer_space() const { return reloc_info_writer.pos() - pc_; }
 
@@ -1056,13 +1074,6 @@ class Assembler : public AssemblerBase {
   }
 
  private:
-  // Code buffer:
-  // The buffer into which code and relocation info are generated.
-  byte* buffer_;
-  int buffer_size_;
-  // True if the assembler owns the buffer, false if buffer is external.
-  bool own_buffer_;
-
   // Buffer size and constant pool distance are checked together at regular
   // intervals of kBufferCheckInterval emitted bytes.
   static const int kBufferCheckInterval = 1*KB/2;
@@ -1073,7 +1084,6 @@ class Assembler : public AssemblerBase {
   // not have to check for overflow. The same is true for writes of large
   // relocation info entries.
   static const int kGap = 32;
-  byte* pc_;  // The program counter - moves forward.
 
 
   // Repeated checking whether the trampoline pool should be emitted is rather
@@ -1132,6 +1142,13 @@ class Assembler : public AssemblerBase {
 
   void GenInstrRegister(Opcode opcode,
                         SecondaryField fmt,
+                        FPURegister ft,
+                        FPURegister fs,
+                        FPURegister fd,
+                        SecondaryField func = NULLSF);
+
+  void GenInstrRegister(Opcode opcode,
+                        FPURegister fr,
                         FPURegister ft,
                         FPURegister fs,
                         FPURegister fd,
@@ -1248,7 +1265,6 @@ class Assembler : public AssemblerBase {
   friend class BlockTrampolinePoolScope;
 
   PositionsRecorder positions_recorder_;
-  bool emit_debug_code_;
   friend class PositionsRecorder;
   friend class EnsureSpace;
 };

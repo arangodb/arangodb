@@ -122,6 +122,7 @@ namespace triagens {
           : _desc(),
             _nrAlloc(0),
             _nrUsed(0),
+#ifdef TRI_INTERNAL_STATS
             _table(0),
             _nrFinds(0),
             _nrAdds(0),
@@ -131,6 +132,9 @@ namespace triagens {
             _nrProbesA(0),
             _nrProbesD(0),
             _nrProbesR(0) {
+#else              
+            _table(0) {
+#endif              
           initialise(size);
         }
 
@@ -142,6 +146,7 @@ namespace triagens {
           _desc(desc),
             _nrAlloc(0),
             _nrUsed(0),
+#ifdef TRI_INTERNAL_STATS
             _table(0),
             _nrFinds(0),
             _nrAdds(0),
@@ -151,6 +156,9 @@ namespace triagens {
             _nrProbesA(0),
             _nrProbesD(0),
             _nrProbesR(0) {
+#else              
+            _table(0) {
+#endif            
           initialise(size);
         }
 
@@ -194,6 +202,7 @@ namespace triagens {
           _nrUsed = other->_nrUsed;
           other->_nrUsed = tmpInt;
 
+#ifdef TRI_INTERNAL_STATS
           tmpInt = _nrFinds;
           _nrFinds = other->_nrFinds;
           other->_nrFinds = tmpInt;
@@ -229,6 +238,7 @@ namespace triagens {
           tmpInt = _nrProbesR;
           _nrProbesR = other->_nrProbesR;
           other->_nrProbesR = tmpInt;
+#endif
 
           ELEMENT* tmpTable = _table;
           _table = other->_table;
@@ -289,9 +299,10 @@ namespace triagens {
 
         ELEMENT const& findKey (KEY const& key) const {
 
+#ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrFinds++;
-
+#endif
           // compute the hash
           uint32_t hash = _desc.hashKey(key);
 
@@ -300,7 +311,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualKeyElement(key, _table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesF++;
+#endif            
           }
 
           // return whatever we found
@@ -313,9 +326,10 @@ namespace triagens {
 
         ELEMENT const& findElement (ELEMENT const& element) const {
 
+#ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrFinds++;
-
+#endif
           // compute the hash
           uint32_t hash = _desc.hashElement(element);
 
@@ -324,7 +338,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualElementElement(element, _table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesF++;
+#endif            
           }
 
           // return whatever we found
@@ -337,8 +353,10 @@ namespace triagens {
 
         bool addElement (ELEMENT const& element, bool overwrite = true) {
 
+#ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrAdds++;
+#endif          
 
           // search the table
           uint32_t hash = _desc.hashElement(element);
@@ -346,7 +364,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualElementElement(element, _table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesA++;
+#endif            
           }
 
           // if we found an element, return
@@ -373,7 +393,9 @@ namespace triagens {
 
             _nrAlloc = 2 * _nrAlloc + 1;
             _nrUsed = 0;
+#ifdef TRI_INTERNAL_STATS
             _nrResizes++;
+#endif            
 
             _table = new ELEMENT[_nrAlloc];
 
@@ -399,8 +421,10 @@ namespace triagens {
 
         bool addElement (KEY const& key, ELEMENT const& element, bool overwrite = true) {
 
+#ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrAdds++;
+#endif          
 
           // search the table
           uint32_t hash = _desc.hashKey(key);
@@ -408,7 +432,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualKeyElement(key, _table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesA++;
+#endif            
           }
 
           // if we found an element, return
@@ -435,7 +461,9 @@ namespace triagens {
 
             _nrAlloc = 2 * _nrAlloc + 1;
             _nrUsed = 0;
+#ifdef TRI_INTERNAL_STATS
             _nrResizes++;
+#endif            
 
             _table = new ELEMENT[_nrAlloc];
 
@@ -461,8 +489,10 @@ namespace triagens {
 
         ELEMENT removeKey (KEY const& key) {
 
+#ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrRems++;
+#endif          
 
           // search the table
           uint32_t hash = _desc.hashKey(key);
@@ -470,7 +500,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualKeyElement(key, _table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesD++;
+#endif            
           }
 
           // if we did not find such an item
@@ -510,8 +542,10 @@ namespace triagens {
 
         bool removeElement (ELEMENT const& element) {
 
+#ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrRems++;
+#endif          
 
           // search the table
           uint32_t hash = _desc.hashElement(element);
@@ -519,7 +553,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i]) && !_desc.isEqualElementElement(element, _table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesD++;
+#endif            
           }
 
           // if we did not find such an item return false
@@ -578,6 +614,7 @@ namespace triagens {
 
           _nrAlloc = size;
           _nrUsed = 0;
+#ifdef TRI_INTERNAL_STATS
           _nrFinds = 0;
           _nrAdds = 0;
           _nrRems = 0;
@@ -586,6 +623,7 @@ namespace triagens {
           _nrProbesA = 0;
           _nrProbesD = 0;
           _nrProbesR = 0;
+#endif          
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -602,7 +640,9 @@ namespace triagens {
 
           while (!_desc.isEmptyElement(_table[i])) {
             i = (i + 1) % _nrAlloc;
+#ifdef TRI_INTERNAL_STATS
             _nrProbesR++;
+#endif            
           }
 
           // add a new element to the associative array
@@ -648,6 +688,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ELEMENT * _table;
+
+#ifdef TRI_INTERNAL_STATS
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of executed finds
@@ -696,6 +738,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         mutable uint64_t _nrProbesR;
+#endif
+
     };
   }
 }

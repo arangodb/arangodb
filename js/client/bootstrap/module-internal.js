@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, ArangoConnection, SYS_ARANGO */
+/*global require, ArangoConnection, print, SYS_ARANGO */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -122,6 +122,96 @@
     if (typeof internal.arango !== 'undefined') {
       internal.arango.POST("/_admin/auth/reload", "");
     }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a request in curl format
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.appendCurlRequest = function (appender) {
+    return function (method, url, body) {
+      var response;
+      var curl;
+
+      if (typeof body !== 'string') {
+        body = JSON.stringify(body);
+      }
+
+      curl = "unix> curl ";
+
+      if (method === 'POST') {
+        response = internal.arango.POST_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
+      else if (method === 'PUT') {
+        response = internal.arango.PUT_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
+      else if (method === 'GET') {
+        response = internal.arango.GET_RAW(url, body);
+      }
+      else if (method === 'DELETE') {
+        response = internal.arango.DELETE_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
+      else if (method === 'PATCH') {
+        response = internal.arango.PATCH_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
+      else if (method === 'OPTION') {
+        response = internal.arango.OPTION_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
+
+      if (body !== "") {
+        curl += "--data @- ";
+      }
+
+      curl += "--dump - http://localhost:8529" + url;
+
+      appender(curl + "\n");
+
+      if (body !== "") {
+        appender(body += "\n");
+      }
+
+      appender("\n");
+      
+      return response;
+    };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a response in JSON
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.appendJsonResponse = function (appender) {
+    return function (response) {
+      var key;
+      var headers = response.headers;
+      var output;
+
+      // generate header
+      appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
+
+      for (key in headers) {
+        if (headers.hasOwnProperty(key)) {
+          if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+              && key !== 'content-length') {
+            appender(key + ": " + headers[key] + "\n");
+          }
+        }
+      }
+
+      appender("\n");
+
+      // pretty print body
+      internal.startCaptureMode();
+      print(JSON.parse(response.body));
+      output = internal.stopCaptureMode();
+      appender(output);
+      appender("\n");
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////

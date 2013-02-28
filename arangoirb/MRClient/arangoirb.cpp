@@ -45,6 +45,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/shell-colors.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
@@ -206,8 +207,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   // check module path
   if (StartupModules.empty()) {
-    LOGGER_FATAL << "module path not known, please use '--ruby.modules-path'";
-    exit(EXIT_FAILURE);
+    LOGGER_FATAL_AND_EXIT("module path not known, please use '--ruby.modules-path'");
   }
 }
     
@@ -350,8 +350,7 @@ int main (int argc, char* argv[]) {
     BaseClient.createEndpoint();
 
     if (BaseClient.endpointServer() == 0) {
-      cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')");
     }
 
     ClientConnection = createConnection(mrb);
@@ -364,9 +363,9 @@ int main (int argc, char* argv[]) {
 
   // http://www.network-science.de/ascii/   Font: ogre
   if (! BaseClient.quiet()) {
-    char const* g = ArangoClient::COLOR_GREEN;
-    char const* r = ArangoClient::COLOR_RED;
-    char const* z = ArangoClient::COLOR_RESET;
+    char const* g = TRI_SHELL_COLOR_GREEN;
+    char const* r = TRI_SHELL_COLOR_RED;
+    char const* z = TRI_SHELL_COLOR_RESET;
 
     if (! BaseClient.colors()) {
       g = "";
@@ -418,7 +417,7 @@ int main (int argc, char* argv[]) {
     StartupLoader.defineScript("common/bootstrap/error.rb", MR_common_bootstrap_error);
   }
   else {
-    LOGGER_DEBUG << "using Ruby startup files at '" << StartupPath << "'";
+    LOGGER_DEBUG("using Ruby startup files at '" << StartupPath << "'");
     StartupLoader.setDirectory(StartupPath);
   }
 
@@ -431,11 +430,10 @@ int main (int argc, char* argv[]) {
     bool ok = StartupLoader.loadScript(mrb, files[i]);
     
     if (ok) {
-      LOGGER_TRACE << "loaded ruby file '" << files[i] << "'";
+      LOGGER_TRACE("loaded ruby file '" << files[i] << "'");
     }
     else {
-      LOGGER_ERROR << "cannot load ruby file '" << files[i] << "'";
-      exit(EXIT_FAILURE);
+      LOGGER_FATAL_AND_EXIT("cannot load ruby file '" << files[i] << "'");
     }
   }
   

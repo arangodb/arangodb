@@ -137,13 +137,14 @@ class DebugLocalContext {
   }
   inline ~DebugLocalContext() {
     context_->Exit();
-    context_.Dispose();
+    context_.Dispose(context_->GetIsolate());
   }
   inline v8::Context* operator->() { return *context_; }
   inline v8::Context* operator*() { return *context_; }
   inline bool IsReady() { return !context_.IsEmpty(); }
   void ExposeDebug() {
-    v8::internal::Debug* debug = v8::internal::Isolate::Current()->debug();
+    v8::internal::Isolate* isolate = v8::internal::Isolate::Current();
+    v8::internal::Debug* debug = isolate->debug();
     // Expose the debug context global object in the global object for testing.
     debug->Load();
     debug->debug_context()->set_security_token(
@@ -152,8 +153,8 @@ class DebugLocalContext {
     Handle<JSGlobalProxy> global(Handle<JSGlobalProxy>::cast(
         v8::Utils::OpenHandle(*context_->Global())));
     Handle<v8::internal::String> debug_string =
-        FACTORY->LookupAsciiSymbol("debug");
-    SetProperty(global, debug_string,
+        FACTORY->LookupOneByteSymbol(STATIC_ASCII_VECTOR("debug"));
+    SetProperty(isolate, global, debug_string,
         Handle<Object>(debug->debug_context()->global_proxy()), DONT_ENUM,
         ::v8::internal::kNonStrictMode);
   }
@@ -197,10 +198,9 @@ static bool HasDebugInfo(v8::Handle<v8::Function> fun) {
 // number.
 static int SetBreakPoint(Handle<v8::internal::JSFunction> fun, int position) {
   static int break_point = 0;
-  Handle<v8::internal::SharedFunctionInfo> shared(fun->shared());
   v8::internal::Debug* debug = v8::internal::Isolate::Current()->debug();
   debug->SetBreakPoint(
-      shared,
+      fun,
       Handle<Object>(v8::internal::Smi::FromInt(++break_point)),
       &position);
   return break_point;
@@ -515,7 +515,7 @@ void CheckDebugBreakFunction(DebugLocalContext* env,
   // there
   ClearBreakPoint(bp);
   CHECK(!debug->HasDebugInfo(shared));
-  CHECK(debug->EnsureDebugInfo(shared));
+  CHECK(debug->EnsureDebugInfo(shared, fun));
   TestBreakLocationIterator it2(Debug::GetDebugInfo(shared));
   it2.FindBreakLocationFromPosition(position);
   actual_mode = it2.it()->rinfo()->rmode();
@@ -2382,7 +2382,7 @@ TEST(DebuggerStatementBreakpoint) {
 }
 
 
-// Thest that the evaluation of expressions when a break point is hit generates
+// Test that the evaluation of expressions when a break point is hit generates
 // the correct results.
 TEST(DebugEvaluate) {
   v8::HandleScope scope;
@@ -2497,6 +2497,98 @@ TEST(DebugEvaluate) {
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
 }
+
+
+int debugEventCount = 0;
+static void CheckDebugEvent(const v8::Debug::EventDetails& eventDetails) {
+  if (eventDetails.GetEvent() == v8::Break) ++debugEventCount;
+}
+
+// Test that the conditional breakpoints work event if code generation from
+// strings is prohibited in the debugee context.
+TEST(ConditionalBreakpointWithCodeGenerationDisallowed) {
+  v8::HandleScope scope;
+  DebugLocalContext env;
+  env.ExposeDebug();
+
+  v8::Debug::SetDebugEventListener2(CheckDebugEvent);
+
+  v8::Local<v8::Function> foo = CompileFunction(&env,
+    "function foo(x) {\n"
+    "  var s = 'String value2';\n"
+    "  return s + x;\n"
+    "}",
+    "foo");
+
+  // Set conditional breakpoint with condition 'true'.
+  CompileRun("debug.Debug.setBreakPoint(foo, 2, 0, 'true')");
+
+  debugEventCount = 0;
+  env->AllowCodeGenerationFromStrings(false);
+  foo->Call(env->Global(), 0, NULL);
+  CHECK_EQ(1, debugEventCount);
+
+  v8::Debug::SetDebugEventListener2(NULL);
+  CheckDebuggerUnloaded();
+}
+
+
+bool checkedDebugEvals = true;
+v8::Handle<v8::Function> checkGlobalEvalFunction;
+v8::Handle<v8::Function> checkFrameEvalFunction;
+static void CheckDebugEval(const v8::Debug::EventDetails& eventDetails) {
+  if (eventDetails.GetEvent() == v8::Break) {
+    ++debugEventCount;
+    v8::HandleScope handleScope;
+
+    v8::Handle<v8::Value> args[] = { eventDetails.GetExecutionState() };
+    CHECK(checkGlobalEvalFunction->Call(
+        eventDetails.GetEventContext()->Global(), 1, args)->IsTrue());
+    CHECK(checkFrameEvalFunction->Call(
+        eventDetails.GetEventContext()->Global(), 1, args)->IsTrue());
+  }
+}
+
+// Test that the evaluation of expressions when a break point is hit generates
+// the correct results in case code generation from strings is disallowed in the
+// debugee context.
+TEST(DebugEvaluateWithCodeGenerationDisallowed) {
+  v8::HandleScope scope;
+  DebugLocalContext env;
+  env.ExposeDebug();
+
+  v8::Debug::SetDebugEventListener2(CheckDebugEval);
+
+  v8::Local<v8::Function> foo = CompileFunction(&env,
+    "var global = 'Global';\n"
+    "function foo(x) {\n"
+    "  var local = 'Local';\n"
+    "  debugger;\n"
+    "  return local + x;\n"
+    "}",
+    "foo");
+  checkGlobalEvalFunction = CompileFunction(&env,
+    "function checkGlobalEval(exec_state) {\n"
+    "  return exec_state.evaluateGlobal('global').value() === 'Global';\n"
+    "}",
+    "checkGlobalEval");
+
+  checkFrameEvalFunction = CompileFunction(&env,
+    "function checkFrameEval(exec_state) {\n"
+    "  return exec_state.frame(0).evaluate('local').value() === 'Local';\n"
+    "}",
+    "checkFrameEval");
+  debugEventCount = 0;
+  env->AllowCodeGenerationFromStrings(false);
+  foo->Call(env->Global(), 0, NULL);
+  CHECK_EQ(1, debugEventCount);
+
+  checkGlobalEvalFunction.Clear();
+  checkFrameEvalFunction.Clear();
+  v8::Debug::SetDebugEventListener2(NULL);
+  CheckDebuggerUnloaded();
+}
+
 
 // Copies a C string to a 16-bit string.  Does not check for buffer overflow.
 // Does not use the V8 engine to convert strings, so it can be used
@@ -2745,7 +2837,7 @@ TEST(DebugStepKeyedLoadLoop) {
   foo->Call(env->Global(), kArgc, args);
 
   // With stepping all break locations are hit.
-  CHECK_EQ(33, break_point_hit_count);
+  CHECK_EQ(34, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
@@ -2792,7 +2884,7 @@ TEST(DebugStepKeyedStoreLoop) {
   foo->Call(env->Global(), kArgc, args);
 
   // With stepping all break locations are hit.
-  CHECK_EQ(32, break_point_hit_count);
+  CHECK_EQ(33, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
@@ -2836,7 +2928,7 @@ TEST(DebugStepNamedLoadLoop) {
   foo->Call(env->Global(), 0, NULL);
 
   // With stepping all break locations are hit.
-  CHECK_EQ(53, break_point_hit_count);
+  CHECK_EQ(54, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(NULL);
   CheckDebuggerUnloaded();
@@ -2880,7 +2972,7 @@ static void DoDebugStepNamedStoreLoop(int expected) {
 
 // Test of the stepping mechanism for named load in a loop.
 TEST(DebugStepNamedStoreLoop) {
-  DoDebugStepNamedStoreLoop(22);
+  DoDebugStepNamedStoreLoop(23);
 }
 
 
@@ -3252,7 +3344,7 @@ TEST(DebugStepForContinue) {
   v8::Handle<v8::Value> argv_10[argc] = { v8::Number::New(10) };
   result = foo->Call(env->Global(), argc, argv_10);
   CHECK_EQ(5, result->Int32Value());
-  CHECK_EQ(50, break_point_hit_count);
+  CHECK_EQ(51, break_point_hit_count);
 
   // Looping 100 times.
   step_action = StepIn;
@@ -3260,7 +3352,7 @@ TEST(DebugStepForContinue) {
   v8::Handle<v8::Value> argv_100[argc] = { v8::Number::New(100) };
   result = foo->Call(env->Global(), argc, argv_100);
   CHECK_EQ(50, result->Int32Value());
-  CHECK_EQ(455, break_point_hit_count);
+  CHECK_EQ(456, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(NULL);
@@ -3304,7 +3396,7 @@ TEST(DebugStepForBreak) {
   v8::Handle<v8::Value> argv_10[argc] = { v8::Number::New(10) };
   result = foo->Call(env->Global(), argc, argv_10);
   CHECK_EQ(9, result->Int32Value());
-  CHECK_EQ(53, break_point_hit_count);
+  CHECK_EQ(54, break_point_hit_count);
 
   // Looping 100 times.
   step_action = StepIn;
@@ -3312,7 +3404,7 @@ TEST(DebugStepForBreak) {
   v8::Handle<v8::Value> argv_100[argc] = { v8::Number::New(100) };
   result = foo->Call(env->Global(), argc, argv_100);
   CHECK_EQ(99, result->Int32Value());
-  CHECK_EQ(503, break_point_hit_count);
+  CHECK_EQ(504, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(NULL);
@@ -4027,14 +4119,11 @@ TEST(StepWithException) {
 
 
 TEST(DebugBreak) {
+#ifdef VERIFY_HEAP
+  i::FLAG_verify_heap = true;
+#endif
   v8::HandleScope scope;
   DebugLocalContext env;
-
-  // This test should be run with option --verify-heap. As --verify-heap is
-  // only available in debug mode only check for it in that case.
-#ifdef DEBUG
-  CHECK(v8::internal::FLAG_verify_heap);
-#endif
 
   // Register a debug event listener which sets the break flag and counts.
   v8::Debug::SetDebugEventListener(DebugEventBreak);
@@ -4142,7 +4231,7 @@ TEST(NoBreakWhenBootstrapping) {
     const char* extension_names[] = { "simpletest" };
     v8::ExtensionConfiguration extensions(1, extension_names);
     v8::Persistent<v8::Context> context = v8::Context::New(&extensions);
-    context.Dispose();
+    context.Dispose(context->GetIsolate());
   }
   // Check that no DebugBreak events occured during the context creation.
   CHECK_EQ(0, break_point_hit_count);
@@ -4222,9 +4311,9 @@ TEST(InterceptorPropertyMirror) {
 
   // Get mirrors for the three objects with interceptor.
   CompileRun(
-      "named_mirror = debug.MakeMirror(intercepted_named);"
-      "indexed_mirror = debug.MakeMirror(intercepted_indexed);"
-      "both_mirror = debug.MakeMirror(intercepted_both)");
+      "var named_mirror = debug.MakeMirror(intercepted_named);"
+      "var indexed_mirror = debug.MakeMirror(intercepted_indexed);"
+      "var both_mirror = debug.MakeMirror(intercepted_both)");
   CHECK(CompileRun(
        "named_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CHECK(CompileRun(
@@ -4265,7 +4354,7 @@ TEST(InterceptorPropertyMirror) {
   CHECK_EQ(5, CompileRun(source)->Int32Value());
 
   // Get the interceptor properties for the object with only named interceptor.
-  CompileRun("named_values = named_mirror.properties()");
+  CompileRun("var named_values = named_mirror.properties()");
 
   // Check that the properties are interceptor properties.
   for (int i = 0; i < 3; i++) {
@@ -4274,9 +4363,9 @@ TEST(InterceptorPropertyMirror) {
                  "named_values[%d] instanceof debug.PropertyMirror", i);
     CHECK(CompileRun(buffer.start())->BooleanValue());
 
-    // 5 is PropertyType.Interceptor
     OS::SNPrintF(buffer, "named_values[%d].propertyType()", i);
-    CHECK_EQ(5, CompileRun(buffer.start())->Int32Value());
+    CHECK_EQ(v8::internal::INTERCEPTOR,
+             CompileRun(buffer.start())->Int32Value());
 
     OS::SNPrintF(buffer, "named_values[%d].isNative()", i);
     CHECK(CompileRun(buffer.start())->BooleanValue());
@@ -4284,7 +4373,7 @@ TEST(InterceptorPropertyMirror) {
 
   // Get the interceptor properties for the object with only indexed
   // interceptor.
-  CompileRun("indexed_values = indexed_mirror.properties()");
+  CompileRun("var indexed_values = indexed_mirror.properties()");
 
   // Check that the properties are interceptor properties.
   for (int i = 0; i < 2; i++) {
@@ -4296,7 +4385,7 @@ TEST(InterceptorPropertyMirror) {
 
   // Get the interceptor properties for the object with both types of
   // interceptors.
-  CompileRun("both_values = both_mirror.properties()");
+  CompileRun("var both_values = both_mirror.properties()");
 
   // Check that the properties are interceptor properties.
   for (int i = 0; i < 5; i++) {
@@ -4352,10 +4441,10 @@ TEST(HiddenPrototypePropertyMirror) {
 
   // Get mirrors for the four objects.
   CompileRun(
-      "o0_mirror = debug.MakeMirror(o0);"
-      "o1_mirror = debug.MakeMirror(o1);"
-      "o2_mirror = debug.MakeMirror(o2);"
-      "o3_mirror = debug.MakeMirror(o3)");
+      "var o0_mirror = debug.MakeMirror(o0);"
+      "var o1_mirror = debug.MakeMirror(o1);"
+      "var o2_mirror = debug.MakeMirror(o2);"
+      "var o3_mirror = debug.MakeMirror(o3)");
   CHECK(CompileRun("o0_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CHECK(CompileRun("o1_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CHECK(CompileRun("o2_mirror instanceof debug.ObjectMirror")->BooleanValue());
@@ -4441,11 +4530,11 @@ TEST(NativeGetterPropertyMirror) {
   CHECK_EQ(10, CompileRun("instance.x")->Int32Value());
 
   // Get mirror for the object with property getter.
-  CompileRun("instance_mirror = debug.MakeMirror(instance);");
+  CompileRun("var instance_mirror = debug.MakeMirror(instance);");
   CHECK(CompileRun(
       "instance_mirror instanceof debug.ObjectMirror")->BooleanValue());
 
-  CompileRun("named_names = instance_mirror.propertyNames();");
+  CompileRun("var named_names = instance_mirror.propertyNames();");
   CHECK_EQ(1, CompileRun("named_names.length")->Int32Value());
   CHECK(CompileRun("named_names[0] == 'x'")->BooleanValue());
   CHECK(CompileRun(
@@ -4477,7 +4566,7 @@ TEST(NativeGetterThrowingErrorPropertyMirror) {
   env->Global()->Set(v8::String::New("instance"), named->NewInstance());
 
   // Get mirror for the object with property getter.
-  CompileRun("instance_mirror = debug.MakeMirror(instance);");
+  CompileRun("var instance_mirror = debug.MakeMirror(instance);");
   CHECK(CompileRun(
       "instance_mirror instanceof debug.ObjectMirror")->BooleanValue());
   CompileRun("named_names = instance_mirror.propertyNames();");
@@ -5013,7 +5102,10 @@ static void ThreadedMessageHandler(const v8::Debug::Message& message) {
   if (IsBreakEventMessage(print_buffer)) {
     // Check that we are inside the while loop.
     int source_line = GetSourceLineFromBreakEventMessage(print_buffer);
-    CHECK(8 <= source_line && source_line <= 13);
+    // TODO(2047): This should really be 8 <= source_line <= 13; but we
+    // currently have an off-by-one error when calculating the source
+    // position corresponding to the program counter at the debug break.
+    CHECK(7 <= source_line && source_line <= 13);
     threaded_debugging_barriers.barrier_2.Wait();
   }
 }
@@ -5831,9 +5923,9 @@ TEST(DebuggerAgent) {
   i::Debugger* debugger = i::Isolate::Current()->debugger();
   // Make sure these ports is not used by other tests to allow tests to run in
   // parallel.
-  const int kPort1 = 5858;
-  const int kPort2 = 5857;
-  const int kPort3 = 5856;
+  const int kPort1 = 5858 + FlagDependentPortOffset();
+  const int kPort2 = 5857 + FlagDependentPortOffset();
+  const int kPort3 = 5856 + FlagDependentPortOffset();
 
   // Make a string with the port2 number.
   const int kPortBufferLen = 6;
@@ -5932,7 +6024,7 @@ void DebuggerAgentProtocolServerThread::Run() {
 TEST(DebuggerAgentProtocolOverflowHeader) {
   // Make sure this port is not used by other tests to allow tests to run in
   // parallel.
-  const int kPort = 5860;
+  const int kPort = 5860 + FlagDependentPortOffset();
   static const char* kLocalhost = "localhost";
 
   // Make a string with the port number.
@@ -6127,7 +6219,7 @@ static v8::Handle<v8::Value> expected_context_data;
 // Check that the expected context is the one generating the debug event.
 static void ContextCheckMessageHandler(const v8::Debug::Message& message) {
   CHECK(message.GetEventContext() == expected_context);
-  CHECK(message.GetEventContext()->GetData()->StrictEquals(
+  CHECK(message.GetEventContext()->GetEmbedderData(0)->StrictEquals(
       expected_context_data));
   message_handler_hit_count++;
 
@@ -6160,16 +6252,16 @@ TEST(ContextData) {
   context_2 = v8::Context::New(NULL, global_template, global_object);
 
   // Default data value is undefined.
-  CHECK(context_1->GetData()->IsUndefined());
-  CHECK(context_2->GetData()->IsUndefined());
+  CHECK(context_1->GetEmbedderData(0)->IsUndefined());
+  CHECK(context_2->GetEmbedderData(0)->IsUndefined());
 
   // Set and check different data values.
   v8::Handle<v8::String> data_1 = v8::String::New("1");
   v8::Handle<v8::String> data_2 = v8::String::New("2");
-  context_1->SetData(data_1);
-  context_2->SetData(data_2);
-  CHECK(context_1->GetData()->StrictEquals(data_1));
-  CHECK(context_2->GetData()->StrictEquals(data_2));
+  context_1->SetEmbedderData(0, data_1);
+  context_2->SetEmbedderData(0, data_2);
+  CHECK(context_1->GetEmbedderData(0)->StrictEquals(data_1));
+  CHECK(context_2->GetEmbedderData(0)->StrictEquals(data_2));
 
   // Simple test function which causes a break.
   const char* source = "function f() { debugger; }";
@@ -6324,12 +6416,12 @@ static void ExecuteScriptForContextCheck() {
   context_1 = v8::Context::New(NULL, global_template);
 
   // Default data value is undefined.
-  CHECK(context_1->GetData()->IsUndefined());
+  CHECK(context_1->GetEmbedderData(0)->IsUndefined());
 
   // Set and check a data value.
   v8::Handle<v8::String> data_1 = v8::String::New("1");
-  context_1->SetData(data_1);
-  CHECK(context_1->GetData()->StrictEquals(data_1));
+  context_1->SetEmbedderData(0, data_1);
+  CHECK(context_1->GetEmbedderData(0)->StrictEquals(data_1));
 
   // Simple test function with eval that causes a break.
   const char* source = "function f() { eval('debugger;'); }";
@@ -6370,7 +6462,7 @@ static int continue_command_send_count = 0;
 static void DebugEvalContextCheckMessageHandler(
     const v8::Debug::Message& message) {
   CHECK(message.GetEventContext() == expected_context);
-  CHECK(message.GetEventContext()->GetData()->StrictEquals(
+  CHECK(message.GetEventContext()->GetEmbedderData(0)->StrictEquals(
       expected_context_data));
   message_handler_hit_count++;
 
@@ -6977,7 +7069,7 @@ TEST(DebugEventContext) {
   expected_context = v8::Context::New();
   v8::Context::Scope context_scope(expected_context);
   v8::Script::Compile(v8::String::New("(function(){debugger;})();"))->Run();
-  expected_context.Dispose();
+  expected_context.Dispose(expected_context->GetIsolate());
   expected_context.Clear();
   v8::Debug::SetDebugEventListener(NULL);
   expected_context_data = v8::Handle<v8::Value>();
@@ -7208,10 +7300,10 @@ static void TestDebugBreakInLoop(const char* loop_head,
   // Receive 100 breaks for each test and then terminate JavaScript execution.
   static const int kBreaksPerTest = 100;
 
-  for (int i = 0; i < 1 && loop_bodies[i] != NULL; i++) {
+  for (int i = 0; loop_bodies[i] != NULL; i++) {
     // Perform a lazy deoptimization after various numbers of breaks
     // have been hit.
-    for (int j = 0; j < 10; j++) {
+    for (int j = 0; j < 11; j++) {
       break_point_hit_count_deoptimize = j;
       if (j == 10) {
         break_point_hit_count_deoptimize = kBreaksPerTest;
@@ -7344,6 +7436,96 @@ TEST(DebugBreakInline) {
   v8::Debug::SetDebugEventListener(DebugBreakInlineListener);
   inline_script = v8::Script::Compile(v8::String::New(source));
   inline_script->Run();
+}
+
+
+static void DebugEventStepNext(v8::DebugEvent event,
+                               v8::Handle<v8::Object> exec_state,
+                               v8::Handle<v8::Object> event_data,
+                               v8::Handle<v8::Value> data) {
+  if (event == v8::Break) {
+    PrepareStep(StepNext);
+  }
+}
+
+
+static void RunScriptInANewCFrame(const char* source) {
+  v8::TryCatch try_catch;
+  CompileRun(source);
+  CHECK(try_catch.HasCaught());
+}
+
+
+TEST(Regress131642) {
+  // Bug description:
+  // When doing StepNext through the first script, the debugger is not reset
+  // after exiting through exception.  A flawed implementation enabling the
+  // debugger to step into Array.prototype.forEach breaks inside the callback
+  // for forEach in the second script under the assumption that we are in a
+  // recursive call.  In an attempt to step out, we crawl the stack using the
+  // recorded frame pointer from the first script and fail when not finding it
+  // on the stack.
+  v8::HandleScope scope;
+  DebugLocalContext env;
+  v8::Debug::SetDebugEventListener(DebugEventStepNext);
+
+  // We step through the first script.  It exits through an exception.  We run
+  // this inside a new frame to record a different FP than the second script
+  // would expect.
+  const char* script_1 = "debugger; throw new Error();";
+  RunScriptInANewCFrame(script_1);
+
+  // The second script uses forEach.
+  const char* script_2 = "[0].forEach(function() { });";
+  CompileRun(script_2);
+
+  v8::Debug::SetDebugEventListener(NULL);
+}
+
+
+// Import from test-heap.cc
+int CountNativeContexts();
+
+
+static void NopListener(v8::DebugEvent event,
+                        v8::Handle<v8::Object> exec_state,
+                        v8::Handle<v8::Object> event_data,
+                        v8::Handle<v8::Value> data) {
+}
+
+
+TEST(DebuggerCreatesContextIffActive) {
+  v8::HandleScope scope;
+  DebugLocalContext env;
+  CHECK_EQ(1, CountNativeContexts());
+
+  v8::Debug::SetDebugEventListener(NULL);
+  CompileRun("debugger;");
+  CHECK_EQ(1, CountNativeContexts());
+
+  v8::Debug::SetDebugEventListener(NopListener);
+  CompileRun("debugger;");
+  CHECK_EQ(2, CountNativeContexts());
+
+  v8::Debug::SetDebugEventListener(NULL);
+}
+
+
+TEST(LiveEditEnabled) {
+  v8::internal::FLAG_allow_natives_syntax = true;
+  v8::HandleScope scope;
+  LocalContext context;
+  v8::Debug::SetLiveEditEnabled(true);
+  CompileRun("%LiveEditCompareStrings('', '')");
+}
+
+
+TEST(LiveEditDisabled) {
+  v8::internal::FLAG_allow_natives_syntax = true;
+  v8::HandleScope scope;
+  LocalContext context;
+  v8::Debug::SetLiveEditEnabled(false);
+  CompileRun("%LiveEditCompareStrings('', '')");
 }
 
 

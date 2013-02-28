@@ -35,6 +35,7 @@
 #include "code-stubs.h"
 #include "codegen.h"
 #include "compiler.h"
+#include "data-flow.h"
 
 namespace v8 {
 namespace internal {
@@ -48,7 +49,9 @@ class JumpPatchSite;
 // debugger to piggybag on.
 class BreakableStatementChecker: public AstVisitor {
  public:
-  BreakableStatementChecker() : is_breakable_(false) {}
+  BreakableStatementChecker() : is_breakable_(false) {
+    InitializeAstVisitor();
+  }
 
   void Check(Statement* stmt);
   void Check(Expression* stmt);
@@ -63,6 +66,7 @@ class BreakableStatementChecker: public AstVisitor {
 
   bool is_breakable_;
 
+  DEFINE_AST_VISITOR_SUBCLASS_MEMBERS();
   DISALLOW_COPY_AND_ASSIGN(BreakableStatementChecker);
 };
 
@@ -77,28 +81,34 @@ class FullCodeGenerator: public AstVisitor {
     TOS_REG
   };
 
-  explicit FullCodeGenerator(MacroAssembler* masm)
+  FullCodeGenerator(MacroAssembler* masm, CompilationInfo* info)
       : masm_(masm),
-        info_(NULL),
-        scope_(NULL),
+        info_(info),
+        scope_(info->scope()),
         nesting_stack_(NULL),
         loop_depth_(0),
+        globals_(NULL),
         context_(NULL),
-        bailout_entries_(0),
-        stack_checks_(2),  // There's always at least one.
-        type_feedback_cells_(0) {
+        bailout_entries_(info->HasDeoptimizationSupport()
+                         ? info->function()->ast_node_count() : 0,
+                         info->zone()),
+        stack_checks_(2, info->zone()),  // There's always at least one.
+        type_feedback_cells_(info->HasDeoptimizationSupport()
+                             ? info->function()->ast_node_count() : 0,
+                             info->zone()),
+        ic_total_count_(0),
+        zone_(info->zone()) {
+    Initialize();
   }
+
+  void Initialize();
 
   static bool MakeCode(CompilationInfo* info);
 
-  void Generate(CompilationInfo* info);
-  void PopulateDeoptimizationData(Handle<Code> code);
-  void PopulateTypeFeedbackCells(Handle<Code> code);
-
-  Handle<FixedArray> handler_table() { return handler_table_; }
-
-  class StateField : public BitField<State, 0, 8> { };
-  class PcField    : public BitField<unsigned, 8, 32-8> { };
+  // Encode state and pc-offset as a BitField<type, start, size>.
+  // Only use 30 bits because we encode the result as a smi.
+  class StateField : public BitField<State, 0, 1> { };
+  class PcField    : public BitField<unsigned, 1, 30-1> { };
 
   static const char* State2String(State state) {
     switch (state) {
@@ -108,6 +118,23 @@ class FullCodeGenerator: public AstVisitor {
     UNREACHABLE();
     return NULL;
   }
+
+  Zone* zone() const { return zone_; }
+
+  static const int kMaxBackEdgeWeight = 127;
+
+#if V8_TARGET_ARCH_IA32
+  static const int kBackEdgeDistanceUnit = 100;
+#elif V8_TARGET_ARCH_X64
+  static const int kBackEdgeDistanceUnit = 162;
+#elif V8_TARGET_ARCH_ARM
+  static const int kBackEdgeDistanceUnit = 142;
+#elif V8_TARGET_ARCH_MIPS
+  static const int kBackEdgeDistanceUnit = 142;
+#else
+#error Unsupported target architecture.
+#endif
+
 
  private:
   class Breakable;
@@ -203,7 +230,7 @@ class FullCodeGenerator: public AstVisitor {
     virtual ~NestedBlock() {}
 
     virtual NestedStatement* Exit(int* stack_depth, int* context_length) {
-      if (statement()->AsBlock()->block_scope() != NULL) {
+      if (statement()->AsBlock()->scope() != NULL) {
         ++(*context_length);
       }
       return previous_;
@@ -237,7 +264,7 @@ class FullCodeGenerator: public AstVisitor {
   // The finally block of a try/finally statement.
   class Finally : public NestedStatement {
    public:
-    static const int kElementCount = 2;
+    static const int kElementCount = 5;
 
     explicit Finally(FullCodeGenerator* codegen) : NestedStatement(codegen) { }
     virtual ~Finally() {}
@@ -373,8 +400,14 @@ class FullCodeGenerator: public AstVisitor {
   void VisitInDuplicateContext(Expression* expr);
 
   void VisitDeclarations(ZoneList<Declaration*>* declarations);
+  void DeclareModules(Handle<FixedArray> descriptions);
   void DeclareGlobals(Handle<FixedArray> pairs);
   int DeclareGlobalsFlags();
+
+  // Generate code to allocate all (including nested) modules and contexts.
+  // Because of recursive linking and the presence of module alias declarations,
+  // this has to be a separate pass _before_ populating or executing any module.
+  void AllocateModules(ZoneList<Declaration*>* declarations);
 
   // Try to perform a comparison as a fast inlined literal compare if
   // the operands allow it.  Returns true if the compare operations
@@ -394,11 +427,12 @@ class FullCodeGenerator: public AstVisitor {
 
   // Bailout support.
   void PrepareForBailout(Expression* node, State state);
-  void PrepareForBailoutForId(unsigned id, State state);
+  void PrepareForBailoutForId(BailoutId id, State state);
 
   // Cache cell support.  This associates AST ids with global property cells
   // that will be cleared during GC and collected by the type-feedback oracle.
-  void RecordTypeFeedbackCell(unsigned id, Handle<JSGlobalPropertyCell> cell);
+  void RecordTypeFeedbackCell(TypeFeedbackId id,
+                              Handle<JSGlobalPropertyCell> cell);
 
   // Record a call's return site offset, used to rebuild the frame if the
   // called function was inlined at the site.
@@ -414,21 +448,23 @@ class FullCodeGenerator: public AstVisitor {
                                     Label* if_true,
                                     Label* if_false);
 
-  // Platform-specific code for a variable, constant, or function
-  // declaration.  Functions have an initial value.
-  void EmitDeclaration(VariableProxy* proxy,
-                       VariableMode mode,
-                       FunctionLiteral* function,
-                       int* global_count);
+  // If enabled, emit debug code for checking that the current context is
+  // neither a with nor a catch context.
+  void EmitDebugCheckDeclarationContext(Variable* variable);
 
-  // Platform-specific code for checking the stack limit at the back edge of
-  // a loop.
-  void EmitStackCheck(IterationStatement* stmt);
-  // Record the OSR AST id corresponding to a stack check in the code.
-  void RecordStackCheck(unsigned osr_ast_id);
+  // This is meant to be called at loop back edges, |back_edge_target| is
+  // the jump target of the back edge and is used to approximate the amount
+  // of code inside the loop.
+  void EmitBackEdgeBookkeeping(IterationStatement* stmt,
+                               Label* back_edge_target);
+  // Record the OSR AST id corresponding to a back edge in the code.
+  void RecordBackEdge(BailoutId osr_ast_id);
   // Emit a table of stack check ids and pcs into the code stream.  Return
   // the offset of the start of the table.
   unsigned EmitStackCheckTable();
+
+  void EmitProfilingCounterDecrement(int delta);
+  void EmitProfilingCounterReset();
 
   // Platform-specific return sequence
   void EmitReturnSequence();
@@ -459,6 +495,8 @@ class FullCodeGenerator: public AstVisitor {
                                  Label* slow,
                                  Label* done);
   void EmitVariableLoad(VariableProxy* proxy);
+
+  void EmitAccessor(Expression* expression);
 
   // Expects the arguments and the function already pushed.
   void EmitResolvePossiblyDirectEval(int arg_count);
@@ -493,7 +531,7 @@ class FullCodeGenerator: public AstVisitor {
 
   // Assign to the given expression as if via '='. The right-hand-side value
   // is expected in the accumulator.
-  void EmitAssignment(Expression* expr, int bailout_ast_id);
+  void EmitAssignment(Expression* expr);
 
   // Complete a variable assignment.  The right-hand-side value is expected
   // in the accumulator.
@@ -508,6 +546,10 @@ class FullCodeGenerator: public AstVisitor {
   // expected on top of the stack and the right-hand-side value in the
   // accumulator.
   void EmitKeyedPropertyAssignment(Assignment* expr);
+
+  void CallIC(Handle<Code> code,
+              RelocInfo::Mode rmode = RelocInfo::CODE_TARGET,
+              TypeFeedbackId id = TypeFeedbackId::None());
 
   void SetFunctionPosition(FunctionLiteral* fun);
   void SetReturnPosition(FunctionLiteral* fun);
@@ -537,12 +579,8 @@ class FullCodeGenerator: public AstVisitor {
   Handle<Script> script() { return info_->script(); }
   bool is_eval() { return info_->is_eval(); }
   bool is_native() { return info_->is_native(); }
-  bool is_classic_mode() {
-    return language_mode() == CLASSIC_MODE;
-  }
-  LanguageMode language_mode() {
-    return function()->language_mode();
-  }
+  bool is_classic_mode() { return language_mode() == CLASSIC_MODE; }
+  LanguageMode language_mode() { return function()->language_mode(); }
   FunctionLiteral* function() { return info_->function(); }
   Scope* scope() { return scope_; }
 
@@ -574,13 +612,20 @@ class FullCodeGenerator: public AstVisitor {
 
   void VisitForTypeofValue(Expression* expr);
 
+  void Generate();
+  void PopulateDeoptimizationData(Handle<Code> code);
+  void PopulateTypeFeedbackInfo(Handle<Code> code);
+  void PopulateTypeFeedbackCells(Handle<Code> code);
+
+  Handle<FixedArray> handler_table() { return handler_table_; }
+
   struct BailoutEntry {
-    unsigned id;
+    BailoutId id;
     unsigned pc_and_state;
   };
 
   struct TypeFeedbackCellEntry {
-    unsigned ast_id;
+    TypeFeedbackId ast_id;
     Handle<JSGlobalPropertyCell> cell;
   };
 
@@ -767,15 +812,48 @@ class FullCodeGenerator: public AstVisitor {
   Label return_label_;
   NestedStatement* nesting_stack_;
   int loop_depth_;
+  ZoneList<Handle<Object> >* globals_;
+  Handle<FixedArray> modules_;
+  int module_index_;
   const ExpressionContext* context_;
   ZoneList<BailoutEntry> bailout_entries_;
+  GrowableBitVector prepared_bailout_ids_;
+  // TODO(svenpanne) Rename this to something like back_edges_ and rename
+  // related functions accordingly.
   ZoneList<BailoutEntry> stack_checks_;
   ZoneList<TypeFeedbackCellEntry> type_feedback_cells_;
+  int ic_total_count_;
   Handle<FixedArray> handler_table_;
+  Handle<JSGlobalPropertyCell> profiling_counter_;
+  bool generate_debug_code_;
+  Zone* zone_;
 
   friend class NestedStatement;
 
+  DEFINE_AST_VISITOR_SUBCLASS_MEMBERS();
   DISALLOW_COPY_AND_ASSIGN(FullCodeGenerator);
+};
+
+
+// A map from property names to getter/setter pairs allocated in the zone.
+class AccessorTable: public TemplateHashMap<Literal,
+                                            ObjectLiteral::Accessors,
+                                            ZoneAllocationPolicy> {
+ public:
+  explicit AccessorTable(Zone* zone) :
+      TemplateHashMap<Literal, ObjectLiteral::Accessors,
+                      ZoneAllocationPolicy>(Literal::Match,
+                                            ZoneAllocationPolicy(zone)),
+      zone_(zone) { }
+
+  Iterator lookup(Literal* literal) {
+    Iterator it = find(literal, true, ZoneAllocationPolicy(zone_));
+    if (it->second == NULL) it->second = new(zone_) ObjectLiteral::Accessors();
+    return it;
+  }
+
+ private:
+  Zone* zone_;
 };
 
 

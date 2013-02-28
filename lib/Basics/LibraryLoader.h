@@ -71,7 +71,7 @@ namespace triagens {
       template<typename F>
       void processDirectory (string const& pathname, string const& symbol, F& obj) {
         if (! basics::FileUtils::isDirectory(pathname)) {
-          LOGGER_ERROR << "database directory '" << pathname << "' is no directory";
+          LOGGER_ERROR("database directory '" << pathname << "' is no directory");
           return;
         }
 
@@ -102,7 +102,7 @@ namespace triagens {
       template<typename F>
       void processFile (string const& filename, string const& symbol, F& obj) {
         if (basics::FileUtils::isDirectory(filename)) {
-          LOGGER_DEBUG << "skipping directory '" << filename << "'";
+          LOGGER_DEBUG("skipping directory '" << filename << "'");
         }
         else {
           if (filename.empty()) {
@@ -110,7 +110,7 @@ namespace triagens {
           }
 
           if (filename.size() < 3 || filename.substr(filename.size() - 3) != ".so") {
-            LOGGER_DEBUG << "skipping non .so file '" << filename << "'";
+            LOGGER_DEBUG("skipping non .so file '" << filename << "'");
           }
           else {
             processPrivate(filename.c_str(), symbol, obj);

@@ -54,9 +54,17 @@ add-maintainer:
 	@echo adding generated files to GIT
 	git add -f $(MAINTAINER)
 
+remove-maintainer:
+	@echo removing generated files from GIT
+	git rm -f $(MAINTAINER)
+
 add-automagic:
 	@echo adding automagic files to GIT
 	git add -f $(AUTOMAGIC)
+
+remove-automagic:
+	@echo removing automagic files from GIT
+	git rm -f $(AUTOMAGIC)
 
 ################################################################################
 ### @brief make love

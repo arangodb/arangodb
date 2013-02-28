@@ -187,17 +187,15 @@ namespace triagens {
           EndpointList::ListType endpoints = _endpointList->getEndpoints(this->getProtocol(), this->getEncryption());
 
           for (EndpointList::ListType::const_iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
-            LOGGER_TRACE << "trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests";
+            LOGGER_TRACE("trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests");
 
             bool ok = openEndpoint(*i);
               
             if (ok) {
-              LOGGER_DEBUG << "bound to endpoint '" << (*i)->getSpecification() << "'";
+              LOGGER_DEBUG("bound to endpoint '" << (*i)->getSpecification() << "'");
             }
             else {
-              LOGGER_FATAL << "failed to bind to endpoint '" << (*i)->getSpecification() << "'";
-              cerr << "failed to bind to endpoint '" << (*i)->getSpecification() << "'\n";
-              TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+              LOGGER_FATAL_AND_EXIT("failed to bind to endpoint '" << (*i)->getSpecification() << "'");
             }
           }
         }
@@ -486,23 +484,23 @@ namespace triagens {
               task->handleResponse(response);
             }
             else {
-              LOGGER_ERROR << "cannot get any response";
+              LOGGER_ERROR("cannot get any response");
             }
           }
           catch (basics::TriagensError const& ex) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOGGER_ERROR << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
+            LOGGER_ERROR("caught exception: " << DIAGNOSTIC_INFORMATION(ex));
           }
           catch (std::exception const& ex) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOGGER_ERROR << "caught exception: " << ex.what();
+            LOGGER_ERROR("caught exception: " << ex.what());
           }
           catch (...) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOGGER_ERROR << "caught exception";
+            LOGGER_ERROR("caught exception");
           }
 
           return status;
@@ -537,7 +535,7 @@ namespace triagens {
           handler_task_job_t element = _task2handler.removeKey(task);
 
           if (element._task != task) {
-            LOGGER_DEBUG << "shutdownHandler called, but no handler is known for task";
+            LOGGER_DEBUG("shutdownHandler called, but no handler is known for task");
 
             GENERAL_SERVER_UNLOCK(&_mappingLock);
             return;

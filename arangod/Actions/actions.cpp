@@ -104,8 +104,8 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
       TRI_action_t* oldAction = PrefixActions[url];
 
       if (oldAction->_type != action->_type) {
-        LOGGER_ERROR << "trying to define two incompatible actions of type '" << oldAction->_type
-                     << "' and '" << action->_type << "' for prefix url '" << action->_url << "'";
+        LOGGER_ERROR("trying to define two incompatible actions of type '" << oldAction->_type
+                     << "' and '" << action->_type << "' for prefix url '" << action->_url << "'");
 
         delete oldAction;
       }
@@ -123,8 +123,8 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOGGER_ERROR << "trying to define two incompatible actions of type '" << oldAction->_type
-                     << "' and '" << action->_type << "' for url '" << action->_url << "'";
+        LOGGER_ERROR("trying to define two incompatible actions of type '" << oldAction->_type
+                     << "' and '" << action->_type << "' for url '" << action->_url << "'");
 
         delete oldAction;
       }
@@ -136,9 +136,9 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   }
 
   // some debug output
-  LOGGER_DEBUG << "created " << action->_type << " "
+  LOGGER_DEBUG("created " << action->_type << " "
                << (action->_isPrefix ? "prefix " : "")
-               << "action '" << url.c_str() << "'";
+               << "action '" << url.c_str() << "'");
 
   // return old or new action description
   return action;

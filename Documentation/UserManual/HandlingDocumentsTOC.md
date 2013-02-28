@@ -13,6 +13,8 @@ TOC {#HandlingDocumentsTOC}
        - @ref HandlingDocumentsUpdate "collection.update"
        - @ref HandlingDocumentsRemove "collection.remove"
        - @ref HandlingDocumentsRemoveByExample "collection.removeByExample"
+       - @ref HandlingDocumentsReplaceByExample "collection.replaceByExample"
+       - @ref HandlingDocumentsUpdateByExample "collection.updateByExample"
      - @ref HandlingDocumentsDatabaseMethods
        - @ref HandlingDocumentsDbRead "db._document"
        - @ref HandlingDocumentsDbReplace "db._replace"

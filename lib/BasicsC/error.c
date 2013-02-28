@@ -297,10 +297,8 @@ void TRI_set_errno_string (int error, char const* msg) {
 
     // logic error, error number is redeclared
     printf("Error: duplicate declaration of error code %i in %s:%i\n", 
-           error, 
-           __FILE__, 
-           __LINE__);
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+           error, __FILE__, __LINE__);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
   entry = (TRI_error_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_error_t), false);
