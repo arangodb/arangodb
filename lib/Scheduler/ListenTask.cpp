@@ -173,7 +173,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void ListenTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING << "In ListenTask::cleanup the scheduler has disappeared -- invalid pointer";
+    LOGGER_WARNING("In ListenTask::cleanup the scheduler has disappeared -- invalid pointer");
     readWatcher = 0;
     return;
   }
