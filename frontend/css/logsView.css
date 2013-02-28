@@ -130,16 +130,16 @@ background-color: none !important;
 
 #logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
   background-color: #F4F4F4 !important;
-  background-image: -moz-linear-gradient(center top , #F4F4F4, #E4E4E4);
+/*  background-image: -moz-linear-gradient(center top , #F4F4F4, #E4E4E4);
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
-  border-left:1px solid #c1bdba;
+  border-left:1px solid #c1bdba;*/
   width: 80px !important;
   max-width: 80px !important;
 }
 
 .thirdcol {
-  border-top:1px solid #c1bdba;
+/*  border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
   border-right:1px solid #c1bdba;
   background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
@@ -148,14 +148,14 @@ background-color: none !important;
   background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
   background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
   background-image: linear-gradient(top, #ffffff, #f5f5f5);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);*/
   max-width: 500px !important;
 
 }
 
 .seccol, .dataTables_empty{
   margin-bottom: 5px;
-  background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
+/*  background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
   background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
   background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
   background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
@@ -163,7 +163,7 @@ background-color: none !important;
   background-image: linear-gradient(top, #ffffff, #f5f5f5);
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
   border-top:1px solid #c1bdba;
-  border-bottom:1px solid #c1bdba;
+  border-bottom:1px solid #c1bdba;*/
   width: 140px !important;
 }
 
