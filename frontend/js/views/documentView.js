@@ -280,6 +280,8 @@ var documentView = Backbone.View.extend({
       type: "autogrow",
       tooltip: 'click to edit',
       cssclass : 'jediTextarea',
+      submitcssclass: 'btn btn-success',
+      cancelcssclass: 'btn btn-error',
       submit: 'Okay',
       cancel: 'Cancel',
       onblur: 'cancel',
