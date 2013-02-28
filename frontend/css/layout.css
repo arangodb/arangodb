@@ -26,10 +26,6 @@ input {
   text-decoration: none;
 }
 
-.tooltip {
-  max-width: 900px;
-}
-
 /* Radius */
 .thumbnail, .navbar-inner, .btn, .btn-primary {
   border-radius:0;

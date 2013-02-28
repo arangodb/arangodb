@@ -9,12 +9,13 @@ var documentView = Backbone.View.extend({
   },
 
   events: {
-    "click #saveDocument"    : "saveDocument",
-    "click #addDocumentLine" : "addLine",
-    "click #deleteRow"       : "deleteLine",
-    "click #sourceView"      : "sourceView",
-    "click #editFirstRow"    : "editFirst",
-    "click #editSecondRow"   : "editSecond"
+    "click #saveDocument"       : "saveDocument",
+    //"click #addDocumentLine"    : "addLine",
+    "click #deleteRow"          : "deleteLine",
+    "click #sourceView"         : "sourceView",
+    "click #editFirstRow"       : "editFirst",
+    "click #documentTableID tr" : "clicked",
+    "click #editSecondRow"      : "editSecond"
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
@@ -37,6 +38,14 @@ var documentView = Backbone.View.extend({
       }
       else if (result === false) {
       }
+    }
+  },
+  clicked: function (a) {
+    self = a.currentTarget;
+    var checkData = $(this.table).dataTable().fnGetData(self);
+    if (checkData[0] === '<div class="notwriteable"></div>') {
+      this.addLine();
+      return;
     }
   },
   render: function() {
@@ -132,9 +141,10 @@ var documentView = Backbone.View.extend({
   },
 
   addLine: function () {
+    var randomKey = arangoHelper.getRandomToken();
     $(this.table).dataTable().fnAddData(
       [
-        "zkey"+arangoHelper.getRandomToken(),
+        "zkey"+randomKey,
         '<i class="icon-edit" id="editFirstRow"></i>',
         this.value2html("editme"),
         JSON.stringify("editme"),
@@ -142,10 +152,14 @@ var documentView = Backbone.View.extend({
         '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]
     );
-
     this.makeEditable();
-//    $(this.table).dataTable().fnClearTable();
-//    this.drawTable();
+    var tableContent = $('table').find('td');
+    $.each(tableContent, function(key, val) {
+      if ($(val).text() === "zkey"+randomKey) {
+        $(val).click();
+        return;
+      }
+    });
   },
 
   deleteLine: function (a) {
