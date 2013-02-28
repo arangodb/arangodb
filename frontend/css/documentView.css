@@ -111,15 +111,24 @@
 }
 
 #tableDiv .nav-tabs,
-#sourceDiv .nav-tabs {
+#sourceDiv .nav-tabs,
+#logContent .nav-tabs {
 	margin-bottom:-1px; border-bottom:#FFFFFF solid 1px;
 }
 
 #tableDiv .nav-tabs > li > a,
 #tableDiv .nav-tabs > li:hover > a,
 #sourceDiv .nav-tabs > li > a,
-#sourceDiv .nav-tabs > li:hover > a {
+#sourceDiv .nav-tabs > li:hover > a ,
+#logContent .nav-tabs > li > a,
+#logContent .nav-tabs > li:hover > a {
     background-image: -moz-linear-gradient(center top , #F3EFEC, #EBE7E3);
+    background-image: -ms-linear-gradient(top, #F3EFEC, #EBE7E3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#F3EFEC), to(#EBE7E3));
+    background-image: -webkit-linear-gradient(top, #F3EFEC, #EBE7E3);
+    background-image: -o-linear-gradient(top, #F3EFEC, #EBE7E3);
+    background-image: linear-gradient(top, #bedc6a, #80a127#F3EFEC, #EBE7E3);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#F3EFEC', endColorstr='#EBE7E3', GradientType=0);
     border-top: 1px solid #F3EFEC;
     border-left: 1px solid #F3EFEC;
     border-right: 1px solid #F3EFEC;
@@ -129,7 +138,9 @@
 #tableDiv .nav-tabs > li.active > a,
 #tableDiv .nav-tabs > li:hover.active > a,
 #sourceDiv .nav-tabs > li.active > a,
-#sourceDiv .nav-tabs > li:hover.active > a {
+#sourceDiv .nav-tabs > li:hover.active > a ,
+#logContent .nav-tabs > li.active > a,
+#logContent .nav-tabs > li:hover.active > a {
 	background: #FFF;
     border: 1px solid #FFF;
 }
