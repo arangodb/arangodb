@@ -65,6 +65,7 @@ var documentsView = Backbone.View.extend({
       //Success
       if (result !== false) {
         window.location.hash = "collection/"+result;
+        arangoHelper.arangoNotification('Document created');
       }
       //Error
       else {
