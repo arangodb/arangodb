@@ -1675,6 +1675,41 @@ function STRING_RIGHT (value, length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the rightmost parts of a string
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_TRIM (value, type) {
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "TRIM");
+
+  if (type !== undefined) {
+    ARG_CHECK(type, TYPEWEIGHT_NUMBER, "TRIM");
+    type = parseInt(type, 10);
+    if (type < 0 || type > 2) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRIM");
+    }
+  }
+  else {
+    type = 0;
+  }
+
+  var result;
+  if (type === 0) {
+    // TRIM(, 0)
+    result = value.replace(/(^\s+)|\s+$/g, '');
+  }
+  else if (type === 1) {
+    // TRIM(, 1)
+    result = value.replace(/^\s+/g, '');
+  }
+  else if (type === 2) {
+    // TRIM(, 2)
+    result = value.replace(/\s+$/g, '');
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1921,10 +1956,6 @@ function NUMBER_RAND () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_SQRT (value) {
-  if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
-    return null;
-  }
-
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SQRT");
   }
@@ -2195,7 +2226,7 @@ function SUM (values) {
   LIST(values);
 
   var i, n;
-  var value, typeWeight, result = null;
+  var value, typeWeight, result = 0;
 
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
@@ -2206,12 +2237,7 @@ function SUM (values) {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
       }
 
-      if (result === null) {
-        result = value;
-      }
-      else {
-        result += value;
-      }
+      result += value;
     }
   }
 
@@ -3250,6 +3276,7 @@ exports.STRING_CONTAINS = STRING_CONTAINS;
 exports.STRING_LIKE = STRING_LIKE;
 exports.STRING_LEFT = STRING_LEFT;
 exports.STRING_RIGHT = STRING_RIGHT;
+exports.STRING_TRIM = STRING_TRIM;
 exports.CAST_BOOL = CAST_BOOL;
 exports.CAST_NUMBER = CAST_NUMBER;
 exports.CAST_STRING = CAST_STRING;
