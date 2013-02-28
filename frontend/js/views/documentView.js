@@ -72,10 +72,10 @@ var documentView = Backbone.View.extend({
       model = JSON.stringify(model);
       var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
-        alert("saved");
+        arangoHelper.arangoNotification('Document saved');
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoAlert('Document error');
       }
     }
     else if (this.type === 'edge') {
@@ -83,10 +83,10 @@ var documentView = Backbone.View.extend({
       model = JSON.stringify(model);
       var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
-        alert("saved");
+        arangoHelper.arangoNotification('Edge saved');
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoError('Edge error');
       }
     }
   },
@@ -338,7 +338,7 @@ var documentView = Backbone.View.extend({
     value = value + '';
 
     if (value !== '' && (value.substr(0, 1) != '"' || value.substr(-1) != '"')) {
-      alert("You have entered an invalid string value. Please review and adjust it.");
+      arangoHelper.arangoNotification('You have entered an invalid string value. Please review and adjust it.');
       throw "error";
     }
 
@@ -346,7 +346,7 @@ var documentView = Backbone.View.extend({
       value = JSON.parse(value);
     }
     catch (e) {
-      alert("You have entered an invalid string value. Please review and adjust it.");
+      arangoHelper.arangoNotification('You have entered an invalid string value. Please review and adjust it.');
       throw e;
     }
     return value;

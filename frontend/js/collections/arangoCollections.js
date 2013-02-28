@@ -165,10 +165,10 @@ window.arangoCollections = Backbone.Collection.extend({
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            alert("Collection renamed");
+            arangoHelper.arangoNotification("Collection renamed");
           },
           error: function(data) {
-            alert(getErrorMessage(data));
+            arangoHelper.arangoNotification("Collection error");
             failed = true;
           }
         });
@@ -183,10 +183,10 @@ window.arangoCollections = Backbone.Collection.extend({
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            alert("Saved collection properties");
+            arangoHelper.arangoNotification("Saved collection properties");
           },
           error: function(data) {
-            alert(getErrorMessage(data));
+            arangoHelper.arangoNotification("Collection error");
             failed = true;
           }
         });
@@ -213,10 +213,11 @@ window.arangoCollections = Backbone.Collection.extend({
           type: 'PUT',
           url: "/_api/collection/" + id + "/load",
           success: function () {
+            arangoHelper.arangoNotification('Collection loaded');
           },
           error: function (data) {
             var temp = JSON.parse(data.responseText);
-            alert("Error: " + JSON.stringify(temp.errorMessage));
+            arangoHelper.arangoError('Collection error');
           }
         });
       },
@@ -226,10 +227,11 @@ window.arangoCollections = Backbone.Collection.extend({
           type: 'PUT',
           url: "/_api/collection/" + id + "/unload",
           success: function () {
+            arangoHelper.arangoNotification('Collection unloaded');
           },
           error: function () {
             var temp = JSON.parse(data.responseText);
-            alert("Error: " + JSON.stringify(temp.errorMessage));
+            arangoHelper.arangoError('Collection error');
           }
         });
       }
