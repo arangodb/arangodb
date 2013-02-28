@@ -14,6 +14,19 @@ arangoHelper = {
       '$id' : true
     };
   },
+  arangoNotification: function (message) {
+    $.gritter.add({
+      title: "Notification:",
+      text: message
+    });
+  },
+  arangoError: function (message) {
+    $.gritter.add({
+      title: "Error:",
+      text: message,
+      sticky: true
+    });
+  },
   getRandomToken: function () {
     return Math.round(new Date().getTime());
   },
