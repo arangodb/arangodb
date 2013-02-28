@@ -171,7 +171,7 @@ var logsView = Backbone.View.extend({
 
       return dt.getUTCFullYear() + '-' 
       + pad(dt.getUTCMonth() + 1) + '-'
-      + pad(dt.getUTCDate()) + ' '
+      + pad(dt.getUTCDate()) + ' <br>'
       + pad(dt.getUTCHours()) + ':'
       + pad(dt.getUTCMinutes()) + ':'
       + pad(dt.getUTCSeconds());
