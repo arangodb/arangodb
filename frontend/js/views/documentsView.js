@@ -246,7 +246,7 @@ var documentsView = Backbone.View.extend({
   renderPagination: function (totalPages) {
     var currentPage = JSON.parse(this.pageid);
     var self = this;
-    var target = $('#testdiv'),
+    var target = $('#documentsToolbarF'),
     options = {
       left: 1,
       right: 1,
