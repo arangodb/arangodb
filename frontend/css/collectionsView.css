@@ -113,8 +113,8 @@
 	margin:5px 0;
 }
 
-#transparentHeader .pagination ul > li > a {
-	font-size:1.8em;
+#transparentHeader .pagination-small ul > li:last-child > a {
+	margin-left:0px
 }
 
 #transparentHeader .btn-group {
