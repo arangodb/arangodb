@@ -68,25 +68,25 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
     <TargetName>arangoimp32d</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
     <TargetName>arangoimp64d</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
     <TargetName>arangoimp32</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Release;$(SSolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
     <TargetName>arangoimp64</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Release;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>

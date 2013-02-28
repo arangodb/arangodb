@@ -72,10 +72,11 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
                                           double connectTimeout,
                                           size_t connectRetries) :
   GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries), 
-  _socket(0),
   _ssl(0),
   _ctx(0) {
-
+  
+  _socket.fileHandle = 0;
+  _socket.fileDescriptor = 0;
   _ctx = SSL_CTX_new(TLSv1_method());
   if (_ctx) {
     SSL_CTX_set_cipher_list(_ctx, "ALL");
@@ -116,24 +117,25 @@ SslClientConnection::~SslClientConnection () {
 bool SslClientConnection::connectSocket () {
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
-  if (_socket <= 0 || _ctx == 0) {
+  if (_socket.fileHandle <= 0 || _ctx == 0) {
     return false;
   }
 
   _ssl = SSL_new(_ctx);
   if (_ssl == 0) {
     _endpoint->disconnect();
-    _socket = 0;
+    _socket.fileHandle = 0;
+    _socket.fileDescriptor = 0;
 
     return false;
   }
 
-  if (SSL_set_fd(_ssl, (int) _socket) != 1) {
+  if (SSL_set_fd(_ssl, (int) _socket.fileHandle) != 1) {
     _endpoint->disconnect();
     SSL_free(_ssl);
     _ssl = 0;
-    _socket = 0;
-
+    _socket.fileHandle = 0;
+    _socket.fileDescriptor = 0;
     return false;
   }
 
@@ -144,7 +146,8 @@ bool SslClientConnection::connectSocket () {
     _endpoint->disconnect();
     SSL_free(_ssl);
     _ssl = 0;
-    _socket = 0;
+    _socket.fileHandle = 0;
+    _socket.fileDescriptor = 0;
     return false;
   }
   
@@ -157,7 +160,8 @@ bool SslClientConnection::connectSocket () {
 
 void SslClientConnection::disconnectSocket () {
   _endpoint->disconnect();
-  _socket = 0;
+  _socket.fileHandle = 0;
+  _socket.fileDescriptor = 0;
 
   if (_ssl) {
     SSL_free(_ssl);
@@ -177,7 +181,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket, &fdset);
+  FD_SET(_socket.fileHandle, &fdset);
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;
@@ -189,7 +193,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
     readFds = &fdset;
   }
 
-  if (select(_socket + 1, readFds, writeFds, NULL, &tv) > 0) {
+  if (select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv) > 0) {
     return true;
   }
 

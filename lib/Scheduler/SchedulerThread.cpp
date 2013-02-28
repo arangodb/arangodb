@@ -143,14 +143,19 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 
   // same thread, in this case it does not matter if we are inside the loop
   else if (threadId() == currentThreadId()) {
-    setupTask(task, scheduler, _loop);
+    bool ok = setupTask(task, scheduler, _loop);
+    if (!ok) {
+      LOGGER_WARNING << "In SchedulerThread::registerTask setupTask has failed";
+      cleanupTask(task);
+      deleteTask(task);
+    }
     scheduler->wakeupLoop(_loop);
   }
 
   // different thread, be careful - we have to stop the event loop
   else {
 
-    // put the register request unto the queue
+    // put the register request onto the queue
     SCHEDULER_LOCK(&_queueLock);
 
     Work w(SETUP, scheduler, task);
@@ -293,18 +298,26 @@ void SchedulerThread::run () {
         SCHEDULER_UNLOCK(&_queueLock);
         
         switch (w.work) {
-          case CLEANUP:
+        
+          case CLEANUP: {
             cleanupTask(w.task);
             break;
-            
-          case SETUP:
-            setupTask(w.task, w.scheduler, _loop);
+          }
+          
+          case SETUP: {
+            bool ok = setupTask(w.task, w.scheduler, _loop);
+            if (!ok) {
+              cleanupTask(w.task);
+              deleteTask(w.task);
+            }
             break;
-            
-          case DESTROY:
+          }
+          
+          case DESTROY: {
             cleanupTask(w.task);
             deleteTask(w.task);
             break;
+          }  
         }
 
         SCHEDULER_LOCK(&_queueLock);

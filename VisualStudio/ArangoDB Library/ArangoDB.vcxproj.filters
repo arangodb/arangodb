@@ -421,6 +421,9 @@
     <ClInclude Include="..\..\lib\BasicsC\application-exit.h">
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\Rest\EndpointIp.h">
+      <Filter>RestHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">

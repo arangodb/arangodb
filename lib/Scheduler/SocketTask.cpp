@@ -34,6 +34,7 @@
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
+#include "BasicsC/socket-utils.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -51,13 +52,13 @@ using namespace triagens::rest;
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
+SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
   : Task("SocketTask"),
     keepAliveWatcher(0),
     readWatcher(0),
     writeWatcher(0),
     watcher(0),
-    commSocket(fd),
+    _commSocket(socket),
     _keepAliveTimeout(keepAliveTimeout), 
     _writeBuffer(0),
 #ifdef TRI_ENABLE_FIGURES
@@ -65,6 +66,7 @@ SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
 #endif
     ownBuffer(true),
     writeLength(0) {
+  
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
 
@@ -79,9 +81,10 @@ SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
 ////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::~SocketTask () {
-  if (commSocket != -1) {
-    TRI_CLOSE_SOCKET(commSocket);
-    commSocket = -1;
+  if (_commSocket.fileHandle != -1) {
+    TRI_CLOSE_SOCKET(_commSocket);
+    _commSocket.fileDescriptor = -1;
+    _commSocket.fileHandle = -1;
   }
 
   if (_writeBuffer != 0) {
@@ -150,7 +153,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   closed = false;
 
 
-  int nr = TRI_READ_SOCKET(commSocket, tmpReadBuffer, READ_BLOCK_SIZE, 0);
+  int nr = TRI_READ_SOCKET(_commSocket, tmpReadBuffer, READ_BLOCK_SIZE, 0);
 
 
   if (nr > 0) {
@@ -206,7 +209,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
     int nr = 0;
 
     if (0 < len) {
-      nr = TRI_WRITE_SOCKET(commSocket, _writeBuffer->begin() + writeLength, (int) len, 0);
+      nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + writeLength, (int) len, 0);
 
       if (nr < 0) {
         if (errno == EINTR) {
@@ -409,12 +412,43 @@ bool SocketTask::hasWriteBuffer () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
+
+#ifdef _WIN32
+  // ..........................................................................
+  // The problem we have here is that this opening of the fs handle may fail.
+  // There is no mechanism to the calling function to report failure.
+  // ..........................................................................
+  LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
+
+  if (_commSocket.fileHandle < 1) {
+    LOGGER_ERROR << "In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
+    _commSocket.fileHandle = -1;
+    _commSocket.fileDescriptor = -1;
+    return false;
+  }
+
+  _commSocket.fileDescriptor = _open_osfhandle (_commSocket.fileHandle, 0);
+  if (_commSocket.fileDescriptor == -1) {
+    LOGGER_ERROR << "In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
+    int res = closesocket(_commSocket.fileHandle);
+    if (res != 0) {
+      res = WSAGetLastError();
+      LOGGER_ERROR << "In SocketTask::setup closesocket(...) failed with error code: " << res;
+    }
+    _commSocket.fileHandle = -1;
+    _commSocket.fileDescriptor = -1;
+    return false;
+  }
+
+#endif
+
+
   this->scheduler = scheduler;
   this->loop = loop;
 
   watcher = scheduler->installAsyncEvent(loop, this);
-  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, commSocket);
-  writeWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, commSocket);
+  readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
+  writeWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
   if (readWatcher == -1 || writeWatcher == -1) {
     return false;
   }
@@ -432,6 +466,16 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::cleanup () {
+
+  if (scheduler == 0) {
+    LOGGER_WARNING << "In SocketTask::cleanup the scheduler has disappeared -- invalid pointer";
+    watcher = 0;
+    keepAliveWatcher = 0;
+    readWatcher = 0;
+    writeWatcher = 0;
+    return;
+  }
+  
   scheduler->uninstallEvent(watcher);
   watcher = 0;
   

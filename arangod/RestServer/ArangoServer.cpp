@@ -232,6 +232,7 @@ void ArangoServer::buildApplicationServer () {
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(string(".arango") + string(1, TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
+  
   // .............................................................................
   // multi-threading scheduler 
   // .............................................................................
@@ -392,7 +393,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
   // .............................................................................
@@ -425,7 +426,7 @@ void ArangoServer::buildApplicationServer () {
     // validate journal size
     LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // .............................................................................
@@ -437,7 +438,7 @@ void ArangoServer::buildApplicationServer () {
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   else if (1 == arguments.size()) {
     _databasePath = arguments[0];
@@ -447,7 +448,7 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_FATAL << "no database path has been supplied, giving up";
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
@@ -466,7 +467,7 @@ void ArangoServer::buildApplicationServer () {
     int res = executeRubyConsole();
 
     TRI_FlushLogging();
-    exit(res);
+    TRI_EXIT_FUNCTION(res,0);
   }
 #endif
 
@@ -492,7 +493,7 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_INFO << "please use the '--pid-file' option";
 
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     // make the pid filename absolute
@@ -512,7 +513,7 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_FATAL << "cannot determine current directory";
 
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -531,6 +532,7 @@ int ArangoServer::startupServer () {
 
   openDatabase();
 
+  
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -558,12 +560,14 @@ int ArangoServer::startupServer () {
 
   _applicationServer->prepare();
 
+  
   // .............................................................................
   // create the dispatcher
   // .............................................................................
 
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
-  
+
+
   _applicationServer->prepare2();
   
     
@@ -625,7 +629,6 @@ int ArangoServer::startupServer () {
 
   _applicationServer->wait();
   
-
   // .............................................................................
   // and cleanup
   // .............................................................................
@@ -685,7 +688,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   if (! ok) {
     LOGGER_FATAL << "cannot initialize V8 enigne";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   _applicationV8->start();
@@ -1008,7 +1011,7 @@ int ArangoServer::executeRubyConsole () {
   if (! ok) {
     LOGGER_FATAL << "cannot initialize MRuby enigne";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   _applicationMR->start();
@@ -1094,7 +1097,7 @@ void ArangoServer::openDatabase () {
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
 
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   _vocbase->_removeOnDrop = _removeOnDrop;

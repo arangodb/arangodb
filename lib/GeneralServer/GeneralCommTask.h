@@ -32,6 +32,7 @@
 #ifdef _WIN32
   #include "BasicsC/win-utils.h"
 #endif
+#include "BasicsC/socket-utils.h"
 
 #include "Basics/Common.h"
 
@@ -80,9 +81,9 @@ namespace triagens {
 
       public:
 
-        GeneralCommTask (S* server, socket_t fd, ConnectionInfo const& info, double keepAliveTimeout)
+        GeneralCommTask (S* server, TRI_socket_t socket, ConnectionInfo const& info, double keepAliveTimeout)
           : Task("GeneralCommTask"),
-            SocketTask(fd, keepAliveTimeout),
+            SocketTask(socket, keepAliveTimeout),
             _server(server),
             _connectionInfo(info),
             _writeBuffers(),
@@ -98,7 +99,7 @@ namespace triagens {
             _readRequestBody(false),
             _maximalHeaderSize(0),
             _maximalBodySize(0) {
-          LOGGER_TRACE << "connection established, client " << fd
+          LOGGER_TRACE << "connection established, client " << socket.fileHandle
                        << ", server ip " << _connectionInfo.serverAddress
                        << ", server port " << _connectionInfo.serverPort
                        << ", client ip " <<  _connectionInfo.clientAddress
@@ -118,7 +119,7 @@ namespace triagens {
       protected:
 
         ~GeneralCommTask () {
-          LOGGER_TRACE << "connection closed, client " << commSocket;
+          LOGGER_TRACE << "connection closed, client " << _commSocket.fileHandle;
 
           // free write buffers
           for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
@@ -173,9 +174,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void beginShutdown ()  {
-          if (commSocket != -1) {
-            TRI_CLOSE_SOCKET(commSocket);
-            commSocket = -1;
+          #ifdef _WIN32
+            // Can not close socket descriptors here. Probably should not close
+            // these for linux as well.
+            return;
+          #endif  
+          if (_commSocket.fileHandle != -1) {
+            TRI_CLOSE_SOCKET(_commSocket);
+            _commSocket.fileDescriptor = -1;
+            _commSocket.fileHandle = -1;
           }
         }
 

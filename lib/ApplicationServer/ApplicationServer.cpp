@@ -283,7 +283,7 @@ void ApplicationServer::setupLogging () {
     if (_logFile.length() > 0) {
       // the user specified a log file to use but it could not be created. bail out
       std::cerr << "failed to create logfile '" << _logFile << "'. Please check the path and permissions." << std::endl;
-      exit(EXIT_FAILURE);      
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);      
     }
   }
 #ifdef TRI_ENABLE_SYSLOG
@@ -370,13 +370,13 @@ bool ApplicationServer::parse (int argc,
 
   if (! help.empty()) {
     cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS,0);
   }
 
   // check for version request
   if (_options.has("version")) {
     cout << _version << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS,0);
   }
 
   // .............................................................................
@@ -453,7 +453,7 @@ bool ApplicationServer::parse (int argc,
   catch (...) {
     LOGGER_FATAL << "cannot select random generator, giving up";
     TRI_ShutdownLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
 
@@ -488,7 +488,7 @@ void ApplicationServer::prepare () {
     if (! ok) {
       LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);      
     }
 
     LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
@@ -512,7 +512,7 @@ void ApplicationServer::prepare2 () {
     if (! ok) {
       LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);      
     }
 
     LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
@@ -543,7 +543,7 @@ void ApplicationServer::start () {
     if (! ok) {
       LOGGER_FATAL << "failed to start server feature '" << feature->getName() <<"'";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);      
     }
 
     LOGGER_DEBUG << "started server feature '" << feature->getName() << "'";
@@ -560,7 +560,7 @@ void ApplicationServer::start () {
     if (! ok) {
       LOGGER_FATAL << "failed to open server feature '" << feature->getName() <<"'";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);      
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);      
     }
 
     LOGGER_TRACE << "opened server feature '" << feature->getName() << "'";
@@ -626,6 +626,7 @@ void ApplicationServer::stop () {
 
     LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
+  
 
 }
 
@@ -643,7 +644,7 @@ void ApplicationServer::raisePrivileges () {
     if (res != 0) {
       LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -657,7 +658,7 @@ void ApplicationServer::raisePrivileges () {
     if (res != 0) {
       LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -679,7 +680,7 @@ void ApplicationServer::dropPrivileges () {
       LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
       cerr << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno) << endl;
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -694,7 +695,7 @@ void ApplicationServer::dropPrivileges () {
       LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
       cerr << "cannot set uid '" << _uid << "', because " << strerror(errno) << endl;
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -719,7 +720,7 @@ void ApplicationServer::dropPrivilegesPermanently () {
       LOGGER_FATAL << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno);
       cerr << "cannot set gid '" << _effectiveGid << "', because " << strerror(errno) << endl;
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     _realGid = _effectiveGid;
@@ -738,7 +739,7 @@ void ApplicationServer::dropPrivilegesPermanently () {
       LOGGER_FATAL << "cannot set uid '" << _uid << "', because " << strerror(errno);
       cerr << "cannot set uid '" << _uid << "', because " << strerror(errno) << endl;
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     _realUid = _effectiveUid;
@@ -1090,7 +1091,7 @@ void ApplicationServer::extractPrivileges() {
         cerr << "unknown numeric gid '" << _gid << "'" << endl;
         LOGGER_FATAL << "unknown numeric gid '" << _gid << "'";
         TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 #endif
     }
@@ -1106,13 +1107,13 @@ void ApplicationServer::extractPrivileges() {
         cerr << "cannot convert groupname '" << _gid << "' to numeric gid" << endl;
         LOGGER_FATAL << "cannot convert groupname '" << _gid << "' to numeric gid";
         TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 #else
       cerr << "cannot convert groupname '" << _gid << "' to numeric gid" << endl;
       LOGGER_FATAL << "cannot convert groupname '" << _gid << "' to numeric gid";
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
 #endif
     }
 
@@ -1138,7 +1139,7 @@ void ApplicationServer::extractPrivileges() {
         cerr << "unknown numeric uid '" << _uid << "'" << endl;
         LOGGER_FATAL << "unknown numeric uid '" << _uid << "'";
         TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 #endif
     }
@@ -1154,13 +1155,13 @@ void ApplicationServer::extractPrivileges() {
         cerr << "cannot convert username '" << _uid << "' to numeric uid" << endl;
         LOGGER_FATAL << "cannot convert username '" << _uid << "' to numeric uid";
         TRI_ShutdownLogging();
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 #else
       cerr << "cannot convert username '" << _uid << "' to numeric uid" << endl;
       LOGGER_FATAL << "cannot convert username '" << _uid << "' to numeric uid";
       TRI_ShutdownLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
 #endif
     }
 

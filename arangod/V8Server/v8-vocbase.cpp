@@ -5888,6 +5888,7 @@ static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* paramet
   v8::Persistent<v8::Value> persistent = v8g->JSBarriers[barrier];
   v8g->JSBarriers.erase(barrier);
 
+
   // dispose and clear the persistent handle
   persistent.Dispose();
   persistent.Clear();
@@ -6409,7 +6410,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
   // id only
@@ -6417,7 +6418,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   if (regcomp(&v8g->IdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // collection name / document key (used for documents)
@@ -6425,7 +6426,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
   // key only
@@ -6433,7 +6434,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
 

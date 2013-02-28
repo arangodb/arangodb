@@ -95,9 +95,9 @@ bool ClientConnection::checkSocket () {
   int so_error = -1;
   socklen_t len = sizeof so_error;
 
-  assert(_socket > 0);
+  assert(_socket.fileHandle > 0);
 
-  getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
+  getsockopt(_socket.fileHandle, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
 
   if (so_error == 0) {
     return true;
@@ -129,7 +129,7 @@ bool ClientConnection::connectSocket () {
   }
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
-  if (_socket == 0) {
+  if (_socket.fileHandle == 0) {
     return false;
   }
 
@@ -146,7 +146,8 @@ bool ClientConnection::connectSocket () {
 
 void ClientConnection::disconnectSocket () {
   _endpoint->disconnect();
-  _socket = 0;
+  _socket.fileDescriptor = 0;
+  _socket.fileHandle = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,13 +158,13 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   struct timeval tv;
   fd_set fdset;
 
-  assert(_socket > 0);
+  assert(_socket.fileHandle > 0);
 
   tv.tv_sec = (uint64_t) timeout;
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket, &fdset);
+  FD_SET(_socket.fileHandle, &fdset);
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;
@@ -175,7 +176,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
     readFds = &fdset;
   }
 
-  int res = select(_socket + 1, readFds, writeFds, NULL, &tv);
+  int res = select(_socket.fileHandle + 1, readFds, writeFds, NULL, &tv);
   if (res > 0) {
     return true;
   }
@@ -203,12 +204,12 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 
 #if defined(__APPLE__)
   // MSG_NOSIGNAL not supported on apple platform
-  int status = ::send(_socket, buffer, length, 0);
+  int status = ::send(_socket.fileHandle, buffer, length, 0);
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
   int status = TRI_WRITE_SOCKET(_socket, (const char*)(buffer), (int)(length), 0);
 #else
-  int status = ::send(_socket, buffer, length, MSG_NOSIGNAL);
+  int status = ::send(_socket.fileHandle, buffer, length, MSG_NOSIGNAL);
 #endif
 
 
@@ -226,7 +227,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
     return false;
   }
   
-  assert(_socket > 0);
+  assert(_socket.fileHandle > 0);
 
   do {
     char buffer[READBUFFER_SIZE];

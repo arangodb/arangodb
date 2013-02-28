@@ -51,7 +51,7 @@ void TRI_InitMutex (TRI_mutex_t* mutex) {
 
   if (mutex->_mutex == NULL) {
     LOG_FATAL("cannot create the mutex");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -83,10 +83,31 @@ void TRI_DestroyMutex (TRI_mutex_t* mutex) {
 void TRI_LockMutex (TRI_mutex_t* mutex) {
   DWORD result = WaitForSingleObject(mutex->_mutex, INFINITE);
 
-  if (result != WAIT_OBJECT_0) {
-    LOG_FATAL("could not lock the mutex");
-    exit(EXIT_FAILURE);
+  switch (result) {
+
+    case WAIT_ABANDONED: {
+      LOG_FATAL("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_ABANDONED");
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    } 
+
+    case WAIT_OBJECT_0: {
+      // everything ok     
+      break;
+    } 
+
+    case WAIT_TIMEOUT: {
+      LOG_FATAL("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_TIMEOUT");
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    } 
+
+    case WAIT_FAILED: {
+      result = GetLastError();
+      LOG_FATAL("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    } 
+
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +119,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 
   if (! ok) {
     LOG_FATAL("could not unlock the mutex");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -293,7 +314,7 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
   }
   else if (lock->_readers < 0) {
     LOG_FATAL("reader count is negative");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -386,7 +407,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   // a write lock eists
   if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
     LOG_FATAL("write lock, but trying to unlock read");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
   // at least one reader exists
@@ -398,7 +419,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   else {
     LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("no reader and no writer, but trying to unlock");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 */
  
@@ -410,7 +431,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   else {
     LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("no reader, but trying to unlock read lock");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
  
   LeaveCriticalSection(&lock->_lockReaders);
@@ -556,7 +577,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   else if (0 < lock->_readers) {
     LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("read lock, but trying to unlock write");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   
@@ -568,7 +589,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   else {
     LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("no reader and no writer, but trying to unlock");
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
 
@@ -854,9 +875,29 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 void TRI_LockCondition (TRI_condition_t* cond) {
   DWORD result = WaitForSingleObject(cond->_mutex, INFINITE);
 
-  if (result != WAIT_OBJECT_0) {
-    LOG_FATAL("could not lock the mutex");
-    exit(EXIT_FAILURE);
+  switch (result) {
+
+    case WAIT_ABANDONED: {
+      LOG_FATAL("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_ABANDONED");
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    } 
+
+    case WAIT_OBJECT_0: {
+      // everything ok     
+      break;
+    } 
+
+    case WAIT_TIMEOUT: {
+      LOG_FATAL("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_TIMEOUT");
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    } 
+
+    case WAIT_FAILED: {
+      result = GetLastError();
+      LOG_FATAL("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    } 
+
   }
 }
 
@@ -868,8 +909,8 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   BOOL ok = ReleaseMutex(cond->_mutex);
 
   if (! ok) {
-    LOG_FATAL("could not unlock the mutex");
-    exit(EXIT_FAILURE);
+    LOG_FATAL("could not unlock the condition");
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 

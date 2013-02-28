@@ -1295,7 +1295,7 @@ static void LogAppenderFile_Reopen (TRI_log_appender_t* appender) {
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, backup);
 
-  TRI_SetCloseOnExecFile(fd);
+  TRI_SetCloseOnExitFile(fd);
 
   TRI_LockSpin(&self->_lock);
   old = self->_fd;
@@ -1395,7 +1395,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
       return NULL;
     }
 
-    TRI_SetCloseOnExecFile(appender->_fd);
+    TRI_SetCloseOnExitFile(appender->_fd);
 
     appender->_filename = TRI_DuplicateString(filename);
     if (appender->_filename == NULL) {

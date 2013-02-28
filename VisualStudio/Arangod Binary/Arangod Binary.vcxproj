@@ -71,26 +71,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod32d</TargetName>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod64d</TargetName>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod32</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Release;$(SSolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod64</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\icu\lib;$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Release;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
+    <OutDir>c:\local2\arango-triagens\dev\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -335,22 +335,17 @@
     <ClInclude Include="..\..\arangod\SkipLists\skiplist.h" />
     <ClInclude Include="..\..\arangod\SkipLists\skiplistIndex.h" />
     <ClInclude Include="..\..\arangod\Utils\AhuacatlGuard.h" />
-    <ClInclude Include="..\..\arangod\Utils\AqlTransaction.h" />
+    <ClInclude Include="..\..\arangod\Utils\AhuacatlTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\Barrier.h" />
-    <ClInclude Include="..\..\arangod\Utils\CollectionReadLock.h" />
-    <ClInclude Include="..\..\arangod\Utils\CollectionWriteLock.h" />
+    <ClInclude Include="..\..\arangod\Utils\CollectionNameResolver.h" />
     <ClInclude Include="..\..\arangod\Utils\DocumentHelper.h" />
     <ClInclude Include="..\..\arangod\Utils\EmbeddableTransaction.h" />
-    <ClInclude Include="..\..\arangod\Utils\ImportTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\RestTransactionContext.h" />
-    <ClInclude Include="..\..\arangod\Utils\SelfContainedWriteTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\SingleCollectionReadOnlyTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\SingleCollectionTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\SingleCollectionWriteTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\StandaloneTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\Transaction.h" />
-    <ClInclude Include="..\..\arangod\Utils\TransactionCollection.h" />
-    <ClInclude Include="..\..\arangod\Utils\TransactionCollectionsList.h" />
     <ClInclude Include="..\..\arangod\Utils\UserTransaction.h" />
     <ClInclude Include="..\..\arangod\Utils\V8TransactionContext.h" />
     <ClInclude Include="..\..\arangod\V8Server\ApplicationV8.h" />

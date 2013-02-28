@@ -29,6 +29,7 @@
 #include "AsyncTask.h"
 
 #include "Scheduler/Scheduler.h"
+#include "Logger/Logger.h"
 
 using namespace triagens::rest;
 
@@ -72,6 +73,11 @@ bool AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void AsyncTask::cleanup () {
+  if (scheduler == 0) {
+    LOGGER_WARNING << "In AsyncTask::cleanup the scheduler has disappeared -- invalid pointer";
+    watcher = 0;
+    return;
+  }
   scheduler->uninstallEvent(watcher);
   watcher = 0;
 }

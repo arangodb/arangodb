@@ -521,6 +521,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
+
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
 
   // use a minimum of 1 second for GC
@@ -532,7 +533,7 @@ bool ApplicationV8::prepare () {
   if (_startupModules.empty()) {
     LOGGER_FATAL << "no 'javascript.modules-path' has been supplied, giving up";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   else {
     LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
@@ -542,19 +543,20 @@ bool ApplicationV8::prepare () {
   if (_startupPath.empty()) {
     LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   else {
     LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
     _startupLoader.setDirectory(_startupPath);
   }
 
+  
   // set up action loader
   if (_useActions) {
     if (_actionPath.empty()) {
       LOGGER_FATAL << "no 'javascript.action-directory' has been supplied, giving up";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
     else {
       LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";

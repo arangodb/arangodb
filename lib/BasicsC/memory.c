@@ -204,7 +204,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
               (unsigned long long) n, 
               (int) zone->_zid
               ZONE_DEBUG_PARAMS); 
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     free(CoreReserve);
@@ -292,7 +292,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
               (unsigned long long) n, 
               zone->_zid
               ZONE_DEBUG_PARAMS); 
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     free(CoreReserve);

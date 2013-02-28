@@ -65,13 +65,14 @@ Endpoint::Endpoint (const Endpoint::EndpointType type,
                     const std::string& specification,
                     int listenBacklog) :
   _connected(false),
-  _socket(0),
   _type(type),
   _domainType(domainType),
   _protocol(protocol),
   _encryption(encryption),
   _specification(specification),
   _listenBacklog(listenBacklog) {
+  _socket.fileHandle = 0;
+  _socket.fileDescriptor = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +234,7 @@ const std::string Endpoint::getDefaultEndpoint () {
 /// @brief set socket timeout
 ////////////////////////////////////////////////////////////////////////////////
   
-void Endpoint::setTimeout (socket_t s, double timeout) {
+void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   struct timeval tv;
 
   // shut up Valgrind
@@ -242,22 +243,22 @@ void Endpoint::setTimeout (socket_t s, double timeout) {
   tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
 
   // conversion to (const char*) ensures windows does not complain
-  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)); 
-  setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
+  setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)); 
+  setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set common socket flags
 ////////////////////////////////////////////////////////////////////////////////
   
-bool Endpoint::setSocketFlags (socket_t _socket) {
+bool Endpoint::setSocketFlags (TRI_socket_t s) {
   if (_encryption == ENCRYPTION_SSL && _type == ENDPOINT_CLIENT) {
     // SSL client endpoints are not set to non-blocking
     return true;
   }
 
   // set to non-blocking, executed for both client and server endpoints
-  bool ok = TRI_SetNonBlockingSocket(_socket);
+  bool ok = TRI_SetNonBlockingSocket(s);
   if (!ok) {
     LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
 
@@ -265,7 +266,7 @@ bool Endpoint::setSocketFlags (socket_t _socket) {
   }
   
   // set close-on-exec flag, executed for both client and server endpoints
-  ok = TRI_SetCloseOnExecSocket(_socket);
+  ok = TRI_SetCloseOnExitSocket(s);
   if (!ok) {
     LOGGER_ERROR << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
 

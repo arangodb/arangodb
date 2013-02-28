@@ -39,6 +39,8 @@
   #include "BasicsC/win-utils.h"
 #endif
 
+#include "BasicsC/socket-utils.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -92,7 +94,7 @@ namespace triagens {
       public:
 
         explicit
-        SocketTask (socket_t fd, double);
+        SocketTask (TRI_socket_t, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a socket task
@@ -298,8 +300,7 @@ namespace triagens {
 /// @brief communication socket
 ////////////////////////////////////////////////////////////////////////////////
 
-        socket_t commSocket;
-        int      fileDescriptor;
+        TRI_socket_t _commSocket;
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keep-alive timeout in seconds 

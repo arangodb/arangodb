@@ -114,7 +114,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
         
-        void handleConnected (socket_t socket, ConnectionInfo& info) {
+        void handleConnected (TRI_socket_t socket, ConnectionInfo& info) {
           GeneralSslServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >::handleConnected(socket, info);
         }
 

@@ -97,8 +97,13 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 void SignalTask::cleanup () {
+  if (scheduler == 0) {
+    LOGGER_WARNING << "In SignalTask::cleanup the scheduler has disappeared -- invalid pointer";
+  }
   for (size_t pos = 0;  pos < signals.size() && pos < MAX_SIGNALS;  ++pos) {
-    scheduler->uninstallEvent(watcher[pos]);
+    if (scheduler != 0) {
+      scheduler->uninstallEvent(watcher[pos]);
+    }  
     watcher[pos] = 0;
   }
 }

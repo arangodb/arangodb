@@ -176,7 +176,7 @@ bool ApplicationEndpointServer::buildServers () {
       LOGGER_INFO << "please use the --server.keyfile option";
       TRI_FlushLogging();
 
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     // https 
@@ -252,7 +252,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     LOGGER_FATAL << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN;
     cerr << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN << "\n";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   if (_httpPort != "") {
@@ -267,7 +267,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     cerr << "no endpoint has been specified, giving up\n";
     LOGGER_INFO << "please use the '--server.endpoint' option";
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
   // add & validate endpoints
@@ -278,7 +278,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
       cerr << "invalid endpoint '" << *i << "'\n";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     assert(endpoint);
@@ -288,7 +288,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
       cerr << "invalid endpoint '" << *i << "'\n";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -431,7 +431,7 @@ bool ApplicationEndpointServer::createSslContext () {
       LOGGER_ERROR << lastSSLError();
       TRI_FlushLogging();
       
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
   }
 
@@ -446,7 +446,7 @@ bool ApplicationEndpointServer::createSslContext () {
     LOGGER_ERROR << lastSSLError();
     TRI_FlushLogging();
     
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // check CA
@@ -460,7 +460,7 @@ bool ApplicationEndpointServer::createSslContext () {
       LOGGER_ERROR << lastSSLError();
       TRI_FlushLogging();
     
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -472,7 +472,7 @@ bool ApplicationEndpointServer::createSslContext () {
       LOGGER_ERROR << lastSSLError();
       TRI_FlushLogging();
       
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     if (TRI_IsTraceLogging(__FILE__)) {

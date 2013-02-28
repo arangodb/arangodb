@@ -515,16 +515,7 @@
     <ClInclude Include="..\..\arangod\Utils\AhuacatlGuard.h">
       <Filter>Utils Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\AqlTransaction.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\Barrier.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\CollectionReadLock.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\CollectionWriteLock.h">
       <Filter>Utils Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\DocumentHelper.h">
@@ -533,13 +524,7 @@
     <ClInclude Include="..\..\arangod\Utils\EmbeddableTransaction.h">
       <Filter>Utils Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\ImportTransaction.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\RestTransactionContext.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\SelfContainedWriteTransaction.h">
       <Filter>Utils Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\SingleCollectionReadOnlyTransaction.h">
@@ -555,12 +540,6 @@
       <Filter>Utils Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\Transaction.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\TransactionCollection.h">
-      <Filter>Utils Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\Utils\TransactionCollectionsList.h">
       <Filter>Utils Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\UserTransaction.h">
@@ -592,6 +571,12 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-wordlist.h">
       <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\CollectionNameResolver.h">
+      <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\Utils\AhuacatlTransaction.h">
+      <Filter>Utils Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -33,12 +33,16 @@
 
 #if BITARRAY_MASTER_TABLE_BLOCKSIZE==8  
 typedef uint8_t bit_column_int_t;  
+#define BITARRAY_COLUMN_FREE_MARKER UINT8_MAX
 #elif BITARRAY_MASTER_TABLE_BLOCKSIZE==16  
 typedef uint16_t bit_column_int_t;  
+#define BITARRAY_COLUMN_FREE_MARKER UINT16_MAX
 #elif BITARRAY_MASTER_TABLE_BLOCKSIZE==32  
 typedef  uint32_t bit_column_int_t;  
+#define BITARRAY_COLUMN_FREE_MARKER UINT32_MAX
 #elif BITARRAY_MASTER_TABLE_BLOCKSIZE==64  
 typedef  uint64_t bit_column_int_t;  
+#define BITARRAY_COLUMN_FREE_MARKER UINT64_MAX
 #else
 #error unknown bitarray master table blocksize (BITARRAY_MASTER_TABLE_BLOCKSIZE)
 #endif   
@@ -584,7 +588,7 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   block = &(mt->_blocks[position->_blockNum]);
  
   // TODO: comparison is always false due to limited range of data type [-Wtype-limits] 
-  if (block->_free ==  ~((bit_column_int_t)(0))) {
+  if (block->_free ==  BITARRAY_COLUMN_FREE_MARKER) {
     if (ba->_lastBlockUsed == position->_blockNum) {
       --ba->_lastBlockUsed;
     }

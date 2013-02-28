@@ -197,7 +197,7 @@ namespace triagens {
             else {
               LOGGER_FATAL << "failed to bind to endpoint '" << (*i)->getSpecification() << "'";
               cerr << "failed to bind to endpoint '" << (*i)->getSpecification() << "'\n";
-              exit(EXIT_FAILURE);
+              TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
             }
           }
         }
@@ -252,8 +252,8 @@ namespace triagens {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void handleConnected (socket_t socket, ConnectionInfo& info) {
-          GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, _keepAliveTimeout);
+        virtual void handleConnected (TRI_socket_t s, ConnectionInfo& info) {
+          GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, _keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&_commTasksLock);
           _commTasks.insert(task);

@@ -139,7 +139,7 @@ Dispatcher* ApplicationDispatcher::dispatcher () const {
 void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
   if (_dispatcher == 0) {
     LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher queue";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   LOGGER_TRACE << "setting up a standard queue with " << nrThreads << " threads ";
@@ -154,7 +154,7 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads) {
 void ApplicationDispatcher::buildNamedQueue (string const& name, size_t nrThreads) {
   if (_dispatcher == 0) {
     LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher queue";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   LOGGER_TRACE << "setting up a named queue '" << name << "' with " << nrThreads << " threads ";
@@ -281,7 +281,7 @@ void ApplicationDispatcher::stop () {
 void ApplicationDispatcher::buildDispatcher () {
   if (_dispatcher != 0) {
     LOGGER_FATAL << "a dispatcher has already been created";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   _dispatcher = new Dispatcher();
@@ -294,7 +294,7 @@ void ApplicationDispatcher::buildDispatcher () {
 void ApplicationDispatcher::buildDispatcherReporter () {
   if (_dispatcher == 0) {
     LOGGER_FATAL << "no dispatcher is known, cannot create dispatcher reporter";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   if (0.0 < _reportIntervall) {

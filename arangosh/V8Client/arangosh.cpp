@@ -456,7 +456,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // check module path
   if (StartupModules.empty()) {
     LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
   
   // turn on paging automatically if "pager" option is set

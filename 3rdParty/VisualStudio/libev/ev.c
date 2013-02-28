@@ -617,7 +617,7 @@ struct signalfd_siginfo
   #if ECB_GCC_VERSION(4,7)
     /* see comment below (stdatomic.h) about the C11 memory model. */
     #define ECB_MEMORY_FENCE         __atomic_thread_fence (__ATOMIC_SEQ_CST)
-  #elif defined __clang && __has_feature (cxx_atomic)
+  #elif defined (__clang) && defined (cxx_atomic)
     /* see comment below (stdatomic.h) about the C11 memory model. */
     #define ECB_MEMORY_FENCE         __c11_atomic_thread_fence (__ATOMIC_SEQ_CST)
   #elif ECB_GCC_VERSION(4,4) || defined __INTEL_COMPILER || defined __clang__
@@ -1564,9 +1564,7 @@ fd_reify (EV_P)
       if (anfd->reify & EV__IOFDSET && anfd->head)
         {
           SOCKET handle;
-          //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,fd);
           handle = EV_FD_TO_WIN32_HANDLE (fd);
-          //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,fd);
 
           if (handle != anfd->handle)
             {
@@ -1645,9 +1643,7 @@ fd_kill (EV_P_ int fd)
 inline_size int ecb_cold fd_valid (int fd) {
 #ifdef _WIN32
   SOCKET ss;
-  //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,fd);
   ss = EV_FD_TO_WIN32_HANDLE (fd);
-  //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:fd=%d:ss=%d\n",__FILE__,__LINE__,fd,(uint64_t)(ss));
   return ss != -1;
 /*
   return EV_FD_TO_WIN32_HANDLE (fd) != -1;
@@ -1693,7 +1689,6 @@ static void noinline ecb_cold fd_WS (EV_P) {
       result = select(0, NULL, NULL, &exceptfds, &timeout);
       if (result == SOCKET_ERROR) {
         result = WSAGetLastError();
-        //printf("oreste:::::::%s:%d:handle=%d:result=%d\n",__FILE__,__LINE__,(uint64_t)(handle),result);        
         fd_kill (EV_A_ fd);
       }
     }
@@ -1978,9 +1973,7 @@ evpipe_write (EV_P_ EV_ATOMIC_T *flag) {
           SOCKET ss;
           buf.buf = &buf;
           buf.len = 1;
-          //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[1]);
           ss = EV_FD_TO_WIN32_HANDLE (evpipe [1]);
-          //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[1]);
           WSASend (ss, &buf, 1, &sent, 0, 0, 0);
           //WSASend (EV_FD_TO_WIN32_HANDLE (evpipe [1]), &buf, 1, &sent, 0, 0, 0);
 #else
@@ -2018,9 +2011,7 @@ pipecb (EV_P_ ev_io *iow, int revents)
           SOCKET ss;
           buf.buf = dummy;
           buf.len = sizeof (dummy);
-          //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[0]);
           ss = EV_FD_TO_WIN32_HANDLE (evpipe [0]);
-          //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[0]);
           WSARecv (ss, &buf, 1, &recvd, &flags, 0, 0);
           //WSARecv (EV_FD_TO_WIN32_HANDLE (evpipe [0]), &buf, 1, &recvd, &flags, 0, 0);
 #else

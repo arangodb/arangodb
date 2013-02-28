@@ -48,11 +48,11 @@ void TaskManager::deleteTask (Task* task) {
 
 
 
-void TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
-  string name = task->getName();
+bool TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
+  // string name = task->getName(); - why am I here?
   bool ok = task->setup(scheduler, loop);
+  return ok;
   // TODO: respond when not ok
-  (void) ok;
 }
 
 

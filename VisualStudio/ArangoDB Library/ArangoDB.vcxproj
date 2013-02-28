@@ -229,6 +229,7 @@
     <ClInclude Include="..\..\lib\Rest\AsyncJobServer.h" />
     <ClInclude Include="..\..\lib\Rest\ConnectionInfo.h" />
     <ClInclude Include="..\..\lib\Rest\Endpoint.h" />
+    <ClInclude Include="..\..\lib\Rest\EndpointIp.h" />
     <ClInclude Include="..\..\lib\Rest\EndpointList.h" />
     <ClInclude Include="..\..\lib\Rest\Handler.h" />
     <ClInclude Include="..\..\lib\Rest\HttpRequest.h" />
