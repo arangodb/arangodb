@@ -240,9 +240,20 @@ var documentsView = Backbone.View.extend({
     if (this.collectionContext.next === null) {
       $('#collectionNext').parent().addClass('disabledPag');
     }
+
     return this;
   },
+  renderPagination: function (totalPages) {
+    var currentPage = JSON.parse(this.pageid);
+    $('#testdiv').pagination({
+      link: '#collection/' + this.colid + '/documents/{p}',
+      count: totalPages,
+      current: currentPage
+    });
+  },
+  renderPaginationDummy: function () {
 
+  },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
     $('#transparentHeader').append(
