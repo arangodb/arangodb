@@ -2802,7 +2802,7 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test variance function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testVariancePop : function () {
+    testVariancePopulation : function () {
       var data = [
         [ null, [ null ] ],
         [ null, [ null, null, null ] ],
@@ -2850,6 +2850,20 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test variance function
 ////////////////////////////////////////////////////////////////////////////////
 
+    testVariancePopulationInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION([ ], 2)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(false)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(3)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_POPULATION({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test variance function
+////////////////////////////////////////////////////////////////////////////////
+
     testVarianceSample : function () {
       var data = [
         [ null, [ ] ],
@@ -2887,6 +2901,82 @@ function ahuacatlFunctionsTestSuite () {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test variance function
+////////////////////////////////////////////////////////////////////////////////
+
+    testVarianceSampleInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE([ ], 2)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(false)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(3)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN VARIANCE_SAMPLE({ })"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev function
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevPopulation : function () {
+      var data = [
+        [ null, [ null ] ],
+        [ null, [ null, null, null ] ],
+        [ null, [ ] ],
+        [ 0, [ 0 ] ],
+        [ 0, [ null, 0 ] ],
+        [ 0, [ 0.00001 ] ],
+        [ 0, [ 1 ] ],
+        [ 0, [ 100 ] ],
+        [ 0, [ -1 ] ],
+        [ 0, [ -10000000 ] ],
+        [ 0, [ -100 ] ],
+        [ 0, [ null, null, null, -100 ] ],
+        [ 1.4142135623731, [ 1, 2, 3, 4, 5 ] ],
+        [ 1.4142135623731, [ null, 1, null, 2, 3, null, null, 4, null, 5 ] ],
+        [ 0.85280286542244, [ 1, 3, 1, 3, 2, 2, 2, 1, 3, 1, 3 ] ],
+        [ 0.89442719099992, [ 1, 3, 1, 3, 2, 2, 1, 3, 1, 3 ] ],
+        [ 0.94280904158206, [ 1, 3, 1, 3, 2, 1, 3, 1, 3 ] ],
+        [ 0.81649658092773, [ 1, 1, 1, 2, 2, 2, 3, 3, 3] ],
+        [ 376.54885473203, [ 12,96, 13, 143, 999 ] ],
+        [ 376.54885473203, [ 12,96, 13, 143, null, 999 ] ],
+        [ 22.173047953666, [ 18, -4, 6, 35.2, 63.66, 12.4 ] ],
+        [ 44.698993277254, [ 1, 10, 100 ] ],
+        [ 446.98993277254, [ 10, 100, 1000 ] ],
+        [ 4187.8417770971, [ 10, 100, 1000, 10000 ] ],
+        [ 3998890.7542887, [ 10, 100, 1000, 10000, 10000000 ] ],
+        [ 4187.8417770971, [ -10, -100, -1000, -10000 ] ],
+        [ 44.698993277254, [ -1, -10, -100 ] ],
+        [ 0.00081649658092773, [ 0.001, 0.002, 0.003 ] ],
+        [ 7.0536300583458, [ -0.1, 2.4, -0.004, 12.054, 12.53, -7.35 ] ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN STDDEV_POPULATION(" + JSON.stringify(value[1]) + ")", true);
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev function
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevPopulationInvalid : function () {
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION()"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION([ ], 2)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(null)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(false)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(3)"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION(\"yes\")"); } ));
+      assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { QUERY("RETURN STDDEV_POPULATION({ })"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
