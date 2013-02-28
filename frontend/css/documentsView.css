@@ -210,7 +210,7 @@ table.dataTable thead th {
 }
 
 .pagination ul > li > a, .pagination ul > li > span {
-
+	cursor:pointer;
 
 }
 
@@ -224,13 +224,6 @@ table.dataTable thead th {
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
-/*    background-image: -moz-linear-gradient(top, #8f8d8c, #6d6c6b);
-    background-image: -ms-linear-gradient(top, #8f8d8c, #6d6c6b);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#8f8d8c), to(#6d6c6b));
-    background-image: -webkit-linear-gradient(top, #8f8d8c, #6d6c6b);
-    background-image: -o-linear-gradient(top, #8f8d8c, #6d6c6b);
-    background-image: linear-gradient(top, #8f8d8c, #6d6c6b);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#8f8d8c', endColorstr='#6d6c6b', GradientType=0);*/
  	box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
 	background: #8f8d8c;
 	border: none;
@@ -241,6 +234,14 @@ table.dataTable thead th {
 .pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
   background-color: #8aa050;
   color:#FFFFFF;
+}
+
+.pagination-mini ul > li.disabled:last-child > a, .pagination-small ul > li.disabled:last-child > a, .pagination-mini ul > li.disabled:last-child > span, .pagination-small ul > li.disabled:last-child > span,
+.pagination-mini ul > li.disabled:first-child > a, .pagination-small ul > li.disabled:first-child > a, .pagination-mini ul > li.disabled:first-child > span, .pagination-small ul > li.disabled:first-child > span {
+   pointer-events: none;
+   cursor: default;
+   background-color: ##777;
+   color:#666666;
 }
 
 .badge {
