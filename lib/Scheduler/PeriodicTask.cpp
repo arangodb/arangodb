@@ -79,7 +79,7 @@ bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void PeriodicTask::cleanup () {
   if (scheduler == 0) {
-    LOGGER_WARNING << "In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer";
+    LOGGER_WARNING("In PeriodicTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;
   }
