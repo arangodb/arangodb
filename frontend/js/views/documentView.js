@@ -107,7 +107,7 @@ var documentView = Backbone.View.extend({
     $(self.table).dataTable().fnAddData([
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
-      '<a class="add" class="notwriteable" id="addDocumentLine"> Add data</a>',
+      '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="/_admin/html/img/plus_icon.png"></button>'
