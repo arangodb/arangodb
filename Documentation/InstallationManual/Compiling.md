@@ -1,10 +1,11 @@
-Compiling ArangoDB from scratch {#Compiling}
-============================================
+Compiling ArangoDB from scratch{#Compiling}
+===========================================
 
+@NAVIGATE_Compiling
 @EMBEDTOC{CompilingTOC}
 
-Compiling ArangoDB {#CompilingIntro}
-====================================
+Compiling ArangoDB{#CompilingIntro}
+===================================
 
 The following sections describe how to compile and build the ArangoDB from
 scratch. The ArangoDB will compile on most Linux and Mac OS X systems. It
@@ -28,11 +29,11 @@ all-in-one version allows you to compile the ArangoDB without installing all the
 prerequisites. The disadvantage is that it takes longer to compile and you
 cannot make changes to the flex or bison files.
 
-@section CompilingAmazonMicroInstance Amazon Micro Instance
+Amazon Micro Instance{#CompilingAmazonMicroInstance}
+----------------------------------------------------
 
-
-@@sohgoh has reported that it is very easy to install ArangoDB on an 
-Amazon Micro Instance:
+@@sohgoh has reported that it is very easy to install ArangoDB on an Amazon
+Micro Instance:
 
     amazon> sudo yum install readline-devel
     amazon> ./configure
@@ -41,11 +42,11 @@ Amazon Micro Instance:
 
 For detailed instructions the following section.
 
-All-In-One Version {#CompilingAIO}
-==================================
+All-In-One Version{#CompilingAIO}
+=================================
 
-Basic System Requirements {#CompilingAIOPrerequisites}
-------------------------------------------------------
+Basic System Requirements{#CompilingAIOPrerequisites}
+-----------------------------------------------------
 
 Verify that your system contains:
 
@@ -62,15 +63,15 @@ Under Mac OS X you also need to install:
 - Xcode
 - scons
 
-Download the Source {#DownloadSourceAIO}
-----------------------------------------
+Download the Source{#DownloadSourceAIO}
+---------------------------------------
 
 Download the latest source using GIT:
 
     git clone git://github.com/triAGENS/ArangoDB.git
 
-Configure {#CompilingAIOConfigure}
-----------------------------------
+Configure{#CompilingAIOConfigure}
+---------------------------------
 
 Switch into the ArangoDB directory
 
@@ -83,8 +84,8 @@ In order to configure the build environment execute
 to setup the makefiles. This will check the various system characteristics and
 installed libraries.
 
-Compile {#CompilingAIOCompile}
-------------------------------
+Compile{#CompilingAIOCompile}
+-----------------------------
 
 Compile the program by executing
 
@@ -94,24 +95,26 @@ This will compile the ArangoDB and create a binary of the server in
 
     ./bin/arangod
 
-Test {#CompilingAIOTest}
-------------------------
+Test{#CompilingAIOTest}
+-----------------------
+
+Create an empty directory
+
+    unix> mkdir /tmp/database-dir
 
 Check the binary by starting it using the command line.
 
-    unix> ./arangod --server.endpoint tcp://127.0.0.1:12345 --server.disable-authentication true /tmp/vocbase
+    unix> ./bin/arangod -c etc/relative/arangod.conf --server.endpoint tcp://127.0.0.1:12345 --server.disable-authentication true /tmp/database-dir
 
 This will start up the ArangoDB and listen for HTTP requests on port 12345 bound
 to IP address 127.0.0.1. You should see the startup messages
 
-    unix> ./arangod --server.endpoint tcp://127.0.0.1:12345 /tmp/vocbase
     2012-02-05T13:23:52Z  [455] INFO ArangoDB (version 1.x.y) is ready for business
     2012-02-05T13:23:52Z  [455] INFO HTTP client port: 12345
     2012-02-05T13:23:52Z  [455] INFO Have Fun!
 
 If it fails with a message about the database directory, please make sure the
-database directory you specified (/tmp/vocbase in the above example) exists and
-can be written into.
+database directory you specified exists and can be written into.
 
 Use your favorite browser to access the URL
 
@@ -123,12 +126,8 @@ This should produce a JSON object like
 
 as result.
 
-Note that starting ArangoDB in this way will result in error messages being
-displayed, because the paths are not yet set up. This will be corrected in the
-next step.
-
-Install {#CompilingAIOInstall}
-------------------------------
+Install{#CompilingAIOInstall}
+-----------------------------
 
 Install everything by executing
 
@@ -147,17 +146,17 @@ The configuration file will be installed in
 
 The database will be installed in
 
-    /var/arangodb
+    /var/lib/arangodb
 
 The arango shell will be installed in
 
     /usr/bin/arangosh
 
-Devel Version {#CompilingDevel}
-===============================
+Devel Version{#CompilingDevel}
+==============================
 
-Basic System Requirements {#CompilingDevelPrerequisites}
---------------------------------------------------------
+Basic System Requirements{#CompilingDevelPrerequisites}
+-------------------------------------------------------
 
 Verify that your system contains
 
@@ -172,6 +171,7 @@ In addition you will need the following libraries
 
 - libev in version 3 or 4
 - Google's V8 engine
+- the ICU library
 - the GNU readline library
 - the OpenSSL library
 - the Boost test framework library (boost_unit_test_framework)
@@ -192,15 +192,15 @@ Install or download the prerequisites
 if neccessary.  Most linux systems already supply RPM or DEP for these
 packages. Please note that you have to install the development packages.
 
-Download the Source {#DownloadSourceDevel}
-------------------------------------------
+Download the Source{#DownloadSourceDevel}
+-----------------------------------------
 
 Download the latest source using GIT:
 
     git clone git://github.com/triAGENS/ArangoDB.git
 
-Setup {#CompilingDevelSetup}
-----------------------------
+Setup{#CompilingDevelSetup}
+---------------------------
 
 Switch into the ArangoDB directory
 
@@ -213,8 +213,8 @@ regenerate this script by using the GNU auto tools. In order to do so, execute
 
 This will call aclocal, autoheader, automake, and autoconf in the correct order.
 
-Configure {#CompilingDevelConfigure}
-------------------------------------
+Configure{#CompilingDevelConfigure}
+-----------------------------------
 
 In order to configure the build environment execute
 
@@ -256,6 +256,3 @@ to the error messages file, which is converted to js and C header files using
 Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a `make unittests` run. You also need to
 install the Boost test framework for this.
-
-`--enable-arangob` tells the build system to also build the arangob benchmark
-tool. The binary will be built in the bin subdirectory.

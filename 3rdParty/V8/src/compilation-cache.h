@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -30,8 +30,6 @@
 
 namespace v8 {
 namespace internal {
-
-class HashMap;
 
 // The compilation cache consists of several generational sub-caches which uses
 // this class as a base class. A sub-cache contains a compilation cache tables
@@ -100,16 +98,23 @@ class CompilationCacheScript : public CompilationSubCache {
   Handle<SharedFunctionInfo> Lookup(Handle<String> source,
                                     Handle<Object> name,
                                     int line_offset,
-                                    int column_offset);
-  void Put(Handle<String> source, Handle<SharedFunctionInfo> function_info);
+                                    int column_offset,
+                                    Handle<Context> context);
+  void Put(Handle<String> source,
+           Handle<Context> context,
+           Handle<SharedFunctionInfo> function_info);
 
  private:
   MUST_USE_RESULT MaybeObject* TryTablePut(
-      Handle<String> source, Handle<SharedFunctionInfo> function_info);
+      Handle<String> source,
+      Handle<Context> context,
+      Handle<SharedFunctionInfo> function_info);
 
   // Note: Returns a new hash table if operation results in expansion.
   Handle<CompilationCacheTable> TablePut(
-      Handle<String> source, Handle<SharedFunctionInfo> function_info);
+      Handle<String> source,
+      Handle<Context> context,
+      Handle<SharedFunctionInfo> function_info);
 
   bool HasOrigin(Handle<SharedFunctionInfo> function_info,
                  Handle<Object> name,
@@ -124,7 +129,7 @@ class CompilationCacheScript : public CompilationSubCache {
 
 
 // Sub-cache for eval scripts. Two caches for eval are used. One for eval calls
-// in global contexts and one for eval calls in other contexts. The cache
+// in native contexts and one for eval calls in other contexts. The cache
 // considers the following pieces of information when checking for matching
 // entries:
 // 1. The source string.
@@ -206,7 +211,8 @@ class CompilationCache {
   Handle<SharedFunctionInfo> LookupScript(Handle<String> source,
                                           Handle<Object> name,
                                           int line_offset,
-                                          int column_offset);
+                                          int column_offset,
+                                          Handle<Context> context);
 
   // Finds the shared function info for a source string for eval in a
   // given context.  Returns an empty handle if the cache doesn't
@@ -225,6 +231,7 @@ class CompilationCache {
   // Associate the (source, kind) pair to the shared function
   // info. This may overwrite an existing mapping.
   void PutScript(Handle<String> source,
+                 Handle<Context> context,
                  Handle<SharedFunctionInfo> function_info);
 
   // Associate the (source, context->closure()->shared(), kind) triple

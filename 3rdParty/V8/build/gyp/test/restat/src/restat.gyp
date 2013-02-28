@@ -7,6 +7,7 @@
     {
       'target_name': 'create_intermediate',
       'type': 'none',
+      'msvs_cygwin_shell': '0',
       'actions': [
         {
           'action_name': 'create_intermediate',
@@ -26,6 +27,7 @@
     {
       'target_name': 'dependent',
       'type': 'none',
+      'msvs_cygwin_shell': '0',
       'dependencies': [
         'create_intermediate',
       ],

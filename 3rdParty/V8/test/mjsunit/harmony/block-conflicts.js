@@ -35,7 +35,8 @@
 function CheckException(e) {
   var string = e.toString();
   assertTrue(string.indexOf("has already been declared") >= 0 ||
-             string.indexOf("redeclaration") >= 0);  return 'Conflict';
+             string.indexOf("redeclaration") >= 0);
+  return 'Conflict';
 }
 
 
@@ -130,5 +131,5 @@ for (var v = 0; v < varbinds.length; ++v) {
 
 // Test conflicting parameter/var bindings.
 for (var v = 0; v < varbinds.length; ++v) {
-  TestConflict('(function (x) { ' + varbinds[v] + '; })()');
+  TestNoConflict('(function (x) { ' + varbinds[v] + '; })()');
 }

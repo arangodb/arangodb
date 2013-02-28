@@ -58,25 +58,33 @@ using namespace triagens::rest;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a pid file
+////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_FORK
+static void WritePidFile (string const& pidFile, int pid) {
+  ofstream out(pidFile.c_str(), ios::trunc);
+
+  if (! out) {
+    LOGGER_FATAL_AND_EXIT("cannot write pid-file \"" << pidFile << "\"\n");
+  }
+
+  out << pid;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a pid file
 ////////////////////////////////////////////////////////////////////////////////
-
 
 static void CheckPidFile (string const& pidFile) {
 
   // check if the pid-file exists
   if (! pidFile.empty()) {
     if (FileUtils::isDirectory(pidFile)) {
-      LOGGER_FATAL << "pid-file '" << pidFile << "' is a directory";
-      TRI_FlushLogging();
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' is a directory");
     }
     else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
+      LOGGER_INFO("pid-file '" << pidFile << "' already exists, verifying pid");
 
       ifstream f(pidFile.c_str());
 
@@ -87,81 +95,60 @@ static void CheckPidFile (string const& pidFile) {
         f >> oldPid;
 
         if (oldPid == 0) {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' is unreadable";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' is unreadable");
         }
 
-        LOGGER_DEBUG << "found old pid: " << oldPid;
+        LOGGER_DEBUG("found old pid: " << oldPid);
 
+#ifdef TRI_HAVE_FORK
         int r = kill(oldPid, 0);
+#else
+        int r = 0; // TODO for windows use TerminateProcess
+#endif
+
         if (r == 0) {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running");
         }
         else if (errno == EPERM) {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running");
         }
         else if (errno == ESRCH) {
-          LOGGER_ERROR << "pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists";
+          LOGGER_ERROR("pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists");
 
           if (! FileUtils::remove(pidFile)) {
-            LOGGER_FATAL << "pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed";
-            TRI_FlushLogging();
-            TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+            LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed");
           }
 
-          LOGGER_INFO << "removed stale pid-file '" << pidFile << "'";
+          LOGGER_INFO("removed stale pid-file '" << pidFile << "'");
         }
         else {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and kill " << oldPid << " failed";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+          LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists and kill " << oldPid << " failed");
         }
       }
 
       // failed to open file
       else {
-        LOGGER_FATAL << "pid-file '" << pidFile << "' exists, but cannot be opened";
-        TRI_FlushLogging();
-        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+        LOGGER_FATAL_AND_EXIT("pid-file '" << pidFile << "' exists, but cannot be opened");
       }
     }
 
-    LOGGER_DEBUG << "using pid-file '" << pidFile << "'";
+    LOGGER_DEBUG("using pid-file '" << pidFile << "'");
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a pid file
-////////////////////////////////////////////////////////////////////////////////
-
-static void WritePidFile (string const& pidFile, int pid) {
-  ofstream out(pidFile.c_str(), ios::trunc);
-
-  if (! out) {
-    cerr << "cannot write pid-file \"" << pidFile << "\"\n";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-  }
-
-  out << pid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forks a new process
 ////////////////////////////////////////////////////////////////////////////////
 
-static int forkProcess (string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
+#ifdef TRI_HAVE_FORK
+
+static int forkProcess (string const& workingDirectory, string& current) {
 
   // fork off the parent process
   TRI_pid_t pid = fork();
 
   if (pid < 0) {
-    LOGGER_FATAL << "cannot fork";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("cannot fork");
   }
 
   // Upon successful completion, fork() shall return 0 to the child process and 
@@ -169,13 +156,9 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
-    LOGGER_DEBUG << "started child process with pid " << pid;
+    LOGGER_DEBUG("started child process with pid " << pid);
     return pid;
   }
-
-  // reset the logging
-  TRI_InitialiseLogging(TRI_ResetLogging());
-  applicationServer->setupLogging();
 
   // change the file mode mask
   umask(0);
@@ -184,8 +167,7 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
   TRI_pid_t sid = setsid();
 
   if (sid < 0) {
-    cerr << "cannot create sid\n";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("cannot create sid");
   }
 
   // store current working directory
@@ -193,137 +175,36 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
   current = FileUtils::currentDirectory(&err);
 
   if (err != 0) {
-    cerr << "cannot get current directory\n";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("cannot get current directory");
   }
 
   // change the current working directory (TODO must be configurable)
   if (! workingDirectory.empty()) {
     if (! FileUtils::changeDirectory(workingDirectory)) {
-      cerr << "cannot change into working directory '" << workingDirectory << "'\n";
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("cannot change into working directory '" << workingDirectory << "'");
     }
     else {
-      LOGGER_INFO << "changed into working directory '" << workingDirectory << "'";
+      LOGGER_INFO("changed working directory for child process to '" << workingDirectory << "'");
     }
   }
 
-  // close the standard file descriptors
-  // close(STDIN_FILENO);
-  // close(STDOUT_FILENO);
-  // close(STDERR_FILENO);
-
+  // DO NOT close the standard file descriptors
   return 0;
 }
+
 #else
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a pid file
-////////////////////////////////////////////////////////////////////////////////
-
-
-static void CheckPidFile (string const& pidFile) {
-
-  // check if the pid-file exists
-  if (! pidFile.empty()) {
-    if (FileUtils::isDirectory(pidFile)) {
-      LOGGER_FATAL << "pid-file '" << pidFile << "' is a directory";
-      TRI_FlushLogging();
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-    }
-    else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
-
-      ifstream f(pidFile.c_str());
-
-      // file can be opened
-      if (f) {
-        TRI_pid_t oldPid;
-
-        f >> oldPid;
-
-        if (oldPid == 0) {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' is unreadable";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-        }
-
-        LOGGER_DEBUG << "found old pid: " << oldPid;
-
-        int r = 0;
-        // for windows  use TerminateProcess
-        //int r = kill(oldPid, 0);
-        if (r == 0) {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-        }
-        else if (errno == EPERM) {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-        }
-        else if (errno == ESRCH) {
-          LOGGER_ERROR << "pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists";
-
-          if (! FileUtils::remove(pidFile)) {
-            LOGGER_FATAL << "pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed";
-            TRI_FlushLogging();
-            TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-          }
-
-          LOGGER_INFO << "removed stale pid-file '" << pidFile << "'";
-        }
-        else {
-          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and kill " << oldPid << " failed";
-          TRI_FlushLogging();
-          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-        }
-      }
-
-      // failed to open file
-      else {
-        LOGGER_FATAL << "pid-file '" << pidFile << "' exists, but cannot be opened";
-        TRI_FlushLogging();
-        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-      }
-    }
-
-    LOGGER_DEBUG << "using pid-file '" << pidFile << "'";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a pid file
-////////////////////////////////////////////////////////////////////////////////
-
-static void WritePidFile (string const& pidFile, int pid) {
-  ofstream out(pidFile.c_str(), ios::trunc);
-
-  if (! out) {
-    cerr << "cannot write pid-file \"" << pidFile << "\"\n";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-  }
-
-  out << pid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief forks a new process
-////////////////////////////////////////////////////////////////////////////////
 
 // ..............................................................................
 // TODO: use windows API CreateProcess & CreateThread to minic fork()
 // ..............................................................................
 
-static int forkProcess (string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
+static int forkProcess (string const& workingDirectory, string& current) {
 
   // fork off the parent process
   TRI_pid_t pid = -1; // fork();
 
   if (pid < 0) {
-    LOGGER_FATAL << "cannot fork";
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("cannot fork");
   }
 
   return 0;
@@ -384,7 +265,6 @@ AnyServer::~AnyServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::start () {
-
   if (_applicationServer == 0) {
     buildApplicationServer();
   }
@@ -396,6 +276,8 @@ int AnyServer::start () {
     return startupDaemon();
   }
   else {
+    _applicationServer->setupLogging(true, false);
+
     if (! _pidFile.empty()) {
       CheckPidFile(_pidFile);
       WritePidFile(_pidFile, TRI_CurrentProcessId());
@@ -405,7 +287,7 @@ int AnyServer::start () {
 
     if (! _pidFile.empty()) {
       if (! FileUtils::remove(_pidFile)) {
-        LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
+        LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
       }
     }
 
@@ -455,12 +337,14 @@ void AnyServer::prepareServer () {
 int AnyServer::startupSupervisor () {
   static time_t MIN_TIME_ALIVE_IN_SEC = 30;
 
-  LOGGER_INFO << "starting up in supervisor mode";
+  LOGGER_INFO("starting up in supervisor mode");
   
   CheckPidFile(_pidFile);
 
+  _applicationServer->setupLogging(false, true);
+
   string current;
-  int result = forkProcess(_workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
+  int result = forkProcess(_workingDirectory, current);
   
   // main process
   if (result != 0) {
@@ -480,18 +364,13 @@ int AnyServer::startupSupervisor () {
       TRI_pid_t pid = fork();
       
       if (pid < 0) {
-        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
       }
       
       // parent
       if (0 < pid) {
-        char const* title = "arangodb [supervisor]";
-
-        TRI_SetProcessTitle(title);
-
-#ifdef TRI_HAVE_SYS_PRCTL_H
-        prctl(PR_SET_NAME, title, 0, 0, 0);
-#endif
+        _applicationServer->setupLogging(false, true);
+        TRI_SetProcessTitle("arangodb [supervisor]");
 
         int status;
         waitpid(pid, &status, 0);
@@ -501,18 +380,18 @@ int AnyServer::startupSupervisor () {
 
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
-            LOGGER_INFO << "child " << pid << " died of natural causes";
+            LOGGER_INFO("child " << pid << " died of natural causes");
             done = true;
             horrible = false;
           }
           else {
             t = time(0) - startTime;
 
-            LOGGER_ERROR << "child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status);
+            LOGGER_ERROR("child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status));
             
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
-              LOGGER_FATAL << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+              LOGGER_ERROR("child only survived for " << t << " seconds, this will not work - please fix the error first");
               done = true;
             }
             else {
@@ -525,7 +404,7 @@ int AnyServer::startupSupervisor () {
             case 2:
             case 9:
             case 15:
-              LOGGER_INFO << "child " << pid << " died of natural causes " << WTERMSIG(status);
+              LOGGER_INFO("child " << pid << " died of natural causes " << WTERMSIG(status));
               done = true;
               horrible = false;
               break;
@@ -533,10 +412,10 @@ int AnyServer::startupSupervisor () {
             default:
               t = time(0) - startTime;
 
-              LOGGER_ERROR << "child " << pid << " died a horrible death, signal " << WTERMSIG(status);
+              LOGGER_ERROR("child " << pid << " died a horrible death, signal " << WTERMSIG(status));
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
-                LOGGER_FATAL << "child only survived for " << t << " seconds, this will not work - please fix the error first";
+                LOGGER_ERROR("child only survived for " << t << " seconds, this will not work - please fix the error first");
                 done = true;
               }
               else {
@@ -547,28 +426,25 @@ int AnyServer::startupSupervisor () {
           }
         }
         else {
-          LOGGER_ERROR << "child " << pid << " died a horrible death, unknown cause";
+          LOGGER_ERROR("child " << pid << " died a horrible death, unknown cause");
           done = false;
         }
 
         // remove pid file
         if (horrible) {
           if (! FileUtils::remove(_pidFile)) {
-            LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
+            LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
           }
         }
       }
       
       // child
       else {
+        _applicationServer->setupLogging(true, false);
         
         // write the pid file
         WritePidFile(_pidFile, TRI_CurrentProcessId());
 
-        // reset logging
-        TRI_InitialiseLogging(TRI_ResetLogging());
-        safe_cast<ApplicationServer*>(_applicationServer)->setupLogging();
-        
         // force child to stop if supervisor dies
 #ifdef TRI_HAVE_PRCTL
         prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
@@ -580,11 +456,11 @@ int AnyServer::startupSupervisor () {
         
         // remove pid file
         if (! FileUtils::remove(_pidFile)) {
-          LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
+          LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
         }
 
         // and stop
-        TRI_EXIT_FUNCTION(result,0);
+        TRI_EXIT_FUNCTION(result, NULL);
       }
     }
   }
@@ -597,24 +473,24 @@ int AnyServer::startupSupervisor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::startupDaemon () {
-  LOGGER_INFO << "starting up in daemon mode";
+  LOGGER_INFO("starting up in daemon mode");
   
   CheckPidFile(_pidFile);
 
+  _applicationServer->setupLogging(false, true);
+
   string current;
-  int result = forkProcess(_workingDirectory, current, safe_cast<ApplicationServer*>(_applicationServer));
+  int result = forkProcess(_workingDirectory, current);
   
   // main process
   if (result != 0) {
-#ifdef TRI_HAVE_SYS_PRCTL_H
-    prctl(PR_SET_NAME, "arangodb [daemon]", 0, 0, 0);
-#endif
-
+    TRI_SetProcessTitle("arangodb [daemon]");
     WritePidFile(_pidFile, result);
   }
   
   // child process
   else {
+    _applicationServer->setupLogging(true, false);
     
     // and startup server
     prepareServer();
@@ -622,7 +498,7 @@ int AnyServer::startupDaemon () {
     
     // remove pid file
     if (! FileUtils::remove(_pidFile)) {
-      LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
+      LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
     }
   }
   
@@ -647,5 +523,5 @@ int AnyServer::startupDaemon () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:

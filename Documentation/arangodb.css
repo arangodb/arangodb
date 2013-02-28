@@ -117,14 +117,42 @@
 /* ************************************************************************** */
 
 #content div.arangodb div.restheader {
+  font-size: 18px;
   font-family: monospace,fixed;
   border-bottom: 1px dotted;
   margin-bottom: 14px;
 }
 
 #content div.arangodb div.restheaderremark {
+  font-size: 18px;
   float: right;
   font-family: "Helvetica",sans-serif;
+}
+
+#content div.arangodb div.restqueryparameters {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restqueryparam {
+  font-style: italic;
+}
+
+#content div.arangodb div.restdescription {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restreturncodes {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restreturncode {
+  font-style: italic;
 }
 
 /* ************************************************************************** */
@@ -132,6 +160,7 @@
 /* ************************************************************************** */
 
 #content div.arangodb div.example {
+  font-weight: bold;
   margin-top: 14px;
   margin-bottom: 14px;
 }

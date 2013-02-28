@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -49,16 +49,16 @@ namespace internal {
   (entry(p0, p1, p2, p3, p4))
 
 typedef int (*arm_regexp_matcher)(String*, int, const byte*, const byte*,
-                                  void*, int*, Address, int, Isolate*);
+                                  void*, int*, int, Address, int, Isolate*);
 
 
 // Call the generated regexp code directly. The code at the entry address
 // should act as a function matching the type arm_regexp_matcher.
 // The fifth argument is a dummy that reserves the space used for
 // the return address added by the ExitFrame in native calls.
-#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7) \
+#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7, p8) \
   (FUNCTION_CAST<arm_regexp_matcher>(entry)(                              \
-      p0, p1, p2, p3, NULL, p4, p5, p6, p7))
+      p0, p1, p2, p3, NULL, p4, p5, p6, p7, p8))
 
 #define TRY_CATCH_FROM_ADDRESS(try_catch_address) \
   reinterpret_cast<TryCatch*>(try_catch_address)
@@ -142,7 +142,9 @@ class Simulator {
     num_s_registers = 32,
     d0 = 0, d1, d2, d3, d4, d5, d6, d7,
     d8, d9, d10, d11, d12, d13, d14, d15,
-    num_d_registers = 16
+    d16, d17, d18, d19, d20, d21, d22, d23,
+    d24, d25, d26, d27, d28, d29, d30, d31,
+    num_d_registers = 32
   };
 
   explicit Simulator(Isolate* isolate);
@@ -163,12 +165,30 @@ class Simulator {
   // Support for VFP.
   void set_s_register(int reg, unsigned int value);
   unsigned int get_s_register(int reg) const;
-  void set_d_register_from_double(int dreg, const double& dbl);
-  double get_double_from_d_register(int dreg);
-  void set_s_register_from_float(int sreg, const float dbl);
-  float get_float_from_s_register(int sreg);
-  void set_s_register_from_sinteger(int reg, const int value);
-  int get_sinteger_from_s_register(int reg);
+
+  void set_d_register_from_double(int dreg, const double& dbl) {
+    SetVFPRegister<double, 2>(dreg, dbl);
+  }
+
+  double get_double_from_d_register(int dreg) {
+    return GetFromVFPRegister<double, 2>(dreg);
+  }
+
+  void set_s_register_from_float(int sreg, const float flt) {
+    SetVFPRegister<float, 1>(sreg, flt);
+  }
+
+  float get_float_from_s_register(int sreg) {
+    return GetFromVFPRegister<float, 1>(sreg);
+  }
+
+  void set_s_register_from_sinteger(int sreg, const int sint) {
+    SetVFPRegister<int, 1>(sreg, sint);
+  }
+
+  int get_sinteger_from_s_register(int sreg) {
+    return GetFromVFPRegister<int, 1>(sreg);
+  }
 
   // Special case of set_register and get_register to access the raw PC value.
   void set_pc(int32_t value);
@@ -187,6 +207,8 @@ class Simulator {
   // generated RegExp code with 7 parameters. This is a convenience function,
   // which sets up the simulator state and grabs the result on return.
   int32_t Call(byte* entry, int argument_count, ...);
+  // Alternative: call a 2-argument double function.
+  double CallFP(byte* entry, double d0, double d1);
 
   // Push an address onto the JS stack.
   uintptr_t PushAddress(uintptr_t address);
@@ -332,6 +354,14 @@ class Simulator {
   void SetFpResult(const double& result);
   void TrashCallerSaveRegisters();
 
+  template<class ReturnType, int register_size>
+      ReturnType GetFromVFPRegister(int reg_index);
+
+  template<class InputType, int register_size>
+      void SetVFPRegister(int reg_index, const InputType& value);
+
+  void CallInternal(byte* entry);
+
   // Architecture state.
   // Saturating instructions require a Q flag to indicate saturation.
   // There is currently no way to read the CPSR directly, and thus read the Q
@@ -343,7 +373,7 @@ class Simulator {
   bool v_flag_;
 
   // VFP architecture state.
-  unsigned int vfp_register[num_s_registers];
+  unsigned int vfp_registers_[num_d_registers * 2];
   bool n_flag_FPSCR_;
   bool z_flag_FPSCR_;
   bool c_flag_FPSCR_;
@@ -401,9 +431,9 @@ class Simulator {
   reinterpret_cast<Object*>(Simulator::current(Isolate::Current())->Call( \
       FUNCTION_ADDR(entry), 5, p0, p1, p2, p3, p4))
 
-#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7) \
+#define CALL_GENERATED_REGEXP_CODE(entry, p0, p1, p2, p3, p4, p5, p6, p7, p8) \
   Simulator::current(Isolate::Current())->Call( \
-      entry, 9, p0, p1, p2, p3, NULL, p4, p5, p6, p7)
+      entry, 10, p0, p1, p2, p3, NULL, p4, p5, p6, p7, p8)
 
 #define TRY_CATCH_FROM_ADDRESS(try_catch_address)                              \
   try_catch_address == NULL ?                                                  \

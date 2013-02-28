@@ -260,7 +260,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   // set to non-blocking, executed for both client and server endpoints
   bool ok = TRI_SetNonBlockingSocket(s);
   if (!ok) {
-    LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
+    LOGGER_ERROR("cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")");
 
     return false;
   }
@@ -268,7 +268,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   // set close-on-exec flag, executed for both client and server endpoints
   ok = TRI_SetCloseOnExitSocket(s);
   if (!ok) {
-    LOGGER_ERROR << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
+    LOGGER_ERROR("cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")");
 
     return false;
   }

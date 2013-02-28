@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief constructs a new task for a given periodic event
 ////////////////////////////////////////////////////////////////////////////////
 
-        PeriodicTask (double offset, double intervall);
+        PeriodicTask (double offset, double interval);
 
       protected:
 
@@ -70,7 +70,7 @@ namespace triagens {
 /// @brief resets the timer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void resetTimer (double offset, double intervall);
+        void resetTimer (double offset, double interval);
 
       protected:
 
@@ -102,7 +102,7 @@ namespace triagens {
 
       private:
         double offset;
-        double intervall;
+        double interval;
     };
   }
 }

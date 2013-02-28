@@ -244,8 +244,8 @@ static int DecodeIt(FILE* f,
           out.AddFormatted(" %s, %s", Code::Kind2String(kind),
               Code::ICState2String(ic_state));
           if (ic_state == MONOMORPHIC) {
-            PropertyType type = code->type();
-            out.AddFormatted(", %s", Code::PropertyType2String(type));
+            Code::StubType type = code->type();
+            out.AddFormatted(", %s", Code::StubType2String(type));
           }
           if (kind == Code::CALL_IC || kind == Code::KEYED_CALL_IC) {
             out.AddFormatted(", argc = %d", code->arguments_count());
@@ -287,7 +287,12 @@ static int DecodeIt(FILE* f,
         Address addr = relocinfo.target_address();
         int id = Deoptimizer::GetDeoptimizationId(addr, Deoptimizer::EAGER);
         if (id == Deoptimizer::kNotDeoptimizationEntry) {
-          out.AddFormatted("    ;; %s", RelocInfo::RelocModeName(rmode));
+          id = Deoptimizer::GetDeoptimizationId(addr, Deoptimizer::LAZY);
+          if (id == Deoptimizer::kNotDeoptimizationEntry) {
+            out.AddFormatted("    ;; %s", RelocInfo::RelocModeName(rmode));
+          } else {
+            out.AddFormatted("    ;; lazy deoptimization bailout %d", id);
+          }
         } else {
           out.AddFormatted("    ;; deoptimization bailout %d", id);
         }
@@ -322,7 +327,8 @@ int Disassembler::Decode(FILE* f, byte* begin, byte* end) {
 
 // Called by Code::CodePrint.
 void Disassembler::Decode(FILE* f, Code* code) {
-  int decode_size = (code->kind() == Code::OPTIMIZED_FUNCTION)
+  int decode_size = (code->kind() == Code::OPTIMIZED_FUNCTION ||
+                     code->kind() == Code::COMPILED_STUB)
       ? static_cast<int>(code->safepoint_table_offset())
       : code->instruction_size();
   // If there might be a stack check table, stop before reaching it.

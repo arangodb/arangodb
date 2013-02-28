@@ -7,7 +7,7 @@
     'configurations': {
       'Default': {
         'msvs_configuration_attributes': {
-          'OutputDirectory': '<(DEPTH)\\builddir\Default',
+          'OutputDirectory': '<(DEPTH)\\builddir/Default',
         },
       },
     },

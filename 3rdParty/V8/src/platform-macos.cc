@@ -58,6 +58,7 @@
 
 #include "v8.h"
 
+#include "platform-posix.h"
 #include "platform.h"
 #include "vm-state-inl.h"
 
@@ -93,11 +94,8 @@ double ceiling(double x) {
 static Mutex* limit_mutex = NULL;
 
 
-void OS::SetUp() {
-  // Seed the random number generator. We preserve microsecond resolution.
-  uint64_t seed = Ticks() ^ (getpid() << 16);
-  srandom(static_cast<unsigned int>(seed));
-  limit_mutex = CreateMutex();
+void OS::PostSetUp() {
+  POSIXPostSetUp();
 }
 
 
@@ -181,6 +179,11 @@ void OS::Abort() {
 
 void OS::DebugBreak() {
   asm("int $3");
+}
+
+
+void OS::DumpBacktrace() {
+  // Currently unsupported.
 }
 
 
@@ -429,6 +432,12 @@ bool VirtualMemory::Commit(void* address, size_t size, bool is_executable) {
 }
 
 
+bool VirtualMemory::Guard(void* address) {
+  OS::Guard(address, OS::CommitPageSize());
+  return true;
+}
+
+
 bool VirtualMemory::CommitRegion(void* address,
                                  size_t size,
                                  bool is_executable) {
@@ -464,6 +473,11 @@ bool VirtualMemory::UncommitRegion(void* address, size_t size) {
 
 bool VirtualMemory::ReleaseRegion(void* address, size_t size) {
   return munmap(address, size) == 0;
+}
+
+
+bool VirtualMemory::HasLazyCommits() {
+  return false;
 }
 
 
@@ -678,17 +692,27 @@ Mutex* OS::CreateMutex() {
 class MacOSSemaphore : public Semaphore {
  public:
   explicit MacOSSemaphore(int count) {
-    semaphore_create(mach_task_self(), &semaphore_, SYNC_POLICY_FIFO, count);
+    int r;
+    r = semaphore_create(mach_task_self(),
+                         &semaphore_,
+                         SYNC_POLICY_FIFO,
+                         count);
+    ASSERT(r == KERN_SUCCESS);
   }
 
   ~MacOSSemaphore() {
-    semaphore_destroy(mach_task_self(), semaphore_);
+    int r;
+    r = semaphore_destroy(mach_task_self(), semaphore_);
+    ASSERT(r == KERN_SUCCESS);
   }
 
-  // The MacOS mach semaphore documentation claims it does not have spurious
-  // wakeups, the way pthreads semaphores do.  So the code from the linux
-  // platform is not needed here.
-  void Wait() { semaphore_wait(semaphore_); }
+  void Wait() {
+    int r;
+    do {
+      r = semaphore_wait(semaphore_);
+      ASSERT(r == KERN_SUCCESS || r == KERN_ABORTED);
+    } while (r == KERN_ABORTED);
+  }
 
   bool Wait(int timeout);
 
@@ -739,6 +763,9 @@ class SamplerThread : public Thread {
       : Thread(Thread::Options("SamplerThread", kSamplerThreadStackSize)),
         interval_(interval) {}
 
+  static void SetUp() { if (!mutex_) mutex_ = OS::CreateMutex(); }
+  static void TearDown() { delete mutex_; }
+
   static void AddActiveSampler(Sampler* sampler) {
     ScopedLock lock(mutex_);
     SamplerRegistry::AddActiveSampler(sampler);
@@ -765,23 +792,12 @@ class SamplerThread : public Thread {
     SamplerRegistry::State state;
     while ((state = SamplerRegistry::GetState()) !=
            SamplerRegistry::HAS_NO_SAMPLERS) {
-      bool cpu_profiling_enabled =
-          (state == SamplerRegistry::HAS_CPU_PROFILING_SAMPLERS);
-      bool runtime_profiler_enabled = RuntimeProfiler::IsEnabled();
       // When CPU profiling is enabled both JavaScript and C++ code is
       // profiled. We must not suspend.
-      if (!cpu_profiling_enabled) {
-        if (rate_limiter_.SuspendIfNecessary()) continue;
-      }
-      if (cpu_profiling_enabled) {
-        if (!SamplerRegistry::IterateActiveSamplers(&DoCpuProfile, this)) {
-          return;
-        }
-      }
-      if (runtime_profiler_enabled) {
-        if (!SamplerRegistry::IterateActiveSamplers(&DoRuntimeProfile, NULL)) {
-          return;
-        }
+      if (state == SamplerRegistry::HAS_CPU_PROFILING_SAMPLERS) {
+        SamplerRegistry::IterateActiveSamplers(&DoCpuProfile, this);
+      } else {
+        if (RuntimeProfiler::WaitForSomeIsolateToEnterJS()) continue;
       }
       OS::Sleep(interval_);
     }
@@ -793,11 +809,6 @@ class SamplerThread : public Thread {
     SamplerThread* sampler_thread =
         reinterpret_cast<SamplerThread*>(raw_sampler_thread);
     sampler_thread->SampleContext(sampler);
-  }
-
-  static void DoRuntimeProfile(Sampler* sampler, void* ignored) {
-    if (!sampler->isolate()->IsInitialized()) return;
-    sampler->isolate()->runtime_profiler()->NotifyTick();
   }
 
   void SampleContext(Sampler* sampler) {
@@ -845,7 +856,6 @@ class SamplerThread : public Thread {
   }
 
   const int interval_;
-  RuntimeProfilerRateLimiter rate_limiter_;
 
   // Protects the process wide state below.
   static Mutex* mutex_;
@@ -858,8 +868,23 @@ class SamplerThread : public Thread {
 #undef REGISTER_FIELD
 
 
-Mutex* SamplerThread::mutex_ = OS::CreateMutex();
+Mutex* SamplerThread::mutex_ = NULL;
 SamplerThread* SamplerThread::instance_ = NULL;
+
+
+void OS::SetUp() {
+  // Seed the random number generator. We preserve microsecond resolution.
+  uint64_t seed = Ticks() ^ (getpid() << 16);
+  srandom(static_cast<unsigned int>(seed));
+  limit_mutex = CreateMutex();
+  SamplerThread::SetUp();
+}
+
+
+void OS::TearDown() {
+  SamplerThread::TearDown();
+  delete limit_mutex;
+}
 
 
 Sampler::Sampler(Isolate* isolate, int interval)

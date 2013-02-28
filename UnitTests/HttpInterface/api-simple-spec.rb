@@ -405,7 +405,7 @@ describe ArangoDB do
         @cid = ArangoDB.create_collection(@cn, false)
   
         (0...20).each{|i|
-          ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"value\" : #{i} }")
+          ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"value\" : #{i}, \"value2\" : 99 }")
         }
       end
 
@@ -418,15 +418,15 @@ describe ArangoDB do
         body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 1 } }"
         doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
 
-              # remove first
+        # remove first
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['deleted'].should eq(1)
         
-              # remove again
-              doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
+        # remove again
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example", cmd, :body => body)
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
@@ -532,6 +532,238 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['deleted'].should eq(0)
       end
+      
+      it "removes the examples, with limit" do
+        cmd = api + "/remove-by-example"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"limit\" : 5 }"
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example-limit", cmd, :body => body)
+
+        # remove some
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['deleted'].should eq(5)
+        
+        # remove some more
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example-limit", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['deleted'].should eq(5)
+
+        # remove the rest
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"limit\" : 50 }"
+        doc = ArangoDB.log_put("#{prefix}-remove-by-example-limit", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['deleted'].should eq(10)
+      end
+    end
+
+################################################################################
+## replace-by-example query
+################################################################################
+
+    context "replace-by-example query:" do
+      before do
+        @cn = "UnitTestsCollectionByExample"
+        ArangoDB.drop_collection(@cn)
+        @cid = ArangoDB.create_collection(@cn, false)
+  
+        (0...20).each{|i|
+          ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"value\" : #{i}, \"value2\" : 99 }")
+        }
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "replaces the examples" do
+        cmd = api + "/replace-by-example"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 1 }, \"newValue\" : { \"foo\" : \"bar\" } }"
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example", cmd, :body => body)
+
+        # replace one
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['replaced'].should eq(1)
+        
+        # replace other
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 2 }, \"newValue\" : { \"foo\" : \"baz\" } }"
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['replaced'].should eq(1)
+        
+        # replace all others
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"moo\" : \"fox\" } }"
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['replaced'].should eq(18)
+        
+        # remove non-existing values
+        [ 21, 22, 100, 101, 99, "\"meow\"", "\"\"", "\"null\"" ].each{|value|
+          body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : " + value.to_s + " }, \"newValue\" : { } }"
+          doc = ArangoDB.log_put("#{prefix}-replace-by-example", cmd, :body => body)
+          doc.code.should eq(200)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(200)
+          doc.parsed_response['replaced'].should eq(0)
+        }
+      end
+      
+      it "replaces the examples, with limit" do
+        cmd = api + "/replace-by-example"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"foo\" : \"bar\" }, \"limit\" : 5 }"
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example-limit", cmd, :body => body)
+
+        # replace some
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['replaced'].should eq(5)
+        
+        # replace some more
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example-limit", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['replaced'].should eq(5)
+
+        # replace the rest
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"fox\" : \"box\" }, \"limit\" : 50 }"
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example-limit", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['replaced'].should eq(10)
+      end
+    end
+
+################################################################################
+## update-by-example query
+################################################################################
+
+    context "update-by-example query:" do
+      before do
+        @cn = "UnitTestsCollectionByExample"
+        ArangoDB.drop_collection(@cn)
+        @cid = ArangoDB.create_collection(@cn, false)
+  
+        (0...20).each{|i|
+          ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"value\" : #{i}, \"value2\" : 99 }")
+        }
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "updates the examples" do
+        cmd = api + "/update-by-example"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 1 }, \"newValue\" : { \"foo\" : \"bar\" } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        # update one
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        # update other
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 2 }, \"newValue\" : { \"foo\" : \"baz\" } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        # update other, overwrite
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 3 }, \"newValue\" : { \"foo\" : \"baz\", \"value\" : 12 } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        # update other, remove
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : 12 }, \"newValue\" : { \"value2\" : null }, \"keepNull\" : false }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(2)
+        
+        # update all but the 2 from before
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"moo\" : \"fox\" } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(18)
+        
+        # update non-existing values
+        [ 100, 101, 99, "\"meow\"", "\"\"", "\"null\"" ].each{|value|
+          body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : " + value.to_s + " }, \"newValue\" : { } }"
+          doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+          doc.code.should eq(200)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(200)
+          doc.parsed_response['updated'].should eq(0)
+        }
+      end
+      
+      it "updates the examples, with limit" do
+        cmd = api + "/update-by-example"
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"foo\" : \"bar\", \"value2\" : 17 }, \"limit\" : 5 }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example-limit", cmd, :body => body)
+
+        # update some
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(5)
+        
+        # update some more
+        doc = ArangoDB.log_put("#{prefix}-update-by-example-limit", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(5)
+
+        # update the rest
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value2\" : 99 }, \"newValue\" : { \"fox\" : \"box\" }, \"limit\" : 50 }"
+        doc = ArangoDB.log_put("#{prefix}-replace-by-example-limit", cmd, :body => body)
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(10)
+      end
     end
 
 ################################################################################
@@ -623,7 +855,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
       
-      it "returns an error for fulltext query without query atttribte" do
+      it "returns an error for fulltext query without query attribute" do
         cmd = api + "/fulltext"
         body = "{ \"collection\" : \"#{@cn}\", \"attribute\" : \"text\" }"
         doc = ArangoDB.log_put("#{prefix}-fulltext-missing", cmd, :body => body)

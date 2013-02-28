@@ -124,7 +124,7 @@ bool SchedulerThread::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::beginShutdown () {
-  LOGGER_TRACE << "beginning shutdown sequence of scheduler thread (" << threadId() << ")";
+  LOGGER_TRACE("beginning shutdown sequence of scheduler thread (" << threadId() << ")");
       
   _stopping = 1;
   _scheduler->wakeupLoop(_loop);
@@ -145,7 +145,7 @@ void SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
   else if (threadId() == currentThreadId()) {
     bool ok = setupTask(task, scheduler, _loop);
     if (!ok) {
-      LOGGER_WARNING << "In SchedulerThread::registerTask setupTask has failed";
+      LOGGER_WARNING("In SchedulerThread::registerTask setupTask has failed");
       cleanupTask(task);
       deleteTask(task);
     }
@@ -255,7 +255,7 @@ void SchedulerThread::destroyTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::run () {
-  LOGGER_TRACE << "scheduler thread started (" << threadId() << ")";
+  LOGGER_TRACE("scheduler thread started (" << threadId() << ")");
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -276,16 +276,16 @@ void SchedulerThread::run () {
     catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping != 0) {
-        LOGGER_WARNING << "caught cancellation exception during work";
+        LOGGER_WARNING("caught cancellation exception during work");
         throw;
       }
 #endif
 
-      LOGGER_WARNING << "caught exception from ev_loop";
+      LOGGER_WARNING("caught exception from ev_loop");
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
-    LOGGER_TRACE << "left scheduler loop " << threadId();
+    LOGGER_TRACE("left scheduler loop " << threadId());
 #endif
 
     if (_hasWork != 0) {
@@ -329,7 +329,7 @@ void SchedulerThread::run () {
     }
   }
 
-  LOGGER_TRACE << "scheduler thread stopped (" << threadId() << ")";
+  LOGGER_TRACE("scheduler thread stopped (" << threadId() << ")");
 
   _stopped = 1;
 

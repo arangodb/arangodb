@@ -39,7 +39,8 @@ For Linux use the distribution dependend package manager, see
 [Installation Manual](http://www.arangodb.org/manuals/current/Installing.html)
 for details.
 
-For Windows users: we are working hard on a Windows version. A first version will become available soon.
+For Windows users: We provide an installer script on our 
+[download page](http://www.arangodb.org/download).
 
 If the package manager has not already started the ArangoDB server, use
 
@@ -88,3 +89,4 @@ you report them:
 You can use the Google group for improvements, feature requests, comments 
 
     http://www.arangodb.org/connect
+

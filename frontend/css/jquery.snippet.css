@@ -1,0 +1,43 @@
+.snippet-wrap .snippet-num li {
+  list-style:decimal-leading-zero outside none;
+}
+
+.snippet-no-num {    
+  list-style-type: none; 
+  padding-left: 0;   
+}
+
+.prettify {
+  font-size: 1.2em; 
+}
+
+#documentsView tr td {
+}
+
+.sh_number {
+  color: #044;   
+}
+
+.sh_symbol {
+  color: blue;
+}
+
+.sh_cbracket {
+  color: #C7A317;
+}
+
+.sh_keyword { 
+  color: #c12dad;  
+}
+
+.sh_string {
+  color: #ce2f30;
+}
+
+.sh_object {
+  color: blue; 
+}
+
+.sh_array {
+  color: blue;  
+}

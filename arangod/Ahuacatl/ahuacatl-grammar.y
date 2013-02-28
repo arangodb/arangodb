@@ -77,7 +77,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %token T_FALSE "false"
 %token T_STRING "identifier" 
 %token T_QUOTED_STRING "quoted string" 
-%token T_NUMBER "number" 
+%token T_INTEGER "integer number" 
+%token T_DOUBLE "number" 
 %token T_PARAMETER "bind parameter"
 
 %token T_ASSIGN "assignment"
@@ -134,7 +135,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 /* define token return types */
 %type <strval> T_STRING
 %type <strval> T_QUOTED_STRING
-%type <strval> T_NUMBER
+%type <strval> T_INTEGER
+%type <strval> T_DOUBLE
 %type <strval> T_PARAMETER; 
 %type <node> sort_list;
 %type <node> sort_element;
@@ -165,7 +167,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <node> value_literal;
 %type <node> bind_parameter;
 %type <strval> variable_name;
-%type <intval> signed_number;
+%type <node> integer_value;
 
 
 /* define start token of language */
@@ -354,8 +356,8 @@ sort_direction:
   ;
 
 limit_statement: 
-    T_LIMIT signed_number {
-      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), TRI_CreateNodeValueIntAql(context, $2));
+    T_LIMIT integer_value {
+      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), $2); 
       if (! node) {
         ABORT_OOM
       }
@@ -365,8 +367,8 @@ limit_statement:
       }
       
     }
-  | T_LIMIT signed_number T_COMMA signed_number {
-      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, $2), TRI_CreateNodeValueIntAql(context, $4));
+  | T_LIMIT integer_value T_COMMA integer_value {
+      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, $2, $4);
       if (! node) {
         ABORT_OOM
       }
@@ -884,14 +886,24 @@ value_literal:
 
       $$ = node;
     }
-  | T_NUMBER {
+  | integer_value {
+    $$ = $1;
+    }
+  | T_DOUBLE {
       TRI_aql_node_t* node;
+      double value;
 
       if (! $1) {
         ABORT_OOM
       }
       
-      node = TRI_CreateNodeValueDoubleAql(context, TRI_DoubleString($1));
+      value = TRI_DoubleString($1);
+      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+        TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+        YYABORT;
+      }
+      
+      node = TRI_CreateNodeValueDoubleAql(context, value);
       if (! node) {
         ABORT_OOM
       }
@@ -957,20 +969,23 @@ variable_name:
     }
   ;
 
-signed_number: 
-    T_NUMBER {
-      if (! $1) {
+integer_value:
+    T_INTEGER {
+      TRI_aql_node_t* node;
+      int64_t value;
+
+      value = TRI_Int64String($1);
+      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+        TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+        YYABORT;
+      }
+
+      node = TRI_CreateNodeValueIntAql(context, value);
+      if (! node) {
         ABORT_OOM
       }
 
-      $$ = TRI_Int64String($1);
-    }
-  | '-' T_NUMBER {
-      if (! $2) {
-        ABORT_OOM
-      }
-
-      $$ = - TRI_Int64String($2);
+      $$ = node;
     }
   ;
 

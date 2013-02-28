@@ -127,7 +127,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   _timing << *task;
 #ifdef TRI_ENABLE_LOGGER
   // if logger is not activated, the compiler will complain, so enclose it in ifdef
-  LOGGER_REQUEST_IN_START_I(_timing);
+  LOGGER_REQUEST_IN_START_I(_timing, "");
 #endif
 
   // execute one of the CRUD methods
@@ -172,83 +172,177 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @RESTHEADER{POST /_api/document,creates a document}
 ///
-/// @REST{POST /_api/document?collection=@FA{collection-name}}
+/// @RESTQUERYPARAMETERS
+/// 
+/// @RESTQUERYPARAM{collection,string,required}
+/// The collection name.
 ///
-/// Creates a new document in the collection identified by @FA{collection-name}.
-/// A JSON representation of the document must be passed as the body of the POST 
+/// @RESTQUERYPARAM{createCollection,boolean,optional}
+/// If this parameter has a value of `true` or `yes`, then the collection is
+/// created if it does not yet exist. Other values will be ignored so the
+/// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTDESCRIPTION
+/// Creates a new document in the collection named `collection`.  A JSON
+/// representation of the document must be passed as the body of the POST
 /// request.
 ///
-/// If the document was created successfully, then a @LIT{HTTP 201} is returned
-/// and the "Location" header contains the path to the newly created
-/// document. The "ETag" header field contains the revision of the document.
+/// If the document was created successfully, then the "Location" header
+/// contains the path to the newly created document. The "ETag" header field
+/// contains the revision of the document.
 ///
-/// The body of the response contains a JSON object with the same information.
-/// The attribute @LIT{_id} contains the document handle of the newly created
-/// document, the attribute @LIT{_rev} contains the document revision.
+/// The body of the response contains a JSON object with the following
+/// attributes:
+/// 
+/// - `_id` contains the document handle of the newly created document
+/// - `_key` contains the document key
+/// - `_rev` contains the document revision
 ///
-/// If the collection parameter @LIT{waitForSync} is @LIT{false}, then a
-/// @LIT{HTTP 202} is returned in order to indicate that the document has been
-/// accepted but not yet stored.
+/// If the collection parameter `waitForSync` is `false`, then the call returns
+/// as soon as the document has been accepted. It will not wait, until the
+/// documents has been sync to disk.
 ///
-/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// Optionally, the URL parameter `waitForSync` can be used to force
+/// synchronisation of the document creation operation to disk even in case that
+/// the `waitForSync` flag had been disabled for the entire collection.  Thus,
+/// the `waitForSync` URL parameter can be used to force synchronisation of just
+/// this specific operations. To use this, set the `waitForSync` parameter to
+/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
+/// then the collection's default `waitForSync` behavior is applied. The
+/// `waitForSync` URL parameter cannot be used to disable synchronisation for
+/// collections that have a default `waitForSync` value of `true`.
 ///
-/// If the collection specified by @FA{collection-name} is unknown, then a 
-/// @LIT{HTTP 404} is returned and the body of the response contains an error 
-/// document.
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
 ///
-/// If the body does not contain a valid JSON representation of a document,
-/// then a @LIT{HTTP 400} is returned and the body of the response contains
-/// an error document.
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
 ///
-/// @REST{POST /_api/document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create-flag}}
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
 ///
-/// If @FA{create-flag} has a value of @LIT{true} or @LIT{yes}, then the 
-/// collection is created if it does not yet exist. Other values for @FA{create-flag}
-/// will be ignored so the collection must be present for the operation to succeed.
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by `collection` is unknown.  The
+/// response body contains an error document in this case.
 ///
 /// @EXAMPLES
 ///
-/// Create a document given a collection identifier @LIT{161039} for the collection
-/// named @LIT{demo}. Note that the revision identifier might or might by equal to
-/// the last part of the document handle. It generally will be equal, but there is
-/// no guaranty.
+/// Create a document given a collection named `products`. Note that the
+/// revision identifier might or might not by equal to the auto-generated
+/// key.
 ///
-/// @EXAMPLE{rest-create-document,create a document}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate1}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: true });
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Create a document in a collection with a collection-level @LIT{waitForSync} 
-/// value of @LIT{false}.
+/// Create a document in a collection named `products` with a collection-level
+/// `waitForSync` value of `false`.
 ///
-/// @EXAMPLE{rest-create-document-accept,accept a document}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
+///     var cn = "productsNoWait";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: false });
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 202);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Create a document in a collection with a collection-level @LIT{waitForSync} 
-/// value of @LIT{false}, but with using @FA{waitForSync} URL parameter.
+/// Create a document in a collection with a collection-level `waitForSync`
+/// value of `false`, but using the `waitForSync` URL parameter.
 ///
-/// @EXAMPLE{rest-create-document-wait,create a document}
-///
-/// Create a document in a known, named collection
-///
-/// @verbinclude rest-create-document-named-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
+///     var cn = "productsNoWait";
+///     db._drop(cn);
+///     db._create(cn, { waitForSync: false });
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn + "&waitForSync=true";
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 201);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Create a document in a new, named collection
 ///
-/// @verbinclude rest-create-document-create-collection
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate1}
+///     var cn = "products";
+///     db._drop(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn + "&createCollection=true";
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 202);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Unknown collection identifier:
+/// Unknown collection name:
 ///
-/// @verbinclude rest-create-document-unknown-cid
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
+///     var cn = "productsUnknown";
+///     db._drop(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ "Hello": "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Illegal document:
 ///
-/// @verbinclude rest-create-document-bad-json
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJson1}
+///     var cn = "products";
+///     db._drop(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var url = "/_api/document?collection=" + cn;
+///     var body = '{ 1: "World" }';
+/// 
+///     var response = logCurlRequest('POST', url, body);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
@@ -271,6 +365,8 @@ bool RestDocumentHandler::createDocument () {
                   "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
     return false;
   }
+  
+  const bool waitForSync = extractWaitForSync();
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -283,6 +379,7 @@ bool RestDocumentHandler::createDocument () {
   if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
+
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -297,10 +394,18 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  if (trx.primaryCollection()->base._info._type == TRI_COL_TYPE_EDGE) {
+    // check if we are inserting with the DOCUMENT handler into an EDGE collection
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "must not use the document handler to create an edge");
+    return false;
+  }
+
   const TRI_voc_cid_t cid = trx.cid();
   
   TRI_doc_mptr_t* document = 0;
-  res = trx.createDocument(&document, json, extractWaitForSync());
+  res = trx.createDocument(&document, json, waitForSync, true);
   res = trx.finish(res);
   
   // .............................................................................
@@ -333,7 +438,7 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-  size_t len = _request->suffix().size();
+  const size_t len = _request->suffix().size();
 
   switch (len) {
     case 0:
@@ -400,13 +505,9 @@ bool RestDocumentHandler::readDocument () {
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   vector<string> const& suffix = _request->suffix();
 
-  /// check for an etag
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
-  TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
-
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
@@ -448,7 +549,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   assert(document);
   assert(document->_key);
 
-  TRI_voc_rid_t rid = document->_rid;
+  const TRI_voc_rid_t rid = document->_rid;
+  // check for an etag
+  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
+  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
@@ -460,7 +564,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
   else if (ifNoneRid == rid) {
     if (ifRid == 0 || ifRid == rid) {
-      generateNotModified(StringUtils::itoa(rid));
+      generateNotModified(rid);
     }
     else {
       generatePreconditionFailed(cid, document->_key, rid);
@@ -757,8 +861,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // auto-ptr that will free JSON data when scope is left
   ResourceHolder holder;
@@ -769,10 +873,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
+  const TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or chose the update policy
-  TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const bool waitForSync = extractWaitForSync();
   
   TRI_doc_mptr_t* document = 0;
 
@@ -800,7 +905,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     bool nullMeansRemove;
     bool found;
     char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    if (! found || StringUtils::boolean(valueStr)) {
       // default: null values are saved as Null
       nullMeansRemove = false;
     }
@@ -836,13 +941,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
       if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
         // do not acquire an extra lock
-        res = trx.updateDocument(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid, false);
+        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid, false);
       }
     }
   }
   else {
     // replacing an existing document, using a lock
-    res = trx.updateDocument(key, &document, json, policy, extractWaitForSync(), revision, &rid, true);
+    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid, true);
   }
   
   res = trx.finish(res);
@@ -927,14 +1032,15 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // split the document reference
-  string collection = suffix[0];
-  string key = suffix[1];
+  const string& collection = suffix[0];
+  const string& key = suffix[1];
 
   // extract the revision
-  TRI_voc_rid_t revision = extractRevision("if-match", "rev");
+  const TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
   // extract or choose the update policy
-  TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const TRI_doc_update_policy_e policy = extractUpdatePolicy();
+  const bool waitForSync = extractWaitForSync();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
     generateError(HttpResponse::BAD, 
@@ -958,7 +1064,7 @@ bool RestDocumentHandler::deleteDocument () {
   const TRI_voc_cid_t cid = trx.cid();
 
   TRI_voc_rid_t rid = 0;
-  res = trx.deleteDocument(key, policy, extractWaitForSync(), revision, &rid);
+  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }

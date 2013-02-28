@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -37,18 +37,31 @@ namespace internal {
 bool IncrementalMarking::BaseRecordWrite(HeapObject* obj,
                                          Object** slot,
                                          Object* value) {
-  MarkBit value_bit = Marking::MarkBitFrom(HeapObject::cast(value));
+  HeapObject* value_heap_obj = HeapObject::cast(value);
+  MarkBit value_bit = Marking::MarkBitFrom(value_heap_obj);
   if (Marking::IsWhite(value_bit)) {
     MarkBit obj_bit = Marking::MarkBitFrom(obj);
     if (Marking::IsBlack(obj_bit)) {
-      BlackToGreyAndUnshift(obj, obj_bit);
-      RestartIfNotMarking();
+      MemoryChunk* chunk = MemoryChunk::FromAddress(obj->address());
+      if (chunk->IsFlagSet(MemoryChunk::HAS_PROGRESS_BAR)) {
+        if (chunk->IsLeftOfProgressBar(slot)) {
+          WhiteToGreyAndPush(value_heap_obj, value_bit);
+          RestartIfNotMarking();
+        } else {
+          return false;
+        }
+      } else {
+        BlackToGreyAndUnshift(obj, obj_bit);
+        RestartIfNotMarking();
+        return false;
+      }
+    } else {
+      return false;
     }
-
-    // Object is either grey or white.  It will be scanned if survives.
-    return false;
   }
-  return true;
+  if (!is_compacting_) return false;
+  MarkBit obj_bit = Marking::MarkBitFrom(obj);
+  return Marking::IsBlack(obj_bit);
 }
 
 
@@ -81,6 +94,10 @@ void IncrementalMarking::RecordWrites(HeapObject* obj) {
   if (IsMarking()) {
     MarkBit obj_bit = Marking::MarkBitFrom(obj);
     if (Marking::IsBlack(obj_bit)) {
+      MemoryChunk* chunk = MemoryChunk::FromAddress(obj->address());
+      if (chunk->IsFlagSet(MemoryChunk::HAS_PROGRESS_BAR)) {
+        chunk->set_progress_bar(0);
+      }
       BlackToGreyAndUnshift(obj, obj_bit);
       RestartIfNotMarking();
     }
@@ -100,16 +117,16 @@ void IncrementalMarking::BlackToGreyAndUnshift(HeapObject* obj,
   int64_t old_bytes_rescanned = bytes_rescanned_;
   bytes_rescanned_ = old_bytes_rescanned + obj_size;
   if ((bytes_rescanned_ >> 20) != (old_bytes_rescanned >> 20)) {
-    if (bytes_rescanned_ > 2 * heap_->PromotedSpaceSize()) {
+    if (bytes_rescanned_ > 2 * heap_->PromotedSpaceSizeOfObjects()) {
       // If we have queued twice the heap size for rescanning then we are
       // going around in circles, scanning the same objects again and again
       // as the program mutates the heap faster than we can incrementally
       // trace it.  In this case we switch to non-incremental marking in
       // order to finish off this marking phase.
       if (FLAG_trace_gc) {
-        PrintF("Hurrying incremental marking because of lack of progress\n");
+        PrintPID("Hurrying incremental marking because of lack of progress\n");
       }
-      allocation_marking_factor_ = kMaxAllocationMarkingFactor;
+      marking_speed_ = kMaxMarkingSpeed;
     }
   }
 
@@ -118,13 +135,8 @@ void IncrementalMarking::BlackToGreyAndUnshift(HeapObject* obj,
 
 
 void IncrementalMarking::WhiteToGreyAndPush(HeapObject* obj, MarkBit mark_bit) {
-  WhiteToGrey(obj, mark_bit);
-  marking_deque_.PushGrey(obj);
-}
-
-
-void IncrementalMarking::WhiteToGrey(HeapObject* obj, MarkBit mark_bit) {
   Marking::WhiteToGrey(mark_bit);
+  marking_deque_.PushGrey(obj);
 }
 
 

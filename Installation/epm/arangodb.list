@@ -25,7 +25,6 @@ $release=${arangodb_release}
 
 d 0755 ${susr} ${sgrp} /etc/arangodb -
 d 0755 ${susr} ${sgrp} /etc/arangodb/ -
-c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod.conf
 c 0644 ${susr} ${sgrp} /etc/arangodb/arangosh.conf ${project_dir}/etc/arangodb/arangosh.conf
 
 f 0755 ${susr} ${sgrp} ${sbindir}/arangod-${arangodb_version} ${project_dir}/bin/arangod
@@ -65,6 +64,7 @@ d 0755 ${rusr} ${rgrp} ${mandir}/man8 -
 ## -----------------------------------------------------------------------------
 
 %ifdef macosx
+c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod.conf
 d 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/ -
 f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${project_dir}/Installation/MacOSX/org.arangodb.plist
 %postinstall <<EOF
@@ -90,6 +90,7 @@ EOF
 ## -----------------------------------------------------------------------------
 
 %else
+c 0644 ${susr} ${sgrp} /etc/arangodb/arangod.conf ${project_dir}/etc/arangodb/arangod-uid.conf
 %preinstall <<EOF
 getent group arangodb >/dev/null || groupadd -r arangodb 
 getent passwd arangodb >/dev/null || useradd -r -g arangodb -d ${static_dir}/arangodb -s /bin/false -c "ArangoDB Application User" arangodb 

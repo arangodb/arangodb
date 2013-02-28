@@ -161,7 +161,7 @@ namespace triagens {
           handler_task_job_t element = this->_task2handler.removeKey(task);
 
           if (element._task != task) {
-            LOGGER_WARNING << "cannot find a task for the handler, giving up";
+            LOGGER_WARNING("cannot find a task for the handler, giving up");
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
@@ -192,11 +192,11 @@ namespace triagens {
               atask->handleResponse(response);
             }
             else {
-              LOGGER_ERROR << "expected a GeneralAsyncCommTask, giving up";
+              LOGGER_ERROR("expected a GeneralAsyncCommTask, giving up");
             }
           }
           else {
-            LOGGER_ERROR << "cannot get any response";
+            LOGGER_ERROR("cannot get any response");
           }
 
           delete handler;
@@ -225,7 +225,7 @@ namespace triagens {
           ServerJob* job = dynamic_cast<ServerJob*>(ajob);
 
           if (job == 0) {
-            LOGGER_WARNING << "jobDone called, but Job is no ServerJob";
+            LOGGER_WARNING("jobDone called, but Job is no ServerJob");
             return;
           }
 
@@ -236,7 +236,7 @@ namespace triagens {
           handler_task_job_t const& element = this->_handlers.findKey(handler);
 
           if (element._handler != handler) {
-            LOGGER_WARNING << "jobDone called, but handler is unknown";
+            LOGGER_WARNING("jobDone called, but handler is unknown");
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
@@ -247,7 +247,7 @@ namespace triagens {
 
           // if there is no task, assume the client has died
           if (element._task == 0) {
-            LOGGER_DEBUG << "jobDone called, but no task is known, assume client has died";
+            LOGGER_DEBUG("jobDone called, but no task is known, assume client has died");
             this->_handlers.removeKey(handler);
 
             delete handler;
@@ -262,7 +262,7 @@ namespace triagens {
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
           if (task == 0) {
-            LOGGER_WARNING << "task for handler is no GeneralAsyncCommTask, giving up";
+            LOGGER_WARNING("task for handler is no GeneralAsyncCommTask, giving up");
             return;
           }
 
@@ -290,7 +290,7 @@ namespace triagens {
 
         void handleConnected (TRI_socket_t s, ConnectionInfo& info) {
           GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, this->_keepAliveTimeout);
-    
+
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
           this->_commTasks.insert(dynamic_cast<GeneralCommTask<S, HF>*>(task));
           GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
@@ -325,7 +325,7 @@ namespace triagens {
               if (atask == 0) {
                 RequestStatisticsAgentSetExecuteError(handler);
 
-                LOGGER_WARNING << "task is indirect, but not asynchronous - this cannot work!";
+                LOGGER_WARNING("task is indirect, but not asynchronous - this cannot work!");
 
                 this->shutdownHandlerByTask(task);
                 return false;
@@ -337,7 +337,7 @@ namespace triagens {
                 if (job == 0) {
                   RequestStatisticsAgentSetExecuteError(handler);
 
-                  LOGGER_WARNING << "task is indirect, but handler failed to create a job - this cannot work!";
+                  LOGGER_WARNING("task is indirect, but handler failed to create a job - this cannot work!");
 
                   this->shutdownHandlerByTask(task);
                   return false;
@@ -352,7 +352,7 @@ namespace triagens {
             else {
               RequestStatisticsAgentSetExecuteError(handler);
 
-              LOGGER_WARNING << "no dispatcher is known";
+              LOGGER_WARNING("no dispatcher is known");
 
               this->shutdownHandlerByTask(task);
               return false;
@@ -373,7 +373,7 @@ namespace triagens {
           handler_task_job_t element = this->_task2handler.removeKey(task);
 
           if (element._task != task) {
-            LOGGER_DEBUG << "shutdownHandler called, but no handler is known for task";
+            LOGGER_DEBUG("shutdownHandler called, but no handler is known for task");
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
@@ -385,7 +385,7 @@ namespace triagens {
           handler_task_job_t const& element2 = this->_handlers.findKey(handler);
 
           if (element2._handler != handler) {
-            LOGGER_DEBUG << "shutdownHandler called, but handler of task is unknown";
+            LOGGER_DEBUG("shutdownHandler called, but handler of task is unknown");
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;
@@ -439,7 +439,7 @@ namespace triagens {
           handler_task_job_t const& element = this->_handlers.findKey(handler);
 
           if (element._handler != handler) {
-            LOGGER_DEBUG << "registerJob called for an unknown handler";
+            LOGGER_DEBUG("registerJob called for an unknown handler");
 
             GENERAL_SERVER_UNLOCK(&this->_mappingLock);
             return;

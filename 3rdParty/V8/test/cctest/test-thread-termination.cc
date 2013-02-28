@@ -134,7 +134,7 @@ TEST(TerminateOnlyV8ThreadFromThreadItself) {
   // Test that we can run the code again after thread termination.
   CHECK(!v8::V8::IsExecutionTerminating());
   v8::Script::Compile(source)->Run();
-  context.Dispose();
+  context.Dispose(context->GetIsolate());
 }
 
 
@@ -154,7 +154,7 @@ TEST(TerminateOnlyV8ThreadFromThreadItselfNoLoop) {
   CHECK(!v8::V8::IsExecutionTerminating());
   // Test that we can run the code again after thread termination.
   v8::Script::Compile(source)->Run();
-  context.Dispose();
+  context.Dispose(context->GetIsolate());
 }
 
 
@@ -194,7 +194,7 @@ TEST(TerminateOnlyV8ThreadFromOtherThread) {
   thread.Join();
   delete semaphore;
   semaphore = NULL;
-  context.Dispose();
+  context.Dispose(context->GetIsolate());
 }
 
 
@@ -202,7 +202,7 @@ class LoopingThread : public v8::internal::Thread {
  public:
   LoopingThread() : Thread("LoopingThread") { }
   void Run() {
-    v8::Locker locker;
+    v8::Locker locker(CcTest::default_isolate());
     v8::HandleScope scope;
     v8_thread_id_ = v8::V8::GetCurrentThreadId();
     v8::Handle<v8::ObjectTemplate> global =
@@ -214,7 +214,7 @@ class LoopingThread : public v8::internal::Thread {
     v8::Handle<v8::String> source =
         v8::String::New("try { loop(); fail(); } catch(e) { fail(); }");
     v8::Script::Compile(source)->Run();
-    context.Dispose();
+    context.Dispose(context->GetIsolate());
   }
 
   int GetV8ThreadId() { return v8_thread_id_; }
@@ -228,7 +228,7 @@ class LoopingThread : public v8::internal::Thread {
 // from another thread when using Lockers and preemption.
 TEST(TerminateMultipleV8ThreadsDefaultIsolate) {
   {
-    v8::Locker locker;
+    v8::Locker locker(CcTest::default_isolate());
     v8::V8::Initialize();
     v8::Locker::StartPreemption(1);
     semaphore = v8::internal::OS::CreateSemaphore(0);
@@ -246,7 +246,7 @@ TEST(TerminateMultipleV8ThreadsDefaultIsolate) {
     semaphore->Wait();
   }
   {
-    v8::Locker locker;
+    v8::Locker locker(CcTest::default_isolate());
     for (int i = 0; i < kThreads; i++) {
       v8::V8::TerminateExecution(threads[i]->GetV8ThreadId());
     }
@@ -254,6 +254,10 @@ TEST(TerminateMultipleV8ThreadsDefaultIsolate) {
   for (int i = 0; i < kThreads; i++) {
     threads[i]->Join();
     delete threads[i];
+  }
+  {
+    v8::Locker locker(CcTest::default_isolate());
+    v8::Locker::StopPreemption();
   }
 
   delete semaphore;
@@ -322,7 +326,7 @@ TEST(TerminateLoadICException) {
   CHECK(!v8::V8::IsExecutionTerminating());
   call_count = 0;
   v8::Script::Compile(source)->Run();
-  context.Dispose();
+  context.Dispose(context->GetIsolate());
 }
 
 v8::Handle<v8::Value> ReenterAfterTermination(const v8::Arguments& args) {
@@ -366,6 +370,5 @@ TEST(TerminateAndReenterFromThreadItself) {
   // Check we can run JS again after termination.
   CHECK(v8::Script::Compile(v8::String::New("function f() { return true; }"
                                             "f()"))->Run()->IsTrue());
-  context.Dispose();
+  context.Dispose(context->GetIsolate());
 }
-

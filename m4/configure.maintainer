@@ -10,6 +10,10 @@ AC_ARG_ENABLE(maintainer-mode,
   [tr_MAINTAINER_MODE=no]
 )
 
+if test "x$tr_MAINTAINER_MODE" = "xyes";  then
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_MAINTAINER_MODE, 1, [true if maintainer mode is enabled])
+fi
+
 AM_CONDITIONAL(ENABLE_MAINTAINER_MODE, test "x$tr_MAINTAINER_MODE" = xyes)
 
 dnl ----------------------------------------------------------------------------

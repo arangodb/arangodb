@@ -26,7 +26,7 @@ else
   V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
 fi
 
-TRI_V8_VERSION="3.9.4"
+TRI_V8_VERSION="3.16.14"
 
 dnl ----------------------------------------------------------------------------
 dnl add substitutions

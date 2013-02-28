@@ -147,13 +147,13 @@ bool Dispatcher::addJob (Job* job) {
   DispatcherQueue* queue = lookupQueue(job->queue());
 
   if (queue == 0) {
-    LOGGER_WARNING << "unknown queue '" << job->queue() << "'";
+    LOGGER_WARNING("unknown queue '" << job->queue() << "'");
     return false;
   }
 
   // log success, but do this BEFORE the real add, because the addJob might execute
   // and delete the job before we have a chance to log something
-  LOGGER_TRACE << "added job " << job << " to queue " << job->queue();
+  LOGGER_TRACE("added job " << job << " to queue " << job->queue());
 
   // add the job to the list of ready jobs
   queue->addJob(job);
@@ -173,8 +173,7 @@ bool Dispatcher::start () {
     bool ok = i->second->start();
 
     if (! ok) {
-      LOGGER_FATAL << "cannot start dispatcher queue";
-      return false;
+      LOGGER_FATAL_AND_EXIT("cannot start dispatcher queue");
     }
   }
 
@@ -219,7 +218,7 @@ void Dispatcher::beginShutdown () {
   MUTEX_LOCKER(_accessDispatcher);
 
   if (_stopping == 0) {
-    LOGGER_DEBUG << "beginning shutdown sequence of dispatcher";
+    LOGGER_DEBUG("beginning shutdown sequence of dispatcher");
 
     _stopping = 1;
 
@@ -236,7 +235,7 @@ void Dispatcher::beginShutdown () {
 void Dispatcher::shutdown () {
   MUTEX_LOCKER(_accessDispatcher);
 
-  LOGGER_DEBUG << "shutting down the dispatcher";
+  LOGGER_DEBUG("shutting down the dispatcher");
 
   for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
     i->second->shutdown();
@@ -252,20 +251,21 @@ void Dispatcher::reportStatus () {
     MUTEX_LOCKER(_accessDispatcher);
 
     for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
-      string const& name = i->first;
       DispatcherQueue* q = i->second;
+#ifdef TRI_ENABLE_LOGGER
+      string const& name = i->first;
 
-      LOGGER_DEBUG << "dispatcher queue '" << name << "': "
+      LOGGER_DEBUG("dispatcher queue '" << name << "': "
                    << "threads = " << q->_nrThreads << " "
                    << "started = " << q->_nrStarted << " "
                    << "running = " << q->_nrRunning << " "
                    << "waiting = " << q->_nrWaiting << " "
                    << "stopped = " << q->_nrStopped << " "
                    << "special = " << q->_nrSpecial << " "
-                   << "monopolistic = " << (q->_monopolizer ? "yes" : "no");
+                   << "monopolistic = " << (q->_monopolizer ? "yes" : "no"));
 
-      LOGGER_HEARTBEAT
-      << LoggerData::Task("dispatcher status")
+      LOGGER_HEARTBEAT(
+         LoggerData::Task("dispatcher status")
       << LoggerData::Extra(name)
       << LoggerData::Extra("threads")
       << LoggerData::Extra(StringUtils::itoa(q->_nrThreads))
@@ -281,8 +281,8 @@ void Dispatcher::reportStatus () {
       << LoggerData::Extra(StringUtils::itoa(q->_nrSpecial))
       << LoggerData::Extra("monopilizer")
       << LoggerData::Extra((q->_monopolizer ? "1" : "0"))
-      << "dispatcher status";
-
+      << "dispatcher status");
+#endif
       CONDITION_LOCKER(guard, q->_accessQueue);
 
       for (set<DispatcherThread*>::iterator j = q->_startedThreads.begin();  j != q->_startedThreads.end(); ++j) {

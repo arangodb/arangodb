@@ -8,6 +8,14 @@ MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules"
 STARTUPPATH="@PKGDATADIR@/js"
 SCRIPT="@PKGDATADIR@/js/server/arango-dfdb.js"
 
+if [ "$1" == "--relative" ] ;  then
+  shift
+  ARANGOD="./bin/arangod"
+  MODULESPATH="./js/server/modules;./js/common/modules"
+  STARTUPPATH="./js"
+  SCRIPT="./js/server/arango-dfdb.js"
+fi
+
 if [ "$1" == "--database" ] || [ "$1" == "--database.directory" ] ;  then
   shift
   DATABASE="$1"

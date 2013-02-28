@@ -59,6 +59,7 @@ static void arangodExitFunction (int, void*);
 // .............................................................................
 // Call this function to do various initialistions for windows only
 // .............................................................................
+
 void arangodEntryFunction() {
   int maxOpenFiles = 2048;  // upper hard limit for windows
   int res = 0;
@@ -71,16 +72,19 @@ void arangodEntryFunction() {
   //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+
   if (res != 0) {
     _exit(1);
   }
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+
   if (res != 0) {
     _exit(1);
   }
 
   res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+
   if (res != 0) {
     _exit(1);
   }
@@ -89,7 +93,7 @@ void arangodEntryFunction() {
 
 }
 
-static void arangodExitFunction(int exitCode, void* data) {
+static void arangodExitFunction (int exitCode, void* data) {
   int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
@@ -105,6 +109,7 @@ static void arangodExitFunction(int exitCode, void* data) {
 
   _exit(exitCode);
 }
+
 #else
 
 static void arangodEntryFunction() {

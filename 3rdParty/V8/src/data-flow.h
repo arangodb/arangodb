@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -85,18 +85,18 @@ class BitVector: public ZoneObject {
     friend class BitVector;
   };
 
-  explicit BitVector(int length)
+  BitVector(int length, Zone* zone)
       : length_(length),
         data_length_(SizeFor(length)),
-        data_(ZONE->NewArray<uint32_t>(data_length_)) {
+        data_(zone->NewArray<uint32_t>(data_length_)) {
     ASSERT(length > 0);
     Clear();
   }
 
-  BitVector(const BitVector& other)
+  BitVector(const BitVector& other, Zone* zone)
       : length_(other.length()),
         data_length_(SizeFor(length_)),
-        data_(ZONE->NewArray<uint32_t>(data_length_)) {
+        data_(zone->NewArray<uint32_t>(data_length_)) {
     CopyFrom(other);
   }
 
@@ -198,6 +198,61 @@ class BitVector: public ZoneObject {
   int data_length_;
   uint32_t* data_;
 };
+
+class GrowableBitVector BASE_EMBEDDED {
+ public:
+  class Iterator BASE_EMBEDDED {
+   public:
+    Iterator(const GrowableBitVector* target, Zone* zone)
+        : it_(target->bits_ == NULL
+              ? new(zone) BitVector(1, zone)
+              : target->bits_) { }
+    bool Done() const { return it_.Done(); }
+    void Advance() { it_.Advance(); }
+    int Current() const { return it_.Current(); }
+   private:
+    BitVector::Iterator it_;
+  };
+
+  GrowableBitVector() : bits_(NULL) { }
+
+  bool Contains(int value) const {
+    if (!InBitsRange(value)) return false;
+    return bits_->Contains(value);
+  }
+
+  void Add(int value, Zone* zone) {
+    EnsureCapacity(value, zone);
+    bits_->Add(value);
+  }
+
+  void Union(const GrowableBitVector& other, Zone* zone) {
+    for (Iterator it(&other, zone); !it.Done(); it.Advance()) {
+      Add(it.Current(), zone);
+    }
+  }
+
+  void Clear() { if (bits_ != NULL) bits_->Clear(); }
+
+ private:
+  static const int kInitialLength = 1024;
+
+  bool InBitsRange(int value) const {
+    return bits_ != NULL && bits_->length() > value;
+  }
+
+  void EnsureCapacity(int value, Zone* zone) {
+    if (InBitsRange(value)) return;
+    int new_length = bits_ == NULL ? kInitialLength : bits_->length();
+    while (new_length <= value) new_length *= 2;
+    BitVector* new_bits = new(zone) BitVector(new_length, zone);
+    if (bits_ != NULL) new_bits->CopyFrom(*bits_);
+    bits_ = new_bits;
+  }
+
+  BitVector* bits_;
+};
+
 
 } }  // namespace v8::internal
 

@@ -1,0 +1,94 @@
+<ul class="thumbnails2">
+  <div id="transparentHeader">
+    <div id="documentsToolbar" class="pagination pagination-small pagination-right">
+		<ul>
+			<li class="enabled"><a id="collectionPrev">&lsaquo;</a></li>
+			<li class="enabled"><a id="collectionNext">&rsaquo;</a></li>
+		</ul>
+	</div>
+  </div>
+</ul>
+
+<div id="documentsDiv">
+<table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID">
+  <thead>
+    <tr>
+      <th style="width: 100px">_id</th>
+      <th style="width: 490px">Content</th>
+      <th style="width:10px"></th>
+    </tr>
+  </thead>
+</table>
+
+
+<!-- <div id="documentsToolbar" class="pagination pagination-small pagination-centered arangoToolbar">
+	<ul>
+ 		<li class="enabled"><a href="#">&laquo;</a></li>
+		<li class="active"><a href="#">1</a></li>
+		<li><a href="#">2</a></li>
+		<li><a href="#">3</a></li>
+ 		<li class="enabled"><a href="#">&raquo;</a></li>
+	</ul>
+</div>
+-->
+
+</div>
+
+<div id="documentsFooterBox" class="">
+  <div id="documentsFooter" class="">
+    <div id="documentsStatus">
+      Showing XX of XX
+    </div>
+
+    <div id="documentsPaging" class="pagination-small pagination">
+      <ul>
+        <li id="documents_first" class="enabled"><a>&laquo;</a></li>
+        <li id="documents_prev" class="enabled"><a>&lsaquo;</a></li>
+        <li id="documents_next" class="enabled"><a>&rsaquo;</a></li>
+        <li id="documents_last" class="enabled"><a>&raquo;</a></li>
+     </ul>
+   </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="docDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Delete Document?</h3>
+  </div>
+  <div class="modal-body">
+    <p>Theres no way back…</p>
+  </div>
+  <div class="modal-footer">
+    <!-- <button class="arangoBtn" data-dismiss="modal" aria-hidden="true">Close</button> -->
+    <button id="confirmDeleteBtn" class="arangoBtnError" style="float:right">Delete</button>
+  </div>
+</div>
+
+<!-- Create Edge Modal -->
+<div id="edgeCreateModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Create Edge</h3>
+  </div>
+  <div class="modal-body">
+    <p>Please complete your task:</p>
+    <table>
+      <tr>
+        <th class="collectionTh">_from:</th>
+        <th><input type="text" id="new-document-from" name="from" value=""/></th>
+        <th><a class="modalTooltips" title="document handle of the linked vertex (incoming relation)"><i class="icon-info-sign"></i></a></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">_to:</th>
+        <th><input type="text" id="new-document-to" name="to" value=""/></th>
+        <th><a class="modalTooltips" title="document handle of the linked vertex (outgoing relation)"><i class="icon-info-sign"></i></a></th>
+      </tr>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <!-- <button class="arangoBtn" data-dismiss="modal" aria-hidden="true">Close</button> -->
+    <button id="confirmCreateEdge" class="arangoBtnSuccess" style="float:right">Create</button>
+  </div>
+</div>

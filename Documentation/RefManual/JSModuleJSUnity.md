@@ -1,17 +1,17 @@
-Using jsUnity and node-jscoverage {#jsUnity}
-============================================
+Using jsUnity and node-jscoverage{#jsUnity}
+===========================================
 
 @NAVIGATE_jsUnity
 @EMBEDTOC{jsUnityTOC}
 
-jsUnity {#jsUnityIntro}
-=======================
+jsUnity{#jsUnityIntro}
+======================
 
 The ArangoDB contains a wrapper for <a href="http://jsunity.com/">jsUnity</a>, a
 lightyweight universal JavAScript unit testing framework.
 
-Running jsUnity Tests {#jsUnityRunningTest}
-===========================================
+Running jsUnity Tests{#jsUnityRunningTest}
+==========================================
 
 Assume that you have a test file containing
 
@@ -36,8 +36,8 @@ Then you can run the test suite using @FN{jsunity.runTest}
     2012-01-28T19:10:23Z [10671] INFO 0 tests failed
     2012-01-28T19:10:23Z [10671] INFO 1 millisecond elapsed
 
-Running jsUnity Tests with Coverage {#jsUnityRunningCoverage}
-=============================================================
+Running jsUnity Tests with Coverage{#jsUnityRunningCoverage}
+============================================================
 
 You can use the coverage tool <a
 href="https://github.com/visionmedia/node-jscoverage">@LIT{node-jscoverage}</a>.

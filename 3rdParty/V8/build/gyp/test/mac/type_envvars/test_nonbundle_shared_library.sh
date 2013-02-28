@@ -13,3 +13,9 @@ test $FULL_PRODUCT_NAME = libnonbundle_shared_library.dylib
 test $EXECUTABLE_NAME = libnonbundle_shared_library.dylib
 test $EXECUTABLE_PATH = libnonbundle_shared_library.dylib
 [[ ! $WRAPPER_NAME && ${WRAPPER_NAME-_} ]]
+
+test $DYLIB_INSTALL_NAME_BASE = "/usr/local/lib"
+test $LD_DYLIB_INSTALL_NAME = "/usr/local/lib/libnonbundle_shared_library.dylib"
+
+# Should be set, but empty.
+[[ ! $SDKROOT && ! ${SDKROOT-_} ]]

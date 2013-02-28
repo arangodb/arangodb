@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,8 +11,8 @@ Verifies that Makefiles get rebuilt when a source gyp file changes.
 import TestGyp
 
 # Regenerating build files when a gyp file changes is currently only supported
-# by the make generator.
-test = TestGyp.TestGyp(formats=['make'])
+# by the make and Android generators.
+test = TestGyp.TestGyp(formats=['make', 'android'])
 
 test.run_gyp('hello.gyp')
 

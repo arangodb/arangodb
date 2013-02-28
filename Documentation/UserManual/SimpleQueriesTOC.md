@@ -29,3 +29,5 @@ TOC {#SimpleQueriesTOC}
     - @ref SimpleQueryCount "query.count"
   - @ref SimpleQueriesModify
     - @ref SimpleQueryRemoveByExample "collection.removeByExample"
+    - @ref SimpleQueryReplaceByExample "collection.replaceByExample"
+    - @ref SimpleQueryUpdateByExample "collection.updateByExample"

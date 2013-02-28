@@ -164,7 +164,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket.fileHandle, &fdset);
+  FD_SET(_socket.fileHandle, &fdset); 
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;

@@ -1,0 +1,173 @@
+select {
+  border-radius: 2px 2px 2px 2px !important;
+}
+
+input {
+  border-radius: 2px 2px 2px 2px !important;
+}
+
+.arangoBtn {
+  background: none repeat scroll 0 0 #FFFFFF;
+  color: #333232;
+  float: left;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 16px;
+  padding: 4px 10px;
+  text-decoration: none;
+}
+
+.arangoBtnSuccess {
+  background: none repeat scroll 0 0 #5E7B36;
+  color: #FFFFFF;
+  float: left;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 16px;
+  padding: 4px 10px;
+  text-decoration: none;
+}
+
+/* Radius */
+.thumbnail, .navbar-inner, .btn, .btn-primary {
+  border-radius:0;
+  box-shadow: 0;
+}
+
+.navbar .nav li.dropdown.open > .dropdown-toggle, .navbar .nav li.dropdown.active > .dropdown-toggle, .navbar .nav li.dropdown.open.active > .dropdown-toggle {
+	background: #788f3d;
+}
+
+
+.btn {
+ 	box-shadow:0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 2px rgba(0, 0, 0, 0.05), 2px 2px 0 rgba(0, 0, 0, 0.2);
+	background: #8f8d8c;
+	border: none;
+	color:#FFFFFF;
+}
+
+.btn:hover {
+	background: #736b68;
+	color:#FFFFFF;
+}
+
+.btn-primary {
+	background: #564e4a;
+}
+
+.btn-primary:hover {
+	background: #3a322e;
+}
+
+.btn-success {
+	background: #8AA051;
+}
+
+.btn-success:hover {
+	background: #788f3d;
+}
+
+.btn-danger {
+    background-color: #DA4F49;
+}
+
+.btn-danger:hover {
+    background-color: #be342e;
+}
+
+.btn-group > .btn + .dropdown-toggle {
+	box-shadow: 1px 0 0 rgba(255, 255, 255, 0.125) inset, 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 2px rgba(0, 0, 0, 0.05), 2px 2px 0 rgba(0, 0, 0, 0.2)
+
+}
+
+.btn-group.open .btn-inverse.dropdown-toggle {
+	background-color: #736b68;
+}
+
+
+.breadcrumb {
+  background-color: #F5F5F5;
+  background: transparent;
+  border-radius: 0px;
+  border:none;
+  padding:8px 0px;
+}
+
+.breadcrumb a.activeBread {
+  color:#b9d375;
+}
+
+
+#content {
+  margin-top: 44px;
+  min-height: 800px;
+  height: 100%;
+  width: 98%;
+}
+body {
+  background-color: white !important;
+  background: url("../img/bg_paper.gif") repeat scroll 0 0 #E5E1DD !important;
+}
+
+#footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+}
+
+.form-actions {
+  background-color: #FFFFFF;
+  border:none;
+}
+
+/* ICONS */
+.icon-info-sign:hover {
+  cursor: pointer;
+}
+
+.about-icon {
+  float: left;
+  margin-right: 12px;
+}
+
+.clearicon {
+  opacity: 0.2;
+  cursor: pointer;
+  margin-top: 3px;
+  top: 20px;
+  right: 25px;
+  position: absolute;
+}
+
+#plusIcon {
+  margin-right: 10px;
+  margin-top: 11px;
+  margin-right: 22px;
+  opacity: 0.3;
+}
+
+#plusIcon:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.reloadicon {
+  opacity: 0.2;
+  cursor: pointer;
+  margin-top: 3px;
+  top: 20px;
+  right: 45px;
+  position: absolute;
+}
+
+.clearicon:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.reloadicon:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+table .sorting {
+  background: none !important;
+}

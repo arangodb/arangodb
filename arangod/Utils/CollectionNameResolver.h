@@ -101,10 +101,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const TRI_vocbase_col_t* getCollectionStruct (const string& name) const {
-          map<string, const TRI_vocbase_col_t*>::iterator it = _resolvedNames.find(name);
-
-          if (it != _resolvedNames.end()) {
-            return (*it).second;
+          if (_resolvedNames.size() > 0) {
+            map<string, const TRI_vocbase_col_t*>::const_iterator it = _resolvedNames.find(name);
+  
+            if (it != _resolvedNames.end()) {
+              return (*it).second;
+            }
           }
           
           const TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
@@ -120,11 +122,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string getCollectionName (const TRI_voc_cid_t cid) const {
-          map<TRI_voc_cid_t, string>::iterator it = _resolvedIds.find(cid);
+          if (_resolvedIds.size() > 0) {
+            map<TRI_voc_cid_t, string>::const_iterator it = _resolvedIds.find(cid);
           
-          if (it != _resolvedIds.end()) {
-            return (*it).second;
-          } 
+            if (it != _resolvedIds.end()) {
+              return (*it).second;
+            } 
+          }
 
           char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
           if (n == 0) {

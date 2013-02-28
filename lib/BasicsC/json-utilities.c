@@ -666,28 +666,29 @@ TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
 
 bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
   if (object && object->_type == TRI_JSON_ARRAY) {
-    size_t n;
+    const size_t n = object->_value._objects._length;
+    const bool hasMultipleElements = (n > 2);
 
     // if we don't have attributes, we do not need to check for duplicates
     // if we only have one attribute, we don't need to check for duplicates in 
     // the array, but we need to recursively validate the array values (if 
     // array value itself is an array)
-    n = object->_value._objects._length;
     if (n > 0) {
       TRI_associative_pointer_t hash;
       size_t i;
 
-      TRI_InitAssociativePointer(&hash, 
+      if (hasMultipleElements) {
+        TRI_InitAssociativePointer(&hash, 
           TRI_UNKNOWN_MEM_ZONE, 
           &TRI_HashStringKeyAssociativePointer,
           &TRI_HashStringKeyAssociativePointer,
           &TRI_EqualStringKeyAssociativePointer,
           0);
+      }
 
       for (i = 0;  i < n; i += 2) {
         TRI_json_t* key;
         TRI_json_t* value;
-        void* previous;
 
         key = TRI_AtVector(&object->_value._objects, i);
 
@@ -700,21 +701,27 @@ bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
         // recursively check sub-array elements
         if (value->_type == TRI_JSON_ARRAY && TRI_HasDuplicateKeyJson(value)) {
           // duplicate found in sub-array
-          TRI_DestroyAssociativePointer(&hash);
+          if (hasMultipleElements) {
+            TRI_DestroyAssociativePointer(&hash);
+          }
 
           return true;
         }
 
-        previous = TRI_InsertKeyAssociativePointer(&hash, key->_value._string.data, key->_value._string.data, false);
-        if (previous != NULL) {
-          // duplicate found
-          TRI_DestroyAssociativePointer(&hash);
+        if (hasMultipleElements) {
+          void* previous = TRI_InsertKeyAssociativePointer(&hash, key->_value._string.data, key->_value._string.data, false);
+          if (previous != NULL) {
+            // duplicate found
+            TRI_DestroyAssociativePointer(&hash);
 
-          return true;
+            return true;
+          }
         }
       }
 
-      TRI_DestroyAssociativePointer(&hash);
+      if (hasMultipleElements) {
+        TRI_DestroyAssociativePointer(&hash);
+      }
     }
   }
 

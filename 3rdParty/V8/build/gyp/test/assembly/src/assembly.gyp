@@ -14,6 +14,9 @@
       ['OS=="linux"', {
         'defines': ['PLATFORM_LINUX'],
       }],
+      ['OS=="android"', {
+        'defines': ['PLATFORM_ANDROID'],
+      }],
     ],
   },
   'targets': [

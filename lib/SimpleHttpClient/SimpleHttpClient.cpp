@@ -266,7 +266,7 @@ namespace triagens {
       _writeBuffer.appendText("\r\n\r\n");
       _writeBuffer.appendText(body, bodyLength);
 
-      LOGGER_TRACE << "Request: " << _writeBuffer.c_str();
+      LOGGER_TRACE("Request: " << _writeBuffer.c_str());
 
       //////////////////////////////////////////////////////////////////////////
 

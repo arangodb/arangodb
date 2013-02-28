@@ -42,6 +42,7 @@ typedef bool (*IsAliveFunction)(HeapObject* obj, int* size, int* offset);
 // Forward declarations.
 class CodeFlusher;
 class GCTracer;
+class MarkCompactCollector;
 class MarkingVisitor;
 class RootMarkingVisitor;
 
@@ -166,7 +167,6 @@ class Marking {
 
 // ----------------------------------------------------------------------------
 // Marking deque for tracing live objects.
-
 class MarkingDeque {
  public:
   MarkingDeque()
@@ -304,6 +304,26 @@ class SlotsBuffer {
     NUMBER_OF_SLOT_TYPES
   };
 
+  static const char* SlotTypeToString(SlotType type) {
+    switch (type) {
+      case EMBEDDED_OBJECT_SLOT:
+        return "EMBEDDED_OBJECT_SLOT";
+      case RELOCATED_CODE_OBJECT:
+        return "RELOCATED_CODE_OBJECT";
+      case CODE_TARGET_SLOT:
+        return "CODE_TARGET_SLOT";
+      case CODE_ENTRY_SLOT:
+        return "CODE_ENTRY_SLOT";
+      case DEBUG_TARGET_SLOT:
+        return "DEBUG_TARGET_SLOT";
+      case JS_RETURN_SLOT:
+        return "JS_RETURN_SLOT";
+      case NUMBER_OF_SLOT_TYPES:
+        return "NUMBER_OF_SLOT_TYPES";
+    }
+    return "UNKNOWN SlotType";
+  }
+
   void UpdateSlots(Heap* heap);
 
   void UpdateSlotsWithFilter(Heap* heap);
@@ -383,6 +403,106 @@ class SlotsBuffer {
 };
 
 
+// CodeFlusher collects candidates for code flushing during marking and
+// processes those candidates after marking has completed in order to
+// reset those functions referencing code objects that would otherwise
+// be unreachable. Code objects can be referenced in two ways:
+//    - SharedFunctionInfo references unoptimized code.
+//    - JSFunction references either unoptimized or optimized code.
+// We are not allowed to flush unoptimized code for functions that got
+// optimized or inlined into optimized code, because we might bailout
+// into the unoptimized code again during deoptimization.
+class CodeFlusher {
+ public:
+  explicit CodeFlusher(Isolate* isolate)
+      : isolate_(isolate),
+        jsfunction_candidates_head_(NULL),
+        shared_function_info_candidates_head_(NULL) {}
+
+  void AddCandidate(SharedFunctionInfo* shared_info) {
+    if (GetNextCandidate(shared_info) == NULL) {
+      SetNextCandidate(shared_info, shared_function_info_candidates_head_);
+      shared_function_info_candidates_head_ = shared_info;
+    } else {
+      // TODO(mstarzinger): Active in release mode to flush out problems.
+      // Should be turned back into an ASSERT or removed completely.
+      CHECK(ContainsCandidate(shared_info));
+    }
+  }
+
+  void AddCandidate(JSFunction* function) {
+    ASSERT(function->code() == function->shared()->code());
+    if (GetNextCandidate(function)->IsUndefined()) {
+      SetNextCandidate(function, jsfunction_candidates_head_);
+      jsfunction_candidates_head_ = function;
+    }
+  }
+
+  bool ContainsCandidate(SharedFunctionInfo* shared_info);
+
+  void EvictCandidate(SharedFunctionInfo* shared_info);
+  void EvictCandidate(JSFunction* function);
+
+  void ProcessCandidates() {
+    ProcessSharedFunctionInfoCandidates();
+    ProcessJSFunctionCandidates();
+  }
+
+  void EvictAllCandidates() {
+    EvictJSFunctionCandidates();
+    EvictSharedFunctionInfoCandidates();
+  }
+
+  void IteratePointersToFromSpace(ObjectVisitor* v);
+
+ private:
+  void ProcessJSFunctionCandidates();
+  void ProcessSharedFunctionInfoCandidates();
+  void EvictJSFunctionCandidates();
+  void EvictSharedFunctionInfoCandidates();
+
+  static JSFunction** GetNextCandidateSlot(JSFunction* candidate) {
+    return reinterpret_cast<JSFunction**>(
+        HeapObject::RawField(candidate, JSFunction::kNextFunctionLinkOffset));
+  }
+
+  static JSFunction* GetNextCandidate(JSFunction* candidate) {
+    Object* next_candidate = candidate->next_function_link();
+    return reinterpret_cast<JSFunction*>(next_candidate);
+  }
+
+  static void SetNextCandidate(JSFunction* candidate,
+                               JSFunction* next_candidate) {
+    candidate->set_next_function_link(next_candidate);
+  }
+
+  static void ClearNextCandidate(JSFunction* candidate, Object* undefined) {
+    ASSERT(undefined->IsUndefined());
+    candidate->set_next_function_link(undefined, SKIP_WRITE_BARRIER);
+  }
+
+  static SharedFunctionInfo* GetNextCandidate(SharedFunctionInfo* candidate) {
+    Object* next_candidate = candidate->code()->gc_metadata();
+    return reinterpret_cast<SharedFunctionInfo*>(next_candidate);
+  }
+
+  static void SetNextCandidate(SharedFunctionInfo* candidate,
+                               SharedFunctionInfo* next_candidate) {
+    candidate->code()->set_gc_metadata(next_candidate);
+  }
+
+  static void ClearNextCandidate(SharedFunctionInfo* candidate) {
+    candidate->code()->set_gc_metadata(NULL, SKIP_WRITE_BARRIER);
+  }
+
+  Isolate* isolate_;
+  JSFunction* jsfunction_candidates_head_;
+  SharedFunctionInfo* shared_function_info_candidates_head_;
+
+  DISALLOW_COPY_AND_ASSIGN(CodeFlusher);
+};
+
+
 // Defined in isolate.h.
 class ThreadLocalTop;
 
@@ -420,13 +540,8 @@ class MarkCompactCollector {
   // Pointer to member function, used in IterateLiveObjects.
   typedef int (MarkCompactCollector::*LiveObjectCallback)(HeapObject* obj);
 
-  // Set the global force_compaction flag, it must be called before Prepare
-  // to take effect.
+  // Set the global flags, it must be called before Prepare to take effect.
   inline void SetFlags(int flags);
-
-  inline bool PreciseSweepingRequired() {
-    return sweep_precisely_;
-  }
 
   static void Initialize();
 
@@ -479,18 +594,28 @@ class MarkCompactCollector {
   enum SweeperType {
     CONSERVATIVE,
     LAZY_CONSERVATIVE,
+    PARALLEL_CONSERVATIVE,
     PRECISE
   };
 
-#ifdef DEBUG
+  enum SweepingParallelism {
+    SWEEP_SEQUENTIALLY,
+    SWEEP_IN_PARALLEL
+  };
+
+#ifdef VERIFY_HEAP
   void VerifyMarkbitsAreClean();
   static void VerifyMarkbitsAreClean(PagedSpace* space);
   static void VerifyMarkbitsAreClean(NewSpace* space);
+  void VerifyWeakEmbeddedMapsInOptimizedCode();
 #endif
 
   // Sweep a single page from the given space conservatively.
   // Return a number of reclaimed bytes.
-  static intptr_t SweepConservatively(PagedSpace* space, Page* p);
+  template<SweepingParallelism type>
+  static intptr_t SweepConservatively(PagedSpace* space,
+                                      FreeList* free_list,
+                                      Page* p);
 
   INLINE(static bool ShouldSkipEvacuationSlotRecording(Object** anchor)) {
     return Page::FromAddress(reinterpret_cast<Address>(anchor))->
@@ -530,6 +655,7 @@ class MarkCompactCollector {
 
   void RecordRelocSlot(RelocInfo* rinfo, Object* target);
   void RecordCodeEntrySlot(Address slot, Code* target);
+  void RecordCodeTargetPatch(Address pc, Code* target);
 
   INLINE(void RecordSlot(Object** anchor_slot, Object** slot, Object* object));
 
@@ -549,6 +675,30 @@ class MarkCompactCollector {
 
   void ClearMarkbits();
 
+  bool abort_incremental_marking() const { return abort_incremental_marking_; }
+
+  bool is_compacting() const { return compacting_; }
+
+  MarkingParity marking_parity() { return marking_parity_; }
+
+  // Concurrent and parallel sweeping support.
+  void SweepInParallel(PagedSpace* space,
+                       FreeList* private_free_list,
+                       FreeList* free_list);
+
+  void WaitUntilSweepingCompleted();
+
+  intptr_t StealMemoryFromSweeperThreads(PagedSpace* space);
+
+  bool AreSweeperThreadsActivated();
+
+  bool IsConcurrentSweepingInProgress();
+
+  // Parallel marking support.
+  void MarkInParallel();
+
+  void WaitUntilMarkingCompleted();
+
  private:
   MarkCompactCollector();
   ~MarkCompactCollector();
@@ -557,6 +707,7 @@ class MarkCompactCollector {
   void RemoveDeadInvalidatedCode();
   void ProcessInvalidatedCode(ObjectVisitor* visitor);
 
+  void StartSweeperThreads();
 
 #ifdef DEBUG
   enum CollectorState {
@@ -579,15 +730,15 @@ class MarkCompactCollector {
 
   bool reduce_memory_footprint_;
 
+  bool abort_incremental_marking_;
+
+  MarkingParity marking_parity_;
+
   // True if we are collecting slots to perform evacuation from evacuation
   // candidates.
   bool compacting_;
 
   bool was_marked_incrementally_;
-
-  bool collect_maps_;
-
-  bool flush_monomorphic_ics_;
 
   // A pointer to the current stack-allocated GC tracer object during a full
   // collection (NULL before and after).
@@ -609,16 +760,11 @@ class MarkCompactCollector {
   //
   //   After: Live objects are marked and non-live objects are unmarked.
 
-
   friend class RootMarkingVisitor;
   friend class MarkingVisitor;
-  friend class StaticMarkingVisitor;
+  friend class MarkCompactMarkingVisitor;
   friend class CodeMarkingVisitor;
   friend class SharedFunctionInfoMarkingVisitor;
-
-  // Mark non-optimize code for functions inlined into the given optimized
-  // code. This will prevent it from being flushed.
-  void MarkInlinedFunctionsCode(Code* code);
 
   // Mark code objects that are active on the stack to prevent them
   // from being flushed.
@@ -632,31 +778,12 @@ class MarkCompactCollector {
   void AfterMarking();
 
   // Marks the object black and pushes it on the marking stack.
-  // This is for non-incremental marking.
+  // This is for non-incremental marking only.
   INLINE(void MarkObject(HeapObject* obj, MarkBit mark_bit));
 
-  INLINE(bool MarkObjectWithoutPush(HeapObject* object));
-  INLINE(void MarkObjectAndPush(HeapObject* value));
-
-  // Marks the object black.  This is for non-incremental marking.
+  // Marks the object black assuming that it is not yet marked.
+  // This is for non-incremental marking only.
   INLINE(void SetMark(HeapObject* obj, MarkBit mark_bit));
-
-  // Clears the cache of ICs related to this map.
-  INLINE(void ClearCacheOnMap(Map* map));
-
-  void ProcessNewlyMarkedObject(HeapObject* obj);
-
-  // Creates back pointers for all map transitions, stores them in
-  // the prototype field.  The original prototype pointers are restored
-  // in ClearNonLiveTransitions().  All JSObject maps
-  // connected by map transitions have the same prototype object, which
-  // is why we can use this field temporarily for back pointers.
-  void CreateBackPointers();
-
-  // Mark a Map and its DescriptorArray together, skipping transitions.
-  void MarkMapContents(Map* map);
-  void MarkAccessorPairSlot(HeapObject* accessors, int offset);
-  void MarkDescriptorArray(DescriptorArray* descriptors);
 
   // Mark the heap roots and all objects reachable from them.
   void MarkRoots(RootMarkingVisitor* visitor);
@@ -665,17 +792,13 @@ class MarkCompactCollector {
   // symbol table are weak.
   void MarkSymbolTable();
 
-  // Mark objects in object groups that have at least one object in the
-  // group marked.
-  void MarkObjectGroups();
-
   // Mark objects in implicit references groups if their parent object
   // is marked.
   void MarkImplicitRefGroups();
 
   // Mark all objects which are reachable due to host application
   // logic like object groups or implicit references' groups.
-  void ProcessExternalMarking();
+  void ProcessExternalMarking(RootMarkingVisitor* visitor);
 
   // Mark objects reachable (transitively) from objects in the marking stack
   // or overflowed in the heap.
@@ -699,12 +822,16 @@ class MarkCompactCollector {
   // Callback function for telling whether the object *p is an unmarked
   // heap object.
   static bool IsUnmarkedHeapObject(Object** p);
+  static bool IsUnmarkedHeapObjectWithHeap(Heap* heap, Object** p);
 
   // Map transitions from a live map to a dead map must be killed.
   // We replace them with a null descriptor, with the same key.
-  void ClearNonLiveTransitions();
+  void ClearNonLiveReferences();
   void ClearNonLivePrototypeTransitions(Map* map);
   void ClearNonLiveMapTransitions(Map* map, MarkBit map_mark);
+
+  void ClearAndDeoptimizeDependentCodes(Map* map);
+  void ClearNonLiveDependentCodes(Map* map);
 
   // Marking detaches initial maps from SharedFunctionInfo objects
   // to make this reference weak. We need to reattach initial maps

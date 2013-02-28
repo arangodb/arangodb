@@ -1,2 +1,0 @@
-arangosh> require("users").save("my-user", "my-secret-password");
-arangosh> require("users").reload();

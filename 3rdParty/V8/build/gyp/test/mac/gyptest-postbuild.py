@@ -47,5 +47,7 @@ if sys.platform == 'darwin':
   test.built_file_must_exist('dyna_standalone.dylib_gyp_touch',
                              type=test.SHARED_LIB,
                              chdir='postbuilds')
+  test.built_file_must_exist('copied_file.txt', chdir='postbuilds')
+  test.built_file_must_exist('copied_file_2.txt', chdir=chdir)
 
   test.pass_test()

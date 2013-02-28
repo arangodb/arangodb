@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [1.3.alpha], [info@triagens.de], [arangodb], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [1.2.devel], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -85,18 +85,6 @@ else
 fi
 
 
-dnl ----------------------------------------------------------------------------
-dnl ARANGOB
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE([arangob],
-  AS_HELP_STRING([--enable-arangob], [install arangob benchmark tool (default: yes)]),
-  [tr_ARANGOB="${enableval:-yes}"],
-  [tr_ARANGOB=yes])
-
-AM_CONDITIONAL(ENABLE_ARANGOB, test "x$tr_ARANGOB" = xyes)
-
-
 dnl ============================================================================
 dnl --SECTION--                                                    CONFIGURATION
 dnl ============================================================================
@@ -105,7 +93,6 @@ m4_include([m4/configure.basics])
 AC_PROG_RANLIB
 
 m4_include([m4/configure.static])
-m4_include([m4/configure.memory])
 m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])

@@ -1,4 +1,4 @@
-// Copyright 2006-2008 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -26,14 +26,14 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Default number of frames to include in the response to backtrace request.
-const kDefaultBacktraceLength = 10;
+var kDefaultBacktraceLength = 10;
 
-const Debug = {};
+var Debug = {};
 
 // Regular expression to skip "crud" at the beginning of a source line which is
 // not really code. Currently the regular expression matches whitespace and
 // comments.
-const sourceLineBeginningSkip = /^(?:\s*(?:\/\*.*?\*\/)*)*/;
+var sourceLineBeginningSkip = /^(?:\s*(?:\/\*.*?\*\/)*)*/;
 
 // Debug events which can occour in the V8 JavaScript engine. These originate
 // from the API include file debug.h.
@@ -110,7 +110,6 @@ var debugger_flags = {
     }
   },
 };
-var lol_is_enabled = %HasLOLEnabled();
 
 
 // Create a new break point object and add it to the list of break points.
@@ -478,7 +477,8 @@ ScriptBreakPoint.prototype.clear = function () {
 function UpdateScriptBreakPoints(script) {
   for (var i = 0; i < script_break_points.length; i++) {
     var break_point = script_break_points[i];
-    if ((break_point.type() == Debug.ScriptBreakPointType.ScriptName) &&
+    if ((break_point.type() == Debug.ScriptBreakPointType.ScriptName ||
+         break_point.type() == Debug.ScriptBreakPointType.ScriptRegExp) &&
         break_point.matchesScript(script)) {
       break_point.set(script);
     }
@@ -1305,9 +1305,12 @@ ProtocolMessage.prototype.setOption = function(name, value) {
 };
 
 
-ProtocolMessage.prototype.failed = function(message) {
+ProtocolMessage.prototype.failed = function(message, opt_details) {
   this.success = false;
   this.message = message;
+  if (IS_OBJECT(opt_details)) {
+    this.error_details = opt_details;
+  }
 };
 
 
@@ -1353,6 +1356,9 @@ ProtocolMessage.prototype.toJSONProtocol = function() {
   }
   if (this.message) {
     json.message = this.message;
+  }
+  if (this.error_details) {
+    json.error_details = this.error_details;
   }
   json.running = this.running;
   return JSON.stringify(json);
@@ -1426,10 +1432,10 @@ DebugCommandProcessor.prototype.processDebugJSONRequest = function(
         this.scopesRequest_(request, response);
       } else if (request.command == 'scope') {
         this.scopeRequest_(request, response);
+      } else if (request.command == 'setVariableValue') {
+        this.setVariableValueRequest_(request, response);
       } else if (request.command == 'evaluate') {
         this.evaluateRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'getobj') {
-        this.getobjRequest_(request, response);
       } else if (request.command == 'lookup') {
         this.lookupRequest_(request, response);
       } else if (request.command == 'references') {
@@ -1448,6 +1454,8 @@ DebugCommandProcessor.prototype.processDebugJSONRequest = function(
         this.profileRequest_(request, response);
       } else if (request.command == 'changelive') {
         this.changeLiveRequest_(request, response);
+      } else if (request.command == 'restartframe') {
+        this.restartFrameRequest_(request, response);
       } else if (request.command == 'flags') {
         this.debuggerFlagsRequest_(request, response);
       } else if (request.command == 'v8flags') {
@@ -1456,28 +1464,6 @@ DebugCommandProcessor.prototype.processDebugJSONRequest = function(
       // GC tools:
       } else if (request.command == 'gc') {
         this.gcRequest_(request, response);
-
-      // LiveObjectList tools:
-      } else if (lol_is_enabled && request.command == 'lol-capture') {
-        this.lolCaptureRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-delete') {
-        this.lolDeleteRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-diff') {
-        this.lolDiffRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-getid') {
-        this.lolGetIdRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-info') {
-        this.lolInfoRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-reset') {
-        this.lolResetRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-retainers') {
-        this.lolRetainersRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-path') {
-        this.lolPathRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-print') {
-        this.lolPrintRequest_(request, response);
-      } else if (lol_is_enabled && request.command == 'lol-stats') {
-        this.lolStatsRequest_(request, response);
 
       } else {
         throw new Error('Unknown command "' + request.command + '" in request');
@@ -1950,13 +1936,14 @@ DebugCommandProcessor.prototype.frameRequest_ = function(request, response) {
 };
 
 
-DebugCommandProcessor.prototype.frameForScopeRequest_ = function(request) {
+DebugCommandProcessor.prototype.resolveFrameFromScopeDescription_ =
+    function(scope_description) {
   // Get the frame for which the scope or scopes are requested.
   // With no frameNumber argument use the currently selected frame.
-  if (request.arguments && !IS_UNDEFINED(request.arguments.frameNumber)) {
-    frame_index = request.arguments.frameNumber;
+  if (scope_description && !IS_UNDEFINED(scope_description.frameNumber)) {
+    frame_index = scope_description.frameNumber;
     if (frame_index < 0 || this.exec_state_.frameCount() <= frame_index) {
-      return response.failed('Invalid frame number');
+      throw new Error('Invalid frame number');
     }
     return this.exec_state_.frame(frame_index);
   } else {
@@ -1965,20 +1952,44 @@ DebugCommandProcessor.prototype.frameForScopeRequest_ = function(request) {
 };
 
 
-DebugCommandProcessor.prototype.scopesRequest_ = function(request, response) {
-  // No frames no scopes.
-  if (this.exec_state_.frameCount() == 0) {
-    return response.failed('No scopes');
+// Gets scope host object from request. It is either a function
+// ('functionHandle' argument must be specified) or a stack frame
+// ('frameNumber' may be specified and the current frame is taken by default).
+DebugCommandProcessor.prototype.resolveScopeHolder_ =
+    function(scope_description) {
+  if (scope_description && "functionHandle" in scope_description) {
+    if (!IS_NUMBER(scope_description.functionHandle)) {
+      throw new Error('Function handle must be a number');
+    }
+    var function_mirror = LookupMirror(scope_description.functionHandle);
+    if (!function_mirror) {
+      throw new Error('Failed to find function object by handle');
+    }
+    if (!function_mirror.isFunction()) {
+      throw new Error('Value of non-function type is found by handle');
+    }
+    return function_mirror;
+  } else {
+    // No frames no scopes.
+    if (this.exec_state_.frameCount() == 0) {
+      throw new Error('No scopes');
+    }
+
+    // Get the frame for which the scopes are requested.
+    var frame = this.resolveFrameFromScopeDescription_(scope_description);
+    return frame;
   }
+}
 
-  // Get the frame for which the scopes are requested.
-  var frame = this.frameForScopeRequest_(request);
 
-  // Fill all scopes for this frame.
-  var total_scopes = frame.scopeCount();
+DebugCommandProcessor.prototype.scopesRequest_ = function(request, response) {
+  var scope_holder = this.resolveScopeHolder_(request.arguments);
+
+  // Fill all scopes for this frame or function.
+  var total_scopes = scope_holder.scopeCount();
   var scopes = [];
   for (var i = 0; i < total_scopes; i++) {
-    scopes.push(frame.scope(i));
+    scopes.push(scope_holder.scope(i));
   }
   response.body = {
     fromScope: 0,
@@ -1990,24 +2001,90 @@ DebugCommandProcessor.prototype.scopesRequest_ = function(request, response) {
 
 
 DebugCommandProcessor.prototype.scopeRequest_ = function(request, response) {
-  // No frames no scopes.
-  if (this.exec_state_.frameCount() == 0) {
-    return response.failed('No scopes');
-  }
-
-  // Get the frame for which the scope is requested.
-  var frame = this.frameForScopeRequest_(request);
+  // Get the frame or function for which the scope is requested.
+  var scope_holder = this.resolveScopeHolder_(request.arguments);
 
   // With no scope argument just return top scope.
   var scope_index = 0;
   if (request.arguments && !IS_UNDEFINED(request.arguments.number)) {
     scope_index = %ToNumber(request.arguments.number);
-    if (scope_index < 0 || frame.scopeCount() <= scope_index) {
+    if (scope_index < 0 || scope_holder.scopeCount() <= scope_index) {
       return response.failed('Invalid scope number');
     }
   }
 
-  response.body = frame.scope(scope_index);
+  response.body = scope_holder.scope(scope_index);
+};
+
+
+// Reads value from protocol description. Description may be in form of type
+// (for singletons), raw value (primitive types supported in JSON),
+// string value description plus type (for primitive values) or handle id.
+// Returns raw value or throws exception.
+DebugCommandProcessor.resolveValue_ = function(value_description) {
+  if ("handle" in value_description) {
+    var value_mirror = LookupMirror(value_description.handle);
+    if (!value_mirror) {
+      throw new Error("Failed to resolve value by handle, ' #" +
+          mapping.handle + "# not found");
+    }
+    return value_mirror.value();
+  } else if ("stringDescription" in value_description) {
+    if (value_description.type == BOOLEAN_TYPE) {
+      return Boolean(value_description.stringDescription);
+    } else if (value_description.type == NUMBER_TYPE) {
+      return Number(value_description.stringDescription);
+    } if (value_description.type == STRING_TYPE) {
+      return String(value_description.stringDescription);
+    } else {
+      throw new Error("Unknown type");
+    }
+  } else if ("value" in value_description) {
+    return value_description.value;
+  } else if (value_description.type == UNDEFINED_TYPE) {
+    return void 0;
+  } else if (value_description.type == NULL_TYPE) {
+    return null;
+  } else {
+    throw new Error("Failed to parse value description");
+  }
+};
+
+
+DebugCommandProcessor.prototype.setVariableValueRequest_ =
+    function(request, response) {
+  if (!request.arguments) {
+    response.failed('Missing arguments');
+    return;
+  }
+
+  if (IS_UNDEFINED(request.arguments.name)) {
+    response.failed('Missing variable name');
+  }
+  var variable_name = request.arguments.name;
+
+  var scope_description = request.arguments.scope;
+
+  // Get the frame or function for which the scope is requested.
+  var scope_holder = this.resolveScopeHolder_(scope_description);
+
+  if (IS_UNDEFINED(scope_description.number)) {
+    response.failed('Missing scope number');
+  }
+  var scope_index = %ToNumber(scope_description.number);
+
+  var scope = scope_holder.scope(scope_index);
+
+  var new_value =
+      DebugCommandProcessor.resolveValue_(request.arguments.newValue);
+
+  scope.setVariableValue(variable_name, new_value);
+
+  var new_value_mirror = MakeMirror(new_value);
+
+  response.body = {
+    newValue: new_value_mirror
+  };
 };
 
 
@@ -2041,22 +2118,20 @@ DebugCommandProcessor.prototype.evaluateRequest_ = function(request, response) {
     additional_context_object = {};
     for (var i = 0; i < additional_context.length; i++) {
       var mapping = additional_context[i];
-      if (!IS_STRING(mapping.name) || !IS_NUMBER(mapping.handle)) {
+
+      if (!IS_STRING(mapping.name)) {
         return response.failed("Context element #" + i +
-            " must contain name:string and handle:number");
+            " doesn't contain name:string property");
       }
-      var context_value_mirror = LookupMirror(mapping.handle);
-      if (!context_value_mirror) {
-        return response.failed("Context object '" + mapping.name +
-            "' #" + mapping.handle + "# not found");
-      }
-      additional_context_object[mapping.name] = context_value_mirror.value();
+
+      var raw_value = DebugCommandProcessor.resolveValue_(mapping);
+      additional_context_object[mapping.name] = raw_value;
     }
   }
 
   // Global evaluate.
   if (global) {
-    // Evaluate in the global context.
+    // Evaluate in the native context.
     response.body = this.exec_state_.evaluateGlobal(
         expression, Boolean(disable_break), additional_context_object);
     return;
@@ -2088,24 +2163,6 @@ DebugCommandProcessor.prototype.evaluateRequest_ = function(request, response) {
         expression, Boolean(disable_break), additional_context_object);
     return;
   }
-};
-
-
-DebugCommandProcessor.prototype.getobjRequest_ = function(request, response) {
-  if (!request.arguments) {
-    return response.failed('Missing arguments');
-  }
-
-  // Pull out arguments.
-  var obj_id = request.arguments.obj_id;
-
-  // Check for legal arguments.
-  if (IS_UNDEFINED(obj_id)) {
-    return response.failed('Argument "obj_id" missing');
-  }
-
-  // Dump the object.
-  response.body = MakeMirror(%GetLOLObj(obj_id));
 };
 
 
@@ -2338,9 +2395,6 @@ DebugCommandProcessor.prototype.profileRequest_ = function(request, response) {
 
 DebugCommandProcessor.prototype.changeLiveRequest_ = function(
     request, response) {
-  if (!Debug.LiveEdit) {
-    return response.failed('LiveEdit feature is not supported');
-  }
   if (!request.arguments) {
     return response.failed('Missing arguments');
   }
@@ -2368,13 +2422,53 @@ DebugCommandProcessor.prototype.changeLiveRequest_ = function(
 
   var new_source = request.arguments.new_source;
 
-  var result_description = Debug.LiveEdit.SetScriptSource(the_script,
-      new_source, preview_only, change_log);
+  var result_description;
+  try {
+    result_description = Debug.LiveEdit.SetScriptSource(the_script,
+        new_source, preview_only, change_log);
+  } catch (e) {
+    if (e instanceof Debug.LiveEdit.Failure && "details" in e) {
+      response.failed(e.message, e.details);
+      return;
+    }
+    throw e;
+  }
   response.body = {change_log: change_log, result: result_description};
 
   if (!preview_only && !this.running_ && result_description.stack_modified) {
     response.body.stepin_recommended = true;
   }
+};
+
+
+DebugCommandProcessor.prototype.restartFrameRequest_ = function(
+    request, response) {
+  if (!request.arguments) {
+    return response.failed('Missing arguments');
+  }
+  var frame = request.arguments.frame;
+
+  // No frames to evaluate in frame.
+  if (this.exec_state_.frameCount() == 0) {
+    return response.failed('No frames');
+  }
+
+  var frame_mirror;
+  // Check whether a frame was specified.
+  if (!IS_UNDEFINED(frame)) {
+    var frame_number = %ToNumber(frame);
+    if (frame_number < 0 || frame_number >= this.exec_state_.frameCount()) {
+      return response.failed('Invalid frame "' + frame + '"');
+    }
+    // Restart specified frame.
+    frame_mirror = this.exec_state_.frame(frame_number);
+  } else {
+    // Restart selected frame.
+    frame_mirror = this.exec_state_.frame();
+  }
+
+  var result_description = Debug.LiveEdit.RestartFrame(frame_mirror);
+  response.body = {result: result_description};
 };
 
 
@@ -2427,86 +2521,6 @@ DebugCommandProcessor.prototype.gcRequest_ = function(request, response) {
   var after = %GetHeapUsage();
 
   response.body = { "before": before, "after": after };
-};
-
-
-DebugCommandProcessor.prototype.lolCaptureRequest_ =
-    function(request, response) {
-  response.body = %CaptureLOL();
-};
-
-
-DebugCommandProcessor.prototype.lolDeleteRequest_ =
-    function(request, response) {
-  var id = request.arguments.id;
-  var result = %DeleteLOL(id);
-  if (result) {
-    response.body = { id: id };
-  } else {
-    response.failed('Failed to delete: live object list ' + id + ' not found.');
-  }
-};
-
-
-DebugCommandProcessor.prototype.lolDiffRequest_ = function(request, response) {
-  var id1 = request.arguments.id1;
-  var id2 = request.arguments.id2;
-  var verbose = request.arguments.verbose;
-  var filter = request.arguments.filter;
-  if (verbose === true) {
-    var start = request.arguments.start;
-    var count = request.arguments.count;
-    response.body = %DumpLOL(id1, id2, start, count, filter);
-  } else {
-    response.body = %SummarizeLOL(id1, id2, filter);
-  }
-};
-
-
-DebugCommandProcessor.prototype.lolGetIdRequest_ = function(request, response) {
-  var address = request.arguments.address;
-  response.body = {};
-  response.body.id = %GetLOLObjId(address);
-};
-
-
-DebugCommandProcessor.prototype.lolInfoRequest_ = function(request, response) {
-  var start = request.arguments.start;
-  var count = request.arguments.count;
-  response.body = %InfoLOL(start, count);
-};
-
-
-DebugCommandProcessor.prototype.lolResetRequest_ = function(request, response) {
-  %ResetLOL();
-};
-
-
-DebugCommandProcessor.prototype.lolRetainersRequest_ =
-    function(request, response) {
-  var id = request.arguments.id;
-  var verbose = request.arguments.verbose;
-  var start = request.arguments.start;
-  var count = request.arguments.count;
-  var filter = request.arguments.filter;
-
-  response.body = %GetLOLObjRetainers(id, Mirror.prototype, verbose,
-                                      start, count, filter);
-};
-
-
-DebugCommandProcessor.prototype.lolPathRequest_ = function(request, response) {
-  var id1 = request.arguments.id1;
-  var id2 = request.arguments.id2;
-  response.body = {};
-  response.body.path = %GetLOLPath(id1, id2, Mirror.prototype);
-};
-
-
-DebugCommandProcessor.prototype.lolPrintRequest_ = function(request, response) {
-  var id = request.arguments.id;
-  response.body = {};
-  response.body.dump = %PrintLOLObj(id);
 };
 
 
@@ -2613,3 +2627,7 @@ function ValueToProtocolValue_(value, mirror_serializer) {
   }
   return json;
 }
+
+Debug.TestApi = {
+  CommandProcessorResolveValue: DebugCommandProcessor.resolveValue_
+};

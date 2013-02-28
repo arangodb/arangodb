@@ -93,7 +93,7 @@ namespace triagens {
           }
 
           if (! ok) {
-            LOGGER_WARNING << "cannot complete SSL shutdown";
+            LOGGER_WARNING("cannot complete SSL shutdown");
           }
 
           SSL_free(ssl); // this will free bio as well
@@ -126,7 +126,7 @@ namespace triagens {
           // is the handshake already done?
           if (! accepted) {
             if (! trySSLAccept()) {
-              LOGGER_DEBUG << "failed to establish SSL connection";
+              LOGGER_DEBUG("failed to establish SSL connection");
               return false;
             }
 
@@ -150,7 +150,7 @@ namespace triagens {
           // is the handshake already done?
           if (! accepted) {
             if (! trySSLAccept()) {
-              LOGGER_DEBUG << "failed to establish SSL connection";
+              LOGGER_DEBUG("failed to establish SSL connection");
               return false;
             }
 
@@ -176,15 +176,15 @@ namespace triagens {
 
           // accept successful
           if (res == 1) {
-            LOGGER_DEBUG << "established SSL connection";
+            LOGGER_DEBUG("established SSL connection");
             accepted = true;
             return true;
           }
 
           // shutdown of connection
           else if (res == 0) {
-            LOGGER_DEBUG << "SSL_accept failed";
-            LOGGER_DEBUG << triagens::basics::lastSSLError();
+            LOGGER_DEBUG("SSL_accept failed");
+            LOGGER_DEBUG(triagens::basics::lastSSLError());
             return false;
           }
 
@@ -196,8 +196,8 @@ namespace triagens {
               return true;
             }
             else {
-              LOGGER_WARNING << "error in SSL handshake";
-              LOGGER_WARNING << triagens::basics::lastSSLError();
+              LOGGER_WARNING("error in SSL handshake");
+              LOGGER_WARNING(triagens::basics::lastSSLError());
               return false;
             }
           }
@@ -216,7 +216,7 @@ again:
 
             switch (res) {
               case SSL_ERROR_NONE:
-                LOGGER_WARNING << "unknown error in SSL_read";
+                LOGGER_WARNING("unknown error in SSL_read");
                 return false;
 
               case SSL_ERROR_ZERO_RETURN:
@@ -233,11 +233,11 @@ again:
                 break;
 
               case SSL_ERROR_WANT_CONNECT:
-                LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
+                LOGGER_WARNING("received SSL_ERROR_WANT_CONNECT");
                 break;
 
               case SSL_ERROR_WANT_ACCEPT:
-                LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
+                LOGGER_WARNING("received SSL_ERROR_WANT_ACCEPT");
                 break;
 
               case SSL_ERROR_SYSCALL: 
@@ -245,20 +245,20 @@ again:
                   unsigned long err = ERR_peek_error();
 
                   if (err != 0) {
-                    LOGGER_DEBUG << "SSL_read returned syscall error with: " << triagens::basics::lastSSLError();
+                    LOGGER_DEBUG("SSL_read returned syscall error with: " << triagens::basics::lastSSLError());
                   }
                   else if (nr == 0) {
-                    LOGGER_DEBUG << "SSL_read returned syscall error because an EOF was received";
+                    LOGGER_DEBUG("SSL_read returned syscall error because an EOF was received");
                   }
                   else {
-                    LOGGER_DEBUG << "SSL_read return syscall error: " << errno << ", " << strerror(errno);
+                    LOGGER_DEBUG("SSL_read return syscall error: " << errno << ", " << strerror(errno));
                   }
 
                   return false;
                 }
 
               default:
-                LOGGER_DEBUG << "received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError();
+                LOGGER_DEBUG("received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError());
                 return false;
             }
           }
@@ -302,7 +302,7 @@ again:
 
                 switch (res) {
                   case SSL_ERROR_NONE:
-                    LOGGER_WARNING << "unknown error in SSL_write";
+                    LOGGER_WARNING("unknown error in SSL_write");
                     break;
 
                   case SSL_ERROR_ZERO_RETURN:
@@ -312,11 +312,11 @@ again:
                     break;
 
                   case SSL_ERROR_WANT_CONNECT:
-                    LOGGER_WARNING << "received SSL_ERROR_WANT_CONNECT";
+                    LOGGER_WARNING("received SSL_ERROR_WANT_CONNECT");
                     break;
 
                   case SSL_ERROR_WANT_ACCEPT:
-                    LOGGER_WARNING << "received SSL_ERROR_WANT_ACCEPT";
+                    LOGGER_WARNING("received SSL_ERROR_WANT_ACCEPT");
                     break;
 
                   case SSL_ERROR_WANT_WRITE:
@@ -331,20 +331,20 @@ again:
                       unsigned long err = ERR_peek_error();
 
                       if (err != 0) {
-                        LOGGER_DEBUG << "SSL_read returned syscall error with: " << triagens::basics::lastSSLError();
+                        LOGGER_DEBUG("SSL_read returned syscall error with: " << triagens::basics::lastSSLError());
                       }
                       else if (nr == 0) {
-                        LOGGER_DEBUG << "SSL_read returned syscall error because an EOF was received";
+                        LOGGER_DEBUG("SSL_read returned syscall error because an EOF was received");
                       }
                       else {
-                        LOGGER_DEBUG << "SSL_read return syscall error: " << errno << ", " << strerror(errno);
+                        LOGGER_DEBUG("SSL_read return syscall error: " << errno << ", " << strerror(errno));
                       }
 
                       return false;
                     }
 
                   default:
-                    LOGGER_DEBUG << "received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError();
+                    LOGGER_DEBUG("received error with " << res << " and " << nr << ": " << triagens::basics::lastSSLError());
                     return false;
                 }
               }

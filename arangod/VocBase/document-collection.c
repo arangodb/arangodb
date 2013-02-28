@@ -847,79 +847,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new document in the collection from json
-////////////////////////////////////////////////////////////////////////////////
-
-static int CreateJson (TRI_doc_operation_context_t* context,
-                       TRI_df_marker_type_e type,
-                       TRI_doc_mptr_t** mptr,
-                       TRI_json_t const* json,
-                       void const* data) {
-  TRI_shaped_json_t* shaped;
-  TRI_primary_collection_t* primary;
-  TRI_voc_key_t key;
-  int res;
-
-  key = 0;
-  primary = context->_collection;
-
-  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-
-  if (shaped == 0) {
-    return TRI_ERROR_ARANGO_SHAPER_FAILED;
-  }
-  
-  if (json != NULL && json->_type == TRI_JSON_ARRAY) {
-    // _key is there
-    TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
-    if (k != NULL) {
-      if (k->_type == TRI_JSON_STRING) {
-        // _key is there and a string
-        key = k->_value._string.data;
-      }
-      else {
-        // _key is there but not a string
-        TRI_FreeShapedJson(primary->_shaper, shaped);
-        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-      }
-    }    
-  }
-  
-  res = primary->create(context, type, mptr, shaped, data, key);
-
-  TRI_FreeShapedJson(primary->_shaper, shaped);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from json
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateJson (TRI_doc_operation_context_t* context,
-                       TRI_doc_mptr_t** mptr,
-                       TRI_json_t const* json,
-                       TRI_voc_key_t key) {
-  TRI_shaped_json_t* shaped;
-  TRI_primary_collection_t* primary;
-  int res;
-
-  primary = context->_collection;
-
-  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
-
-  if (shaped == 0) {
-    return TRI_ERROR_ARANGO_SHAPER_FAILED;
-  }
-  
-  res = primary->update(context, mptr, shaped, key);
-  
-  TRI_FreeShapedJson(primary->_shaper, shaped);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1500,6 +1427,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       key = ((char*) d) + d->_offsetKey;
     }
     else {
+      
+#ifdef TRI_ENABLE_LOGGER
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
       LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
@@ -1510,7 +1439,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long long) d->_rid,
                 (unsigned long) d->_offsetJson,
                 (unsigned long) d->_offsetKey);
-      
+#endif      
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
       key = ((char*) d) + d->_offsetKey;
     }
@@ -1555,15 +1484,17 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       // update the header info
       UpdateHeader(datafile, marker, found, &update);
       update._validTo = 0;
-
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
 
       if (dfi != NULL) {
         size_t length = LengthDataMasterPointer(found);
 
+/*
+        issue #411: if we decrease here, the counts might get negative!
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= length;
+*/
 
         dfi->_numberDead += 1;
         dfi->_sizeDead += length;
@@ -1575,7 +1506,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_numberAlive += 1;
         dfi->_sizeAlive += LengthDataMasterPointer(&update);
       }
-
       // update immediate indexes
       UpdateImmediateIndexes(collection, found, &update);
     }
@@ -1892,9 +1822,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.update     = UpdateShapedJson;
   collection->base.destroy    = DeleteShapedJson;
   
-  collection->base.createJson = CreateJson;
-  collection->base.updateJson = UpdateJson;
-
   collection->cleanupIndexes  = CleanupIndexes;
 
   return true;
@@ -2609,7 +2536,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
                                                        TRI_idx_type_e type,
                                                        bool unique) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
-  TRI_vector_t* indexPaths;
+  TRI_vector_t* indexPaths = NULL;
   size_t j;
   size_t k;
 
@@ -2675,7 +2602,11 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       }
       
     }
-    
+
+    if (indexPaths == NULL) {
+      // this may actually happen if compiled with -DNDEBUG
+      return NULL;
+    }
     
     // .........................................................................
     // check that the number of paths (fields) in the index matches that

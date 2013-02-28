@@ -60,7 +60,7 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   if (0.0 < seconds) {
     watcher = scheduler->installTimerEvent(loop, this, seconds);
-    LOGGER_TRACE << "armed TimerTask with " << seconds << " seconds";
+    LOGGER_TRACE("armed TimerTask with " << seconds << " seconds");
   }
   else {
     watcher = 0;

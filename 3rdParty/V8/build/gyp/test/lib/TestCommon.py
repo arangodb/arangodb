@@ -189,19 +189,17 @@ def separate_files(flist):
             missing.append(f)
     return existing, missing
 
-if os.name == 'posix':
-    def _failed(self, status = 0):
-        if self.status is None or status is None:
-            return None
+def _failed(self, status = 0):
+    if self.status is None or status is None:
+        return None
+    try:
+        return _status(self) not in status
+    except TypeError:
+        # status wasn't an iterable
         return _status(self) != status
-    def _status(self):
-        return self.status
-elif os.name == 'nt':
-    def _failed(self, status = 0):
-        return not (self.status is None or status is None) and \
-               self.status != status
-    def _status(self):
-        return self.status
+
+def _status(self):
+    return self.status
 
 class TestCommon(TestCmd):
 
@@ -391,7 +389,6 @@ class TestCommon(TestCmd):
             print "Unexpected files exist: `%s'" % string.join(existing, "', `")
             self.fail_test(existing)
 
-
     def must_not_be_writable(self, *files):
         """Ensures that the specified file(s) exist and are not writable.
         An individual file can be specified as a list of directory names,
@@ -446,17 +443,13 @@ class TestCommon(TestCmd):
 
         This handles the "options" keyword argument and exceptions.
         """
-        try:
-            options = kw['options']
-            del kw['options']
-        except KeyError:
-            pass
-        else:
-            if options:
-                if arguments is None:
-                    arguments = options
-                else:
-                    arguments = options + " " + arguments
+        options = kw.pop('options', None)
+        if options:
+            if arguments is None:
+                arguments = options
+            else:
+                arguments = options + " " + arguments
+
         try:
             return apply(TestCmd.start,
                          (self, program, interpreter, arguments, universal_newlines),
@@ -533,11 +526,7 @@ class TestCommon(TestCmd):
             else:
                 arguments = options + " " + arguments
         kw['arguments'] = arguments
-        try:
-            match = kw['match']
-            del kw['match']
-        except KeyError:
-            match = self.match
+        match = kw.pop('match', self.match)
         apply(TestCmd.run, [self], kw)
         self._complete(self.stdout(), stdout,
                        self.stderr(), stderr, status, match)

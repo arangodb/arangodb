@@ -76,7 +76,7 @@ TEST(DisasmIa320) {
 
   // ---- All instructions that I can think of
   __ add(edx, ebx);
-  __ add(edx, Operand(12, RelocInfo::NONE));
+  __ add(edx, Operand(12, RelocInfo::NONE32));
   __ add(edx, Operand(ebx, 0));
   __ add(edx, Operand(ebx, 16));
   __ add(edx, Operand(ebx, 1999));
@@ -442,7 +442,8 @@ TEST(DisasmIa320) {
   }
 
   {
-    if (CpuFeatures::IsSupported(SSE4_1)) {
+    if (CpuFeatures::IsSupported(SSE2) &&
+        CpuFeatures::IsSupported(SSE4_1)) {
       CpuFeatures::Scope scope(SSE4_1);
       __ pextrd(eax, xmm0, 1);
       __ pinsrd(xmm1, eax, 0);

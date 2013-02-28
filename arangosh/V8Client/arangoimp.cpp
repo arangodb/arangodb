@@ -89,12 +89,6 @@ static uint64_t MaxUploadSize = 1024 * 1024;
 static string Quote = "\"";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief eol character(s)
-////////////////////////////////////////////////////////////////////////////////
-
-static string Eol = "\\n";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief separator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -157,7 +151,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
     ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
     ("quote", &Quote, "quote character(s)")
-    ("eol", &Eol, "end of line character(s)")
     ("separator", &Separator, "separator")
     ("progress", &Progress, "show progress")
   ;
@@ -316,7 +309,6 @@ int main (int argc, char* argv[]) {
   cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
   cout << "file:             " << FileName << endl;
   cout << "type:             " << TypeImport << endl;
-  cout << "eol:              " << Eol << endl;
 
   if (TypeImport == "csv") {
     cout << "quote:            " << Quote << endl;
@@ -343,21 +335,12 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
   
-  // eol
-  if (Eol.length() > 0) {
-    ih.setEol(Eol);
-  }
-  else {
-    cerr << "Wrong length of eol character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
-  }
-
   // separator
-  if (Separator.length() > 0) {
+  if (Separator.length() == 1) {
     ih.setSeparator(Separator);      
   }
   else {
-    cerr << "Separator must be at least one character." << endl;
+    cerr << "Separator must be exactly one character." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
@@ -373,7 +356,7 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
 
-  if (FileName != "-" && !FileUtils::isRegularFile(FileName)) {
+  if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {
     cerr << "file '" << FileName << "' is not a regular file." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }

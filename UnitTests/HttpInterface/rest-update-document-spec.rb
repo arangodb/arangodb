@@ -415,6 +415,127 @@ describe ArangoDB do
 
         ArangoDB.size_collection(@cid).should eq(0)
       end
+
+      it "update a document, using patch" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document
+        cmd = "/_api/document/#{did}"
+        body = "{ \"fox\" : \"Foxy\" }"
+        doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        ArangoDB.size_collection(@cid).should eq(1)
+
+        doc = ArangoDB.get("/_api/document/#{did}")
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['Hallo'].should eq('World')
+        doc.parsed_response['fox'].should eq('Foxy')
+      end
+      
+      it "update a document, using patch, keepNull = true" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document
+        cmd = "/_api/document/#{did}?keepNull=true"
+        body = "{ \"fox\" : \"Foxy\", \"Hallo\" : null }"
+        doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        ArangoDB.size_collection(@cid).should eq(1)
+
+        doc = ArangoDB.get("/_api/document/#{did}")
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response.should have_key('Hallo') # nil, but the attribute is there
+        doc.parsed_response['fox'].should eq('Foxy')
+      end
+
+      it "update a document, using patch, keepNull = false" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document
+        cmd = "/_api/document/#{did}?keepNull=false"
+        body = "{ \"fox\" : \"Foxy\", \"Hallo\" : null }"
+        doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        ArangoDB.size_collection(@cid).should eq(1)
+
+        doc = ArangoDB.get("/_api/document/#{did}")
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response.should_not have_key('Hallo')
+        doc.parsed_response['fox'].should eq('Foxy')
+      end
+
     end
 
   end

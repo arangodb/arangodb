@@ -122,6 +122,16 @@ administration interface at URL `http://server:port/` will be disabled and
 cannot used by any user at all.
 
 @CLEARPAGE
+@anchor CommandLineArangoDisableStatistics
+@CMDOPT{\--disable-statistics @CA{value}}
+
+If this option is @CA{value} is `true`, then ArangoDB's statistics gathering
+is turned off. Statistics gathering causes constant CPU activity so using this
+option to turn it off might relieve heavy-loaded instances.
+Note: this option is only available when ArangoDB has not been compiled with
+the option `--disable-figures`.
+
+@CLEARPAGE
 @anchor CommandLineArangoDirectory
 @copydetails triagens::arango::ArangoServer::_databasePath
 

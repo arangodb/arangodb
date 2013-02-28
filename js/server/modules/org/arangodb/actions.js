@@ -1003,13 +1003,42 @@ function reloadRouting () {
 
     defineRoute(route, storage, url, callback);
   };
+  
+  // .............................................................................
+  // deep-copy a route object
+  // .............................................................................
+
+  function clone (obj) {
+    if (obj === null || typeof(obj) !== "object") {
+      return obj;
+    }
+
+    var copy, a; 
+    if (Array.isArray(obj)) {
+      copy = [ ];
+      obj.forEach(function (i) {
+        copy.push(clone(i));
+      });
+    }
+    else if (obj instanceof Object) {
+      copy = { };
+      for (a in obj) {
+        if (obj.hasOwnProperty(a)) {
+          copy[a] = clone(obj[a]);
+        }
+      }
+    }
+
+    return copy;
+  }
 
   // .............................................................................
   // loop over the routes or routes bundle
   // .............................................................................
 
   while (routes.hasNext()) {
-    var route = routes.next();
+    // clone the route object so the barrier for the collection can be removed soon
+    var route = clone(routes.next());
     var r;
 
     if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
@@ -1036,6 +1065,10 @@ function reloadRouting () {
       handleRoute(RoutingCache.routes, "", "", route);
     }
   }
+
+  // allow the collection to unload
+  routes  = null;
+  routing = null;
 
   // .............................................................................
   // compute the flat routes
@@ -1468,7 +1501,13 @@ function resultException (req, res, err, headers) {
     }
 
     switch (num) {
-      case arangodb.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
+      case arangodb.ERROR_INTERNAL: 
+        code = exports.HTTP_SERVER_ERROR; 
+        break;
+      case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
+      case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
+        code = exports.HTTP_CONFLICT; 
+        break;
     }
 
     resultError(req, res, code, num, msg, headers);

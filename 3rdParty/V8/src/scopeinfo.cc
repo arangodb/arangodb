@@ -38,10 +38,10 @@ namespace v8 {
 namespace internal {
 
 
-Handle<ScopeInfo> ScopeInfo::Create(Scope* scope) {
+Handle<ScopeInfo> ScopeInfo::Create(Scope* scope, Zone* zone) {
   // Collect stack and context locals.
-  ZoneList<Variable*> stack_locals(scope->StackLocalCount());
-  ZoneList<Variable*> context_locals(scope->ContextLocalCount());
+  ZoneList<Variable*> stack_locals(scope->StackLocalCount(), zone);
+  ZoneList<Variable*> context_locals(scope->ContextLocalCount(), zone);
   scope->CollectStackAndContextLocals(&stack_locals, &context_locals);
   const int stack_local_count = stack_locals.length();
   const int context_local_count = context_locals.length();
@@ -53,7 +53,7 @@ Handle<ScopeInfo> ScopeInfo::Create(Scope* scope) {
   FunctionVariableInfo function_name_info;
   VariableMode function_variable_mode;
   if (scope->is_function_scope() && scope->function() != NULL) {
-    Variable* var = scope->function()->var();
+    Variable* var = scope->function()->proxy()->var();
     if (!var->is_used()) {
       function_name_info = UNUSED;
     } else if (var->IsContextSlot()) {
@@ -129,8 +129,8 @@ Handle<ScopeInfo> ScopeInfo::Create(Scope* scope) {
   // If present, add the function variable name and its index.
   ASSERT(index == scope_info->FunctionNameEntryIndex());
   if (has_function_name) {
-    int var_index = scope->function()->var()->index();
-    scope_info->set(index++, *scope->function()->name());
+    int var_index = scope->function()->proxy()->var()->index();
+    scope_info->set(index++, *scope->function()->proxy()->name());
     scope_info->set(index++, Smi::FromInt(var_index));
     ASSERT(function_name_info != STACK ||
            (var_index == scope_info->StackLocalCount() &&
@@ -142,7 +142,9 @@ Handle<ScopeInfo> ScopeInfo::Create(Scope* scope) {
   ASSERT(index == scope_info->length());
   ASSERT(scope->num_parameters() == scope_info->ParameterCount());
   ASSERT(scope->num_stack_slots() == scope_info->StackSlotCount());
-  ASSERT(scope->num_heap_slots() == scope_info->ContextLength());
+  ASSERT(scope->num_heap_slots() == scope_info->ContextLength() ||
+         (scope->num_heap_slots() == kVariablePartIndex &&
+          scope_info->ContextLength() == 0));
   return scope_info;
 }
 
@@ -191,7 +193,8 @@ int ScopeInfo::ContextLength() {
     bool has_context = context_locals > 0 ||
         function_name_context_slot ||
         Type() == WITH_SCOPE ||
-        (Type() == FUNCTION_SCOPE && CallsEval());
+        (Type() == FUNCTION_SCOPE && CallsEval()) ||
+        Type() == MODULE_SCOPE;
     if (has_context) {
       return Context::MIN_CONTEXT_SLOTS + context_locals +
           (function_name_context_slot ? 1 : 0);
@@ -220,11 +223,7 @@ bool ScopeInfo::HasHeapAllocatedLocals() {
 
 
 bool ScopeInfo::HasContext() {
-  if (length() > 0) {
-    return ContextLength() > 0;
-  } else {
-    return false;
-  }
+  return ContextLength() > 0;
 }
 
 
@@ -322,6 +321,7 @@ int ScopeInfo::ContextSlotIndex(String* name,
         return result;
       }
     }
+    // Cache as not found. Mode and init flag don't matter.
     context_slot_cache->Update(this, name, INTERNAL, kNeedsInitialization, -1);
   }
   return -1;
@@ -504,5 +504,33 @@ void ScopeInfo::Print() {
   PrintF("}\n");
 }
 #endif  // DEBUG
+
+
+//---------------------------------------------------------------------------
+// ModuleInfo.
+
+Handle<ModuleInfo> ModuleInfo::Create(
+    Isolate* isolate, Interface* interface, Scope* scope) {
+  Handle<ModuleInfo> info = Allocate(isolate, interface->Length());
+  info->set_host_index(interface->Index());
+  int i = 0;
+  for (Interface::Iterator it = interface->iterator();
+       !it.done(); it.Advance(), ++i) {
+    Variable* var = scope->LocalLookup(it.name());
+    info->set_name(i, *it.name());
+    info->set_mode(i, var->mode());
+    ASSERT((var->mode() == MODULE) == (it.interface()->IsModule()));
+    if (var->mode() == MODULE) {
+      ASSERT(it.interface()->IsFrozen());
+      ASSERT(it.interface()->Index() >= 0);
+      info->set_index(i, it.interface()->Index());
+    } else {
+      ASSERT(var->index() >= 0);
+      info->set_index(i, var->index());
+    }
+  }
+  ASSERT(i == info->length());
+  return info;
+}
 
 } }  // namespace v8::internal

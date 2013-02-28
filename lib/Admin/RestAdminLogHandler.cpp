@@ -30,11 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantString.h"
-#include "Variant/VariantUInt32.h"
-#include "Variant/VariantUInt64.h"
-#include "Variant/VariantVector.h"
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -269,20 +264,13 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   // check the sort direction
   // .............................................................................
   
-  bool sortAscending = false;
-  bool sortDescending = false;
+  bool sortAscending = true;
   
   string sortdir = StringUtils::tolower(_request->value("sort", found));
-  
+ 
   if (found) {
-    if (sortdir == "asc") {
-      sortAscending = true;
-    }
-    else if (sortdir == "desc") {
-      sortDescending = true;
-    }
-    else {
-      LOGGER_DEBUG << "unknown sort direction '" << sortdir << "'";
+    if (sortdir == "desc") {
+      sortAscending = false;
     }
   }
   
@@ -296,20 +284,6 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   // .............................................................................
   // generate result
   // .............................................................................
-  
-  VariantArray* result = new VariantArray();
-  
-  VariantVector* lid = new VariantVector();
-  result->add("lid", lid);
-  
-  VariantVector* level = new VariantVector();
-  result->add("level", level);
-  
-  VariantVector* timestamp = new VariantVector();
-  result->add("timestamp", timestamp);
-  
-  VariantVector* text = new VariantVector();
-  result->add("text", text);
   
   TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
   TRI_vector_t clean;
@@ -330,7 +304,17 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
     TRI_PushBackVector(&clean, buf);
   }
   
-  result->add("totalAmount", new VariantUInt64(clean._length));
+
+  TRI_json_t result;
+  TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &result);
+
+  // create the 4 vectors for the result parts
+  TRI_json_t* lid       = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* level     = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* timestamp = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* text      = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "totalAmount", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) clean._length));
   
   size_t length = clean._length;
   
@@ -347,42 +331,63 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
     length = size;
   }
 
-  if (sortAscending) {
-    qsort(((char*) TRI_BeginVector(&clean)) + offset * sizeof(TRI_log_buffer_t),
-          length,
-          sizeof(TRI_log_buffer_t),
-          LidCompareAsc);
-  }
-  else if (sortDescending) {
-    qsort(((char*) TRI_BeginVector(&clean)) + offset * sizeof(TRI_log_buffer_t),
-          length,
-          sizeof(TRI_log_buffer_t),
-          LidCompareDesc);
-  }
+  qsort(((char*) TRI_BeginVector(&clean)) + offset * sizeof(TRI_log_buffer_t),
+        length,
+        sizeof(TRI_log_buffer_t),
+        (sortAscending ? LidCompareAsc : LidCompareDesc));
   
   for (size_t i = 0;  i < length;  ++i) {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(&clean, offset + i);
     uint32_t l = 0;
     
     switch (buf->_level) {
-      case TRI_LOG_LEVEL_FATAL:  l = 0; break;
-      case TRI_LOG_LEVEL_ERROR:  l = 1; break;
+      case TRI_LOG_LEVEL_FATAL:    l = 0; break;
+      case TRI_LOG_LEVEL_ERROR:    l = 1; break;
       case TRI_LOG_LEVEL_WARNING:  l = 2; break;
-      case TRI_LOG_LEVEL_INFO:  l = 3; break;
-      case TRI_LOG_LEVEL_DEBUG:  l = 4; break;
-      case TRI_LOG_LEVEL_TRACE:  l = 5; break;
+      case TRI_LOG_LEVEL_INFO:     l = 3; break;
+      case TRI_LOG_LEVEL_DEBUG:    l = 4; break;
+      case TRI_LOG_LEVEL_TRACE:    l = 5; break;
     }
-    
-    lid->add(new VariantUInt64(buf->_lid));
-    level->add(new VariantUInt32(l));
-    timestamp->add(new VariantUInt32(buf->_timestamp));
-    text->add(new VariantString(buf->_text));
+
+    // put the data into the individual vectors
+    if (lid != 0) {
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, lid, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) buf->_lid));
+    }
+
+    if (level != 0) {
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, level, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) l));
+    }
+
+    if (timestamp != 0) {
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, timestamp, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) buf->_timestamp));
+    }
+
+    if (text != 0) {
+      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, text, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buf->_text));
+    }
   }
   
   TRI_FreeBufferLogging(logs);
   TRI_DestroyVector(&clean);
+ 
+  // now put the 4 vectors into the result 
+  if (lid != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "lid", lid);
+  }
+  if (level != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "level", level);
+  }
+  if (timestamp != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "timestamp", timestamp);
+  }
+  if (text != 0) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "text", text);
+  }
   
-  generateResult(result);
+  generateResult(&result);
+
+  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
+
   return HANDLER_DONE;
 }
 

@@ -71,7 +71,6 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
   vector->_buffer          = NULL;
   vector->_length          = 0;
   vector->_capacity        = 0;
-  vector->_growthFactor    = GROW_FACTOR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,15 +80,10 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
 int TRI_InitVector2 (TRI_vector_t* vector, 
                      TRI_memory_zone_t* zone, 
                      size_t elementSize,
-                     size_t initialCapacity, 
-                     double growthFactor) {
+                     size_t initialCapacity) { 
   // init vector as usual
   TRI_InitVector(vector, zone, elementSize);
 
-  if (growthFactor > 1.0) {
-    vector->_growthFactor = growthFactor;
-  }
-  
   if (initialCapacity != 0) {
     vector->_buffer = (char*) TRI_Allocate(vector->_memoryZone, (initialCapacity * vector->_elementSize), false); 
     if (vector->_buffer == NULL) {
@@ -252,7 +246,7 @@ int TRI_ResizeVector (TRI_vector_t* vector, size_t n) {
 int TRI_PushBackVector (TRI_vector_t* vector, void const* element) {
   if (vector->_length == vector->_capacity) {
     char* newBuffer;
-    size_t newSize = (size_t) (1 + (vector->_growthFactor * vector->_capacity));
+    size_t newSize = (size_t) (1 + (GROW_FACTOR * vector->_capacity));
 
     newBuffer = (char*) TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * vector->_elementSize);
 
@@ -312,7 +306,7 @@ void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t positio
   // ...........................................................................
   
   if (vector->_length >= vector->_capacity || position >= vector->_length) {
-    size_t newSize = (size_t) (1 + (vector->_growthFactor * vector->_capacity));
+    size_t newSize = (size_t) (1 + (GROW_FACTOR * vector->_capacity));
 
     if (position >= newSize) {
       newSize = position + 1;

@@ -1,11 +1,11 @@
-Module "console" {#JSModuleConsole}
-===================================
+Module "console"{#JSModuleConsole}
+==================================
 
 @NAVIGATE_JSModuleConsole
 @EMBEDTOC{JSModuleConsoleTOC}
 
-Console Module {#JSModuleConsoleIntro}
-======================================
+Console Module{#JSModuleConsoleIntro}
+=====================================
 
 The implementation follows the CommonJS specification
 <a href="http://wiki.commonjs.org/wiki/Console">Console</a>.

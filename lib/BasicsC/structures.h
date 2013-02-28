@@ -94,8 +94,8 @@ typedef int64_t TRI_msec_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_blob_s {
-  uint32_t length;
   char* data;
+  uint32_t length;
 }
 TRI_blob_t;
 

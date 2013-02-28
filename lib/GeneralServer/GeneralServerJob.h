@@ -171,7 +171,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         status_e work () {
-          LOGGER_TRACE << "beginning job " << static_cast<Job*>(this);
+          LOGGER_TRACE("beginning job " << static_cast<Job*>(this));
 
           this->RequestStatisticsAgent::transfer(_handler);
 
@@ -183,7 +183,7 @@ namespace triagens {
           Handler::status_e status = _handler->execute();
           RequestStatisticsAgentSetRequestEnd(_handler);
 
-          LOGGER_TRACE << "finished job " << static_cast<Job*>(this) << " with status " << status;
+          LOGGER_TRACE("finished job " << static_cast<Job*>(this) << " with status " << status);
 
           switch (status) {
             case Handler::HANDLER_DONE:    return Job::JOB_DONE;
@@ -219,7 +219,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool beginShutdown () {
-          LOGGER_TRACE << "shutdown job " << static_cast<Job*>(this);
+          LOGGER_TRACE("shutdown job " << static_cast<Job*>(this));
 
           _shutdown = 1;
           return true;

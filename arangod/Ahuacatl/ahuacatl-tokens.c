@@ -53,7 +53,6 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
-#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -83,6 +82,8 @@ typedef unsigned int flex_uint32_t;
 #ifndef UINT32_MAX
 #define UINT32_MAX             (4294967295U)
 #endif
+
+#endif /* ! C99 */
 
 #endif /* ! FLEXINT_H */
 
@@ -157,7 +158,15 @@ typedef void* yyscan_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k.
+ * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
+ * Ditto for the __ia64__ case accordingly.
+ */
+#define YY_BUF_SIZE 32768
+#else
 #define YY_BUF_SIZE 16384
+#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -361,8 +370,8 @@ static void yy_fatal_error (yyconst char msg[] ,yyscan_t yyscanner );
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
 
-#define YY_NUM_RULES 54
-#define YY_END_OF_BUFFER 55
+#define YY_NUM_RULES 55
+#define YY_END_OF_BUFFER 56
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -372,20 +381,20 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[133] =
     {   0,
-        0,    0,    0,    0,   55,   53,   46,   46,   22,   53,
-       29,   53,   53,   34,   35,   27,   25,   33,   26,   28,
-       44,   44,   31,   20,   21,   18,   30,   53,   40,   40,
+        0,    0,    0,    0,   56,   54,   47,   47,   22,   54,
+       29,   54,   54,   34,   35,   27,   25,   33,   26,   28,
+       44,   44,   31,   20,   21,   18,   30,   54,   40,   40,
        40,   40,   40,   40,   40,   40,   40,   40,   40,   38,
-       39,   53,   53,   36,   53,   37,   49,   51,   52,   50,
-       46,   16,    0,   42,    0,   23,    0,   43,    0,   47,
-        0,   44,   19,   15,   17,   45,    0,   40,   40,   40,
+       39,   54,   54,   36,   54,   37,   50,   52,   53,   51,
+       47,   16,    0,   42,    0,   23,    0,   43,    0,   48,
+        0,   44,   19,   15,   17,   46,    0,   40,   40,   40,
        40,   40,   40,   40,   10,   40,   40,   40,   40,   40,
-       40,    0,   40,    0,    0,    0,   41,   24,   49,   51,
-       48,   44,   45,    8,   40,   40,   40,   40,    1,   40,
+       40,    0,   40,    0,    0,    0,   41,   24,   50,   52,
+       49,   45,   46,    8,   40,   40,   40,   40,    1,   40,
 
         2,   40,   40,   40,   40,   40,   32,   40,   40,    0,
        40,    9,   40,   40,   11,   40,   12,   40,    6,   13,
-        0,   44,   40,   14,   40,    7,   40,   40,    3,    4,
+        0,   45,   40,   14,   40,    7,   40,   40,    3,    4,
         5,    0
     } ;
 
@@ -555,11 +564,11 @@ static yyconst flex_int16_t yy_chk[336] =
     } ;
 
 /* Table of booleans, true if rule could match eol. */
-static yyconst flex_int32_t yy_rule_can_match_eol[55] =
+static yyconst flex_int32_t yy_rule_can_match_eol[56] =
     {   0,
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0,     };
+    0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0,     };
 
 /* The intent behind this definition is that it'll catch
  * any uses of REJECT which flex missed.
@@ -734,7 +743,12 @@ static int input (yyscan_t yyscanner );
 
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k */
+#define YY_READ_BUF_SIZE 16384
+#else
 #define YY_READ_BUF_SIZE 8192
+#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -742,7 +756,7 @@ static int input (yyscan_t yyscanner );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO fwrite( yytext, yyleng, 1, yyout )
+#define ECHO do { if (fwrite( yytext, yyleng, 1, yyout )) {} } while (0)
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -753,7 +767,7 @@ static int input (yyscan_t yyscanner );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		int n; \
+		size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -1219,15 +1233,23 @@ YY_RULE_SETUP
 case 44:
 YY_RULE_SETUP
 {  
-  /* a numeric value */
+  /* a numeric integer value */
   yylval->strval = TRI_RegisterStringAql(yyextra, yytext, yyleng, false); 
-  return T_NUMBER;
+  return T_INTEGER;
+}
+	YY_BREAK
+case 45:
+YY_RULE_SETUP
+{  
+  /* a numeric double value */
+  yylval->strval = TRI_RegisterStringAql(yyextra, yytext, yyleng, false); 
+  return T_DOUBLE;
 }
 	YY_BREAK
 /* ---------------------------------------------------------------------------
   * bind parameters
   * --------------------------------------------------------------------------- */
-case 45:
+case 46:
 YY_RULE_SETUP
 {
   /* bind parameters must start with a @
@@ -1239,45 +1261,39 @@ YY_RULE_SETUP
 /* ---------------------------------------------------------------------------
   * whitespace etc.
   * --------------------------------------------------------------------------- */
-case 46:
-/* rule 46 can match eol */
+case 47:
+/* rule 47 can match eol */
 YY_RULE_SETUP
 {
   /* whitespace is ignored */ 
 }
 	YY_BREAK
-case 47:
+case 48:
 YY_RULE_SETUP
 {
   BEGIN(COMMENT);
 }
 	YY_BREAK
-case 48:
+case 49:
 YY_RULE_SETUP
 {
   BEGIN(INITIAL);
 }
 	YY_BREAK
-case 49:
+case 50:
 YY_RULE_SETUP
 { 
   // eat comment in chunks
 }
 	YY_BREAK
-case 50:
+case 51:
 YY_RULE_SETUP
 {
   // eat the lone star
 }
 	YY_BREAK
-case 51:
-/* rule 51 can match eol */
-YY_RULE_SETUP
-{
-  yylineno++;
-}
-	YY_BREAK
 case 52:
+/* rule 52 can match eol */
 YY_RULE_SETUP
 {
   yylineno++;
@@ -1286,11 +1302,17 @@ YY_RULE_SETUP
 case 53:
 YY_RULE_SETUP
 {
+  yylineno++;
+}
+	YY_BREAK
+case 54:
+YY_RULE_SETUP
+{
   /* anything else is returned as it is */
   return (int) yytext[0];
 }
 	YY_BREAK
-case 54:
+case 55:
 YY_RULE_SETUP
 ECHO;
 	YY_BREAK
@@ -2038,8 +2060,8 @@ YY_BUFFER_STATE Ahuacatl_scan_string (yyconst char * yystr , yyscan_t yyscanner)
 
 /** Setup the input buffer state to scan the given bytes. The next call to Ahuacatllex() will
  * scan from a @e copy of @a bytes.
- * @param bytes the byte buffer to scan
- * @param len the number of bytes in the buffer pointed to by @a bytes.
+ * @param yybytes the byte buffer to scan
+ * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
  * @param yyscanner The scanner object.
  * @return the newly allocated buffer state object.
  */

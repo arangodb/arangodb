@@ -881,6 +881,8 @@ For string processing, AQL offers the following functions:
   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
   start at position 0.
 
+- @FN{REVERSE(@FA{value})}: returns the reverse of the string @FA{value}.
+
 - @FN{CONTAINS(@FA{text}, @FA{search}, @FA{return-index})}: checks whether the string
   @FA{search} is contained in the string @FA{text}. By default, this function returns 
   `true` if @FA{search} is contained in @FA{text}, and `false` otherwise. By
@@ -1031,6 +1033,20 @@ AQL supports the following functions to operate on document values:
   If @FA{removeInternal} is set to `true`, then all internal attributes (such as `_id`, 
   `_key` etc.) are removed from the result. If @FA{sort} is set to `true`, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
+
+- @FN{UNSET(@FA{document}\, @FA{attributename}\, ...)}: removes the attributes @FA{attributename}
+  (can be one or many) from @FA{document}. All other attributes will be preserved.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+    RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+
+- @FN{KEEP(@FA{document}\, @FA{attributename}\, ...)}: keeps only the attributes @FA{attributename}
+  (can be one or many) from @FA{document}. All other attributes will be removed from the result.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+    RETURN KEEP(doc, 'firstname', 'name', 'likes')
 
 @subsubsection AqlFunctionsGeo Geo functions
 

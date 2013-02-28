@@ -95,7 +95,7 @@ namespace triagens {
         string const& next = *j;
 
         if (next == ".") {
-          LOGGER_WARNING << "file '" << name << "' contains '.'";
+          LOGGER_WARNING("file '" << name << "' contains '.'");
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '.'");
@@ -103,7 +103,7 @@ namespace triagens {
         }
 
         if (next == "..") {
-          LOGGER_WARNING << "file '" << name << "' contains '..'";
+          LOGGER_WARNING("file '" << name << "' contains '..'");
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '..'");
@@ -113,7 +113,7 @@ namespace triagens {
         string::size_type sc = next.find_first_not_of(allowed);
 
         if (sc != string::npos) {
-          LOGGER_WARNING << "file '" << name << "' contains illegal character";
+          LOGGER_WARNING("file '" << name << "' contains illegal character");
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains illegal character '" + string(1, next[sc]) + "'");
@@ -122,7 +122,7 @@ namespace triagens {
 
         if (! path.empty()) {
           if (! FileUtils::isDirectory(path)) {
-            LOGGER_WARNING << "file '" << name << "' not found";
+            LOGGER_WARNING("file '" << name << "' not found");
 
             _response = createResponse(HttpResponse::NOT_FOUND);
             _response->body().appendText("file not found");
@@ -134,7 +134,7 @@ namespace triagens {
         last = next;
 
         if (! allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
-          LOGGER_WARNING << "file '" << name << "' contains symbolic link";
+          LOGGER_WARNING("file '" << name << "' contains symbolic link");
 
           _response = createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("symbolic links are not allowed");
@@ -143,7 +143,7 @@ namespace triagens {
       }
 
       if (! FileUtils::isRegularFile(name)) {
-        LOGGER_WARNING << "file '" << name << "' not found";
+        LOGGER_WARNING("file '" << name << "' not found");
 
         _response = createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not found");
@@ -156,7 +156,7 @@ namespace triagens {
         FileUtils::slurp(name, _response->body());
       }
       catch (...) {
-        LOGGER_WARNING << "file '" << name << "' not readable";
+        LOGGER_WARNING("file '" << name << "' not readable");
 
         _response = createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not readable");
@@ -183,7 +183,7 @@ namespace triagens {
         else if (suffix == ".css") {
           _response->setContentType("text/css");
         }
-        else if (suffix == ".html") {
+        else if (suffix == ".html" || suffix == ".htm") {
           _response->setContentType("text/html");
         }
         else if (suffix == ".ico") {
@@ -196,7 +196,9 @@ namespace triagens {
           _response->setContentType("text/plain");
         }
         else {
-          LOGGER_WARNING << "unknown suffix = " << suffix;
+          // note: changed the log level to debug. an unknown content-type does not justify a warning
+          LOGGER_TRACE("unknown suffix = " << suffix);
+
           _response->setContentType(contentType);
         }
       }

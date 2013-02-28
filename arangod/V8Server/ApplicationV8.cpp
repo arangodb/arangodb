@@ -133,7 +133,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
   for (vector<string>::iterator i = _globalMethods.begin();  i != _globalMethods.end();  ++i) {
     string const& func = *i;
 
-    LOGGER_DEBUG << "executing global context methods '" << func << "' for context " << _id;
+    LOGGER_DEBUG("executing global context methods '" << func << "' for context " << _id);
 
     TRI_ExecuteJavaScriptString(_context,
                                 v8::String::New(func.c_str()),
@@ -169,6 +169,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
   : ApplicationFeature("V8"),
     _startupPath(),
     _startupModules(),
+    _startupNodeModules(),
     _actionPath(),
     _useActions(true),
     _performUpgrade(false),
@@ -248,7 +249,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
-    LOGGER_DEBUG << "waiting for unused V8 context";
+    LOGGER_DEBUG("waiting for unused V8 context");
     guard.wait();
   }
 
@@ -258,7 +259,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
     return 0;
   }
 
-  LOGGER_TRACE << "found unused V8 context";
+  LOGGER_TRACE("found unused V8 context");
 
   V8Context* context = _freeContexts.back();
 
@@ -298,12 +299,12 @@ void ApplicationV8::exitContext (V8Context* context) {
   ++context->_dirt;
 
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
-    LOGGER_TRACE << "V8 context has reached GC timeout threshold and will be scheduled for GC";
+    LOGGER_TRACE("V8 context has reached GC timeout threshold and will be scheduled for GC");
     _dirtyContexts.push_back(context);
     _busyContexts.erase(context);
   }
   else if (context->_dirt >= _gcInterval) {
-    LOGGER_TRACE << "V8 context has reached maximum number of requests and will be scheduled for GC";
+    LOGGER_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
     _dirtyContexts.push_back(context);
     _busyContexts.erase(context);
   }
@@ -314,7 +315,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   
   guard.broadcast();
 
-  LOGGER_TRACE << "returned dirty V8 context";
+  LOGGER_TRACE("returned dirty V8 context");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,10 +408,10 @@ void ApplicationV8::collectGarbage () {
   bool useReducedWait = false;
 
   // the time we'll wait for a signal
-  uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+  const uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
-  uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
+  const uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
 
   while (_stopping == 0) {
     V8Context* context = 0;
@@ -442,7 +443,7 @@ void ApplicationV8::collectGarbage () {
         context = pickContextForGc();
 
         // there is no context to clean up, probably they all have been cleaned up
-        // already. increase the wait time so we don't cycle to much in the GC loop
+        // already. increase the wait time so we don't cycle too much in the GC loop
         // and waste CPU unnecessary
         useReducedWait =  (context != 0);
       }
@@ -453,14 +454,14 @@ void ApplicationV8::collectGarbage () {
     gc->updateGcStamp(lastGc);
 
     if (context != 0) {
-      LOGGER_TRACE << "collecting V8 garbage";
+      LOGGER_TRACE("collecting V8 garbage");
 
       context->_locker = new v8::Locker(context->_isolate);
       context->_isolate->Enter();
       context->_context->Enter();
 
       v8::V8::LowMemoryNotification();
-      while (!v8::V8::IdleNotification()) {
+      while (! v8::V8::IdleNotification()) {
       }
 
       context->_context->Exit();
@@ -511,6 +512,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
+    ("javascript.package-path", &_startupNodeModules, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
@@ -521,8 +523,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
-
-  LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
+  LOGGER_DEBUG("V8 version: " << v8::V8::GetVersion()); 
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -531,22 +532,22 @@ bool ApplicationV8::prepare () {
 
   // check the startup modules
   if (_startupModules.empty()) {
-    LOGGER_FATAL << "no 'javascript.modules-path' has been supplied, giving up";
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("no 'javascript.modules-path' has been supplied, giving up");
   }
   else {
-    LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+    LOGGER_INFO("using JavaScript modules path '" << _startupModules << "'");
+  }
+
+  if (! _startupNodeModules.empty()) {
+    LOGGER_INFO("using Node modules path '" << _startupNodeModules << "'");
   }
 
   // set up the startup loader
   if (_startupPath.empty()) {
-    LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
   }
   else {
-    LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
+    LOGGER_INFO("using JavaScript startup files at '" << _startupPath << "'");
     _startupLoader.setDirectory(_startupPath);
   }
 
@@ -554,12 +555,10 @@ bool ApplicationV8::prepare () {
   // set up action loader
   if (_useActions) {
     if (_actionPath.empty()) {
-      LOGGER_FATAL << "no 'javascript.action-directory' has been supplied, giving up";
-      TRI_FlushLogging();
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("no 'javascript.action-directory' has been supplied, giving up");
     }
     else {
-      LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";
+      LOGGER_INFO("using JavaScript action files at '" << _actionPath << "'");
 
       _actionLoader.setDirectory(_actionPath);
     }
@@ -567,7 +566,7 @@ bool ApplicationV8::prepare () {
 
   // add v8 options
   if (_v8Options.size() > 0) {
-    LOGGER_INFO << "using V8 options '" << _v8Options << "'";
+    LOGGER_INFO("using V8 options '" << _v8Options << "'");
     v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
   }
 
@@ -655,13 +654,11 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   files.push_back("server/bootstrap/module-internal.js");
   files.push_back("server/server.js"); // needs internal
 
-  LOGGER_TRACE << "initialising V8 context #" << i;
+  LOGGER_TRACE("initialising V8 context #" << i);
 
   V8Context* context = _contexts[i] = new V8Context();
   if (context == 0) {
-    LOGGER_FATAL << "cannot initialize V8 engine";
-
-    return false;
+    LOGGER_FATAL_AND_EXIT("cannot initialize V8 engine");
   }
 
   // enter a new isolate
@@ -674,12 +671,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   context->_context = v8::Context::New();
 
   if (context->_context.IsEmpty()) {
-    LOGGER_FATAL << "cannot initialize V8 engine";
-
-    context->_isolate->Exit();
-    delete context->_locker;
-
-    return false;
+    LOGGER_FATAL_AND_EXIT("cannot initialize V8 engine");
   }
 
   context->_context->Enter();
@@ -693,7 +685,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _startupModules);
+  TRI_InitV8Utils(context->_context, _startupModules, _startupNodeModules);
   TRI_InitV8Shell(context->_context);
 
   // set global flag before loading system files
@@ -707,19 +699,13 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[j] << "'";
-
-      context->_context->Exit();
-      context->_isolate->Exit();
-      delete context->_locker;
-
-      return false;
+      LOGGER_FATAL_AND_EXIT("cannot load JavaScript utilities from file '" << files[j] << "'");
     }
   }
 
   // run upgrade script
   if (i == 0 && ! _skipUpgrade) {
-    LOGGER_DEBUG << "running database version check";
+    LOGGER_DEBUG("running database version check");
 
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
@@ -727,20 +713,24 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   
     if (! TRI_ObjectToBoolean(result)) {
       if (_performUpgrade) {
-        LOGGER_FATAL << "Database upgrade failed. Please inspect the logs from the upgrade procedure";
+        LOGGER_FATAL_AND_EXIT("Database upgrade failed. Please inspect the logs from the upgrade procedure");
       }
       else {
-        LOGGER_FATAL << "Database version check failed. Please start the server with the --upgrade option";
+        LOGGER_FATAL_AND_EXIT("Database version check failed. Please start the server with the --upgrade option");
       }
-
-      context->_context->Exit();
-      context->_isolate->Exit();
-      delete context->_locker;
-
-      return false;
     }
     
-    LOGGER_DEBUG << "database version check passed";
+    LOGGER_DEBUG("database version check passed");
+  }
+
+  if (_performUpgrade) {
+    // issue #391: when invoked with --upgrade, the server will not always shut down
+    LOGGER_INFO("database version check passed");
+    context->_context->Exit();
+    context->_isolate->Exit();
+    delete context->_locker;
+    
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
   // load all actions
@@ -748,13 +738,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     bool ok = _actionLoader.executeAllScripts(context->_context);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load JavaScript actions from directory '" << _actionLoader.getDirectory() << "'";
-
-      context->_context->Exit();
-      context->_isolate->Exit();
-      delete context->_locker;
-
-      return false;
+      LOGGER_FATAL_AND_EXIT("cannot load JavaScript actions from directory '" << _actionLoader.getDirectory() << "'");
     }
 
     {
@@ -773,7 +757,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   context->_lastGcStamp = TRI_microtime();
   
-  LOGGER_TRACE << "initialised V8 context #" << i;
+  LOGGER_TRACE("initialised V8 context #" << i);
 
   _freeContexts.push_back(context);
 
@@ -785,7 +769,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::shutdownV8Instance (size_t i) {
-  LOGGER_TRACE << "shutting down V8 context #" << i;
+  LOGGER_TRACE("shutting down V8 context #" << i);
 
   V8Context* context = _contexts[i];
 
@@ -794,7 +778,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   context->_context->Enter();
 
   v8::V8::LowMemoryNotification();
-  while (!v8::V8::IdleNotification()) {
+  while (! v8::V8::IdleNotification()) {
   }
  
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
@@ -813,7 +797,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
 
   delete context;
 
-  LOGGER_TRACE << "closed V8 context #" << i;
+  LOGGER_TRACE("closed V8 context #" << i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -849,7 +849,71 @@ function CollectionDocumentSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check figures
+////////////////////////////////////////////////////////////////////////////////
+
+    testFiguresAfterOperations : function () {
+      var figures;
+
+      collection.save({ _key : "a1" });
+      collection.save({ _key : "a2" });
+      collection.save({ _key : "a3" });
+
+      figures = collection.figures();
+      assertEqual(3, figures.alive.count);
+      assertEqual(0, figures.dead.count);
+
+      // insert a few duplicates
+      try {
+        collection.save({ _key : "a1" });
+        fail();
+      }
+      catch (e1) {
+      }
+      
+      try {
+        collection.save({ _key : "a2" });
+        fail();
+      }
+      catch (e2) {
+      }
+
+      // we should see the same figures 
+      figures = collection.figures();
+      assertEqual(3, figures.alive.count);
+      assertEqual(0, figures.dead.count);
+
+      // now remove some documents
+      collection.remove("a2");
+      collection.remove("a3");
+
+      // we should see two live docs less
+      figures = collection.figures();
+      assertEqual(1, figures.alive.count);
+      assertEqual(2, figures.dead.count);
+
+      // replacing one document does not change alive, but increases dead!
+      collection.replace("a1", { });
+      figures = collection.figures();
+      assertEqual(1, figures.alive.count);
+      assertEqual(3, figures.dead.count);
+
+      // this doc does not exist. should not change the figures
+      try {
+        collection.replace("a2", { });
+        fail();
+      }
+      catch (e3) {
+      }
+      
+      figures = collection.figures();
+      assertEqual(1, figures.alive.count);
+      assertEqual(3, figures.dead.count);
     }
+
   };
 }
 

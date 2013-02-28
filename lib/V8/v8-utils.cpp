@@ -200,6 +200,28 @@ static bool LoadJavaScriptDirectory (char const* path,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the path list
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Array> pathList (string const& modules) {
+  v8::HandleScope scope;
+
+#ifdef _WIN32
+  vector<string> paths = StringUtils::split(modules, ";",'\0');
+#else
+  vector<string> paths = StringUtils::split(modules, ";:");
+#endif
+
+  v8::Handle<v8::Array> modulesPaths = v8::Array::New();
+
+  for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
+    modulesPaths->Set(i, v8::String::New(paths[i].c_str()));
+  }
+
+  return scope.Close(modulesPaths);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -560,7 +582,7 @@ static v8::Handle<v8::Value> JS_Log (v8::Arguments const& argv) {
   }
 
   if (TRI_CaseEqualString(*level, "fatal")) {
-    LOG_FATAL("%s", *message);
+    LOG_ERROR("(FATAL) %s", *message);
   }
   else if (TRI_CaseEqualString(*level, "error")) {
     LOG_ERROR("%s", *message);
@@ -617,6 +639,46 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::String::New(TRI_LogLevelLogging()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief md5 sum
+///
+/// @FUN{internal.md5(@FA{text})}
+///
+/// Computes an md5 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: md5(<text>)")));
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create md5
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslMD5(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -740,6 +802,46 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
   result->Set(v8::String::New("virtualSize"), v8::Number::New((double) info._virtualSize));
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a random number using OpenSSL
+///
+/// @FUN{internal.rand()}
+///
+/// Generates a random number
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Rand (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // check arguments
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: rand()")));
+  }
+
+  int iterations = 0;
+  while (iterations++ < 5) {
+    int32_t value;
+    int result = SslInterface::sslRand(&value);
+
+    if (result != 0) {
+      // error
+      break;
+    }
+
+    // no error, now check what random number was produced
+
+    if (value != 0) {
+      // a number != 0 was produced. that is sufficient
+      return scope.Close(v8::Number::New(value));
+    }
+
+    // we don't want to return 0 as the result, so we try again
+  }
+
+  // we failed to produce a valid random number
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -962,14 +1064,14 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 ///
 /// @FUN{internal.sha256(@FA{text})}
 ///
-/// Computes a sha256 for the @FA{text}.
+/// Computes an sha256 for the @FA{text}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract arguments
-  if (argv.Length() != 1) {
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: sha256(<text>)")));
   }
 
@@ -1366,7 +1468,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
+void TRI_InitV8Utils (v8::Handle<v8::Context> context,
+                      string const& modules,
+                      string const& nodes) {
   v8::HandleScope scope;
 
   v8::Handle<v8::FunctionTemplate> ft;
@@ -1398,9 +1502,11 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
@@ -1412,25 +1518,14 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global variables
   // .............................................................................
 
-
   // .............................................................................
   // The spilt has been modified -- only except semicolon, previously we excepted
   // a colon as well. So as not to break existing configurations, we only 
   // make the modification for windows version -- since there isn't one yet!
   // .............................................................................
 
-#ifdef _WIN32
-  vector<string> paths = StringUtils::split(path, ";",'\0');
-#else
-  vector<string> paths = StringUtils::split(path, ";:");
-#endif
-  v8::Handle<v8::Array> modulesPaths = v8::Array::New();
-
-  for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
-    modulesPaths->Set(i, v8::String::New(paths[i].c_str()));
-  }
-
-  context->Global()->Set(v8::String::New("MODULES_PATH"), modulesPaths);
+  context->Global()->Set(v8::String::New("MODULES_PATH"), pathList(modules));
+  context->Global()->Set(v8::String::New("PACKAGE_PATH"), pathList(nodes));
 }
 
 #ifdef TRI_HAVE_ICU

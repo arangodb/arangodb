@@ -45,7 +45,7 @@ void defaultExitFunction (int exitCode, void* data) {
   _exit(exitCode);
 }
 
-void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {
+void TRI_Application_Exit_SetExit (TRI_ExitFunction_t exitFunction) {
   if (exitFunction != NULL) {  
     TRI_EXIT_FUNCTION = exitFunction;
   }

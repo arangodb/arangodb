@@ -122,7 +122,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
                   host, sizeof(host),
                   serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
     
-    LOGGER_TRACE << "bind to address '" << string(host) << "' port '" << _port << "'";
+    LOGGER_TRACE("bind to address '" << string(host) << "' port '" << _port << "'");
   }
   
   TRI_socket_t listenSocket;
@@ -139,7 +139,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     // try to reuse address
     int opt = 1;
     if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-      LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_ERROR("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
 
       TRI_CLOSE_SOCKET(listenSocket);
 
@@ -147,7 +147,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
       listenSocket.fileHandle = 0;
       return listenSocket;
     }
-    LOGGER_TRACE << "reuse address flag set";
+    LOGGER_TRACE("reuse address flag set");
 
     // server needs to bind to socket
     int result = ::bind(listenSocket.fileHandle, aip->ai_addr, aip->ai_addrlen);
@@ -161,13 +161,13 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     }
 
     // listen for new connection, executed for server endpoints only
-    LOGGER_TRACE << "using backlog size " << _listenBacklog;
+    LOGGER_TRACE("using backlog size " << _listenBacklog);
     result = ::listen(listenSocket.fileHandle, _listenBacklog);
 
     if (result == SOCKET_ERROR) {
       TRI_CLOSE_SOCKET(listenSocket);
       // todo: get the correct error code using WSAGetLastError for windows
-      LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
+      LOGGER_ERROR("listen failed with " << errno << " (" << strerror(errno) << ")");
 
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;
@@ -231,11 +231,10 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   struct addrinfo hints;
   int error;
   TRI_socket_t listenSocket;
-
   listenSocket.fileHandle = 0;
   listenSocket.fileDescriptor = 0;
   
-  LOGGER_DEBUG << "connecting to ip endpoint " << _specification;
+  LOGGER_DEBUG("connecting to ip endpoint " << _specification);
   
   assert(_socket.fileHandle == 0);
   assert(!_connected);
@@ -262,11 +261,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
     switch (lastError) {
       case WSANOTINITIALISED: {
-        LOGGER_ERROR << "getaddrinfo for host: " << _host.c_str() << " => WSAStartup was not called or not called successfully.";
+        LOGGER_ERROR("getaddrinfo for host: " << _host.c_str() << " => WSAStartup was not called or not called successfully.");
         break;  
       }
       default: {
-        LOGGER_ERROR << "getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error);
+        LOGGER_ERROR("getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error));
         break;  
       } 
     }
@@ -302,10 +301,10 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   struct addrinfo hints;
   int error;
   TRI_socket_t listenSocket;
-  listenSocket.fileDescriptor = 0;
   listenSocket.fileHandle = 0;
+  listenSocket.fileDescriptor = 0;
   
-  LOGGER_DEBUG << "connecting to ip endpoint " << _specification;
+  LOGGER_DEBUG("connecting to ip endpoint " << _specification);
   
   assert(_socket.fileHandle == 0);
   assert(!_connected);
@@ -320,12 +319,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
   
   if (error != 0) {
-    LOGGER_ERROR << "getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error);
+    LOGGER_ERROR("getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error));
  
     if (result != 0) { 
       freeaddrinfo(result);
     }
-    
     return listenSocket;
   }
 
@@ -373,7 +371,7 @@ bool EndpointIp::initIncoming (TRI_socket_t incoming) {
     
   if (res != 0 ) {
     // todo: get correct windows error code
-    LOGGER_WARNING << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
+    LOGGER_WARNING("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
       
     return false;
   }

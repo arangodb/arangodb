@@ -1,4 +1,4 @@
-// Copyright 2011 the V8 project authors. All rights reserved.
+// Copyright 2012 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -65,9 +65,11 @@ TestInvalidCalls(new WeakMap);
 // Test expected behavior for Sets
 function TestSet(set, key) {
   assertFalse(set.has(key));
-  set.add(key);
+  assertSame(undefined, set.add(key));
   assertTrue(set.has(key));
-  set.delete(key);
+  assertTrue(set.delete(key));
+  assertFalse(set.has(key));
+  assertFalse(set.delete(key));
   assertFalse(set.has(key));
 }
 function TestSetBehavior(set) {
@@ -87,7 +89,7 @@ TestSetBehavior(new Set);
 
 // Test expected mapping behavior for Maps and WeakMaps
 function TestMapping(map, key, value) {
-  map.set(key, value);
+  assertSame(undefined, map.set(key, value));
   assertSame(value, map.get(key));
 }
 function TestMapBehavior1(m) {
@@ -117,12 +119,12 @@ TestMapBehavior2(new Map);
 // Test expected querying behavior of Maps and WeakMaps
 function TestQuery(m) {
   var key = new Object;
-  TestMapping(m, key, 'to-be-present');
-  assertTrue(m.has(key));
-  assertFalse(m.has(new Object));
-  TestMapping(m, key, undefined);
-  assertFalse(m.has(key));
-  assertFalse(m.has(new Object));
+  var values = [ 'x', 0, +Infinity, -Infinity, true, false, null, undefined ];
+  for (var i = 0; i < values.length; i++) {
+    TestMapping(m, key, values[i]);
+    assertTrue(m.has(key));
+    assertFalse(m.has(new Object));
+  }
 }
 TestQuery(new Map);
 TestQuery(new WeakMap);
@@ -312,3 +314,59 @@ TestBogusReceivers(bogusReceiversTestSet);
 // There is a proposed stress-test available at the es-discuss mailing list
 // which cannot be reasonably automated.  Check it out by hand if you like:
 // https://mail.mozilla.org/pipermail/es-discuss/2011-May/014096.html
+
+
+// Set and Map size getters
+var setSizeDescriptor = Object.getOwnPropertyDescriptor(Set.prototype, 'size');
+assertEquals(undefined, setSizeDescriptor.value);
+assertEquals(undefined, setSizeDescriptor.set);
+assertTrue(setSizeDescriptor.get instanceof Function);
+assertEquals(undefined, setSizeDescriptor.get.prototype);
+assertFalse(setSizeDescriptor.enumerable);
+assertTrue(setSizeDescriptor.configurable);
+
+var s = new Set();
+assertFalse(s.hasOwnProperty('size'));
+for (var i = 0; i < 10; i++) {
+  assertEquals(i, s.size);
+  s.add(i);
+}
+for (var i = 9; i >= 0; i--) {
+  s.delete(i);
+  assertEquals(i, s.size);
+}
+
+
+var mapSizeDescriptor = Object.getOwnPropertyDescriptor(Map.prototype, 'size');
+assertEquals(undefined, mapSizeDescriptor.value);
+assertEquals(undefined, mapSizeDescriptor.set);
+assertTrue(mapSizeDescriptor.get instanceof Function);
+assertEquals(undefined, mapSizeDescriptor.get.prototype);
+assertFalse(mapSizeDescriptor.enumerable);
+assertTrue(mapSizeDescriptor.configurable);
+
+var m = new Map();
+assertFalse(m.hasOwnProperty('size'));
+for (var i = 0; i < 10; i++) {
+  assertEquals(i, m.size);
+  m.set(i, i);
+}
+for (var i = 9; i >= 0; i--) {
+  m.delete(i);
+  assertEquals(i, m.size);
+}
+
+// Test clear
+var a = new Set();
+s.add(42);
+assertTrue(s.has(42));
+s.clear();
+assertFalse(s.has(42));
+assertEquals(0, s.size);
+
+var m = new Map();
+m.set(42, true);
+assertTrue(m.has(42));
+m.clear();
+assertFalse(m.has(42));
+assertEquals(0, m.size);

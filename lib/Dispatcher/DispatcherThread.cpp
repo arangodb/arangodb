@@ -139,13 +139,13 @@ void DispatcherThread::run () {
           job->handleError(ex);
         }
         catch (TriagensError const& ex) {
-          LOGGER_WARNING << "caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex);
+          LOGGER_WARNING("caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {
-          LOGGER_WARNING << "caught error while handling error: " << ex.what();
+          LOGGER_WARNING("caught error while handling error: " << ex.what());
         }
         catch (...) {
-          LOGGER_WARNING << "caught error while handling error!";
+          LOGGER_WARNING("caught error while handling error!");
         }
 
         status = Job::JOB_FAILED;
@@ -157,13 +157,13 @@ void DispatcherThread::run () {
           job->handleError(err);
         }
         catch (TriagensError const& ex) {
-          LOGGER_WARNING << "caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex);
+          LOGGER_WARNING("caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {
-          LOGGER_WARNING << "caught error while handling error: " << ex.what();
+          LOGGER_WARNING("caught error while handling error: " << ex.what());
         }
         catch (...) {
-          LOGGER_WARNING << "caught error while handling error!";
+          LOGGER_WARNING("caught error while handling error!");
         }
 
         status = Job::JOB_FAILED;
@@ -171,7 +171,7 @@ void DispatcherThread::run () {
       catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
         if (_queue->_stopping != 0) {
-          LOGGER_WARNING << "caught cancellation exception during work";
+          LOGGER_WARNING("caught cancellation exception during work");
           throw;
         }
 #endif
@@ -182,13 +182,13 @@ void DispatcherThread::run () {
           job->handleError(err);
         }
         catch (TriagensError const& ex) {
-          LOGGER_WARNING << "caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex);
+          LOGGER_WARNING("caught error while handling error: " << DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {
-          LOGGER_WARNING << "caught error while handling error: " << ex.what();
+          LOGGER_WARNING("caught error while handling error: " << ex.what());
         }
         catch (...) {
-          LOGGER_WARNING << "caught error while handling error!";
+          LOGGER_WARNING("caught error while handling error!");
         }
 
         status = Job::JOB_FAILED;
@@ -226,12 +226,12 @@ void DispatcherThread::run () {
         catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
           if (_queue->_stopping != 0) {
-            LOGGER_WARNING << "caught cancellation exception during cleanup";
+            LOGGER_WARNING("caught cancellation exception during cleanup");
             throw;
           }
 #endif
 
-          LOGGER_WARNING << "caught error while cleaning up!";
+          LOGGER_WARNING("caught error while cleaning up!");
         }
       }
 
@@ -279,7 +279,7 @@ void DispatcherThread::run () {
 
   _queue->_accessQueue.unlock();
 
-  LOGGER_TRACE << "dispatcher thread has finished";
+  LOGGER_TRACE("dispatcher thread has finished");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +303,7 @@ void DispatcherThread::reportStatus () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called in regular intervalls
+/// @brief called in regular intervals
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::tick (bool) {

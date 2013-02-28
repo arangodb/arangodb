@@ -160,7 +160,7 @@ void DispatcherQueue::beginShutdown () {
     return;
   }
 
-  LOGGER_DEBUG << "beginning shutdown sequence of dispatcher queue '" << _name <<"'";
+  LOGGER_DEBUG("beginning shutdown sequence of dispatcher queue '" << _name <<"'");
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
@@ -171,10 +171,10 @@ void DispatcherQueue::beginShutdown () {
     {
       CONDITION_LOCKER(guard, _accessQueue);
 
-      LOGGER_TRACE << "shutdown sequence dispatcher queue '" << _name << "', status: "
+      LOGGER_TRACE("shutdown sequence dispatcher queue '" << _name << "', status: "
                    << _nrRunning << " running threads, "
                    << _nrWaiting << " waiting threads, "
-                   << _nrSpecial << " special threads";
+                   << _nrSpecial << " special threads");
 
       if (0 == _nrRunning + _nrWaiting) {
         break;
@@ -186,10 +186,10 @@ void DispatcherQueue::beginShutdown () {
     usleep(10000);
   }
 
-  LOGGER_DEBUG << "shutdown sequence dispatcher queue '" << _name << "', status: "
+  LOGGER_DEBUG("shutdown sequence dispatcher queue '" << _name << "', status: "
                << _nrRunning << " running threads, "
                << _nrWaiting << " waiting threads, "
-               << _nrSpecial << " special threads";
+               << _nrSpecial << " special threads");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +197,7 @@ void DispatcherQueue::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::shutdown () {
-  LOGGER_DEBUG << "shutting down the dispatcher queue '" << _name << "'";
+  LOGGER_DEBUG("shutting down the dispatcher queue '" << _name << "'");
 
   // try to stop threads forcefully
   set<DispatcherThread*> threads;
@@ -249,7 +249,7 @@ bool DispatcherQueue::startQueueThread () {
   bool ok = thread->start();
 
   if (! ok) {
-    LOGGER_FATAL << "cannot start _dispatcher thread";
+    LOGGER_FATAL_AND_EXIT("cannot start dispatcher thread");
   }
   else {
     _nrStarted++;

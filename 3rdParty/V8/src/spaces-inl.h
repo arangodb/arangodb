@@ -164,12 +164,10 @@ Page* Page::Initialize(Heap* heap,
                        Executability executable,
                        PagedSpace* owner) {
   Page* page = reinterpret_cast<Page*>(chunk);
-  ASSERT(chunk->size() == static_cast<size_t>(kPageSize));
+  ASSERT(chunk->size() <= static_cast<size_t>(kPageSize));
   ASSERT(chunk->owner() == owner);
-  owner->IncreaseCapacity(Page::kObjectAreaSize);
-  owner->Free(page->ObjectAreaStart(),
-              static_cast<int>(page->ObjectAreaEnd() -
-                               page->ObjectAreaStart()));
+  owner->IncreaseCapacity(page->area_size());
+  owner->Free(page->area_start(), page->area_size());
 
   heap->incremental_marking()->SetOldSpacePageFlags(chunk);
 
@@ -213,6 +211,19 @@ MemoryChunk* MemoryChunk::FromAnyPointerAddress(Address addr) {
   }
   UNREACHABLE();
   return NULL;
+}
+
+
+void MemoryChunk::UpdateHighWaterMark(Address mark) {
+  if (mark == NULL) return;
+  // Need to subtract one from the mark because when a chunk is full the
+  // top points to the next address after the chunk, which effectively belongs
+  // to another chunk. See the comment to Page::FromAllocationTop.
+  MemoryChunk* chunk = MemoryChunk::FromAddress(mark - 1);
+  int new_mark = static_cast<int>(mark - chunk->address());
+  if (new_mark > chunk->high_water_mark_) {
+    chunk->high_water_mark_ = new_mark;
+  }
 }
 
 
@@ -271,6 +282,10 @@ MaybeObject* PagedSpace::AllocateRaw(int size_in_bytes) {
     return object;
   }
 
+  ASSERT(!heap()->linear_allocation() ||
+         (anchor_.next_chunk() == &anchor_ &&
+          anchor_.prev_chunk() == &anchor_));
+
   object = free_list_.Allocate(size_in_bytes);
   if (object != NULL) {
     if (identity() == CODE_SPACE) {
@@ -297,11 +312,27 @@ MaybeObject* PagedSpace::AllocateRaw(int size_in_bytes) {
 
 MaybeObject* NewSpace::AllocateRaw(int size_in_bytes) {
   Address old_top = allocation_info_.top;
+#ifdef DEBUG
+  // If we are stressing compaction we waste some memory in new space
+  // in order to get more frequent GCs.
+  if (FLAG_stress_compaction && !HEAP->linear_allocation()) {
+    if (allocation_info_.limit - old_top >= size_in_bytes * 4) {
+      int filler_size = size_in_bytes * 4;
+      for (int i = 0; i < filler_size; i += kPointerSize) {
+        *(reinterpret_cast<Object**>(old_top + i)) =
+            HEAP->one_pointer_filler_map();
+      }
+      old_top += filler_size;
+      allocation_info_.top += filler_size;
+    }
+  }
+#endif
+
   if (allocation_info_.limit - old_top < size_in_bytes) {
     return SlowAllocateRaw(size_in_bytes);
   }
 
-  Object* obj = HeapObject::FromAddress(allocation_info_.top);
+  Object* obj = HeapObject::FromAddress(old_top);
   allocation_info_.top += size_in_bytes;
   ASSERT_SEMISPACE_ALLOCATION_INFO(allocation_info_, to_space_);
 

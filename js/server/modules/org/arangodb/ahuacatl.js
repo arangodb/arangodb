@@ -355,6 +355,34 @@ function VALUES (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract key names from an argument list
+////////////////////////////////////////////////////////////////////////////////
+
+function EXTRACT_KEYS (args, startArgument, functionName) {
+  var keys = { }, i, j, key, key2;
+
+  for (i = startArgument; i < args.length; ++i) {
+    key = args[i];
+    if (typeof key === 'string') {
+      keys[key] = true;
+    }
+    else if (Array.isArray(key)) {
+      for (j = 0; j < key.length; ++j) {
+        key2 = key[j];
+        if (typeof key2 === 'string') {
+          keys[key2] = true;
+        }
+        else {
+          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+        }
+      }
+    }
+  }
+
+  return keys;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the keys of an array or object in a comparable way
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1990,10 +2018,14 @@ function LAST (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reverse the elements in a list
+/// @brief reverse the elements in a list or in a string
 ////////////////////////////////////////////////////////////////////////////////
 
 function REVERSE (value) {
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
+    return value.split("").reverse().join(""); 
+  }
+
   LIST(value);
 
   return value.reverse();
@@ -2327,6 +2359,54 @@ function ATTRIBUTES (element, removeInternal, sort) {
     result.sort();
   }
   
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unset specific attributes from a document
+////////////////////////////////////////////////////////////////////////////////
+
+function UNSET (value) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNSET");
+  }
+
+  var keys = EXTRACT_KEYS(arguments, 1, "UNSET"), i;
+
+  var result = { }; 
+  // copy over all that is left
+  for (i in value) {
+    if (value.hasOwnProperty(i)) {
+      if (keys[i] !== true) {
+        result[i] = CLONE(value[i]);
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keep specific attributes from a document
+////////////////////////////////////////////////////////////////////////////////
+
+function KEEP (value) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "KEEP");
+  }
+
+  var keys = EXTRACT_KEYS(arguments, 1, "KEEP"), i;
+
+  // copy over all that is left
+  var result = { };
+  for (i in keys) {
+    if (keys.hasOwnProperty(i)) {
+      if (value.hasOwnProperty(i)) {
+        result[i] = CLONE(value[i]);
+      }
+    }
+  }
+
   return result;
 }
 
@@ -2864,21 +2944,23 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 function GRAPH_EDGES (edgeCollection, 
                       vertex, 
                       direction) {
-  var c = COLLECTION(edgeCollection);
+  var c = COLLECTION(edgeCollection), result;
 
   // validate arguments
   if (direction === "outbound") {
-    return c.outEdges(vertex);
+    result = c.outEdges(vertex);
   }
   else if (direction === "inbound") {
-    return c.inEdges(vertex);
+    result = c.inEdges(vertex);
   }
   else if (direction === "any") {
-    return c.edges(vertex);
+    result = c.edges(vertex);
   }
   else {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
   }
+
+  return result;
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2978,6 +3060,8 @@ exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
 exports.HAS = HAS;
 exports.ATTRIBUTES = ATTRIBUTES;
+exports.UNSET = UNSET;
+exports.KEEP = KEEP;
 exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;

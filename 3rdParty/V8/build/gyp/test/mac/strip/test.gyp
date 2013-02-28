@@ -104,6 +104,10 @@
       'target_name': 'strip_save',
       'type': 'shared_library',
       'sources': [ 'file.c', ],
+      'dependencies': [
+        'subdirectory/subdirectory.gyp:nested_strip_save',
+        'subdirectory/subdirectory.gyp:nested_strip_save_postbuild',
+      ],
       'xcode_settings': {
         'DEPLOYMENT_POSTPROCESSING': 'YES',
         'STRIP_INSTALLED_PRODUCT': 'YES',

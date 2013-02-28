@@ -36,6 +36,7 @@ unittests-brief: \
 	unittests-shell-client \
 	unittests-arangob \
 	unittests-import \
+	unittests-upgrade \
 	unittests-dfdb
 
 unittests-verbose:
@@ -79,6 +80,7 @@ SERVER_OPT := \
 	--javascript.action-directory @top_srcdir@/js/actions/system \
 	--javascript.gc-interval 1 \
 	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
+	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
 	--ruby.action-directory @top_srcdir@/mr/actions/system \
 	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
@@ -90,6 +92,7 @@ CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
 	--javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules \
+	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--no-colors \
 	--quiet
 
@@ -205,7 +208,8 @@ endif
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
 
-SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
+SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
                @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
@@ -213,6 +217,7 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-compactor.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-crypto.js \
                @top_srcdir@/js/common/tests/shell-users.js \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
@@ -223,6 +228,7 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-graph.js
 
 SHELL_SERVER = $(SHELL_COMMON) \
+               @top_srcdir@/js/server/tests/routing.js \
                @top_srcdir@/js/common/tests/shell-frank.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
@@ -421,7 +427,8 @@ unittests-import:
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
 	for i in 1 2 3 4; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
-	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv --eol "\r\n" || test "x$(FORCE)" == "x1"; done
+	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv || test "x$(FORCE)" == "x1"; done
+	$(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-edges.json --collection UnitTestsImportEdge --create-collection false --type json || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-teardown.js || test "x$(FORCE)" == "x1"
 
@@ -433,6 +440,30 @@ unittests-import:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
+
+################################################################################
+### @brief UPGRADE TESTS
+###
+### invokes the --upgrade option twice and checks for errors
+################################################################################
+
+.PHONY: unittests-upgrade
+
+unittests-upgrade:
+	@echo
+	@echo "================================================================================"
+	@echo "<< UPGRADE TESTS                                                              >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 ################################################################################
 ### @brief DATAFILE DEBUGGER TESTS      
@@ -447,7 +478,7 @@ unittests-dfdb:
 	@mkdir -p "$(VOCDIR)"
 	@test -d "$(VOCDIR)"
 
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
+	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 
 ################################################################################
@@ -481,8 +512,6 @@ unittests-bitarray-index:
 
 .PHONY: unittests-arangob
 
-if ENABLE_ARANGOB
-
 unittests-arangob:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 
@@ -503,13 +532,6 @@ unittests-arangob:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
-
-else
-
-unittests-arangob:
-	@echo
-
-endif
 
 ################################################################################
 ### @brief CPPCHECK

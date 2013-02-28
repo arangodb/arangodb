@@ -63,7 +63,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 int TRI_closesocket(TRI_socket_t s) {
   int res = 0;
   // if this is the last file descriptor associated with the open file
@@ -146,9 +145,9 @@ bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
 
 bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
   int res;
-  DWORD ul = 1;  
-  res = ioctlsocket(s.fileHandle, FIONBIO, &ul); 
-  return (res != SOCKET_ERROR); 
+  DWORD ul = 1;
+  res = ioctlsocket(s.fileHandle, FIONBIO, &ul);
+  return (res != SOCKET_ERROR);
 }
 
 #else
@@ -170,7 +169,6 @@ bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
 }
 
 #endif
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

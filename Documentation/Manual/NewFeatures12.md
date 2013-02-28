@@ -127,12 +127,9 @@ which makes setting up and querying edges much easier in ArangoDB 1.2:
 Additional graph functionality {#NewFeatures12GraphFunctionality}
 -----------------------------------------------------------------
 
-- Javascript graph API
+- @BOOK_REF{JSModuleGraph}
 
-- Javascript traversal functionality
-
-- REST graphi API /_api/graph
-
+- @BOOK_REF{HttpGraph}
 
 AQL Improvements {#NewFeatures12AqlImprovements}
 ------------------------------------------------
@@ -156,6 +153,10 @@ in ArangoDB 1.2:
 * `EDGES()`: access edges connected to a vertex from via an AQL function
 
 * `ATTRIBUTES()`: returns the names of all attributes of a document as a list
+
+* `KEEP()`: keeps only the specified attributes of a document, and removes all others
+
+* `UNSET()`: removes only the specified attributes from a document, and preserves all others
 
 * `MATCHES()`: to check if a document matches one of multiple example documents
 
@@ -319,7 +320,21 @@ The `removeByExample` method returns the number of documents removed:
     arangosh> db.mycollection.removeByExample({ value: 1 });
     2
 
+The number of documents to remove can optionally be limited.
+
 The method is also available via the REST API (@ref HttpSimple).
+
+### Replace / Update by Example
+
+ArangoDB 1.2 also provides "Replace by Example" and "Update by Example" methods that 
+can be used to fully or partially update documents from a collection that match the 
+specified example. This can be used to replace document values easily with a single 
+operation.
+
+The `replaceByExample` and `updateByExaple` methods return the number of documents 
+modified. Both operations can be limited to a specific number of documents if required.
+
+Both methods are also available via the REST API (@ref HttpSimple).
 
 ### Collection revision id
 
@@ -404,6 +419,14 @@ option to an appropriate value. To set the buffer to 16 MB:
 
     > arangoimp --file "input.json" --type json --max-upload-size 16777216 --collection myimport --create-collection true
 
+### Importing into edge collections
+
+ArangoDB 1.2 also allows to import documents into edge collections. Previous versions
+only supported importing documents into document collections.
+
+When importing data into edge collections, it is mandatory that all imported documents
+contain the `_from` and `_to` attributes containing valid references.
+
 ### Logging of import failures
 
 When documents are imported via the REST bulk import API (@ref HttpImport), ArangoDB 
@@ -420,3 +443,22 @@ imported (for example, because of a unique constraint violation, malformed data 
 more easy to grasp.
 
 Note that colorised output may not be supported on all platforms.
+
+### Deactivatable statistics gathering
+
+ArangoDB normally includes functionality to automatically gather request and
+connection-related statistics. Gathering these statistics happens automatically
+in a background thread. Collecting statistics can be quite CPU-intensive, especially
+when multiple ArangoDB instances are run on the same physical host.
+
+Statistics features can be turned off at compile time using the `--enable-figures=no`
+configure option. However, this option affects compilation and thus was not available 
+when using any of th precompiled packages. 
+
+For those, ArangoDB 1.2 now provides a startup option `--server.disable-statistics` that
+allows turning off the statistics gathering for performance reasons even with an
+already compiled binary.
+
+Usage is:
+    
+    > arangod --server.disable-statistics true ...

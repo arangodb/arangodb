@@ -152,7 +152,7 @@ bool ApplicationEndpointServer::buildServers () {
   // turn off authentication
   if (_disableAuthentication) {
     _handlerFactory->setRequireAuthentication(false);
-    LOGGER_INFO << "Authentication is turned off";
+    LOGGER_INFO("Authentication is turned off");
   }
 
   
@@ -172,11 +172,8 @@ bool ApplicationEndpointServer::buildServers () {
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
     // check the ssl context
     if (_sslContext == 0) {
-      LOGGER_FATAL << "no ssl context is known, cannot create https server";
-      LOGGER_INFO << "please use the --server.keyfile option";
-      TRI_FlushLogging();
-
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_INFO("please use the --server.keyfile option");
+      LOGGER_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
     }
 
     // https 
@@ -249,10 +246,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   }
 
   if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
-    LOGGER_FATAL << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN;
-    cerr << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN << "\n";
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN);
   }
 
   if (_httpPort != "") {
@@ -263,11 +257,8 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
   if (_endpoints.empty() && mode == OperationMode::MODE_SERVER) {
-    LOGGER_FATAL << "no endpoint has been specified, giving up";
-    cerr << "no endpoint has been specified, giving up\n";
-    LOGGER_INFO << "please use the '--server.endpoint' option";
-    TRI_FlushLogging();
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_INFO("please use the '--server.endpoint' option");
+    LOGGER_FATAL_AND_EXIT("no endpoint has been specified, giving up");
   }
   
   // add & validate endpoints
@@ -275,20 +266,14 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     Endpoint* endpoint = Endpoint::serverFactory(*i, _backlogSize);
   
     if (endpoint == 0) {
-      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
-      cerr << "invalid endpoint '" << *i << "'\n";
-      TRI_FlushLogging();
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
     }
 
     assert(endpoint);
 
     bool ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
     if (! ok) {
-      LOGGER_FATAL << "invalid endpoint '" << *i << "'";
-      cerr << "invalid endpoint '" << *i << "'\n";
-      TRI_FlushLogging();
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
     }
   }
 
@@ -318,7 +303,7 @@ bool ApplicationEndpointServer::prepare2 () {
   Scheduler* scheduler = _applicationScheduler->scheduler();
  
   if (scheduler == 0) {
-    LOGGER_FATAL << "no scheduler is known, cannot create http server";
+    LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create http server");
 
     return false;
   }
@@ -390,7 +375,7 @@ void ApplicationEndpointServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::createSslContext () {
-  LOGGER_INFO << "using " << OPENSSL_VERSION_TEXT;
+  LOGGER_INFO("using " << OPENSSL_VERSION_TEXT);
 
   // check keyfile
   if (_httpsKeyfile.empty()) {
@@ -399,39 +384,36 @@ bool ApplicationEndpointServer::createSslContext () {
 
   // validate protocol
   if (_sslProtocol <= HttpsServer::SSL_UNKNOWN || _sslProtocol >= HttpsServer::SSL_LAST) {
-    LOGGER_ERROR << "invalid SSL protocol version specified.";
-    LOGGER_INFO << "please use a valid value for --server.ssl-protocol.";
+    LOGGER_ERROR("invalid SSL protocol version specified.");
+    LOGGER_INFO("please use a valid value for --server.ssl-protocol.");
     return false;
   }
     
-  LOGGER_INFO << "using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'";
+  LOGGER_INFO("using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'");
   
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
   if (_sslContext == 0) {
-    LOGGER_ERROR << "failed to create SSL context, cannot create a HTTPS server";
+    LOGGER_ERROR("failed to create SSL context, cannot create a HTTPS server");
     return false;
   }
 
   // set cache mode
   SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   if (_sslCache) {
-    LOGGER_INFO << "using SSL session caching"; 
+    LOGGER_INFO("using SSL session caching"); 
   }
 
   // set options
   SSL_CTX_set_options(_sslContext, _sslOptions);
-  LOGGER_INFO << "using SSL options: " << _sslOptions;
+  LOGGER_INFO("using SSL options: " << _sslOptions);
 
   if (_sslCipherList.size() > 0) {
-    LOGGER_INFO << "using SSL cipher-list '" << _sslCipherList << "'";
+    LOGGER_INFO("using SSL cipher-list '" << _sslCipherList << "'");
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
-      LOGGER_FATAL << "cannot set SSL cipher list '" << _sslCipherList << "'";
-      LOGGER_ERROR << lastSSLError();
-      TRI_FlushLogging();
-      
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_ERROR("ssl error: " << lastSSLError());
+      LOGGER_FATAL_AND_EXIT("cannot set SSL cipher list '" << _sslCipherList << "'");
     }
   }
 
@@ -442,25 +424,19 @@ bool ApplicationEndpointServer::createSslContext () {
   int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), _rctx.size());
 
   if (res != 1) {
-    LOGGER_FATAL << "cannot set SSL session id context '" << _rctx << "'";
-    LOGGER_ERROR << lastSSLError();
-    TRI_FlushLogging();
-    
-    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+    LOGGER_ERROR("ssl error: " << lastSSLError());
+    LOGGER_FATAL_AND_EXIT("cannot set SSL session id context '" << _rctx << "'");
   }
 
   // check CA
   if (! _cafile.empty()) {
-    LOGGER_TRACE << "trying to load CA certificates from '" << _cafile << "'";
+    LOGGER_TRACE("trying to load CA certificates from '" << _cafile << "'");
 
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
-      LOGGER_ERROR << lastSSLError();
-      TRI_FlushLogging();
-    
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_ERROR("ssl error: " << lastSSLError());
+      LOGGER_FATAL_AND_EXIT("cannot load CA certificates from '" << _cafile << "'");
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -468,11 +444,8 @@ bool ApplicationEndpointServer::createSslContext () {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == 0) {
-      LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
-      LOGGER_ERROR << lastSSLError();
-      TRI_FlushLogging();
-      
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOGGER_ERROR("ssl error: " << lastSSLError());
+      LOGGER_FATAL_AND_EXIT("cannot load CA certificates from '" << _cafile << "'");
     }
 
     if (TRI_IsTraceLogging(__FILE__)) {
@@ -484,10 +457,12 @@ bool ApplicationEndpointServer::createSslContext () {
 
           X509_NAME_print_ex(bout._bio, cert, 0, (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | ASN1_STRFLGS_UTF8_CONVERT) & ~ASN1_STRFLGS_ESC_MSB);
 
+#ifdef TRI_ENABLE_LOGGER
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOGGER_TRACE << "name: " << string(r, len);
+          LOGGER_TRACE("name: " << string(r, len));
+#endif          
         }
       }
     }

@@ -91,7 +91,6 @@ class ResourceHolder {
           TRI_FreeShapedJson((TRI_shaper_t*) _context, (TRI_shaped_json_t*) _value);
           break;
         case TYPE_BARRIER:
-        std::cout << "freeing barrier " << _value << "\n";
           TRI_FreeBarrier((TRI_barrier_t*) _value);
           break;
         default: {
@@ -189,7 +188,6 @@ class ResourceHolder {
 ////////////////////////////////////////////////////////////////////////////////
 
     bool registerBarrier (TRI_barrier_t* const value) {
-        std::cout << "registering barrier " << value << "\n";
       return registerResource(TYPE_BARRIER, 0, (void*) value);
     }
 

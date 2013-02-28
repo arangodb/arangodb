@@ -151,8 +151,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
     }
     else {
       // unknown type
-      LOG_FATAL("unknown barrier type '%d'", (int) element->_type);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+      LOG_FATAL_AND_EXIT("unknown barrier type '%d'", (int) element->_type);
     }
 
     // next iteration

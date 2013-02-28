@@ -301,17 +301,27 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 /// @brief logs fatal errors
 ////////////////////////////////////////////////////////////////////////////////
 
+void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
+
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_FATAL(...)                                                                                     \
+#define LOG_FATAL_AND_EXIT(...)                                                                            \
   do {                                                                                                     \
     LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                    \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
   } while (0)
 
 #else
+
+#define LOG_FATAL_AND_EXIT(...)                                                                            \
+  do {                                                                                                     \
+    fprintf(stderr, "fatal error. exiting.\n");                                                            \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
+  } while (0)
+
 
 #define LOG_FATAL(...) while (0)
 
@@ -432,7 +442,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,12 +454,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 /// @brief base structure for log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_log_appender_s {
-  void (*log) (struct TRI_log_appender_s*, TRI_log_level_e, TRI_log_severity_e, char const* msg, size_t length);
-  void (*reopen) (struct TRI_log_appender_s*);
-  void (*close) (struct TRI_log_appender_s*);
-}
-TRI_log_appender_t;
+struct TRI_log_appender_s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -468,21 +473,15 @@ TRI_log_appender_t;
 /// @brief creates a log append for file output
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename);
+struct TRI_log_appender_s* TRI_CreateLogAppenderFile (char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for syslog
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_SYSLOG
-TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* facility);
+struct TRI_log_appender_s* TRI_CreateLogAppenderSyslog (char const* name, char const* facility);
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a log append for buffering
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_log_appender_t* TRI_CreateLogAppenderBuffer (size_t queueSize, size_t messageSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -502,40 +501,28 @@ TRI_log_appender_t* TRI_CreateLogAppenderBuffer (size_t queueSize, size_t messag
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resets logging in child process
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ResetLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the logging components
+///
+/// Warning: This function call is not thread safe. Never mix it with
+/// TRI_ShutdownLogging.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseLogging (bool threaded);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes all log appenders
+/// @brief shut downs the logging components
+///
+/// Warning: This function call is not thread safe. Never mix it with
+/// TRI_InitialiseLogging.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CloseLogging (void);
+bool TRI_ShutdownLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reopens all log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReopenLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for messages to be flushed
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FlushLogging (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the logging components
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ShutdownLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -547,7 +534,11 @@ bool TRI_ShutdownLogging (void);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -8,6 +8,7 @@
     {
       'target_name': 'generate_header',
       'type': 'none',
+      'msvs_cygwin_shell': '0',
       'actions': [
         {
           'action_name': 'generate header',
