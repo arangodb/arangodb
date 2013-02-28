@@ -88,6 +88,7 @@ $(document).ready(function() {
       }
       var type = arangoHelper.collectionApiType(colid);
       window.documentsView.colid = colid;
+      window.documentsView.pageid = pageid;
       window.documentsView.type = type;
       window.documentsView.render();
       window.arangoDocumentsStore.getDocuments(colid, pageid);
