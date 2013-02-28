@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+"use strict";
+
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
@@ -256,6 +258,7 @@ function COMPILE_REGEX (regex, modifiers) {
   var i, n = regex.length;
   var escaped = false;
   var pattern = '';
+  var specialChar = /^([.*+?\^=!:${}()|\[\]\/\\])$/;
   
   ARG_CHECK(regex, TYPEWEIGHT_STRING, "LIKE");
 
@@ -290,7 +293,7 @@ function COMPILE_REGEX (regex, modifiers) {
           pattern += '.';
         }
       }
-      else if (c.match(/^([.*+?\^=!:${}()|\[\]\/\\])$/)) {
+      else if (c.match(specialChar)) {
         // character with special meaning in a regex
         pattern += '\\' + c;
       }
@@ -1628,6 +1631,85 @@ function STRING_LIKE (value, regex, caseInsensitive) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the leftmost parts of a string
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_LEFT (value, length) {
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "LEFT");
+  ARG_CHECK(length, TYPEWEIGHT_NUMBER, "LEFT");
+
+  if (length < 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LEFT");
+    ARG_CHECK(length, TYPEWEIGHT_NUMBER, "LEFT");
+  }
+  length = parseInt(length, 10);
+  if (length === 0) {
+    return "";
+  }
+
+  return value.substr(0, length);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the rightmost parts of a string
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_RIGHT (value, length) {
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "RIGHT");
+  ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
+  
+  if (length < 0) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RIGHT");
+    ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
+  }
+  length = parseInt(length, 10);
+  if (length === 0) {
+    return "";
+  }
+
+  var len = value.length;
+  if (length > len) {
+    length = len;
+  }
+  return value.substr(value.length - length, length);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the rightmost parts of a string
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_TRIM (value, type) {
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "TRIM");
+
+  if (type !== undefined) {
+    ARG_CHECK(type, TYPEWEIGHT_NUMBER, "TRIM");
+    type = parseInt(type, 10);
+    if (type < 0 || type > 2) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRIM");
+    }
+  }
+  else {
+    type = 0;
+  }
+
+  var result;
+  if (type === 0) {
+    // TRIM(, 0)
+    result = value.replace(/(^\s+)|\s+$/g, '');
+  }
+  else if (type === 1) {
+    // TRIM(, 1)
+    result = value.replace(/^\s+/g, '');
+  }
+  else if (type === 2) {
+    // TRIM(, 2)
+    result = value.replace(/\s+$/g, '');
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1822,7 +1904,7 @@ function NUMBER_FLOOR (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
   
-  return Math.floor(value);
+  return NUMERIC_VALUE(Math.floor(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1834,7 +1916,7 @@ function NUMBER_CEIL (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
   
-  return Math.ceil(value);
+  return NUMERIC_VALUE(Math.ceil(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1846,7 +1928,7 @@ function NUMBER_ROUND (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
   
-  return Math.round(value);
+  return NUMERIC_VALUE(Math.round(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1858,7 +1940,7 @@ function NUMBER_ABS (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
   
-  return Math.abs(value);
+  return NUMERIC_VALUE(Math.abs(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1867,6 +1949,18 @@ function NUMBER_ABS (value) {
 
 function NUMBER_RAND () {
   return Math.random();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief square root
+////////////////////////////////////////////////////////////////////////////////
+
+function NUMBER_SQRT (value) {
+  if (! IS_NUMBER(value)) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SQRT");
+  }
+  
+  return NUMERIC_VALUE(Math.sqrt(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1970,16 +2064,16 @@ function LIMIT (value, offset, count) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the length of a list
+/// @brief get the length of a list, document or string
 ////////////////////////////////////////////////////////////////////////////////
 
 function LENGTH (value) {
-  var result;
-
-  if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+  var result, typeWeight = TYPEWEIGHT(value);
+  
+  if (typeWeight === TYPEWEIGHT_LIST || typeWeight === TYPEWEIGHT_STRING) {
     result = value.length;
   }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
+  else if (typeWeight === TYPEWEIGHT_DOCUMENT) {
     result = KEYS(value, false).length;
   }
   else {
@@ -2044,6 +2138,7 @@ function UNIQUE (values) {
     var normalized = NORMALIZE(value);
     keys[JSON.stringify(normalized)] = normalized;
   });
+
   for (a in keys) {
     if (keys.hasOwnProperty(a)) {
       result.push(keys[a]);
@@ -2084,17 +2179,19 @@ function UNION () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MAX (values) {
-  var result = null;
-
   LIST(values);
 
-  values.forEach(function (value) {
-    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
+  var value, result = null;
+  var i, n;
+  
+  for (i = 0, n = values.length; i < n; ++i) {
+    value = values[i];
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) { 
       if (result === null || RELATIONAL_GREATER(value, result)) {
         result = value;
       }
     }
-  });
+  }
 
   return result;
 }
@@ -2104,17 +2201,19 @@ function MAX (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MIN (values) {
-  var result = null;
-
   LIST(values);
+
+  var value, result = null;
+  var i, n;
   
-  values.forEach(function (value) {
-    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
+  for (i = 0, n = values.length; i < n; ++i) {
+    value = values[i];
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) { 
       if (result === null || RELATIONAL_LESS(value, result)) {
         result = value;
       }
     }
-  });
+  }
 
   return result;
 }
@@ -2124,26 +2223,180 @@ function MIN (values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SUM (values) {
-  var result = null;
-
   LIST(values);
 
-  values.forEach(function (value) {
-    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
-      if (TYPEWEIGHT(value) !== TYPEWEIGHT_NUMBER) {
+  var i, n;
+  var value, typeWeight, result = 0;
+
+  for (i = 0, n = values.length; i < n; ++i) {
+    value = values[i];
+    typeWeight = TYPEWEIGHT(value);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
       }
 
-      if (result === null) {
-        result = value;
-      }
-      else {
-        result += value;
-      }
+      result += value;
     }
-  });
+  }
 
   return NUMERIC_VALUE(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief average of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AVERAGE (values) {
+  LIST(values);
+
+  var current, typeWeight, sum = 0;
+  var i, j, n;
+
+  for (i = 0, j = 0, n = values.length; i < n; ++i) {
+    current = values[i];
+    typeWeight = TYPEWEIGHT(current);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
+        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      }
+
+      sum += current;
+      j++;
+    }
+  }
+
+  if (j === 0) {
+    return null;
+  }
+
+  return NUMERIC_VALUE(sum / j);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief median of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function MEDIAN (values) {
+  LIST(values);
+  
+  var copy = [ ], current, typeWeight;
+  var i, n;
+
+  for (i = 0, n = values.length; i < n; ++i) {
+    current = values[i];
+    typeWeight = TYPEWEIGHT(current);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
+        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      }
+
+      copy.push(current);
+    }
+  }
+
+  if (copy.length === 0) {
+    return null;
+  }
+
+  copy.sort(RELATIONAL_CMP);
+
+  var midpoint = copy.length / 2;
+  if (copy.length % 2 === 0) {
+    return NUMERIC_VALUE((copy[midpoint - 1] + copy[midpoint]) / 2);
+  }
+
+  return NUMERIC_VALUE(copy[Math.floor(midpoint)]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variance of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function VARIANCE (values) {
+  LIST(values);
+
+  var mean = 0, m2 = 0, current, typeWeight, delta;
+  var i, j, n;
+
+  for (i = 0, j = 0, n = values.length; i < n; ++i) {
+    current = values[i];
+    typeWeight = TYPEWEIGHT(current);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
+        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      }
+
+      delta = current - mean;
+      mean += delta / ++j;
+      m2 += delta * (current - mean);
+    }
+  }
+
+  return {
+    n: j,
+    value: m2
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sample variance of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function VARIANCE_SAMPLE (values) {
+  var result = VARIANCE(values);
+
+  if (result.n < 2) {
+    return null;
+  }
+
+  return NUMERIC_VALUE(result.value / (result.n - 1));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief population variance of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function VARIANCE_POPULATION (values) {
+  var result = VARIANCE(values);
+
+  if (result.n < 1) {
+    return null;
+  }
+
+  return NUMERIC_VALUE(result.value / result.n);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief standard deviation of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function STDDEV_SAMPLE (values) {
+  var result = VARIANCE(values);
+
+  if (result.n < 2) {
+    return null;
+  }
+
+  return NUMERIC_VALUE(Math.sqrt(result.value / (result.n - 1)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief standard deviation of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function STDDEV_POPULATION (values) {
+  var result = VARIANCE(values);
+
+  if (result.n < 1) {
+    return null;
+  }
+
+  return NUMERIC_VALUE(Math.sqrt(result.value / result.n));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3021,6 +3274,9 @@ exports.STRING_UPPER = STRING_UPPER;
 exports.STRING_SUBSTRING = STRING_SUBSTRING;
 exports.STRING_CONTAINS = STRING_CONTAINS;
 exports.STRING_LIKE = STRING_LIKE;
+exports.STRING_LEFT = STRING_LEFT;
+exports.STRING_RIGHT = STRING_RIGHT;
+exports.STRING_TRIM = STRING_TRIM;
 exports.CAST_BOOL = CAST_BOOL;
 exports.CAST_NUMBER = CAST_NUMBER;
 exports.CAST_STRING = CAST_STRING;
@@ -3036,6 +3292,7 @@ exports.NUMBER_CEIL = NUMBER_CEIL;
 exports.NUMBER_ROUND = NUMBER_ROUND;
 exports.NUMBER_ABS = NUMBER_ABS;
 exports.NUMBER_RAND = NUMBER_RAND;
+exports.NUMBER_SQRT = NUMBER_SQRT;
 exports.SORT = SORT;
 exports.GROUP = GROUP;
 exports.LIMIT = LIMIT;
@@ -3048,6 +3305,12 @@ exports.UNION = UNION;
 exports.MAX = MAX;
 exports.MIN = MIN;
 exports.SUM = SUM;
+exports.AVERAGE = AVERAGE;
+exports.MEDIAN = MEDIAN;
+exports.VARIANCE_SAMPLE = VARIANCE_SAMPLE;
+exports.VARIANCE_POPULATION = VARIANCE_POPULATION;
+exports.STDDEV_SAMPLE = STDDEV_SAMPLE;
+exports.STDDEV_POPULATION = STDDEV_POPULATION;
 exports.GEO_NEAR = GEO_NEAR;
 exports.GEO_WITHIN = GEO_WITHIN;
 exports.FULLTEXT = FULLTEXT;
