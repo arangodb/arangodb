@@ -601,6 +601,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("LIKE", "STRING_LIKE", true, false, "s,r|b", NULL);
   REGISTER_FUNCTION("LEFT", "STRING_LEFT", true, false, "s,n", NULL);
   REGISTER_FUNCTION("RIGHT", "STRING_RIGHT", true, false, "s,n", NULL);
+  REGISTER_FUNCTION("TRIM", "STRING_TRIM", true, false, "s|n", NULL);
 
   // numeric functions 
   REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n", NULL);
