@@ -26,10 +26,9 @@
   cursor: pointer;
 }
 
-#deleteRow {
+#deleteRow, #addRow {
   border: medium none;
   margin-top: -4px;
-  padding-left: 10px;
   background-color: transparent;
 }
 
@@ -77,9 +76,9 @@
 	border:1px solid #c1bdba;
 }
 
-#documentTableID.dataTable td {
+/*#documentTableID.dataTable td {
 	padding: 13px 10px;
-}
+}*/
 #documentTableID .odd,
 #documentTableID .even {
     -webkit-box-shadow: none;
