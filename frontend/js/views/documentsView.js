@@ -209,9 +209,10 @@ var documentsView = Backbone.View.extend({
                                         '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
     ]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-    $(".prettify").tooltip({
+/*    $(".prettify").tooltip({
+      html: true,
       placement: "top"
-    });
+    });*/
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
