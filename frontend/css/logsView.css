@@ -1,11 +1,11 @@
-#logContent {
+/*#logContent {
   margin-top: 0;
   border: 20px solid rgba(0, 0, 0, 0.00);
   background-color: rgba(0, 0, 0, 0.05);
   min-height: 330px !important;
   padding-bottom: 25px;
 }
-
+*/
 #logPages {
   float:left;
   margin-top: -6px !important;
@@ -86,7 +86,7 @@ background-color: none !important;
 .nav-tabs > li > a, .nav-tabs > li > a:hover {
   border-radius: 0 0 0 0;
 }
-
+/*
 #logNav li {
   margin-left: 2px !important;
   border-radius: 0 0 0 0 !important;
@@ -126,7 +126,7 @@ background-color: none !important;
   margin-top: 0px;
   margin-bottom: 20px;
   height: 36px;
-}
+}*/
 
 #logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
   background-color: #F4F4F4 !important;
@@ -134,8 +134,8 @@ background-color: none !important;
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
   border-left:1px solid #c1bdba;
-  width: 40px !important;
-  max-width: 40px !important;
+  width: 80px !important;
+  max-width: 80px !important;
 }
 
 .thirdcol {
@@ -164,7 +164,7 @@ background-color: none !important;
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;
-  width: 30px !important;
+  width: 140px !important;
 }
 
 #logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {
