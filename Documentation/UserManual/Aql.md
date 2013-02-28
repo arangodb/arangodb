@@ -871,7 +871,8 @@ For string processing, AQL offers the following functions:
   concatenate the strings passed as arguments @FA{value1} to @FA{valuen} using the 
   @FA{separator} string. `null` values are ignored.
 
-- @FN{CHAR_LENGTH(@FA{value})}: return the number of characters in @FA{value}
+- @FN{CHAR_LENGTH(@FA{value})}: return the number of characters in @FA{value}. This is
+  a synonym for @FN{LENGTH(@FA{value})}.
 
 - @FN{LOWER(@FA{value})}: lower-case @FA{value}
 
@@ -880,6 +881,19 @@ For string processing, AQL offers the following functions:
 - @FN{SUBSTRING(@FA{value}\, @FA{offset}\, @FA{length})}: return a substring of @FA{value},
   starting at @FA{offset} and with a maximum length of @FA{length} characters. Offsets
   start at position 0.
+
+- @FN{LEFT(@FA{value}\, @FA{LENGTH})}: returns the @FA{LENGTH} leftmost characters of
+  the string @FA{VALUE}.
+
+- @FN{RIGHT(@FA{value}\, @FA{LENGTH})}: returns the @FA{LENGTH} rightmost characters of
+  the string @FA{VALUE}.
+
+- @FN{TRIM(@FA{value}\, @FA{type})}: returns the string @FA{VALUE} with whitespace stripped 
+  from the start and/or end. The optional @FA{type} parameter specifies from which parts
+  of the string the whitespace is stripped:
+  - @FA{type} 0 will strip whitespace from the start and end of the string
+  - @FA{type} 1 will strip whitespace from the start of the string only
+  - @FA{type} 2 will strip whitespace from the end of the string only
 
 - @FN{REVERSE(@FA{value})}: returns the reverse of the string @FA{value}.
 
@@ -917,6 +931,8 @@ supported:
 
 - @FN{ABS(@FA{value})}: returns the absolute part of @FA{value}
 
+- @FN{SQRT(@FA{value})}: returns the square root of @FA{value}
+
 - @FN{RAND()}: returns a pseudo-random number between 0 and 1
 
 @subsubsection AqlFunctionsList List functions
@@ -928,17 +944,35 @@ AQL supports the following functions to operate on list values:
   regardless of their values.
 
 - @FN{MIN(@FA{list})}: returns the smallest element of @FA{list}. `null` values
-  are ignored. If the list is empty or only `null` are contained in the list, the
+  are ignored. If the list is empty or only `null` values are contained in the list, the
   function will return `null`.
 
 - @FN{MAX(@FA{list})}: returns the greatest element of @FA{list}. `null` values
-  are ignored. If the list is empty or only `null` are contained in the list, the
+  are ignored. If the list is empty or only `null` values are contained in the list, the
   function will return `null`.
 
-- @FN{SUM(@FA{list})}: returns the sum of values of the elements in @FA{list}. This
-  requires the elements in @FA{list} to be numbers. `null` values are ignored. 
-  If the list is empty or only `null` are contained in the list, the  function 
+- @FN{AVERAGE(@FA{list})}: returns the average (arithmetic mean) of the values in @FA{list}. 
+  This requires the elements in @FA{list} to be numbers. `null` values are ignored. 
+  If the list is empty or only `null` values are contained in the list, the function 
   will return `null`.
+
+- @FN{SUM(@FA{list})}: returns the sum of the values in @FA{list}. This
+  requires the elements in @FA{list} to be numbers. `null` values are ignored. 
+
+- @FN{MEDIAN(@FA{list})}: returns the median value of the values in @FA{list}. This 
+  requires the elements in @FA{list} to be numbers. `null` values are ignored. If the 
+  list is empty or only `null` values are contained in the list, the function will return 
+  `null`.
+
+- @FN{VARIANCE_POPULATION(@FA{list})}: returns the population variance of the values in 
+  @FA{list}. This requires the elements in @FA{list} to be numbers. `null` values 
+  are ignored. If the list is empty or only `null` values are contained in the list, 
+  the function will return `null`.
+
+- @FN{VARIANCE_SAMPLE(@FA{list})}: returns the sample variance of the values in 
+  @FA{list}. This requires the elements in @FA{list} to be numbers. `null` values 
+  are ignored. If the list is empty or only `null` values are contained in the list, 
+  the function will return `null`.
 
 - @FN{REVERSE(@FA{list})}: returns the elements in @FA{list} in reversed order.
 
