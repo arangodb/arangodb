@@ -120,6 +120,7 @@ window.arangoCollections = Backbone.Collection.extend({
         var data2;
         $.ajax({
           type: "GET",
+          cache: false,
           url: "/_api/collection/" + id + "/properties",
           contentType: "application/json",
           processData: false,
@@ -138,6 +139,7 @@ window.arangoCollections = Backbone.Collection.extend({
       newCollection: function (collName, wfs, isSystem, journalSize, collType) {
         var returnval = false;
         $.ajax({
+          cache: false,
           type: "POST",
           url: "/_api/collection",
           data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
@@ -155,6 +157,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       renameCollection: function (id, name) {
         $.ajax({
+          cache: false,
           type: "PUT",
           async: false, // sequential calls!
           url: "/_api/collection/" + id + "/rename",
@@ -172,6 +175,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       changeCollection: function (id, wfs, journalSize) {
         $.ajax({
+          cache: false,
           type: "PUT",
           async: false, // sequential calls!
           url: "/_api/collection/" + id + "/properties",
@@ -190,6 +194,7 @@ window.arangoCollections = Backbone.Collection.extend({
       deleteCollection: function (id) {
         var returnval = false;
         $.ajax({
+          cache: false,
           type: 'DELETE',
           url: "/_api/collection/" + id,
           async: false,
@@ -204,6 +209,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       loadCollection: function (id) {
         $.ajax({
+          cache: false,
           type: 'PUT',
           url: "/_api/collection/" + id + "/load",
           success: function () {
@@ -216,6 +222,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       unloadCollection: function (id) {
         $.ajax({
+          cache: false,
           type: 'PUT',
           url: "/_api/collection/" + id + "/unload",
           success: function () {
