@@ -1,9 +1,16 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* added AQL functions VARIANCE_POPULATION(), VARIANCE_SAMPLE(), STDDEV_POPULATION(),
+  STDDEV_SAMPLE(), AVERAGE(), MEDIAN() to calculate stastical values for lists
+
+* added AQL SQRT() function
+
+* added AQL TRIM(), LEFT() and RIGHT() string functions
+
 * fixed issue #436: GET /_api/document on edge
  
-* make AQL REVERSE() function work on strings, too
+* make AQL REVERSE() and LENGTH() functions work on strings, too
 
 * disabled DOT generation in `make doxygen`. this speeds up docs generation
 

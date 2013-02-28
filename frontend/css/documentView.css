@@ -7,18 +7,22 @@
   cursor: default !important;
 }
 
-#tableDiv {
+#tableDiv,
+#logContent {
   margin-top: -40px;
   padding: 20px 20px 20px 20px;
-  background-color: rgba(0, 0, 0, 0.05);
+/*  background-color: rgba(0, 0, 0, 0.05);*/
 }
 
-#tableDiv .nav-tabs > li, #sourceDiv .nav-tabs > li  {
+#tableDiv .nav-tabs > li,
+#sourceDiv .nav-tabs > li,
+#logContent .nav-tabs > li {
   position: relative;
   z-index: 900;
 }
 
-#addDocumentLine:hover, #sourceView:hover{
+#addDocumentLine:hover,
+#sourceView:hover{
   cursor: pointer;
 }
 
