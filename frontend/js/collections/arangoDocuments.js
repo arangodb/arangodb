@@ -86,6 +86,7 @@ window.arangoDocuments = Backbone.Collection.extend({
                 });
               });
               window.documentsView.drawTable();
+              window.documentsView.renderPagination(self.totalPages);
             }
             else {
               window.documentsView.initTable();

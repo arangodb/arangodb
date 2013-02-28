@@ -96,12 +96,12 @@ var documentView = Backbone.View.extend({
   drawTable: function () {
     var self = this;
     $(self.table).dataTable().fnAddData([
-      '<a class="add" class="notwriteable" id="addDocumentLine"><img id="addDocumentLine" class="plusIcon" class="pull-left" src="/_admin/html/img/plus_icon.png"> Add data</a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
+      '<a class="add" class="notwriteable" id="addDocumentLine"> Add data</a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
-      '<div class="notwriteable"></div>'
+      '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="/_admin/html/img/plus_icon.png"></button>'
     ]);
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
@@ -280,6 +280,8 @@ var documentView = Backbone.View.extend({
       type: "autogrow",
       tooltip: 'click to edit',
       cssclass : 'jediTextarea',
+      submitcssclass: 'btn btn-success',
+      cancelcssclass: 'btn btn-error',
       submit: 'Okay',
       cancel: 'Cancel',
       onblur: 'cancel',
