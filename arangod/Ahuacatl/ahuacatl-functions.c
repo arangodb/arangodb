@@ -614,7 +614,8 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l", NULL);
   REGISTER_FUNCTION("SUM", "SUM", true, true, "l", NULL);
   REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l", NULL);
-  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l", NULL);
+  // note: REVERSE() can be applied on strings, too
+  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "ls", NULL);
   REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l", NULL);
   REGISTER_FUNCTION("LAST", "LAST", true, false, "l", NULL);
   

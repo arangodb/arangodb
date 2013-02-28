@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, module: true */
+/*global require, module: true, PACKAGE_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -179,12 +179,70 @@ function stop_color_print () {
 /// @brief module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  function Module (id) {
-    this.id = id;               // commonjs Module/1.1.1
-    this.exports = {};         // commonjs Module/1.1.1
+  function Module (id, type, pkg) {
+    this.id = id;                    // commonjs Module/1.1.1
+    this.exports = {};               // commonjs Module/1.1.1
 
-    this._normalized = {};
+    this._type = type;               // module type: 'system', 'user'
+    this._origin = 'unknown';        // 'file:///{path}'
+                                     // 'database:///_document/{collection}/{key}'
+
+    this._package = pkg;             // package to which this module belongs
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief package constructor
+////////////////////////////////////////////////////////////////////////////////
+
+  function Package (id, description, parent, paths) {
+    var i;
+
+    this.id = id;			// same of the corresponding module
+    this._description = description;    // the package.json file
+    this._parent = parent;              // parent package
+    this._moduleCache = {};             // module cache for package modules
+
+    this._paths = paths;                // path to the package
+  }
+
+  var GlobalPackage = new Package("/", {name: "ArangoDB"}, undefined, PACKAGE_PATH);
+
+  Package.prototype.defineSystemModule = function (path) {
+    var result = this._moduleCache[path] = new Module(path, 'system', GlobalPackage);
+
+    return result;
+  };
+
+  Package.prototype.defineModule = function (path, module) {
+    this._moduleCache[path] = module;
+
+    return module;
+  };
+
+  Package.prototype.clearModule = function (path) {
+    delete this._moduleCache[path];
+  };
+
+  Package.prototype.module = function (path) {
+    if (this._moduleCache.hasOwnProperty(path)) {
+      return this._moduleCache[path];
+    }
+
+    return null;
+  };
+
+  Package.prototype.moduleNames = function () {
+    var name;
+    var names = [];
+
+    for (name in this._moduleCache) {
+      if (this._moduleCache.hasOwnProperty(name)) {
+        names.push(name);
+      }
+    }
+
+    return names;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -200,28 +258,21 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module cache
+/// @brief global module cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  var ModuleCache = {};
+  var ModuleExistsCache = {};
 
-  ModuleCache["/"] = new Module("/");
-  ModuleCache["/internal"] = new Module("/internal");
-  ModuleCache["/fs"] = new Module("/fs");
-  ModuleCache["/console"] = new Module("/console");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file exists cache
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.ModuleExistsCache = {};
+  GlobalPackage.defineSystemModule("/");
+  GlobalPackage.defineSystemModule("/internal");
+  GlobalPackage.defineSystemModule("/fs");
+  GlobalPackage.defineSystemModule("/console");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief top-level-module
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.root = ModuleCache["/"];
-  module = Module.prototype.root;
+  module = Module.prototype.root = GlobalPackage.module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -236,86 +287,24 @@ function stop_color_print () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file and creates a new module descriptor
-////////////////////////////////////////////////////////////////////////////////
+  var internal = GlobalPackage.module("/internal").exports;
+  var console = GlobalPackage.module("/console").exports;
 
-  Module.prototype.require = function (unormalizedPath) {
-    var content;
-    var f;
-    var internal;
-    var module;
-    var path;
-    var paths;
-    var raw;
-    var sandbox;
-
-    internal = ModuleCache["/internal"].exports;
-
-    // check if you already know the module
-    if (this._normalized.hasOwnProperty(unormalizedPath)) {
-      return this._normalized[unormalizedPath];
-    }
-
-    // first get rid of any ".." and "."
-    path = this.normalise(unormalizedPath);
-
-    // check if you already know the module, return the exports
-    if (ModuleCache.hasOwnProperty(path)) {
-      module = ModuleCache[path];
-      this._normalized[unormalizedPath] = module.exports;
-      return module.exports;
-    }
-
-    // locate file and read content
-    raw = internal.loadDatabaseFile(path);
-
-    // test for parse errors first and fail early if a parse error detected
-    if (! internal.parse(raw.content, path)) {
-      throw "Javascript parse error in file '" + path + "'";
-    }
-
-    // create a new sandbox and execute
-    module = ModuleCache[path] = new Module(path);
-
-    content = "(function (module, exports, require, print) {"
-            + raw.content 
-            + "\n});";
-
-    f = internal.execute(content, undefined, path);
-
-    if (f === undefined) {
-      throw "cannot create context function";
-    }
-
-    try {
-      f(module,
-        module.exports,
-        function(path) { return module.require(path); },
-        ModuleCache["/internal"].exports.print);
-    }
-    catch (err) {
-      delete ModuleCache[path];
-      throw "Javascript exception in file '" + path + "': " + err + " - " + err.stack;
-    }
-
-    this._normalized[unormalizedPath] = module.exports;
-    return module.exports;
-  };
+  internal.GlobalPackage = GlobalPackage;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if require found a file
+/// @brief normalizes a module name
+///
+/// If @FA{path} starts with "." or "..", then it is a relative path.
+/// Otherwise it is an absolute path.
+///
+/// @FA{prefix} must not end in `/` unless it is equal to `"/"`.
+///
+/// The normalized name will start with a `/`, but not end in `/' unless it
+/// is equal to `"/"`.
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.exists = function (path) {
-    return this.ModuleExistsCache[path];
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalises a path
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.normalise = function (path) {
+  internal.normalizeModuleName = function (prefix, path) {
     var i;
     var n;
     var p;
@@ -323,14 +312,14 @@ function stop_color_print () {
     var x;
 
     if (path === "") {
-      return this.id;
+      return prefix;
     }
 
     p = path.split('/');
 
     // relative path
     if (p[0] === "." || p[0] === "..") {
-      q = this.id.split('/');
+      q = prefix.split('/');
       q.pop();
       q = q.concat(p);
     }
@@ -348,7 +337,7 @@ function stop_color_print () {
 
       if (x === "..") {
         if (n.length === 0) {
-          throw "cannot cross module top";
+          throw "cannot use '..' to escape top-level-directory";
         }
 
         n.pop();
@@ -362,6 +351,388 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a module package description file
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.loadPackageDescription = function (main, pkg) {
+    var paths;
+    var i;
+
+    paths = pkg._paths;
+
+    for (i = 0;  i < paths.length;  ++i) {
+      var p = paths[i];
+      var n;
+      var m;
+
+      if (p === "") {
+        m = "./node_modules" + main;
+      }
+      else if (p[p.length - 1] === '/') {
+        m = p + "node_modules" + main;
+      }
+      else {
+        m = p + "/node_modules" + main;
+      }
+
+      n = m + "/package.json";
+
+      if (internal.exists(n)) {
+        try {
+          var desc = JSON.parse(internal.read(n));
+          var mainfile = m + internal.normalizeModuleName("", desc.main) + ".js";
+
+          if (internal.exists(mainfile)) {
+            var content = internal.read(mainfile);
+
+            return { name: main,
+                     description: desc,
+                     packagePath: m,
+                     path: 'file://' + mainfile,
+                     content: content };
+          }
+        }
+        catch (err) {
+          if ('error' in console) {
+            console.error("cannot load package '%s': %s - %s", main, String(err), String(err.stack));
+          }
+        }
+      }
+    }
+
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a file from the package path
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.loadPackageFile = function (main, pkg) {
+    var n;
+    var i;
+    var mc;
+    var paths;
+
+    paths = pkg._paths;
+
+    // -----------------------------------------------------------------------------
+    // normal modules, file based
+    // -----------------------------------------------------------------------------
+
+     // try to load the file
+    for (i = 0;  i < paths.length;  ++i) {
+      var p = paths[i];
+
+      if (p === "") {
+        n = "." + main + ".js";
+      }
+      else if (p[p.length - 1] === '/') {
+        n = p + main.substr(1) + ".js";
+      }
+      else {
+        n = p + main + ".js";
+      }
+
+      if (internal.exists(n)) {
+        return { name: main,
+                 path: 'file://' + n,
+                 content: internal.read(n) };
+      }
+    }
+
+    return null;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a file from the module path or the database
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.loadModuleFile = function (main) {
+    var n;
+    var i;
+    var mc;
+    var paths;
+
+    paths = internal.MODULES_PATH;
+
+    // -----------------------------------------------------------------------------
+    // normal modules, file based
+    // -----------------------------------------------------------------------------
+
+     // try to load the file
+    for (i = 0;  i < paths.length;  ++i) {
+      var p = paths[i];
+
+      if (p === "") {
+        n = "." + main + ".js";
+      }
+      else if (p[p.length - 1] === '/') {
+        n = p + main.substr(1) + ".js";
+      }
+      else {
+        n = p + main + ".js";
+      }
+
+      if (internal.exists(n)) {
+        return { name: main,
+                 path: 'file://' + n,
+                 content: internal.read(n) };
+      }
+    }
+
+    // -----------------------------------------------------------------------------
+    // normal modules, database based
+    // -----------------------------------------------------------------------------
+
+    if (internal.db !== undefined) {
+      mc = internal.db._collection("_modules");
+
+      if (mc !== null && typeof mc.firstExample === "function") {
+        n = mc.firstExample({ path: main });
+
+        if (n !== null) {
+          if (n.hasOwnProperty('content')) {
+            return { name: main,
+                     path: "database:///_document/" + n._id,
+                     content: n.content };
+          }
+
+          if ('error' in console) {
+            console.error("found empty content in '%s'", JSON.stringify(n));
+          }
+        }
+      }
+    }
+
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a module
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.createModule = function (description, type, pkg) {
+    var content;
+    var fun;
+    var module;
+
+    // mark that we have seen the definition, used for debugging only
+    ModuleExistsCache[description.name] = true;
+
+    // test for parse errors first and fail early if a parse error detected
+    if (! internal.parse(description.content)) {
+      throw "Javascript parse error in file '" + description.path + "'";
+    }
+
+    // create a new sandbox and execute
+    module = new Module(description.name, type, pkg);
+    module._origin = description.path;
+
+    pkg.defineModule(description.name, module);
+
+    // try to execute the module source code
+    content = "(function (module, exports, require, print) {"
+            + description.content 
+            + "\n});";
+
+    fun = internal.execute(content, undefined, description.name);
+
+    if (fun === undefined) {
+      pkg.clearModule(description.name);
+      throw "cannot create context function";
+    }
+
+    try {
+      fun(module,
+          module.exports,
+          function(path) { return module.require(path); },
+          internal.print);
+    }
+    catch (err) {
+      pkg.clearModule(description.name);
+      throw "Javascript exception in file '" + description.name + "': " + err + " - " + err.stack;
+    }
+
+    return module;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a package
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.createPackage = function (parent, description) {
+    var path;
+    var module;
+    var pkg;
+
+    path = description.name;
+
+    pkg = new Package(path,
+                      description.description,
+                      parent,
+                      [description.packagePath]);
+
+    module = this.createModule(description, 'package', pkg);
+
+    if (module !== null) {
+      parent.defineModule(path, module);
+    }
+
+    return module;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief requires a package
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.requirePackage = function (unormalizedPath) {
+    var current;
+    var module;
+    var path;
+
+    // first get rid of any ".." and "."
+    path = this.normalize(unormalizedPath);
+
+    if (this._package.id === "/" && path === "/internal") {
+      return null;
+    }
+
+    // try to locate the package file starting with the current package
+    current = this._package;
+
+    while (current !== undefined) {
+
+      // check if already know a package with that name
+      module = current.module(path);
+
+      if (module !== null && module._type === 'package') {
+        return module;
+      }
+
+      var description = internal.loadPackageDescription(path, current);
+
+      if (description !== null) {
+        module = this.createPackage(current, description);
+
+        if (module !== null) {
+          return module;
+        }
+      }
+
+      current = current._parent;
+    }
+
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief requires a module
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.requireModule = function (unormalizedPath) {
+    var description;
+    var module;
+    var path;
+
+    // first get rid of any ".." and "."
+    path = this.normalize(unormalizedPath);
+
+    // check if already know a module with that name
+    module = this._package.module(path);
+
+    if (module) {
+      if (module.type !== 'package') {
+        return module;
+      }
+      else {
+        return null;
+      }
+    }
+
+    // first check: we are talking about module within a package
+    description = internal.loadPackageFile(path, this._package);
+
+    if (description !== null) {
+      module = this.createModule(description, 'module', this._package);
+
+      if (module !== null) {
+        this._package.defineModule(path, module);
+        return module;
+      }
+    }
+
+    // check if already know a module with that name
+    module = GlobalPackage.module(path);
+
+    if (module) {
+      if (module.type !== 'package') {
+        return module;
+      }
+      else {
+        return null;
+      }
+    }
+
+    // second check: we are talking about a global module
+    description = internal.loadModuleFile(path);
+
+    if (description !== null) {
+      module = this.createModule(description, 'module', GlobalPackage);
+
+      if (module !== null) {
+        GlobalPackage.defineModule(path, module);
+        return module;
+      }
+    }
+
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a file and creates a new module descriptor
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.require = function (unormalizedPath) {
+    var module;
+    var path;
+
+    // check if path points to a package or a module in a package
+    module = this.requirePackage(unormalizedPath);
+
+    if (module !== null) {
+      return module.exports;
+    }
+
+    // try to load a global module into the current package
+    module = this.requireModule(unormalizedPath);
+
+    if (module !== null) {
+      return module.exports;
+    }
+
+    throw "cannot locate module '" + unormalizedPath + "'"
+      + " for package '" + this._package.id + "'"
+      + " using module path '" + internal.MODULES_PATH + "'"
+      + " and package path '" + this._package._paths + "'";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if require found a file
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.exists = function (path) {
+    return ModuleExistsCache[path];
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes a path
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.normalize = function (path) {
+    return internal.normalizeModuleName(this.id, path);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads module
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -370,13 +741,18 @@ function stop_color_print () {
       return;
     }
 
-    var norm = module.normalise(path);
+    var norm = module.normalize(path);
+    var m = GlobalPackage.module(norm);
 
-    if (   norm === "/"
-        || norm === "/console"
-        || norm === "/fs"
-        || norm === "/internal"
-        || norm === "/org/arangodb"
+    if (m === null) {
+      return;
+    }
+
+    if (m._type === 'system') {
+      return;
+    }
+
+    if (   norm === "/org/arangodb"
         || norm === "/org/arangodb/actions"
         || norm === "/org/arangodb/arango-collection"
         || norm === "/org/arangodb/arango-database"
@@ -386,7 +762,7 @@ function stop_color_print () {
       return;
     }
 
-    delete ModuleCache[norm];
+    GlobalPackage.clearModule(norm);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -395,18 +771,12 @@ function stop_color_print () {
 
   Module.prototype.unloadAll = function () {
     var i;
-    var path;
-    var unload = [];
+    var names;
 
-    for (path in ModuleCache) {
-      if (ModuleCache.hasOwnProperty(path)) {
-        unload.push(path);
-        ModuleCache[path]._normalized = {};
-      }
-    }
+    names = GlobalPackage.moduleNames();
 
-    for (i = 0;  i < unload.length;  ++i) {
-      this.unload(unload[i]);
+    for (i = 0;  i < names.length;  ++i) {
+      this.unload(names[i]);
     }
   };
 
@@ -415,8 +785,35 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype._PRINT = function () {
-    var internal = require("internal");
-    internal.output('[module "' + this.id + '"]');
+    var parent = "";
+
+    if (this._package._parent !== undefined) {
+      parent = ', parent package "' + this._package._parent.id + '"';
+    }
+
+    internal.output('[module "' + this.id + '"'
+                    + ', type "' + this._type + '"' 
+                    + ', package "' + this._package.id + '"'
+                    + parent
+                    + ', origin "' + this._origin + '"'
+                    + ']');
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a package
+////////////////////////////////////////////////////////////////////////////////
+
+  Package.prototype._PRINT = function () {
+    var parent = "";
+
+    if (this._parent !== undefined) {
+      parent = ', parent "' + this._package._parent.id + '"';
+    }
+
+    internal.output('[module "' + this.id + '"'
+                    + ', path "' + this._path + '"'
+                    + parent
+                    + ']');
   };
 
 ////////////////////////////////////////////////////////////////////////////////

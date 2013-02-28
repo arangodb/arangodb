@@ -11,6 +11,9 @@ var collectionView = Backbone.View.extend({
     $('#change-collection').on('hidden', function () {
     });
     this.fillModal();
+    $('.modalTooltips').tooltip({
+      placement: "left"
+    });
 
     return this;
   },
@@ -22,7 +25,7 @@ var collectionView = Backbone.View.extend({
     "click #unload-modified-collection" :    "unloadCollection"
   },
   hidden: function () {
-    window.location.hash = "#";
+    window.location.hash = "#collection/";
   },
   fillModal: function() {
     this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
@@ -32,12 +35,12 @@ var collectionView = Backbone.View.extend({
     $('#change-collection-status').text(this.myCollection.status);
 
     if (this.myCollection.status == 'unloaded') {
-      $('#colFooter').append('<button id="load-modified-collection" class="btn">Load</button>');
+      $('#colFooter').append('<button id="load-modified-collection" class="arangoBtn">Load</button>');
       $('#collectionSizeBox').hide();
       $('#collectionSyncBox').hide();
     }
     else if (this.myCollection.status == 'loaded') {
-      $('#colFooter').append('<button id="unload-modified-collection" class="btn">Unload</button>');
+      $('#colFooter').append('<button id="unload-modified-collection" class="arangoBtn">Unload</button>');
       var data = window.arangoCollectionsStore.getProperties(this.options.colId, true);
       this.fillLoadedModal(data);
     }
@@ -102,6 +105,7 @@ var collectionView = Backbone.View.extend({
     var returnval = window.arangoCollectionsStore.deleteCollection(collName);
     if (returnval === true) {
       self.hideModal();
+      window.location.hash="#";
     }
     else {
       self.hideModal();

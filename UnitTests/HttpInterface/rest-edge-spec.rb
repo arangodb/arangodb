@@ -96,7 +96,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(cn)
         cmd = "/_api/edge?collection=#{cn}&from=test&to=test"
         body = "{}"
-              doc = ArangoDB.log_post("#{prefix}-no-collection", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-no-collection", cmd, :body => body)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -109,12 +109,27 @@ describe ArangoDB do
         cn = "UnitTestsCollectionEdge"
         ArangoDB.drop_collection(cn)
         cmd = "/_api/edges/#{cn}?vertex=test"
-              doc = ArangoDB.log_get("#{prefix}-no-collection-query", cmd)
+        doc = ArangoDB.log_get("#{prefix}-no-collection-query", cmd)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorNum'].should eq(1203)
         doc.parsed_response['code'].should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+      
+      it "returns an error if document handler is used to create an edge" do
+        cn = "UnitTestsCollectionEdge"
+        ArangoDB.drop_collection(cn)
+        ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
+        cmd = "/_api/document?collection=#{cn}&from=test&to=test"
+        body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-wrong-type", cmd, :body => body)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(405)
+        doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
     end

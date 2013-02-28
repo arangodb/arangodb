@@ -200,6 +200,28 @@ static bool LoadJavaScriptDirectory (char const* path,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the path list
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Array> pathList (string const& modules) {
+  v8::HandleScope scope;
+
+#ifdef _WIN32
+  vector<string> paths = StringUtils::split(modules, ";",'\0');
+#else
+  vector<string> paths = StringUtils::split(modules, ";:");
+#endif
+
+  v8::Handle<v8::Array> modulesPaths = v8::Array::New();
+
+  for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
+    modulesPaths->Set(i, v8::String::New(paths[i].c_str()));
+  }
+
+  return scope.Close(modulesPaths);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1446,7 +1468,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
+void TRI_InitV8Utils (v8::Handle<v8::Context> context,
+                      string const& modules,
+                      string const& nodes) {
   v8::HandleScope scope;
 
   v8::Handle<v8::FunctionTemplate> ft;
@@ -1494,25 +1518,14 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global variables
   // .............................................................................
 
-
   // .............................................................................
   // The spilt has been modified -- only except semicolon, previously we excepted
   // a colon as well. So as not to break existing configurations, we only 
   // make the modification for windows version -- since there isn't one yet!
   // .............................................................................
 
-#ifdef _WIN32
-  vector<string> paths = StringUtils::split(path, ";",'\0');
-#else
-  vector<string> paths = StringUtils::split(path, ";:");
-#endif
-  v8::Handle<v8::Array> modulesPaths = v8::Array::New();
-
-  for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
-    modulesPaths->Set(i, v8::String::New(paths[i].c_str()));
-  }
-
-  context->Global()->Set(v8::String::New("MODULES_PATH"), modulesPaths);
+  context->Global()->Set(v8::String::New("MODULES_PATH"), pathList(modules));
+  context->Global()->Set(v8::String::New("PACKAGE_PATH"), pathList(nodes));
 }
 
 #ifdef TRI_HAVE_ICU
