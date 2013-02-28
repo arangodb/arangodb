@@ -245,6 +245,20 @@ var documentsView = Backbone.View.extend({
   },
   renderPagination: function (totalPages) {
     var currentPage = JSON.parse(this.pageid);
+    var self = this;
+    var target = $('#testdiv'),
+    options = {
+      left: 1,
+      right: 1,
+      page: currentPage,
+      lastPage: totalPages,
+      click: function(i) {
+        options.page = i;
+        window.location.hash = '#collection/' + self.colid + '/documents/' + options.page;
+      }
+    };
+    target.pagination(options);
+    return;
     $('#testdiv').pagination({
       link: '#collection/' + this.colid + '/documents/{p}',
       count: totalPages,
