@@ -114,7 +114,6 @@ table.dataTable thead th {
     box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
 }
 
-<<<<<<< HEAD
 #documentsTableID .odd, 
 #documentsTableID .even,
 #logContent .odd, 
@@ -205,14 +204,6 @@ table.dataTable thead th {
   margin: 0 !important;
   font-size: 1em !important;
 }
-
-/*#documentsToolbar {
-float: left !important;
-padding-right: 20px;
-background-color: rgba(0,0,0,0.05);
-width: 920px;
-border-bottom: 20px solid rgba(0,0,0,0.0);
-}*/
 
   #documentsToolbar button {
     float:right;
