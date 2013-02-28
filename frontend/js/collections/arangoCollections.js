@@ -8,6 +8,8 @@ window.arangoCollections = Backbone.Collection.extend({
       searchOptions : {
         searchPhrase: null,
         includeSystem: false,
+        includeDocument: true,
+        includeEdge: true,
         includeLoaded: true,
         includeUnloaded: true
       },
@@ -93,6 +95,12 @@ window.arangoCollections = Backbone.Collection.extend({
           }
           if (options.includeSystem === false && model.get('isSystem')) {
             // system collection?
+            return;
+          }
+          if (options.includeEdge === false && model.get('type') === 'edge') {
+            return;
+          }
+          if (options.includeDocument === false && model.get('type') === 'document') {
             return;
           }
           if (options.includeLoaded === false && model.get('status') === 'loaded') {

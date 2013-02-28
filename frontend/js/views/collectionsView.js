@@ -31,11 +31,13 @@ var collectionsView = Backbone.View.extend({
     "click .icon-info-sign" : "details",
     //"blur #searchInput" : "restrictToSearchPhrase",
     "keypress #searchInput" : "restrictToSearchPhraseKey",
-    "change #searchInput" : "restrictToSearchPhrase",
-    "click #searchSubmit" : "restrictToSearchPhrase",
-    "click #checkSystem" : "checkSystem",
-    "click #checkLoaded" : "checkLoaded",
-    "click #checkUnloaded" : "checkUnloaded"
+    "change #searchInput"   : "restrictToSearchPhrase",
+    "click #searchSubmit"   : "restrictToSearchPhrase",
+    "click #checkSystem"    : "checkSystem",
+    "click #checkLoaded"    : "checkLoaded",
+    "click #checkUnloaded"  : "checkUnloaded",
+    "click #checkDocument"  : "checkDocument",
+    "click #checkEdge"      : "checkEdge"
   },
   checkSystem: function () {
     var searchOptions = this.collection.searchOptions;
@@ -44,6 +46,26 @@ var collectionsView = Backbone.View.extend({
     searchOptions.includeSystem = ($('#checkSystem').is(":checked") === true);
 
     if (oldValue != searchOptions.includeSystem) {
+      this.render();
+    }
+  },
+  checkEdge: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.includeEdge;
+
+    searchOptions.includeEdge = ($('#checkEdge').is(":checked") === true);
+
+    if (oldValue != searchOptions.includeEdge) {
+      this.render();
+    }
+  },
+  checkDocument: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.includeDocument;
+
+    searchOptions.includeDocument = ($('#checkDocument').is(":checked") === true);
+
+    if (oldValue != searchOptions.includeDocument) {
       this.render();
     }
   },
@@ -73,6 +95,8 @@ var collectionsView = Backbone.View.extend({
     $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
     $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
     $('#checkSystem').attr('checked', searchOptions.includeSystem);
+    $('#checkEdge').attr('checked', searchOptions.includeEdge);
+    $('#checkDocument').attr('checked', searchOptions.includeDocument);
   },
   search: function () {
     var searchOptions = this.collection.searchOptions;
