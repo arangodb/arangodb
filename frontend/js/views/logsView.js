@@ -148,7 +148,7 @@ var logsView = Backbone.View.extend({
         if (i === 1 && i !== currentPage) {
           self.firstTable();
         }
-        if (i === totalPages && i !== currentPage) {
+        else if (i === totalPages && i !== currentPage) {
           self.lastTable();
         }
         else {
