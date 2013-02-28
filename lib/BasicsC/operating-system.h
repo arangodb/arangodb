@@ -142,26 +142,25 @@
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
-#define TRI_CLOSE_SOCKET                close
+#define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
 #define TRI_GETCWD                      getcwd
 #define TRI_LSEEK                       lseek
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
-#define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
+#define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
 #define TRI_RMDIR                       rmdir
 #define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
-#define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
+#define TRI_WRITE_SOCKET(a,b,c,d)       TRI_writesocket((a), (b), (c), (d))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 #define TRI_uid_t                       uid_t
 #define TRI_gid_t                       gid_t
 
-typedef int socket_t;
 #define INVALID_SOCKET                  -1
 #define SOCKET_ERROR                    -1
 
@@ -228,26 +227,25 @@ typedef int socket_t;
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
-#define TRI_CLOSE_SOCKET                close
+#define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
 #define TRI_LSEEK                       lseek
 #define TRI_GETCWD                      getcwd
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
-#define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
+#define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
 #define TRI_RMDIR                       rmdir
 #define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
-#define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
+#define TRI_WRITE_SOCKET(a,b,c,d)       TRI_writesocket((a), (b), (c), (d))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 #define TRI_uid_t                       uid_t
 #define TRI_gid_t                       gid_t
 
-typedef int socket_t;
 #define INVALID_SOCKET                  -1
 #define SOCKET_ERROR                    -1
 
@@ -351,26 +349,25 @@ typedef int socket_t;
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
-#define TRI_CLOSE_SOCKET                close
+#define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
 #define TRI_LSEEK                       lseek
 #define TRI_GETCWD                      getcwd
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
-#define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
+#define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
 #define TRI_RMDIR                       rmdir
 #define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
-#define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
+#define TRI_WRITE_SOCKET(a,b,c,d)       TRI_writesocket((a), (b), (c), (d))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 #define TRI_uid_t                       uid_t
 #define TRI_gid_t                       gid_t
 
-typedef int socket_t;
 #define INVALID_SOCKET                  -1
 #define SOCKET_ERROR                    -1
 
@@ -406,7 +403,6 @@ typedef int socket_t;
 // by default. We have disabled it here.
 // ..............................................................................
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
-
 #include <stdio.h>
 #include <io.h>
 #include <WinSock2.h>
@@ -474,7 +470,7 @@ extern "C" {
 
 
 #ifndef __BOOL_DEFINED
-//typedef unsigned int bool; - this never ever going to work. Problem is sizeof(bool) in VS C++ is 1 byte and
+//typedef unsigned int bool; - this was never ever going to work. Problem is sizeof(bool) in VS C++ is 1 byte and
 // sizeof(bool) in VS C (C compiler) is -- whatever you want. However, when structures are interchanged between
 // C & C++ (as in arango) all hell will break loose.
 typedef unsigned char bool;
@@ -497,7 +493,7 @@ typedef unsigned char bool;
 #define O_RDONLY                        _O_RDONLY
 #define TRI_CHDIR                       _chdir
 #define TRI_CLOSE                       _close
-#define TRI_CLOSE_SOCKET                TRI_WIN_closesocket
+#define TRI_CLOSE_SOCKET                TRI_closesocket
 /*  #define TRI_CREATE(a,b,c)               _open((a), (b), (c)) */
 #define TRI_CREATE(a,b,c)               TRI_createFile((a), (b), (c))
 #define TRI_GETCWD                      _getcwd
@@ -506,12 +502,13 @@ typedef unsigned char bool;
 /* #define TRI_OPEN(a,b)                   _open((a), (b)) */
 #define TRI_OPEN(a,b)                   TRI_openFile((a), (b))
 #define TRI_READ                        _read
-#define TRI_READ_SOCKET(a,b,c,d)        recv((a), (b), (c), (d))
+#define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
+
 #define TRI_RMDIR                       _rmdir
 #define TRI_SLEEP                       TRI_sleep
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
-#define TRI_WRITE_SOCKET(a,b,c,d)       send((a), (b), (c), (d))
+#define TRI_WRITE_SOCKET(a,b,c,d)       TRI_writesocket((a), (b), (c), (d))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -535,7 +532,6 @@ typedef unsigned char bool;
 #define alloca                          _alloca
 
 
-typedef SOCKET socket_t;
 
 #define STDIN_FILENO  0;
 #define STDOUT_FILENO 1;

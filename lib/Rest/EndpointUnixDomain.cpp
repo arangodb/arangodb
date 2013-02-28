@@ -92,10 +92,14 @@ EndpointUnixDomain::~EndpointUnixDomain () {
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeout) {
+TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeout) {
+  TRI_socket_t listenSocket;
+  listenSocket.fileDescriptor = 0;
+  listenSocket.fileHandle = 0;
+  
   LOGGER_DEBUG << "connecting to unix endpoint " << _specification;
 
-  assert(_socket == 0);
+  assert(_socket.fileHandle == 0);
   assert(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
@@ -110,24 +114,26 @@ socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeo
     else {
       LOGGER_ERROR << "unable to delete previously existing socket file '" << _path << "'.";
     
-      return 0;
+      return listenSocket;
     }
   }
 
-  int listenSocket = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (listenSocket == -1) {
-    return 0;
+  listenSocket.fileHandle = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (listenSocket.fileHandle == -1) {
+    listenSocket.fileDescriptor = 0;
+    listenSocket.fileHandle = 0;
+    return listenSocket;
   }
   
   // reuse address
   int opt = 1;
     
-  if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
+  if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
-
-    close(listenSocket);
-
-    return 0;
+    TRI_CLOSE_SOCKET(listenSocket);
+    listenSocket.fileDescriptor = 0;
+    listenSocket.fileHandle = 0;
+    return listenSocket;
   }
   LOGGER_TRACE << "reuse address flag set";
     
@@ -138,43 +144,47 @@ socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeo
   snprintf(address.sun_path, 100, "%s", _path.c_str());
 
   if (_type == ENDPOINT_SERVER) {
-    int result = bind(listenSocket, (struct sockaddr*) &address, SUN_LEN(&address));
+    int result = bind(listenSocket.fileHandle, (struct sockaddr*) &address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      close(listenSocket);
-
-      return 0;
+      TRI_CLOSE_SOCKET(listenSocket);
+      listenSocket.fileDescriptor = 0;
+      listenSocket.fileHandle = 0;
+      return listenSocket;
     }
     
     // listen for new connection, executed for server endpoints only
     LOGGER_TRACE << "using backlog size " << _listenBacklog;
-    result = listen(listenSocket, _listenBacklog);
+    result = listen(listenSocket.fileHandle, _listenBacklog);
 
     if (result < 0) {
-      close(listenSocket);
-
+      TRI_CLOSE_SOCKET(listenSocket);
       LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
-
-      return 0;
+      listenSocket.fileDescriptor = 0;
+      listenSocket.fileHandle = 0;
+      return listenSocket;
     }
   }
+  
   else if (_type == ENDPOINT_CLIENT) {
     // connect to endpoint, executed for client endpoints only
 
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (::connect(listenSocket, (const struct sockaddr*) &address, SUN_LEN(&address)) != 0) {
-      close(listenSocket);
-
-      return 0;
+    if (::connect(listenSocket.fileHandle, (const struct sockaddr*) &address, SUN_LEN(&address)) != 0) {
+      TRI_CLOSE_SOCKET(listenSocket);
+      listenSocket.fileDescriptor = 0;
+      listenSocket.fileHandle = 0;
+      return listenSocket;
     }
   }
     
   if (!setSocketFlags(listenSocket)) {
-    close(listenSocket);
-
-    return 0;
+    TRI_CLOSE_SOCKET(listenSocket);
+    listenSocket.fileDescriptor = 0;
+    listenSocket.fileHandle = 0;
+    return listenSocket;
   }
   
   if (_type == ENDPOINT_CLIENT) {
@@ -193,12 +203,13 @@ socket_t EndpointUnixDomain::connect (double connectTimeout, double requestTimeo
 
 void EndpointUnixDomain::disconnect () {
   if (_connected) {
-    assert(_socket);
+    assert(_socket.fileHandle);
 
     _connected = false;
-    close(_socket);
+    TRI_CLOSE_SOCKET(_socket);
 
-    _socket = 0;
+    _socket.fileHandle = 0;
+    _socket.fileDescriptor = 0;
 
     if (_type == ENDPOINT_SERVER) {   
       int error = 0; 
@@ -211,7 +222,7 @@ void EndpointUnixDomain::disconnect () {
 /// @brief init an incoming connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointUnixDomain::initIncoming (socket_t incoming) {
+bool EndpointUnixDomain::initIncoming (TRI_socket_t incoming) {
   return setSocketFlags(incoming);
 }
 

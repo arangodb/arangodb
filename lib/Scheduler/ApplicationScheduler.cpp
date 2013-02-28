@@ -114,7 +114,8 @@ static SignalTask* localSignalTask;
         }
         else {
           LOGGER_INFO << "control-c received, terminating";
-          exit(EXIT_FAILURE);
+          _exit(1);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
 
         ++_seen;
@@ -197,6 +198,7 @@ static SignalTask* localSignalTask;
     string msg = ccTask->_server->getName() + " [shutting down]";
     bool shutdown = false;    
     string shutdownMessage;
+    
     // .........................................................................
     // TODO: popup message
     // .........................................................................
@@ -262,14 +264,15 @@ static SignalTask* localSignalTask;
       ccTask->_server->beginShutdown();
       ++ccTask->_seen;
       return true; 
-     }
+    }
 
      // ............................................................................
      // user is desperate to kill the server!
      // ............................................................................
 
      LOGGER_INFO << shutdownMessage << ", terminating";
-     _exit(EXIT_FAILURE); // quick exit for windows
+     _exit(1);
+     TRI_EXIT_FUNCTION(EXIT_FAILURE,0); // quick exit for windows
      return true;
   }
 
@@ -358,7 +361,7 @@ Scheduler* ApplicationScheduler::scheduler () const {
 void ApplicationScheduler::installSignalHandler (SignalTask* task) {
   if (_scheduler == 0) {
     LOGGER_FATAL << "no scheduler is known, cannot install signal handler";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   _scheduler->registerTask(task);
@@ -441,7 +444,7 @@ bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& option
   // show io backends
   if (options.has("show-io-backends")) {
     cout << "available io backends are: " << SchedulerLibev::availableBackends() << endl;
-    exit(EXIT_SUCCESS);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS,0);
   }
 
   return true;
@@ -571,7 +574,7 @@ void ApplicationScheduler::stop () {
 void ApplicationScheduler::buildScheduler () {
   if (_scheduler != 0) {
     LOGGER_FATAL << "a scheduler has already been created";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
@@ -584,7 +587,7 @@ void ApplicationScheduler::buildScheduler () {
 void ApplicationScheduler::buildSchedulerReporter () {
   if (_scheduler == 0) {
     LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   if (0.0 < _reportIntervall) {
@@ -602,7 +605,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
 void ApplicationScheduler::buildControlCHandler () {
   if (_scheduler == 0) {
     LOGGER_FATAL << "no scheduler is known, cannot create control-c handler";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // control C handler
@@ -631,7 +634,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
     if (res != 0) {
       LOGGER_FATAL << "cannot get the file descriptor limit: " << strerror(errno) << "'";
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
 
     LOGGER_DEBUG << "hard limit is " << rlim.rlim_max << ", soft limit is " << rlim.rlim_cur;
@@ -648,7 +651,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
       if (res < 0) {
         LOGGER_FATAL << "cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno);
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 
       changed = true;
@@ -662,7 +665,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
       if (res < 0) {
         LOGGER_FATAL << "cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno);
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 
       changed = true;
@@ -673,7 +676,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
       if (res != 0) {
         LOGGER_FATAL << "cannot get the file descriptor limit: " << strerror(errno) << "'";
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
 
       LOGGER_DEBUG << "new hard limit is " << rlim.rlim_max << ", new soft limit is " << rlim.rlim_cur;
@@ -684,7 +687,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
       if (FD_SETSIZE < _descriptorMinimum) {
         LOGGER_FATAL << "i/o backend 'select' has been selected, which supports only " << FD_SETSIZE
                      << " descriptors, but " << _descriptorMinimum << " are required";
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
     }
   }

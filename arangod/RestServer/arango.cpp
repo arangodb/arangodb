@@ -98,6 +98,7 @@ static void arangodExitFunction(int exitCode, void* data) {
 
   res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
   
+  
   if (res != 0) {
     _exit(1);
   }

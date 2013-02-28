@@ -92,7 +92,6 @@ int ftruncate (int, long);
 int getpagesize (void);
 
 
-int TRI_WIN_closesocket (SOCKET); 
 
 // .............................................................................
 // This function uses the CreateFile windows method rather than _open which

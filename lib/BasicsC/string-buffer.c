@@ -771,7 +771,7 @@ int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr
     return res;
   }
   
-  len = TRI_StringUInt32OctalInPlace(attr, self->_current);
+  len = TRI_StringUInt64OctalInPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;

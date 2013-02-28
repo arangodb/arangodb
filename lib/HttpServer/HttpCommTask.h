@@ -85,14 +85,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpCommTask (S* server, 
-                      socket_t fd, 
+                      TRI_socket_t socket, 
                       ConnectionInfo const& info,
                       double keepAliveTimeout) 
         : Task("HttpCommTask"),
-          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout),
+          GeneralCommTask<S, HttpHandlerFactory>(server, socket, info, keepAliveTimeout),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
-          _origin(),
-          _denyCredentials(false) {
+          _origin(),  
+          _denyCredentials(false) {          
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 

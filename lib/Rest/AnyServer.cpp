@@ -73,7 +73,7 @@ static void CheckPidFile (string const& pidFile) {
     if (FileUtils::isDirectory(pidFile)) {
       LOGGER_FATAL << "pid-file '" << pidFile << "' is a directory";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
     else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
       LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
@@ -89,7 +89,7 @@ static void CheckPidFile (string const& pidFile) {
         if (oldPid == 0) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' is unreadable";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
 
         LOGGER_DEBUG << "found old pid: " << oldPid;
@@ -98,12 +98,12 @@ static void CheckPidFile (string const& pidFile) {
         if (r == 0) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
         else if (errno == EPERM) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
         else if (errno == ESRCH) {
           LOGGER_ERROR << "pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists";
@@ -111,7 +111,7 @@ static void CheckPidFile (string const& pidFile) {
           if (! FileUtils::remove(pidFile)) {
             LOGGER_FATAL << "pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed";
             TRI_FlushLogging();
-            exit(EXIT_FAILURE);
+            TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
           }
 
           LOGGER_INFO << "removed stale pid-file '" << pidFile << "'";
@@ -119,7 +119,7 @@ static void CheckPidFile (string const& pidFile) {
         else {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and kill " << oldPid << " failed";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
       }
 
@@ -127,7 +127,7 @@ static void CheckPidFile (string const& pidFile) {
       else {
         LOGGER_FATAL << "pid-file '" << pidFile << "' exists, but cannot be opened";
         TRI_FlushLogging();
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
     }
 
@@ -144,7 +144,7 @@ static void WritePidFile (string const& pidFile, int pid) {
 
   if (! out) {
     cerr << "cannot write pid-file \"" << pidFile << "\"\n";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   out << pid;
@@ -161,7 +161,7 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
 
   if (pid < 0) {
     LOGGER_FATAL << "cannot fork";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // Upon successful completion, fork() shall return 0 to the child process and 
@@ -185,7 +185,7 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
 
   if (sid < 0) {
     cerr << "cannot create sid\n";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // store current working directory
@@ -194,14 +194,14 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
 
   if (err != 0) {
     cerr << "cannot get current directory\n";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // change the current working directory (TODO must be configurable)
   if (! workingDirectory.empty()) {
     if (! FileUtils::changeDirectory(workingDirectory)) {
       cerr << "cannot change into working directory '" << workingDirectory << "'\n";
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
     else {
       LOGGER_INFO << "changed into working directory '" << workingDirectory << "'";
@@ -229,7 +229,7 @@ static void CheckPidFile (string const& pidFile) {
     if (FileUtils::isDirectory(pidFile)) {
       LOGGER_FATAL << "pid-file '" << pidFile << "' is a directory";
       TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
     else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
       LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
@@ -245,7 +245,7 @@ static void CheckPidFile (string const& pidFile) {
         if (oldPid == 0) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' is unreadable";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
 
         LOGGER_DEBUG << "found old pid: " << oldPid;
@@ -256,12 +256,12 @@ static void CheckPidFile (string const& pidFile) {
         if (r == 0) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
         else if (errno == EPERM) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
         else if (errno == ESRCH) {
           LOGGER_ERROR << "pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists";
@@ -269,7 +269,7 @@ static void CheckPidFile (string const& pidFile) {
           if (! FileUtils::remove(pidFile)) {
             LOGGER_FATAL << "pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed";
             TRI_FlushLogging();
-            exit(EXIT_FAILURE);
+            TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
           }
 
           LOGGER_INFO << "removed stale pid-file '" << pidFile << "'";
@@ -277,7 +277,7 @@ static void CheckPidFile (string const& pidFile) {
         else {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and kill " << oldPid << " failed";
           TRI_FlushLogging();
-          exit(EXIT_FAILURE);
+          TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
         }
       }
 
@@ -285,7 +285,7 @@ static void CheckPidFile (string const& pidFile) {
       else {
         LOGGER_FATAL << "pid-file '" << pidFile << "' exists, but cannot be opened";
         TRI_FlushLogging();
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
     }
 
@@ -302,7 +302,7 @@ static void WritePidFile (string const& pidFile, int pid) {
 
   if (! out) {
     cerr << "cannot write pid-file \"" << pidFile << "\"\n";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   out << pid;
@@ -323,7 +323,7 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
 
   if (pid < 0) {
     LOGGER_FATAL << "cannot fork";
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   return 0;
@@ -480,7 +480,7 @@ int AnyServer::startupSupervisor () {
       TRI_pid_t pid = fork();
       
       if (pid < 0) {
-        exit(EXIT_FAILURE);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
       }
       
       // parent
@@ -584,7 +584,7 @@ int AnyServer::startupSupervisor () {
         }
 
         // and stop
-        exit(result);
+        TRI_EXIT_FUNCTION(result,0);
       }
     }
   }

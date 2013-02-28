@@ -41,6 +41,7 @@
 #include "Scheduler/Task.h"
 
 #include "Basics/Mutex.h"
+#include "BasicsC/socket-utils.h"
 #include "Rest/ConnectionInfo.h"
 #include "Rest/Endpoint.h"
 
@@ -83,7 +84,7 @@ namespace triagens {
 /// @brief called by the task to indicate connection success
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleConnected (socket_t fd, ConnectionInfo const& info) = 0;
+        virtual bool handleConnected (TRI_socket_t socket, ConnectionInfo const& info) = 0;
 
       protected:
 
@@ -131,7 +132,7 @@ namespace triagens {
       private:
         bool reuseAddress;
         Endpoint* _endpoint;
-        socket_t listenSocket;
+        TRI_socket_t _listenSocket;
 
         size_t acceptFailures;
 

@@ -115,7 +115,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
       LOG_ERROR("mutex deadlock detected"); 
     }
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -131,7 +131,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
   if (rc != 0) {
     LOG_ERROR("could not release the mutex: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -198,7 +198,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
       LOG_ERROR("spinlock deadlock detected"); 
     }
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -214,7 +214,7 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
   if (rc != 0) {
     LOG_ERROR("could not release the spin-lock: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -313,7 +313,7 @@ again:
       LOG_ERROR("rw-lock deadlock detected"); 
     }
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -329,7 +329,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   if (rc != 0) {
     LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -360,7 +360,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
       LOG_ERROR("rw-lock deadlock detected"); 
     }
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -376,7 +376,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   if (rc != 0) {
     LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -410,7 +410,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
   if (cond->_mutex == NULL) {
     LOG_ERROR("could not allocate memory for condition variable mutex");
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   pthread_mutex_init(cond->_mutex, 0);
@@ -467,7 +467,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
   if (rc != 0) {
     LOG_ERROR("could not signal the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -485,7 +485,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
   if (rc != 0) {
     LOG_ERROR("could not croadcast the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -503,7 +503,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
   if (rc != 0) {
     LOG_ERROR("could not wait for the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -524,7 +524,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   if (rc != 0) {
     LOG_ERROR("could not get time of day for the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   // Convert from timeval to timespec
@@ -544,7 +544,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 
     LOG_ERROR("could not wait for the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 
   return true;
@@ -562,7 +562,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
   if (rc != 0) {
     LOG_ERROR("could not lock the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 
@@ -578,7 +578,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   if (rc != 0) {
     LOG_ERROR("could not unlock the condition: %s", strerror(rc));
     TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
   }
 }
 

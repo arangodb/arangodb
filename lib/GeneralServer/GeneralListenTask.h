@@ -29,6 +29,7 @@
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_LISTEN_TASK_H
 #define TRIAGENS_GENERAL_SERVER_GENERAL_LISTEN_TASK_H 1
 
+#include <BasicsC/socket-utils.h>
 #include "Scheduler/ListenTask.h"
 #include "Rest/Endpoint.h"
 
@@ -96,9 +97,9 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleConnected (socket_t socket, ConnectionInfo const& info) {
+        bool handleConnected (TRI_socket_t s, ConnectionInfo const& info) {
           ConnectionInfo newInfo = info;
-          server->handleConnected(socket, newInfo);
+          server->handleConnected(s, newInfo);
           return true;
         }
 

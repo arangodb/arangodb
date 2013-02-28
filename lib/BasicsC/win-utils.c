@@ -111,12 +111,14 @@ void TRI_usleep(unsigned long waitTime) {
   // Set timer to wait for indicated micro seconds.
   if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
     // no much we can do at this low level
+    CloseHandle(hTimer);
     return;
   }
 
   // Wait for the timer 
   result = WaitForSingleObject(hTimer, INFINITE);
   if (result != WAIT_OBJECT_0) {
+    CloseHandle(hTimer);
     abort();
   }
   
@@ -248,6 +250,7 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
       WSADATA wsaData;
       WORD wVersionRequested = MAKEWORD(2,2);
       errorCode = WSAStartup(wVersionRequested, &wsaData);
+
       if (errorCode != 0) {
         LOG_ERROR("Could not find a usuable Winsock DLL. WSAStartup returned an error.");
         return -1;
@@ -270,13 +273,6 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
 
 }
 
-
-int TRI_WIN_closesocket(SOCKET s) {
-  int res;
-  res = shutdown(s,2);
-  res = closesocket(s);
-  return res;
-}
 
 int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;

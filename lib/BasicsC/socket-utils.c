@@ -63,37 +63,50 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets non-blocking mode for a socket
-////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_WIN32_NON_BLOCKING
-
-bool TRI_SetNonBlockingSocket (socket_t fd) {
-  DWORD ul = 1;
-
-  return ioctlsocket(fd, FIONBIO, &ul) == SOCKET_ERROR ? false : true;
+int TRI_closesocket(TRI_socket_t s) {
+  int res = 0;
+  // if this is the last file descriptor associated with the open file
+  // I really hope the resources are released under both windows and linux
+  #ifdef _WIN32  
+/*
+    if (s.fileHandle > 0) {
+      res = shutdown(s.fileHandle,2);
+      res = closesocket(s.fileHandle);
+    }  
+*/
+    if (s.fileDescriptor > 0) {
+      res = _close(s.fileDescriptor);
+    }  
+  #else
+    if (s.fileDescriptor > 0) {
+      res = close(s.fileDescriptor); 
+    }  
+  #endif  
+  return res;
 }
 
-#else
 
-bool TRI_SetNonBlockingSocket (socket_t fd) {
-  long flags = fcntl(fd, F_GETFL, 0);
-
-  if (flags < 0) {
-    return false;
-  }
-
-  flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-
-  if (flags < 0) {
-    return false;
-  }
-
-  return true;
+int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
+  int res;
+  #ifdef _WIN32
+    res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
+  #else
+    res = read(s.fileDescriptor, buffer, numBytesToRead);
+  #endif  
+  return res;
 }
 
-#endif
+
+int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
+  int res;
+  #ifdef _WIN32
+    res = send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
+  #else
+    res = (int)(write(s.fileHandle, buffer, numBytesToWrite));
+  #endif
+  return res;
+}  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets close-on-exit for a socket
@@ -101,20 +114,20 @@ bool TRI_SetNonBlockingSocket (socket_t fd) {
 
 #ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
 
-bool TRI_SetCloseOnExecSocket (socket_t fd) {
+bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
   return true;
 }
 
 #else
 
-bool TRI_SetCloseOnExecSocket (socket_t fd) {
-  long flags = fcntl(fd, F_GETFD, 0);
+bool TRI_SetCloseOnExitSocket (TRI_socket_t s) {
+  long flags = fcntl(s.fileDescriptor, F_GETFD, 0);
 
   if (flags < 0) {
     return false;
   }
 
-  flags = fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+  flags = fcntl(s.fileDescriptor, F_SETFD, flags | FD_CLOEXEC);
 
   if (flags < 0) {
     return false;
@@ -124,6 +137,41 @@ bool TRI_SetCloseOnExecSocket (socket_t fd) {
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets non-blocking mode for a socket
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_WIN32_NON_BLOCKING
+
+bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
+  int res;
+  DWORD ul = 1;  
+  res = ioctlsocket(s.fileHandle, FIONBIO, &ul); 
+  return (res != SOCKET_ERROR); 
+}
+
+#else
+
+bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
+  long flags = fcntl(s.fileDescriptor, F_GETFL, 0);
+
+  if (flags < 0) {
+    return false;
+  }
+
+  flags = fcntl(s.fileDescriptor, F_SETFL, flags | O_NONBLOCK);
+
+  if (flags < 0) {
+    return false;
+  }
+
+  return true;
+}
+
+#endif
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

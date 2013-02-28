@@ -97,7 +97,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
       TRI_UnlockSpin(&container->_lock);
       return;
     }
-
+    
     element = container->_begin;
     assert(element);
 
@@ -203,6 +203,7 @@ void TRI_CleanupVocBase (void* data) {
     // keep initial _state value as vocbase->_state might change during compaction loop
     int state = vocbase->_state; 
 
+    
     ++iterations;
 
     if (state == 2) {

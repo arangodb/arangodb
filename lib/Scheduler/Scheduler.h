@@ -29,6 +29,7 @@
 #ifndef TRIAGENS_SCHEDULER_SCHEDULER_H
 #define TRIAGENS_SCHEDULER_SCHEDULER_H 1
 
+#include <BasicsC/socket-utils.h>
 #include "Scheduler/TaskManager.h"
 
 #include "Basics/Mutex.h"
@@ -222,7 +223,7 @@ namespace triagens {
 /// @brief called to register a socket descriptor event
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual EventToken installSocketEvent (EventLoop, EventType, Task*, socket_t) = 0;
+        virtual EventToken installSocketEvent (EventLoop, EventType, Task*, TRI_socket_t) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief re-starts the socket events
