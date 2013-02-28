@@ -258,15 +258,6 @@ var documentsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
-    return;
-    $('#testdiv').pagination({
-      link: '#collection/' + this.colid + '/documents/{p}',
-      count: totalPages,
-      current: currentPage
-    });
-  },
-  renderPaginationDummy: function () {
-
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
