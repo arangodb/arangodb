@@ -78,50 +78,57 @@ $(document).ready(function() {
     },
     newCollection: function() {
       if (!this.newCollectionView) {
-        this.newCollectionView = new window.newCollectionView({
-        });
+        this.newCollectionView = new window.newCollectionView({});
       }
       this.newCollectionView.render();
     },
     documents: function(colid, pageid) {
-      window.documentsView.colid = colid;
-      window.documentsView.render();
-      window.arangoDocumentsStore.getDocuments(colid, pageid);
       if (!window.documentsView) {
         window.documentsView.initTable(colid, pageid);
       }
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentsView.colid = colid;
+      window.documentsView.type = type;
+      window.documentsView.render();
+      window.arangoDocumentsStore.getDocuments(colid, pageid);
     },
     document: function(colid, docid) {
-      window.documentView.render();
-      window.arangoDocumentStore.getDocument(colid, docid);
       if (!window.documentView) {
         window.documentView.initTable();
       }
+      window.documentView.colid = colid;
+      window.documentView.docid = docid;
+      window.documentView.render();
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentView.type = type;
+      window.documentView.typeCheck(type);
     },
     source: function(colid, docid) {
       window.documentSourceView.render();
-      if (window.arangoDocumentStore.models[0] == undefined) {
-        window.arangoDocumentStore.getDocument(colid, docid, "source");
-      }
-      else {
-        window.documentSourceView.fillSourceBox();
-      }
-      if (!window.documentSourceView) {
-        window.documentSourceView.initTable();
-      }
+      window.documentSourceView.colid = colid;
+      window.documentSourceView.docid = docid;
+      var type = arangoHelper.collectionApiType(colid);
+      window.documentSourceView.type = type;
+      window.documentSourceView.typeCheck(type);
     },
     shell: function() {
-      this.shellView = new window.shellView();
+      if (!this.shellView) {
+        this.shellView = new window.shellView();
+      }
       this.shellView.render();
       this.naviView.selectMenuItem('shell-menu');
     },
     query: function() {
-      this.queryView = new window.queryView();
+      if (!this.queryView) {
+        this.queryView = new window.queryView();
+      }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
     },
     about: function() {
-      this.aboutView = new window.aboutView();
+      if (!this.aboutView) {
+        this.aboutView = new window.aboutView();
+      }
       this.aboutView.render();
       this.naviView.selectMenuItem('about-menu');
     },
@@ -129,8 +136,6 @@ $(document).ready(function() {
       var self = this;
       window.arangoLogsStore.fetch({
         success: function () {
-          if (!window.logsView) {
-          }
           window.logsView.render();
           $('#logNav a[href="#all"]').tab('show');
           window.logsView.initLogTables();

@@ -19,12 +19,44 @@ table.dataTable td {
   background-color: transparent;
 }
 
-#documentsToolbarLeft {
-  float:left;
-  padding-left: 20px;
+#documentsFooterBox {
+  background-color: rgba(0,0,0,0.05);
+  height: 56px;
 }
 
-#documentsPlaceholder {
+#documentsFooter {
+  height: 36px;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-left: 20px;
+  margin-right: 20px;
+  border: 1px solid #C1BDBA;
+  background-color: #F7F6F6 !important;
+  background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
+  background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
+  background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
+  background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
+  background-image: linear-gradient(top, #f3efec, #ebe7e3);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
+}
+
+#documentsStatus {
+  padding-top: 10px;
+  float:left;
+  width: 40%;
+}
+
+#documentsPaging {
+  padding-top: 5px;
+  margin: 0;
+  float: right;
+  text-align: right;
+  width: 40%;
+}
+
+#documentsPaging a {
+  font-size: 1.4em;
 }
 
 #documentsDiv {
@@ -41,7 +73,7 @@ table.dataTable td {
 
 #documentsTableID_wrapper {
   padding-top: 30px !important;
-  padding-bottom: 20px !important;
+  padding-bottom: 0px !important;
 }
 
 #documentsTableID_wrapper .fg-toolbar {
@@ -60,7 +92,7 @@ table.dataTable td {
 }
 
 table.dataTable thead th {
-	border-bottom:none;
+  border-bottom:none;
 }
 
 #documentsTableID.dataTable thead tr,
@@ -82,25 +114,7 @@ table.dataTable thead th {
     box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
 }
 
-
-/*table.dataTable tr td:first-child {
-	border-left:1px solid #c1bdba;
-	border-right:0px;
-	border-top:1px solid #c1bdba;
-	border-bottom:1px solid #c1bdba;
-    border-radius: 6px 0px 0px 6px;
-
-}
-
-table.dataTable tr td:last-child {
-	border-left:0px;
-	border-right:1px solid #c1bdba;
-	border-top:1px solid #c1bdba;
-	border-bottom:1px solid #c1bdba;
-	border-right:1px solid #c1bdba;
-    border-radius: 0px 6px 6px 0px;
-}*/
-
+<<<<<<< HEAD
 #documentsTableID .odd, 
 #documentsTableID .even,
 #logContent .odd, 
@@ -113,7 +127,7 @@ table.dataTable tr td:last-child {
     background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
     background-image: linear-gradient(top, #ffffff, #f5f5f5);
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
-	border:1px solid #c1bdba;
+    border:1px solid #c1bdba;
 }
 
 
@@ -123,13 +137,13 @@ table.dataTable tr td:last-child {
 #logContent .even:hover {
   border: 1px solid #fbdb7e;
   cursor: pointer;
-    background-image: -moz-linear-gradient(top, #f4f4f4, #e4e4e4);
-    background-image: -ms-linear-gradient(top,#f4f4f4, #e4e4e4);
-    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f4f4f4), to(#e4e4e4));
-    background-image: -webkit-linear-gradient(top, #f4f4f4, #e4e4e4);
-    background-image: -o-linear-gradient(top, #f4f4f4, #e4e4e4);
-    background-image: linear-gradient(top, #f4f4f4, #e4e4e4);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f4f4f4', endColorstr='#e4e4e4', GradientType=0);
+  background-image: -moz-linear-gradient(top, #f4f4f4, #e4e4e4);
+  background-image: -ms-linear-gradient(top,#f4f4f4, #e4e4e4);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f4f4f4), to(#e4e4e4));
+  background-image: -webkit-linear-gradient(top, #f4f4f4, #e4e4e4);
+  background-image: -o-linear-gradient(top, #f4f4f4, #e4e4e4);
+  background-image: linear-gradient(top, #f4f4f4, #e4e4e4);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f4f4f4', endColorstr='#e4e4e4', GradientType=0);
 }
 
 #documentsTableID.dataTable tr.even td.sorting_1,
@@ -165,11 +179,11 @@ table.dataTable tr td:last-child {
 
 
 .sorting_asc, .sorting_desc {
-	background:#e4e0dd;
+  background:#e4e0dd;
 }
 
 .snippet-container {
-/*  margin-top: 5px;*/
+  /*  margin-top: 5px;*/
 }
 
 .snippet-no-num {
@@ -193,15 +207,15 @@ table.dataTable tr td:last-child {
 }
 
 /*#documentsToolbar {
-  float: left !important;
-  padding-right: 20px;
-  background-color: rgba(0,0,0,0.05);
-  width: 920px;
-  border-bottom: 20px solid rgba(0,0,0,0.0);
+float: left !important;
+padding-right: 20px;
+background-color: rgba(0,0,0,0.05);
+width: 920px;
+border-bottom: 20px solid rgba(0,0,0,0.0);
 }*/
 
-#documentsToolbar button {
-  float:right;
+  #documentsToolbar button {
+    float:right;
 }
 
 .pagination ul > li > a, .pagination ul > li > span {
@@ -211,12 +225,10 @@ table.dataTable tr td:last-child {
 
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
 	margin-right:10px;
-	font-size:1.8em;
 }
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span {
 	margin-left:10px;
-	font-size:1.8em;
 }
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
@@ -230,70 +242,71 @@ table.dataTable tr td:last-child {
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#8f8d8c', endColorstr='#6d6c6b', GradientType=0);*/
  	box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
 	background: #8f8d8c;
-	border: none/*1px solid #54514f*/;
+	border: none;
 	color:#FFFFFF;
+	font-size:1.8em;
 }
 
 .pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
-	background-color: #8aa050;
-	color:#FFFFFF;
+  background-color: #8aa050;
+  color:#FFFFFF;
 }
 
 .badge {
-	border-radius:0;
+  border-radius:0;
 }
 
 .badge-success, .badge-success, .badge-important, .badge-inverse {
-	background: none;
-    padding-left: 0px;
-    padding-right: 0px;
-	position:absolute;
-	bottom:27px;
-	right:0px;
+  background: none;
+  padding-left: 0px;
+  padding-right: 0px;
+  position:absolute;
+  bottom:27px;
+  right:0px;
 }
 
 .cornered {
-    padding-left: 4px;
-    padding-right: 9px;
+  padding-left: 4px;
+  padding-right: 9px;
 }
 
 .badge-success .cornered {
-    height: 0px;
-    border-bottom: 16px solid #8AA051;
-    border-left: 16px solid transparent;
+  height: 0px;
+  border-bottom: 16px solid #8AA051;
+  border-left: 16px solid transparent;
 }
 
 .badge-important .cornered {
-    height: 0px;
-    border-bottom: 16px solid #B94A48;
-    border-left: 16px solid transparent;
+  height: 0px;
+  border-bottom: 16px solid #B94A48;
+  border-left: 16px solid transparent;
 }
 
 .badge-inverse .cornered {
-    height: 0px;
-    border-bottom: 16px solid #333333;
-    border-left: 16px solid transparent;
+  height: 0px;
+  border-bottom: 16px solid #333333;
+  border-left: 16px solid transparent;
 }
 
 .badge .arrow:after {
-    border-left-width: 0;
-    border-right-color: #8AA051;
-    bottom: -10px;
-    left: 1px;
+  border-left-width: 0;
+  border-right-color: #8AA051;
+  bottom: -10px;
+  left: 1px;
 }
 
 .badge .arrow:after {
-    border-width: 10px;
-    content: "";
+  border-width: 10px;
+  content: "";
 }
 
 .badge .arrow, .badge .arrow:after {
-    border-color: transparent;
-    border-style: solid;
-    display: block;
-    height: 0;
-    position: absolute;
-    width: 0;
+  border-color: transparent;
+  border-style: solid;
+  display: block;
+  height: 0;
+  position: absolute;
+  width: 0;
 }
 
 .span3 .unloaded div {

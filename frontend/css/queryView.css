@@ -8,11 +8,11 @@
 }
 
 #editorLabel, #outputLabel {
+  background-color: #F0F0F0;
   border-left: 1px solid #A0A0A0;
   border-right: 1px solid #A0A0A0;
   border-top: 1px solid #A0A0A0;
   width: 80px;
-  background-color: #F0F0F0;
   border-radius: 3px 3px 0 0;
 }
 
@@ -49,7 +49,7 @@
 }
 
 #queryOutput {
-  width: 890px;
+  width: 898px;
   background-color: white;
   height: 350px;
   overflow-y: hidden;

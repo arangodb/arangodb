@@ -2,14 +2,35 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocument,
   collectionInfo: {},
-  deleteDocument: function (collectionID){
+  deleteEdge: function (colid, docid) {
     var returnval = false;
     try {
       $.ajax({
         type: 'DELETE',
         async: false,
         contentType: "application/json",
-        url: "/_api/document/" + collectionID,
+        url: "/_api/edge/" + colid + "/" + docid,
+        success: function () {
+          returnval = true;
+        },
+        error: function () {
+          returnval = false;
+        }
+      });
+    }
+    catch (e) {
+          returnval = false;
+    }
+    return returnval;
+  },
+  deleteDocument: function (colid, docid){
+    var returnval = false;
+    try {
+      $.ajax({
+        type: 'DELETE',
+        async: false,
+        contentType: "application/json",
+        url: "/_api/document/" + colid + "/" + docid,
         success: function () {
           returnval = true;
         },
@@ -25,29 +46,43 @@ window.arangoDocument = Backbone.Collection.extend({
   },
   addDocument: function (collectionID) {
     var self = this;
-    var doctype = arangoHelper.collectionApiType(collectionID);
-    if (doctype === 'edge') {
-      alert("adding edge not implemented");
-      return false;
-    }
-    else if (doctype === "document") {
-      self.createTypeDocument(collectionID);
-    }
+    self.createTypeDocument(collectionID);
   },
-  createTypeDocument: function (collectionID) {
+  createTypeEdge: function (collectionID, from, to) {
+    var result = false;
     $.ajax({
       type: "POST",
+      async: false,
+      url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
+      data: JSON.stringify({}),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        result = data._id;
+      },
+      error: function(data) {
+        result = false;
+      }
+    });
+    return result;
+  },
+  createTypeDocument: function (collectionID) {
+    var result = false;
+    $.ajax({
+      type: "POST",
+      async: false,
       url: "/_api/document?collection=" + collectionID,
       data: JSON.stringify({}),
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        window.location.hash = "collection/"+data._id;
+        result = data._id;
       },
       error: function(data) {
-        alert(JSON.stringify(data));
+        result = false;
       }
     });
+    return result;
   },
   getCollectionInfo: function (identifier) {
     var self = this;
@@ -67,65 +102,83 @@ window.arangoDocument = Backbone.Collection.extend({
 
     return self.collectionInfo;
   },
-  getDocument: function (colid, docid, view) {
+  getEdge: function (colid, docid){
+    var result = false;
     this.clearDocument();
-    var self = this;
     $.ajax({
       type: "GET",
+      async: false,
+      url: "/_api/edge/" + colid +"/"+ docid,
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        window.arangoDocumentStore.add(data);
+        result = true;
+      },
+      error: function(data) {
+          result = false;
+      }
+    });
+    return result;
+  },
+  getDocument: function (colid, docid) {
+    var result = false;
+    this.clearDocument();
+    $.ajax({
+      type: "GET",
+      async: false,
       url: "/_api/document/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         window.arangoDocumentStore.add(data);
-
-        if (view == "source") {
-          window.documentSourceView.fillSourceBox();
-        }
-        else {
-          window.documentView.initTable();
-          window.documentView.drawTable();
-        }
+        //TODO: move this to view!
+        //window.documentSourceView.fillSourceBox();
+        result = true;
       },
       error: function(data) {
+          result = false;
       }
     });
+    return result;
   },
-
-  saveDocument: function (view) {
-    if (view === "source") {
-      var editor = ace.edit("sourceEditor");
-      var model = editor.getValue();
-      var tmp1 = window.location.hash.split("/")[2];
-      var tmp2 = window.location.hash.split("/")[1];
-      var docID = tmp2 + "/" + tmp1;
-    }
-    else {
-      var tmp = this.models[0].attributes;
-      var model = JSON.stringify(tmp);
-      var docID = this.models[0].attributes._id;
-    }
-
-    var collid = window.location.hash.split("/")[1];
-
+  saveEdge: function (colid, docid, model) {
+    var result = false;
     $.ajax({
       type: "PUT",
-      url: "/_api/document/" + docID,
+      async: false,
+      url: "/_api/edge/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        if (view === 'source') {
-          window.location.hash = "collection/"+collid+"/documents/1";
-          alert("saved");
-        }
-        else {
-          alert("saved");
-        }
+          //window.location.hash = "collection/"+collid+"/documents/1";
+          result = true;
       },
       error: function(data) {
-        //alert(getErrorMessage(data));
+          result = false;
       }
     });
+    return result;
+  },
+  saveDocument: function (colid, docid, model) {
+    var result = false;
+    $.ajax({
+      type: "PUT",
+      async: false,
+      url: "/_api/document/" + colid + "/" + docid,
+      data: model,
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+          //window.location.hash = "collection/"+collid+"/documents/1";
+          result = true;
+      },
+      error: function(data) {
+          result = false;
+      }
+    });
+    return result;
 
   },
 

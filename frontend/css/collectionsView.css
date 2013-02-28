@@ -1,3 +1,5 @@
+
+
 #newCollection {
   margin-left: 22px;
   margin-top: 2px;
@@ -47,6 +49,10 @@
 	padding-top: 5px;
 }
 
+.btn-group {
+  border-radius: 2px 2px 2px 2px !important;
+}
+
 .searchInput {
   background-color: #FFFFFF;
   border: 1px solid #c0c0c0;
@@ -60,6 +66,7 @@
   padding: 2px;
   vertical-align: middle;
   width:280px;
+  border-radius: 2px 2px 2px 2px !important;
 }
 
 #searchSubmit {

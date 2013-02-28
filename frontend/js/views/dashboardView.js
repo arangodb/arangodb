@@ -34,7 +34,7 @@ var dashboardView = Backbone.View.extend({
       d3.select("#dashboardCollectionsGraph svg")
       .datum(self.formatCollectionsStats())
       .transition().duration(1200)
-      .call(chart);
+      .call(chart)
 
       return chart;
     });

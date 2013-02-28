@@ -1,22 +1,17 @@
+#sourceFooter {
+  margin-top: 0;
+  background: none;
+  margin-bottom: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
 #sourceEditor {
   height: 400px;
   width: 900px;
   overflow:hidden;
   padding-bottom: 20px;
   border: 1px solid #A0A0A0;
-}
-
-#saveSourceDoc {
-  float:right;
-  margin-right: 10px;
-  margin-top: 11px;
-  margin-right: 22px;
-  opacity: 0.3;
-}
-
-#saveSourceDoc:hover {
-  opacity: 0.8;
-  cursor: pointer;
 }
 
 #sourceDiv {
@@ -26,5 +21,4 @@
 }
 
 .sourceBox {
-  padding-bottom:20px;
 }

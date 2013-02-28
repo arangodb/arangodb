@@ -23,6 +23,7 @@ var queryView = Backbone.View.extend({
 
     editor.getSession().setMode("ace/mode/javascript");
     editor2.getSession().setMode("ace/mode/javascript");
+    editor.setTheme("ace/theme/merbivore_soft");
     editor.resize();
     editor2.setValue('');
     editor2.resize();
