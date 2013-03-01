@@ -218,9 +218,7 @@ var documentsView = Backbone.View.extend({
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
-
     if (this.documentsCount === 0) {
-      $('#documentsStatus').html('No documents');
     }
     else {
       $('#documentsStatus').html(
@@ -261,6 +259,7 @@ var documentsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
+    $('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];

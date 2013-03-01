@@ -66,9 +66,14 @@ $(document).ready(function() {
       window.arangoCollectionsStore.fetch({
         success: function () {
           if (!window.collectionsView) {
+            window.collectionsView = new window.collectionsView({
+              collection: window.arangoCollectionsStore
+            });
           }
-          window.collectionsView.render();
-          naviView.selectMenuItem('collections-menu');
+          else {
+            window.collectionsView.render();
+            naviView.selectMenuItem('collections-menu');
+          }
         }
       });
     },
