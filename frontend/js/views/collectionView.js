@@ -106,10 +106,11 @@ var collectionView = Backbone.View.extend({
     if (returnval === true) {
       self.hideModal();
       window.location.hash="#";
+      arangoHelper.arangoNotification('Collection deleted successfully.');
     }
     else {
       self.hideModal();
-      alert("Error");
+      arangoHelper.arangoError('Collection delete error!.');
     }
   }
 

@@ -9,12 +9,13 @@ var documentView = Backbone.View.extend({
   },
 
   events: {
-    "click #saveDocument"    : "saveDocument",
-    "click #addDocumentLine" : "addLine",
-    "click #deleteRow"       : "deleteLine",
-    "click #sourceView"      : "sourceView",
-    "click #editFirstRow"    : "editFirst",
-    "click #editSecondRow"   : "editSecond"
+    "click #saveDocument"       : "saveDocument",
+    //"click #addDocumentLine"    : "addLine",
+    "click #deleteRow"          : "deleteLine",
+    "click #sourceView"         : "sourceView",
+    "click #editFirstRow"       : "editFirst",
+    "click #documentTableID tr" : "clicked",
+    "click #editSecondRow"      : "editSecond"
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
@@ -37,6 +38,14 @@ var documentView = Backbone.View.extend({
       }
       else if (result === false) {
       }
+    }
+  },
+  clicked: function (a) {
+    self = a.currentTarget;
+    var checkData = $(this.table).dataTable().fnGetData(self);
+    if (checkData[0] === '<div class="notwriteable"></div>') {
+      this.addLine();
+      return;
     }
   },
   render: function() {
@@ -63,10 +72,10 @@ var documentView = Backbone.View.extend({
       model = JSON.stringify(model);
       var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
-        alert("saved");
+        arangoHelper.arangoNotification('Document saved');
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoAlert('Document error');
       }
     }
     else if (this.type === 'edge') {
@@ -74,10 +83,10 @@ var documentView = Backbone.View.extend({
       model = JSON.stringify(model);
       var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
-        alert("saved");
+        arangoHelper.arangoNotification('Edge saved');
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoError('Edge error');
       }
     }
   },
@@ -98,7 +107,7 @@ var documentView = Backbone.View.extend({
     $(self.table).dataTable().fnAddData([
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
-      '<a class="add" class="notwriteable" id="addDocumentLine"> Add data</a>',
+      '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
       '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="/_admin/html/img/plus_icon.png"></button>'
@@ -132,9 +141,10 @@ var documentView = Backbone.View.extend({
   },
 
   addLine: function () {
+    var randomKey = arangoHelper.getRandomToken();
     $(this.table).dataTable().fnAddData(
       [
-        "zkey"+arangoHelper.getRandomToken(),
+        "zkey"+randomKey,
         '<i class="icon-edit" id="editFirstRow"></i>',
         this.value2html("editme"),
         JSON.stringify("editme"),
@@ -142,10 +152,14 @@ var documentView = Backbone.View.extend({
         '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]
     );
-
     this.makeEditable();
-//    $(this.table).dataTable().fnClearTable();
-//    this.drawTable();
+    var tableContent = $('table').find('td');
+    $.each(tableContent, function(key, val) {
+      if ($(val).text() === "zkey"+randomKey) {
+        $(val).click();
+        return;
+      }
+    });
   },
 
   deleteLine: function (a) {
@@ -280,10 +294,10 @@ var documentView = Backbone.View.extend({
       type: "autogrow",
       tooltip: 'click to edit',
       cssclass : 'jediTextarea',
-      submitcssclass: 'btn btn-success',
-      cancelcssclass: 'btn btn-error',
-      submit: 'Okay',
+      submitcssclass: 'btn btn-success pull-right',
+      cancelcssclass: 'btn btn-error pull-right',
       cancel: 'Cancel',
+      submit: 'Save',
       onblur: 'cancel',
       //style: 'display: inline',
       autogrow: {lineHeight: 16, minHeight: 30}
@@ -324,7 +338,7 @@ var documentView = Backbone.View.extend({
     value = value + '';
 
     if (value !== '' && (value.substr(0, 1) != '"' || value.substr(-1) != '"')) {
-      alert("You have entered an invalid string value. Please review and adjust it.");
+      arangoHelper.arangoNotification('You have entered an invalid string value. Please review and adjust it.');
       throw "error";
     }
 
@@ -332,7 +346,7 @@ var documentView = Backbone.View.extend({
       value = JSON.parse(value);
     }
     catch (e) {
-      alert("You have entered an invalid string value. Please review and adjust it.");
+      arangoHelper.arangoNotification('You have entered an invalid string value. Please review and adjust it.');
       throw e;
     }
     return value;

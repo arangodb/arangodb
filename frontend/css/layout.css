@@ -42,6 +42,7 @@ input {
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;
+	margin-left:4px;
 }
 
 .btn:hover {

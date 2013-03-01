@@ -1,10 +1,9 @@
 .collectionTh {
-  width: 30% !important;
+  width: 20% !important;
   text-align:left;
 }
 
 .modal-body .icon-info-sign {
-  margin-left: 10px;
   padding-bottom: 5px;
   margin-bottom: 10px;
   opacity: 0.7;
@@ -25,11 +24,11 @@
 
 .modal-body input {
 
-  width: 300px;
+  width: 320px;
 }
 
 .modal-body select {
-  width: 314px;
+  width: 334px;
 }
 
 .modal-text {

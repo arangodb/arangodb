@@ -48,12 +48,12 @@ var newCollectionView = Backbone.View.extend({
         journalSizeString = ', "journalSize":' + collSize;
       }
       catch (e) {
-        alert("please enter a valid number");
+        arangoHelper.arangoError('Please enter a valid number');
         return 0;
       }
     }
     if (collName == '') {
-      alert("No collection name entered. Aborting...");
+      arangoHelper.arangoError('No collection name entered!');
       return 0;
     }
 
@@ -61,12 +61,12 @@ var newCollectionView = Backbone.View.extend({
     if (returnval === true) {
       self.hidden();
       $("#add-collection").modal('hide');
-      alert("Collection created");
+      arangoHelper.arangoNotification("Collection created");
     }
     else {
       self.hidden();
       $("#add-collection").modal('hide');
-      alert("Collection error");
+      arangoHelper.arangoError("Collection error");
     }
 
   }
