@@ -5812,7 +5812,8 @@ unittests-import:
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
 	for i in 1 2 3 4; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
-	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv --eol "\r\n" || test "x$(FORCE)" == "x1"; done
+	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv || test "x$(FORCE)" == "x1"; done
+	$(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-edges.json --collection UnitTestsImportEdge --create-collection false --type json || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-teardown.js || test "x$(FORCE)" == "x1"
 
@@ -6227,7 +6228,7 @@ html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directorie
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g -Wall" CXXFLAGS="-O2 -g -Wall" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
 

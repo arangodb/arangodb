@@ -19,7 +19,7 @@ BUILT_SOURCES += @V8_LIBS@
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-	cd @top_srcdir@/3rdParty/V8 && CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+	cd @top_srcdir@/3rdParty/V8 && CFLAGS="-O2 -g -Wall" CXXFLAGS="-O2 -g -Wall" $(MAKE) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 	touch @srcdir@/.v8-build-@TRI_BITS@
 

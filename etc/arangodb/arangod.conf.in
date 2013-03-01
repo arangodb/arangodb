@@ -29,6 +29,7 @@ endpoint = tcp://0.0.0.0:8529
 
 disable-admin-interface = no
 disable-authentication = yes
+disable-statistics = yes
 admin-directory= @PKGDATADIR@/html/admin
 threads = 5
 # uid = arangodb
