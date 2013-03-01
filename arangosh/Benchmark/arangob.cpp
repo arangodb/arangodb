@@ -214,13 +214,13 @@ struct DocumentCrudTest : public BenchmarkOperation {
   }
 
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    const size_t mod = threadCounter % 5;
+    const size_t mod = globalCounter % 5;
 
     if (mod == 0) {
       return string("/_api/document?collection=" + Collection);
     }
     else {
-      size_t keyId = (size_t) (threadCounter / 5);
+      size_t keyId = (size_t) (globalCounter / 5);
       const string key = "testkey" + StringUtils::itoa(keyId);
 
       return string("/_api/document/" + Collection + "/" + key);
@@ -228,7 +228,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    const size_t mod = threadCounter % 5;
+    const size_t mod = globalCounter % 5;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -237,8 +237,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
     else if (mod == 2) {
-      return HttpRequest::HTTP_REQUEST_GET;
-//      return HttpRequest::HTTP_REQUEST_PATCH;
+      return HttpRequest::HTTP_REQUEST_PATCH;
     }
     else if (mod == 3) {
       return HttpRequest::HTTP_REQUEST_GET;
@@ -253,16 +252,16 @@ struct DocumentCrudTest : public BenchmarkOperation {
   }
   
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    const size_t mod = threadCounter % 5;
+    const size_t mod = globalCounter % 5;
 
-    if (mod == 0) {// || mod == 2) {
+    if (mod == 0 || mod == 2) {
       const size_t n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
-      size_t keyId = (size_t) (threadCounter / 5);
+      size_t keyId = (size_t) (globalCounter / 5);
       const string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
@@ -289,7 +288,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
       return (const char*) ptr;
     }
-    else if (mod == 1 || mod == 2 || mod == 3 || mod == 4) {
+    else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
       return (const char*) 0;
