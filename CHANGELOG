@@ -1,5 +1,8 @@
-v1.2.beta4 (XXXX-XX-XX)
------------------------
+v1.2.0 (2013-03-01)
+-------------------
+
+* by default statistics are now switch off; in order to enable comment out
+  the "disable-statistics = yes" line in "arangod.conf"
 
 * fixed issue #435: csv parser skips data at buffer border
 
