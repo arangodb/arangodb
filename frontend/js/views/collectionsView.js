@@ -2,6 +2,8 @@ var collectionsView = Backbone.View.extend({
   el: '#content',
   el2: '.thumbnails',
 
+  searchTimeout: null,
+
   init: function () {
   },
 
@@ -17,7 +19,7 @@ var collectionsView = Backbone.View.extend({
       $('.thumbnails', this.el).append(new window.CollectionListItemView({model: arango_collection}).render().el);
     }, this);
 
-    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left"></img>Add Collection</a></li>');
+    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
     $('#searchInput').val(searchOptions.searchPhrase);
     $('#searchInput').focus();
     var val = $('#searchInput').val();
@@ -113,18 +115,18 @@ var collectionsView = Backbone.View.extend({
   restrictToSearchPhraseKey: function (e) {
     // key pressed in search box
     var self = this;
-    if (e.keyCode == 13) {
-      e.preventDefault();
-      // return pressed? this triggers the search
-      this.search();
+    if (self.searchTimeout) {
+      clearTimeout(self.searchTimeout);
+      self.searchTimeout = null;
     }
-    setTimeout(function (){
+
+    self.searchTimeout = setTimeout(function (){
       self.search();
     }, 200);
   },
 
   restrictToSearchPhrase: function () {
-    // search executed 
+    // search executed
     this.search();
   },
 
