@@ -29,10 +29,12 @@
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
 #include "VocBase/barrier.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 #include "BasicsC/random.h"
+#include "BasicsC/strings.h"
 
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
@@ -609,43 +611,18 @@ namespace triagens {
                                       const bool forceSync,
                                       const bool lock) {
           TRI_voc_key_t key = 0;
+          int res = this->getKey(json, &key);
 
-          // check if _key is present
-          if (json != NULL && json->_type == TRI_JSON_ARRAY) {
-            // _key is there
-            TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
-            if (k != NULL) {
-              if (k->_type == TRI_JSON_STRING) {
-                // _key is there and a string
-                key = k->_value._string.data;
-              }
-              else {
-                // _key is there but not a string
-                return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-              }
-            }    
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
           }
  
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
-          
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
 
-
-          if (lock) {
-            // WRITE-LOCK START
-            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
-          }
-
-          int res = primary->create(&context, markerType, mptr, shaped, data, key);
-          
-          if (lock) {
-            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-            // WRITE-LOCK END
-          }
+          res = this->createCollectionShaped(primary, markerType, key, mptr, shaped, data, forceSync, lock); 
   
           TRI_FreeShapedJson(primary->_shaper, shaped);
 
@@ -666,20 +643,71 @@ namespace triagens {
                                     const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+            
+          char* keyBody = 0;
+          TRI_voc_size_t keyBodySize = 0;
 
-          if (lock) {
-            // WRITE-LOCK START
-            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
-          }
+          if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
+            TRI_doc_document_key_marker_t marker;
 
-          int res = primary->create(&context, markerType, mptr, shaped, data, key);
+            memset(&marker, 0, sizeof(marker));
+            int res = TRI_InitMarker(&marker, TRI_DOC_MARKER_KEY_DOCUMENT, primary, key, shaped, 0, &keyBody, &keyBodySize);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
           
-          if (lock) {
-            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-            // WRITE-LOCK END
-          }
+            assert(keyBody != 0); 
 
-          return res;
+            if (lock) {
+              // WRITE-LOCK START
+              this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+            }
+
+            //res = primary->create(&context, markerType, mptr, shaped, data, key);
+            res = primary->create(&context, &marker, sizeof(marker), mptr, shaped, data, keyBody, keyBodySize);
+          
+            if (lock) {
+              this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+              // WRITE-LOCK END
+            }
+  
+            TRI_FreeString(TRI_CORE_MEM_ZONE, keyBody);
+
+            return res;
+          }
+          else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
+            TRI_doc_edge_key_marker_t marker;
+
+            memset(&marker, 0, sizeof(marker));
+            int res = TRI_InitMarker(&marker.base, TRI_DOC_MARKER_KEY_EDGE, primary, key, shaped, data, &keyBody, &keyBodySize);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
+
+            assert(keyBody != 0); 
+
+            if (lock) {
+              // WRITE-LOCK START
+              this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+            }
+
+            //res = primary->create(&context, markerType, mptr, shaped, data, key);
+            res = primary->create(&context, &marker.base, sizeof(marker), mptr, shaped, data, keyBody, keyBodySize);
+          
+            if (lock) {
+              this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+              // WRITE-LOCK END
+            }
+ 
+            TRI_FreeString(TRI_CORE_MEM_ZONE, keyBody);
+
+            return res;
+          }
+            
+          // invalid marker type
+          return TRI_ERROR_INTERNAL;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -771,10 +799,13 @@ namespace triagens {
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
+          TRI_doc_deletion_key_marker_t marker;
+          TRI_InitDeletionMarker(&marker, key.size());
+
           // WRITE-LOCK START
           this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
           
-          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str());
+          int res = primary->destroy(&context, &marker, (TRI_voc_key_t) key.c_str(), (TRI_voc_size_t) (key.size() + 1));
           
           this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
           // WRITE-LOCK END
@@ -790,6 +821,7 @@ namespace triagens {
                                 const bool forceSync) {
 
           vector<string> ids;
+          TRI_doc_deletion_key_marker_t marker;
 
           int res = readCollectionDocuments(primary, ids);
           if (res != TRI_ERROR_NO_ERROR) {
@@ -807,8 +839,11 @@ namespace triagens {
 
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
+          
+            TRI_InitDeletionMarker(&marker, id.size());
 
-            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str());
+            res = primary->destroy(&context, &marker, (TRI_voc_key_t) id.c_str(), (TRI_voc_size_t) (id.size() + 1));
+            
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error
               break;
@@ -835,6 +870,34 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the "_key" attribute from a JSON object
+////////////////////////////////////////////////////////////////////////////////
+
+        int getKey (TRI_json_t const* json, TRI_voc_key_t* key) {
+          *key = 0;
+
+          // check type of json
+          if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+            return TRI_ERROR_NO_ERROR;
+          }
+          
+          // check _key is there
+          const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
+          if (k == 0) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (k->_type != TRI_JSON_STRING) {
+            // _key is there but not a string
+            return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+          }
+
+          // _key is there and a string
+          *key = k->_value._string.data;
+          return TRI_ERROR_NO_ERROR;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create transaction 
