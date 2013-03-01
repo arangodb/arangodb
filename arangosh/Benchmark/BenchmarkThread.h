@@ -241,7 +241,6 @@ namespace triagens {
 
         void executeBatchRequest (const unsigned long numOperations) {
           static const string boundary = "XXXarangob-benchmarkXXX";
-          const HttpRequest::HttpRequestType type = _operation->type();
 
           StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
 
@@ -252,14 +251,17 @@ namespace triagens {
             batchPayload.appendText("Content-Type: ", 14);
             batchPayload.appendText(HttpRequest::getPartContentType());
             batchPayload.appendText("\r\n\r\n", 4);
-
+            
             // everything else (i.e. part request header & body) will get into the body
-            const string url = _operation->url();
+            const size_t threadCounter = _counter++;
+            const size_t globalCounter = _offset + threadCounter;
+            const string url = _operation->url(_threadNumber, threadCounter, globalCounter);
             size_t payloadLength = 0;
             bool mustFree = false;
-            const char* payload = _operation->payload(&payloadLength, _offset + _counter++, &mustFree);
+            const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
             const map<string, string>& headers = _operation->headers();
-
+            const HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
+          
             // headline, e.g. POST /... HTTP/1.1
             HttpRequest::appendMethod(type, &batchPayload);
             batchPayload.appendText(url + " HTTP/1.1\r\n");
@@ -318,11 +320,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void executeSingleRequest () {
-          const HttpRequest::HttpRequestType type = _operation->type();
-          const string url = _operation->url();
+          const size_t threadCounter = _counter++;
+          const size_t globalCounter = _offset + threadCounter;
+          const HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
+          const string url = _operation->url(_threadNumber, threadCounter, globalCounter);
           size_t payloadLength = 0;
           bool mustFree = false;
-          const char* payload = _operation->payload(&payloadLength, _offset + _counter++, &mustFree);
+          const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
           const map<string, string>& headers = _operation->headers();
 
           Timing timer(Timing::TI_WALLCLOCK);
