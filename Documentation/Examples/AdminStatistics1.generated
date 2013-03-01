@@ -1,0 +1,19 @@
+unix> curl --dump - http://localhost:8529/_admin/statistics
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "system" : { 
+    "minorPageFaults" : 12061, 
+    "majorPageFaults" : 33, 
+    "userTime" : 1.613774, 
+    "systemTime" : 0.707881, 
+    "numberThreads" : 0, 
+    "residentSize" : 32010240, 
+    "virtualSize" : 0 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+

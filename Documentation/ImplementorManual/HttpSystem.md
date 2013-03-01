@@ -29,3 +29,7 @@ monitoring of the server.
 @CLEARPAGE
 @anchor HttpSystemRequestStatistics
 @copydetails triagens::arango::RequestStatisticsHandler::compute
+
+@CLEARPAGE
+@anchor HttpSystemAdminStatisticsDescription
+@copydetails JSF_GET_admin_statistics_description

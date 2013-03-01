@@ -6,8 +6,8 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
+  "errorMessage" : "collection /_api/collection/productsUnknown not found", 
   "code" : 404, 
-  "errorNum" : 1203, 
-  "errorMessage" : "collection /_api/collection/productsUnknown not found" 
+  "errorNum" : 1203 
 }
 
