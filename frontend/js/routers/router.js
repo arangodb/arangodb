@@ -20,6 +20,10 @@ $(document).ready(function() {
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
 
+      window.collectionView = new window.collectionView({
+        model: arangoCollection
+      });
+
       window.dashboardView = new window.dashboardView({
         collection: window.arangoCollectionsStore
       });
@@ -55,26 +59,22 @@ $(document).ready(function() {
 
       window.arangoCollectionsStore.fetch({
         success: function () {
-          var collectionsView = new window.collectionsView({
+          window.collectionsView = new window.collectionsView({
             collection: window.arangoCollectionsStore
           });
-          collectionsView.render();
+          window.collectionsView.render();
           naviView.selectMenuItem('collections-menu');
         }
       });
     },
     collection: function(colid) {
       //TODO: if-statement for every view !
-      if (!this.collectionView) {
-        this.collectionView = new window.collectionView({
-          colId: colid,
-          model: arangoCollection
-        });
+      if (!window.collectionView) {
       }
       else {
-        this.collectionView.options.colId = colid;
       }
-      this.collectionView.render();
+      window.collectionView.options.colId = colid;
+      window.collectionView.render();
     },
     newCollection: function() {
       if (!this.newCollectionView) {
