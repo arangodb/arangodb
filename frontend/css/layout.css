@@ -26,10 +26,6 @@ input {
   text-decoration: none;
 }
 
-.tooltip {
-  max-width: 900px;
-}
-
 /* Radius */
 .thumbnail, .navbar-inner, .btn, .btn-primary {
   border-radius:0;
@@ -176,3 +172,36 @@ body {
 table .sorting {
   background: none !important;
 }
+
+/* ABOUT VIEW */
+#aboutDiv {
+  padding-top: 20px;
+  background-color: rgba(0,0,0,0.05);
+  padding-bottom: 10px;
+}
+
+#aboutDiv .row {
+  border: 8px solid #F4F3F3 !important;
+  border-radius: 2px 2px 2px 2px;
+  margin-bottom: 25px;
+  background-color: white;
+  padding-top: 10px;
+  padding-bottom: 20px;
+  margin-right: 20px;
+  margin-left: 20px;
+  -moz-box-shadow: 2px 2px 2px #111;
+  -webkit-box-shadow: 2px 2px 2px #111;
+  box-shadow: 2px 2px 3px #111;
+}
+
+#aboutDiv h3 {
+}
+
+#aboutDiv .row a {
+  padding-left: 20px;
+}
+
+#aboutHeader {
+  margin-bottom: 10px;
+}
+

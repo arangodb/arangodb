@@ -54,6 +54,20 @@
   text-align: left;
 }
 
+#documentTableID .writeable {
+  cursor: pointer;
+}
+
+.read_only {
+  cursor: default !important;
+}
+
+#editSecondRow {
+  float:right;
+  text-align:right;
+  margin-right: -5px !important;
+}
+
 #documentTableID .icon-edit {
   margin-top: 0;
 }
