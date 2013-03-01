@@ -140,7 +140,7 @@ namespace triagens {
 /// @brief create a single document within a transaction, using json
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createDocument (TRI_doc_mptr_t** mptr,
+        int createDocument (TRI_doc_mptr_t* mptr,
                             TRI_json_t const* json, 
                             const bool forceSync,
                             const bool lock) {
@@ -158,7 +158,7 @@ namespace triagens {
 /// @brief create a single edge within a transaction, using json
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createEdge (TRI_doc_mptr_t** mptr,
+        int createEdge (TRI_doc_mptr_t* mptr,
                         TRI_json_t const* json, 
                         bool forceSync, 
                         void const* data,
@@ -178,7 +178,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createDocument (TRI_voc_key_t key,
-                            TRI_doc_mptr_t** mptr,
+                            TRI_doc_mptr_t* mptr,
                             TRI_shaped_json_t const* shaped, 
                             bool forceSync,
                             const bool lock) {
@@ -197,7 +197,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createEdge (TRI_voc_key_t key,
-                        TRI_doc_mptr_t** mptr,
+                        TRI_doc_mptr_t* mptr,
                         TRI_shaped_json_t const* shaped, 
                         bool forceSync, 
                         void const* data,
@@ -218,7 +218,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int updateDocument (const string& key,
-                            TRI_doc_mptr_t** mptr, 
+                            TRI_doc_mptr_t* mptr, 
                             TRI_json_t* const json, 
                             const TRI_doc_update_policy_e policy, 
                             bool forceSync, 
@@ -241,7 +241,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int updateDocument (const string& key,
-                            TRI_doc_mptr_t** mptr, 
+                            TRI_doc_mptr_t* mptr, 
                             TRI_shaped_json_t* const shaped, 
                             const TRI_doc_update_policy_e policy, 
                             bool forceSync, 

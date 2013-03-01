@@ -211,7 +211,7 @@ table.dataTable thead th {
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
- 	box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+ 	box-shadow: none;
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;

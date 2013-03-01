@@ -816,14 +816,12 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
 
   v8::Handle<v8::Value> result;
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   res = trx.read(&document, key, true);
   
   if (res == TRI_ERROR_NO_ERROR) {
-    assert(document);
-  
     TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
-    result = TRI_WrapShapedJson(resolver, col, document, barrier);
+    result = TRI_WrapShapedJson(resolver, col, &document, barrier);
   }
 
   res = trx.finish(res);
@@ -832,7 +830,13 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "document not found", true)));
   }
 
-  if (rid != 0 && document->_rid != rid) {
+  if (document._key == 0 || document._data == 0) {
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                             "document not found")));
+  }
+
+  if (rid != 0 && document._rid != rid) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CONFLICT, "revision not found")));
   }
 
@@ -894,7 +898,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   assert(col);
   assert(key);
 
-  
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -910,7 +913,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
                                                "<data> cannot be converted into JSON shape")));
   }
   
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision, true);
 
   res = trx.finish(res);
@@ -918,16 +921,15 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
   }
   
-  assert(document);
-  assert(document->_key);
+  assert(document._key);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document->_key));
-  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
+  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->RevKey, V8RevisionId(document._rid));
   result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document->_key));
+  result->Set(v8g->KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1004,7 +1006,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
     
   const bool forceSync = ExtractForceSync(argv, 2);
   
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   int res = trx->createDocument(key, &document, shaped, forceSync, true);
 
   res = trx->finish(res);
@@ -1013,13 +1015,12 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save document", true)));
   }
   
-  assert(document);
-  assert(document->_key);
+  assert(document._key != 0);
   
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document->_key));
-  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
-  result->Set(v8g->KeyKey, v8::String::New(document->_key));
+  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1124,7 +1125,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   }
   
   
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   int res = trx->createEdge(key, &document, shaped, forceSync, &edge, true);
   res = trx->finish(res);
 
@@ -1132,13 +1133,12 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save edge", true)));
   }
 
-  assert(document);
-  assert(document->_key);
+  assert(document._key != 0);
   
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document->_key));
-  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
-  result->Set(v8g->KeyKey, v8::String::New(document->_key));
+  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1218,7 +1218,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   // otherwise the operation is not atomic
   trx.lockWrite();
 
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   // do not acquire an extra lock
   res = trx.read(&document, key, false);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1227,10 +1227,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
 
-  assert(document);
-
   TRI_shaped_json_t shaped;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->_data);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
   TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
 
   if (! holder.registerJson(primary->_shaper->_memoryZone, old)) {
@@ -1250,16 +1248,15 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
   }
   
-  assert(document);
-  assert(document->_key);
+  assert(document._key);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document->_key));
-  result->Set(v8g->RevKey, V8RevisionId(document->_rid));
+  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->RevKey, V8RevisionId(document._rid));
   result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document->_key));
+  result->Set(v8g->KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
