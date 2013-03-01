@@ -405,9 +405,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         int readCollectionAny (TRI_primary_collection_t* const primary, 
-                               TRI_doc_mptr_t** mptr,
+                               TRI_doc_mptr_t* mptr,
                                TRI_barrier_t** barrier) {
-          *mptr = 0;
           *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
           if (*barrier == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -419,6 +418,10 @@ namespace triagens {
           if (primary->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
             *barrier = 0;
+
+            // no document found
+            mptr->_key = 0;
+            mptr->_data = 0;
           }
           else {
             size_t total = primary->_primaryIndex._nrAlloc;
@@ -429,7 +432,7 @@ namespace triagens {
               pos = (pos + 1) % total;
             }
 
-            *mptr = (TRI_doc_mptr_t*) beg[pos];
+            *mptr = *((TRI_doc_mptr_t*) beg[pos]);
           }
           
           this->unlockExplicit(primary, TRI_TRANSACTION_READ);
@@ -443,7 +446,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         int readCollectionDocument (TRI_primary_collection_t* const primary, 
-                                    TRI_doc_mptr_t** mptr,
+                                    TRI_doc_mptr_t* mptr,
                                     const string& key, 
                                     const bool lock) {
           TRI_doc_operation_context_t context;
@@ -502,7 +505,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         int readCollectionPointers (TRI_primary_collection_t* const primary, 
-                                    vector<TRI_doc_mptr_t*>& docs,
+                                    vector<TRI_doc_mptr_t>& docs,
                                     TRI_barrier_t** barrier,
                                     TRI_voc_ssize_t skip,
                                     TRI_voc_size_t limit,
@@ -580,7 +583,7 @@ namespace triagens {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
 
               if (d->_validTo == 0) {
-                docs.push_back(d);
+                docs.push_back(*d);
                 ++count;
               }
             }
@@ -603,7 +606,7 @@ namespace triagens {
 
         int createCollectionDocument (TRI_primary_collection_t* const primary,
                                       const TRI_df_marker_type_e markerType,
-                                      TRI_doc_mptr_t** mptr,
+                                      TRI_doc_mptr_t* mptr,
                                       TRI_json_t const* json, 
                                       void const* data,
                                       const bool forceSync,
@@ -659,7 +662,7 @@ namespace triagens {
         int createCollectionShaped (TRI_primary_collection_t* const primary,
                                     const TRI_df_marker_type_e markerType,
                                     TRI_voc_key_t key,
-                                    TRI_doc_mptr_t** mptr,
+                                    TRI_doc_mptr_t* mptr,
                                     TRI_shaped_json_t const* shaped, 
                                     void const* data,
                                     const bool forceSync,
@@ -688,7 +691,7 @@ namespace triagens {
         
         int updateCollectionDocument (TRI_primary_collection_t* const primary,
                                       const string& key,
-                                      TRI_doc_mptr_t** mptr,
+                                      TRI_doc_mptr_t* mptr,
                                       TRI_json_t* const json,
                                       const TRI_doc_update_policy_e policy,
                                       const TRI_voc_rid_t expectedRevision,
@@ -729,7 +732,7 @@ namespace triagens {
         
         int updateCollectionShaped (TRI_primary_collection_t* const primary,
                                     const string& key,
-                                    TRI_doc_mptr_t** mptr,
+                                    TRI_doc_mptr_t* mptr,
                                     TRI_shaped_json_t* const shaped,
                                     const TRI_doc_update_policy_e policy,
                                     const TRI_voc_rid_t expectedRevision,

@@ -64,7 +64,7 @@ static int UpdateDocument (TRI_doc_operation_context_t*,
                            void const*,
                            TRI_voc_size_t,
                            TRI_df_marker_t**,
-                           TRI_doc_mptr_t**);
+                           TRI_doc_mptr_t*);
 
 static int DeleteDocument (TRI_doc_operation_context_t*,
                            TRI_doc_deletion_key_marker_t*,
@@ -370,7 +370,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
                            TRI_voc_size_t bodySize,
                            TRI_df_marker_t** result,
                            void const* additional,
-                           TRI_doc_mptr_t** mptr) { 
+                           TRI_doc_mptr_t* mptr) { 
 
   TRI_datafile_t* journal;
   TRI_primary_collection_t* primary;
@@ -494,7 +494,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   assert(res == TRI_ERROR_NO_ERROR);
 
-  *mptr = header;
+  *mptr = *header;
 
   // check cap constraint
   if (primary->_capConstraint != NULL) {
@@ -635,7 +635,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
                            void const* body,
                            TRI_voc_size_t bodySize,
                            TRI_df_marker_t** result,
-                           TRI_doc_mptr_t** mptr) {
+                           TRI_doc_mptr_t* mptr) {
   TRI_doc_mptr_t update;
   TRI_primary_collection_t* primary;
   TRI_document_collection_t* document;
@@ -737,7 +737,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (mptr != NULL) {
-      *mptr = (TRI_doc_mptr_t*) header;
+      *mptr = *((TRI_doc_mptr_t*) header);
     }
     
     // wait for sync
@@ -751,10 +751,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // error case
   assert(res != TRI_ERROR_NO_ERROR);
     
-  if (mptr != NULL) {
-    *mptr = NULL;
-  }
-
   return res;
 }
   
@@ -1067,7 +1063,7 @@ static void InitDocumentMarker (TRI_doc_document_key_marker_t* marker,
 
 static int CreateShapedJson (TRI_doc_operation_context_t* context,
                              TRI_df_marker_type_e type,
-                             TRI_doc_mptr_t** mptr,
+                             TRI_doc_mptr_t* mptr,
                              TRI_shaped_json_t const* json,
                              void const* data,
                              char* key) {
@@ -1195,11 +1191,14 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ReadShapedJson (TRI_doc_operation_context_t* context,
-                           TRI_doc_mptr_t** mptr,
+                           TRI_doc_mptr_t* mptr,
                            TRI_voc_key_t key) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* header;
 
+  // init to empty result
+  mptr->_key = 0;
+  mptr->_data = 0;
   primary = context->_collection; 
 
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
@@ -1208,7 +1207,8 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
-  *mptr = (TRI_doc_mptr_t*) header;
+  // we found a document, now copy it over
+  *mptr = *((TRI_doc_mptr_t*) header);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1218,7 +1218,7 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int UpdateShapedJson (TRI_doc_operation_context_t* context,
-                             TRI_doc_mptr_t** mptr,
+                             TRI_doc_mptr_t* mptr,
                              TRI_shaped_json_t const* json,
                              TRI_voc_key_t key) {
   TRI_df_marker_t const* original;

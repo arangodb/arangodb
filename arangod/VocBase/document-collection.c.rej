@@ -1,0 +1,11 @@
+--- arangod/VocBase/document-collection.c
++++ arangod/VocBase/document-collection.c
+@@ -1064,7 +1060,7 @@
+ static int CreateShapedJson (TRI_doc_operation_context_t* context,
+                              TRI_doc_document_key_marker_t* marker,
+                              size_t markerSize,
+-                             TRI_doc_mptr_t** mptr,
++                             TRI_doc_mptr_t* mptr,
+                              TRI_shaped_json_t const* shaped,
+                              void const* data,
+                              char* keyBody,

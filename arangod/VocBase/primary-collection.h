@@ -318,10 +318,10 @@ typedef struct TRI_primary_collection_s {
   void (*createHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  int (*create) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_doc_mptr_t**, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key);
-  int (*read) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_voc_key_t);
+  int (*create) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_doc_mptr_t*, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key);
+  int (*read) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t*, TRI_voc_key_t);
 
-  int (*update) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_shaped_json_t const*, TRI_voc_key_t);
+  int (*update) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t*, TRI_shaped_json_t const*, TRI_voc_key_t);
   int (*destroy) (struct TRI_doc_operation_context_s*, TRI_voc_key_t);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);

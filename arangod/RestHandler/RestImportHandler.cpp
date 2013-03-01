@@ -272,7 +272,7 @@ bool RestImportHandler::createByDocumentsLines () {
     }
     else {      
       // now save the document
-      TRI_doc_mptr_t* document = 0;
+      TRI_doc_mptr_t document;
 
       if (isEdgeCollection) {
         const char* from = extractJsonStringValue(values, "_from");
@@ -448,7 +448,7 @@ bool RestImportHandler::createByDocumentsList () {
     }
     else {
       // now save the document
-      TRI_doc_mptr_t* document = 0;
+      TRI_doc_mptr_t document;
   
       if (isEdgeCollection) {
         const char* from = extractJsonStringValue(values, "_from");
@@ -687,7 +687,7 @@ bool RestImportHandler::createByKeyValueList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t* document = 0;
+      TRI_doc_mptr_t document;
 
       if (isEdgeCollection) {
         const char* from = extractJsonStringValue(json, "_from");
