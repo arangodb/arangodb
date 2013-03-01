@@ -220,7 +220,7 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
 
-  if (!element) {
+  if (element == NULL) {
     return NULL;
   }
 

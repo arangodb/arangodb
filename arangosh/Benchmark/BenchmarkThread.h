@@ -346,7 +346,7 @@ namespace triagens {
             return;
           }
 
-          if (result->getHttpReturnCode() >= 400) { 
+          if (result->getHttpReturnCode() >= 400) {
             _operationsCounter->incFailures(1);
           }
           delete result;
