@@ -210,7 +210,7 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
   
   // will hold the result
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   res = trx.createEdge(&document, json, waitForSync, &edge, true);
   res = trx.finish(res);
 
@@ -223,15 +223,14 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  assert(document);
-  assert(document->_key);
+  assert(document._key != 0);
 
   // generate result
   if (trx.synchronous()) {
-    generateCreated(cid, document->_key, document->_rid);
+    generateCreated(cid, document._key, document._rid);
   }
   else {
-    generateAccepted(cid, document->_key, document->_rid);
+    generateAccepted(cid, document._key, document._rid);
   }
 
   return true;
