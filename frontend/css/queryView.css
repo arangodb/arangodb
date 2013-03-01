@@ -1,3 +1,7 @@
+#queryOutput .ace_cursor-layer {
+  display:none;
+}
+
 #editorLabel {
   margin-top: 20px;
   padding-left: 45px;

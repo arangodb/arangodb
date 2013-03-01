@@ -43,6 +43,7 @@ window.arangoDocuments = Backbone.Collection.extend({
         this.currentPage = currpage;
 
         $.ajax({
+          cache: false,
           type: "GET",
           url: "/_api/collection/" + this.collectionID + "/count",
           contentType: "application/json",
@@ -68,6 +69,7 @@ window.arangoDocuments = Backbone.Collection.extend({
         this.offset = (this.currentPage - 1) * this.documentsPerPage;
 
         $.ajax({
+          cache: false,
           type: 'PUT',
           async: false,
           url: '/_api/simple/all/',

@@ -64,6 +64,12 @@ var logsView = Backbone.View.extend({
       this.collection.fillLocalStorage(this.table, this.offset, this.size);
     }
   },
+  jumpToTable: function (toPage) {
+      this.page = toPage;
+      this.offset = toPage * this.size;
+      this.clearTable();
+      this.collection.fillLocalStorage(this.table, this.offset, this.size);
+  },
   all: function () {
     this.resetState();
     this.table = "logTableID";
@@ -130,20 +136,45 @@ var logsView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     return this;
   },
+  renderPagination: function (totalPages, currentPage) {
+    var self = this;
+    var target = $('#logtestdiv'),
+    options = {
+      left: 1,
+      right: 1,
+      page: currentPage,
+      lastPage: totalPages,
+      click: function(i) {
+        if (i === 1 && i !== currentPage) {
+          self.firstTable();
+        }
+        else if (i === totalPages && i !== currentPage) {
+          self.lastTable();
+        }
+        else {
+          console.log("Number: " + i);
+          self.jumpToTable(i);
+        }
+        options.page = i;
+        target.pagination(options);
+      }
+    };
+    target.pagination(options);
+  },
   drawTable: function () {
     var self = this;
 
     function format (dt) {
-      var pad = function (n) { 
-        return n < 10 ? '0' + n : n 
+      var pad = function (n) {
+        return n < 10 ? '0' + n : n
       };
 
       return dt.getUTCFullYear() + '-' 
-             + pad(dt.getUTCMonth() + 1) + '-'
-             + pad(dt.getUTCDate()) + ' '
-             + pad(dt.getUTCHours()) + ':'
-             + pad(dt.getUTCMinutes()) + ':'
-             + pad(dt.getUTCSeconds());
+      + pad(dt.getUTCMonth() + 1) + '-'
+      + pad(dt.getUTCDate()) + ' <br>'
+      + pad(dt.getUTCHours()) + ':'
+      + pad(dt.getUTCMinutes()) + ':'
+      + pad(dt.getUTCSeconds());
     }
 
     $.each(window.arangoLogsStore.models, function(key, value) {
@@ -154,10 +185,10 @@ var logsView = Backbone.View.extend({
     try {
       this.totalAmount = this.collection.models[0].attributes.totalAmount;
       this.totalPages = Math.ceil(this.totalAmount / this.size);
-      $('#logPages').html('Showing Page: '+this.page+' of '+this.totalPages);
+      this.renderPagination(this.totalPages, this.page);
     }
     catch (e) {
-      $('#logPages').html('No logfiles available');
+      //  $('#logPages').html('No logfiles available');
     }
   },
   clearTable: function () {
