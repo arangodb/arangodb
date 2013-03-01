@@ -390,7 +390,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   char* directionValue;
   char* name;
   size_t n;
- 
+  
   args = TRI_AQL_NODE_MEMBER(fcallNode, 0);
 
   if (args == NULL) {
@@ -412,7 +412,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   directionValue = TRI_AQL_NODE_STRING(direction);
   // try to optimise the vertex collection access
   if (TRI_EqualString(directionValue, "outbound")) {
-    CheckPathRestriction(fieldAccess, context, vertexCollection, ".destination.", name, n);
+    CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
   }
   else if (TRI_EqualString(directionValue, "inbound")) {
     CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
