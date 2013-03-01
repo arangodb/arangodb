@@ -1655,7 +1655,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   
   TRI_barrier_t* barrier = 0;
   uint32_t total = 0;
-  vector<TRI_doc_mptr_t*> docs;
+  vector<TRI_doc_mptr_t> docs;
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
@@ -1682,7 +1682,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = TRI_WrapShapedJson(resolver, col, docs[i], barrier);
+    v8::Handle<v8::Value> document = TRI_WrapShapedJson(resolver, col, &docs[i], barrier);
 
     if (document.IsEmpty()) {
       // error
@@ -1725,7 +1725,9 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   }
   
   TRI_barrier_t* barrier = 0;
-  TRI_doc_mptr_t* doc = 0;
+  TRI_doc_mptr_t document;
+  document._data = 0;
+  document._key = 0;
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
@@ -1734,19 +1736,18 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
   
-  res = trx.read(&doc, &barrier);
+  res = trx.read(&document, &barrier);
   res = trx.finish(res);
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
 
-  if (doc == 0) {
+  if (document._data == 0 || document._key == 0) {
     return scope.Close(v8::Null());
   }
-  else {
-    return scope.Close(TRI_WrapShapedJson(resolver, col, doc, barrier));
-  }
+
+  return scope.Close(TRI_WrapShapedJson(resolver, col, &document, barrier));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
