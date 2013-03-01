@@ -43,8 +43,13 @@ var documentView = Backbone.View.extend({
   clicked: function (a) {
     self = a.currentTarget;
     var checkData = $(this.table).dataTable().fnGetData(self);
-    if (checkData[0] === '<div class="notwriteable"></div>') {
-      this.addLine();
+    try {
+      if (checkData[0] === '<div class="notwriteable"></div>') {
+        this.addLine();
+        return;
+      }
+    }
+    catch (e) {
       return;
     }
   },
@@ -295,7 +300,7 @@ var documentView = Backbone.View.extend({
       tooltip: 'click to edit',
       cssclass : 'jediTextarea',
       submitcssclass: 'btn btn-success pull-right',
-      cancelcssclass: 'btn btn-error pull-right',
+      cancelcssclass: 'btn btn-danger pull-right',
       cancel: 'Cancel',
       submit: 'Save',
       onblur: 'cancel',
