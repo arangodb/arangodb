@@ -486,7 +486,31 @@ function ahuacatlQueryPathsTestSuite () {
 
       assertEqual(docs["John"]._id, actual[0].edges[1]._from);
       assertEqual(docs["Fred"]._id, actual[0].edges[1]._to);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks AQL inbound and outbound queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testPathExamples : function () {
+       users.save({ _key : "v1", "value": "v1Value" });
+       users.save({ _key : "v2", "value": "v2Value" });
+       users.save({ _key : "v3", "value": "v3Value" });
+       users.save({ _key : "v4", "value": "v4Value" });
+       
+       relations.save(users.name() + "/v1", users.name() + "/v2", { "value": "v1 to v2 connection" });
+       relations.save(users.name() + "/v2", users.name() + "/v3", { "value": "v2 to v3 connection" });
+       relations.save(users.name() + "/v3", users.name() + "/v4", { "value": "v3 to v4 connection" });
+
+       var actual;
+
+       actual = db._createStatement({ "query": "FOR p IN PATHS(" + users.name() + ", " + relations.name() + ", 'inbound') FILTER p.destination._id == '" + users.name() + "/v1' && p.source._id == '" + users.name() + "/v4' RETURN p.vertices[*]._key" }).execute().toArray();
+       assertEqual([ [ "v4", "v3", "v2", "v1" ] ], actual);
+
+       actual = db._createStatement({ "query": "FOR p IN PATHS(" + users.name() + ", " + relations.name() + ", 'outbound') FILTER p.source._id == '" + users.name() + "/v1' && p.destination._id == '" + users.name() + "/v4' RETURN p.vertices[*]._key" }).execute().toArray();
+       assertEqual([ [ "v1", "v2", "v3", "v4" ] ], actual);
+
+     }
 
   };
 }
