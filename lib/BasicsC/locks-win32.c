@@ -85,8 +85,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
   switch (result) {
 
     case WAIT_ABANDONED: {
-      LOG_FATAL("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_ABANDONED");
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_ABANDONED");
     } 
 
     case WAIT_OBJECT_0: {
@@ -95,14 +94,12 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
     } 
 
     case WAIT_TIMEOUT: {
-      LOG_FATAL("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_TIMEOUT");
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_TIMEOUT");
     } 
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_FATAL("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
     } 
 
   }
@@ -870,8 +867,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
   switch (result) {
 
     case WAIT_ABANDONED: {
-      LOG_FATAL("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_ABANDONED");
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_ABANDONED");
     } 
 
     case WAIT_OBJECT_0: {
@@ -880,14 +876,12 @@ void TRI_LockCondition (TRI_condition_t* cond) {
     } 
 
     case WAIT_TIMEOUT: {
-      LOG_FATAL("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_TIMEOUT");
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_TIMEOUT");
     } 
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_FATAL("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
-      TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
+      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockCondition:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
     } 
 
   }
