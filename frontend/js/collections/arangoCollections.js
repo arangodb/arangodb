@@ -214,6 +214,11 @@ window.arangoCollections = Backbone.Collection.extend({
           url: "/_api/collection/" + id + "/load",
           success: function () {
             arangoHelper.arangoNotification('Collection loaded');
+            window.arangoCollectionsStore.fetch({
+              success: function () {
+                window.collectionsView.render();
+              }
+            });
           },
           error: function (data) {
             var temp = JSON.parse(data.responseText);
@@ -228,6 +233,11 @@ window.arangoCollections = Backbone.Collection.extend({
           url: "/_api/collection/" + id + "/unload",
           success: function () {
             arangoHelper.arangoNotification('Collection unloaded');
+            window.arangoCollectionsStore.fetch({
+              success: function () {
+                window.collectionsView.render();
+              }
+            });
           },
           error: function () {
             var temp = JSON.parse(data.responseText);
