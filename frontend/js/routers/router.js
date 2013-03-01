@@ -20,6 +20,14 @@ $(document).ready(function() {
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
 
+      window.arangoCollectionsStore.fetch({
+        success: function () {
+          window.collectionsView = new window.collectionsView({
+            collection: window.arangoCollectionsStore
+          });
+        }
+      });
+
       window.collectionView = new window.collectionView({
         model: arangoCollection
       });
@@ -54,14 +62,11 @@ $(document).ready(function() {
       this.footerView.render();
     },
     collections: function() {
-
       var naviView = this.naviView;
-
       window.arangoCollectionsStore.fetch({
         success: function () {
-          window.collectionsView = new window.collectionsView({
-            collection: window.arangoCollectionsStore
-          });
+          if (!window.collectionsView) {
+          }
           window.collectionsView.render();
           naviView.selectMenuItem('collections-menu');
         }
