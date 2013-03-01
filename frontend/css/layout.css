@@ -189,6 +189,12 @@ table .sorting {
   padding-bottom: 20px;
   margin-right: 20px;
   margin-left: 20px;
+  -moz-box-shadow: 2px 2px 2px #111;
+  -webkit-box-shadow: 2px 2px 2px #111;
+  box-shadow: 2px 2px 3px #111;
+}
+
+#aboutDiv h3 {
 }
 
 #aboutDiv .row a {
