@@ -232,10 +232,10 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
         if (datafile == NULL) {
           collection->_lastError = TRI_errno();
-          stop = true;
-
           LOG_ERROR("cannot open datafile '%s': %s", filename, TRI_last_error());
 
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+          stop = true;
           break;
         }
 
@@ -294,7 +294,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         else if (TRI_EqualString2("datafile", first, firstLen)) {
           if (! datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen", filename);
+
             collection->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
             stop = true;
             break;
           }

@@ -26,7 +26,7 @@ var documentSourceView = Backbone.View.extend({
       window.documentSourceView.fillSourceBox();
     }
     else {
-      alert("unknown type: " + type);
+      arangoHelper.arangoError('Unknown type: ' + type);
     }
   },
   editor: function () {
@@ -51,10 +51,10 @@ var documentSourceView = Backbone.View.extend({
       var model = editor.getValue();
       var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
-        alert("saved");
+        arangoHelper.arangoNotification('Document saved');
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoError('Document error');
       }
     }
     else if (this.type === 'edge') {
@@ -62,10 +62,10 @@ var documentSourceView = Backbone.View.extend({
       var model = editor.getValue();
       var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
-        alert("saved");
+        arangoHelper.arangoNotification('Edge saved');
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoError('Edge error');
       }
     }
   },

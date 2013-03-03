@@ -28,9 +28,13 @@
 .vsplitbar {
   border: 0;
   width: 10px;
-  background-color: black;
+  background-color: #686766;
   border-bottom: 1px solid black;
   border-top: 1px solid black;
+}
+
+.vsplitbar:hover {
+  cursor: col-resize !important;
 }
 
 /* REPL SHELL */

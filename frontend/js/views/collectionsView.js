@@ -2,6 +2,8 @@ var collectionsView = Backbone.View.extend({
   el: '#content',
   el2: '.thumbnails',
 
+  searchTimeout: null,
+
   init: function () {
   },
 
@@ -17,7 +19,7 @@ var collectionsView = Backbone.View.extend({
       $('.thumbnails', this.el).append(new window.CollectionListItemView({model: arango_collection}).render().el);
     }, this);
 
-    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left"></img>Add Collection</a></li>');
+    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
     $('#searchInput').val(searchOptions.searchPhrase);
     $('#searchInput').focus();
     var val = $('#searchInput').val();
@@ -31,11 +33,13 @@ var collectionsView = Backbone.View.extend({
     "click .icon-info-sign" : "details",
     //"blur #searchInput" : "restrictToSearchPhrase",
     "keypress #searchInput" : "restrictToSearchPhraseKey",
-    "change #searchInput" : "restrictToSearchPhrase",
-    "click #searchSubmit" : "restrictToSearchPhrase",
-    "click #checkSystem" : "checkSystem",
-    "click #checkLoaded" : "checkLoaded",
-    "click #checkUnloaded" : "checkUnloaded"
+    "change #searchInput"   : "restrictToSearchPhrase",
+    "click #searchSubmit"   : "restrictToSearchPhrase",
+    "click #checkSystem"    : "checkSystem",
+    "click #checkLoaded"    : "checkLoaded",
+    "click #checkUnloaded"  : "checkUnloaded",
+    "click #checkDocument"  : "checkDocument",
+    "click #checkEdge"      : "checkEdge"
   },
   checkSystem: function () {
     var searchOptions = this.collection.searchOptions;
@@ -44,6 +48,26 @@ var collectionsView = Backbone.View.extend({
     searchOptions.includeSystem = ($('#checkSystem').is(":checked") === true);
 
     if (oldValue != searchOptions.includeSystem) {
+      this.render();
+    }
+  },
+  checkEdge: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.includeEdge;
+
+    searchOptions.includeEdge = ($('#checkEdge').is(":checked") === true);
+
+    if (oldValue != searchOptions.includeEdge) {
+      this.render();
+    }
+  },
+  checkDocument: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.includeDocument;
+
+    searchOptions.includeDocument = ($('#checkDocument').is(":checked") === true);
+
+    if (oldValue != searchOptions.includeDocument) {
       this.render();
     }
   },
@@ -73,6 +97,8 @@ var collectionsView = Backbone.View.extend({
     $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
     $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
     $('#checkSystem').attr('checked', searchOptions.includeSystem);
+    $('#checkEdge').attr('checked', searchOptions.includeEdge);
+    $('#checkDocument').attr('checked', searchOptions.includeDocument);
   },
   search: function () {
     var searchOptions = this.collection.searchOptions;
@@ -89,18 +115,18 @@ var collectionsView = Backbone.View.extend({
   restrictToSearchPhraseKey: function (e) {
     // key pressed in search box
     var self = this;
-    if (e.keyCode == 13) {
-      e.preventDefault();
-      // return pressed? this triggers the search
-      this.search();
+    if (self.searchTimeout) {
+      clearTimeout(self.searchTimeout);
+      self.searchTimeout = null;
     }
-    setTimeout(function (){
+
+    self.searchTimeout = setTimeout(function (){
       self.search();
     }, 200);
   },
 
   restrictToSearchPhrase: function () {
-    // search executed 
+    // search executed
     this.search();
   },
 

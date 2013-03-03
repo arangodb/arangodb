@@ -404,7 +404,7 @@ bool RestDocumentHandler::createDocument () {
 
   const TRI_voc_cid_t cid = trx.cid();
   
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   res = trx.createDocument(&document, json, waitForSync, true);
   res = trx.finish(res);
   
@@ -417,15 +417,14 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  assert(document);
-  assert(document->_key);
+  assert(document._key != 0);
 
   // generate result
   if (trx.synchronous()) {
-    generateCreated(cid, document->_key, document->_rid);
+    generateCreated(cid, document._key, document._rid);
   }
   else {
-    generateAccepted(cid, document->_key, document->_rid);
+    generateAccepted(cid, document._key, document._rid);
   }
 
   return true;
@@ -523,7 +522,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   const TRI_voc_cid_t cid = trx.cid();
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
   
   res = trx.read(&document, key, true);
 
@@ -545,21 +544,25 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  // generate result
-  assert(document);
-  assert(document->_key);
+  if (document._key == 0 || document._data == 0) {
+    generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
+    return false;
+  }
 
-  const TRI_voc_rid_t rid = document->_rid;
+  // generate result
+  assert(document._key != 0);
+
+  const TRI_voc_rid_t rid = document._rid;
   // check for an etag
   const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
   const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev");
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(cid, document, shaper, generateBody);
+      generateDocument(cid, &document, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document->_key, rid);
+      generatePreconditionFailed(cid, document._key, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -567,15 +570,15 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(rid);
     }
     else {
-      generatePreconditionFailed(cid, document->_key, rid);
+      generatePreconditionFailed(cid, document._key, rid);
     }
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(cid, document, shaper, generateBody);
+      generateDocument(cid, &document, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document->_key, rid);
+      generatePreconditionFailed(cid, document._key, rid);
     }
   }
 
@@ -879,7 +882,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const TRI_doc_update_policy_e policy = extractUpdatePolicy();
   const bool waitForSync = extractWaitForSync();
   
-  TRI_doc_mptr_t* document = 0;
+  TRI_doc_mptr_t document;
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -915,7 +918,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
   
     // read the existing document
-    TRI_doc_mptr_t* oldDocument = 0;
+    TRI_doc_mptr_t oldDocument;
 
     // create a write lock that spans the initial read and the update
     // otherwise the update is not atomic
@@ -930,10 +933,15 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    assert(oldDocument);
+    if (oldDocument._key == 0 || oldDocument._data == 0) {
+      trx.abort();
+      generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+
+      return false;
+    }
 
     TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument->_data);
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
     if (holder.registerJson(shaper->_memoryZone, old)) {
@@ -961,12 +969,9 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
     return false;
   }
-    
-  // generate result
-  assert(document);
-  assert(document->_key);
 
-  generateUpdated(cid, (TRI_voc_key_t) key.c_str(), document->_rid);
+  // generate result
+  generateUpdated(cid, (TRI_voc_key_t) key.c_str(), document._rid);
 
   return true;
 }

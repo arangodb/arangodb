@@ -1,3 +1,7 @@
+#queryOutput .ace_cursor-layer {
+  display:none;
+}
+
 #editorLabel {
   margin-top: 20px;
   padding-left: 45px;
@@ -5,6 +9,10 @@
 
 #outputLabel {
   padding-left: 35px;
+}
+
+#editor {
+  min-width: 100px;
 }
 
 #editorLabel, #outputLabel {

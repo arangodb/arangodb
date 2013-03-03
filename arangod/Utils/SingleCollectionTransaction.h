@@ -156,7 +156,7 @@ namespace triagens {
 /// @brief read any (random) document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (TRI_doc_mptr_t** mptr, TRI_barrier_t** barrier) {
+        int read (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
           TRI_primary_collection_t* const primary = primaryCollection();
 
           return this->readCollectionAny(primary, mptr, barrier);
@@ -166,7 +166,7 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (TRI_doc_mptr_t** mptr, const string& key, const bool lock) {
+        int read (TRI_doc_mptr_t* mptr, const string& key, const bool lock) {
           TRI_primary_collection_t* const primary = primaryCollection();
 
           return this->readCollectionDocument(primary, mptr, key, lock);
@@ -186,7 +186,7 @@ namespace triagens {
 /// @brief read all documents within a transaction, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t*>& docs, 
+        int read (vector<TRI_doc_mptr_t>& docs, 
                   TRI_barrier_t** barrier,
                   TRI_voc_ssize_t skip, 
                   TRI_voc_size_t limit,

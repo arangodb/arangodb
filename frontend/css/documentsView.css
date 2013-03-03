@@ -24,21 +24,8 @@ table.dataTable td {
   height: 56px;
 }
 
-#documentsFooter {
-  height: 36px;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin-left: 20px;
-  margin-right: 20px;
-  border: 1px solid #C1BDBA;
-  background-color: #F7F6F6 !important;
-  background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
-  background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
-  background-image: linear-gradient(top, #f3efec, #ebe7e3);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
+#documentsToolbarF {
+  padding-bottom: 15px;
 }
 
 #documentsStatus {
@@ -224,7 +211,7 @@ table.dataTable thead th {
 
 .pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
- 	box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+ 	box-shadow: none;
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;

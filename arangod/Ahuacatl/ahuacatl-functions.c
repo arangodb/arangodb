@@ -410,17 +410,19 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   name = fieldAccess->_fullName + fieldAccess->_variableNameLength;
 
   directionValue = TRI_AQL_NODE_STRING(direction);
-
   // try to optimise the vertex collection access
   if (TRI_EqualString(directionValue, "outbound")) {
     CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
   }
   else if (TRI_EqualString(directionValue, "inbound")) {
-    CheckPathRestriction(fieldAccess, context, vertexCollection, ".destination.", name, n);
+    CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
   }
   else if (TRI_EqualString(directionValue, "any")) {
-    CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
-    CheckPathRestriction(fieldAccess, context, vertexCollection, ".destination.", name, n);
+    // "any" cannot be optimised sanely becuase the conditions would be AND-combined
+    // (but for "any", we'd need them OR-combined)
+
+    // CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
+    // CheckPathRestriction(fieldAccess, context, vertexCollection, ".destination.", name, n);
   }
 
   // check if we have a filter on LENGTH(edges)

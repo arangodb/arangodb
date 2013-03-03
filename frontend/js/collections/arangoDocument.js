@@ -6,6 +6,7 @@ window.arangoDocument = Backbone.Collection.extend({
     var returnval = false;
     try {
       $.ajax({
+        cache: false,
         type: 'DELETE',
         async: false,
         contentType: "application/json",
@@ -27,6 +28,7 @@ window.arangoDocument = Backbone.Collection.extend({
     var returnval = false;
     try {
       $.ajax({
+        cache: false,
         type: 'DELETE',
         async: false,
         contentType: "application/json",
@@ -51,6 +53,7 @@ window.arangoDocument = Backbone.Collection.extend({
   createTypeEdge: function (collectionID, from, to) {
     var result = false;
     $.ajax({
+      cache: false,
       type: "POST",
       async: false,
       url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
@@ -69,6 +72,7 @@ window.arangoDocument = Backbone.Collection.extend({
   createTypeDocument: function (collectionID) {
     var result = false;
     $.ajax({
+      cache: false,
       type: "POST",
       async: false,
       url: "/_api/document?collection=" + collectionID,
@@ -88,6 +92,7 @@ window.arangoDocument = Backbone.Collection.extend({
     var self = this;
 
     $.ajax({
+      cache: false,
       type: "GET",
       url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
       contentType: "application/json",
@@ -106,6 +111,7 @@ window.arangoDocument = Backbone.Collection.extend({
     var result = false;
     this.clearDocument();
     $.ajax({
+      cache: false,
       type: "GET",
       async: false,
       url: "/_api/edge/" + colid +"/"+ docid,
@@ -125,6 +131,7 @@ window.arangoDocument = Backbone.Collection.extend({
     var result = false;
     this.clearDocument();
     $.ajax({
+      cache: false,
       type: "GET",
       async: false,
       url: "/_api/document/" + colid +"/"+ docid,
@@ -145,6 +152,7 @@ window.arangoDocument = Backbone.Collection.extend({
   saveEdge: function (colid, docid, model) {
     var result = false;
     $.ajax({
+      cache: false,
       type: "PUT",
       async: false,
       url: "/_api/edge/" + colid + "/" + docid,
@@ -164,6 +172,7 @@ window.arangoDocument = Backbone.Collection.extend({
   saveDocument: function (colid, docid, model) {
     var result = false;
     $.ajax({
+      cache: false,
       type: "PUT",
       async: false,
       url: "/_api/document/" + colid + "/" + docid,
