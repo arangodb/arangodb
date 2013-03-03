@@ -11,10 +11,6 @@ monitoring of the server.
 @copydetails triagens::admin::RestAdminLogHandler::execute
 
 @CLEARPAGE
-@anchor HttpSystemStatus
-@copydetails JSF_GET_admin_status
-
-@CLEARPAGE
 @anchor HttpSystemFlushServerModules
 @copydetails JSF_GET_admin_modules_flush
 
@@ -23,12 +19,8 @@ monitoring of the server.
 @copydetails JSF_GET_admin_routing_reloads
 
 @CLEARPAGE
-@anchor HttpSystemConnectionStatistics
-@copydetails triagens::arango::ConnectionStatisticsHandler::compute
-
-@CLEARPAGE
-@anchor HttpSystemRequestStatistics
-@copydetails triagens::arango::RequestStatisticsHandler::compute
+@anchor HttpSystemAdminStatistics
+@copydetails JSF_GET_admin_statistics
 
 @CLEARPAGE
 @anchor HttpSystemAdminStatisticsDescription
