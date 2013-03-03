@@ -65,10 +65,11 @@ var documentsView = Backbone.View.extend({
       //Success
       if (result !== false) {
         window.location.hash = "collection/"+result;
+        arangoHelper.arangoNotification('Document created');
       }
       //Error
       else {
-        alert("something wrong");
+        arangoHelper.arangoError('Creating document failed');
       }
     }
   },
@@ -85,7 +86,7 @@ var documentsView = Backbone.View.extend({
     //Error
     else {
       $('#edgeCreateModal').modal('hide');
-      alert("something wrong");
+      arangoHelper.arangoError('Creating edge failed');
     }
   },
   firstDocuments: function () {
@@ -124,20 +125,22 @@ var documentsView = Backbone.View.extend({
       var result = window.arangoDocumentStore.deleteDocument(this.colid, this.docid);
       if (result === true) {
         //on success
+        arangoHelper.arangoNotification('Document deleted');
         deleted = true;
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoError('Document error');
       }
     }
     else if (this.type === 'edge') {
       var result = window.arangoDocumentStore.deleteEdge(this.colid, this.docid);
       if (result === true) {
         //on success
+        arangoHelper.arangoNotification('Edge deleted');
         deleted = true;
       }
       else if (result === false) {
-        alert("error");
+        arangoHelper.arangoError('Edge error');
       }
     }
 
@@ -146,7 +149,6 @@ var documentsView = Backbone.View.extend({
       $('#documentsTableID').dataTable().fnClearTable();
       window.arangoDocumentsStore.getDocuments(this.colid, page);
       $('#docDeleteModal').modal('hide');
-      alert("deleted");
     }
 
   },
@@ -209,15 +211,14 @@ var documentsView = Backbone.View.extend({
                                         '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
     ]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-    $(".prettify").tooltip({
+/*    $(".prettify").tooltip({
+      html: true,
       placement: "top"
-    });
+    });*/
     this.totalPages = window.arangoDocumentsStore.totalPages;
     this.currentPage = window.arangoDocumentsStore.currentPage;
     this.documentsCount = window.arangoDocumentsStore.documentsCount;
-
     if (this.documentsCount === 0) {
-      $('#documentsStatus').html('No documents');
     }
     else {
       $('#documentsStatus').html(
@@ -246,7 +247,7 @@ var documentsView = Backbone.View.extend({
   renderPagination: function (totalPages) {
     var currentPage = JSON.parse(this.pageid);
     var self = this;
-    var target = $('#testdiv'),
+    var target = $('#documentsToolbarF'),
     options = {
       left: 1,
       right: 1,
@@ -258,6 +259,7 @@ var documentsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
+    $('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];

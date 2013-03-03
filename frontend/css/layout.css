@@ -38,10 +38,11 @@ input {
 
 
 .btn {
- 	box-shadow:0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 2px rgba(0, 0, 0, 0.05), 2px 2px 0 rgba(0, 0, 0, 0.2);
+ 	box-shadow:none;
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;
+	margin-left:4px;
 }
 
 .btn:hover {
@@ -74,7 +75,7 @@ input {
 }
 
 .btn-group > .btn + .dropdown-toggle {
-	box-shadow: 1px 0 0 rgba(255, 255, 255, 0.125) inset, 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 2px rgba(0, 0, 0, 0.05), 2px 2px 0 rgba(0, 0, 0, 0.2)
+	box-shadow: 1px 0 0 rgba(255, 255, 255, 0.125) inset, 0 1px 0 rgba(255, 255, 255, 0.2) inset;
 
 }
 
@@ -98,7 +99,7 @@ input {
 
 #content {
   margin-top: 44px;
-  min-height: 800px;
+  min-height: 80px;
   height: 100%;
   width: 98%;
 }
@@ -108,8 +109,6 @@ body {
 }
 
 #footer {
-  position: absolute;
-  bottom: 0;
   width: 100%;
 }
 
@@ -171,3 +170,33 @@ body {
 table .sorting {
   background: none !important;
 }
+
+/* ABOUT VIEW */
+#aboutDiv {
+  padding-top: 20px;
+  background-color: rgba(0,0,0,0.05);
+  padding-bottom: 10px;
+}
+
+#aboutDiv .row {
+  border: 8px solid #F4F3F3 !important;
+  border-radius: 2px 2px 2px 2px;
+  margin-bottom: 25px;
+  background-color: white;
+  padding-top: 10px;
+  padding-bottom: 20px;
+  margin-right: 20px;
+  margin-left: 20px;
+}
+
+#aboutDiv h3 {
+}
+
+#aboutDiv .row a {
+  padding-left: 20px;
+}
+
+#aboutHeader {
+  margin-bottom: 10px;
+}
+

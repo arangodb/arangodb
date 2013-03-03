@@ -270,14 +270,8 @@ static SignalTask* localSignalTask;
      // user is desperate to kill the server!
      // ............................................................................
 
-<<<<<<< HEAD
-     LOGGER_INFO << shutdownMessage << ", terminating";
-     _exit(1);
-     TRI_EXIT_FUNCTION(EXIT_FAILURE,0); // quick exit for windows
-=======
      LOGGER_INFO(shutdownMessage << ", terminating");
      _exit(EXIT_FAILURE); // quick exit for windows
->>>>>>> 9c35550b52bbaf9704ffee18c69ff0da18840418
      return true;
   }
 

@@ -43,6 +43,8 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_cap_constraint_s;
+struct TRI_doc_deletion_key_marker_s;
+struct TRI_doc_document_key_marker_s;
 struct TRI_key_generator_s;
 struct TRI_primary_collection_s;
 struct TRI_transaction_s;
@@ -318,11 +320,11 @@ typedef struct TRI_primary_collection_s {
   void (*createHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  int (*create) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_doc_mptr_t**, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key);
-  int (*read) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_voc_key_t);
+  int (*create) (struct TRI_doc_operation_context_s*, struct TRI_doc_document_key_marker_s*, size_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, void const*, char*, TRI_voc_size_t);
+  int (*read) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t*, TRI_voc_key_t);
 
-  int (*update) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t**, TRI_shaped_json_t const*, TRI_voc_key_t);
-  int (*destroy) (struct TRI_doc_operation_context_s*, TRI_voc_key_t);
+  int (*update) (struct TRI_doc_operation_context_s*, TRI_doc_mptr_t*, TRI_shaped_json_t const*, TRI_voc_key_t);
+  int (*destroy) (struct TRI_doc_operation_context_s*, struct TRI_doc_deletion_key_marker_s*, TRI_voc_key_t, TRI_voc_size_t);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);

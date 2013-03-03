@@ -156,21 +156,21 @@ struct VersionTest : public BenchmarkOperation {
     return "";
   }
   
-  const bool useCollection () const {
+  bool useCollection () const {
     return false;
   }
 
-  const string& url () {
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     static string url = "/_api/version";
     
     return url;
   }
 
-  const HttpRequest::HttpRequestType type () {
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return HttpRequest::HTTP_REQUEST_GET;
   }
   
-  const char* payload (size_t* length, const size_t counter, bool* mustFree) {
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     static const char* payload = "";
 
     *mustFree = false;
@@ -187,6 +187,123 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                document CRUD test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct DocumentCrudTest : public BenchmarkOperation {
+  DocumentCrudTest () 
+    : BenchmarkOperation () {
+  }
+
+  ~DocumentCrudTest () {
+  }
+  
+  string collectionName () {
+    return Collection;
+  }
+  
+  bool useCollection () const {
+    return true;
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 5;
+
+    if (mod == 0) {
+      return string("/_api/document?collection=" + Collection);
+    }
+    else {
+      size_t keyId = (size_t) (globalCounter / 5);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+
+      return string("/_api/document/" + Collection + "/" + key);
+    }
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 5;
+
+    if (mod == 0) {
+      return HttpRequest::HTTP_REQUEST_POST;
+    }
+    else if (mod == 1) {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+    else if (mod == 2) {
+      return HttpRequest::HTTP_REQUEST_PATCH;
+    }
+    else if (mod == 3) {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+    else if (mod == 4) {
+      return HttpRequest::HTTP_REQUEST_DELETE;
+    }
+    else {
+      assert(false);
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+  }
+  
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 5;
+
+    if (mod == 0 || mod == 2) {
+      const size_t n = Complexity;
+      TRI_string_buffer_t* buffer;
+
+      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
+
+      size_t keyId = (size_t) (globalCounter / 5);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+      TRI_AppendStringStringBuffer(buffer, key.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\"");
+
+      for (size_t i = 1; i <= n; ++i) {
+        TRI_AppendStringStringBuffer(buffer, ",\"value");
+        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
+        if (mod == 0) {
+          TRI_AppendStringStringBuffer(buffer, "\":true");
+        }
+        else {
+          TRI_AppendStringStringBuffer(buffer, "\":false");
+        }
+      }
+    
+      TRI_AppendCharStringBuffer(buffer, '}');
+
+      *length = TRI_LengthStringBuffer(buffer);
+      *mustFree = false;
+      char* ptr = buffer->_buffer;
+      buffer->_buffer = NULL;
+
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+      return (const char*) ptr;
+    }
+    else if (mod == 1 || mod == 3 || mod == 4) {
+      *length = 0;
+      *mustFree = false;
+      return (const char*) 0;
+    }
+    else {
+      assert(false);
+      return 0;
+    }
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            document creation test
@@ -231,19 +348,19 @@ struct DocumentCreationTest : public BenchmarkOperation {
     return Collection;
   }
   
-  const bool useCollection () const {
+  bool useCollection () const {
     return true;
   }
 
-  const string& url () {
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return _url;
   }
 
-  const HttpRequest::HttpRequestType type () {
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
   
-  const char* payload (size_t* length, const size_t counter, bool* mustFree) {
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     *mustFree = false;
     *length = _length;
     return (const char*) _buffer->_buffer;
@@ -297,19 +414,19 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return "";
   }
   
-  const bool useCollection () const {
+  bool useCollection () const {
     return false;
   }
 
-  const string& url () {
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return _url;
   }
 
-  const HttpRequest::HttpRequestType type () {
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
   
-  const char* payload (size_t* length, const size_t counter, bool* mustFree) {
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     BenchmarkCounter<uint64_t>* ctr = getSharedCounter();
     TRI_string_buffer_t* buffer;
     char* data;
@@ -467,6 +584,9 @@ int main (int argc, char* argv[]) {
   }
   else if (TestCase == "collection") {
     testCase = new CollectionCreationTest();
+  }
+  else if (TestCase == "crud") {
+    testCase = new DocumentCrudTest();
   }
   else {
     LOGGER_FATAL_AND_EXIT("invalid test case name " << TestCase);

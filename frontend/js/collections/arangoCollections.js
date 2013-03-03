@@ -8,6 +8,8 @@ window.arangoCollections = Backbone.Collection.extend({
       searchOptions : {
         searchPhrase: null,
         includeSystem: false,
+        includeDocument: true,
+        includeEdge: true,
         includeLoaded: true,
         includeUnloaded: true
       },
@@ -95,6 +97,12 @@ window.arangoCollections = Backbone.Collection.extend({
             // system collection?
             return;
           }
+          if (options.includeEdge === false && model.get('type') === 'edge') {
+            return;
+          }
+          if (options.includeDocument === false && model.get('type') === 'document') {
+            return;
+          }
           if (options.includeLoaded === false && model.get('status') === 'loaded') {
             return;
           }
@@ -112,6 +120,7 @@ window.arangoCollections = Backbone.Collection.extend({
         var data2;
         $.ajax({
           type: "GET",
+          cache: false,
           url: "/_api/collection/" + id + "/properties",
           contentType: "application/json",
           processData: false,
@@ -130,6 +139,7 @@ window.arangoCollections = Backbone.Collection.extend({
       newCollection: function (collName, wfs, isSystem, journalSize, collType) {
         var returnval = false;
         $.ajax({
+          cache: false,
           type: "POST",
           url: "/_api/collection",
           data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + collType + '}',
@@ -147,6 +157,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       renameCollection: function (id, name) {
         $.ajax({
+          cache: false,
           type: "PUT",
           async: false, // sequential calls!
           url: "/_api/collection/" + id + "/rename",
@@ -154,16 +165,24 @@ window.arangoCollections = Backbone.Collection.extend({
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            alert("Collection renamed");
+            arangoHelper.arangoNotification("Collection renamed");
+            this.alreadyRenamed = true;
+            window.arangoCollectionsStore.fetch({
+              success: function () {
+                window.collectionsView.render();
+              }
+            });
           },
           error: function(data) {
-            alert(getErrorMessage(data));
+            arangoHelper.arangoNotification("Collection error");
             failed = true;
           }
         });
       },
       changeCollection: function (id, wfs, journalSize) {
+        var self = this;
         $.ajax({
+          cache: false,
           type: "PUT",
           async: false, // sequential calls!
           url: "/_api/collection/" + id + "/properties",
@@ -171,10 +190,20 @@ window.arangoCollections = Backbone.Collection.extend({
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            alert("Saved collection properties");
+            arangoHelper.arangoNotification("Saved collection properties");
+
+            if (self.alreadyRenamed === true) {
+              self.alreadyRenamed = false;
+              window.arangoCollectionsStore.fetch({
+                success: function () {
+                  window.collectionsView.render();
+                }
+              });
+            }
+
           },
           error: function(data) {
-            alert(getErrorMessage(data));
+            arangoHelper.arangoNotification("Collection error");
             failed = true;
           }
         });
@@ -182,6 +211,7 @@ window.arangoCollections = Backbone.Collection.extend({
       deleteCollection: function (id) {
         var returnval = false;
         $.ajax({
+          cache: false,
           type: 'DELETE',
           url: "/_api/collection/" + id,
           async: false,
@@ -196,25 +226,39 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       loadCollection: function (id) {
         $.ajax({
+          cache: false,
           type: 'PUT',
           url: "/_api/collection/" + id + "/load",
           success: function () {
+            arangoHelper.arangoNotification('Collection loaded');
+            window.arangoCollectionsStore.fetch({
+              success: function () {
+                window.collectionsView.render();
+              }
+            });
           },
           error: function (data) {
             var temp = JSON.parse(data.responseText);
-            alert("Error: " + JSON.stringify(temp.errorMessage));
+            arangoHelper.arangoError('Collection error');
           }
         });
       },
       unloadCollection: function (id) {
         $.ajax({
+          cache: false,
           type: 'PUT',
           url: "/_api/collection/" + id + "/unload",
           success: function () {
+            arangoHelper.arangoNotification('Collection unloaded');
+            window.arangoCollectionsStore.fetch({
+              success: function () {
+                window.collectionsView.render();
+              }
+            });
           },
           error: function () {
             var temp = JSON.parse(data.responseText);
-            alert("Error: " + JSON.stringify(temp.errorMessage));
+            arangoHelper.arangoError('Collection error');
           }
         });
       }
