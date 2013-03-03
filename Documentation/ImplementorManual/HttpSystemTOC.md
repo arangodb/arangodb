@@ -8,3 +8,4 @@ TOC {#HttpSystemTOC}
   - @ref HttpSystemFlushServerModules "POST /_admin/modules/flush"
   - @ref HttpSystemConnectionStatistics "GET /_admin/connection-statistics"
   - @ref HttpSystemRequestStatistics "GET /_admin/request-statistics"
+  - @ref HttpSystemAdminStatisticsDescription "GET /_admin/statistics-descriptions"

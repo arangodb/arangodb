@@ -32,12 +32,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "ResultGenerator/OutputGenerator.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantBoolean.h"
-#include "Variant/VariantInt32.h"
-#include "Variant/VariantObject.h"
-#include "Variant/VariantString.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -111,28 +105,6 @@ void RestBaseHandler::generateResult (TRI_json_t* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateResult (VariantObject* result) {
-  _response = createResponse(HttpResponse::OK);
-
-  string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
-
-  if (ok) {
-    _response->setContentType(contentType);
-  }
-  else {
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
-
-  delete result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,24 +137,14 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects an output format
-////////////////////////////////////////////////////////////////////////////////
-
-string RestBaseHandler::selectResultGenerator (HttpRequest* request) {
-  string format = request->header("accept");
-
-  if (format.empty()) {
-    return "application/json; charset=utf-8";
-  }
-
-  return format;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:

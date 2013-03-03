@@ -295,7 +295,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// Create a document in a new, named collection
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate1}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate2}
 ///     var cn = "products";
 ///     db._drop(cn);
 /// 
@@ -339,7 +339,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// 
 ///     var response = logCurlRequest('POST', url, body);
 /// 
-///     assert(response.code === 404);
+///     assert(response.code === 400);
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
