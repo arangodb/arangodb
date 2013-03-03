@@ -47,7 +47,7 @@ content-type: application/json; charset=utf-8
       "name" : "Resident Set Size", 
       "description" : "The number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out.", 
       "type" : "current", 
-      "units" : "" 
+      "units" : "bytes" 
     }, 
     { 
       "group" : "system", 
@@ -83,11 +83,94 @@ content-type: application/json; charset=utf-8
     }, 
     { 
       "group" : "client", 
-      "identifier" : "httpRequests", 
-      "name" : "HTTP Requests", 
-      "description" : "The number of http requests answered so far.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      "identifier" : "totalTime", 
+      "name" : "Total Time", 
+      "description" : "Total time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "requestTime", 
+      "name" : "Request Time", 
+      "description" : "Request time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "queueTime", 
+      "name" : "Queue Time", 
+      "description" : "Queue time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "bytesSent", 
+      "name" : "Bytes Sent", 
+      "description" : "Bytes sents for a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        250, 
+        1000, 
+        2000, 
+        5000, 
+        10000 
+      ], 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "bytesReceived", 
+      "name" : "Bytes Received", 
+      "description" : "Bytes receiveds for a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        250, 
+        1000, 
+        2000, 
+        5000, 
+        10000 
+      ], 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "connectionTime", 
+      "name" : "Connection Time", 
+      "description" : "Total connection time of a client.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.1, 
+        1, 
+        60 
+      ], 
+      "units" : "seconds" 
     } 
   ], 
   "error" : false, 
