@@ -7,7 +7,8 @@
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, 
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, 
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, 
-  UPGRADE */
+  UPGRADE, BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
+  REQUEST_TIME_DISTRIBUTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -177,6 +178,39 @@
   if (typeof SYS_PROCESS_JSON_FILE !== "undefined") {
     internal.processJsonFile = SYS_PROCESS_JSON_FILE;
     delete SYS_PROCESS_JSON_FILE;
+  }
+
+  internal.bytesSentDistribution = [];
+
+  if (typeof BYTES_SENT_DISTRIBUTION !== "undefined") {
+    internal.bytesSentDistribution = BYTES_SENT_DISTRIBUTION;
+    delete BYTES_SENT_DISTRIBUTION;
+  }
+
+  internal.bytesReceivedDistribution = [];
+
+  if (typeof BYTES_RECEIVED_DISTRIBUTION !== "undefined") {
+    internal.bytesReceivedDistribution = BYTES_RECEIVED_DISTRIBUTION;
+    delete BYTES_RECEIVED_DISTRIBUTION;
+  }
+
+  internal.connectionTimeDistribution = [];
+
+  if (typeof CONNECTION_TIME_DISTRIBUTION !== "undefined") {
+    internal.connectionTimeDistribution = CONNECTION_TIME_DISTRIBUTION;
+    delete CONNECTION_TIME_DISTRIBUTION;
+  }
+
+  internal.requestTimeDistribution = [];
+
+  if (typeof REQUEST_TIME_DISTRIBUTION !== "undefined") {
+    internal.requestTimeDistribution = REQUEST_TIME_DISTRIBUTION;
+    delete REQUEST_TIME_DISTRIBUTION;
+  }
+
+  if (typeof SYS_REQUEST_STATISTICS !== "undefined") {
+    internal.requestStatistics = SYS_REQUEST_STATISTICS;
+    delete SYS_REQUEST_STATISTICS;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

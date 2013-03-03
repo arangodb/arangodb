@@ -317,6 +317,279 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_statistics
+/// @brief returns system status information for the server
+///
+/// @RESTHEADER{GET /_admin/statistics,reads the statistics}
+///
+/// @RESTDESCRIPTION
+/// Returns the statistics information. The returned objects contains the
+/// statistics figures group together according to the description returned by
+/// `_admin/statistics-description`. For instance, to access a figure `userTime`
+/// from the group `system`, you first select the sub-object describing the
+/// group stored in `system` and in that sub-object the value for `userTime` is
+/// stored in the attribute of the same name.
+///
+/// In case of a distribution, the returned object contains the total count in
+/// `count` and the distribution list in `counts`.
+/// 
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// Statistics was returned successfully.
+/// 
+/// @EXAMPLES
+/// 
+/// @EXAMPLE_ARANGOSH_RUN{AdminStatistics1}
+///     var url = "/_admin/statistics";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/statistics",
+  context : "admin",
+
+  callback : function (req, res) {
+    var result;
+
+    try {
+      result = {};
+      result.system = internal.processStat();
+      result.client = internal.requestStatistics();
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_statistics_description
+/// @brief returns statistics description
+///
+/// @RESTHEADER{GET /_admin/statistics-description,statistics description}
+/// 
+/// @RESTDESCRIPTION
+/// Returns a description of the statistics returned by `/_admin/statistics`.
+/// The returned objects contains a list of statistics groups in the attribute
+/// `groups` and a list of statistics figures in the attribute `figures`.
+///
+/// A statistics group is described by
+///
+/// - `group`: The identifier of the group.
+/// - `name`: The name of the group.
+/// - `description`: A description of the group.
+///
+/// A statistics figure is described by
+///
+/// - `group`: The identifier of the group to which this figure belongs.
+/// - `identifier`: The identifier of the figure. It is unique within the group.
+/// - `name`: The name of the figure.
+/// - `description`: A description of the group.
+/// - `type`: Either `current`, `accumulated`, or `distribution`.
+/// - `cuts`: The distribution vector.
+/// - `units`: Units in which the figure is measured.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// Description was returned successfully.
+/// 
+/// @EXAMPLES
+/// 
+/// @EXAMPLE_ARANGOSH_RUN{AdminStatisticsDescription1}
+///     var url = "/_admin/statistics-description";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/statistics-description",
+  context : "admin",
+
+  callback : function (req, res) {
+    var result;
+
+    try {
+      result = {
+        groups: [
+          {
+            group: "system",
+            name: "Process Statistics",
+            description: "Statistics about the ArangoDB process"
+          },
+
+          {
+            group: "client",
+            name: "Client Statistics",
+            description: "Statistics about the clients connecting to the server."
+          }
+        ],
+
+        figures: [
+
+          // .............................................................................
+          // system statistics
+          // .............................................................................
+
+          {
+            group: "system",
+            identifier: "userTime",
+            name: "User Time",
+            description: "Amount of time that this process has been scheduled in user mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+            type: "accumulated",
+            units: "seconds"
+          },
+
+          {
+            group: "system",
+            identifier: "systemTime",
+            name: "System Time",
+            description: "Amount of time that this process has been scheduled in kernel mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+            type: "accumulated",
+            units: "seconds"
+          },
+
+          {
+            group: "system",
+            identifier: "numberOfThreads",
+            name: "Number of Threads",
+            description: "Number of threads in this process.",
+            type: "current",
+            units: "number"
+          },
+
+          {
+            group: "system",
+            identifier: "residentSize",
+            name: "Resident Set Size",
+            description: "The number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out.",
+            type: "current",
+            units: "bytes"
+          },
+
+          {
+            group: "system",
+            identifier: "virtualSize",
+            name: "Virtual Memory Size",
+            description: "The size of the virtual memory the process is using.",
+            type: "current",
+            units: "bytes"
+          },
+
+          {
+            group: "system",
+            identifier: "minorPageFaults",
+            name: "Minor Page Faults",
+            description: "The number of minor faults the process has made which have not required loading a memory page from disk.",
+            type: "accumulated",
+            units: "number"
+          },
+
+          {
+            group: "system",
+            identifier: "majorPageFaults",
+            name: "Major Page Faults",
+            description: "The number of major faults the process has made which have required loading a memory page from disk.",
+            type: "accumulated",
+            units: "number"
+          },
+
+          // .............................................................................
+          // client statistics
+          // .............................................................................
+
+          {
+            group: "client",
+            identifier: "httpConnections",
+            name: "HTTP Client Connections",
+            description: "The number of http connections that are currently open.",
+            type: "current",
+            units: "number"
+          },
+
+          {
+            group: "client",
+            identifier: "totalTime",
+            name: "Total Time",
+            description: "Total time needed to answer a request.",
+            type: "distribution",
+            cuts: internal.requestTimeDistribution,
+            units: "seconds"
+          },
+
+          {
+            group: "client",
+            identifier: "requestTime",
+            name: "Request Time",
+            description: "Request time needed to answer a request.",
+            type: "distribution",
+            cuts: internal.requestTimeDistribution,
+            units: "seconds"
+          },
+
+          {
+            group: "client",
+            identifier: "queueTime",
+            name: "Queue Time",
+            description: "Queue time needed to answer a request.",
+            type: "distribution",
+            cuts: internal.requestTimeDistribution,
+            units: "seconds"
+          },
+
+          {
+            group: "client",
+            identifier: "bytesSent",
+            name: "Bytes Sent",
+            description: "Bytes sents for a request.",
+            type: "distribution",
+            cuts: internal.bytesSentDistribution,
+            units: "bytes"
+          },
+
+          {
+            group: "client",
+            identifier: "bytesReceived",
+            name: "Bytes Received",
+            description: "Bytes receiveds for a request.",
+            type: "distribution",
+            cuts: internal.bytesReceivedDistribution,
+            units: "bytes"
+          },
+
+          {
+            group: "client",
+            identifier: "connectionTime",
+            name: "Connection Time",
+            description: "Total connection time of a client.",
+            type: "distribution",
+            cuts: internal.connectionTimeDistribution,
+            units: "seconds"
+          }
+        ]
+      };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

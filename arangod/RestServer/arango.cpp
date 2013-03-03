@@ -29,7 +29,7 @@
 #include "BasicsC/messages.h"
 
 #include "RestServer/ArangoServer.h"
-#include "ResultGenerator/InitialiseGenerator.h"
+#include "Rest/InitialiseRest.h"
 
 using namespace triagens;
 using namespace triagens::rest;
@@ -130,7 +130,7 @@ int main (int argc, char* argv[]) {
 
   arangodEntryFunction();
 
-  TRIAGENS_RESULT_GENERATOR_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
 
   // create and start a ArangoDB server
   ArangoServer server(argc, argv);
@@ -138,7 +138,7 @@ int main (int argc, char* argv[]) {
   res = server.start();
 
   // shutdown
-  TRIAGENS_RESULT_GENERATOR_SHUTDOWN;
+  TRIAGENS_REST_SHUTDOWN;
 
   arangodExitFunction(res, NULL);
 
