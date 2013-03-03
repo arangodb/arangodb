@@ -86,27 +86,7 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/shaped-json.c \
 	lib/Statistics/statistics.cpp \
 	lib/Utilities/LineEditor.cpp \
-	lib/Utilities/ScriptLoader.cpp \
-	lib/Variant/VariantArray.cpp \
-	lib/Variant/VariantBlob.cpp \
-	lib/Variant/VariantBoolean.cpp \
-	lib/Variant/VariantDate.cpp \
-	lib/Variant/VariantDatetime.cpp \
-	lib/Variant/VariantDouble.cpp \
-	lib/Variant/VariantFloat.cpp \
-	lib/Variant/VariantInt16.cpp \
-	lib/Variant/VariantInt32.cpp \
-	lib/Variant/VariantInt64.cpp \
-	lib/Variant/VariantInt8.cpp \
-	lib/Variant/VariantMatrix2.cpp \
-	lib/Variant/VariantNull.cpp \
-	lib/Variant/VariantObject.cpp \
-	lib/Variant/VariantString.cpp \
-	lib/Variant/VariantUInt16.cpp \
-	lib/Variant/VariantUInt32.cpp \
-	lib/Variant/VariantUInt64.cpp \
-	lib/Variant/VariantUInt8.cpp \
-	lib/Variant/VariantVector.cpp
+	lib/Utilities/ScriptLoader.cpp
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -144,14 +124,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/PathHandler.cpp \
 	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
-	lib/ResultGenerator/HtmlResultGenerator.cpp \
-	lib/ResultGenerator/InitialiseGenerator.cpp \
-	lib/ResultGenerator/JsonResultGenerator.cpp \
-	lib/ResultGenerator/JsonXResultGenerator.cpp \
-	lib/ResultGenerator/OutputGenerator.cpp \
-	lib/ResultGenerator/PhpResultGenerator.cpp \
-	lib/ResultGenerator/ResultGenerator.cpp \
-	lib/ResultGenerator/XmlResultGenerator.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ListenTask.cpp \

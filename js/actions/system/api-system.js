@@ -325,10 +325,13 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 /// Returns the statistics information. The returned objects contains the
 /// statistics figures group together according to the description returned by
-/// `_admin/statistics-description`. For instance,to access a figure `userTime`
+/// `_admin/statistics-description`. For instance, to access a figure `userTime`
 /// from the group `system`, you first select the sub-object describing the
 /// group stored in `system` and in that sub-object the value for `userTime` is
 /// stored in the attribute of the same name.
+///
+/// In case of a distribution, the returned object contains the total count in
+/// `count` and the distribution list in `counts`.
 /// 
 /// @RESTRETURNCODES
 /// 
@@ -357,6 +360,7 @@ actions.defineHttp({
     try {
       result = {};
       result.system = internal.processStat();
+      result.client = internal.requestStatistics();
 
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
@@ -389,7 +393,8 @@ actions.defineHttp({
 /// - `identifier`: The identifier of the figure. It is unique within the group.
 /// - `name`: The name of the figure.
 /// - `description`: A description of the group.
-/// - `type`: Either `current` or `accumulated`.
+/// - `type`: Either `current`, `accumulated`, or `distribution`.
+/// - `cuts`: The distribution vector.
 /// - `units`: Units in which the figure is measured.
 ///
 /// @RESTRETURNCODES
@@ -516,11 +521,62 @@ actions.defineHttp({
 
           {
             group: "client",
-            identifier: "httpRequests",
-            name: "HTTP Requests",
-            description: "The number of http requests answered so far.",
-            type: "accumulated",
-            units: "number"
+            identifier: "totalTime",
+            name: "Total Time",
+            description: "Total time needed to answer a request.",
+            type: "distribution",
+            cuts: internal.requestTimeDistribution,
+            units: "seconds"
+          },
+
+          {
+            group: "client",
+            identifier: "requestTime",
+            name: "Request Time",
+            description: "Request time needed to answer a request.",
+            type: "distribution",
+            cuts: internal.requestTimeDistribution,
+            units: "seconds"
+          },
+
+          {
+            group: "client",
+            identifier: "queueTime",
+            name: "Queue Time",
+            description: "Queue time needed to answer a request.",
+            type: "distribution",
+            cuts: internal.requestTimeDistribution,
+            units: "seconds"
+          },
+
+          {
+            group: "client",
+            identifier: "bytesSent",
+            name: "Bytes Sent",
+            description: "Bytes sents for a request.",
+            type: "distribution",
+            cuts: internal.bytesSentDistribution,
+            units: "bytes"
+          },
+
+          {
+            group: "client",
+            identifier: "bytesReceived",
+            name: "Bytes Received",
+            description: "Bytes receiveds for a request.",
+            type: "distribution",
+            cuts: internal.bytesReceivedDistribution,
+            units: "bytes"
+          },
+
+          {
+            group: "client",
+            identifier: "connectionTime",
+            name: "Connection Time",
+            description: "Total connection time of a client.",
+            type: "distribution",
+            cuts: internal.connectionTimeDistribution,
+            units: "seconds"
           }
         ]
       };
