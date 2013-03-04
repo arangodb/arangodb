@@ -1,15 +1,15 @@
-unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products&createCollection=true
+unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products
 { "Hello": "World" }
 
-HTTP/1.1 202 Accepted
+HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
-etag: "14959015"
-location: /_api/document/products/14959015
+etag: "15286695"
+location: /_api/document/products/15286695
 
 { 
   "error" : false, 
-  "_id" : "products/14959015", 
-  "_rev" : "14959015", 
-  "_key" : "14959015" 
+  "_id" : "products/15286695", 
+  "_rev" : "15286695", 
+  "_key" : "15286695" 
 }
 

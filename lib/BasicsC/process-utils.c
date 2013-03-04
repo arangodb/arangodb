@@ -31,6 +31,16 @@
 #include <sys/prctl.h>
 #endif
 
+#ifdef TRI_HAVE_MACH
+#include <mach/mach_host.h>
+#include <mach/mach_port.h>
+#include <mach/mach_traps.h>
+#include <mach/shared_memory_server.h>
+#include <mach/task.h>
+#include <mach/thread_act.h>
+#include <mach/vm_map.h>
+#endif
+
 #include "BasicsC/strings.h"
 #include "BasicsC/logging.h"
 
@@ -231,6 +241,63 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 
     result._residentSize = used.ru_maxrss;
   }
+
+#ifdef TRI_HAVE_MACH
+  {
+    int i;
+    kern_return_t rc;
+    thread_array_t array;
+    mach_msg_type_number_t count;
+
+    rc = task_threads(mach_task_self(), &array, &count);
+
+    if (rc == KERN_SUCCESS) {
+      result._numberThreads = count;
+
+      for (i = 0;  i < count;  ++i) {
+        mach_port_deallocate(mach_task_self(), array[i]);
+      }
+
+      vm_deallocate(mach_task_self(), (vm_address_t)array, sizeof(thread_t) * count);
+    }
+  }
+
+  {
+    kern_return_t rc;
+    struct task_basic_info t_info;
+    struct host_basic_info h_info;
+    struct vm_region_basic_info_64 vm_info;
+    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+    mach_msg_type_number_t h_info_count = HOST_BASIC_INFO_COUNT;
+    mach_msg_type_number_t vm_info_count = VM_REGION_BASIC_INFO_COUNT_64;
+    vm_address_t address = GLOBAL_SHARED_TEXT_SEGMENT;
+    vm_size_t size;
+    mach_port_t object_name;
+		
+    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+
+    if (rc == KERN_SUCCESS) {
+      rc = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&h_info, &h_info_count);
+
+      if (rc == KERN_SUCCESS) {
+        rc = vm_region_64(mach_task_self(), &address, &size, VM_REGION_BASIC_INFO, (vm_region_info_t)&vm_info, &vm_info_count, &object_name);
+
+        if (rc == KERN_SUCCESS) {
+
+          // check for firmware split libraries, this is copied from the ps source code
+          if (vm_info.reserved 
+           && size == SHARED_TEXT_REGION_SIZE 
+           && t_info.virtual_size > (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE)) {
+		t_info.virtual_size -= (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE);
+          }
+		
+          result._virtualSize = t_info.virtual_size;
+          result._residentSize = t_info.resident_size;
+        }
+      }
+    }
+  }
+#endif
 
   return result;
 }

@@ -68,7 +68,11 @@ var newCollectionView = Backbone.View.extend({
       $("#add-collection").modal('hide');
       arangoHelper.arangoError("Collection error");
     }
-
+    window.arangoCollectionsStore.fetch({
+      success: function () {
+        window.collectionsView.render();
+      }
+    });
   }
 
 });
