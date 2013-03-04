@@ -1,3 +1,14 @@
+v1.2.1 (XXXX-XX-XX)
+-------------------
+
+* fixed conversion of special double values (NaN, -inf, +inf) when converting from shapedjson
+  to JSON
+
+* fixed compaction of markers (location of _key was not updated correctly in memory)
+ 
+* fixed value truncation when renaming datafiles/journals
+ 
+
 v1.2.0 (2013-03-01)
 -------------------
 

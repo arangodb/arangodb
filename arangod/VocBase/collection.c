@@ -330,7 +330,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
       datafile = sealed._buffer[i];
 
-      number = TRI_StringUInt32(datafile->_fid);
+      number = TRI_StringUInt64(datafile->_fid);
       dname = TRI_Concatenate3String("datafile-", number, ".db");
       filename = TRI_Concatenate2File(collection->_directory, dname);
 

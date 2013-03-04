@@ -60,7 +60,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     char* jname;
     char* number;
 
-    number = TRI_StringUInt32(TRI_NewTickVocBase());
+    number = TRI_StringUInt64(TRI_NewTickVocBase());
     if (! number) {
       return false;
     }
@@ -101,7 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     bool ok;
 
     // and use the correct name
-    number = TRI_StringUInt32(journal->_fid);
+    number = TRI_StringUInt64(journal->_fid);
     jname = TRI_Concatenate3String("journal-", number, ".db");
     filename = TRI_Concatenate2File(collection->base._directory, jname);
 
@@ -206,7 +206,7 @@ static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* jo
     char* number;
     bool ok;
 
-    number = TRI_StringUInt32(journal->_fid);
+    number = TRI_StringUInt64(journal->_fid);
     dname = TRI_Concatenate3String("datafile-", number, ".db");
     filename = TRI_Concatenate2File(collection->base._directory, dname);
 

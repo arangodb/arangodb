@@ -127,7 +127,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     char* number;
 
     // construct a suitable filename
-    number = TRI_StringUInt32(TRI_NewTickVocBase());
+    number = TRI_StringUInt64(TRI_NewTickVocBase());
 
     if (compactor) {
       jname = TRI_Concatenate3String("journal-", number, ".db");
@@ -171,7 +171,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     bool ok;
 
     // and use the correct name
-    number = TRI_StringUInt32(journal->_fid);
+    number = TRI_StringUInt64(journal->_fid);
 
     if (compactor) {
       jname = TRI_Concatenate3String("compactor-", number, ".db");
@@ -293,7 +293,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
     char* number;
     bool ok;
 
-    number = TRI_StringUInt32(journal->_fid);
+    number = TRI_StringUInt64(journal->_fid);
     dname = TRI_Concatenate3String("datafile-", number, ".db");
     filename = TRI_Concatenate2File(collection->_directory, dname);
 
