@@ -1476,7 +1476,23 @@ static bool StringifyJsonShapeDataNumber (TRI_shaper_t* shaper,
   int res;
 
   v = * (TRI_shape_number_t const*) data;
-  res = TRI_AppendDoubleStringBuffer(buffer, v);
+  // check for special values
+
+  if (v != v) {
+    // NaN
+    res = TRI_AppendStringStringBuffer(buffer, "null");
+  }
+  else if (v == HUGE_VAL) {
+    // +inf
+    res = TRI_AppendStringStringBuffer(buffer, "null");
+  }
+  else if (v == -HUGE_VAL) {
+    // -inf
+    res = TRI_AppendStringStringBuffer(buffer, "null");
+  }
+  else {
+    res = TRI_AppendDoubleStringBuffer(buffer, v);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
