@@ -1,15 +1,10 @@
 .footer {
   background: url("../img/footer_hd_bg.png") repeat-x scroll left 10px #4A4A4A;
   font-size: 14px;
-  margin: 30px auto 0;
   text-align: center;
-  bottom:0;
   left: 0;
   right: 0;
-  bottom:200;
-  margin-top:100px;
-  width: 100%;
-  display:none;
+  margin-top:300px;
 }
 
 .footerExtra {
@@ -49,6 +44,7 @@
 .footer p {
   padding-top: 10px;
   padding-bottom: 10px;
+  margin-bottom:0;
 }
 
 .footer span a {
