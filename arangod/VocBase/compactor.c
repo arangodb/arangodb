@@ -164,7 +164,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
 
   collection = data;
 
-  number = TRI_StringUInt32(datafile->_fid);
+  number = TRI_StringUInt64(datafile->_fid);
   name = TRI_Concatenate3String("deleted-", number, ".db");
   filename = TRI_Concatenate2File(collection->_directory, name);
 
@@ -221,13 +221,13 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_df_marker_t* result;
   TRI_doc_datafile_info_t* dfi;
   TRI_doc_mptr_t const* found;
-  TRI_document_collection_t* sim;
+  TRI_document_collection_t* doc;
   TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
   int res;
 
-  sim = data;
-  primary = &sim->base;
+  doc = data;
+  primary = &doc->base;
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
@@ -261,7 +261,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     // write to compactor files
-    res = CopyDocument(sim, marker, &result, &fid);
+    res = CopyDocument(doc, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
@@ -272,7 +272,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
     deleted = found == NULL || found->_validTo != 0;
-
+      
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     // update datafile
@@ -293,18 +293,22 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     cnv.c = found;
     cnv.v->_fid = datafile->_fid;
     cnv.v->_data = result;
+    // let _key point to the new key position
+    cnv.v->_key = ((char*) result) + (((TRI_doc_document_key_marker_t*) result)->_offsetKey);
 
     // update datafile info
     dfi->_numberAlive += 1;
     dfi->_sizeAlive += marker->_size - markerSize - keyBodySize;
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+    
+   // TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     // write to compactor files
-    res = CopyDocument(sim, marker, &result, &fid);
+    res = CopyDocument(doc, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
