@@ -34,17 +34,6 @@
 #include "Rest/HttpResponse.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               forward declaration
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace basics {
-    class VariantObject;
-  }
-
-  namespace admin {
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                             class RestBaseHandler
 // -----------------------------------------------------------------------------
 
@@ -52,6 +41,9 @@ namespace triagens {
 /// @addtogroup RestServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+namespace triagens {
+  namespace admin {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default handler for error handling and json in-/output
@@ -123,12 +115,6 @@ namespace triagens {
         virtual void generateResult (TRI_json_t* json);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void generateResult (basics::VariantObject*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -143,12 +129,6 @@ namespace triagens {
                                     int errorCode,
                                     string const& details);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects an output format
-////////////////////////////////////////////////////////////////////////////////
-
-        string selectResultGenerator (rest::HttpRequest* request);
-
     };
   }
 }
@@ -159,7 +139,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:

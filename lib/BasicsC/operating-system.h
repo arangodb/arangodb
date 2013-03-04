@@ -72,6 +72,7 @@
 #define TRI_DIR_SEPARATOR_STR               "/"
 
 #define TRI_HAVE_POSIX                      1
+#define TRI_HAVE_MACH                       1
 
 #define TRI_HAVE_DLFCN_H                    1
 

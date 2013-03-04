@@ -29,7 +29,7 @@ var queryView = Backbone.View.extend({
     editor2.resize();
 
     $('#queryOutput').resizable({
-      handles: "n, s",
+      handles: "s",
       ghost: true,
       stop: function () {
         var editor2 = ace.edit("queryOutput");
@@ -37,7 +37,7 @@ var queryView = Backbone.View.extend({
       }
     });
     $('#aqlEditor').resizable({
-      handles: "n, s",
+      handles: "s",
       ghost: true,
       helper: "resizable-helper",
       stop: function () {

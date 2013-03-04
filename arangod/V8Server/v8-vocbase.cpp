@@ -2602,7 +2602,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
                                                "expecting a string for <cursor-identifier>)")));
   }
 
-  string idString = TRI_ObjectToString(idArg);
+  const string idString = TRI_ObjectToString(idArg);
   uint64_t id = TRI_UInt64String(idString.c_str());
 
   TRI_general_cursor_t* cursor;
