@@ -2030,21 +2030,7 @@ static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: CREATE_NONCE()")));
   }
   
-  uint32_t timestamp = time(0);
-  uint32_t rand1 = Random::interval(0U, UINT32_MAX);
-  uint32_t rand2 = Random::interval(0U, UINT32_MAX);
-
-  uint8_t buffer[12];
-
-  buffer[0] = (timestamp >> 24) & 0xFF;
-  buffer[1] = (timestamp >> 16) & 0xFF;
-  buffer[2] = (timestamp >>  8) & 0xFF;
-  buffer[3] = (timestamp      ) & 0xFF;
-
-  memcpy(buffer + 4, &rand1, 4);
-  memcpy(buffer + 8, &rand2, 4);
-
-  string str = StringUtils::encodeBase64U(string((char*) buffer, 12));
+  string str =  Nonce::createNonce();
   
   return scope.Close(v8::String::New(str.c_str(), str.length()));
 }
@@ -2072,24 +2058,7 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting 12-Byte nonce")));
   }
 
-  uint8_t const* buffer = (uint8_t const*) raw.c_str();
-
-  uint32_t timestamp = (uint32_t(buffer[0]) << 24)
-                         | (uint32_t(buffer[1]) << 16)
-                         | (uint32_t(buffer[2]) <<  8)
-                         |  uint32_t(buffer[3]);
-
-  uint64_t random = (uint64_t(buffer[ 4]) << 56)
-                      | (uint64_t(buffer[ 5]) << 48)
-                      | (uint64_t(buffer[ 6]) << 40)
-                      | (uint64_t(buffer[ 7]) << 32)
-                      | (uint64_t(buffer[ 8]) << 24)
-                      | (uint64_t(buffer[ 9]) << 16)
-                      | (uint64_t(buffer[10]) << 8)
-                      |  uint64_t(buffer[11]);
-
-
-  bool valid = Nonce::checkAndMark(timestamp, random);
+  bool valid = Nonce::checkAndMark(raw);
       
   return scope.Close(v8::Boolean::New(valid));
 }

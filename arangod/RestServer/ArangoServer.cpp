@@ -414,9 +414,11 @@ void ArangoServer::buildApplicationServer () {
   // init nonces
   // .............................................................................
   
-  uint32_t optionNonceHashSize = 16777216UL;
-  LOGGER_INFO("setting nonce hash size to '" << optionNonceHashSize << "'" );        
-  Nonce::create(16777216UL);
+  uint32_t optionNonceHashSize = 0; // TODO: add an server option
+  if (optionNonceHashSize > 0) {
+    LOGGER_INFO("setting nonce hash size to '" << optionNonceHashSize << "'" );        
+    Nonce::create(optionNonceHashSize);
+  }
   
   // .............................................................................
   // disable access to the HTML admin interface
