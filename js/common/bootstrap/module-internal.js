@@ -84,6 +84,31 @@
     delete SYS_MD5;
   }
 
+  if (typeof SYS_GEN_RANDOM_NUMBERS !== "undefined") {
+    internal.genRandomNumbers = SYS_GEN_RANDOM_NUMBERS;
+    delete SYS_GEN_RANDOM_NUMBERS;
+  }
+  
+  if (typeof SYS_GEN_RANDOM_ALPHA_NUMBERS !== "undefined") {
+    internal.genRandomAlphaNumbers = SYS_GEN_RANDOM_ALPHA_NUMBERS;
+    delete SYS_GEN_RANDOM_ALPHA_NUMBERS;
+  }
+  
+  if (typeof SYS_GEN_RANDOM_SALT !== "undefined") {
+    internal.genRandomSalt = SYS_GEN_RANDOM_SALT;
+    delete SYS_GEN_RANDOM_SALT;
+  }
+  
+  if (typeof SYS_CREATE_NONCE !== "undefined") {
+    internal.createNonce = SYS_CREATE_NONCE;
+    delete SYS_CREATE_NONCE;
+  }
+  
+  if (typeof SYS_CHECK_AND_MARK_NONCE !== "undefined") {
+    internal.checkAndMarkNonce = SYS_CHECK_AND_MARK_NONCE;
+    delete SYS_CHECK_AND_MARK_NONCE;
+  }
+
   if (typeof SYS_OUTPUT !== "undefined") {
     internal.stdOutput = SYS_OUTPUT;
     internal.output = internal.stdOutput;

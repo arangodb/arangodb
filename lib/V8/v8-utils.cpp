@@ -35,6 +35,8 @@
 #include <locale>
 
 #include "Basics/Dictionary.h"
+#include "Basics/Nonce.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/csv.h"
@@ -60,6 +62,16 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Random string generators
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+  static Random::UniformCharacter JSAlphaNumGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  static Random::UniformCharacter JSNumGenerator("0123456789");
+  static Random::UniformCharacter JSSaltGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}[]:;<>,.?/|");
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -723,6 +735,120 @@ static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
   delete[] hex;
 
   return scope.Close(hashStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate random numbers
+///
+/// @FUN{internal.genRandomNumbers(@FA{length})}
+///
+/// Generates a string of a given @FA{length} containing numbers.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomNumbers(<length>)")));
+  }
+  
+  int length = (int) TRI_ObjectToInt64(argv[0]);
+
+  string str = JSNumGenerator.random(length);
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate random alpha-numbers
+///
+/// @FUN{internal.genRandomAlphaNumbers(@FA{length})}
+///
+/// Generates a string of a given @FA{length} containing numbers and characters.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomAlphaNumbers(<length>)")));
+  }
+  
+  int length = (int) TRI_ObjectToInt64(argv[0]);
+
+  string str = JSAlphaNumGenerator.random(length);
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gernate a salt
+///
+/// @FUN{internal.genRandomSalt()}
+///
+/// Generates a string containing numbers and characters (length 8).
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {  
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomSalt()")));
+  }
+  
+  string str = JSSaltGenerator.random(8);
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief nonce generator
+///
+/// @FUN{internal.createNonce()}
+///
+/// Generates a base64 encoded nonce string. (length of the string is 16)
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {  
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: createNonce()")));
+  }
+  
+  string str =  Nonce::createNonce();
+  
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a base64 encoded nonce
+///
+/// @FUN{internal.checkAndMarkNonce(@FA{nonce})}
+///
+/// Checks and marks a @FA{nonce}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: checkAndMarkNonce(<nonce>)")));
+  }
+  
+  TRI_Utf8ValueNFC base64u(TRI_CORE_MEM_ZONE, argv[0]);
+
+  if (base64u.length() != 16) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting 16-Byte base64url-encoded nonce")));
+  }
+
+  string raw = StringUtils::decodeBase64U(*base64u);
+
+  if (raw.size() != 12) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting 12-Byte nonce")));
+  }
+
+  bool valid = Nonce::checkAndMark(raw);
+      
+  return scope.Close(v8::Boolean::New(valid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1581,6 +1707,11 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
   TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);   
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
