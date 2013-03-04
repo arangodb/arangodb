@@ -163,7 +163,7 @@
         curl += "-X " + method + " ";
       }
 
-      if (body !== "") {
+      if (body !== undefined && body !== "") {
         curl += "--data @- ";
       }
 
@@ -171,7 +171,7 @@
 
       appender(curl + "\n");
 
-      if (body !== "") {
+      if (body !== undefined && body !== "") {
         appender(body += "\n");
       }
 

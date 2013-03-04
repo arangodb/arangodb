@@ -298,6 +298,7 @@ examples:
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
+		@srcdir@/js/actions/system/*.js \
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \

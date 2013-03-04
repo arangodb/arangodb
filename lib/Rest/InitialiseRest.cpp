@@ -116,6 +116,7 @@ namespace triagens {
       TRIAGENS_BASICS_INITIALISE(argc, argv);
 
       TRI_InitialiseUrl();
+      TRI_InitialiseStatistics();
 
       string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";
       LOGGER_TRACE(revision);

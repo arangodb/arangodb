@@ -47,8 +47,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantString.h"
 
 extern "C" {
 #include "mruby/array.h"

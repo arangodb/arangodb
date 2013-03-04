@@ -1,6 +1,11 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* fixed shapedjson to json conversion for special numeric values (NaN, +inf, -inf).
+  Before, "NaN", "inf", or "-inf" were written into the JSONified output, but these 
+  values are not allowed in JSON. Now, "null" is written to the JSONified output as
+  required.
+
 * added AQL functions VARIANCE_POPULATION(), VARIANCE_SAMPLE(), STDDEV_POPULATION(),
   STDDEV_SAMPLE(), AVERAGE(), MEDIAN() to calculate stastical values for lists
 

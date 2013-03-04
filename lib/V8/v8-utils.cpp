@@ -45,6 +45,7 @@
 #include "BasicsC/strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "Rest/SslInterface.h"
+#include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 
@@ -201,9 +202,13 @@ static bool LoadJavaScriptDirectory (char const* path,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the path list
+//
+/// The spilt has been modified -- only except semicolon, previously we excepted
+/// a colon as well. So as not to break existing configurations, we only make
+/// the modification for windows version -- since there isn't one yet!
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Array> pathList (string const& modules) {
+static v8::Handle<v8::Array> PathList (string const& modules) {
   v8::HandleScope scope;
 
 #ifdef _WIN32
@@ -212,13 +217,52 @@ v8::Handle<v8::Array> pathList (string const& modules) {
   vector<string> paths = StringUtils::split(modules, ";:");
 #endif
 
-  v8::Handle<v8::Array> modulesPaths = v8::Array::New();
+  v8::Handle<v8::Array> result = v8::Array::New();
 
   for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
-    modulesPaths->Set(i, v8::String::New(paths[i].c_str()));
+    result->Set(i, v8::String::New(paths[i].c_str()));
   }
 
-  return scope.Close(modulesPaths);
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a distribution vector
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Array> DistributionList (StatisticsVector const& dist) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Array> result = v8::Array::New();
+
+  for (uint32_t i = 0;  i < (uint32_t) dist._value.size();  ++i) {
+    result->Set(i, v8::Number::New(dist._value[i]));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the distribution
+////////////////////////////////////////////////////////////////////////////////
+
+static void FillDistribution (v8::Handle<v8::Object> list,
+                              char const* name,
+                              StatisticsDistribution const& dist) {
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
+
+  v8::Handle<v8::Array> counts = v8::Array::New(dist._counts.size());
+  size_t pos = 0;
+
+  for (vector<uint64_t>::const_iterator i = dist._counts.begin();  i != dist._counts.end();  ++i, ++pos) {
+    counts->Set(pos, v8::Number::New(*i));
+  }
+
+  result->Set(TRI_V8_SYMBOL("counts"), counts);
+
+  list->Set(TRI_V8_SYMBOL(name), result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1154,6 +1198,40 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current request and connection statistics
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  StatisticsCounter httpConnections;
+  StatisticsDistribution connectionTime;
+
+  TRI_FillConnectionStatistics(httpConnections, connectionTime);
+
+  result->Set(v8::String::New("httpConnections"), v8::Number::New(httpConnections._count));
+  FillDistribution(result, "connectionTime", connectionTime);
+
+  StatisticsDistribution totalTime;
+  StatisticsDistribution requestTime;
+  StatisticsDistribution queueTime;
+  StatisticsDistribution bytesSent;
+  StatisticsDistribution bytesReceived;
+
+  TRI_FillRequestStatistics(totalTime, requestTime, queueTime, bytesSent, bytesReceived);
+
+  FillDistribution(result, "totalTime", totalTime);
+  FillDistribution(result, "requestTime", requestTime);
+  FillDistribution(result, "queueTime", queueTime);
+  FillDistribution(result, "bytesSent", bytesSent);
+  FillDistribution(result, "bytesReceived", bytesReceived);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1508,6 +1586,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
@@ -1518,14 +1597,13 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   // create the global variables
   // .............................................................................
 
-  // .............................................................................
-  // The spilt has been modified -- only except semicolon, previously we excepted
-  // a colon as well. So as not to break existing configurations, we only 
-  // make the modification for windows version -- since there isn't one yet!
-  // .............................................................................
+  TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", PathList(modules));
+  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", PathList(nodes));
 
-  context->Global()->Set(v8::String::New("MODULES_PATH"), pathList(modules));
-  context->Global()->Set(v8::String::New("PACKAGE_PATH"), pathList(nodes));
+  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
 }
 
 #ifdef TRI_HAVE_ICU
@@ -1581,6 +1659,7 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
     // There is no guarantee that this will be the case on all platforms and
     // compilers. v8 expects uint16_t (2 bytes)
     // ..........................................................................
+
     return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length())); 
 #else
     return scope.Close(v8::String::New(*str, str_len)); 

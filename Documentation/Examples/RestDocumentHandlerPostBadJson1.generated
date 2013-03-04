@@ -6,8 +6,8 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
+  "errorMessage" : "expecting attribute name", 
   "code" : 400, 
-  "errorNum" : 600, 
-  "errorMessage" : "expecting attribute name" 
+  "errorNum" : 600 
 }
 
