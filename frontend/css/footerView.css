@@ -3,12 +3,9 @@
   font-size: 14px;
   margin: 30px auto 0;
   text-align: center;
-  position: fixed;
-  bottom:0;
   left: 0;
   right: 0;
-  bottom:200;
-  margin-top:100px;
+  margin-top:200px;
 }
 
 .footerExtra {
@@ -48,6 +45,7 @@
 .footer p {
   padding-top: 10px;
   padding-bottom: 10px;
+  margin-bottom:0;
 }
 
 .footer span a {
