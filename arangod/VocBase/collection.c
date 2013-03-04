@@ -771,12 +771,14 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
+  
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // convert json
   n = json->_value._objects._length;
