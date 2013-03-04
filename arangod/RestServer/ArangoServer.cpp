@@ -62,8 +62,6 @@
 #include "Logger/Logger.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
-#include "RestHandler/ConnectionStatisticsHandler.h"
-#include "RestHandler/RequestStatisticsHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
@@ -144,15 +142,6 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
-
-  // add statistics
-  factory->addHandler("/_admin/connection-statistics",
-                      RestHandlerCreator<ConnectionStatisticsHandler>::createNoData,
-                      0);
-
-  factory->addHandler("/_admin/request-statistics",
-                      RestHandlerCreator<RequestStatisticsHandler>::createNoData,
-                      0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +427,7 @@ void ArangoServer::buildApplicationServer () {
   }
 
   if (disableStatistics) {
-    TRI_DisableStatistics();
+    TRI_ENABLE_STATISTICS =  false;
   }
 
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
@@ -597,12 +586,6 @@ int ArangoServer::startupServer () {
                                    (void*) &httpOptions);
   
 
-  // .............................................................................
-  // start the statistics collector thread
-  // .............................................................................
-      
-  TRI_InitialiseStatistics();
-  
   // .............................................................................
   // start the main event loop
   // .............................................................................

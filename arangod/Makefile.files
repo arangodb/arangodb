@@ -60,9 +60,6 @@ bin_arangod_SOURCES = \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
-	arangod/RestHandler/StatisticsBaseHandler.cpp \
-	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
-	arangod/RestHandler/RequestStatisticsHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \

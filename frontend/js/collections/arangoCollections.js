@@ -166,6 +166,12 @@ window.arangoCollections = Backbone.Collection.extend({
           processData: false,
           success: function(data) {
             arangoHelper.arangoNotification("Collection renamed");
+            this.alreadyRenamed = true;
+            window.arangoCollectionsStore.fetch({
+              success: function () {
+                window.collectionsView.render();
+              }
+            });
           },
           error: function(data) {
             arangoHelper.arangoNotification("Collection error");
@@ -174,6 +180,7 @@ window.arangoCollections = Backbone.Collection.extend({
         });
       },
       changeCollection: function (id, wfs, journalSize) {
+        var self = this;
         $.ajax({
           cache: false,
           type: "PUT",
@@ -184,6 +191,16 @@ window.arangoCollections = Backbone.Collection.extend({
           processData: false,
           success: function(data) {
             arangoHelper.arangoNotification("Saved collection properties");
+
+            if (self.alreadyRenamed === true) {
+              self.alreadyRenamed = false;
+              window.arangoCollectionsStore.fetch({
+                success: function () {
+                  window.collectionsView.render();
+                }
+              });
+            }
+
           },
           error: function(data) {
             arangoHelper.arangoNotification("Collection error");

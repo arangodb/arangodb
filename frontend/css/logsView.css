@@ -136,6 +136,7 @@ background-color: none !important;
   border-left:1px solid #c1bdba;*/
   width: 80px !important;
   max-width: 80px !important;
+  cursor: default !important;
 }
 
 .thirdcol {
@@ -150,6 +151,7 @@ background-color: none !important;
   background-image: linear-gradient(top, #ffffff, #f5f5f5);
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);*/
   max-width: 500px !important;
+  cursor: default !important;
 
 }
 
@@ -165,6 +167,7 @@ background-color: none !important;
   border-top:1px solid #c1bdba;
   border-bottom:1px solid #c1bdba;*/
   width: 140px !important;
+  cursor: default !important;
 }
 
 #logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {
