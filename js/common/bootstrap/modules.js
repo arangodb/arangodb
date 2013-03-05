@@ -384,10 +384,21 @@ function stop_color_print () {
 
           if (internal.exists(mainfile)) {
             var content = internal.read(mainfile);
+            var paths;
+
+            if (typeof desc.directories !== "undefined" && typeof desc.directories.lib !== "undefined") {
+              var full = m + internal.normalizeModuleName("", desc.directories.lib);
+
+              paths = [ full ];
+            }
+            else {
+              paths = [ m ];
+            }
 
             return { name: main,
                      description: desc,
                      packagePath: m,
+                     packageLib: paths,
                      path: 'file://' + mainfile,
                      content: content };
           }
@@ -570,7 +581,7 @@ function stop_color_print () {
     pkg = new Package(path,
                       description.description,
                       parent,
-                      [description.packagePath]);
+                      description.packageLib);
 
     module = this.createModule(description, 'package', pkg);
 
