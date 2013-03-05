@@ -17,6 +17,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/LibraryLoader.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
+	lib/Basics/Nonce.cpp \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/RandomGenerator.cpp \

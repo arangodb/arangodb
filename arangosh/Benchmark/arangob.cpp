@@ -189,6 +189,124 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                         document CRUD append test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct DocumentCrudAppendTest : public BenchmarkOperation {
+  DocumentCrudAppendTest () 
+    : BenchmarkOperation () {
+  }
+
+  ~DocumentCrudAppendTest () {
+  }
+  
+  string collectionName () {
+    return Collection;
+  }
+  
+  bool useCollection () const {
+    return true;
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 4;
+
+    if (mod == 0) {
+      return string("/_api/document?collection=" + Collection);
+    }
+    else {
+      size_t keyId = (size_t) (globalCounter / 4);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+
+      return string("/_api/document/" + Collection + "/" + key);
+    }
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 4;
+
+    if (mod == 0) {
+      return HttpRequest::HTTP_REQUEST_POST;
+    }
+    else if (mod == 1) {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+    else if (mod == 2) {
+      return HttpRequest::HTTP_REQUEST_PATCH;
+    }
+    else if (mod == 3) {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+    else {
+      assert(false);
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+  }
+  
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 4;
+
+    if (mod == 0 || mod == 2) {
+      const size_t n = Complexity;
+      TRI_string_buffer_t* buffer;
+
+      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
+
+      size_t keyId = (size_t) (globalCounter / 4);
+      const string key = "testkey" + StringUtils::itoa(keyId);
+      TRI_AppendStringStringBuffer(buffer, key.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\"");
+
+      for (size_t i = 1; i <= n; ++i) {
+        TRI_AppendStringStringBuffer(buffer, ",\"value");
+        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
+        if (mod == 0) {
+          TRI_AppendStringStringBuffer(buffer, "\":true");
+        }
+        else {
+          TRI_AppendStringStringBuffer(buffer, "\":false");
+        }
+      }
+    
+      TRI_AppendCharStringBuffer(buffer, '}');
+
+      *length = TRI_LengthStringBuffer(buffer);
+      *mustFree = false;
+      char* ptr = buffer->_buffer;
+      buffer->_buffer = NULL;
+
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+      return (const char*) ptr;
+    }
+    else if (mod == 1 || mod == 3) {
+      *length = 0;
+      *mustFree = false;
+      return (const char*) 0;
+    }
+    else {
+      assert(false);
+      return 0;
+    }
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                document CRUD test
 // -----------------------------------------------------------------------------
 
@@ -304,6 +422,10 @@ struct DocumentCrudTest : public BenchmarkOperation {
     return headers;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            document creation test
@@ -588,6 +710,9 @@ int main (int argc, char* argv[]) {
   else if (TestCase == "crud") {
     testCase = new DocumentCrudTest();
   }
+  else if (TestCase == "crud-append") {
+    testCase = new DocumentCrudAppendTest();
+  }
   else {
     LOGGER_FATAL_AND_EXIT("invalid test case name " << TestCase);
     return EXIT_FAILURE; // will not be reached
@@ -641,11 +766,19 @@ int main (int argc, char* argv[]) {
     guard.broadcast();
   }
 
+  const size_t stepValue = (Operations / 20);
+  size_t lastReportValue = stepValue;
+
   while (1) {
     size_t numOperations = operationsCounter.getValue();
 
     if (numOperations >= (size_t) Operations) {
       break;
+    }
+
+    if (numOperations > lastReportValue) {
+      LOGGER_INFO("number of operations: " << numOperations);
+      lastReportValue = numOperations + stepValue;
     }
 
     usleep(50000); 
