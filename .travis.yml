@@ -1,7 +1,6 @@
 language: c
 before_script: "bash -c 'cd UnitTests/HttpInterface && bundle'"
 script: "make setup && ./configure --enable-relative --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu && make -j2 && make unittests-shell-server unittests-shell-server-ahuacatl unittests-http-server SKIP_RANGES=1 && echo 'done'"
-
 branches:
   only:
     - master
@@ -9,3 +8,5 @@ branches:
     - 1.1
     - 1.2
     - devel
+notifications:
+    webhooks: https://www.buildheroes.com/api/projects/e4a8248a1650ca7f463591f5e0fecf6901e0f475/builds
