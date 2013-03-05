@@ -145,15 +145,15 @@ actions.defineHttp({
 /// @brief reloads the server authentication information
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/auth/reload",
-    context : "admin",
-    prefix : false,
-    callback : function (req, res) {
-      internal.reloadAuth();
-      actions.resultOk(req, res, actions.HTTP_OK);
-    }
-  });
+actions.defineHttp({
+  url : "_admin/auth/reload",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.reloadAuth();
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_routing_reloads
@@ -299,6 +299,7 @@ actions.defineHttp({
 actions.defineHttp({
   url : "_admin/statistics",
   context : "admin",
+  prefix : false,
 
   callback : function (req, res) {
     var result;
@@ -363,6 +364,7 @@ actions.defineHttp({
 actions.defineHttp({
   url : "_admin/statistics-description",
   context : "admin",
+  prefix : false,
 
   callback : function (req, res) {
     var result;
