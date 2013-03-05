@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100 */
 /*global _, require, db, exports */
 
 /* From now on Frank is only a codename.
@@ -14,6 +14,7 @@ var Frank,
 var db = arangodb.db;
 
 internal.createUrlObject = function (url, constraint, method) {
+  'use strict';
   var urlObject = {};
 
   if (!_.isString(url)) {
@@ -31,6 +32,7 @@ internal.createUrlObject = function (url, constraint, method) {
 };
 
 Frank = function (options) {
+  'use strict';
   var urlPrefix, templateCollection;
 
   options = options || {};
@@ -54,6 +56,7 @@ Frank = function (options) {
 
 _.extend(Frank.prototype, {
   handleRequest: function (method, route, argument1, argument2) {
+    'use strict';
     var newRoute = {}, options, handler;
 
     if (_.isUndefined(argument2)) {
@@ -71,32 +74,39 @@ _.extend(Frank.prototype, {
   },
 
   head: function (route, argument1, argument2) {
+    'use strict';
     this.handleRequest("head", route, argument1, argument2);
   },
 
   get: function (route, argument1, argument2) {
+    'use strict';
     this.handleRequest("get", route, argument1, argument2);
   },
 
   post: function (route, argument1, argument2) {
+    'use strict';
     this.handleRequest("post", route, argument1, argument2);
   },
 
   put: function (route, argument1, argument2) {
+    'use strict';
     this.handleRequest("put", route, argument1, argument2);
   },
 
   patch: function (route, argument1, argument2) {
+    'use strict';
     this.handleRequest("patch", route, argument1, argument2);
   },
 
   'delete': function (route, argument1, argument2) {
+    'use strict';
     this.handleRequest("delete", route, argument1, argument2);
   }
 });
 
 
 BaseMiddleware = function (templateCollection) {
+  'use strict';
   var middleware = function (request, response, options, next) {
     var responseFunctions;
 
