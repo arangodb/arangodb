@@ -9,8 +9,8 @@
   function stopPropagation(event) { event.stopPropagation(); }
   $.fn.pagination = function (config) {
     var options = $.extend({
-      prev: '«',
-      next: '»',
+      prev: '<i class="icon icon-backward"></i>',
+      next: '<i class="icon icon-forward"></i>',
       left: 3,
       right: 3,
       page: 1,
@@ -31,7 +31,7 @@
       if (enable) {
         a.click(function () { options.click(page); });
       } else {
-        li.addClass('disabled');
+        li.addClass('disabledPag');
       }
       a.click(stopPropagation);
       if (page === options.page) { li.addClass('active'); }
