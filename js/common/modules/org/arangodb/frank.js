@@ -1,6 +1,10 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
 /*global _, require, db, exports */
 
+/* From now on Frank is only a codename.
+ * But don't tell it to anyone.
+ * Because it is a codename, you know.
+ */
 var Frank,
   BaseMiddleware,
   _ = require("underscore"),
