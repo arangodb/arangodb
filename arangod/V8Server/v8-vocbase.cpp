@@ -6537,10 +6537,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // keys
   // .............................................................................
 
-  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(v8::String::New("isVolatile"));
-  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
-  v8g->CreateOptionsKey  = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
+  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isVolatile"));
+  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("journalSize"));
+  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("waitForSync"));
+  v8g->CreateOptionsKey  = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("createOptions"));
   
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
@@ -6744,26 +6744,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create global variables
   // .............................................................................
   
-  context->Global()->Set(TRI_V8_SYMBOL("HAS_ICU"),
 #ifdef TRI_ICU_VERSION
-                         v8::Boolean::New(true),
+  bool hasIcu = true;
 #else
-                         v8::Boolean::New(false),
+  bool hasIcu = false;
 #endif
-                         v8::ReadOnly);
-  
-  context->Global()->Set(TRI_V8_SYMBOL("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
-  
-  // .............................................................................
-  // create the global variables
-  // .............................................................................
 
-  context->Global()->Set(TRI_V8_SYMBOL("db"),
-                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
-  context->Global()->Set(v8::String::New("VALGRIND"), (RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False()), v8::ReadOnly);
+  TRI_AddGlobalVariableVocbase(context, "HAS_ICU", v8::Boolean::New(hasIcu));
+  TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
+  TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT));
+  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));
+  TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);

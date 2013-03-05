@@ -690,8 +690,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   // set global flag before loading system files
   if (i == 0 && ! _skipUpgrade) {
-    v8::HandleScope scope;
-    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+    TRI_AddGlobalVariableVocbase(context->_context, "UPGRADE", v8::Boolean::New(_performUpgrade));
   }
 
   // load all init files
