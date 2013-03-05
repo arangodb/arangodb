@@ -37,6 +37,8 @@
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-result.h"
+#include "Basics/Nonce.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/conversions.h"
@@ -147,6 +149,16 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int32_t const WRP_TRANSACTION_TYPE = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Random string generators
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+  static Random::UniformCharacter JSAlphaNumGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  static Random::UniformCharacter JSNumGenerator("0123456789");
+  static Random::UniformCharacter JSSaltGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}[]:;<>,.?/|");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1955,6 +1967,100 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
   bool result = TRI_ReloadAuthInfo(vocbase);
 
   return scope.Close(result ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random number generator
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: GEN_RANDOM_NUMBERS(<length>)")));
+  }
+  
+  int length = (int) TRI_ObjectToInt64(argv[0]);
+
+  string str = JSNumGenerator.random(length);
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random alpha-number generator
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: GEN_RANDOM_ALPHA_NUMS(<length>)")));
+  }
+  
+  int length = (int) TRI_ObjectToInt64(argv[0]);
+
+  string str = JSAlphaNumGenerator.random(length);
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief random salt generator
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {  
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: GEN_RANDOM_SALT()")));
+  }
+  
+  string str = JSSaltGenerator.random(8);
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a nonce
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {  
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: CREATE_NONCE()")));
+  }
+  
+  string str =  Nonce::createNonce();
+  
+  return scope.Close(v8::String::New(str.c_str(), str.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check and mark a nonce
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: CHECK_AND_MARK_NONCE(<nonce>)")));
+  }
+  
+  TRI_Utf8ValueNFC base64u(TRI_CORE_MEM_ZONE, argv[0]);
+
+  if (base64u.length() != 16) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting 16-Byte base64url-encoded nonce")));
+  }
+
+  string raw = StringUtils::decodeBase64U(*base64u);
+
+  if (raw.size() != 12) {
+    return scope.Close(v8::ThrowException(v8::String::New("expecting 12-Byte nonce")));
+  }
+
+  bool valid = Nonce::checkAndMark(raw);
+      
+  return scope.Close(v8::Boolean::New(valid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6627,6 +6733,12 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 #if 0
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
 #endif
+  
+  TRI_AddGlobalFunctionVocbase(context, "GEN_RANDOM_NUMBERS", JS_RandomNumbers);
+  TRI_AddGlobalFunctionVocbase(context, "GEN_RANDOM_ALPHA_NUMS", JS_RandomAlphaNum);
+  TRI_AddGlobalFunctionVocbase(context, "GEN_RANDOM_SALT", JS_RandomSalt);
+  TRI_AddGlobalFunctionVocbase(context, "CREATE_NONCE", JS_CreateNonce);
+  TRI_AddGlobalFunctionVocbase(context, "CHECK_AND_MARK_NONCE", JS_MarkNonce);
   
   // .............................................................................
   // create global variables

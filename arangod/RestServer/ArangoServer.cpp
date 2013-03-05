@@ -44,6 +44,7 @@
 #include "Admin/ApplicationAdminServer.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/RandomGenerator.h"
@@ -408,7 +409,17 @@ void ArangoServer::buildApplicationServer () {
   else {
     LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" );        
   }
- 
+
+  // .............................................................................
+  // init nonces
+  // .............................................................................
+  
+  uint32_t optionNonceHashSize = 0; // TODO: add an server option
+  if (optionNonceHashSize > 0) {
+    LOGGER_INFO("setting nonce hash size to '" << optionNonceHashSize << "'" );        
+    Nonce::create(optionNonceHashSize);
+  }
+  
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................
@@ -1056,7 +1067,9 @@ void ArangoServer::closeDatabase () {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
   TRI_ShutdownVocBase();
-
+  
+  Nonce::destroy();
+  
   LOGGER_INFO("ArangoDB has been shut down");
 }
 

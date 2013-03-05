@@ -249,8 +249,8 @@ var documentsView = Backbone.View.extend({
     var self = this;
     var target = $('#documentsToolbarF'),
     options = {
-      left: 1,
-      right: 1,
+      left: 2,
+      right: 2,
       page: currentPage,
       lastPage: totalPages,
       click: function(i) {
