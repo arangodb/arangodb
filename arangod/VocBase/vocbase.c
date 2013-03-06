@@ -88,7 +88,7 @@ static TRI_spin_t TickLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             COLLECTION DICTIONARY
+// --SECTION--                                             DICTIONARY FUNCTOIONS
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -195,10 +195,36 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 }
     
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a collection name from the global list of collections
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           VOCBASE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the memory associated with a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  TRI_DestroyReadWriteLock(&collection->_lock);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a collection name from the global list of collections
 ///
-/// this is called when a collection is dropped. it is necessary that the 
-/// caller also holds a write-lock using TRI_WRITE_LOCK_STATUS_VOCBASE_COL().
+/// This function is called when a collection is dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
@@ -350,15 +376,15 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
  
   // we need to clean up the pointers later so we insert it into this vector
   TRI_PushBackVectorPointer(&vocbase->_deadCollections, collection);
-  
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+  // we are now done with the vocbase structure
+  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // .............................................................................
   // rename collection directory
   // .............................................................................
 
-  if (collection->_path != NULL) {
+  if (*collection->_path != '\0') {
     int regExpResult;
 
 #ifdef _WIN32
@@ -369,7 +395,6 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 #else
       regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
 #endif
-
     
     regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
 
@@ -526,6 +551,8 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
+///
+/// Caller must hold TRI_WRITE_LOCK_COLLECTIONS_VOCBASE.
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
@@ -536,44 +563,43 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   void const* found;
   TRI_vocbase_col_t* collection;
 
+  // create the init object
+  TRI_vocbase_col_t init = {
+    vocbase,
+    (TRI_col_type_t) type,
+    cid
+  };
+
+  init._status = TRI_VOC_COL_STATUS_CORRUPTED;
+  init._collection = NULL;
+
+  TRI_CopyString(init._name, name, sizeof(init._name));
+
+  if (path == NULL) {
+    init._path[0] = '\0';
+  }
+  else {
+    TRI_CopyString(init._path, path, sizeof(collection->_path));
+  }
+
   // create a new proxy
   collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
+
   if (collection == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
     return NULL;
   }
 
-  collection->_vocbase = vocbase;
-  collection->_type = (TRI_col_type_t) type;
-  TRI_CopyString(collection->_name, name, sizeof(collection->_name));
-  if (path == NULL) {
-    collection->_path = NULL;
-  }
-  else {
-    collection->_path = TRI_DuplicateString(path);
-    if (! collection->_path) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-  }
-
-  collection->_collection = NULL;
-  collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
-  collection->_cid = cid;
+  memcpy(collection, &init, sizeof(TRI_vocbase_col_t));
 
   // check name
-  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, name, collection, false);
+  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name, collection, false);
 
   if (found != NULL) {
-    FreeCollectionPath(collection);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    LOG_ERROR("duplicate entry for collection name '%s'", collection->_name);
 
-    LOG_ERROR("duplicate entry for collection name '%s'", name);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     return NULL;
   }
 
@@ -581,18 +607,19 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsById, &cid, collection, false);
 
   if (found != NULL) {
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
-    FreeCollectionPath(collection);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
 
-    LOG_ERROR("duplicate collection identifier %llu for name '%s'", (unsigned long long) cid, name);
+    LOG_ERROR("duplicate collection identifier %llu for name '%s'", 
+              (unsigned long long) collection->_cid, collection->_name);
+
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     return NULL;
   }
 
   TRI_InitReadWriteLock(&collection->_lock);
 
+  // this needs TRI_WRITE_LOCK_COLLECTIONS_VOCBASE
   TRI_PushBackVectorPointer(&vocbase->_collections, collection);
   return collection;
 }
@@ -622,10 +649,12 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     assert(name);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+
       // do not issue a notice about the "lock" file
       if (! TRI_EqualString(name, "lock")) {
         LOG_DEBUG("ignoring file/directory '%s'", name);
       }
+
       continue;
     }
 
@@ -756,7 +785,6 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
   // check that the name does not contain any strange characters
   if (! TRI_IsAllowedCollectionName(false, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-
     return NULL;
   }
 
@@ -856,8 +884,7 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
     collection->_collection = &document->base;
-    FreeCollectionPath(collection);
-    collection->_path = TRI_DuplicateString(document->base.base._directory);
+    TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path));
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
@@ -1005,8 +1032,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
       collection->_collection = &document->base;
       collection->_status = TRI_VOC_COL_STATUS_LOADED;
-      FreeCollectionPath(collection);
-      collection->_path = TRI_DuplicateString(document->base.base._directory);
+      TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path));
 
       // release the WRITE lock and try again
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1070,6 +1096,7 @@ bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
   char const* ptr;
   size_t length = 0;
 
+  // check allow characters: must start with letter or underscore if system is allowed
   for (ptr = name;  *ptr;  ++ptr) {
     if (length == 0) {
       if (allowSystem) {
@@ -1090,8 +1117,8 @@ bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
     ++length;
   }
 
-  if (length == 0 || length > 64) {
-    // invalid name length
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
     return false;
   } 
 
@@ -1439,11 +1466,11 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a collection name by a collection id
+/// @brief gets a collection name by a collection id
 ///
-/// the name is fetched under a lock to make this thread-safe. returns NULL if
-/// the collection does not exist
-/// it is the caller's responsibility to free the name returned
+/// The name is fetched under a lock to make this thread-safe. Returns NULL if
+/// the collection does not exist. It is the caller's responsibility to free the
+/// name returned
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase, 
@@ -1452,13 +1479,16 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
   char* name;
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
   found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+
   if (found.v == NULL) {
     name = NULL;
   }
   else {
     name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found.c->_name);
   }
+
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   return name;
@@ -1603,9 +1633,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = primary;
-  FreeCollectionPath(collection);
-  collection->_path = TRI_DuplicateString(primary->base._directory);
-
+  TRI_CopyString(collection->_path, primary->base._directory, sizeof(collection->_path));
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
   return collection;
@@ -1837,7 +1865,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // lock collection because we are going to change the name
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  // the must be done after the collection lock
+  // this must be done after the collection lock
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // cannot rename a corrupted collection

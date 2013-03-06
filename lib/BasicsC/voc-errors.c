@@ -155,6 +155,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE, "bitarray index insert failure - document attribute value unsupported in index");
   REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES, "bitarray index creation failure - one or more index attributes are duplicated.");
   REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES, "bitarray index creation failure - one or more index attribute values are duplicated.");
+  REG_ERROR(RESULT_KEY_EXISTS, "element not inserted into structure, because key already exists");
+  REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
+  REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
+  REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

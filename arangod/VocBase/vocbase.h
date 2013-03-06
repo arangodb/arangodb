@@ -125,35 +125,35 @@ struct TRI_shadow_store_s;
 /// @brief locks the synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(a) \
+#define TRI_LOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
   TRI_LockCondition(&(a)->_syncWaitersCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOC_BASE(a) \
+#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
   TRI_UnlockCondition(&(a)->_syncWaitersCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(a, b) \
+#define TRI_WAIT_SYNCHRONISER_WAITER_VOCBASE(a, b) \
   TRI_TimedWaitCondition(&(a)->_syncWaitersCondition, (b))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signals the synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_BROADCAST_SYNCHRONISER_WAITER_VOC_BASE(a) \
+#define TRI_BROADCAST_SYNCHRONISER_WAITER_VOCBASE(a) \
   TRI_BroadcastCondition(&(a)->_syncWaitersCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reduces the number of sync waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(a)         \
+#define TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(a)          \
   TRI_LockCondition(&(a)->_syncWaitersCondition);       \
   --((a)->_syncWaiters);                                \
   TRI_UnlockCondition(&(a)->_syncWaitersCondition)
@@ -162,7 +162,7 @@ struct TRI_shadow_store_s;
 /// @brief reduces the number of sync waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(a)         \
+#define TRI_INC_SYNCHRONISER_WAITER_VOCBASE(a)          \
   TRI_LockCondition(&(a)->_syncWaitersCondition);       \
   ++((a)->_syncWaiters);                                \
   TRI_BroadcastCondition(&(a)->_syncWaitersCondition);  \
@@ -198,6 +198,12 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COL_PATH_LENGTH     (512)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximal name length
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COL_NAME_LENGTH     (64)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default maximal collection journal size
@@ -356,18 +362,7 @@ typedef uint32_t TRI_col_type_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database
 ///
-/// There are the following locks:
-///
-/// @LIT{TRI_vocbase_t._lock}: This lock protects the access to _collections,
-/// _collectionsByName, and _collectionsById.
-///
-/// @LIT{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
-/// unloaded) of the collection. If you want to use a collection, you must call
-/// @ref TRI_UseCollectionVocBase, this will either load or manifest the
-/// collection and a read-lock is held when the functions returns.  You must
-/// call @ref TRI_ReleaseCollectionVocBase, when you finished using the
-/// collection. The functions that modify the status of collection (load,
-/// unload, manifest) will grab a write-lock.
+/// For the lock handling, see the document "LOCKS.md".
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
@@ -430,20 +425,22 @@ TRI_vocbase_col_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection container
+///
+/// For the lock, handling see the document "LOCKS.md".
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t* const _vocbase;
 
-  TRI_col_type_t _type;              // collection type
-  TRI_voc_cid_t _cid;                // collecttion identifier
-  char _name[TRI_COL_PATH_LENGTH];   // name of the collection
+  TRI_col_type_t const _type;                    // collection type
+  TRI_voc_cid_t const _cid;                      // collecttion identifier
 
-  char const* _path;                 // path to the collection files
+  TRI_read_write_lock_t _lock;                   // lock protecting the status and name
 
-  TRI_read_write_lock_t _lock;               // lock protecting the status
-  TRI_vocbase_col_status_e _status;          // status of the collection
+  TRI_vocbase_col_status_e _status;              // status of the collection
   struct TRI_primary_collection_s* _collection;  // NULL or pointer to loaded collection
+  char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
+  char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
 }
 TRI_vocbase_col_t;
 

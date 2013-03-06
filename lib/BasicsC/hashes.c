@@ -111,6 +111,10 @@ uint64_t TRI_FnvHashBlock (uint64_t hash, char const* buffer, size_t length) {
   return hash;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes a initial FNV for blocks
+////////////////////////////////////////////////////////////////////////////////
+
 uint64_t TRI_FnvHashBlockInitial (void) {
   return (0xcbf29ce484222325ULL);
 }

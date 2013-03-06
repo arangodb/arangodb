@@ -360,6 +360,15 @@ extern "C" {
 /// - 3417: @LIT{bitarray index creation failure - one or more index attribute values are duplicated.}
 ///   Will be raised when an attempt to create an index with two or more index
 ///   attribute values repeated.
+/// - 10000: @LIT{element not inserted into structure, because key already exists}
+///   Will be returned if the element was not insert because the key already
+///   exists.
+/// - 10001: @LIT{element not inserted into structure, because it already exists}
+///   Will be returned if the element was not insert because it already exists.
+/// - 10002: @LIT{key not found in structure}
+///   Will be returned if the key was not found in the structure.
+/// - 10003: @LIT{element not found in structure}
+///   Will be returned if the element was not found in the structure.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1874,6 +1883,47 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES (3417)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10000: RESULT_KEY_EXISTS
+///
+/// element not inserted into structure, because key already exists
+///
+/// Will be returned if the element was not insert because the key already
+/// exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_KEY_EXISTS                                             (10000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10001: RESULT_ELEMENT_EXISTS
+///
+/// element not inserted into structure, because it already exists
+///
+/// Will be returned if the element was not insert because it already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_ELEMENT_EXISTS                                         (10001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10002: RESULT_KEY_NOT_FOUND
+///
+/// key not found in structure
+///
+/// Will be returned if the key was not found in the structure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_KEY_NOT_FOUND                                          (10002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10003: RESULT_ELEMENT_NOT_FOUND
+///
+/// element not found in structure
+///
+/// Will be returned if the element was not found in the structure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10003)
 
 
 ////////////////////////////////////////////////////////////////////////////////

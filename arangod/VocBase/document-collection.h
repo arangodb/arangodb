@@ -136,7 +136,7 @@ extern "C" {
     else {                                                                                \
       (dst) = 0;                                                                          \
     }                                                                                     \
-  } while (false)
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the shaped JSON pointer from a marker
@@ -157,7 +157,7 @@ extern "C" {
     else {                                                                                                             \
       (dst)._sid = 0;                                                                                                  \
     }                                                                                                                  \
-  } while (false)
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -644,6 +644,13 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
                                   size_t,
                                   TRI_shape_pid_t*,
                                   TRI_shaped_json_t**);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a documet given by a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t* context,
+                                          TRI_doc_mptr_t* doc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

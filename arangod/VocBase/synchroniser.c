@@ -287,6 +287,8 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
 
   n = base->_compactors._length;
 
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+
   for (i = 0;  i < n;) {
     compactor = base->_compactors._buffer[i];
 
@@ -305,9 +307,8 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
     }
   }
 
-
+  // we don't have a compactor file anymore
   if (base->_compactors._length == 0) {
-    // we don't have a compactor file anymore
     compactor = TRI_CreateCompactorPrimaryCollection(&doc->base);
 
     if (compactor != NULL) {
@@ -420,13 +421,13 @@ void TRI_SynchroniserVocBase (void* data) {
 
     // only sleep while server is still running and no-one is waiting
     if (! worked && vocbase->_state == 1) {
-      TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
+      TRI_LOCK_SYNCHRONISER_WAITER_VOCBASE(vocbase);
 
       if (vocbase->_syncWaiters == 0) {
-        TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(vocbase, (uint64_t) SYNCHRONISER_INTERVAL);
+        TRI_WAIT_SYNCHRONISER_WAITER_VOCBASE(vocbase, (uint64_t) SYNCHRONISER_INTERVAL);
       }
 
-      TRI_UNLOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
+      TRI_UNLOCK_SYNCHRONISER_WAITER_VOCBASE(vocbase);
     }
 
     // server shutdown

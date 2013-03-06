@@ -29,10 +29,11 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
+#include "GeoIndex/geo-index.h"
+#include "HashIndex/hash-index.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
-#include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utilities/ResourceHolder.h"
 #include "Utils/CollectionNameResolver.h"
@@ -870,56 +871,69 @@ static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up the example object for hash index
+/// @brief destroys the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
-                                    v8::Handle<v8::Object> example,
-                                    TRI_shaper_t* shaper,
-                                    size_t& n,
-                                    TRI_shaped_json_t**& values,
-                                    v8::Handle<v8::Object>* err) {
+static void DestroySearchValue (TRI_shaper_t* shaper,
+                                TRI_index_search_value_t& value) {
+  size_t n;
+
+  n = value._length;
+
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_DestroyShapedJson(shaper, &value._values[j]);
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, value._values);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the example object for a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static int SetupSearchValue (TRI_vector_t const* paths,
+                             v8::Handle<v8::Object> example,
+                             TRI_shaper_t* shaper,
+                             TRI_index_search_value_t& result,
+                             v8::Handle<v8::Object>* err) {
+  size_t n;
 
   // extract attribute paths
-  n = hashIndex->_paths._length;
+  n = paths->_length;
 
   // setup storage
-  values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
-  if (values == 0) {
-    // out of memory
-    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  result._length = n;
+  result._values = (TRI_shaped_json_t*) TRI_Allocate(TRI_CORE_MEM_ZONE,
+                                                     n * sizeof(TRI_shaped_json_t),
+                                                     true);
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(&hashIndex->_paths, i);
+    TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
-      CleanupExampleObject(shaper, i, 0, values);
+      DestroySearchValue(shaper, result);
       *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "shaper failed");
       return TRI_ERROR_BAD_PARAMETER;
     }
 
     v8::Handle<v8::String> key = v8::String::New(name);
+    int res;
 
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
 
-      values[i] = TRI_ShapedJsonV8Object(val, shaper);
+      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper);
     }
     else {
-      values[i] = TRI_ShapedJsonV8Object(v8::Null(), shaper);
+      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper);
     }
 
-    if (values[i] == 0) {
-      CleanupExampleObject(shaper, i, 0, values);
-
-      *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                   "cannot convert value to JSON");
-      return TRI_ERROR_BAD_PARAMETER;
+    if (res != TRI_ERROR_NO_ERROR) {
+      DestroySearchValue(shaper, result);
+      *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+      return res;
     }
   }
 
@@ -1940,21 +1954,21 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
   // convert the example (index is locked by lockRead)
-  size_t n;
-  TRI_shaped_json_t** values;
+  TRI_index_search_value_t searchValue;
 
   TRI_shaper_t* shaper = document->base._shaper;
-  int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, err);
+  int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(*err));
   }
   
   // find the matches
-  TRI_hash_index_elements_t* list = TRI_LookupShapedJsonHashIndex(idx, values);
+  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+  DestroySearchValue(shaper, searchValue);
 
   // convert result
-  size_t total = list->_numElements;
+  size_t total = list._length;
   size_t count = 0;
   bool error = false;
 
@@ -1971,7 +1985,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
       }
       else {
         for (size_t i = s;  i < e;  ++i) {
-          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
+          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, collection, list._documents[i], barrier);
 
           if (doc.IsEmpty()) {
             error = true;
@@ -1988,12 +2002,10 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   }
 
   // free data allocated by hash index result
-  TRI_FreeResultHashIndex(idx, list);
+  TRI_DestroyIndexResult(&list);
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
-
-  CleanupExampleObject(shaper, n, 0, values);
 
   if (error) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
@@ -2011,6 +2023,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
@@ -2018,6 +2031,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot query by example", true)));
   }
