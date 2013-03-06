@@ -128,6 +128,12 @@ static string Collection = "ArangoBenchmark";
 static string TestCase = "version";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief display progress
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Progress = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -190,6 +196,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("test-case", &TestCase, "test case to use")
     ("complexity", &Complexity, "complexity parameter for the test")
     ("delay", &Delay, "use a startup delay (necessary only when run in series)")
+    ("progress", &Progress, "show progress")
   ;
 
   BaseClient.setupGeneral(description);
@@ -259,6 +266,15 @@ int main (int argc, char* argv[]) {
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
 
+  const double stepSize = (double) Operations / (double) Concurrency;
+  int64_t realStep = (int64_t) stepSize; 
+  if (stepSize - (double) ((int64_t) stepSize) > 0.0) {
+    realStep++;
+  }
+  if (realStep % 1000 != 0) {
+    realStep += 1000 - (realStep % 1000);
+  }
+  
   // start client threads
   for (int i = 0; i < Concurrency; ++i) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
@@ -275,7 +291,7 @@ int main (int argc, char* argv[]) {
         BaseClient.password());
 
     threads.push_back(thread);
-    thread->setOffset(i * (Operations / Concurrency));
+    thread->setOffset(i * realStep);
     thread->start();
   }
  
@@ -308,7 +324,7 @@ int main (int argc, char* argv[]) {
       break;
     }
 
-    if (numOperations > lastReportValue) {
+    if (Progress && numOperations > lastReportValue) {
       LOGGER_INFO("number of operations: " << numOperations);
       lastReportValue = numOperations + stepValue;
     }
