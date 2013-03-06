@@ -277,29 +277,27 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_20 = @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_20 = clean-libev
 @ENABLE_ALL_IN_ONE_V8_TRUE@am__append_21 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_22 = @srcdir@/.v8-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 = clean-v8
-@ENABLE_MRUBY_TRUE@am__append_24 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_22 = clean-v8
+@ENABLE_MRUBY_TRUE@am__append_23 = @MRUBY_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ###
 ### "clean" in mruby is broken
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_25 = @srcdir@/.mruby-build-@TRI_BITS@
-@ENABLE_MRUBY_TRUE@am__append_26 = clean-mruby
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_27 = @ICU_BUILT@
+@ENABLE_MRUBY_TRUE@am__append_24 = clean-mruby
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_25 = @ICU_BUILT@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_28 = @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_26 = clean-icu
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -583,20 +581,22 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/Ahuacatl/ahuacatl-parser.c \
 	arangod/Ahuacatl/ahuacatl-result.c \
 	arangod/Ahuacatl/ahuacatl-scope.c \
-	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-statement-dump.c \
 	arangod/Ahuacatl/ahuacatl-statement-walker.c \
+	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
 	arangod/BitIndexes/bitarray.c \
-	arangod/BitIndexes/bitarrayIndex.c arangod/GeoIndex/GeoIndex.c \
+	arangod/BitIndexes/bitarrayIndex.c \
+	arangod/CapConstraint/cap-constraint.c \
 	arangod/FulltextIndex/fulltext-handles.c \
 	arangod/FulltextIndex/fulltext-index.c \
 	arangod/FulltextIndex/fulltext-list.c \
 	arangod/FulltextIndex/fulltext-query.c \
 	arangod/FulltextIndex/fulltext-result.c \
 	arangod/FulltextIndex/fulltext-wordlist.c \
-	arangod/HashIndex/hasharray.c arangod/HashIndex/hashindex.c \
+	arangod/GeoIndex/GeoIndex.c arangod/GeoIndex/geo-index.c \
+	arangod/HashIndex/hash-array.c arangod/HashIndex/hash-index.c \
 	arangod/IndexIterators/index-iterator.c \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
@@ -652,22 +652,24 @@ am_bin_arangod_OBJECTS =  \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-parser.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-result.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-scope.$(OBJEXT) \
-	arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.$(OBJEXT) \
+	arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.$(OBJEXT) \
 	arangod/Ahuacatl/bin_arangod-ahuacatl-variable.$(OBJEXT) \
 	arangod/BitIndexes/bin_arangod-bitarray.$(OBJEXT) \
 	arangod/BitIndexes/bin_arangod-bitarrayIndex.$(OBJEXT) \
-	arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT) \
+	arangod/CapConstraint/bin_arangod-cap-constraint.$(OBJEXT) \
 	arangod/FulltextIndex/bin_arangod-fulltext-handles.$(OBJEXT) \
 	arangod/FulltextIndex/bin_arangod-fulltext-index.$(OBJEXT) \
 	arangod/FulltextIndex/bin_arangod-fulltext-list.$(OBJEXT) \
 	arangod/FulltextIndex/bin_arangod-fulltext-query.$(OBJEXT) \
 	arangod/FulltextIndex/bin_arangod-fulltext-result.$(OBJEXT) \
 	arangod/FulltextIndex/bin_arangod-fulltext-wordlist.$(OBJEXT) \
-	arangod/HashIndex/bin_arangod-hasharray.$(OBJEXT) \
-	arangod/HashIndex/bin_arangod-hashindex.$(OBJEXT) \
+	arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT) \
+	arangod/GeoIndex/bin_arangod-geo-index.$(OBJEXT) \
+	arangod/HashIndex/bin_arangod-hash-array.$(OBJEXT) \
+	arangod/HashIndex/bin_arangod-hash-index.$(OBJEXT) \
 	arangod/IndexIterators/bin_arangod-index-iterator.$(OBJEXT) \
 	arangod/IndexOperators/bin_arangod-index-operator.$(OBJEXT) \
 	arangod/PriorityQueue/bin_arangod-pqueueindex.$(OBJEXT) \
@@ -1039,7 +1041,7 @@ BUILT_SOURCES = build_posix.h etc/arangodb/arangod-uid.conf \
 	Doxygen/.setup-directories $(JAVASCRIPT_BROWSER) \
 	@builddir@/.setup-js-directories $(am__append_15) \
 	$(am__append_17) $(am__append_18) $(am__append_19) \
-	$(am__append_21) $(am__append_24) $(am__append_27)
+	$(am__append_21) $(am__append_23) $(am__append_25)
 
 ################################################################################
 ### @brief man pages to install
@@ -1061,14 +1063,13 @@ dist_man_MANS = Documentation/man/man1/arangoimp.1 \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_11) $(bin_SCRIPTS) Doxygen/* $(am__append_16) \
-	$(am__append_20) $(am__append_22) $(am__append_25) \
-	$(am__append_28)
+CLEANUP = $(am__append_11) $(bin_SCRIPTS) Doxygen/* $(am__append_16)
 
 ################################################################################
 ### @brief tragets for cleanup of 3rd party libraries
 ################################################################################
-CLEANUP_3RD = $(am__append_23) $(am__append_26)
+CLEANUP_3RD = $(am__append_20) $(am__append_22) $(am__append_24) \
+	$(am__append_26)
 
 ################################################################################
 ### @brief flex files
@@ -1382,20 +1383,22 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Ahuacatl/ahuacatl-parser.c \
 	arangod/Ahuacatl/ahuacatl-result.c \
 	arangod/Ahuacatl/ahuacatl-scope.c \
-	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-statement-dump.c \
 	arangod/Ahuacatl/ahuacatl-statement-walker.c \
+	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
 	arangod/BitIndexes/bitarray.c \
-	arangod/BitIndexes/bitarrayIndex.c arangod/GeoIndex/GeoIndex.c \
+	arangod/BitIndexes/bitarrayIndex.c \
+	arangod/CapConstraint/cap-constraint.c \
 	arangod/FulltextIndex/fulltext-handles.c \
 	arangod/FulltextIndex/fulltext-index.c \
 	arangod/FulltextIndex/fulltext-list.c \
 	arangod/FulltextIndex/fulltext-query.c \
 	arangod/FulltextIndex/fulltext-result.c \
 	arangod/FulltextIndex/fulltext-wordlist.c \
-	arangod/HashIndex/hasharray.c arangod/HashIndex/hashindex.c \
+	arangod/GeoIndex/GeoIndex.c arangod/GeoIndex/geo-index.c \
+	arangod/HashIndex/hash-array.c arangod/HashIndex/hash-index.c \
 	arangod/IndexIterators/index-iterator.c \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
@@ -2670,13 +2673,13 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-result.$(OBJEXT):  \
 arangod/Ahuacatl/bin_arangod-ahuacatl-scope.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.$(OBJEXT):  \
+	arangod/Ahuacatl/$(am__dirstamp) \
+	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
+arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.$(OBJEXT):  \
 	arangod/Ahuacatl/$(am__dirstamp) \
 	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.$(OBJEXT):  \
@@ -2697,9 +2700,15 @@ arangod/BitIndexes/bin_arangod-bitarray.$(OBJEXT):  \
 arangod/BitIndexes/bin_arangod-bitarrayIndex.$(OBJEXT):  \
 	arangod/BitIndexes/$(am__dirstamp) \
 	arangod/BitIndexes/$(DEPDIR)/$(am__dirstamp)
-arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT):  \
-	arangod/GeoIndex/$(am__dirstamp) \
-	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
+arangod/CapConstraint/$(am__dirstamp):
+	@$(MKDIR_P) arangod/CapConstraint
+	@: > arangod/CapConstraint/$(am__dirstamp)
+arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) arangod/CapConstraint/$(DEPDIR)
+	@: > arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
+arangod/CapConstraint/bin_arangod-cap-constraint.$(OBJEXT):  \
+	arangod/CapConstraint/$(am__dirstamp) \
+	arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
 arangod/FulltextIndex/$(am__dirstamp):
 	@$(MKDIR_P) arangod/FulltextIndex
 	@: > arangod/FulltextIndex/$(am__dirstamp)
@@ -2724,16 +2733,22 @@ arangod/FulltextIndex/bin_arangod-fulltext-result.$(OBJEXT):  \
 arangod/FulltextIndex/bin_arangod-fulltext-wordlist.$(OBJEXT):  \
 	arangod/FulltextIndex/$(am__dirstamp) \
 	arangod/FulltextIndex/$(DEPDIR)/$(am__dirstamp)
+arangod/GeoIndex/bin_arangod-GeoIndex.$(OBJEXT):  \
+	arangod/GeoIndex/$(am__dirstamp) \
+	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
+arangod/GeoIndex/bin_arangod-geo-index.$(OBJEXT):  \
+	arangod/GeoIndex/$(am__dirstamp) \
+	arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
 arangod/HashIndex/$(am__dirstamp):
 	@$(MKDIR_P) arangod/HashIndex
 	@: > arangod/HashIndex/$(am__dirstamp)
 arangod/HashIndex/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/HashIndex/$(DEPDIR)
 	@: > arangod/HashIndex/$(DEPDIR)/$(am__dirstamp)
-arangod/HashIndex/bin_arangod-hasharray.$(OBJEXT):  \
+arangod/HashIndex/bin_arangod-hash-array.$(OBJEXT):  \
 	arangod/HashIndex/$(am__dirstamp) \
 	arangod/HashIndex/$(DEPDIR)/$(am__dirstamp)
-arangod/HashIndex/bin_arangod-hashindex.$(OBJEXT):  \
+arangod/HashIndex/bin_arangod-hash-index.$(OBJEXT):  \
 	arangod/HashIndex/$(am__dirstamp) \
 	arangod/HashIndex/$(DEPDIR)/$(am__dirstamp)
 arangod/IndexIterators/$(am__dirstamp):
@@ -3015,6 +3030,7 @@ mostlyclean-compile:
 	-rm -f arangod/Actions/*.$(OBJEXT)
 	-rm -f arangod/Ahuacatl/*.$(OBJEXT)
 	-rm -f arangod/BitIndexes/*.$(OBJEXT)
+	-rm -f arangod/CapConstraint/*.$(OBJEXT)
 	-rm -f arangod/FulltextIndex/*.$(OBJEXT)
 	-rm -f arangod/GeoIndex/*.$(OBJEXT)
 	-rm -f arangod/HashIndex/*.$(OBJEXT)
@@ -3103,6 +3119,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-variable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/BitIndexes/$(DEPDIR)/bin_arangod-bitarray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/BitIndexes/$(DEPDIR)/bin_arangod-bitarrayIndex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/FulltextIndex/$(DEPDIR)/bin_arangod-fulltext-handles.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/FulltextIndex/$(DEPDIR)/bin_arangod-fulltext-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/FulltextIndex/$(DEPDIR)/bin_arangod-fulltext-list.Po@am__quote@
@@ -3111,8 +3128,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/FulltextIndex/$(DEPDIR)/bin_arangod-fulltext-wordlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/UnitTests_geo_suite-GeoIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/IndexIterators/$(DEPDIR)/bin_arangod-index-iterator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/IndexOperators/$(DEPDIR)/bin_arangod-index-operator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/MRServer/$(DEPDIR)/bin_arangod-ApplicationMR.Po@am__quote@
@@ -3604,20 +3622,6 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-scope.obj: arangod/Ahuacatl/ahuacatl-scope
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-scope.obj `if test -f 'arangod/Ahuacatl/ahuacatl-scope.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-scope.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-scope.c'; fi`
 
-arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o: arangod/Ahuacatl/ahuacatl-statementlist.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/Ahuacatl/ahuacatl-statementlist.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.c
-
-arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj: arangod/Ahuacatl/ahuacatl-statementlist.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/Ahuacatl/ahuacatl-statementlist.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.c'; fi`
-
 arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o: arangod/Ahuacatl/ahuacatl-statement-dump.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-dump.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statement-dump.Po
@@ -3645,6 +3649,20 @@ arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj: arangod/Ahuacatl/ahu
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/Ahuacatl/ahuacatl-statement-walker.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statement-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-walker.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-walker.c'; fi`
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o: arangod/Ahuacatl/ahuacatl-statementlist.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/Ahuacatl/ahuacatl-statementlist.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.c
+
+arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj: arangod/Ahuacatl/ahuacatl-statementlist.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-statementlist.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/Ahuacatl/ahuacatl-statementlist.c' object='arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.c'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.c'; fi`
 
 arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.o: arangod/Ahuacatl/ahuacatl-tokens.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/bin_arangod-ahuacatl-tokens.Tpo -c -o arangod/Ahuacatl/bin_arangod-ahuacatl-tokens.o `test -f 'arangod/Ahuacatl/ahuacatl-tokens.c' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tokens.c
@@ -3702,19 +3720,19 @@ arangod/BitIndexes/bin_arangod-bitarrayIndex.obj: arangod/BitIndexes/bitarrayInd
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/BitIndexes/bin_arangod-bitarrayIndex.obj `if test -f 'arangod/BitIndexes/bitarrayIndex.c'; then $(CYGPATH_W) 'arangod/BitIndexes/bitarrayIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/BitIndexes/bitarrayIndex.c'; fi`
 
-arangod/GeoIndex/bin_arangod-GeoIndex.o: arangod/GeoIndex/GeoIndex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/bin_arangod-GeoIndex.o -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo -c -o arangod/GeoIndex/bin_arangod-GeoIndex.o `test -f 'arangod/GeoIndex/GeoIndex.c' || echo '$(srcdir)/'`arangod/GeoIndex/GeoIndex.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/GeoIndex/GeoIndex.c' object='arangod/GeoIndex/bin_arangod-GeoIndex.o' libtool=no @AMDEPBACKSLASH@
+arangod/CapConstraint/bin_arangod-cap-constraint.o: arangod/CapConstraint/cap-constraint.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/CapConstraint/bin_arangod-cap-constraint.o -MD -MP -MF arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Tpo -c -o arangod/CapConstraint/bin_arangod-cap-constraint.o `test -f 'arangod/CapConstraint/cap-constraint.c' || echo '$(srcdir)/'`arangod/CapConstraint/cap-constraint.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Tpo arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/CapConstraint/cap-constraint.c' object='arangod/CapConstraint/bin_arangod-cap-constraint.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/bin_arangod-GeoIndex.o `test -f 'arangod/GeoIndex/GeoIndex.c' || echo '$(srcdir)/'`arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/CapConstraint/bin_arangod-cap-constraint.o `test -f 'arangod/CapConstraint/cap-constraint.c' || echo '$(srcdir)/'`arangod/CapConstraint/cap-constraint.c
 
-arangod/GeoIndex/bin_arangod-GeoIndex.obj: arangod/GeoIndex/GeoIndex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/bin_arangod-GeoIndex.obj -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo -c -o arangod/GeoIndex/bin_arangod-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/GeoIndex/GeoIndex.c' object='arangod/GeoIndex/bin_arangod-GeoIndex.obj' libtool=no @AMDEPBACKSLASH@
+arangod/CapConstraint/bin_arangod-cap-constraint.obj: arangod/CapConstraint/cap-constraint.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/CapConstraint/bin_arangod-cap-constraint.obj -MD -MP -MF arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Tpo -c -o arangod/CapConstraint/bin_arangod-cap-constraint.obj `if test -f 'arangod/CapConstraint/cap-constraint.c'; then $(CYGPATH_W) 'arangod/CapConstraint/cap-constraint.c'; else $(CYGPATH_W) '$(srcdir)/arangod/CapConstraint/cap-constraint.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Tpo arangod/CapConstraint/$(DEPDIR)/bin_arangod-cap-constraint.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/CapConstraint/cap-constraint.c' object='arangod/CapConstraint/bin_arangod-cap-constraint.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/bin_arangod-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/CapConstraint/bin_arangod-cap-constraint.obj `if test -f 'arangod/CapConstraint/cap-constraint.c'; then $(CYGPATH_W) 'arangod/CapConstraint/cap-constraint.c'; else $(CYGPATH_W) '$(srcdir)/arangod/CapConstraint/cap-constraint.c'; fi`
 
 arangod/FulltextIndex/bin_arangod-fulltext-handles.o: arangod/FulltextIndex/fulltext-handles.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/FulltextIndex/bin_arangod-fulltext-handles.o -MD -MP -MF arangod/FulltextIndex/$(DEPDIR)/bin_arangod-fulltext-handles.Tpo -c -o arangod/FulltextIndex/bin_arangod-fulltext-handles.o `test -f 'arangod/FulltextIndex/fulltext-handles.c' || echo '$(srcdir)/'`arangod/FulltextIndex/fulltext-handles.c
@@ -3800,33 +3818,61 @@ arangod/FulltextIndex/bin_arangod-fulltext-wordlist.obj: arangod/FulltextIndex/f
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/FulltextIndex/bin_arangod-fulltext-wordlist.obj `if test -f 'arangod/FulltextIndex/fulltext-wordlist.c'; then $(CYGPATH_W) 'arangod/FulltextIndex/fulltext-wordlist.c'; else $(CYGPATH_W) '$(srcdir)/arangod/FulltextIndex/fulltext-wordlist.c'; fi`
 
-arangod/HashIndex/bin_arangod-hasharray.o: arangod/HashIndex/hasharray.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hasharray.o -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Tpo -c -o arangod/HashIndex/bin_arangod-hasharray.o `test -f 'arangod/HashIndex/hasharray.c' || echo '$(srcdir)/'`arangod/HashIndex/hasharray.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hasharray.c' object='arangod/HashIndex/bin_arangod-hasharray.o' libtool=no @AMDEPBACKSLASH@
+arangod/GeoIndex/bin_arangod-GeoIndex.o: arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/bin_arangod-GeoIndex.o -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo -c -o arangod/GeoIndex/bin_arangod-GeoIndex.o `test -f 'arangod/GeoIndex/GeoIndex.c' || echo '$(srcdir)/'`arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/GeoIndex/GeoIndex.c' object='arangod/GeoIndex/bin_arangod-GeoIndex.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hasharray.o `test -f 'arangod/HashIndex/hasharray.c' || echo '$(srcdir)/'`arangod/HashIndex/hasharray.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/bin_arangod-GeoIndex.o `test -f 'arangod/GeoIndex/GeoIndex.c' || echo '$(srcdir)/'`arangod/GeoIndex/GeoIndex.c
 
-arangod/HashIndex/bin_arangod-hasharray.obj: arangod/HashIndex/hasharray.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hasharray.obj -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Tpo -c -o arangod/HashIndex/bin_arangod-hasharray.obj `if test -f 'arangod/HashIndex/hasharray.c'; then $(CYGPATH_W) 'arangod/HashIndex/hasharray.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hasharray.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hasharray.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hasharray.c' object='arangod/HashIndex/bin_arangod-hasharray.obj' libtool=no @AMDEPBACKSLASH@
+arangod/GeoIndex/bin_arangod-GeoIndex.obj: arangod/GeoIndex/GeoIndex.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/bin_arangod-GeoIndex.obj -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo -c -o arangod/GeoIndex/bin_arangod-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Tpo arangod/GeoIndex/$(DEPDIR)/bin_arangod-GeoIndex.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/GeoIndex/GeoIndex.c' object='arangod/GeoIndex/bin_arangod-GeoIndex.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hasharray.obj `if test -f 'arangod/HashIndex/hasharray.c'; then $(CYGPATH_W) 'arangod/HashIndex/hasharray.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hasharray.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/bin_arangod-GeoIndex.obj `if test -f 'arangod/GeoIndex/GeoIndex.c'; then $(CYGPATH_W) 'arangod/GeoIndex/GeoIndex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/GeoIndex.c'; fi`
 
-arangod/HashIndex/bin_arangod-hashindex.o: arangod/HashIndex/hashindex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hashindex.o -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Tpo -c -o arangod/HashIndex/bin_arangod-hashindex.o `test -f 'arangod/HashIndex/hashindex.c' || echo '$(srcdir)/'`arangod/HashIndex/hashindex.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hashindex.c' object='arangod/HashIndex/bin_arangod-hashindex.o' libtool=no @AMDEPBACKSLASH@
+arangod/GeoIndex/bin_arangod-geo-index.o: arangod/GeoIndex/geo-index.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/bin_arangod-geo-index.o -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Tpo -c -o arangod/GeoIndex/bin_arangod-geo-index.o `test -f 'arangod/GeoIndex/geo-index.c' || echo '$(srcdir)/'`arangod/GeoIndex/geo-index.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Tpo arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/GeoIndex/geo-index.c' object='arangod/GeoIndex/bin_arangod-geo-index.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hashindex.o `test -f 'arangod/HashIndex/hashindex.c' || echo '$(srcdir)/'`arangod/HashIndex/hashindex.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/bin_arangod-geo-index.o `test -f 'arangod/GeoIndex/geo-index.c' || echo '$(srcdir)/'`arangod/GeoIndex/geo-index.c
 
-arangod/HashIndex/bin_arangod-hashindex.obj: arangod/HashIndex/hashindex.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hashindex.obj -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Tpo -c -o arangod/HashIndex/bin_arangod-hashindex.obj `if test -f 'arangod/HashIndex/hashindex.c'; then $(CYGPATH_W) 'arangod/HashIndex/hashindex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hashindex.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hashindex.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hashindex.c' object='arangod/HashIndex/bin_arangod-hashindex.obj' libtool=no @AMDEPBACKSLASH@
+arangod/GeoIndex/bin_arangod-geo-index.obj: arangod/GeoIndex/geo-index.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/GeoIndex/bin_arangod-geo-index.obj -MD -MP -MF arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Tpo -c -o arangod/GeoIndex/bin_arangod-geo-index.obj `if test -f 'arangod/GeoIndex/geo-index.c'; then $(CYGPATH_W) 'arangod/GeoIndex/geo-index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/geo-index.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Tpo arangod/GeoIndex/$(DEPDIR)/bin_arangod-geo-index.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/GeoIndex/geo-index.c' object='arangod/GeoIndex/bin_arangod-geo-index.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hashindex.obj `if test -f 'arangod/HashIndex/hashindex.c'; then $(CYGPATH_W) 'arangod/HashIndex/hashindex.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hashindex.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/GeoIndex/bin_arangod-geo-index.obj `if test -f 'arangod/GeoIndex/geo-index.c'; then $(CYGPATH_W) 'arangod/GeoIndex/geo-index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/GeoIndex/geo-index.c'; fi`
+
+arangod/HashIndex/bin_arangod-hash-array.o: arangod/HashIndex/hash-array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hash-array.o -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Tpo -c -o arangod/HashIndex/bin_arangod-hash-array.o `test -f 'arangod/HashIndex/hash-array.c' || echo '$(srcdir)/'`arangod/HashIndex/hash-array.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hash-array.c' object='arangod/HashIndex/bin_arangod-hash-array.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hash-array.o `test -f 'arangod/HashIndex/hash-array.c' || echo '$(srcdir)/'`arangod/HashIndex/hash-array.c
+
+arangod/HashIndex/bin_arangod-hash-array.obj: arangod/HashIndex/hash-array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hash-array.obj -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Tpo -c -o arangod/HashIndex/bin_arangod-hash-array.obj `if test -f 'arangod/HashIndex/hash-array.c'; then $(CYGPATH_W) 'arangod/HashIndex/hash-array.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-array.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hash-array.c' object='arangod/HashIndex/bin_arangod-hash-array.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hash-array.obj `if test -f 'arangod/HashIndex/hash-array.c'; then $(CYGPATH_W) 'arangod/HashIndex/hash-array.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-array.c'; fi`
+
+arangod/HashIndex/bin_arangod-hash-index.o: arangod/HashIndex/hash-index.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hash-index.o -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Tpo -c -o arangod/HashIndex/bin_arangod-hash-index.o `test -f 'arangod/HashIndex/hash-index.c' || echo '$(srcdir)/'`arangod/HashIndex/hash-index.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hash-index.c' object='arangod/HashIndex/bin_arangod-hash-index.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hash-index.o `test -f 'arangod/HashIndex/hash-index.c' || echo '$(srcdir)/'`arangod/HashIndex/hash-index.c
+
+arangod/HashIndex/bin_arangod-hash-index.obj: arangod/HashIndex/hash-index.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/HashIndex/bin_arangod-hash-index.obj -MD -MP -MF arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Tpo -c -o arangod/HashIndex/bin_arangod-hash-index.obj `if test -f 'arangod/HashIndex/hash-index.c'; then $(CYGPATH_W) 'arangod/HashIndex/hash-index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-index.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Tpo arangod/HashIndex/$(DEPDIR)/bin_arangod-hash-index.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='arangod/HashIndex/hash-index.c' object='arangod/HashIndex/bin_arangod-hash-index.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/HashIndex/bin_arangod-hash-index.obj `if test -f 'arangod/HashIndex/hash-index.c'; then $(CYGPATH_W) 'arangod/HashIndex/hash-index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/HashIndex/hash-index.c'; fi`
 
 arangod/IndexIterators/bin_arangod-index-iterator.o: arangod/IndexIterators/index-iterator.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/IndexIterators/bin_arangod-index-iterator.o -MD -MP -MF arangod/IndexIterators/$(DEPDIR)/bin_arangod-index-iterator.Tpo -c -o arangod/IndexIterators/bin_arangod-index-iterator.o `test -f 'arangod/IndexIterators/index-iterator.c' || echo '$(srcdir)/'`arangod/IndexIterators/index-iterator.c
@@ -5326,6 +5372,8 @@ distclean-generic:
 	-rm -f arangod/Ahuacatl/$(am__dirstamp)
 	-rm -f arangod/BitIndexes/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/BitIndexes/$(am__dirstamp)
+	-rm -f arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
+	-rm -f arangod/CapConstraint/$(am__dirstamp)
 	-rm -f arangod/FulltextIndex/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/FulltextIndex/$(am__dirstamp)
 	-rm -f arangod/GeoIndex/$(DEPDIR)/$(am__dirstamp)
@@ -5411,7 +5459,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-local distclean-tags
@@ -5461,7 +5509,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5938,10 +5986,10 @@ cppcheck:
 
 distclean-local:
 	@for i in $(CLEANUP_3RD); do  $(MAKE) $$i;  done
+	rm -f $(BUILT_SOURCES)
 
 clean-local:
 	rm -rf $(CLEANUP)
-	rm -f $(BUILT_SOURCES)
 
 ################################################################################
 ### @brief generated files
@@ -6219,6 +6267,10 @@ html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directorie
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@clean-libev:
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -f @srcdir@/.libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -rf @top_srcdir@/3rdParty/libev/BUILD
+
 @ENABLE_ALL_IN_ONE_V8_TRUE@@V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@@srcdir@/.v8-build-@TRI_BITS@:
@@ -6239,6 +6291,7 @@ html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directorie
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@clean-v8:
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -f @srcdir@/.v8-build-@TRI_BITS@
 @ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
 @ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/out
 @ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
@@ -6265,6 +6318,7 @@ html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directorie
 @ENABLE_MRUBY_TRUE@	@echo
 
 @ENABLE_MRUBY_TRUE@clean-mruby:
+@ENABLE_MRUBY_TRUE@	rm -f @srcdir@/.mruby-build-@TRI_BITS@
 @ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/MRUBY && ( $(MAKE) -k clean || true )
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@@ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
@@ -6297,6 +6351,10 @@ html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directorie
 @ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "BUILD ICU FINISHED"
 @ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo
+
+@ENABLE_ALL_IN_ONE_ICU_TRUE@clean-icu:
+@ENABLE_ALL_IN_ONE_ICU_TRUE@	rm -f @srcdir@/.icu-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@	rm -rf $(ICUDIR)
 
 ################################################################################
 ### @brief generate all flex files

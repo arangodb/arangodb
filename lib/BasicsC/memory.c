@@ -152,10 +152,6 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
 TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
-/*  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
-         file,
-         line);
-*/
   return &TriUnknownMemZone;
 }
 #endif
@@ -168,6 +164,7 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
   char* m;
 
   m = malloc((size_t) n);
+
   if (m != NULL) {
     if (set) {
       memset(m, 0, (size_t) n);
@@ -201,6 +198,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 
   if (m == NULL) {
     if (zone->_failable) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }
 
@@ -216,10 +214,10 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL_AND_EXIT("failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
-                       (unsigned long long) n, 
-                       (int) zone->_zid
-                       ZONE_DEBUG_PARAMS); 
+    LOG_ERROR("failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+              (unsigned long long) n, 
+              (int) zone->_zid
+              ZONE_DEBUG_PARAMS); 
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
     return TRI_AllocateZ(zone, n, set, file, line);
@@ -289,6 +287,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
   if (p == NULL) {
     if (zone->_failable) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }
 
@@ -304,10 +303,10 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     free(CoreReserve);
     CoreReserve = NULL;
 
-    LOG_FATAL_AND_EXIT("failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
-                       (unsigned long long) n, 
-                       (int) zone->_zid
-                       ZONE_DEBUG_PARAMS);
+    LOG_ERROR("failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!", 
+              (unsigned long long) n, 
+              (int) zone->_zid
+              ZONE_DEBUG_PARAMS);
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
     return TRI_ReallocateZ(zone, m, n, file, line);
@@ -441,7 +440,11 @@ void TRI_ShutdownMemory () {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
 // End:

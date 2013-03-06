@@ -30,6 +30,7 @@
 #include <BasicsC/random.h>
 
 #include "bitarray.h"
+#include "VocBase/document-collection.h"
 
 #if BITARRAY_MASTER_TABLE_BLOCKSIZE==8  
 typedef uint8_t bit_column_int_t;  
@@ -49,18 +50,14 @@ typedef  uint64_t bit_column_int_t;
 
 #include "masterblocktable.h"
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          BITARRAY
 // -----------------------------------------------------------------------------
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // A bit column is the actual bit array as a list of integers of the size
 // table blocksize
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 typedef struct BitColumn_s {
   bit_column_int_t* _column;  
@@ -81,13 +78,10 @@ static void debugPrintMaskHeader  (const char*);
 static void debugPrintMask        (TRI_bitarray_t*, uint64_t);
 */
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup bitarray
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a sequence of bit arrays and their associated master table
@@ -101,7 +95,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   int result;
   size_t j;
   bool ok;
-  
     
   // ...........................................................................
   // The memory for the bitArray is allocated here. We expect a NULL pointer to
@@ -112,7 +105,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     return TRI_ERROR_INTERNAL;
   }  
   
-  
   // ...........................................................................
   // Allocate the necessary memory to store the bitArray structure.
   // ...........................................................................
@@ -122,7 +114,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   if (*bitArray == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
   
   // ...........................................................................
   // For now each set of bit arrays will create and use its own MasteTable.
@@ -147,7 +138,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     }  
   }
 
-
   // ...........................................................................
   // Check that we have a valid master table
   // ...........................................................................
@@ -161,15 +151,12 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   }
   
   (*bitArray)->_masterTable = mt;
-  
 
   // ...........................................................................
   // Store the number of columns in this set of bit arrays.
   // ...........................................................................
   
   (*bitArray)->_numColumns   = numArrays;
-
-
   
   // ...........................................................................
   // Attempt to allocate memory to create the column structures
@@ -183,8 +170,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     *bitArray = NULL;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
-    
   
   // ...........................................................................
   // Create the bitarrays (the columns which will contain the bits)
@@ -202,7 +187,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
       break;
     }  
   }
-  
   
   if (! ok) { 
   
@@ -222,7 +206,6 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     *bitArray = NULL;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
 
   (*bitArray)->_numBlocksInColumn = BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE;  
   //(*bitArray)->_usedBitLength     = 0;
@@ -280,7 +263,9 @@ int TRI_FreeBitarray(TRI_bitarray_t* ba) {
 /// @brief Inserts a bit mask into the bit array columns
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* element) {
+int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t* ba,
+                                      TRI_bitarray_mask_t* mask,
+                                      TRI_doc_mptr_t* element) {
   MasterTable_t* mt;
   TRI_master_table_position_t position;
   int result;
@@ -320,18 +305,17 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
     return result;
   }
 
-  
   // ...........................................................................
   // locate the position in the bitarrays, extend the bit arrays if necessary
   // ...........................................................................
   
   if (position._blockNum >= ba->_numBlocksInColumn) {
     result = extendColumns(ba, position._blockNum + 1);  
+
     if (result != TRI_ERROR_NO_ERROR) {
       return result;
     }      
   }
-
   
   // ...........................................................................
   // Use the mask to set the bits in each column to 0 or 1
@@ -360,7 +344,7 @@ int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* ma
 /// @brief Given a bit mask returns a list of document pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* resultStorage ) {
+int TRI_LookupBitMaskBitarray (TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* resultStorage) {
   // int result;
   uint8_t numBits;
   int i_blockNum,j_bitNum,k_colNum;
@@ -373,7 +357,6 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
   // ...........................................................................
    
   numBits = BITARRAY_MASTER_TABLE_BLOCKSIZE;
-
 
   // ...........................................................................
   // scan down the blocks 
@@ -456,7 +439,9 @@ int TRI_LookupBitMaskBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, voi
 /// @brief Given a bit mask set returns a list of document pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LookupBitMaskSetBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_set_t* maskSet, void* resultStorage ) {
+int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t* ba,
+                                  TRI_bitarray_mask_set_t* maskSet,
+                                  TRI_index_iterator_t* resultStorage) {
   // int result;
   uint8_t numBits;
   int i_blockNum,j_bitNum,k_colNum,m_mask;
@@ -468,7 +453,6 @@ int TRI_LookupBitMaskSetBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_set_t* ma
   // ...........................................................................
    
   numBits = BITARRAY_MASTER_TABLE_BLOCKSIZE;
-
 
   // ...........................................................................
   // scan down the blocks 
@@ -490,27 +474,23 @@ int TRI_LookupBitMaskSetBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_set_t* ma
       // .......................................................................
               
       for (k_colNum = 0; k_colNum < ba->_numColumns; ++k_colNum) {
-      
         BitColumn_t*     column;
         bit_column_int_t bitInteger;
         uint64_t         tempInteger;
+
         // .......................................................................
         // Extract the particular column
         // .......................................................................
     
         column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * k_colNum));
       
-      
         // .......................................................................
         // Obtain the integer representation of this block
         // .......................................................................
         
         bitInteger  = *(column->_column + i_blockNum);      
-        
         tempInteger = (uint64_t)((bitInteger >> j_bitNum) & (1)) << k_colNum;
-
         bitValues  = bitValues | tempInteger;
-        
       }
 
       // ..........................................................................
@@ -553,7 +533,7 @@ int TRI_LookupBitMaskSetBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_set_t* ma
 /// @brief Remove an entry from a sequence of bitarray columns
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
+int TRI_RemoveElementBitarray (TRI_bitarray_t* ba, TRI_doc_mptr_t* element) {
   TRI_master_table_position_t* position;
   TRI_bitarray_mask_t mask;
   MasterTable_t* mt;
@@ -571,7 +551,6 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   if (position == NULL) {
     return TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING; 
   }  
-
   
   // ..........................................................................
   // Observe that we are NOT removing any entries from the actual bit arrays.
@@ -579,7 +558,6 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   // ..........................................................................
   
   result = removeElementMasterTable(mt, position);  
-  
   
   // ...........................................................................
   // It may happen that the block is completely free, moreover it may happen
@@ -612,26 +590,10 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
     return TRI_ERROR_INTERNAL;
   }
   
-  
   // debugPrintBitarray(ba); 
   
   return TRI_ERROR_NO_ERROR;
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief For a data element replaces one bit mask with another
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* ba , 
-                                       TRI_bitarray_mask_t* oldMask, 
-                                       TRI_bitarray_mask_t* newMask, 
-                                       void* element) {
-  assert(0);
-  return TRI_ERROR_NO_ERROR;
-}                                       
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -652,7 +614,7 @@ int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* ba ,
 /// @brief extends the columns which comprise the bitarray
 ////////////////////////////////////////////////////////////////////////////////
 
-int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
+int extendColumns (TRI_bitarray_t* ba, size_t newBlocks) {
   bool ok = true;
   size_t j;
   char* newColumns;

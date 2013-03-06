@@ -35,10 +35,10 @@ BUILT_SOURCES += @MRUBY_LIBS@
 ### "clean" in mruby is broken
 ################################################################################
 
-CLEANUP += @srcdir@/.mruby-build-@TRI_BITS@
 CLEANUP_3RD += clean-mruby
 
 clean-mruby:
+	rm -f @srcdir@/.mruby-build-@TRI_BITS@
 	cd @top_srcdir@/3rdParty/MRUBY && ( $(MAKE) -k clean || true )
 
 ## -----------------------------------------------------------------------------

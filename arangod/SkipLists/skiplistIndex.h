@@ -39,7 +39,7 @@
 #define TRIAGENS_DURHAM_VOC_BASE_SKIPLIST_INDEX_H 1
 
 #include <BasicsC/common.h>
-#include "SkipLists/skiplist.h"
+
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
@@ -49,20 +49,27 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        skiplistIndex public types
+// --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_skiplist_s;
+struct TRI_skiplist_multi_s;
+struct TRI_skiplist_node_s;
+struct TRI_doc_mptr_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        skiplistIndex public types
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup skiplistIndex
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 typedef struct {
   union {
-    TRI_skiplist_t* uniqueSkiplist;
-    TRI_skiplist_multi_t* nonUniqueSkiplist;
+    struct TRI_skiplist_s* uniqueSkiplist;
+    struct TRI_skiplist_multi_s* nonUniqueSkiplist;
   } skiplist;   
   bool unique; 
 } SkiplistIndex;
@@ -71,13 +78,21 @@ typedef struct {
 typedef struct {
   size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
-  void* data;                // master document pointer
   void* collection;          // pointer to the collection;
-} SkiplistIndexElement;
+} 
+TRI_skiplist_index_key_t;
+
+typedef struct {
+  size_t numFields;                 // the number of fields
+  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the collection should know about
+  struct TRI_doc_mptr_s* _document; // master document pointer
+  void* collection;                 // pointer to the collection;
+} 
+TRI_skiplist_index_element_t;
 
 typedef struct {
   size_t _numElements;
-  SkiplistIndexElement* _elements; // simple list of elements
+  TRI_skiplist_index_element_t* _elements; // simple list of elements
 } SkiplistIndexElements;  
 
 
@@ -86,8 +101,8 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_iterator_interval_s {
-  void*  _leftEndPoint;
-  void*  _rightEndPoint;  
+  struct TRI_skiplist_node_s*  _leftEndPoint;
+  struct TRI_skiplist_node_s*  _rightEndPoint;  
 } TRI_skiplist_iterator_interval_t;
 
 typedef struct TRI_skiplist_iterator_s {
@@ -154,15 +169,13 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 SkiplistIndex* SkiplistIndex_new (void);
 
-int SkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
-
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
-int SkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
+int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
-int SkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
+int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
 
-bool SkiplistIndex_update (SkiplistIndex*, const SkiplistIndexElement*, const SkiplistIndexElement*);
+bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*, const TRI_skiplist_index_element_t*);
 
 
 //------------------------------------------------------------------------------
@@ -174,15 +187,13 @@ bool SkiplistIndex_update (SkiplistIndex*, const SkiplistIndexElement*, const Sk
 
 SkiplistIndex* MultiSkiplistIndex_new (void);
 
-int MultiSkiplistIndex_add (SkiplistIndex*, SkiplistIndexElement*);
-
 TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
-int MultiSkiplistIndex_insert (SkiplistIndex*, SkiplistIndexElement*);
+int MultiSkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
-int MultiSkiplistIndex_remove (SkiplistIndex*, SkiplistIndexElement*); 
+int MultiSkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
 
-bool MultiSkiplistIndex_update (SkiplistIndex*, SkiplistIndexElement*, SkiplistIndexElement*);
+bool MultiSkiplistIndex_update (SkiplistIndex*, TRI_skiplist_index_element_t*, TRI_skiplist_index_element_t*);
 
 
 #ifdef __cplusplus

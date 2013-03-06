@@ -32,6 +32,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
+#include "BitIndexes/bitarrayIndex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,8 +55,6 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Structure for the position for the of the document within the Master Table.
 // The location of a document handle is given by 3 numbers:
@@ -72,7 +71,6 @@ typedef struct TRI_master_table_position_s {
   void* _docPointer;  // the document pointer stored in that position 
 } TRI_master_table_position_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // The actual structure which will contain the bit arrays as a series of
 // columns.
@@ -87,8 +85,6 @@ typedef struct TRI_bitarray_s {
   TRI_memory_zone_t* _memoryZone; 
   void* _masterTable;
 } TRI_bitarray_t;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // When we add a document within the bit arrays we need a bit mask to determine
@@ -128,22 +124,21 @@ typedef struct TRI_bitarray_params_s {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 int TRI_InitBitarray (TRI_bitarray_t**, TRI_memory_zone_t*, size_t, void*);
 
 int TRI_DestroyBitarray (TRI_bitarray_t*);
 
 int TRI_FreeBitarray (TRI_bitarray_t*);
 
-int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*, TRI_bitarray_mask_t*, void*);  
+int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*,
+                                      TRI_bitarray_mask_t*,
+                                      struct TRI_doc_mptr_s*);  
 
-int TRI_LookupBitMaskBitarray    (TRI_bitarray_t*, TRI_bitarray_mask_t*, void*);  
-int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*, TRI_bitarray_mask_set_t*, void*); 
+int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*, 
+                                  TRI_bitarray_mask_set_t*,
+                                  struct TRI_index_iterator_s*); 
 
-int TRI_RemoveElementBitarray (TRI_bitarray_t*, void*);
-
-int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* , TRI_bitarray_mask_t*, TRI_bitarray_mask_t*, void*);  
+int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_s*);
 
 #ifdef __cplusplus
 }

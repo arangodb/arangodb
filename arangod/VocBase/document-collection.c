@@ -32,8 +32,10 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-
+#include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "GeoIndex/geo-index.h"
+#include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
@@ -44,11 +46,13 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+static int CreateSecondaryIndexes (TRI_document_collection_t*,
+                                   TRI_doc_mptr_t const*);
+
 static int CreateImmediateIndexes (TRI_document_collection_t*,
                                    TRI_doc_mptr_t*);
 
-static int UpdateImmediateIndexes (TRI_document_collection_t*,
-                                   TRI_doc_mptr_t const*,
+static int DeleteSecondaryIndexes (TRI_document_collection_t*,
                                    TRI_doc_mptr_t const*);
 
 static int DeleteImmediateIndexes (TRI_document_collection_t*,
@@ -221,9 +225,9 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       }
     }
 
-    TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(base->_vocbase);
+    TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-    TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(base->_vocbase);
+    TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -271,9 +275,9 @@ static void WaitSync (TRI_document_collection_t* document,
 
     // we have to wait a bit longer
     // signal the synchroniser that there is work to do
-    TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(base->_vocbase);
+    TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-    TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(base->_vocbase);
+    TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -380,6 +384,8 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   TRI_doc_datafile_info_t* dfi;
   TRI_doc_mptr_t* existing;
   int res;
+  size_t n;
+  size_t i;
 
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
@@ -419,6 +425,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   // get a new header pointer
   header = document->_headers->request(document->_headers);
+
   if (header == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -434,9 +441,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   // .............................................................................
   // write document blob
   // .............................................................................
-
-  // verify the header pointer
-  header = document->_headers->verify(document->_headers, header);
 
   // generate crc
   TRI_FillCrcKeyMarkerDatafile(journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
@@ -459,6 +463,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   // update the datafile info
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
+
   if (dfi != NULL) {
     dfi->_numberAlive += 1;
     dfi->_sizeAlive += LengthDataMasterPointer(header);
@@ -496,34 +501,26 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   *mptr = *header;
 
-  // check cap constraint
-  if (primary->_capConstraint != NULL) {
-    while (primary->_capConstraint->_size < primary->_capConstraint->_array._array._nrUsed) {
-      TRI_doc_operation_context_t rollbackContext;
-      TRI_doc_mptr_t const* oldest;
-      int resRem;
+  // .............................................................................
+  // post process insert
+  // .............................................................................
 
-      oldest = TRI_PopFrontLinkedArray(&primary->_capConstraint->_array);
+  n = document->_allIndexes._length;
 
-      if (oldest == NULL) {
-        LOG_WARNING("cap collection is empty, but collection %llu contains elements", 
-            (unsigned long long) primary->base._info._cid);
-        break;
-      }
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
 
-      LOG_DEBUG("removing document '%s' because of cap constraint", (char*) oldest->_key);
+    idx = document->_allIndexes._buffer[i];
 
-      TRI_InitContextPrimaryCollection(&rollbackContext, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
-      resRem = DeleteShapedJson(&rollbackContext, oldest->_key);
-
-      if (resRem != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("cannot cap collection: %s", TRI_last_error());
-        break;
-      }
+    if (idx->postInsert != NULL) {
+      idx->postInsert(idx, header);
     }
   }
-  
+
+  // .............................................................................
   // wait for sync
+  // .............................................................................
+
   if (context->_sync) {
     WaitSync(document, journal, ((char const*) *result) + markerSize + keyBodySize + bodySize);
   }
@@ -538,17 +535,19 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
 static void UpdateHeader (TRI_datafile_t* datafile,
                           TRI_df_marker_t const* m,
-                          TRI_doc_mptr_t const* header,
-                          TRI_doc_mptr_t* update) {
+                          TRI_doc_mptr_t* newHeader,
+                          TRI_doc_mptr_t const* oldHeader) {
   TRI_doc_document_key_marker_t const* marker;
 
   marker = (TRI_doc_document_key_marker_t const*) m;
-  *update = *header;
 
-  update->_rid  = marker->_rid;
-  update->_fid  = datafile->_fid;
-  update->_data = marker;
-  update->_key  = ((char*) marker) + marker->_offsetKey;
+  newHeader->_rid  = marker->_rid;
+  newHeader->_fid  = datafile->_fid;
+  newHeader->_data = marker;
+  newHeader->_key  = ((char*) marker) + marker->_offsetKey;
+
+  newHeader->_validFrom = oldHeader->_validFrom;
+  newHeader->_validTo   = oldHeader->_validTo; // TODO: fix for trx
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -628,7 +627,7 @@ static int RollbackUpdate (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int UpdateDocument (TRI_doc_operation_context_t* context,
-                           TRI_doc_mptr_t const* header,
+                           TRI_doc_mptr_t const* oldHeader,
                            TRI_doc_document_key_marker_t* marker,
                            TRI_voc_size_t markerSize,
                            void const* keyBody,
@@ -637,15 +636,16 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
                            TRI_voc_size_t bodySize,
                            TRI_df_marker_t** result,
                            TRI_doc_mptr_t* mptr) {
-  TRI_doc_mptr_t update;
-  TRI_primary_collection_t* primary;
-  TRI_document_collection_t* document;
   TRI_datafile_t* journal;
   TRI_doc_datafile_info_t* dfi;
+  TRI_doc_mptr_t oldData;
+  TRI_doc_mptr_t* newHeader; // note: IDENTICAL to oldHeader for non-transactional collections
+  TRI_document_collection_t* document;
+  TRI_primary_collection_t* primary;
   TRI_voc_size_t total;
-  TRI_df_marker_t const* originalMarker;
-
   int res;
+  size_t i;
+  size_t n;
 
   if (mptr != NULL) {
     mptr->_key = NULL;
@@ -656,13 +656,35 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // check the revision
   // .............................................................................
 
-  res = TRI_RevisionCheck(context, header->_rid);
+  res = TRI_RevisionCheck(context, oldHeader->_rid);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
   
-  // save original version
-  originalMarker = header->_data;
+  // extract the collection
+  primary = context->_collection;
+  document = (TRI_document_collection_t*) primary;
+
+  // save the old data, remember
+  oldData = *oldHeader;
+
+  // .............................................................................
+  // remove from all indexes
+  // .............................................................................
+
+  res = DeleteSecondaryIndexes(document, oldHeader);
+
+  // reenter the document in case of failure, ignore errors during rollback
+  if (context->_allowRollback && res != TRI_ERROR_NO_ERROR) {
+    res = CreateSecondaryIndexes(document, oldHeader);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("encountered error '%s' during rollback of update", TRI_errno_string(res));
+    }
+
+    return res;
+  }
 
   // .............................................................................
   // update header
@@ -672,8 +694,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   marker->_rid = marker->base._tick = TRI_NewTickVocBase();
 
   // find and select a journal
-  primary = context->_collection;
-  document = (TRI_document_collection_t*) primary;
   total = markerSize + keyBodySize + bodySize;
   journal = SelectJournal(document, total, result);
 
@@ -702,13 +722,17 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // update indexes
   // .............................................................................
 
+  // TODO: this will be identical for non-transactional collections only
+  newHeader = CONST_CAST(oldHeader);
+
   // update the header
-  UpdateHeader(journal, *result, header, &update);
+  UpdateHeader(journal, *result, newHeader, oldHeader);
 
   // update the datafile info
-  dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
+  dfi = TRI_FindDatafileInfoPrimaryCollection(primary, oldData._fid);
+
   if (dfi != NULL) {
-    size_t length = LengthDataMasterPointer(header);
+    size_t length = LengthDataMasterPointer(&oldData);
 
     dfi->_numberAlive -= 1;
     dfi->_sizeAlive -= length;
@@ -717,13 +741,14 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   }
 
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
+
   if (dfi != NULL) {
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += LengthDataMasterPointer(&update);
+    dfi->_sizeAlive += LengthDataMasterPointer(newHeader);
   }
 
   // update immediate indexes
-  res = UpdateImmediateIndexes(document, header, &update);
+  res = CreateSecondaryIndexes(document, newHeader);
 
   // check for constraint error
   if (context->_allowRollback && res != TRI_ERROR_NO_ERROR) {
@@ -731,7 +756,8 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
     
     LOG_DEBUG("encountered index violating during update, rolling back");
 
-    resUpd = RollbackUpdate(primary, header, originalMarker, result);
+    resUpd = RollbackUpdate(primary, oldHeader, oldData._data, result);
+
     if (resUpd != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("encountered error '%s' during rollback of update", TRI_errno_string(resUpd));
     }
@@ -741,23 +767,36 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // create result
   // .............................................................................
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (mptr != NULL) {
-      *mptr = *((TRI_doc_mptr_t*) header);
-    }
-    
-    // wait for sync
-    if (context->_sync) {
-      WaitSync(document, journal, ((char const*) *result) + markerSize + bodySize);
-    }
-
-    return TRI_ERROR_NO_ERROR;
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
-  // error case
-  assert(res != TRI_ERROR_NO_ERROR);
+  // .............................................................................
+  // post process update
+  // .............................................................................
+
+  n = document->_allIndexes._length;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = document->_allIndexes._buffer[i];
+
+    if (idx->postUpdate != NULL) {
+      idx->postUpdate(idx, newHeader, oldHeader, &oldData);
+    }
+  }
+
+  if (mptr != NULL) {
+    *mptr = *((TRI_doc_mptr_t*) oldHeader);
+  }
     
-  return res;
+  // wait for sync
+  if (context->_sync) {
+    WaitSync(document, journal, ((char const*) *result) + markerSize + bodySize);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -776,6 +815,8 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   TRI_doc_datafile_info_t* dfi;
   TRI_voc_size_t total;
   int res;
+  size_t i;
+  size_t n;
 
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
@@ -837,10 +878,29 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
     dfi->_numberDeletion += 1;
   }
 
-  // update immediate indexes
+  // delete immediate indexes
   DeleteImmediateIndexes(document, header, marker->base._tick);
 
+  // .............................................................................
+  // post process delete
+  // .............................................................................
+
+  n = document->_allIndexes._length;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+
+    idx = document->_allIndexes._buffer[i];
+
+    if (idx->postRemove != NULL) {
+      idx->postRemove(idx, header);
+    }
+  }
+
+  // .............................................................................
   // wait for sync
+  // .............................................................................
+
   if (context->_sync) {
     WaitSync(document, journal, ((char const*) result) + sizeof(TRI_doc_deletion_key_marker_t) + keyBodySize);
   }
@@ -1320,6 +1380,32 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a json document given the identifier. 
+/// this function will create the deletion marker itself and call the actual
+/// worker function
+/// if you have an existing marker already available, use DeleteShapedJson()
+////////////////////////////////////////////////////////////////////////////////
+
+static int DeleteShapedJson2 (TRI_doc_operation_context_t* context,
+                             TRI_voc_key_t key) {
+  TRI_doc_deletion_key_marker_t marker;
+  TRI_voc_size_t keyBodySize = 0;
+
+  memset(&marker, 0, sizeof(marker));
+  marker.base._type = TRI_DOC_MARKER_KEY_DELETION;
+  marker._sid = 0;
+
+  if (key) {
+    keyBodySize = strlen(key) + 1;
+  }
+  
+  marker._offsetKey = sizeof(marker);
+  marker.base._size = sizeof(marker) + keyBodySize;
+  
+  return DeleteDocument(context, &marker, key, keyBodySize);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1485,11 +1571,22 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     // it is an update, but only if found has a smaller revision identifier
     else if (found->_rid < d->_rid || (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
-      TRI_doc_mptr_t update;
+      TRI_doc_mptr_t* newHeader;
+      TRI_doc_mptr_t oldData;
       
+      // delete old entries
+      DeleteSecondaryIndexes(collection, found);
+
+      // save the old data
+      oldData = *found;
+
+      // TODO: this will be identical for non-transactional collections only
+      newHeader = CONST_CAST(found);
+
       // update the header info
-      UpdateHeader(datafile, marker, found, &update);
-      update._validTo = 0;
+      UpdateHeader(datafile, marker, newHeader, found);
+      newHeader->_validTo = 0;
+
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
 
@@ -1510,10 +1607,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += LengthDataMasterPointer(&update);
+        dfi->_sizeAlive += LengthDataMasterPointer(newHeader);
       }
-      // update immediate indexes
-      UpdateImmediateIndexes(collection, found, &update);
+
+      // update secondary indexes
+      CreateSecondaryIndexes(collection, found);
+
+      // TODO: postUpdate?
     }
     
     // it is a delete
@@ -2267,6 +2367,50 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int CreateSecondaryIndexes (TRI_document_collection_t* document,
+                                   TRI_doc_mptr_t const* header) {
+  int result;
+  size_t i;
+  size_t n;
+  bool constraint;
+
+  n = document->_allIndexes._length;
+  result = TRI_ERROR_NO_ERROR;
+  constraint = false;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+    int res;
+
+    idx = document->_allIndexes._buffer[i];
+    res = idx->insert(idx, header);
+
+    // in case of no-memory, return immediately
+    if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      // TODO: do we have to cleanup?
+      return res;
+    }
+
+    // "prefer" unique constraint violated
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+      constraint = true;
+    }
+    else if (res != TRI_ERROR_NO_ERROR) {
+      result = res;
+    }
+  }
+
+  if (constraint) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new entry in the immediate indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2274,10 +2418,6 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t* header) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t* found;
-  size_t n;
-  size_t i;
-  int result;
-  bool constraint;
 
   primary = &document->base;
   
@@ -2322,145 +2462,18 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
   // update all indexes
   // .............................................................................
 
-  n = document->_allIndexes._length;
-  result = TRI_ERROR_NO_ERROR;
-  constraint = false;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    int res;
-
-    idx = document->_allIndexes._buffer[i];
-    res = idx->insert(idx, header);
-
-    // in case of no-memory, return immediately
-    if (res == TRI_ERROR_OUT_OF_MEMORY) {
-      // TODO: do we have to cleanup?
-      return res;
-    }
-
-    // "prefer" unique constraint violated
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      constraint = true;
-    }
-    else if (res != TRI_ERROR_NO_ERROR) {
-      result = res;
-    }
-  }
-
-  if (constraint) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-  }
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    return TRI_set_errno(result);
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return CreateSecondaryIndexes(document, header);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the immediate indexes
+/// @brief deletes an entry from the secondary indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
-                                   TRI_doc_mptr_t const* header,
-                                   TRI_doc_mptr_t const* update) {
-
-  union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
-  TRI_shaped_json_t old;
-  bool constraint;
+static int DeleteSecondaryIndexes (TRI_document_collection_t* collection,
+                                   TRI_doc_mptr_t const* header) {
   int result;
   size_t i;
   size_t n;
-
-  // get the old document
-  TRI_EXTRACT_SHAPED_JSON_MARKER(old, header->_data);
-
-  // .............................................................................
-  // update primary index
-  // .............................................................................
-
-  // update all fields, the document identifier stays the same
-  change.c = header;
-
-  change.v->_rid = update->_rid;
-  change.v->_fid = update->_fid;
-  change.v->_validFrom = update->_validFrom; 
-  change.v->_validTo = update->_validTo; // TODO: fix for trx
-
-  change.v->_data = update->_data;
-
-  // .............................................................................
-  // update all the other indices
-  // .............................................................................
-
-  n = collection->_allIndexes._length;
-  result = TRI_ERROR_NO_ERROR;
-  constraint = false;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    int res;
-
-    idx = collection->_allIndexes._buffer[i];
-    res = idx->update(idx, header, &old);
-
-    // in case of no-memory, return immediately
-    if (res == TRI_ERROR_OUT_OF_MEMORY) {
-      return res;
-    }
-
-    // "prefer" unique constraint violated
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      constraint = true;
-    }
-    else if (res != TRI_ERROR_NO_ERROR) {
-      result = res;
-    }
-  }
-
-  if (constraint) {
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an entry from the immediate indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
-                                   TRI_doc_mptr_t const* header,
-                                   TRI_voc_tick_t deletion) {
-  union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
-  TRI_primary_collection_t* primary;
-  TRI_doc_mptr_t* found;
-  size_t n;
-  size_t i;
-  int result;
-
-  // set the deletion flag
-  change.c = header;
-  change.v->_validFrom = deletion;
-  change.v->_validTo   = deletion; // TODO: fix for trx
-
-  primary = &collection->base;
-
-  // .............................................................................
-  // remove from main index
-  // .............................................................................
-
-  found = TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key);
-
-  if (found == NULL) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
-
-  // .............................................................................
-  // remove from all indexes
-  // .............................................................................
 
   n = collection->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
@@ -2478,8 +2491,46 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
     }
   }
 
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the immediate indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
+                                   TRI_doc_mptr_t const* header,
+                                   TRI_voc_tick_t deletion) {
+  TRI_doc_mptr_t* change;
+  TRI_primary_collection_t* primary;
+  TRI_doc_mptr_t* found;
+  int result;
+
+  // set the deletion flag
+  change = CONST_CAST(header);
+  change->_validFrom = deletion;
+  change->_validTo   = deletion; // TODO: fix for trx
+
+  primary = &collection->base;
+
+  // .............................................................................
+  // remove from main index
+  // .............................................................................
+
+  found = TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key);
+
+  if (found == NULL) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  }
+
+  // .............................................................................
+  // remove from all indexes
+  // .............................................................................
+
+  result = DeleteSecondaryIndexes(collection, header);
+
   // and release the header pointer
-  collection->_headers->release(collection->_headers, change.v);
+  collection->_headers->release(collection->_headers, change);
 
   // that's it
   return result;
@@ -3115,6 +3166,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   // create a new index
   idx = TRI_CreateCapConstraint(primary, size);
+
   if (idx == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -4984,6 +5036,15 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t* context,
   }
 
   return filtered;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a documet given by a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t* context,
+                                          TRI_doc_mptr_t* doc) {
+  return DeleteShapedJson2(context, doc->_key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

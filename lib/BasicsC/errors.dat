@@ -223,3 +223,13 @@ WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING,3411,"bitarray index remove fa
 ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE,3413,"bitarray index insert failure - document attribute value unsupported in index","Will be raised when an attempt to insert a document into a bitarray index fails due to the fact that one or more values for an index attribute is not supported within that index."
 ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES,3415,"bitarray index creation failure - one or more index attributes are duplicated.","Will be raised when an attempt to create an index with two or more index attributes repeated."
 ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES,3417,"bitarray index creation failure - one or more index attribute values are duplicated.","Will be raised when an attempt to create an index with two or more index attribute values repeated."
+
+
+################################################################################
+## results, which are not errors
+################################################################################
+
+RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key already exists","Will be returned if the element was not insert because the key already exists."
+RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
+RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
+RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."

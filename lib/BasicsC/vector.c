@@ -828,6 +828,80 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVectorString (TRI_memory_zone_t* zone,
+                              TRI_vector_string_t* dst,
+                              TRI_vector_string_t* src) {
+  int res;
+  char** ptr;
+  char** end;
+  char** qtr;
+
+  TRI_ClearVectorString(dst);
+
+  if (0 < src->_length) {
+    res = TRI_ResizeVectorString (dst, src->_length);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    ptr = src->_buffer;
+    end = src->_buffer + src->_length;
+    qtr = dst->_buffer;
+
+    for (;  ptr < end;  ++ptr, ++qtr) {
+      *qtr = TRI_DuplicateStringZ(zone, *ptr);
+
+      if (*qtr == NULL) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t* zone,
+                                               TRI_vector_string_t* dst,
+                                               TRI_vector_pointer_t* src) {
+  int res;
+  void** ptr;
+  void** end;
+  char** qtr;
+
+  TRI_ClearVectorString(dst);
+
+  if (0 < src->_length) {
+    res = TRI_ResizeVectorString (dst, src->_length);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    ptr = src->_buffer;
+    end = src->_buffer + src->_length;
+    qtr = dst->_buffer;
+
+    for (;  ptr < end;  ++ptr, ++qtr) {
+      *qtr = TRI_DuplicateStringZ(zone, *ptr);
+
+      if (*qtr == NULL) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
 ////////////////////////////////////////////////////////////////////////////////
 

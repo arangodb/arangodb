@@ -493,7 +493,6 @@ int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_p
   
   tableBlock = mt->_blocks + position->_blockNum;
   
-  
   // ...........................................................................
   // Within the block determine if the entry (array entry) is marked as free
   // if it is marked as free, then of course no reason to store the handle
@@ -512,8 +511,6 @@ int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_p
   TRI_PushBackVector(&(iterator->_intervals), &interval);
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // IMPLEMENTATION OF FORWARD DECLARED FUNCTIONS FOR ASSOCIATIVE ARRAY

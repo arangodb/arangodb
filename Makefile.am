@@ -315,10 +315,10 @@ endif
 
 distclean-local:
 	@for i in $(CLEANUP_3RD); do  $(MAKE) $$i;  done
+	rm -f $(BUILT_SOURCES)
 
 clean-local:
 	rm -rf $(CLEANUP)
-	rm -f $(BUILT_SOURCES)
 
 ################################################################################
 ### @brief generated files

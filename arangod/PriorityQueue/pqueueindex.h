@@ -47,6 +47,8 @@ extern "C" {
 #endif
 
 
+struct TRI_doc_mptr_s;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                 priority queue index public types
 // -----------------------------------------------------------------------------
@@ -75,26 +77,22 @@ typedef struct {
 // ...............................................................................
 
 typedef struct {
-  size_t numFields;          // the number of fields
-  TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
-  void* data;                // master document pointer
-  void* collection;          // pointer to the collection;
-  uint64_t pqSlot;           // int pointer to the position in the pq array
-} PQIndexElement;
-
+  size_t numFields;                 // the number of fields
+  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the collection should know about
+  struct TRI_doc_mptr_s* _document; // master document pointer
+  void* collection;                 // pointer to the collection;
+  uint64_t pqSlot;                  // int pointer to the position in the pq array
+}
+TRI_pq_index_element_t;
 
 typedef struct {
   size_t _numElements;
-  PQIndexElement* _elements; // simple list of elements
+  TRI_pq_index_element_t* _elements; // simple list of elements
 } PQIndexElements;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--            Priority Queue Index      constructors and destructors
@@ -105,8 +103,6 @@ typedef struct {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reclaims memory allocated for the index, releasing the Priority
 /// Queue  storage and Associative Array storage.
@@ -116,19 +112,15 @@ void PQueueIndex_destroy (PQIndex*);
 
 void PQueueIndex_free (PQIndex*);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the index
 ////////////////////////////////////////////////////////////////////////////////
 
 PQIndex* PQueueIndex_new (void);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--            Priority Queue Index                    public methods
@@ -139,40 +131,23 @@ PQIndex* PQueueIndex_new (void);
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts an item into a priority queue 
 ////////////////////////////////////////////////////////////////////////////////
 
-int PQIndex_add (PQIndex*, PQIndexElement*);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an item into a priority queue (same as add method above)
-////////////////////////////////////////////////////////////////////////////////
-
-int PQIndex_insert (PQIndex*, PQIndexElement*);
-
+int PQIndex_insert (PQIndex*, TRI_pq_index_element_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an item from the priority queue (not necessarily the top most)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PQIndex_remove (PQIndex*, PQIndexElement*); 
-
+int PQIndex_remove (PQIndex*, struct TRI_doc_mptr_s const*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the top most item without removing it from the queue
 ////////////////////////////////////////////////////////////////////////////////
 
 PQIndexElements* PQIndex_top (PQIndex*, uint64_t); 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an item and inserts a new item
-////////////////////////////////////////////////////////////////////////////////
-
-bool PQIndex_update (PQIndex*, const PQIndexElement*, const PQIndexElement*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

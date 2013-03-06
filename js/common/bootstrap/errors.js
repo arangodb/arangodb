@@ -150,7 +150,11 @@
     "WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING" : { "code" : 3411, "message" : "bitarray index remove failure - item missing in index" }, 
     "ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE" : { "code" : 3413, "message" : "bitarray index insert failure - document attribute value unsupported in index" }, 
     "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES" : { "code" : 3415, "message" : "bitarray index creation failure - one or more index attributes are duplicated." }, 
-    "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES" : { "code" : 3417, "message" : "bitarray index creation failure - one or more index attribute values are duplicated." }
+    "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES" : { "code" : 3417, "message" : "bitarray index creation failure - one or more index attribute values are duplicated." }, 
+    "RESULT_KEY_EXISTS"            : { "code" : 10000, "message" : "element not inserted into structure, because key already exists" }, 
+    "RESULT_ELEMENT_EXISTS"        : { "code" : 10001, "message" : "element not inserted into structure, because it already exists" }, 
+    "RESULT_KEY_NOT_FOUND"         : { "code" : 10002, "message" : "key not found in structure" }, 
+    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }
   };
 }());
 

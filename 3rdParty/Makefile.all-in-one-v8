@@ -33,10 +33,10 @@ BUILT_SOURCES += @V8_LIBS@
 ### @brief additional files to remove
 ################################################################################
 
-CLEANUP += @srcdir@/.v8-build-@TRI_BITS@
 CLEANUP_3RD += clean-v8
 
 clean-v8:
+	rm -f @srcdir@/.v8-build-@TRI_BITS@
 	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
 	rm -rf @top_srcdir@/3rdParty/V8/out
 	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
