@@ -206,8 +206,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
   
-  TRI_InitVectorPointer(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer2(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE, 16);
+  TRI_InitVectorPointer2(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE, 16);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitErrorAql(&context->_error);
@@ -406,7 +406,7 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
                              const bool deescape) {
   char* copy;
 
-  if (!value) {
+  if (value == NULL) {
     ABORT_OOM
   }
 
@@ -415,10 +415,10 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
     copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, length, &outLength);
   }
   else {
-    copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, value);
+    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, value, length);
   }
 
-  if (! copy) {
+  if (copy == NULL) {
     ABORT_OOM
   }
 
