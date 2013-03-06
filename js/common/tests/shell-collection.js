@@ -148,7 +148,25 @@ function CollectionSuiteErrorHandling () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creating with too small journal size
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorInvalidJournalSize : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      try {
+        db._create(cn, { waitForSync : false, journalSize : 1024 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
   };
 }
 
@@ -375,6 +393,7 @@ function CollectionSuite () {
 
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
+      assertEqual(1048576, p.journalSize);
 
       db._drop(cn);
     },
@@ -399,14 +418,7 @@ function CollectionSuite () {
 
       assertEqual(true, p.waitForSync);
       assertEqual(false, p.isVolatile);
-
-      if (p.journalSize < 1024 * 1024) {
-        fail();
-      }
-
-      if (1024 * 1025 < p.journalSize) {
-        fail();
-      }
+      assertEqual(1048576, p.journalSize);
 
       db._drop(cn);
     },
@@ -430,6 +442,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(true, p.isVolatile);
+      assertEqual(1048576, p.journalSize);
       db._drop(cn);
     },
 

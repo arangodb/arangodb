@@ -1018,7 +1018,7 @@ bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker) {
     return false;
   }
 
-  if (marker->_size >= (TRI_voc_size_t) (256 * 1024 * 1024)) {
+  if (marker->_size >= (TRI_voc_size_t) TRI_MARKER_MAXIMAL_SIZE) { 
     // a single marker bigger than 256 MB seems unreasonable
     // note: this is an arbitrary limit
     return false;
