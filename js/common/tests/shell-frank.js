@@ -1,3 +1,5 @@
+require("internal").flushModuleCache();
+
 var jsunity = require("jsunity");
 
 var console = require("console");
@@ -171,12 +173,16 @@ function SetRoutesFrankSpec () {
     },
 
     testSettingHandlers: function () {
-      var myFunc = function () {},
-        routes = app.routingInfo.routes;
+      var myFunc = function a (b, c) { return b + c;},
+        myFuncString = "function a(b, c) { return b + c;}",
+        routes = app.routingInfo.routes,
+        action;
 
       app.get('/simple/route', myFunc);
+
+      action = routes[0].action;
       assertEqual(routes.length, 1);
-      assertEqual(routes[0].handler, myFunc);
+      assertEqual(action.callback, myFuncString);
     }
   };
 }

@@ -57,18 +57,20 @@ Frank = function (options) {
 _.extend(Frank.prototype, {
   handleRequest: function (method, route, argument1, argument2) {
     'use strict';
-    var newRoute = {}, options, handler;
+    var newRoute = {}, options, callback;
 
     if (_.isUndefined(argument2)) {
-      handler = argument1;
+      callback = argument1;
       options = {};
     } else {
       options = argument1;
-      handler = argument2;
+      callback = argument2;
     }
 
     newRoute.url = internal.createUrlObject(route, options.constraint, method);
-    newRoute.handler = handler;
+    newRoute.action = {
+      callback: String(callback)
+    };
 
     this.routingInfo.routes.push(newRoute);
   },
