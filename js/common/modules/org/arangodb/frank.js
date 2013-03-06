@@ -201,6 +201,66 @@ _.extend(Frank.prototype, {
   'delete': function (route, argument1, argument2) {
     'use strict';
     this.handleRequest("delete", route, argument1, argument2);
+  },
+
+  // ## Before and After Hooks
+  // You can use the following two functions to do something
+  // before or respectively after the normal routing process
+  // is happening. You could use that for logging or to manipulate
+  // the request or response (translate it to a certain format for
+  // example).
+
+  // ### Before
+  // The before function takes a path on which it should watch
+  // and a function that it should execute before the routing
+  // takes place. If you do omit the path, the function will
+  // be executed before each request, no matter the path.
+  // Your function gets a Request and a Response object.
+  // An example:
+  //
+  //     app.before('/my/way', function(req, res) {
+  //       //Do some crazy request logging
+  //     });
+  before: function (path, func) {
+    'use strict';
+    if (_.isUndefined(func)) {
+      func = path;
+      path = "/*";
+    }
+
+    this.routingInfo.middleware.push({
+      url: {match: path},
+      action: {callback: function (req, res, opts, next) {
+        func(req, res);
+        next();
+      }}
+    });
+  },
+
+  // ### After
+  // This works pretty similar to the before function.
+  // But it acts after the execution of the handlers
+  // (Big surprise, I suppose).
+  //
+  // An example:
+  //
+  //     app.after('/my/way', function(req, res) {
+  //       //Do some crazy response logging
+  //     });
+  after: function (path, func) {
+    'use strict';
+    if (_.isUndefined(func)) {
+      func = path;
+      path = "/*";
+    }
+
+    this.routingInfo.middleware.push({
+      url: {match: path},
+      action: {callback: function (req, res, opts, next) {
+        next();
+        func(req, res);
+      }}
+    });
   }
 });
 
