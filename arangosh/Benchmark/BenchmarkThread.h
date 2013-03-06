@@ -269,7 +269,7 @@ namespace triagens {
                                                       batchHeaders);
           _time += ((double) timer.time()) / 1000000.0;
 
-          if (result == 0) {
+          if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(numOperations);
             return;
           }
@@ -325,7 +325,7 @@ namespace triagens {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
           }
 
-          if (result == 0) {
+          if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
             return;
           }
