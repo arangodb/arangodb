@@ -415,7 +415,24 @@ void TRI_FreeVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 /// @brief copies a vector and all its strings
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
+TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t*,
+                                           TRI_vector_string_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVectorString (TRI_memory_zone_t*,
+                              TRI_vector_string_t* dst,
+                              TRI_vector_string_t* src);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t*,
+                                               TRI_vector_string_t* dst,
+                                               TRI_vector_pointer_t* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty

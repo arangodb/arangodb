@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,18 +23,25 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HASHINDEX_HASH_ARRAY_H
-#define TRIAGENS_HASHINDEX_HASH_ARRAY_H 1
+#ifndef TRIAGENS_HASH_INDEX_HASH_ARRAY_H
+#define TRIAGENS_HASH_INDEX_HASH_ARRAY_H 1
 
 #include "BasicsC/common.h"
-#include <BasicsC/vector.h>
+#include "BasicsC/vector.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_hash_index_element_s;
+struct TRI_index_search_value_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -49,13 +56,13 @@ extern "C" {
 /// @brief associative array
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_hasharray_s {
+typedef struct TRI_hash_array_s {
   size_t _numFields; // the number of fields indexes
-  uint64_t _elementSize;
+
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed; // the number of used entries
-  
-  char* _table; // the table itself, aligned to a cache line boundary 
+
+  struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
 
 #ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds; // statistics: number of lookup calls
@@ -69,7 +76,7 @@ typedef struct TRI_hasharray_s {
   uint64_t _nrProbesR; // statistics: number of misses while adding
 #endif
 }
-TRI_hasharray_t;
+TRI_hash_array_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +84,7 @@ TRI_hasharray_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 ASSOCIATIVE ARRAY
+// --SECTION--                                                        HASH ARRAY
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -93,22 +100,21 @@ TRI_hasharray_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InitHashArray (TRI_hasharray_t*,
-                        size_t initialDocumentCount,
-                        size_t numFields,
-                        size_t elementSize);
+int TRI_InitHashArray (TRI_hash_array_t*,
+                       size_t initialDocumentCount,
+                       size_t numFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyHashArray (TRI_hasharray_t*);
+void TRI_DestroyHashArray (TRI_hash_array_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeHashArray (TRI_hasharray_t*);
+void TRI_FreeHashArray (TRI_hash_array_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -127,49 +133,60 @@ void TRI_FreeHashArray (TRI_hasharray_t*);
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByKeyHashArray (TRI_hasharray_t*, void* key);
+struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t*,
+                                                           struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_FindByKeyHashArray (TRI_hasharray_t*, void* key);
+struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t*,
+                                                         struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementHashArray (TRI_hasharray_t*, void* element);
+struct TRI_hash_index_element_s* TRI_LookupByElementHashArray (TRI_hash_array_t*,
+                                                               struct TRI_hash_index_element_s* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given an element, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_FindByElementHashArray (TRI_hasharray_t*, void* element);
+struct TRI_hash_index_element_s* TRI_FindByElementHashArray (TRI_hash_array_t*,
+                                                             struct TRI_hash_index_element_s* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertElementHashArray (TRI_hasharray_t*, void* element, bool overwrite);
+int TRI_InsertElementHashArray (TRI_hash_array_t*,
+                                struct TRI_hash_index_element_s* element,
+                                bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertKeyHashArray (TRI_hasharray_t*, void* key, void* element, bool overwrite);
+int TRI_InsertKeyHashArray (TRI_hash_array_t*,
+                            struct TRI_index_search_value_s* key,
+                            struct TRI_hash_index_element_s* element,
+                            bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveElementHashArray (TRI_hasharray_t*, void* element);
+int TRI_RemoveElementHashArray (TRI_hash_array_t*,
+                                struct TRI_hash_index_element_s* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveKeyHashArray (TRI_hasharray_t*, void* key);
+int TRI_RemoveKeyHashArray (TRI_hash_array_t*,
+                            struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -192,37 +209,46 @@ bool TRI_RemoveKeyHashArray (TRI_hasharray_t*, void* key);
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hasharray_t*, void* key);
+TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_t*,
+                                                    struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hasharray_t*, void* element);
+TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hash_array_t*,
+                                                        struct TRI_hash_index_element_s* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertElementHashArrayMulti (TRI_hasharray_t*, void* element, bool overwrite);
+int TRI_InsertElementHashArrayMulti (TRI_hash_array_t*,
+                                     struct TRI_hash_index_element_s* element,
+                                     bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertKeyHashArrayMulti (TRI_hasharray_t*, void* key, void* element, bool overwrite);
+int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t*,
+                                 struct TRI_index_search_value_s* key,
+                                 struct TRI_hash_index_element_s* element,
+                                 bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveElementHashArrayMulti (TRI_hasharray_t*, void* element);
+int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t*,
+                                     struct TRI_hash_index_element_s* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t*, void* key);
+int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t*,
+                                  struct TRI_index_search_value_s* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -234,7 +260,11 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t*, void* key);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

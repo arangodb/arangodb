@@ -139,7 +139,7 @@ typedef struct TRI_doc_mptr_s {
   TRI_voc_fid_t _fid;        // this is the datafile identifier
   TRI_voc_tick_t _validFrom; // this is the creation time
   TRI_voc_tick_t _validTo;   // this is the deletion time (0 if document is not yet deleted)
-  void const* _data;         // this is the pointer to the raw marker
+  void const* _data;         // this is the pointer to the beginning of the raw marker
   char* _key;                // this is the document identifier (string)
 }
 TRI_doc_mptr_t;

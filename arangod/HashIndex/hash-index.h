@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash functions 
+/// @brief hash index
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,148 +22,120 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_HASHES_H
-#define TRIAGENS_BASICS_C_HASHES_H 1
+#ifndef TRIAGENS_HASH_INDEX_HASH_INDEX_H
+#define TRIAGENS_HASH_INDEX_HASH_INDEX_H 1
 
 #include "BasicsC/common.h"
+
+#include "HashIndex/hash-array.h"
+#include "VocBase/index.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--        (FNV-1a Fowler–Noll–Vo hash function)                  FNV
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_doc_mptr_s;
+struct TRI_shaped_sub_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        HASH INDEX
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Hashes
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for blobs
+/// @brief hash index element
+///
+/// This structure is used for the elements of an hash index.
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_FnvHashBlob (TRI_blob_t*);
+typedef struct TRI_hash_index_element_s {
+  struct TRI_doc_mptr_s* _document;
+  struct TRI_shaped_sub_s* _subObjects;
+}
+TRI_hash_index_element_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for memory blobs
+/// @brief hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_FnvHashPointer (void const*, size_t);
+typedef struct TRI_hash_index_s {
+  TRI_index_t base;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for strings
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FnvHashString (char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for blocks
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FnvHashBlock (uint64_t, char const*, size_t); 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a initial FNV for blocks
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FnvHashBlockInitial (void); 
+  TRI_hash_array_t _hashArray;   // the hash array itself
+  TRI_vector_t _paths;          // a list of shape pid which identifies the fields of the index
+}
+TRI_hash_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                             CRC32
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Hashes
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initial CRC32 value
+/// @brief creates a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_InitialCrc32 (void);
+TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
+                                  TRI_vector_pointer_t* fields,
+                                  TRI_vector_t* paths,
+                                  bool unique,
+                                  size_t initialDocumentCount);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief final CRC32 value
+/// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_FinalCrc32 (uint32_t);
+void TRI_DestroyHashIndex (TRI_index_t* idx);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief CRC32 value of data block
+/// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_BlockCrc32 (uint32_t, char const* data, size_t length);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CRC32 value of data block ended by 0
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_BlockStringCrc32 (uint32_t, char const* data);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a CRC32 for blobs
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_Crc32HashBlob (TRI_blob_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a CRC32 for memory blobs
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_Crc32HashPointer (void const*, size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a CRC32 for strings
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_Crc32HashString (char const*);
+void TRI_FreeHashIndex (TRI_index_t* idx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Hashes
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the hashes components
+/// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseHashes (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the hashes components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownHashes (void);
+TRI_index_result_t TRI_LookupHashIndex (TRI_index_t* idx,
+                                        struct TRI_index_search_value_s* searchValue);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -175,7 +147,11 @@ void TRI_ShutdownHashes (void);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

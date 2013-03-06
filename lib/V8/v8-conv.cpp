@@ -1387,6 +1387,29 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a V8 object to a TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> object,
+                                TRI_shaped_json_t* result,
+                                TRI_shaper_t* shaper) {
+  TRI_shape_value_t dst;
+  set<int> seenHashes;
+  vector< v8::Handle<v8::Object> > seenObjects;
+  bool ok = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects);
+
+  if (! ok) {
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  result->_sid = dst._sid;
+  result->_data.length = dst._size;
+  result->_data.data = dst._value;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
