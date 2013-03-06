@@ -383,7 +383,8 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
-
+  
+  
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
@@ -392,31 +393,44 @@ void ArangoServer::buildApplicationServer () {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
   
-  // .............................................................................
-  // set language of default collator
-  // .............................................................................
-
+  
   UVersionInfo icuVersion;
   char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
   u_getVersion(icuVersion);
   u_versionToString(icuVersion, icuVersionString);  
-  LOGGER_INFO("using ICU " << icuVersionString);        
+  
+  
+  // dump versions of important components
+  LOGGER_INFO("ArangoDB " << TRIAGENS_VERSION << " -- " <<
+              "ICU " << icuVersionString << ", " <<
+              "V8 version " << v8::V8::GetVersion() << ", " 
+              "SSL engine " << ApplicationEndpointServer::getSslVersion());
+
+  
+  // .............................................................................
+  // set language of default collator
+  // .............................................................................
+
+  string languageName;
   
   Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'");    
+    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+//    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'");    
   }
   else {
-    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" );        
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+    //LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" );        
   }
+    
 
   // .............................................................................
   // init nonces
   // .............................................................................
   
-  uint32_t optionNonceHashSize = 0; // TODO: add an server option
+  uint32_t optionNonceHashSize = 0; // TODO: add a server option
   if (optionNonceHashSize > 0) {
-    LOGGER_INFO("setting nonce hash size to '" << optionNonceHashSize << "'" );        
+    LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );        
     Nonce::create(optionNonceHashSize);
   }
   
@@ -454,6 +468,8 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
+
+  LOGGER_INFO("using default language '" << languageName << "'");
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
@@ -594,8 +610,7 @@ int ArangoServer::startupServer () {
 
   _applicationServer->start();
 
-  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business");
-  LOGGER_INFO("Have Fun!");
+  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
 
   _applicationServer->wait();
   

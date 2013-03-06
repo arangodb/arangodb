@@ -980,7 +980,7 @@ bool ApplicationServer::readConfigurationFile () {
       }
       else {
 
-        LOGGER_INFO("no user init file '" << homeDir << "' found");
+        LOGGER_DEBUG("no user init file '" << homeDir << "' found");
 
       }
     }
