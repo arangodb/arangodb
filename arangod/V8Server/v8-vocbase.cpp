@@ -817,7 +817,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
  
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
-    freeBarrier = false;
+    if (! result.IsEmpty()) {
+      freeBarrier = false;
+    }
   }
 
   res = trx.finish(res);

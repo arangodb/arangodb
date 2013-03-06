@@ -123,6 +123,9 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
     else if (ptr->_type == TRI_BARRIER_ELEMENT) {
       LOG_ERROR("logic error. shouldn't have barrier elements in barrierlist on unload");
     }
+    else {
+      LOG_ERROR("unknown barrier type");
+    }
 
     ptr = next;
   }
@@ -250,7 +253,7 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
 
-  if (!element) {
+  if (element == NULL) {
     return NULL;
   }
 

@@ -200,8 +200,13 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
   while (base->_state == TRI_COL_STATE_WRITE) {
     n = base->_journals._length;
 
-    for (i = 0;  i < n;  ++i) {
+    if (n == 0) {
+      // whoops, there are no journals??
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      return NULL;
+    }
 
+    for (i = 0;  i < n;  ++i) {
       // select datafile
       datafile = base->_journals._buffer[i];
 
@@ -215,6 +220,7 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
         return datafile;
       }
       else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
+        // some other error
         TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
         return NULL;
