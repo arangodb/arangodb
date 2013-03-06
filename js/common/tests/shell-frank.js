@@ -196,6 +196,88 @@ function SetRoutesFrankSpec () {
   };
 }
 
+function AddMidlewareFrankSpec () {
+  var app;
+
+  return {
+    setUp: function () {
+      app = new Frank();
+    },
+
+    testAddABeforeMiddlewareForAllRoutes: function () {
+      var a = false,
+        b = false,
+        myFunc = function (req, res) { a = (req > res); },
+        myNext = function () { b = a; },
+        middleware = app.routingInfo.middleware,
+        resultingCallback;
+
+      app.before(myFunc);
+      assertEqual(middleware.length, 2);
+      assertEqual(middleware[1].url.match, '/*');
+      resultingCallback = middleware[1].action.callback;
+      resultingCallback(2, 1, undefined, myNext);
+
+      assertTrue(a);
+      assertTrue(b);
+    },
+
+    testAddABeforeMiddlewareForCertainRoutes: function () {
+      var a = false,
+        b = false,
+        myFunc = function (req, res) { a = (req > res); },
+        myNext = function () { b = a; },
+        middleware = app.routingInfo.middleware,
+        resultingCallback;
+
+      app.before('/fancy/path', myFunc);
+      assertEqual(middleware.length, 2);
+      assertEqual(middleware[1].url.match, '/fancy/path');
+      resultingCallback = middleware[1].action.callback;
+      resultingCallback(2, 1, undefined, myNext);
+
+      assertTrue(a);
+      assertTrue(b);
+    },
+
+    testAddAfterMiddlewareForAllRoutes: function () {
+      var a = false,
+        b = false,
+        myNext = function () { a = true; },
+        myFunc = function (req, res) { b = a && (req > res); },
+        middleware = app.routingInfo.middleware,
+        resultingCallback;
+
+      app.after(myFunc);
+      assertEqual(middleware.length, 2);
+      assertEqual(middleware[1].url.match, '/*');
+      resultingCallback = middleware[1].action.callback;
+      resultingCallback(2, 1, undefined, myNext);
+
+      assertTrue(a);
+      assertTrue(b);
+    },
+
+    testAddAfterMiddlewareForCertainRoutes: function () {
+      var a = false,
+        b = false,
+        myNext = function () { a = true; },
+        myFunc = function (req, res) { b = a && (req > res); },
+        middleware = app.routingInfo.middleware,
+        resultingCallback;
+
+      app.after('/my/way', myFunc);
+      assertEqual(middleware.length, 2);
+      assertEqual(middleware[1].url.match, '/my/way');
+      resultingCallback = middleware[1].action.callback;
+      resultingCallback(2, 1, undefined, myNext);
+
+      assertTrue(a);
+      assertTrue(b);
+    },
+  };
+}
+
 function BaseMiddlewareWithoutTemplateSpec () {
   var baseMiddleware, request, response, options, next;
 
@@ -356,6 +438,7 @@ function BaseMiddlewareWithTemplateSpec () {
 
 jsunity.run(CreateFrankSpec);
 jsunity.run(SetRoutesFrankSpec);
+jsunity.run(AddMidlewareFrankSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
 
