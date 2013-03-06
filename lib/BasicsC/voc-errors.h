@@ -276,6 +276,18 @@ extern "C" {
 ///   Will be raised when the edge could not be created
 /// - 1908: @LIT{could not change edge}
 ///   Will be raised when the edge could not be changed
+/// - 1951: @LIT{invalid session}
+///   Will be raised when an invalid session id is passed to the server
+/// - 1952: @LIT{could not create session}
+///   Will be raised when the session could not be created
+/// - 1953: @LIT{could not change session}
+///   Will be raised when session data could not be changed
+/// - 1961: @LIT{invalid form}
+///   Will be raised when an invalid form id is passed to the server
+/// - 1962: @LIT{could not create form}
+///   Will be raised when the form could not be created
+/// - 1963: @LIT{could not change form}
+///   Will be raised when form data could not be changed
 /// - 2000: @LIT{unknown client error}
 ///   This error should not happen.
 /// - 2001: @LIT{could not connect to server}
@@ -1540,6 +1552,66 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             (1908)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1951: ERROR_SESSION_INVALID_SESSION
+///
+/// invalid session
+///
+/// Will be raised when an invalid session id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_INVALID_SESSION                                 (1951)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1952: ERROR_SESSION_COULD_NOT_CREATE_SESSION
+///
+/// could not create session
+///
+/// Will be raised when the session could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CREATE_SESSION                        (1952)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1953: ERROR_SESSION_COULD_NOT_CHANGE_SESSION
+///
+/// could not change session
+///
+/// Will be raised when session data could not be changed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CHANGE_SESSION                        (1953)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1961: ERROR_SESSION_INVALID_FORM
+///
+/// invalid form
+///
+/// Will be raised when an invalid form id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_INVALID_FORM                                    (1961)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1962: ERROR_SESSION_COULD_NOT_CREATE_FORM
+///
+/// could not create form
+///
+/// Will be raised when the form could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CREATE_FORM                           (1962)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1963: ERROR_SESSION_COULD_NOT_CHANGE_FORM
+///
+/// could not change form
+///
+/// Will be raised when form data could not be changed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CHANGE_FORM                           (1963)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
