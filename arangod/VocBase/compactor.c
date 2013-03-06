@@ -72,7 +72,7 @@ static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
 /// to allow the gc to start when waiting for a journal to appear.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* sim,
+static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* document,
                                         TRI_voc_size_t size,
                                         TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
@@ -80,34 +80,34 @@ static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* sim,
   size_t i;
   size_t n;
 
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   while (true) {
-    n = sim->base.base._compactors._length;
+    n = document->base.base._compactors._length;
 
     for (i = 0;  i < n;  ++i) {
 
       // select datafile
-      datafile = sim->base.base._compactors._buffer[i];
+      datafile = document->base.base._compactors._buffer[i];
 
       // try to reserve space
       res = TRI_ReserveElementDatafile(datafile, size, result);
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
         return datafile;
       }
       else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
-        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
         return NULL;
       }
     }
 
-    TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+    TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   }
 
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,16 +268,12 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     // check if the document is still active
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
     deleted = found == NULL || found->_validTo != 0;
       
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
     // update datafile
-    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
-
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
 
     if (deleted) {
@@ -285,13 +281,13 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi->_sizeDead += marker->_size - markerSize - keyBodySize;
 
       LOG_DEBUG("found a stale document after copying: %s", ((char*) d + d->_offsetKey));
-      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+      TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
       return true;
     }
 
     cnv.c = found;
-    cnv.v->_fid = datafile->_fid;
+    cnv.v->_fid = fid;
     cnv.v->_data = result;
     // let _key point to the new key position
     cnv.v->_key = ((char*) result) + (((TRI_doc_document_key_marker_t*) result)->_offsetKey);
@@ -300,11 +296,13 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     dfi->_numberAlive += 1;
     dfi->_sizeAlive += marker->_size - markerSize - keyBodySize;
 
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+    TRI_doc_deletion_key_marker_t const* d = (TRI_doc_deletion_key_marker_t const*) marker;
+
     // write to compactor files
     res = CopyDocument(doc, marker, &result, &fid);
 
@@ -313,12 +311,21 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     // update datafile info
-    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
+    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
+    if (found != NULL) {
+      cnv.c = found;
+      cnv.v->_fid = fid;
+      cnv.v->_data = result;
+      // let _key point to the new key position
+      cnv.v->_key = ((char*) result) + (((TRI_doc_deletion_key_marker_t*) result)->_offsetKey);
+    }
 
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
     dfi->_numberDeletion += 1;
 
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
   return true;
@@ -504,7 +511,7 @@ void TRI_CompactorVocBase (void* data) {
     TRI_col_type_e type;
     // keep initial _state value as vocbase->_state might change during compaction loop
     int state = vocbase->_state;
-    bool worked = false;
+    bool worked;
 
     // copy all collections
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -534,6 +541,7 @@ void TRI_CompactorVocBase (void* data) {
         continue;
       }
 
+      worked = false;
       type = primary->base._info._type;
 
       // for simple collection, compactify datafiles
@@ -541,8 +549,13 @@ void TRI_CompactorVocBase (void* data) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
           TRI_barrier_t* ce = TRI_CreateBarrierElement(&primary->_barrierList);
 
-          worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
-          if (ce != NULL) {
+          if (ce == NULL) {
+            // out of memory
+            LOG_WARNING("out of memory when trying to create a barrier element");
+          }
+          else {
+            worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
+            
             TRI_FreeBarrier(ce);
           }
         }
