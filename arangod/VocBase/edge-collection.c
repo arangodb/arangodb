@@ -210,9 +210,9 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
   TRI_multi_pointer_t* edgesIndex;
 
   // search criteria 
-  entry._mptr = 0;
+  entry._mptr = NULL;
   entry._cid = cid;
-  entry._key = key;
+  entry._searchKey._key = key;
 
   // initialise the result vector
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
