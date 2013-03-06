@@ -29,6 +29,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "V8/v8-conv.h"
@@ -523,51 +524,54 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
-  LOGGER_DEBUG("V8 version: " << v8::V8::GetVersion()); 
-
-  // use a minimum of 1 second for GC
-  if (_gcFrequency < 1) {
-    _gcFrequency = 1;
-  }
-
   // check the startup modules
   if (_startupModules.empty()) {
     LOGGER_FATAL_AND_EXIT("no 'javascript.modules-path' has been supplied, giving up");
-  }
-  else {
-    LOGGER_INFO("using JavaScript modules path '" << _startupModules << "'");
-  }
-
-  if (! _startupNodeModules.empty()) {
-    LOGGER_INFO("using Node modules path '" << _startupNodeModules << "'");
   }
 
   // set up the startup loader
   if (_startupPath.empty()) {
     LOGGER_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
   }
-  else {
-    LOGGER_INFO("using JavaScript startup files at '" << _startupPath << "'");
-    _startupLoader.setDirectory(_startupPath);
+
+  // set the actions path
+  if (_useActions && _actionPath.empty()) {
+    LOGGER_FATAL_AND_EXIT("no 'javascript.action-directory' has been supplied, giving up");
   }
+
+  // dump paths
+  {
+    vector<string> paths;
+
+    paths.push_back(string("Javascript startup path '" + _startupPath + "'"));
+    paths.push_back(string("Javascript modules path '" + _startupModules + "'"));
+    if (! _startupNodeModules.empty()) {
+      paths.push_back(string("Node modules path '" + _startupNodeModules + "'"));
+    }
+    if (_useActions) {
+      paths.push_back(string("Javascript action path '" + _actionPath + "'"));
+    }
+
+    LOGGER_INFO("using " << StringUtils::join(paths, ", "));
+  }
+  
+  _startupLoader.setDirectory(_startupPath);
 
   
   // set up action loader
   if (_useActions) {
-    if (_actionPath.empty()) {
-      LOGGER_FATAL_AND_EXIT("no 'javascript.action-directory' has been supplied, giving up");
-    }
-    else {
-      LOGGER_INFO("using JavaScript action files at '" << _actionPath << "'");
-
-      _actionLoader.setDirectory(_actionPath);
-    }
+    _actionLoader.setDirectory(_actionPath);
   }
 
   // add v8 options
   if (_v8Options.size() > 0) {
     LOGGER_INFO("using V8 options '" << _v8Options << "'");
     v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
+  }
+  
+  // use a minimum of 1 second for GC
+  if (_gcFrequency < 1) {
+    _gcFrequency = 1;
   }
 
   // setup instances

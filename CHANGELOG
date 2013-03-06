@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* adjust startup log output to be more compact, less verbose
+
 * set the required minimum number of file descriptors to 256.
   On server start, this number is enforced on systems that have rlimit. If the limit
   cannot be enforced, starting the server will fail.
