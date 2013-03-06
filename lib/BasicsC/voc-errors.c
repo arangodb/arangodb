@@ -126,6 +126,12 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
+  REG_ERROR(ERROR_SESSION_INVALID_SESSION, "invalid session");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CREATE_SESSION, "could not create session");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CHANGE_SESSION, "could not change session");
+  REG_ERROR(ERROR_SESSION_INVALID_FORM, "invalid form");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CREATE_FORM, "could not create form");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CHANGE_FORM, "could not change form");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");

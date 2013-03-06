@@ -187,6 +187,17 @@ ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised w
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed"
 
 ################################################################################
+## Session errors
+################################################################################
+
+ERROR_SESSION_INVALID_SESSION,1951,"invalid session","Will be raised when an invalid session id is passed to the server"
+ERROR_SESSION_COULD_NOT_CREATE_SESSION,1952,"could not create session","Will be raised when the session could not be created"
+ERROR_SESSION_COULD_NOT_CHANGE_SESSION,1953,"could not change session","Will be raised when session data could not be changed"
+ERROR_SESSION_INVALID_FORM,1961,"invalid form","Will be raised when an invalid form id is passed to the server"
+ERROR_SESSION_COULD_NOT_CREATE_FORM,1962,"could not create form","Will be raised when the form could not be created"
+ERROR_SESSION_COULD_NOT_CHANGE_FORM,1963,"could not change form","Will be raised when form data could not be changed"
+
+################################################################################
 ## Simple Client
 ################################################################################
 
