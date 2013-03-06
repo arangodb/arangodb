@@ -91,13 +91,31 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
     // check and remove all callback elements at the beginning of the list
     TRI_LockSpin(&container->_lock);
 
+    // check the element on top of the barrier list
+    // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
+    // to document data in a datafile. We must then not unload or remove a file
+
     if (container->_begin == NULL || container->_begin->_type == TRI_BARRIER_ELEMENT) {
-      // did not find anything on top of the barrier list or found an element marker
-      // this means we must exit
+      // did not find anything at the head of the barrier list or found an element marker
+      // this means we must exit and cannot throw away datafiles and can unload collections
       TRI_UnlockSpin(&container->_lock);
       return;
     }
-    
+
+    // no TRI_BARRIER_ELEMENT at the head of the barrier list. This means that there is
+    // some other action we can perform (i.e. unloading a datafile or a collection)
+
+    // note that there is no need to check the entire list for a TRI_BARRIER_ELEMENT as
+    // the list is filled up in chronological order. New barriers are always added to the
+    // tail of the list, and if we have the following list
+    // HEAD -> TRI_BARRIER_DATAFILE_CALLBACK -> TRI_BARRIER_ELEMENT
+    // then it is still safe to execute the datafile callback operation, even if there
+    // is a TRI_BARRIER_ELEMENT after it. 
+    // This is the case because the TRI_BARRIER_DATAFILE_CALLBACK is only put into the
+    // barrier list after changing the pointers in all headers. After the pointers are
+    // changed, it is safe to unload/remove an old datafile (that noone points to). And
+    // any newer TRI_BARRIER_ELEMENTS will always reference data inside other datafiles.
+
     element = container->_begin;
     assert(element);
 
@@ -111,7 +129,11 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
       element->_next->_prev = NULL;
     }
 
+    // yes, we can release the lock here
     TRI_UnlockSpin(&container->_lock);
+
+    // someone else might now insert a new TRI_BARRIER_ELEMENT here, but it will 
+    // always refer to a different datafile than the one that we will now unload
 
     // execute callback, sone of the callbacks might delete or free our collection
     if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {

@@ -808,19 +808,24 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   assert(col);
   assert(key);
   
-
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
+    
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+  if (barrier == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+  }
+
+  assert(barrier != 0);
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
   res = trx.read(&document, key, true);
-  
+ 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
   }
 
@@ -831,6 +836,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
 
   if (document._key == 0 || document._data == 0) {
+    TRI_FreeBarrier(barrier);
+
     return scope.Close(v8::ThrowException(
                        TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                              "document not found")));

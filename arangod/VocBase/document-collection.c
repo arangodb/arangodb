@@ -545,9 +545,10 @@ static void UpdateHeader (TRI_datafile_t* datafile,
   marker = (TRI_doc_document_key_marker_t const*) m;
   *update = *header;
 
-  update->_rid = marker->_rid;
-  update->_fid = datafile->_fid;
+  update->_rid  = marker->_rid;
+  update->_fid  = datafile->_fid;
   update->_data = marker;
+  update->_key  = ((char*) marker) + marker->_offsetKey;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,13 +1465,12 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     
       header = collection->_headers->request(collection->_headers);
       // TODO: header might be NULL and must be checked
-      header = collection->_headers->verify(collection->_headers, header);
 
-      header->_rid = d->_rid;
+      header->_rid       = d->_rid;
       header->_validFrom = marker->_tick;
       header->_validTo   = marker->_tick; // TODO: fix for trx
-      header->_data = 0;
-      header->_key = key;
+      header->_data      = marker;
+      header->_key       = key;
       
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
@@ -1491,6 +1491,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       change.c = found;
       change.v->_validFrom = marker->_tick;
       change.v->_validTo   = marker->_tick; // TODO: fix for trx
+      change.v->_data      = marker;
+      change.v->_key       = key;
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
