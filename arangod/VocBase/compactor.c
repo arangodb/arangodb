@@ -164,8 +164,8 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
 
   collection = data;
 
-  number = TRI_StringUInt64(datafile->_fid);
-  name = TRI_Concatenate3String("deleted-", number, ".db");
+  number   = TRI_StringUInt64(datafile->_fid);
+  name     = TRI_Concatenate3String("deleted-", number, ".db");
   filename = TRI_Concatenate2File(collection->_directory, name);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -301,8 +301,6 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     dfi->_sizeAlive += marker->_size - markerSize - keyBodySize;
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
-    
-   // TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
   // deletion
