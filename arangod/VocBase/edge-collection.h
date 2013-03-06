@@ -128,7 +128,7 @@ TRI_edge_direction_e;
 typedef struct TRI_edge_header_s {
   TRI_doc_mptr_t const* _mptr;
   TRI_voc_cid_t _cid; // from or to, depending on the direction
-  TRI_voc_key_t _key;
+  union { TRI_voc_key_t _key; TRI_voc_size_t _offsetKey; } _searchKey;
   TRI_edge_flags_t _flags;
 }
 TRI_edge_header_t;
