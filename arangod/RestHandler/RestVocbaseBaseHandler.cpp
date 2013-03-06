@@ -306,7 +306,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
   TRI_json_t augmented;
   TRI_Init2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, 8);
 
-  TRI_json_t* _id = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str());
+  TRI_json_t* _id = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str(), id.size());
 
   if (_id) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_id", _id);
@@ -333,8 +333,8 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
   }
 
   // add document identifier to buffer

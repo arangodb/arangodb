@@ -1366,7 +1366,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
-    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
+    return TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
   }
 
   if (parameter->IsArray()) {
@@ -1472,7 +1472,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
-    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
+    return TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
   }
 
   if (parameter->IsArray()) {
