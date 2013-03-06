@@ -137,8 +137,7 @@ namespace triagens {
 
           _connection = GeneralClientConnection::factory(_endpoint, 10.0, 10.0, 3);
           if (_connection == 0) {
-            cerr << "out of memory" << endl;
-            exit(EXIT_FAILURE);
+            LOGGER_FATAL_AND_EXIT("out of memory");
           }
 
           _client = new SimpleHttpClient(_connection, 10.0, true);
@@ -156,43 +155,17 @@ namespace triagens {
             if (result) {
               delete result;
             }
-            cerr << "could not connect to server" << endl;
-            exit(EXIT_FAILURE);
+
+            LOGGER_FATAL_AND_EXIT("could not connect to server");
           }
 
           delete result;
 
 
-          // if we're the first thread, wipe the existing collection
-          if (_threadNumber == 0 && _operation->useCollection()) {
-            result = _client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                      "/_api/collection/" + _operation->collectionName(),
-                                      "",
-                                      0, 
-                                      headerFields); 
-
-            if (result == 0 || (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 404)) {
-              cerr << "could not wipe existing collection " << _operation->collectionName() << endl;
-              exit(EXIT_FAILURE);
-            }
-            else {
-              delete result;
-            }
-            
-            // now create the collection
-            string payload = "{\"name\":\"" + _operation->collectionName() + "\"}";
-            result = _client->request(HttpRequest::HTTP_REQUEST_POST,
-                                      "/_api/collection",
-                                      payload.c_str(),
-                                      payload.size(), 
-                                      headerFields); 
-
-            if (result == 0 || (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 201)) {
-              cerr << "could not create collection " << _operation->collectionName() << endl;
-              exit(EXIT_FAILURE);
-            }
-            else {
-              delete result;
+          // if we're the first thread, set up the test
+          if (_threadNumber == 0) { 
+            if (! _operation->setUp(_client)) {
+              LOGGER_FATAL_AND_EXIT("could not set up the test");
             }
           }
 

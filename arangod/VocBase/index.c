@@ -488,13 +488,20 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
 static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
   TRI_edge_header_t const* h;
   uint64_t hash[3];
-
+  char* key;
+  
   h = data;
+  if (h->_mptr != NULL) {
+    key = ((char*) h->_mptr->_data) + h->_searchKey._offsetKey;
+  }
+  else {
+    key = h->_searchKey._key;
+  }
 
   // only include directional bits for hashing, exclude special bits
   hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION); 
   hash[1] = h->_cid;
-  hash[2] = TRI_FnvHashString((char const*) h->_key); 
+  hash[2] = TRI_FnvHashString(key);
 
   return TRI_FnvHashPointer(hash, sizeof(hash));  
 }
@@ -508,14 +515,30 @@ static bool IsEqualKeyEdge (TRI_multi_pointer_t* array,
                             void const* right) {
   TRI_edge_header_t const* l;
   TRI_edge_header_t const* r;
+  const char* lKey;
+  const char* rKey;
 
   l = left;
   r = right;
+  
+  if (l->_mptr != NULL) {
+    lKey = ((char*) ((TRI_doc_edge_key_marker_t const*) l->_mptr->_data)) + l->_searchKey._offsetKey;
+  }
+  else {
+    lKey = l->_searchKey._key;
+  }
+  
+  if (r->_mptr != NULL) {
+    rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
+  }
+  else {
+    rKey = r->_searchKey._key;
+  }
 
   // only include directional flags, exclude special bits
   return ((l->_flags & TRI_EDGE_BITS_DIRECTION) == (r->_flags & TRI_EDGE_BITS_DIRECTION)) &&
          (l->_cid == r->_cid) && 
-         (strcmp(l->_key, r->_key) == 0);  
+         (strcmp(lKey, rKey) == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,22 +550,38 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
                                 void const* right) {
   TRI_edge_header_t const* l;
   TRI_edge_header_t const* r;
+  const char* lKey;
+  const char* rKey;
 
   l = left;
   r = right;
+
+  if (l->_mptr != NULL) {
+    lKey = ((char*) ((TRI_doc_edge_key_marker_t const*) l->_mptr->_data)) + l->_searchKey._offsetKey;
+  }
+  else {
+    lKey = l->_searchKey._key;
+  }
+  
+  if (r->_mptr != NULL) {
+    rKey = ((char*) ((TRI_doc_edge_key_marker_t const*) r->_mptr->_data)) + r->_searchKey._offsetKey;
+  }
+  else {
+    rKey = r->_searchKey._key;
+  }
 
   // only include directional flags, exclude special bits
   return (l->_mptr == r->_mptr) && 
          ((l->_flags & TRI_EDGE_BITS_DIRECTION) == (r->_flags & TRI_EDGE_BITS_DIRECTION)) && 
          (l->_cid == r->_cid) && 
-         (strcmp(l->_key, r->_key) == 0);
+         (strcmp(lKey, rKey) == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert method for edges
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
   TRI_edge_header_t* entryIn;
   TRI_edge_header_t* entryOut;
   TRI_doc_edge_key_marker_t const* edge;
@@ -550,7 +589,7 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
 
-  edge = doc->_data;
+  edge = mptr->_data;
 
   // is the edge self-reflexive (_from & _to are identical)?
   isReflexive = (edge->_toCid == edge->_fromCid && strcmp(((char*) edge) + edge->_offsetToKey, ((char*) edge) + edge->_offsetFromKey) == 0);
@@ -570,17 +609,17 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   }
   
   // first slot: IN
-  entryIn->_mptr = doc;
+  entryIn->_mptr = mptr;
   entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive);
   entryIn->_cid = edge->_toCid;
-  entryIn->_key = ((char*) edge) + edge->_offsetToKey;
+  entryIn->_searchKey._offsetKey = edge->_offsetToKey;
   TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, false);
 
   // second slot: OUT
-  entryOut->_mptr = doc;
+  entryOut->_mptr = mptr;
   entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive);
   entryOut->_cid = edge->_fromCid;
-  entryOut->_key = ((char*) edge) + edge->_offsetFromKey;
+  entryOut->_searchKey._offsetKey = edge->_offsetFromKey;
   TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, false);
 
   return TRI_ERROR_NO_ERROR;
@@ -612,7 +651,7 @@ static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // we do not need to free the OUT element
   entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_OUT);
   entry._cid = edge->_fromCid;
-  entry._key = ((char*) edge) + edge->_offsetFromKey;
+  entry._searchKey._offsetKey = edge->_offsetFromKey;
   old = TRI_RemoveElementMultiPointer(edgesIndex, &entry);
 
   // the pointer to the OUT element is also the memory pointer we need to free
@@ -623,7 +662,7 @@ static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // IN
   entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_IN);
   entry._cid = edge->_toCid;
-  entry._key = ((char*) edge) + edge->_offsetToKey;
+  entry._searchKey._offsetKey = edge->_offsetToKey;
   old = TRI_RemoveElementMultiPointer(edgesIndex, &entry);
 
   // the pointer to the IN element is also the memory pointer we need to free
