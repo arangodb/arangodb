@@ -26,11 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pqueueindex.h"
-#include "ShapedJson/shaped-json.h"
-#include "ShapedJson/json-shaper.h"
-#include "VocBase/primary-collection.h"
+
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
+#include "ShapedJson/json-shaper.h"
+#include "ShapedJson/shaped-json.h"
+#include "VocBase/primary-collection.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--             priority queue index some useful forward declarations
@@ -56,16 +58,10 @@ static bool     IsEmptyElementPQIndex(TRI_associative_array_t*, void*);
 static bool     IsEqualElementElementPQIndex(TRI_associative_array_t*, void*, void*);
 static bool     IsEqualKeyElementPQIndex(TRI_associative_array_t*, void*, void*);
 
-
-// comparison helpers
-static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right,
-                                        TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper);
-static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right,
-                              TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper);
-
 // ...............................................................................
 // some internal error numbers which can be mapped later to global error numbers
 // ...............................................................................
+
 enum {
   PQIndex_InvalidIndexError = -1,
   PQIndex_InvalidElementError = -10,
@@ -75,8 +71,6 @@ enum {
 
   PQIndex_RemoveInternalError = 1001
 } PQueueIndexErrors;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -171,13 +165,17 @@ PQIndex* PQueueIndex_new (void) {
 
   // ..........................................................................
   // Initialise the priority que
-  // ..........................................................................
-
-  ok = TRI_InitPQueue(idx->_pq, 100, sizeof(PQIndexElement), false,
+  // ..........................................................................  
+  
+  ok = TRI_InitPQueue(idx->_pq,
+                      100,
+                      sizeof(TRI_pq_index_element_t),
+                      false, 
                       ClearStoragePQIndex,
                       GetStoragePQIndex,
                       IsLessPQIndex,
                       UpdateStoragePQIndex);
+
   if (! ok) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_pq);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_aa);
@@ -191,8 +189,8 @@ PQIndex* PQueueIndex_new (void) {
   // ..........................................................................
 
   TRI_InitAssociativeArray(idx->_aa,
-                           TRI_UNKNOWN_MEM_ZONE,
-                           sizeof(PQIndexElement),
+                           TRI_UNKNOWN_MEM_ZONE, 
+                           sizeof(TRI_pq_index_element_t), 
                            HashKeyPQIndex,
                            HashElementPQIndex,
                            ClearElementPQIndex,
@@ -208,7 +206,6 @@ PQIndex* PQueueIndex_new (void) {
 
   *((TRI_associative_array_t**)((char*)(idx->_pq) + sizeof(TRI_pqueue_t))) = idx->_aa;
 
-
   return idx;
 }
 
@@ -216,8 +213,6 @@ PQIndex* PQueueIndex_new (void) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--            Priority Queue Index                    public methods
@@ -228,13 +223,11 @@ PQIndex* PQueueIndex_new (void) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts an item into a priority queue
 ////////////////////////////////////////////////////////////////////////////////
 
-int PQIndex_add(PQIndex* idx, PQIndexElement* element) {
-
+int PQIndex_insert (PQIndex* idx, TRI_pq_index_element_t* element) {
   if (idx == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -247,26 +240,26 @@ int PQIndex_add(PQIndex* idx, PQIndexElement* element) {
   // Check if item is already added to the associative array
   // ...........................................................................
 
-  if (TRI_FindByKeyAssociativeArray(idx->_aa, element->data) != NULL) {
+  if (TRI_FindByKeyAssociativeArray(idx->_aa, element->_document) != NULL) {
     // attempt to add duplicate document to the priority queue
     return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
-
-
+  
   // ...........................................................................
   // Initialise the priority queue array storage pointer
   // ...........................................................................
+
   element->pqSlot = 0;
 
   // ...........................................................................
   // Add item to associative array
   // ...........................................................................
+
   if (!TRI_InsertElementAssociativeArray(idx->_aa, element, false)) {
     // can not add item to associative array -- give up on insert
     return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
-
-
+  
   if (!idx->_pq->add(idx->_pq, element)) {
     TRI_RemoveElementAssociativeArray(idx->_aa, element, NULL);
     // can not add item to priority queue array -- give up on insert
@@ -276,30 +269,15 @@ int PQIndex_add(PQIndex* idx, PQIndexElement* element) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an item into a priority queue (same as add method above)
-////////////////////////////////////////////////////////////////////////////////
-
-int PQIndex_insert(PQIndex* idx, PQIndexElement* element) {
-  return PQIndex_add(idx, element);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an item from the priority queue (not necessarily the top most)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
-
-  PQIndexElement* item;
+int PQIndex_remove (PQIndex* idx, TRI_doc_mptr_t const* doc) {
+  TRI_pq_index_element_t* item;  
   bool ok;
 
   if (idx == NULL) {
-    return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
-  }
-
-  if (element == NULL) {
     return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
 
@@ -307,26 +285,25 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   // Check if item exists in the associative array.
   // ...........................................................................
 
-  item = TRI_FindByKeyAssociativeArray(idx->_aa, element->data);
+  item = TRI_FindByKeyAssociativeArray(idx->_aa, CONST_CAST(doc));
+
   if (item == NULL) {
     return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING;
   }
-
-
+  
   // ...........................................................................
   // Remove item from the priority queue
   // ...........................................................................
-
-  ok = idx->_pq->remove(idx->_pq,item->pqSlot, true);
-
-
+  
+  ok = idx->_pq->remove(idx->_pq, item->pqSlot, true);
+ 
   // ...........................................................................
   // Remove item from associative array
   // Must come after remove above, since update storage will be called.
   // ...........................................................................
-
-  ok = TRI_RemoveElementAssociativeArray(idx->_aa,item,NULL) && ok;
-
+  
+  ok = TRI_RemoveElementAssociativeArray(idx->_aa, item, NULL) && ok;
+  
   if (!ok) {
     return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
@@ -334,16 +311,15 @@ int PQIndex_remove(PQIndex* idx, PQIndexElement* element) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the top most item without removing it from the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
+PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
 
   PQIndexElements* result;
   PQIndexElements tempResult;
-  PQIndexElement* element;
+  TRI_pq_index_element_t* element;  
   uint64_t j;
   bool ok;
   uint64_t numCopied;
@@ -357,35 +333,46 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
     return NULL;
   }
 
-
-  // .............................................................................
+  // .............................................................................  
   // Optimise for the common case where we remove only a single element
   // .............................................................................
 
   if (numElements == 1) {
     result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElements), false);
+
     if (result == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return NULL;
     }
-    result->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElement) * numElements, false);
-    if (result->_elements == NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return NULL;
+
+    element = idx->_pq->top(idx->_pq);
+
+    if (element == NULL) {
+      result->_numElements = 0;
+      result->_elements = NULL;
     }
-    result->_numElements = numElements;
-    result->_elements[0] = *((PQIndexElement*)(idx->_pq->top(idx->_pq)));
+    else {
+      result->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pq_index_element_t) * numElements, false);
+
+      if (result->_elements == NULL) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
+        TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+        return NULL;
+      }
+
+      result->_numElements = numElements;
+      result->_elements[0] = *element;
+    }
+
     return result;
-  }
-
-
-
-  // .............................................................................
+  }  
+  
+  // .............................................................................  
   // Two or more elements are 'topped'
-  // .............................................................................
+  // .............................................................................  
+  
+  tempResult._elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pq_index_element_t) * numElements, false);
 
-  tempResult._elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElement) * numElements, false);
   if (tempResult._elements == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
@@ -393,30 +380,34 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
 
   ok = true;
   numCopied = 0;
+
   for (j = 0; j < numElements; ++j) {
-    element = (PQIndexElement*)(idx->_pq->top(idx->_pq));
+    element = (TRI_pq_index_element_t*)(idx->_pq->top(idx->_pq));
+
     if (element == NULL) {
       break;
-    }
-
-
+    }      
+    
     tempResult._elements[j] = *element;
-    ok = idx->_pq->remove(idx->_pq,element->pqSlot, false);
+    ok = idx->_pq->remove(idx->_pq, element->pqSlot, false);
+
     if (!ok) {
       break;
     }
+
     ++numCopied;
   }
 
-
   result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElements), false);
+
   if (result == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempResult._elements);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
 
-  result->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElement) * numCopied, false);
+  result->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pq_index_element_t) * numCopied, false);
+
   if (result->_elements == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempResult._elements);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
@@ -437,25 +428,9 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
   return result;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an item and inserts a new item
-////////////////////////////////////////////////////////////////////////////////
-
-bool PQIndex_update(PQIndex* idx, const PQIndexElement* oldElement, const PQIndexElement* newElement) {
-  assert(false);
-  return false;
-}
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--             priority queue index implementation of callbacks
@@ -470,26 +445,29 @@ bool PQIndex_update(PQIndex* idx, const PQIndexElement* oldElement, const PQInde
 // callbacks for the priority queue
 // .............................................................................
 
+static void ClearStoragePQIndex (TRI_pqueue_t* pq, void* item) {
+  TRI_pq_index_element_t* element;
+  
+  element = (TRI_pq_index_element_t*)(item);
 
-static void ClearStoragePQIndex(TRI_pqueue_t* pq, void* item) {
-  PQIndexElement* element;
-
-  element = (PQIndexElement*)(item);
   if (element == 0) {
     return;
   }
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->fields);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
   return;
 }
 
 
 static uint64_t GetStoragePQIndex(TRI_pqueue_t* pq, void* item) {
-  PQIndexElement* element;
+  TRI_pq_index_element_t* element;
+  
+  element = (TRI_pq_index_element_t*)(item);
 
-  element = (PQIndexElement*)(item);
   if (element == 0) {
     return 0;
   }
+
   return element->pqSlot;
 }
 
@@ -500,8 +478,8 @@ static uint64_t GetStoragePQIndex(TRI_pqueue_t* pq, void* item) {
 
 static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
   size_t maxNumFields;
-  PQIndexElement* leftElement  = (PQIndexElement*)(leftItem);
-  PQIndexElement* rightElement = (PQIndexElement*)(rightItem);
+  TRI_pq_index_element_t* leftElement  = (TRI_pq_index_element_t*)(leftItem);
+  TRI_pq_index_element_t* rightElement = (TRI_pq_index_element_t*)(rightItem);
   TRI_shaper_t* leftShaper;
   TRI_shaper_t* rightShaper;
   size_t j;
@@ -526,7 +504,8 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
   // ............................................................................
   // The document could be the same -- so no further comparison is required.
   // ............................................................................
-  if (leftElement->data == rightElement->data) {
+
+  if (leftElement->_document == rightElement->_document) {
     return false;
   }
 
@@ -542,20 +521,16 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
 
   compareResult = 0;
 
-  leftShaper->lookupShapeId(leftShaper, (leftElement->fields)->_sid);
+  for (j = 0;  j < maxNumFields;  j++) {
+    compareResult = TRI_CompareShapeTypes(leftElement->_document,
+                                          &leftElement->_subObjects[j],
+                                          NULL,
+                                          rightElement->_document,
+                                          &rightElement->_subObjects[j],
+                                          NULL,
+                                          leftShaper,
+                                          rightShaper);
 
-  for (j = 0; j < maxNumFields; j++) {
-    /*
-    printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
-      *((double*)((j + leftElement->fields)->_data.data)),
-      *((double*)((j + rightElement->fields)->_data.data)),
-      (uint64_t)(leftElement->data),
-      (uint64_t)(rightElement->data)
-    );
-    */
-    compareResult = CompareShapedJsonShapedJson((j + leftElement->fields),
-                                                (j + rightElement->fields),
-                                                leftShaper, rightShaper);
     if (compareResult != 0) {
       break;
     }
@@ -570,10 +545,11 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
 
 
 static void UpdateStoragePQIndex(TRI_pqueue_t* pq, void* item, uint64_t position) {
-  PQIndexElement* element;
+  TRI_pq_index_element_t* element;
   TRI_associative_array_t* aa;
+  
+  element = (TRI_pq_index_element_t*)(item);
 
-  element = (PQIndexElement*)(item);
   if (element == 0) {
     LOG_ERROR("invalid priority queue element received");
     return;
@@ -587,7 +563,7 @@ static void UpdateStoragePQIndex(TRI_pqueue_t* pq, void* item, uint64_t position
   // structure.
   // ...........................................................................
   aa = *((TRI_associative_array_t**)((char*)(pq) + sizeof(TRI_pqueue_t)));
-  element = (PQIndexElement*)(TRI_FindByElementAssociativeArray(aa, item));
+  element = (TRI_pq_index_element_t*)(TRI_FindByElementAssociativeArray(aa, item));
   if (element == 0) {
     LOG_ERROR("invalid priority queue/ associative array element received");
     return;
@@ -605,7 +581,7 @@ static void ClearElementPQIndex(TRI_associative_array_t* aa, void* item) {
   if (item == NULL) {
     return;
   }
-  memset(item, 0, sizeof(PQIndexElement));
+  memset(item, 0, sizeof(TRI_pq_index_element_t));
 }
 
 
@@ -620,402 +596,74 @@ static uint64_t HashKeyPQIndex(TRI_associative_array_t* aa, void* key) {
 
 
 static uint64_t HashElementPQIndex(TRI_associative_array_t* aa, void* item) {
-  PQIndexElement* element;
+  TRI_pq_index_element_t* element;
   uint64_t hash;
+  
+  element = (TRI_pq_index_element_t*)(item);
 
-  element = (PQIndexElement*)(item);
   if (element == 0) {
     return 0;
   }
 
   hash = TRI_FnvHashBlockInitial();
-  hash = TRI_FnvHashBlock(hash, element->data, sizeof(void*));
-
+  hash = TRI_FnvHashBlock(hash, (void*) element->_document, sizeof(void*)); 
+  
   return  hash;
 }
 
 
 static bool IsEmptyElementPQIndex(TRI_associative_array_t* aa, void* item) {
-  PQIndexElement* element;
-
+  TRI_pq_index_element_t* element;
+  
   if (item == NULL) {
     // should never happen
     return false;
-  }
+  }  
+  
+  element = (TRI_pq_index_element_t*)(item);
 
-  element = (PQIndexElement*)(item);
-  if (element->data == NULL) {
+  if (element->_document == NULL) {
     return true;
-  }
+  }  
+
   return false;
 }
 
 
 static bool IsEqualElementElementPQIndex(TRI_associative_array_t* aa, void* leftItem, void* rightItem) {
-  PQIndexElement* leftElement;
-  PQIndexElement* rightElement;
-
+  TRI_pq_index_element_t* leftElement;
+  TRI_pq_index_element_t* rightElement;
+  
   if (leftItem == NULL || rightItem == NULL) {
     // should never happen
     return false;
-  }
+  }  
+  
+  leftElement  = (TRI_pq_index_element_t*)(leftItem);
+  rightElement = (TRI_pq_index_element_t*)(rightItem);
 
-  leftElement  = (PQIndexElement*)(leftItem);
-  rightElement = (PQIndexElement*)(rightItem);
-  if (leftElement->data == rightElement->data) {
+  if (leftElement->_document == rightElement->_document) {
     return true;
-  }
+  }  
+
   return false;
 }
 
 
 static bool IsEqualKeyElementPQIndex(TRI_associative_array_t* aa, void* key, void* item) {
-  PQIndexElement* element;
-
+  TRI_pq_index_element_t* element;
+  
   if (item == NULL) {
     return false; // should never happen
   }
-  element = (PQIndexElement*)(item);
-  if (element->data == key) {
+  element = (TRI_pq_index_element_t*)(item);  
+
+  if (element->_document == key) {
     return true;
   }
-  return false;
+
+  return false;  
 }
-
-
-// .............................................................................
-// implementation of compare functions
-// .............................................................................
-
-static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
-
-  int result;
-  size_t j;
-  TRI_shape_type_t leftType;
-  TRI_shape_type_t rightType;
-  const TRI_shape_t* leftShape;
-  const TRI_shape_t* rightShape;
-  size_t leftListLength;
-  size_t rightListLength;
-  size_t listLength;
-  TRI_shaped_json_t leftElement;
-  TRI_shaped_json_t rightElement;
-  char* leftString;
-  char* rightString;
-
-
-  leftShape  = leftShaper->lookupShapeId(leftShaper, left->_sid);
-  rightShape = rightShaper->lookupShapeId(rightShaper, right->_sid);
-  leftType   = leftShape->_type;
-  rightType  = rightShape->_type;
-
-  switch (leftType) {
-
-    case TRI_SHAPE_ILLEGAL: {
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        {
-          return 0;
-        }
-        case TRI_SHAPE_NULL:
-        case TRI_SHAPE_BOOLEAN:
-        case TRI_SHAPE_NUMBER:
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        case TRI_SHAPE_ARRAY:
-        case TRI_SHAPE_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        {
-          return -1;
-        }
-      } // end of switch (rightType)
-    }
-
-    case TRI_SHAPE_NULL: {
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        {
-          return 1;
-        }
-        case TRI_SHAPE_NULL:
-        {
-          return 0;
-        }
-        case TRI_SHAPE_BOOLEAN:
-        case TRI_SHAPE_NUMBER:
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        case TRI_SHAPE_ARRAY:
-        case TRI_SHAPE_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        {
-          return -1;
-        }
-      } // end of switch (rightType)
-    }
-
-    case TRI_SHAPE_BOOLEAN: {
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        case TRI_SHAPE_NULL:
-        {
-          return 1;
-        }
-        case TRI_SHAPE_BOOLEAN:
-        {
-          // check which is false and which is true!
-          if ( *((TRI_shape_boolean_t*)(left->_data.data)) == *((TRI_shape_boolean_t*)(right->_data.data)) ) {
-            return 0;
-          }
-          if ( *((TRI_shape_boolean_t*)(left->_data.data)) < *((TRI_shape_boolean_t*)(right->_data.data)) ) {
-            return -1;
-          }
-          return 1;
-        }
-        case TRI_SHAPE_NUMBER:
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        case TRI_SHAPE_ARRAY:
-        case TRI_SHAPE_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        {
-          return -1;
-        }
-      } // end of switch (rightType)
-    }
-
-    case TRI_SHAPE_NUMBER: {
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        case TRI_SHAPE_NULL:
-        case TRI_SHAPE_BOOLEAN:
-        {
-          return 1;
-        }
-        case TRI_SHAPE_NUMBER:
-        {
-          // compare the numbers.
-          if ( *((TRI_shape_number_t*)(left->_data.data)) == *((TRI_shape_number_t*)(right->_data.data)) ) {
-            return 0;
-          }
-          if ( *((TRI_shape_number_t*)(left->_data.data)) < *((TRI_shape_number_t*)(right->_data.data)) ) {
-            return -1;
-          }
-          return 1;
-        }
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        case TRI_SHAPE_ARRAY:
-        case TRI_SHAPE_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        {
-          return -1;
-        }
-      } // end of switch (rightType)
-    }
-
-    case TRI_SHAPE_SHORT_STRING:
-    case TRI_SHAPE_LONG_STRING:
-    {
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        case TRI_SHAPE_NULL:
-        case TRI_SHAPE_BOOLEAN:
-        case TRI_SHAPE_NUMBER:
-        {
-          return 1;
-        }
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        {
-          // compare strings
-          // extract the strings
-          if (leftType == TRI_SHAPE_SHORT_STRING) {
-            leftString = (char*)(sizeof(TRI_shape_length_short_string_t) + left->_data.data);
-          }
-          else {
-            leftString = (char*)(sizeof(TRI_shape_length_long_string_t) + left->_data.data);
-          }
-
-          if (rightType == TRI_SHAPE_SHORT_STRING) {
-            rightString = (char*)(sizeof(TRI_shape_length_short_string_t) + right->_data.data);
-          }
-          else {
-            rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right->_data.data);
-          }
-
-          result = strcmp(leftString,rightString);
-          return result;
-        }
-        case TRI_SHAPE_ARRAY:
-        case TRI_SHAPE_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        {
-          return -1;
-        }
-      } // end of switch (rightType)
-    }
-
-    case TRI_SHAPE_HOMOGENEOUS_LIST:
-    case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-    case TRI_SHAPE_LIST:
-    {
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        case TRI_SHAPE_NULL:
-        case TRI_SHAPE_BOOLEAN:
-        case TRI_SHAPE_NUMBER:
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        {
-          return 1;
-        }
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        case TRI_SHAPE_LIST:
-        {
-          // unfortunately recursion: check the types of all the entries
-          leftListLength  = *((TRI_shape_length_list_t*)(left->_data.data));
-          rightListLength = *((TRI_shape_length_list_t*)(right->_data.data));
-
-          // determine the smallest list
-          if (leftListLength > rightListLength) {
-            listLength = rightListLength;
-          }
-          else {
-            listLength = leftListLength;
-          }
-
-          for (j = 0; j < listLength; ++j) {
-
-            if (leftType == TRI_SHAPE_HOMOGENEOUS_LIST) {
-              TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(leftShape),
-                                              left,j,&leftElement);
-            }
-            else if (leftType == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
-              TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*)(leftShape),
-                                                   left,j,&leftElement);
-            }
-            else {
-              TRI_AtListShapedJson((const TRI_list_shape_t*)(leftShape),left,j,&leftElement);
-            }
-
-
-            if (rightType == TRI_SHAPE_HOMOGENEOUS_LIST) {
-              TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(rightShape),
-                                              right,j,&rightElement);
-            }
-            else if (rightType == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
-              TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*)(rightShape),
-                                                   right,j,&rightElement);
-            }
-            else {
-              TRI_AtListShapedJson((const TRI_list_shape_t*)(rightShape),right,j,&rightElement);
-            }
-
-            result = CompareShapeTypes (&leftElement, &rightElement, leftShaper, rightShaper);
-            if (result != 0) {
-              return result;
-            }
-          }
-
-          // up to listLength everything matches
-          if (leftListLength < rightListLength) {
-            return -1;
-          }
-          else if (leftListLength > rightListLength) {
-            return 1;
-          }
-          return 0;
-        }
-
-
-        case TRI_SHAPE_ARRAY:
-        {
-          return -1;
-        }
-      } // end of switch (rightType)
-    }
-
-    case TRI_SHAPE_ARRAY:
-    {
-      assert(false);
-      switch (rightType) {
-        case TRI_SHAPE_ILLEGAL:
-        case TRI_SHAPE_NULL:
-        case TRI_SHAPE_BOOLEAN:
-        case TRI_SHAPE_NUMBER:
-        case TRI_SHAPE_SHORT_STRING:
-        case TRI_SHAPE_LONG_STRING:
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-        case TRI_SHAPE_LIST:
-        {
-          return 1;
-        }
-        case TRI_SHAPE_ARRAY:
-        {
-          assert(false);
-          result = 0;
-          return result;
-        }
-      } // end of switch (rightType)
-    }
-
-  }
-  assert(false);
-  return 0; // shut the vc++ up
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Compare a shapded json object recursively if necessary
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
-
-  int result;
-
-  // ............................................................................
-  // the following order is currently defined for placing an order on documents
-  // undef < null < boolean < number < strings < lists < hash arrays
-  // note: undefined will be treated as NULL pointer not NULL JSON OBJECT
-  // within each type class we have the following order
-  // boolean: false < true
-  // number: natural order
-  // strings: lexicographical
-  // lists: lexicorgraphically and within each slot according to these rules.
-  // ............................................................................
-
-
-  if (left == NULL && right == NULL) {
-    return 0;
-  }
-
-  if (left == NULL && right != NULL) {
-    return -1;
-  }
-
-  if (left != NULL && right == NULL) {
-    return 1;
-  }
-
-  result = CompareShapeTypes (left, right, leftShaper, rightShaper);
-
-  return result;
-
-}  // end of function CompareShapedJsonShapedJson
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

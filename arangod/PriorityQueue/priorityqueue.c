@@ -285,16 +285,14 @@ static bool AddPQueue(TRI_pqueue_t* pq, void* item) {
 /// @brief rmeoves an item from the pq -- needs the position
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool RemovePQueue(TRI_pqueue_t* pq, uint64_t position, bool destroyItem) {
-
+static bool RemovePQueue (TRI_pqueue_t* pq, uint64_t position, bool destroyItem) {
   char* lastItem;
   char* thisItem;
 
   if (pq == NULL) {
     return false;
   }
-
-
+  
   // ...........................................................................
   // Check that the position sent is valid
   // ...........................................................................
@@ -304,7 +302,6 @@ static bool RemovePQueue(TRI_pqueue_t* pq, uint64_t position, bool destroyItem) 
     return false;
   }
 
-
   // ...........................................................................
   // obtain the pointer positions
   // ...........................................................................
@@ -312,17 +309,16 @@ static bool RemovePQueue(TRI_pqueue_t* pq, uint64_t position, bool destroyItem) 
   thisItem = ((position - 1) * pq->_base._itemSize) + pq->_base._items;
   lastItem = ((pq->_base._count - 1) * pq->_base._itemSize) + pq->_base._items;
 
-
   // ...........................................................................
   // Set the position in the priority queue array back in the document
   // ...........................................................................
 
   pq->updateStoragePQ(pq, thisItem, 0);
+
   if (destroyItem) {
-    pq->clearStoragePQ(pq,thisItem);
-  }
-
-
+    pq->clearStoragePQ(pq, thisItem);
+  }  
+  
   // ...........................................................................
   // perhaps we are lucky and the item to be removed is at the end of queue?
   // ...........................................................................
@@ -332,8 +328,7 @@ static bool RemovePQueue(TRI_pqueue_t* pq, uint64_t position, bool destroyItem) 
     pq->_base._count--;
     return true;
   }
-
-
+  
   // ...........................................................................
   // No such luck - so work a little harder.
   // ...........................................................................
@@ -345,10 +340,6 @@ static bool RemovePQueue(TRI_pqueue_t* pq, uint64_t position, bool destroyItem) 
 
   return true;
 }
-
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the top most item in the priority queue
@@ -363,13 +354,9 @@ static void* TopPQueue(TRI_pqueue_t* pq) {
   return (pq->_base._items);
 }
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                priority queue  helper  functions
@@ -379,7 +366,6 @@ static void* TopPQueue(TRI_pqueue_t* pq) {
 /// @addtogroup PriorityQueue
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if additional capacity is required and extends if so

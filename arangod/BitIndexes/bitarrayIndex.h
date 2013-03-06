@@ -29,7 +29,6 @@
 #define TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H 1
 
 #include "BasicsC/common.h"
-#include "BitIndexes/bitarray.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
@@ -39,9 +38,15 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        bitarrayIndex public types
+// --SECTION--                                               forward declaration
 // -----------------------------------------------------------------------------
 
+struct TRI_bitarray_s;
+struct TRI_bitarray_index_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        bitarrayIndex public types
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup bitarrayIndex
@@ -50,32 +55,28 @@ extern "C" {
 
 
 typedef struct {
-  TRI_bitarray_t* _bitarray;
+  struct TRI_bitarray_s* _bitarray;
   TRI_vector_t _values; // list of json value which are allowed
   bool _supportUndef;
 } BitarrayIndex;
 
 
 typedef struct {
-  size_t numFields;          // the number of fields
-  TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
-  void* data;                // master document pointer
-  void* collection;          // pointer to the collection;
-} BitarrayIndexElement;
+  size_t numFields;             // the number of fields
+  TRI_shaped_json_t* fields;    // list of shaped json objects which the collection should know about
+  struct TRI_doc_mptr_s* data;  // master document pointer
+  void* collection;             // pointer to the collection;
+}
+TRI_bitarray_index_key_t;
 
 typedef struct {
   size_t _numElements;
-  BitarrayIndexElement* _elements; // simple list of elements
-} BitarrayIndexElements;
-
-
-
+  TRI_bitarray_index_key_t* _elements; // simple list of elements
+} BitarrayIndexElements;  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     bitarrayIndex  public methods
@@ -86,13 +87,11 @@ typedef struct {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a bitarray index , but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void BitarrayIndex_destroy (BitarrayIndex*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a bitarray index and frees the pointer
@@ -100,32 +99,25 @@ void BitarrayIndex_destroy (BitarrayIndex*);
 
 void BitarrayIndex_free (BitarrayIndex*);
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 int BittarrayIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, TRI_vector_t*, bool, void*);
 
-int BitarrayIndex_add (BitarrayIndex*, BitarrayIndexElement*);
-
-TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,
-                                          TRI_index_operator_t*,
+TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,  
+                                          TRI_index_operator_t*, 
                                           TRI_vector_t*,
-                                          void*,
+                                          struct TRI_bitarray_index_s*,
                                           bool (*filter) (TRI_index_iterator_t*) );
+                                         
+int BitarrayIndex_insert (BitarrayIndex*, TRI_bitarray_index_key_t*);
 
+int BitarrayIndex_remove (BitarrayIndex*, TRI_bitarray_index_key_t*); 
 
-int BitarrayIndex_insert (BitarrayIndex*, BitarrayIndexElement*);
+int BitarrayIndex_update (BitarrayIndex*, TRI_bitarray_index_key_t*, TRI_bitarray_index_key_t*);
 
-int BitarrayIndex_remove (BitarrayIndex*, BitarrayIndexElement*);
-
-int BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const BitarrayIndexElement*);
-
-
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
 }

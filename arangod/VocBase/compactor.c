@@ -293,7 +293,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     found2 = CONST_CAST(found);
-    found2->_fid = fid;
+    found2->_fid = datafile->fid;
 
     // let marker point to the new position
     found2->_data = result;

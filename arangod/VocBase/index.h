@@ -300,8 +300,8 @@ TRI_index_search_value_t;
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitIndex (TRI_index_t* idx,
-                    const TRI_idx_type_e type,
+void TRI_InitIndex (TRI_index_t* idx, 
+                    const TRI_idx_type_e type, 
                     struct TRI_primary_collection_s* collection,
                     bool unique);
 
@@ -379,7 +379,7 @@ void TRI_CopyFieldsVector (TRI_vector_string_t* dst, TRI_vector_pointer_t* src);
 /// belong to the shaper.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
+char const** TRI_FieldListByPathList (TRI_shaper_t* shaper, 
                                       TRI_vector_t* paths);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,13 +456,12 @@ void TRI_FreeEdgeIndex (TRI_index_t*);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, TRI_json_t*);
+PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a priority queue index
