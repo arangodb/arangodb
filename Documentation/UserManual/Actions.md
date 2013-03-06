@@ -429,7 +429,7 @@ For example
 
     arangosh> db._routing.save({ 
     ........>   url: "/hello/echo",
-    ........>   action: { function: "function(req,res) {res.statusCode=200; res.body='Hello'}" } });
+    ........>   action: { callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" } });
 
 Requests and Responses{#UserManualActionsReqRes}
 ================================================
