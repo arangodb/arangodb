@@ -206,10 +206,19 @@ extern size_t PageSize;
 #define TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 32)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimal collection journal size
+/// @brief minimal collection journal size (for testing, we allow very small
+/// file sizes in maintainer mode)
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+
+#define TRI_JOURNAL_MINIMAL_SIZE (16 * 1024)
+
+#else
+
 #define TRI_JOURNAL_MINIMAL_SIZE (1024 * 1024)
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief journal overhead

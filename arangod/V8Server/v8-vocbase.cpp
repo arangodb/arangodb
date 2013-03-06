@@ -821,29 +821,32 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   assert(barrier != 0);
 
+  bool freeBarrier = true;
+
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
   res = trx.read(&document, key, true);
  
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
+    freeBarrier = false;
   }
 
   res = trx.finish(res);
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+    if (freeBarrier) {
+      TRI_FreeBarrier(barrier);
+    }
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "document not found", true)));
   }
 
-  if (document._key == 0 || document._data == 0) {
-    TRI_FreeBarrier(barrier);
-
-    return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                             "document not found")));
-  }
-
   if (rid != 0 && document._rid != rid) {
+    if (freeBarrier) {
+      TRI_FreeBarrier(barrier);
+    }
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CONFLICT, "revision not found")));
   }
 
