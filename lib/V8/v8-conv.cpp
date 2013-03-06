@@ -1371,11 +1371,10 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+    const uint32_t n = arrayParameter->Length();
 
+    TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
     if (listJson != 0) {
-      uint32_t n = arrayParameter->Length();
-
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_JsonObject(item);
@@ -1391,12 +1390,11 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsObject()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+    v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+    const uint32_t n = names->Length();
 
+    TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
     if (arrayJson != 0) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-
-      uint32_t n = names->Length();
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
@@ -1479,7 +1477,9 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+    const uint32_t n = arrayParameter->Length();
+
+    TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
     if (listJson) {
       for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
@@ -1495,14 +1495,17 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsObject()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-    if (arrayJson) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-      for (uint32_t j = 0; j < names->Length(); ++j) {
+    v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+    const uint32_t n = names->Length();
+
+    TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+    if (arrayJson != 0) {
+      for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = TRI_ObjectToJson(item);
-        if (result) {
+
+        if (result != 0) {
           TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
         }

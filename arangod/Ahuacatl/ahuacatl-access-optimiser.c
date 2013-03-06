@@ -1315,8 +1315,8 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     }
 
     // make a list with both values
-    result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-    if (!result) {
+    result = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 2);
+    if (result == NULL) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       TRI_FreeAccessAql(rhs);
