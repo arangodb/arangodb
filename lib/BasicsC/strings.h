@@ -153,7 +153,8 @@ void TRI_AppendString (char**, char const*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string
 ///
-/// Copy string of maximal length. Always append a '\0'.
+/// Copy string of maximal length. Always append a '\0'. The destionation must
+/// hold at least the given length and therefore should never be 0.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyString (char* dst, char const* src, size_t length);

@@ -631,7 +631,10 @@ void TRI_AppendString (char** dst, char const* src) {
 
 void TRI_CopyString (char* dst, char const* src, size_t length) {
   *dst = '\0';
-  strncat(dst, src, length);
+
+  if (0 < length) {
+    strncat(dst, src, length - 1);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
