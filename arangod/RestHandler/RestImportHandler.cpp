@@ -821,13 +821,13 @@ TRI_json_t* RestImportHandler::createJsonObject (const TRI_json_t* keys,
     return 0;
   }
   
-  TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  const size_t n = keys->_value._objects._length;
+  
+  TRI_json_t* result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n);
   if (result == 0) {
     LOGGER_ERROR("out of memory");
     return 0;
   }
-  
-  size_t n = keys->_value._objects._length;
 
   for (size_t i = 0;  i < n;  ++i) {
 
