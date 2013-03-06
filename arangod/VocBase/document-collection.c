@@ -661,7 +661,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
+  
   // extract the collection
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
@@ -790,7 +790,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   if (mptr != NULL) {
     *mptr = *((TRI_doc_mptr_t*) oldHeader);
   }
-
+    
   // wait for sync
   if (context->_sync) {
     WaitSync(document, journal, ((char const*) *result) + markerSize + bodySize);
@@ -1464,13 +1464,9 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // it is an update, but only if found has a smaller revision identifier
     else if (found->_rid < d->_rid || (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
       TRI_doc_mptr_t* newHeader;
-      //TRI_doc_mptr_t oldData;
-
+      
       // delete old entries
       DeleteSecondaryIndexes(collection, found);
-
-      // save the old data
-      // oldData = *found;
 
       // TODO: this will be identical for non-transactional collections only
       newHeader = CONST_CAST(found);

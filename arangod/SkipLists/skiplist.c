@@ -178,11 +178,11 @@ static TRI_skiplist_node_t* TRI_NextNodeBaseSkipList (TRI_skiplist_base_t* skipl
                                                       TRI_skiplist_node_t* currentNode) {
   if (currentNode == NULL) {
     return &(skiplist->_startNode);
-  }
+  }  
 
   if (currentNode == &(skiplist->_endNode)) {
     return NULL;
-  }
+  }  
 
   return currentNode->_column[0]._next;
 }
@@ -198,7 +198,7 @@ static TRI_skiplist_node_t* TRI_PrevNodeBaseSkipList (TRI_skiplist_base_t* skipl
   }
   if (currentNode == &(skiplist->_startNode)) {
     return NULL;
-  }
+  }  
 
   return currentNode->_column[0]._prev;
 }
@@ -223,7 +223,7 @@ static int32_t RandLevel (TRI_skiplist_base_t* skiplist) {
   }
 
   ptr = skiplist->_random;
-
+  
   // ...........................................................................
   // Use the bit list to determine the probability of the level.
   // For 1/2: if bit (0) we stop, otherwise increase level.
@@ -343,8 +343,8 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
 
   // ..........................................................................
   // Assign the probability and determine the number of random numbers which
-  // we will require -- do it once off here
-  // ..........................................................................
+  // we will require -- do it once off here  
+  // ..........................................................................  
 
   skiplist->_base._prob      = probability;
   skiplist->_base._numRandom = 0;
@@ -384,39 +384,39 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist,
   // ..........................................................................
   // Create storage for where to store the random numbers which we generated
   // do it here once off.
-  // ..........................................................................
+  // ..........................................................................  
 
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
   // TODO: memory allocation might fail
 
   // ..........................................................................
   // Assign the element size
-  // ..........................................................................
+  // ..........................................................................  
 
   skiplist->_base._elementSize = elementSize;
-
-  // ..........................................................................
+  
+  // ..........................................................................  
   // Initialise the vertical storage of the lists and the place where we
   // are going to store elements
-  // ..........................................................................
+  // ..........................................................................  
 
   skiplist->_base._startNode._column          = NULL;
   skiplist->_base._startNode._colLength       = 0;
   skiplist->_base._startNode._extraData       = NULL;
 
   memset(&skiplist->_base._startNode._element, 0, sizeof(skiplist->_base._startNode._element));
-
+  
   skiplist->_base._endNode._column            = NULL;
   skiplist->_base._endNode._colLength         = 0;
   skiplist->_base._endNode._extraData         = NULL;
 
   memset(&skiplist->_base._endNode._element, 0, sizeof(skiplist->_base._endNode._element));
-
-  // ..........................................................................
+  
+  // ..........................................................................  
   // Whenever a probability of 1/2, 1/3, 1/4 is used, on average there will be
   // each node will have a height of two. So initialise the start and end nodes
   // with this 'average' height
-  // ..........................................................................
+  // ..........................................................................  
 
   growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2); // may fail
   growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2); // may fail
@@ -691,6 +691,7 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
       // .......................................................................
       // We have reached the lowest level of the lists. Time to insert item.
       // .......................................................................
+
       if (currentLevel == 0) {
         goto END;
       }
@@ -709,7 +710,7 @@ int TRI_InsertKeySkipList (TRI_skiplist_t* skiplist,
   // Ok finished with the loop and we should have a path with AT MOST
   // SKIPLIST_ABSOLUTE_MAX_HEIGHT number of elements.
   // ..........................................................................
-
+  
   for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
@@ -767,11 +768,11 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
 
     if (nextNode == &(skiplist->_base._endNode)) {
 
-
       // .......................................................................
       // We are at the lowest level of the lists, and we haven't found the item
       // yet.
       // .......................................................................
+
       if (currentLevel == 0) {
         return currentNode;
       }
@@ -803,7 +804,7 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
 
       compareResult = IndexStaticCompareKeyElement(skiplist,key,&(nextNode->_element), -1);
 
-      // .......................................................................
+      // .......................................................................    
       // -1 is returned if the number of fields (attributes) in the key is LESS
       // than the number of fields in the index definition. This has the effect
       // of being slightly less efficient since we have to proceed to the level
@@ -847,6 +848,7 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist,
 //  END:
 
   assert(false); // there is no way we can be here
+    
   return NULL;
 }
 
@@ -893,10 +895,10 @@ TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
     // CASE TWO:
     // We have arrived at the end of the nodes and we are not at the
     // start of the nodes either.
-    // .........................................................................
-
-    if (nextNode == &(skiplist->_base._endNode)) {
-
+    // .........................................................................  
+    
+    if (nextNode == &(skiplist->_base._endNode)) {    
+    
       // .......................................................................
       // We are at the lowest level of the lists, and we haven't found the item
       // yet. Eventually we would like to return iterators.
@@ -911,11 +913,10 @@ TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
       // .......................................................................
 
       --currentLevel;
-
       goto START;
-    }
-
-    // .........................................................................
+    }  
+    
+    // .........................................................................  
     // CASE THREE:
     // We are the smallest left most node and the NEXT node is NOT the end node.
     // Compare this element with the element in the right node to see what we do.
@@ -936,7 +937,7 @@ TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
 
       // .......................................................................
       // We have found the item!
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == 0) {
         return nextNode;
@@ -945,12 +946,12 @@ TRI_skiplist_node_t* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist,
       // .......................................................................
       // The element is greater than the next node element. Keep going on this
       // level.
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult > 0) {
         currentNode = nextNode;
         goto START;
-      }
+      }  
 
       // .......................................................................
       // We have reached the lowest level of the lists -- no such item.
@@ -1025,9 +1026,9 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
     return TRI_ERROR_INTERNAL;
   }
 
-  // ...........................................................................
+  // ...........................................................................  
   // Start at the top most list and left most position of that list.
-  // ...........................................................................
+  // ...........................................................................  
 
   currentLevel = skiplist->_base._startNode._colLength - 1; // we want 'level' not 'height'
   currentNode  = &(skiplist->_base._startNode);
@@ -1068,11 +1069,10 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
       // .......................................................................
 
       --currentLevel;
-
       goto START;
-    }
-
-    // .........................................................................
+    }  
+    
+    // .........................................................................  
     // CASE THREE:
     // We are the smallest left most node and the NEXT node is NOT the end node.
     // Compare this element with the element in the right node to see what we do.
@@ -1091,7 +1091,7 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
 
       // .......................................................................
       // We have found the item!
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == 0) {
         currentNode = nextNode;
@@ -1101,7 +1101,7 @@ int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
       // .......................................................................
       // The element is greater than the next node element. Keep going on this
       // level.
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult > 0) {
         currentNode = nextNode;
@@ -1167,7 +1167,7 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
     return NULL;
   }
 
-  // ...........................................................................
+  // ...........................................................................  
   // Determine the starting level and the starting node
   // ...........................................................................
 
@@ -1175,10 +1175,10 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
   currentNode  = &(skiplist->_base._endNode);
 
   START:
-
+  
     // .........................................................................
-    // Find the next node in the current level of the lists.
-    // .........................................................................
+    // Find the next node in the current level of the lists. 
+    // .........................................................................  
 
     prevNode = currentNode->_column[currentLevel]._prev;
 
@@ -1209,11 +1209,10 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
       // We have not yet reached the lowest level continue down.
       // .......................................................................
       --currentLevel;
-
       goto START;
-    }
-
-    // .........................................................................
+    }  
+    
+    // .........................................................................  
     // CASE THREE:
     // We are the smallest left most node and the NEXT node is NOT the end node.
     // Compare this element with the element in the right node to see what we do.
@@ -1236,13 +1235,13 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
       // of fields in the element to be compared to, then EVEN if the keys which
       // which are common to both equate as EQUAL, we STILL return 1 rather than
       // 0! This ensures that the right interval end point is correctly positioned
-// -- slightly inefficient since the lowest level skip list 0 has to be reached
+      // -- slightly inefficient since the lowest level skip list 0 has to be reached
       // in this case.
-      // .......................................................................
-
-      // .......................................................................
+      // .......................................................................    
+            
+      // .......................................................................    
       // We have found the item!
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == 0) {
         assert(false);
@@ -1260,7 +1259,7 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
 
       // .......................................................................
       // We have reached the lowest level of the lists -- no such item.
-      // .......................................................................
+      // .......................................................................    
 
       if (currentLevel == 0) {
         return currentNode;
@@ -1268,7 +1267,7 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist,
 
       // .......................................................................
       // Drop down the list
-      // .......................................................................
+      // .......................................................................    
 
       --currentLevel;
 
@@ -1290,7 +1289,7 @@ void* TRI_StartNodeSkipList(TRI_skiplist_t* skiplist) {
     return &(skiplist->_base._startNode);
   }
   return NULL;
-}
+}  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1315,7 +1314,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
   bool growResult;
   size_t elementSize = sizeof(TRI_skiplist_index_element_t);
-
+  
   if (skiplist == NULL) {
     return;
   }
@@ -1331,7 +1330,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // ..........................................................................
   // Assign the maximum height of the skip list. This maximum height must be
   // no greater than the absolute max height defined as a compile time parameter
-  // ..........................................................................
+  // ..........................................................................  
 
   skiplist->_base._maxHeight = maximumHeight;
 
@@ -1390,32 +1389,32 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
   // ..........................................................................
   // Assign the element size
-  // ..........................................................................
+  // ..........................................................................  
 
   skiplist->_base._elementSize = elementSize;
-
-  // ..........................................................................
+  
+  // ..........................................................................  
   // Initialise the vertical storage of the lists and the place where we
   // are going to store elements
-  // ..........................................................................
+  // ..........................................................................  
 
   skiplist->_base._startNode._column          = NULL;
   skiplist->_base._startNode._colLength       = 0;
   skiplist->_base._startNode._extraData       = NULL;
 
   memset(&skiplist->_base._startNode._element, 0, sizeof(skiplist->_base._startNode._element));
-
+  
   skiplist->_base._endNode._column            = NULL;
   skiplist->_base._endNode._colLength         = 0;
   skiplist->_base._endNode._extraData         = NULL;
 
   memset(&skiplist->_base._endNode._element, 0, sizeof(skiplist->_base._endNode._element));
-
-  // ..........................................................................
-  // Whenever a probability of 1/2, 1/3, 1/4 is used, on average
+  
+  // ..........................................................................  
+  // Whenever a probability of 1/2, 1/3, 1/4 is used, on average 
   // each node will have a height of two. So initialise the start and end nodes
   // with this 'average' height
-  // ..........................................................................
+  // ..........................................................................  
 
   growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2);
   growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2);
@@ -1429,9 +1428,9 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // Join the empty lists together
   // [N]<----------------------------------->[N]
   // [N]<----------------------------------->[N]
-  // ..........................................................................
+  // ..........................................................................  
 
-  JoinNodes(&(skiplist->_base._startNode),&(skiplist->_base._endNode),0,1); // list 0 & 1
+  JoinNodes(&(skiplist->_base._startNode),&(skiplist->_base._endNode),0,1); // list 0 & 1  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1441,7 +1440,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
 void TRI_DestroySkipListMulti (TRI_skiplist_multi_t* skiplist) {
   if (skiplist == NULL) {
     return;
-  }
+  }  
 
   TRI_DestroyBaseSkipList( (TRI_skiplist_base_t*)(skiplist) );
 }
@@ -1504,12 +1503,12 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
 
   currentLevel = skiplist->_base._startNode._colLength - 1;
   currentNode  = &(skiplist->_base._startNode);
-
+  
   START:
 
     // .........................................................................
-    // Find the next node in the current level of the lists.
-    // .........................................................................
+    // Find the next node in the current level of the lists. 
+    // .........................................................................  
 
     nextNode = currentNode->_column[currentLevel]._next;
 
@@ -1545,7 +1544,7 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
       goto START;
     }
 
-    // .........................................................................
+    // .........................................................................  
     // CASE THREE:
     // We are the smallest left most node and the NEXT node is NOT the end node.
     // Compare this element with the element in the right node to see what we do.
@@ -1559,13 +1558,13 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
       // .......................................................................
       // Use the callback to determine if the element is less or greater than
       // the next node element.
-      // .......................................................................
+      // .......................................................................    
 
       int compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(nextNode->_element), -1);
-
-      // .......................................................................
+      
+      // .......................................................................    
       // We have found the item! Not possible
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == 0) {
         //return &(nextNode->_element);
@@ -1582,11 +1581,11 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
       if (compareResult > 0) {
         currentNode = nextNode;
         goto START;
-      }
-
-      // .......................................................................
+      }  
+              
+      // .......................................................................    
       // We have reached the lowest level of the lists -- no such item.
-      // .......................................................................
+      // .......................................................................    
 
       if (currentLevel == 0) {
         return currentNode;
@@ -1595,8 +1594,8 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
       // .......................................................................
       // Drop down the list
       // .......................................................................
-      --currentLevel;
 
+      --currentLevel;
       goto START;
     }
 
@@ -1657,7 +1656,7 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
   // ...........................................................................
   // Grow lists if required by increasing the height of the start and end nodes
-  // ...........................................................................
+  // ...........................................................................  
 
   oldColLength = skiplist->_base._startNode._colLength;
 
@@ -1709,16 +1708,16 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // already exists either replace it or return false. Recall that this
   // skip list is used for unique key/value pairs. Use the skiplist-multi
   // non-unique key/value pairs.
-  // ...........................................................................
+  // ...........................................................................  
 
   currentLevel = skiplist->_base._startNode._colLength - 1; // NOT current height BUT current level is required here
   currentNode  = &(skiplist->_base._startNode);
-
+  
   START:
-
+  
     // .........................................................................
-    // Find the next node in the current level of the lists.
-    // .........................................................................
+    // Find the next node in the current level of the lists. 
+    // .........................................................................  
 
     nextNode = currentNode->_column[currentLevel]._next;
 
@@ -1732,10 +1731,10 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
     // CASE TWO:
     // We have arrived at the end of the nodes and we are not at the
     // start of the nodes either.
-    // .........................................................................
-
-    if (nextNode == &(skiplist->_base._endNode)) {
-
+    // .........................................................................  
+    
+    if (nextNode == &(skiplist->_base._endNode)) {    
+      
       // .......................................................................
       // Store the current node and level in the path
       // .......................................................................
@@ -1756,12 +1755,12 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // .......................................................................
       // We have not yet reached the lowest level continue down.
       // .......................................................................
+
       --currentLevel;
-
       goto START;
-    }
-
-    // .........................................................................
+    }  
+    
+    // .........................................................................  
     // CASE THREE:
     // We are the smallest left most node and the NEXT node is NOT the end node.
     // Compare this element with the element in the right node to see what we do.
@@ -1775,14 +1774,14 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // .......................................................................
       // Use the callback to determine if the element is less or greater than
       // the next node element.
-      // .......................................................................
+      // .......................................................................    
 
       compareResult = IndexStaticMultiCompareElementElement(skiplist,element,&(nextNode->_element), -1);
-
-      // .......................................................................
+      
+      // .......................................................................    
       // The element matches the next element. Overwrite if possible and return.
       // We do not allow non-unique elements (non-unique 'keys' ok).
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == 0) {
         TRI_FreeSkipListNode(&(skiplist->_base), newNode);
@@ -1796,12 +1795,12 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // .......................................................................
       // The element is greater than the next node element. Keep going on this
       // level.
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult > 0) {
         currentNode = nextNode;
         goto START;
-      }
+      }  
 
       // .......................................................................
       // The element is less than the next node. Can we drop down the list?
@@ -1814,7 +1813,7 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
       // .......................................................................
       // We have reached the lowest level of the lists. Time to insert item.
-      // .......................................................................
+      // .......................................................................    
 
       if (currentLevel == 0) {
         goto END;
@@ -1822,10 +1821,9 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
       // .......................................................................
       // Drop down the list
-      // .......................................................................
+      // .......................................................................    
 
       --currentLevel;
-
       goto START;
     }
 
@@ -1850,7 +1848,7 @@ int TRI_InsertElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 /// @brief given a node returns the next node (if possible) in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_NextNodeSkipListMulti (TRI_skiplist_multi_t* skiplist,
+TRI_skiplist_node_t* TRI_NextNodeSkipListMulti (TRI_skiplist_multi_t* skiplist, 
                                                 TRI_skiplist_node_t* currentNode) {
   if (skiplist != NULL) {
     return TRI_NextNodeBaseSkipList( (TRI_skiplist_base_t*)(skiplist), currentNode);
@@ -1867,7 +1865,7 @@ TRI_skiplist_node_t* TRI_PrevNodeSkipListMulti (TRI_skiplist_multi_t* skiplist,
                                                 TRI_skiplist_node_t* currentNode) {
   if (skiplist != NULL) {
     return TRI_PrevNodeBaseSkipList( (TRI_skiplist_base_t*)(skiplist), currentNode);
-  }
+  }  
 
   return NULL;
 }
@@ -1895,9 +1893,9 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
     return TRI_ERROR_INTERNAL;
   }
 
-  // ...........................................................................
+  // ...........................................................................  
   // Start at the top most list and left most position of that list.
-  // ...........................................................................
+  // ...........................................................................  
 
   currentLevel = skiplist->_base._startNode._colLength - 1; // current level not height
   currentNode  = &(skiplist->_base._startNode);
@@ -1936,8 +1934,8 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // .......................................................................
       // We have not yet reached the lowest level continue down.
       // .......................................................................
-      --currentLevel;
 
+      --currentLevel;
       goto START;
     }
 
@@ -1961,17 +1959,17 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
 
       // .......................................................................
       // We have found an item which matches the key
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL) {
         currentNode = nextNode;
         goto END;
       }
 
-      // .......................................................................
+      // .......................................................................    
       // The element is greater than the next node element. Keep going on this
       // level.
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult > 0) {
         currentNode = nextNode;
@@ -2009,7 +2007,6 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
       // .......................................................................
 
       --currentLevel;
-
       goto START;
     }
 
@@ -2025,7 +2022,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
     }
     currentNode = TRI_NextNodeBaseSkipList(&(skiplist->_base), currentNode);
   }
-
+  
   // ..........................................................................
   // The actual element could not be located - an element with a matching key
   // may exist, but the same data stored within the element could not be located
@@ -2054,7 +2051,7 @@ int TRI_RemoveElementSkipListMulti (TRI_skiplist_multi_t* skiplist,
   }
 
   TRI_FreeSkipListNode(&(skiplist->_base), currentNode);
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2082,12 +2079,12 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* ski
 
   currentLevel = skiplist->_base._startNode._colLength - 1;
   currentNode  = &(skiplist->_base._endNode);
-
+  
   START:
-
+  
     // .........................................................................
-    // Find the next node in the current level of the lists.
-    // .........................................................................
+    // Find the next node in the current level of the lists. 
+    // .........................................................................  
 
     prevNode = currentNode->_column[currentLevel]._prev;
 
@@ -2118,11 +2115,10 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* ski
       // We have not yet reached the lowest level continue down.
       // .......................................................................
       --currentLevel;
-
       goto START;
-    }
-
-    // .........................................................................
+    }  
+    
+    // .........................................................................  
     // CASE THREE:
     // We are the smallest left most node and the NEXT node is NOT the end node.
     // Compare this element with the element in the right node to see what we do.
@@ -2135,13 +2131,13 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* ski
       // .......................................................................
       // Use the callback to determine if the element is less or greater than
       // the next node element.
-      // .......................................................................
+      // .......................................................................    
 
       int compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(prevNode->_element), 1);
 
-      // .......................................................................
+      // .......................................................................    
       // We have found the item! Not possible since we are searching by key!
-      // .......................................................................
+      // .......................................................................    
 
       if (compareResult == 0) {
         assert(false);
@@ -2171,8 +2167,8 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* ski
       --currentLevel;
 
       goto START;
-    }
-
+    }  
+    
 //  END:
 
   assert(false); // there is no way we can be here
@@ -2185,7 +2181,7 @@ TRI_skiplist_node_t* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* ski
 
 TRI_skiplist_node_t* TRI_StartNodeSkipListMulti (TRI_skiplist_multi_t* skiplist) {
   return &(skiplist->_base._startNode);
-}
+}  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -93,10 +93,10 @@ typedef struct TRI_skiplist_node_s {
   TRI_skiplist_nb_t* _column; // these represent the levels
   uint32_t _colLength;
   void* _extraData;
-  TRI_skiplist_index_element_t _element;
-}
+  TRI_skiplist_index_element_t _element;  
+} 
 TRI_skiplist_node_t;
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The base structure of a skiplist (unique and non-unique)
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,8 +119,8 @@ typedef struct TRI_skiplist_base_s {
   // The actual list itself
   // ...........................................................................
 
-  char* _skiplist;
-
+  char* _skiplist; 
+  
   // ...........................................................................
   // The probability which is used to determine the level for insertions
   // into the list. Note the following
@@ -175,7 +175,7 @@ typedef struct TRI_skiplist_s {
   int (*compareKeyElement) (struct TRI_skiplist_s*,
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
-                            int);
+                            int);    
 }
 TRI_skiplist_t;
 
@@ -284,7 +284,7 @@ TRI_skiplist_node_t* TRI_NextNodeSkipList (TRI_skiplist_t* skiplist,
 /// @brief given a node returns the prev node in the skip list, if the beginning is reached returns the start node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_PrevNodeSkipList (TRI_skiplist_t* skiplist,
+TRI_skiplist_node_t* TRI_PrevNodeSkipList (TRI_skiplist_t* skiplist, 
                                            TRI_skiplist_node_t* currentNode);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ TRI_skiplist_node_t* TRI_PrevNodeSkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
-                               TRI_skiplist_index_element_t* element,
+                               TRI_skiplist_index_element_t* element, 
                                TRI_skiplist_index_element_t* old);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +344,7 @@ typedef struct TRI_skiplist_multi_s {
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
                             int);
-
+  
   // ...........................................................................
   // Returns true if the element is an exact copy, or if the data which the
   // element points to is an exact copy
@@ -385,7 +385,7 @@ typedef struct TRI_skiplist_synced_multi_s {
 void TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
                             TRI_skiplist_prob_e,
                             uint32_t);
-
+                                              
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a multi skip list, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
