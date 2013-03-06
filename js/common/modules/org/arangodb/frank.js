@@ -84,7 +84,14 @@ Frank = function (options) {
 // ## The functions on a created Frank
 //
 // When you have created your Frank you can now define routes
-// on it.
+// on it. You provide each with a function that will handle
+// the request. It gets two arguments (four, to be honest. But the
+// other two are not relevant for now):
+//
+// * The request object
+// * The response object.
+//
+// You can find more about those in their individual sections.
 _.extend(Frank.prototype, {
   // The `handleRequest` method is the raw way to create a new
   // route. You probably wont call it directly, but it is used
@@ -194,10 +201,28 @@ _.extend(Frank.prototype, {
 BaseMiddleware = function (templateCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
-    var responseFunctions;
+    var responseFunctions, requestFunctions;
 
-    // ### The Response Functions
-    // Those are the functions added to the response objects.
+    // ### The Request Object
+    // Every request object has the following attributes from the underlying Actions:
+    //
+    // * path: The complete path as supplied by the user
+    // * prefix
+    // * suffix
+    // * urlParameters
+    //
+    // Frank currently leaves those unmodified.
+    responseFunctions = {};
+
+    // ### The Response Object
+    // Every response object has the following attributes from the underlying Actions:
+    //
+    // * contentType
+    // * responseCode
+    // * body
+    // * headers (an object)
+    //
+    // Frank adds the following methods to this response object.
     responseFunctions = {
       // ### The straightforward `status` function
       // Set the status code of your response, for example:
@@ -296,9 +321,10 @@ BaseMiddleware = function (templateCollection) {
       }
     };
 
-    // Now enhance the response as described above and call next at the
+    // Now enhance the request and response as described above and call next at the
     // end of this middleware (otherwise your application would never
     // be executed. Would be a shame, really).
+    request = _.extend(request, requestFunctions);
     response = _.extend(response, responseFunctions);
     next();
   };
