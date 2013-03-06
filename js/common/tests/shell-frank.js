@@ -50,6 +50,15 @@ function CreateFrankSpec () {
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
       assertEqual(routingInfo.templateCollection, templateCollection);
+    },
+
+    testAdditionOfBaseMiddlewareInRoutingInfo: function () {
+      var app = new Frank(),
+        routingInfo = app.routingInfo,
+        hopefully_base = routingInfo.middleware[0];
+
+      assertEqual(routingInfo.middleware.length, 1);
+      assertEqual(hopefully_base.url.match, "/*");
     }
   };
 }

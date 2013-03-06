@@ -60,7 +60,7 @@ internal.createUrlObject = function (url, constraint, method) {
 // * **The Template Collection:** More information in the template section
 Frank = function (options) {
   'use strict';
-  var urlPrefix, templateCollection;
+  var urlPrefix, templateCollection, myMiddleware;
 
   options = options || {};
 
@@ -78,7 +78,17 @@ Frank = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
+    myMiddleware = new BaseMiddleware(templateCollection);
+  } else {
+    myMiddleware = new BaseMiddleware();
   }
+
+  this.routingInfo.middleware = [
+    {
+      url: {match: "/*"},
+      action: {callback: myMiddleware}
+    }
+  ];
 };
 
 // ## The functions on a created Frank
