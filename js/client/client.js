@@ -65,10 +65,10 @@ function help () {
   var client = require("org/arangodb/arangosh");
 
   internal.print(client.HELP);
-  internal.print(arangodb.ArangoStatement.prototype._help());
-  internal.print(arangodb.ArangoDatabase.prototype._help());
-  internal.print(arangodb.ArangoCollection.prototype._help());
-  internal.print(arangodb.ArangoQueryCursor.prototype._help());
+  arangodb.ArangoStatement.prototype._help();
+  arangodb.ArangoDatabase.prototype._help();
+  arangodb.ArangoCollection.prototype._help();
+  arangodb.ArangoQueryCursor.prototype._help();
   internal.print(client.helpExtended);
 }
 
