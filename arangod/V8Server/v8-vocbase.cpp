@@ -796,35 +796,47 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   assert(col);
   assert(key);
   
-
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
+    
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+  if (barrier == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+  }
+
+  assert(barrier != 0);
+
+  bool freeBarrier = true;
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
   res = trx.read(&document, key, true);
-  
+ 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
+    if (! result.IsEmpty()) {
+      freeBarrier = false;
+    }
   }
 
   res = trx.finish(res);
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+    if (freeBarrier) {
+      TRI_FreeBarrier(barrier);
+    }
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "document not found", true)));
   }
 
-  if (document._key == 0 || document._data == 0) {
-    return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                             "document not found")));
-  }
-
   if (rid != 0 && document._rid != rid) {
+    if (freeBarrier) {
+      TRI_FreeBarrier(barrier);
+    }
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CONFLICT, "revision not found")));
   }
 
@@ -923,35 +935,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a new document
-///
-/// @FUN{@FA{collection}.save(@FA{data})}
-///
-/// Creates a new document in the @FA{collection} from the given @FA{data}. The
-/// @FA{data} must be a hash array. It must not contain attributes starting
-/// with @LIT{_}.
-///
-/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
-/// The attribute @LIT{_id} contains the document handle of the newly created
-/// document, the attribute @LIT{_rev} contains the document revision.
-///
-/// @FUN{@FA{collection}.save(@FA{data}, @FA{waitForSync})}
-///
-/// Creates a new document in the @FA{collection} from the given @FA{data} as
-/// above. The optional @FA{waitForSync} parameter can be used to force 
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude shell_create-document
+/// @brief saves a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
@@ -4988,11 +4972,37 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a document
+/// @brief saves a new document
 ///
-/// This function makes the distinction between document and edge collections
-/// and dispatches the request to the collection's specialised save function
+/// @FUN{@FA{collection}.save(@FA{data})}
+///
+/// Creates a new document in the @FA{collection} from the given @FA{data}. The
+/// @FA{data} must be a hash array. It must not contain attributes starting
+/// with @LIT{_}.
+///
+/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
+/// The attribute @LIT{_id} contains the document handle of the newly created
+/// document, the attribute @LIT{_rev} contains the document revision.
+///
+/// @FUN{@FA{collection}.save(@FA{data}, @FA{waitForSync})}
+///
+/// Creates a new document in the @FA{collection} from the given @FA{data} as
+/// above. The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
+
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
