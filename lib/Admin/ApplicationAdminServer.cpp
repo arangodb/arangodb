@@ -216,7 +216,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   
   if (_allowAdminDirectory) {
-    LOGGER_INFO("using JavaScript front-end files stored at '" << _adminDirectory << "'");
+    LOGGER_DEBUG("using JavaScript front-end path '" << _adminDirectory << "'");
 
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = _adminDirectory;
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";

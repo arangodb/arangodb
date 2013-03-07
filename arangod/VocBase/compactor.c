@@ -85,8 +85,13 @@ static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* document,
   while (true) {
     n = document->base.base._compactors._length;
 
-    for (i = 0;  i < n;  ++i) {
+    if (n == 0) {
+      // we don't have a compactor so we can exit immediately
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      return NULL;
+    }
 
+    for (i = 0;  i < n;  ++i) {
       // select datafile
       datafile = document->base.base._compactors._buffer[i];
 
@@ -127,7 +132,7 @@ static int CopyDocument (TRI_document_collection_t* collection,
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-    return false;
+    return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
   *fid = journal->_fid;
@@ -583,6 +588,8 @@ void TRI_CompactorVocBase (void* data) {
   }
 
   TRI_DestroyVectorPointer(&collections);
+  
+  LOG_TRACE("shutting down compactor thread");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -138,6 +138,14 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 /// @addtogroup Scheduler
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the SSL engine version number
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ApplicationEndpointServer::getSslVersion () {
+  return OPENSSL_VERSION_TEXT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the endpoint servers
@@ -277,9 +285,6 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     }
   }
 
-  // dump used endpoints for user information
-  _endpointList.dump();
-
   // and return
   return true;
 }
@@ -289,6 +294,9 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare () {
+  // dump used endpoints for user information
+  _endpointList.dump();
+
   _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
 
   return true;
@@ -375,8 +383,6 @@ void ApplicationEndpointServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::createSslContext () {
-  LOGGER_INFO("using " << OPENSSL_VERSION_TEXT);
-
   // check keyfile
   if (_httpsKeyfile.empty()) {
     return true;
@@ -389,7 +395,7 @@ bool ApplicationEndpointServer::createSslContext () {
     return false;
   }
     
-  LOGGER_INFO("using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'");
+  LOGGER_DEBUG("using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'");
   
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
@@ -402,7 +408,7 @@ bool ApplicationEndpointServer::createSslContext () {
   // set cache mode
   SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   if (_sslCache) {
-    LOGGER_INFO("using SSL session caching"); 
+    LOGGER_TRACE("using SSL session caching"); 
   }
 
   // set options

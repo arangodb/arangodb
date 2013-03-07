@@ -425,6 +425,26 @@ TRI_json_t* TRI_CreateListJson (TRI_memory_zone_t* zone) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a list object, with the specified initial size
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateList2Json (TRI_memory_zone_t* zone, 
+                                 const size_t initialSize) {
+  TRI_json_t* result;
+
+  result = (TRI_json_t*) TRI_Allocate(zone, sizeof(TRI_json_t), false);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  result->_type = TRI_JSON_LIST;
+  TRI_InitVector2(&result->_value._objects, zone, sizeof(TRI_json_t), initialSize);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -439,6 +459,26 @@ TRI_json_t* TRI_CreateArrayJson (TRI_memory_zone_t* zone) {
 
   result->_type = TRI_JSON_ARRAY;
   TRI_InitVector(&result->_value._objects, zone, sizeof(TRI_json_t));
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an object
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateArray2Json (TRI_memory_zone_t* zone,
+                                  const size_t initialSize) {
+  TRI_json_t* result;
+
+  result = (TRI_json_t*) TRI_Allocate(zone, sizeof(TRI_json_t), false);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  result->_type = TRI_JSON_ARRAY;
+  TRI_InitVector2(&result->_value._objects, zone, sizeof(TRI_json_t), initialSize);
 
   return result;
 }

@@ -300,9 +300,9 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         goto MEM_ERROR;
       }
 
-      TRI_json_t* json = TRI_JsonObject(value);
+      TRI_json_t* json = TRI_ObjectToJson(value);
 
-      if (!json) {
+      if (! json) {
         goto MEM_ERROR;
       }
 
@@ -480,7 +480,9 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
       // ....................................................................
       
       v8::Handle<v8::Value> value = attributeValues->Get(key);
-      json = TRI_JsonObject(value);
+      json = TRI_ObjectToJson(value);
+
+      // TODO: check return value!
 
       
       // ....................................................................
@@ -828,9 +830,9 @@ static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
 
     v8::Handle<v8::Value> value = example->Get(key);
 
-    TRI_json_t* json = TRI_JsonObject(value);
+    TRI_json_t* json = TRI_ObjectToJson(value);
 
-    if (!json) {
+    if (json == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
       return 0;

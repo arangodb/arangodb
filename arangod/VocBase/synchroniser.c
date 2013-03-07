@@ -151,6 +151,8 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
   // therefore no locking is required to access the _journals
   // .............................................................................
 
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+
   n = base->_journals._length;
 
   for (i = 0;  i < n;) {
@@ -161,9 +163,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
 
       LOG_DEBUG("closing full journal '%s'", journal->_filename);
 
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
       TRI_CloseJournalPrimaryCollection(&doc->base, i);
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
       n = base->_journals._length;
       i = 0;
@@ -174,8 +174,6 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
   }
 
   if (base->_journals._length == 0) {
-    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
     journal = TRI_CreateJournalDocumentCollection(doc);
 
     if (journal != NULL) {
@@ -187,10 +185,13 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
     else {
       // an error occurred when creating the journal file
       LOG_ERROR("could not create journal file");
+      
+      // we still must wake up the other thread from time to time, otherwise we'll deadlock
+      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
     }
-
-    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
   }
+
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
   return worked;
 }
@@ -281,6 +282,8 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
   // the only thread MODIFYING the _compactor variable is this thread,
   // therefore no locking is required to access the _compactors
   // .............................................................................
+      
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
   n = base->_compactors._length;
 
@@ -292,9 +295,7 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
 
       LOG_DEBUG("closing full compactor '%s'", compactor->_filename);
 
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
       TRI_CloseCompactorPrimaryCollection(&doc->base, i);
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
       n = base->_compactors._length;
       i = 0;
@@ -304,24 +305,28 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
     }
   }
 
-  if (base->_compactors._length == 0) {
-    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
+  if (base->_compactors._length == 0) {
+    // we don't have a compactor file anymore
     compactor = TRI_CreateCompactorPrimaryCollection(&doc->base);
 
     if (compactor != NULL) {
       worked = true;
       LOG_DEBUG("created new compactor '%s'", compactor->_filename);
-    
+
       TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
+
     }
     else {
       // an error occurred when creating the compactor file
       LOG_ERROR("could not create compactor file");
+      
+      // we still must wake up the other thread from time to time, otherwise we'll deadlock
+      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
     }
-
-    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
   }
+  
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
   return worked;
 }
@@ -432,6 +437,8 @@ void TRI_SynchroniserVocBase (void* data) {
   }
 
   TRI_DestroyVectorPointer(&collections);
+  
+  LOG_TRACE("shutting down synchroniser thread");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

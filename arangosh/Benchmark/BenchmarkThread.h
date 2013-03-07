@@ -86,6 +86,7 @@ namespace triagens {
             _callback(callback),
             _threadNumber(threadNumber),
             _batchSize(batchSize),
+            _warningCount(0),
             _operationsCounter(operationsCounter),
             _endpoint(endpoint),
             _username(username),
@@ -268,13 +269,21 @@ namespace triagens {
                                                       batchHeaders);
           _time += ((double) timer.time()) / 1000000.0;
 
-          if (result == 0) {
+          if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(numOperations);
             return;
           }
 
           if (result->getHttpReturnCode() >= 400) { 
             _operationsCounter->incFailures(numOperations);
+
+            _warningCount++;
+            if (_warningCount < MaxWarnings) {
+              LOGGER_WARNING("batch operation failed with HTTP code " << result->getHttpReturnCode());
+            }
+            else if (_warningCount == MaxWarnings) {
+              LOGGER_WARNING("...more warnings...");
+            }
           }
           else {
             const std::map<string, string>& headers = result->getHeaderFields();
@@ -299,6 +308,8 @@ namespace triagens {
           const string url = _operation->url(_threadNumber, threadCounter, globalCounter);
           size_t payloadLength = 0;
           bool mustFree = false;
+
+          // std::cout << "thread number #" << _threadNumber << ", threadCounter " << threadCounter << ", globalCounter " << globalCounter << "\n";
           const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
           const map<string, string>& headers = _operation->headers();
 
@@ -314,13 +325,21 @@ namespace triagens {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
           }
 
-          if (result == 0) {
+          if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
             return;
           }
 
           if (result->getHttpReturnCode() >= 400) {
             _operationsCounter->incFailures(1);
+            
+            _warningCount++;
+            if (_warningCount < MaxWarnings) {
+              LOGGER_WARNING("request for URL " << url << " failed with HTTP code " << result->getHttpReturnCode());
+            }
+            else if (_warningCount == MaxWarnings) {
+              LOGGER_WARNING("...more warnings...");
+            }
           }
           delete result;
         }
@@ -402,6 +421,12 @@ namespace triagens {
         const unsigned long _batchSize;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief warning counter
+////////////////////////////////////////////////////////////////////////////////
+
+        int _warningCount;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief benchmark counter
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -460,6 +485,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string _errorHeader;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of warnings to be displayed per thread
+////////////////////////////////////////////////////////////////////////////////
+
+        static const int MaxWarnings = 5;
 
     };
   }
