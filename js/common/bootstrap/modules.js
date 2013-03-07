@@ -393,8 +393,11 @@ function stop_color_print () {
           }
         }
         catch (err) {
-          if ('error' in console) {
-            console.error("cannot load package '%s': %s - %s", main, String(err), String(err.stack));
+          if (console.hasOwnProperty('error')) {
+            console.error("cannot load package '%s': %s - %s", 
+                          main, 
+                          String(err), 
+                          String(err.stack));
           }
         }
       }
@@ -441,7 +444,7 @@ function stop_color_print () {
     }
 
     return null;
-  }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file from the module path or the database
@@ -497,7 +500,7 @@ function stop_color_print () {
                      content: n.content };
           }
 
-          if ('error' in console) {
+          if (console.hasOwnProperty('error')) {
             console.error("found empty content in '%s'", JSON.stringify(n));
           }
         }
@@ -641,12 +644,10 @@ function stop_color_print () {
     module = this._package.module(path);
 
     if (module) {
-      if (module.type !== 'package') {
-        return module;
+      if (module.type === 'package') {
+        module = null;
       }
-      else {
-        return null;
-      }
+      return module;
     }
 
     // first check: we are talking about module within a package
@@ -665,12 +666,10 @@ function stop_color_print () {
     module = GlobalPackage.module(path);
 
     if (module) {
-      if (module.type !== 'package') {
-        return module;
+      if (module.type === 'package') {
+        module = null;
       }
-      else {
-        return null;
-      }
+      return module;
     }
 
     // second check: we are talking about a global module

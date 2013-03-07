@@ -693,8 +693,8 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
     shallow = data.shallowCopy || {};
   }
 
-  if (id !== undefined) {
-    shallow._key = id;
+  if (id !== undefined && id !== null) {
+    shallow._key = String(id);
   }
 
   shallow.$label = label || null;
@@ -739,8 +739,8 @@ Graph.prototype.addVertex = function (id, data, waitForSync) {
     shallow = data.shallowCopy || {};
   }
 
-  if (id !== undefined) {
-    shallow._key = id;
+  if (id !== undefined && id !== null) {
+    shallow._key = String(id);
   }
 
   ref = this._vertices.save(shallow, waitForSync);
