@@ -817,7 +817,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
  
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
-    freeBarrier = false;
+    if (! result.IsEmpty()) {
+      freeBarrier = false;
+    }
   }
 
   res = trx.finish(res);
@@ -1200,7 +1202,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   assert(key);
 
 
-  TRI_json_t* json = TRI_JsonObject(argv[1]);
+  TRI_json_t* json = TRI_ObjectToJson(argv[1]);
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "<data> is no valid JSON")));
   }
@@ -1389,7 +1391,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     // get optional options
     TRI_json_t* options = 0;        
     if (p->Has(v8g->CreateOptionsKey)) {
-      options = TRI_JsonObject(p->Get(v8g->CreateOptionsKey));
+      options = TRI_ObjectToJson(p->Get(v8g->CreateOptionsKey));
     }
 
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, options);
@@ -1677,7 +1679,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   // return the result as a cursor object
-  TRI_json_t* json = TRI_JsonObject(result);
+  TRI_json_t* json = TRI_ObjectToJson(result);
 
   if (! json) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
@@ -1994,7 +1996,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
 
   // extract objects
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[0]);
-  TRI_json_t* json = TRI_JsonObject(array);
+  TRI_json_t* json = TRI_ObjectToJson(array);
 
   if (json == 0) {
     return scope.Close(v8::ThrowException(
@@ -2597,7 +2599,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   TRI_json_t* parameters = 0;
   if (argc > 1) {
-    parameters = TRI_JsonObject(argv[1]);
+    parameters = TRI_ObjectToJson(argv[1]);
     holder.registerJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
@@ -2661,7 +2663,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   TRI_json_t* parameters = 0;
   if (argc > 1) {
-    parameters = TRI_JsonObject(argv[1]);
+    parameters = TRI_ObjectToJson(argv[1]);
     holder.registerJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 
@@ -3794,14 +3796,14 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       // Attempt to convert the V8 javascript function argument into a TRI_json_t
       // .........................................................................
       
-      TRI_json_t* value = TRI_JsonObject(argument);
+      TRI_json_t* value = TRI_ObjectToJson(argument);
       
       
       // .........................................................................
       // If the conversion from V8 value into a TRI_json_t fails, exit
       // .........................................................................
       
-      if (value == NULL) {
+      if (value == 0) {
         errorString = "invalid parameter -- expected an array (list)";
         errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;

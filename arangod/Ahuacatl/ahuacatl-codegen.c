@@ -1419,7 +1419,6 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
   size_t i, n;
 
-  ScopeOutput(generator, "[ ");
   n = node->_members._length;
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* parameter = TRI_AQL_NODE_MEMBER(node, i);
@@ -1440,8 +1439,6 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
       ProcessNode(generator, parameter);
     }
   }
-
-  ScopeOutput(generator, " ]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1885,9 +1882,9 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
                           const TRI_aql_node_t* const node) {
-  ScopeOutput(generator, "aql.FCALL(aql.");
+  ScopeOutput(generator, "aql.");
   ScopeOutput(generator, TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
-  ScopeOutput(generator, ", ");
+  ScopeOutput(generator, "(");
   ProcessArgList(generator, (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node), TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
 }
@@ -2053,6 +2050,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   groupFunctionIndex = CreateGroupFunction(generator, node);
 
   // now apply actual grouping
+  ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, groupRegister);
   ScopeOutput(generator, " = ");
   ScopeOutput(generator, "aql.GROUP(");
@@ -2087,6 +2085,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
     TRI_aql_codegen_register_t varRegister = IncRegister(generator);
 
     // var collect = temp['collect'];
+    ScopeOutput(generator, "var ");
     ScopeOutputRegister(generator, varRegister);
     ScopeOutput(generator, " = ");
     ScopeOutputIndexedName(generator, scope->_ownRegister, TRI_AQL_NODE_STRING(varNode));
@@ -2101,6 +2100,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
     TRI_aql_codegen_register_t intoRegister = IncRegister(generator);
 
     // var into = temp['into'];
+    ScopeOutput(generator, "var ");
     ScopeOutputRegister(generator, intoRegister);
     ScopeOutput(generator, " = ");
     ScopeOutputIndexedName(generator, scope->_ownRegister, TRI_AQL_NODE_STRING(nameNode));
@@ -2197,6 +2197,7 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
   
+  ScopeOutput(generator, "var ");
   // var row = ...;
   ScopeOutputRegister(generator, resultRegister);
 #if AQL_VERBOSE

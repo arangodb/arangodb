@@ -295,8 +295,10 @@ void TRI_CleanupVocBase (void* data) {
     }
     
   }
-
+  
   TRI_DestroyVectorPointer(&collections);
+  
+  LOG_TRACE("shutting down cleanup thread");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

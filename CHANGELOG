@@ -1,6 +1,17 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* adjust startup log output to be more compact, less verbose
+
+* set the required minimum number of file descriptors to 256.
+  On server start, this number is enforced on systems that have rlimit. If the limit
+  cannot be enforced, starting the server will fail.
+  Note: 256 is considered to be the absolute minimum value. Depending on the use case
+  for ArangoDB, a much higher number of file descriptors should be used.
+
+  To avoid checking & potentially changing the number of maximum open files, use the
+  startup option `--server.descriptors-minimum 0`
+
 * fixed shapedjson to json conversion for special numeric values (NaN, +inf, -inf).
   Before, "NaN", "inf", or "-inf" were written into the JSONified output, but these 
   values are not allowed in JSON. Now, "null" is written to the JSONified output as
@@ -35,6 +46,26 @@ v1.3 (XXXX-XX-XX)
 
 * removed configure option `--enable-arangob`
   arangob is now always included in the build
+
+
+v1.2.1 (XXXX-XX-XX)
+-------------------
+
+* fixed conversion of special double values (NaN, -inf, +inf) when converting from 
+  shapedjson to JSON
+
+* fixed compaction of markers (location of _key was not updated correctly in memory,
+  leading to _keys pointing to undefined memory after datafile rotation)
+
+* fixed edge index key pointers to use document master pointer plus offset instead
+  of direct _key address
+
+* fixed case when server could not create any more journal or compactor files. 
+  Previously a wrong status code may have been returned, and not being able to create
+  a new compactor file may have led to an infinite loop with error message
+  "could not create compactor".
+ 
+* fixed value truncation for numeric filename parts when renaming datafiles/journals
 
 
 v1.2.beta4 (XXXX-XX-XX)

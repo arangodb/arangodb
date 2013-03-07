@@ -145,6 +145,87 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate full version string
+////////////////////////////////////////////////////////////////////////////////
+
+static string GetFullVersionString () {
+  UVersionInfo icuVersion;
+  char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
+  u_getVersion(icuVersion);
+  u_versionToString(icuVersion, icuVersionString);  
+  
+  ostringstream version;
+  version << "ArangoDB " << TRIAGENS_VERSION << " -- " <<
+             "ICU " << icuVersionString << ", " <<
+             "V8 version " << v8::V8::GetVersion() << ", " 
+             "SSL engine " << ApplicationEndpointServer::getSslVersion();
+
+  return version.str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate configure options string
+////////////////////////////////////////////////////////////////////////////////
+
+static string GetConfigureOptionsString () {
+  ostringstream configure;
+ 
+#ifdef TRI_CONFIGURE_COMMAND
+#ifdef TRI_CONFIGURE_OPTIONS
+
+  configure << "configure:" << TRI_CONFIGURE_COMMAND << TRI_CONFIGURE_OPTIONS;
+
+#endif
+#endif
+
+  return configure.str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate configure environment options string
+////////////////////////////////////////////////////////////////////////////////
+
+static string GetConfigureEnvironmentString () {
+  ostringstream env;
+
+#ifdef TRI_CONFIGURE_FLAGS
+  env << "env:" << TRI_CONFIGURE_FLAGS;
+#endif
+
+  return env.str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a verbose information string about ArangoDB
+////////////////////////////////////////////////////////////////////////////////
+
+static string GetVerboseInformationString () {
+  string info(GetFullVersionString());
+
+  string configure(GetConfigureOptionsString());
+  if (! configure.empty()) {
+#ifdef _WIN32
+    info += "\r\n";
+#else
+    info += "\n";
+#endif    
+    info.append(configure);
+  }
+  
+  string env(GetConfigureEnvironmentString());
+  if (! env.empty()) {
+#ifdef _WIN32
+    info += "\r\n";
+#else
+    info += "\n";
+#endif    
+    info.append(env);
+  }
+
+  return info;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,7 +275,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
   _workingDirectory = "/var/tmp";
 
   _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +297,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 void ArangoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
-  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
+  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", GetVerboseInformationString());
   _applicationServer->setSystemConfigFile("arangod.conf");
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
@@ -383,7 +463,8 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
-
+  
+  
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
@@ -392,31 +473,42 @@ void ArangoServer::buildApplicationServer () {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
   
+  // dump versions of important components
+  LOGGER_INFO(GetFullVersionString());
+
+  // dump configure plus compile environment
+#ifdef TRI_CONFIGURE_COMMAND 
+#ifdef TRI_CONFIGURE_OPTIONS  
+  LOGGER_DEBUG(GetConfigureOptionsString());
+#endif
+#endif
+
+#ifdef TRI_CONFIGURE_FLAGS
+  LOGGER_DEBUG(GetConfigureEnvironmentString());
+#endif
+  
   // .............................................................................
   // set language of default collator
   // .............................................................................
 
-  UVersionInfo icuVersion;
-  char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
-  u_getVersion(icuVersion);
-  u_versionToString(icuVersion, icuVersionString);  
-  LOGGER_INFO("using ICU " << icuVersionString);        
+  string languageName;
   
   Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'");    
+    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
   }
   else {
-    LOGGER_INFO("using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" );        
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
+    
 
   // .............................................................................
   // init nonces
   // .............................................................................
   
-  uint32_t optionNonceHashSize = 0; // TODO: add an server option
+  uint32_t optionNonceHashSize = 0; // TODO: add a server option
   if (optionNonceHashSize > 0) {
-    LOGGER_INFO("setting nonce hash size to '" << optionNonceHashSize << "'" );        
+    LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );        
     Nonce::create(optionNonceHashSize);
   }
   
@@ -454,6 +546,8 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
+
+  LOGGER_INFO("using default language '" << languageName << "'");
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
@@ -594,8 +688,7 @@ int ArangoServer::startupServer () {
 
   _applicationServer->start();
 
-  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business");
-  LOGGER_INFO("Have Fun!");
+  LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
 
   _applicationServer->wait();
   

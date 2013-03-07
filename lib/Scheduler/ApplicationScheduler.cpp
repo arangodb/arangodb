@@ -311,7 +311,7 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
     _nrSchedulerThreads(4),
     _backend(0),
     _reuseAddress(true),
-    _descriptorMinimum(0) {
+    _descriptorMinimum(256) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,7 +644,7 @@ void ApplicationScheduler::adjustFileDescriptors () {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOGGER_FATAL_AND_EXIT("cannot raise the file descriptor limit to '" << _descriptorMinimum << "', got " << strerror(errno));
+        LOGGER_FATAL_AND_EXIT("cannot raise the file descriptor limit to " << _descriptorMinimum << ", got '" << strerror(errno) << "'");
       }
 
       changed = true;
