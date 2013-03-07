@@ -935,35 +935,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a new document
-///
-/// @FUN{@FA{collection}.save(@FA{data})}
-///
-/// Creates a new document in the @FA{collection} from the given @FA{data}. The
-/// @FA{data} must be a hash array. It must not contain attributes starting
-/// with @LIT{_}.
-///
-/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
-/// The attribute @LIT{_id} contains the document handle of the newly created
-/// document, the attribute @LIT{_rev} contains the document revision.
-///
-/// @FUN{@FA{collection}.save(@FA{data}, @FA{waitForSync})}
-///
-/// Creates a new document in the @FA{collection} from the given @FA{data} as
-/// above. The optional @FA{waitForSync} parameter can be used to force 
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
-///
-/// @EXAMPLES
-///
-/// @verbinclude shell_create-document
+/// @brief saves a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
@@ -5000,11 +4972,37 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a document
+/// @brief saves a new document
 ///
-/// This function makes the distinction between document and edge collections
-/// and dispatches the request to the collection's specialised save function
+/// @FUN{@FA{collection}.save(@FA{data})}
+///
+/// Creates a new document in the @FA{collection} from the given @FA{data}. The
+/// @FA{data} must be a hash array. It must not contain attributes starting
+/// with @LIT{_}.
+///
+/// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
+/// The attribute @LIT{_id} contains the document handle of the newly created
+/// document, the attribute @LIT{_rev} contains the document revision.
+///
+/// @FUN{@FA{collection}.save(@FA{data}, @FA{waitForSync})}
+///
+/// Creates a new document in the @FA{collection} from the given @FA{data} as
+/// above. The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
+
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
