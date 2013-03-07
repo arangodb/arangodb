@@ -436,10 +436,57 @@ function BaseMiddlewareWithTemplateSpec () {
   };
 }
 
+function ViewHelperSpec () {
+  var app, Middleware, request, response, options, next;
+
+  return {
+    setUp: function () {
+      app = new Frank();
+      Middleware = new require('org/arangodb/frank').BaseMiddleware;
+      request = {};
+      response = {};
+      options = {};
+      next = function () {};
+    },
+
+    testDefiningAViewHelper: function () {
+      var my_func = function () {};
+
+      app.helper("testHelper", my_func);
+
+      assertEqual(app.helperCollection["testHelper"], my_func);
+    },
+
+    testUsingTheHelperInATemplate: function () {
+      var a = false;
+
+      db._drop("templateTest");
+      myCollection = db._create("templateTest");
+
+      myCollection.save({
+        path: "simple/path",
+        content: "hallo <%= testHelper() %>",
+        contentType: "text/plain",
+        templateLanguage: "underscore"
+      });
+
+      middleware = new Middleware(myCollection, {
+        testHelper: function() { a = true }
+      });
+      middleware(request, response, options, next);
+
+      assertFalse(a);
+      response.render("simple/path", {});
+      assertTrue(a);
+    }
+  };
+}
+
 jsunity.run(CreateFrankSpec);
 jsunity.run(SetRoutesFrankSpec);
 jsunity.run(AddMidlewareFrankSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
+jsunity.run(ViewHelperSpec);
 
 return jsunity.done();
