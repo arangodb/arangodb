@@ -958,12 +958,17 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   
   if (argv[0]->IsObject()) {
     v8::Handle<v8::Object> obj = argv[0]->ToObject();
-    v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-    if (v->IsString()) {
-      // string key
-      TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-      key = TRI_DuplicateString2(*str, str.length());
-      holder.registerString(TRI_CORE_MEM_ZONE, key);
+    if (obj->Has(v8g->KeyKey)) {
+      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
+      if (v->IsString()) {
+        // string key
+        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+        key = TRI_DuplicateString2(*str, str.length());
+        holder.registerString(TRI_CORE_MEM_ZONE, key);
+      }
+      else {
+        return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD)));
+      }
     }
   }
   
@@ -1043,11 +1048,16 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
   if (argv[2]->IsObject()) {
     v8::Handle<v8::Object> obj = argv[2]->ToObject();
-    v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-    if (v->IsString()) {
-      TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-      key = TRI_DuplicateString2(*str, str.length());
-      holder.registerString(TRI_CORE_MEM_ZONE, key);
+    if (obj->Has(v8g->KeyKey)) {
+      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
+      if (v->IsString()) {
+        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+        key = TRI_DuplicateString2(*str, str.length());
+        holder.registerString(TRI_CORE_MEM_ZONE, key);
+      }
+      else {
+        return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD)));
+      }
     }
   }
     
