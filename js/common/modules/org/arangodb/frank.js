@@ -71,6 +71,8 @@ Frank = function (options) {
     routes: []
   };
 
+  this.helperCollection = {};
+
   if (_.isString(urlPrefix)) {
     this.routingInfo.urlPrefix = urlPrefix;
   }
@@ -78,7 +80,7 @@ Frank = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = new BaseMiddleware(templateCollection);
+    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
   } else {
     myMiddleware = new BaseMiddleware();
   }
@@ -261,6 +263,21 @@ _.extend(Frank.prototype, {
         func(req, res);
       }}
     });
+  },
+
+  // ## The ViewHelper concept
+  // If you want to use a function inside your templates, the ViewHelpers
+  // will come to rescue you. Define them on your app like this:
+  //
+  //     app.helper("link_to", function (identifier) {
+  //       return urlRepository[identifier];
+  //     });
+  //
+  // Then you can just call this function in your template's JavaScript
+  // blocks.
+  helper: function (name, func) {
+    'use strict';
+    this.helperCollection[name] = func;
   }
 });
 
@@ -268,7 +285,7 @@ _.extend(Frank.prototype, {
 // ## The Base Middleware
 // The `BaseMiddleware` manipulates the request and response
 // objects to give you a nicer API.
-BaseMiddleware = function (templateCollection) {
+BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
     var responseFunctions, requestFunctions;
@@ -369,6 +386,10 @@ BaseMiddleware = function (templateCollection) {
       // Which would set the body of the response to `hello Frank` with the
       // template defined above. It will also set the `contentType` to
       // `text/plain` in this case.
+      //
+      // In addition to the attributes you provided, you also have access to
+      // all your view helpers. How to define them? Read above in the
+      // ViewHelper section.
       render: function (templatePath, data) {
         var template;
 
@@ -386,7 +407,7 @@ BaseMiddleware = function (templateCollection) {
           throw "Unknown template language '" + template.templateLanguage + "'";
         }
 
-        this.body = _.template(template.content, data);
+        this.body = _.template(template.content, _.extend(data, helperCollection));
         this.contentType = template.contentType;
       }
     };
