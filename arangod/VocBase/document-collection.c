@@ -1727,6 +1727,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
         TRI_FreeIndex(idx);
       }
       TRI_DestroyVectorPointer(&collection->_allIndexes);
+
       TRI_DestroyPrimaryCollection(&collection->base);
 
       return false;
@@ -1778,6 +1779,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
+  TRI_key_generator_t* keyGenerator;
   int res;
   bool waitForSync;
   bool isVolatile;
@@ -1789,11 +1791,24 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     cid = TRI_NewTickVocBase();
   }
   parameter->_cid = cid;
+  
+  // check if we can generate the key generator
+  res = TRI_CreateKeyGenerator(parameter->_options, &keyGenerator);
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+    LOG_ERROR("cannot create document collection");
+    return NULL;
+  }
+
+  assert(keyGenerator != NULL);
+
+  
   // first create the document collection
   document = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
 
   if (document == NULL) {
+    TRI_FreeKeyGenerator(keyGenerator);
     LOG_ERROR("cannot create document collection");
     return NULL;
   }
@@ -1801,6 +1816,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   collection = TRI_CreateCollection(vocbase, &document->base.base, path, parameter);
 
   if (collection == NULL) {
+    TRI_FreeKeyGenerator(keyGenerator);
     LOG_ERROR("cannot create document collection");
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
@@ -1817,6 +1833,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");
 
+    TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection); // will free document
 
@@ -1825,14 +1842,17 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
-    LOG_ERROR("cannot initialise shapes collection");
+    LOG_ERROR("cannot initialise document collection");
 
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
+    TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection); // will free document
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection); // will free document
 
     return NULL;
   }
+
+  document->base._keyGenerator = keyGenerator;
 
   // save the parameter block (within create, no need to lock)
   res = TRI_SaveCollectionInfo(collection->_directory, parameter);
@@ -1925,7 +1945,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
   TRI_shape_collection_t* shapeCollection;
+  TRI_key_generator_t* keyGenerator;
   char* shapes;
+  int res;
 
   // first open the document collection
   document = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
@@ -1971,6 +1993,22 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
 
     return NULL;
   }
+  
+  // check if we can generate the key generator
+  res = TRI_CreateKeyGenerator(collection->_info._options, &keyGenerator);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+    LOG_ERROR("cannot initialise document collection");
+
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection);
+    return NULL;
+  }
+
+  assert(keyGenerator != NULL);
+  document->base._keyGenerator = keyGenerator;
+
   
   assert(shaper);
   shapeCollection = TRI_CollectionVocShaper(shaper);
@@ -4916,7 +4954,7 @@ int TRI_InitMarker (TRI_doc_document_key_marker_t* marker,
   // create key using key generator
   res = keyGenerator->generate(keyGenerator, 
                                TRI_VOC_KEY_MAX_LENGTH, 
-                               marker,
+                               marker->_rid,
                                key, 
                                (char*) &keyBuffer, 
                                &keySize);

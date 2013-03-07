@@ -442,8 +442,6 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 
 int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
-  int res;
-
   primary->_shaper = shaper;
   primary->_capConstraint = NULL;
   primary->_keyGenerator = NULL;
@@ -469,10 +467,7 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
   
   TRI_InitReadWriteLock(&primary->_lock);
   
-  // init key generator
-  res = TRI_CreateKeyGenerator(primary->base._info._options, primary);
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
