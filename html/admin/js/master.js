@@ -26,6 +26,35 @@ var rowCounter = 0;
 var shArray = []; 
 var BaseUrl = "/_admin/html/index.html"; 
 
+try {
+  if (start_color_print !== undefined) {
+  }
+}
+catch (e1) {
+  start_color_print = function () { };
+}
+try {
+  if (stop_color_print !== undefined) {
+  }
+} 
+catch (e2) {
+  stop_color_print = function () { };
+}
+try {
+  if (start_pretty_print !== undefined) {
+  }
+}
+catch (e3) {
+  start_pretty_print = function () { };
+}
+try {
+  if (stop_pretty_print !== undefined) {
+  }
+}
+catch (e4) {
+  stop_pretty_print = function () { };
+}
+
 // a static cache
 var CollectionTypes = { };
 
