@@ -22,6 +22,47 @@ AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
 
+
+dnl ----------------------------------------------------------------------------
+dnl grab the configure command and store it in m4 variables
+dnl ----------------------------------------------------------------------------
+
+if test `expr -- [$]0 : "'.*"` = 0; then
+  TRI_CONFIGURE_COMMAND="$TRI_CONFIGURE_COMMAND '[$]0'"
+else 
+  TRI_CONFIGURE_COMMAND="$TRI_CONFIGURE_COMMAND [$]0"
+fi
+
+for arg in $ac_configure_args; do
+  if test `expr -- $arg : "'.*"` = 0; then
+    if test `expr -- $arg : "--.*"` = 0; then
+      break;
+    fi
+    TRI_CONFIGURE_OPTIONS="$TRI_CONFIGURE_OPTIONS '[$]arg'"
+  else
+    if test `expr -- $arg : "'--.*"` = 0; then
+      break;
+    fi
+    TRI_CONFIGURE_OPTIONS="$TRI_CONFIGURE_OPTIONS [$]arg"
+  fi
+done
+
+for var in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS EXTRA_LDFLAGS_PROGRAM LIBS CC CXX; do
+  eval val=\$$var
+  if test -n "$val"; then
+    TRI_CONFIGURE_FLAGS="$TRI_CONFIGURE_FLAGS $var='$val'"
+  fi
+done
+
+AC_SUBST(TRI_CONFIGURE_COMMAND)
+AC_SUBST(TRI_CONFIGURE_OPTIONS)
+AC_SUBST(TRI_CONFIGURE_FLAGS)
+
+AC_DEFINE_UNQUOTED(TRI_CONFIGURE_COMMAND, "$TRI_CONFIGURE_COMMAND", "" , [configure command])
+AC_DEFINE_UNQUOTED(TRI_CONFIGURE_OPTIONS, "$TRI_CONFIGURE_OPTIONS", "" , [configure options])
+AC_DEFINE_UNQUOTED(TRI_CONFIGURE_FLAGS, "$TRI_CONFIGURE_FLAGS", "" , [configure flags])
+
+
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================
