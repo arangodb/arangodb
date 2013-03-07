@@ -37,8 +37,6 @@ var output = arangodb.output;
 var sprintf = arangodb.sprintf;
 var db = arangodb.db;
 
-var colors = require("internal").colors;
-
 var simple = require("org/arangodb/simple-query");
 
 var SimpleQueryAll = simple.SimpleQueryAll;
@@ -144,6 +142,8 @@ ArangoCollection.prototype._PRINT = function () {
     case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
     case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
   }
+
+  var colors = require("internal").colors;
 
   output("[ArangoCollection ", 
          colors.COLOR_STRING, this._id, colors.COLOR_RESET,
