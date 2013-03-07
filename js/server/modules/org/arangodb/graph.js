@@ -495,7 +495,7 @@ Vertex.prototype.outDegree = function () {
 /// @verbinclude graph-constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function Graph (name, vertices, edges) {
+function Graph (name, vertices, edges, waitForSync) {
   var gdb = db._collection("_graphs");
   var graphProperties;
   var graphPropertiesId;
@@ -572,7 +572,7 @@ function Graph (name, vertices, edges) {
             'vertices' : vertices.name(),
             'edges' : edges.name(),
             '_key' : name
-          });
+          }, waitForSync);
 
           graphProperties = gdb.document(graphPropertiesId);
         }
@@ -627,15 +627,15 @@ function Graph (name, vertices, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops the graph, the vertices, and the edges
 ///
-/// @FUN{@FA{graph}.drop()}
+/// @FUN{@FA{graph}.drop(@FA{waitForSync})}
 ///
 /// Drops the graph, the vertices, and the edges. Handle with care.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.drop = function () {
+Graph.prototype.drop = function (waitForSync) {
   var gdb = db._collection("_graphs");
 
-  gdb.remove(this._properties);
+  gdb.remove(this._properties, true, waitForSync);
 
   this._vertices.drop();
   this._edges.drop();
@@ -671,7 +671,7 @@ Graph.prototype.drop = function () {
 /// @verbinclude graph-graph-add-edge2
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
+Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
   var ref;
   var shallow;
 
@@ -699,7 +699,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
 
   shallow.$label = label || null;
 
-  ref = this._edges.save(out_vertex._properties._id, in_vertex._properties._id, shallow);
+  ref = this._edges.save(out_vertex._properties._id, in_vertex._properties._id, shallow, waitForSync);
 
   return this.constructEdge(ref._id);
 };
@@ -728,7 +728,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
 /// @verbinclude graph-graph-add-vertex2
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.addVertex = function (id, data) {
+Graph.prototype.addVertex = function (id, data, waitForSync) {
   var ref;
   var shallow;
 
@@ -743,7 +743,7 @@ Graph.prototype.addVertex = function (id, data) {
     shallow._key = id;
   }
 
-  ref = this._vertices.save(shallow);
+  ref = this._vertices.save(shallow, waitForSync);
 
   return this.constructVertex(ref._id);
 };
@@ -913,7 +913,7 @@ Graph.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a vertex and all in- or out-bound edges
 ///
-/// @FUN{@FA{graph}.removeVertex(@FA{vertex})}
+/// @FUN{@FA{graph}.removeVertex(@FA{vertex},@FA{waitForSync})}
 ///
 /// Deletes the @FA{vertex} and all its edges.
 ///
@@ -922,21 +922,21 @@ Graph.prototype.getEdges = function () {
 /// @verbinclude graph-graph-remove-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.removeVertex = function (vertex) {
+Graph.prototype.removeVertex = function (vertex, waitForSync) {
   var result;
   var graph = this;
 
   this.emptyCachedPredecessors();
 
   if (vertex._properties) {
-    result = this._vertices.remove(vertex._properties);
+    result = this._vertices.remove(vertex._properties, true, waitForSync);
 
     if (! result) {
       throw "cannot delete vertex";
     }
 
     vertex.edges().forEach(function (edge) {
-      graph.removeEdge(edge);
+      graph.removeEdge(edge, waitForSync);
     });
 
     vertex._properties = undefined;
@@ -946,7 +946,7 @@ Graph.prototype.removeVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an edge
 ///
-/// @FUN{@FA{graph}.removeEdge(@FA{vertex})}
+/// @FUN{@FA{graph}.removeEdge(@FA{vertex},@FA{waitForSync})}
 ///
 /// Deletes the @FA{edge}. Note that the in and out vertices are left untouched.
 ///
@@ -955,13 +955,13 @@ Graph.prototype.removeVertex = function (vertex) {
 /// @verbinclude graph-graph-remove-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.removeEdge = function (edge) {
+Graph.prototype.removeEdge = function (edge, waitForSync) {
   var result;
 
   this.emptyCachedPredecessors();
 
   if (edge._properties) {
-    result = this._edges.remove(edge._properties);
+    result = this._edges.remove(edge._properties, true, waitForSync);
 
     if (! result) {
       throw "cannot delete edge";
