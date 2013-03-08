@@ -102,6 +102,8 @@ v1.3 (XXXX-XX-XX)
 v1.2.1 (XXXX-XX-XX)
 -------------------
 
+* issue #444: please darken light color in arangosh
+
 * issue #442: pls update post install info on osx
 
 * fixed conversion of special double values (NaN, -inf, +inf) when converting from 
