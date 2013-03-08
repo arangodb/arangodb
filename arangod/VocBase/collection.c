@@ -48,6 +48,91 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-XXX\.ending$/, where XXX is
+/// a number, and type and ending are arbitrary letters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  char* pos1;
+  char* pos2;
+
+  pos1 = strrchr(filename, '.');
+
+  if (pos1 == NULL) {
+    return 0;
+  }
+  
+  pos2 = strrchr(filename, '-');
+
+  if (pos2 == NULL || pos2 > pos1) {
+    return 0;
+  }
+
+  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in 
+/// the filename
+////////////////////////////////////////////////////////////////////////////////
+
+static int FilenameComparator (const void* lhs, const void* rhs) {
+  const char* l = *((char**) lhs);
+  const char* r = *((char**) rhs);
+ 
+  const uint64_t numLeft  = GetNumericFilenamePart(l);
+  const uint64_t numRight = GetNumericFilenamePart(r);
+
+  if (numLeft != numRight) {
+    return numLeft < numRight ? -1 : 1;
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two datafiles, based on the numeric part contained in 
+/// the filename
+////////////////////////////////////////////////////////////////////////////////
+
+static int DatafileComparator (const void* lhs, const void* rhs) {
+  TRI_datafile_t* l = *((TRI_datafile_t**) lhs);
+  TRI_datafile_t* r = *((TRI_datafile_t**) rhs);
+
+  const uint64_t numLeft  = (l->_filename != NULL ? GetNumericFilenamePart(l->_filename) : 0);
+  const uint64_t numRight = (r->_filename != NULL ? GetNumericFilenamePart(r->_filename) : 0);
+
+  if (numLeft != numRight) {
+    return numLeft < numRight ? -1 : 1;
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort a vector of filenames, using the numeric parts contained
+////////////////////////////////////////////////////////////////////////////////
+
+static void SortFilenames (TRI_vector_string_t* files) {
+  if (files->_length < 1) {
+    return;
+  }
+
+  qsort(files->_buffer, files->_length, sizeof(char*), &FilenameComparator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort a vector of datafiles, using the numeric parts contained
+////////////////////////////////////////////////////////////////////////////////
+
+static void SortDatafiles (TRI_vector_pointer_t* files) {
+  if (files->_length < 1) {
+    return;
+  }
+
+  qsort(files->_buffer, files->_length, sizeof(TRI_datafile_t*), &DatafileComparator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -103,9 +188,11 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
     regmatch_t matches[4];
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      // file type: (journal|datafile|index|compactor)
       char const* first = file + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
 
+      // extension
       char const* third = file + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
 
@@ -146,12 +233,12 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
         // ups, what kind of file is that
         else {
-          LOG_ERROR("unknown datafile '%s'", file);
+          LOG_ERROR("unknown datafile type '%s'", file);
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
         }
       }
       else {
-        LOG_ERROR("unknown datafile '%s'", file);
+        LOG_ERROR("unknown datafile type '%s'", file);
       }
     }
   }
@@ -159,6 +246,13 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_DestroyVectorString(&files);
 
   regfree(&re);
+  
+  // now sort the files in the structures that we created.
+  // the sorting allows us to iterate the files in the correct order
+  SortFilenames(&structure._journals);
+  SortFilenames(&structure._compactors);
+  SortFilenames(&structure._datafiles);
+  SortFilenames(&structure._indexes);
 
   return structure;
 }
@@ -378,10 +472,16 @@ static bool CheckCollection (TRI_collection_t* collection) {
   }
 
   TRI_DestroyVectorPointer(&all);
+  
+  // sort the datafiles.
+  // this allows us to iterate them in the correct order
+  SortDatafiles(&datafiles);
+  SortDatafiles(&journals);
+  SortDatafiles(&compactors);
 
   // add the datafiles and journals
-  collection->_datafiles = datafiles;
-  collection->_journals = journals;
+  collection->_datafiles  = datafiles;
+  collection->_journals   = journals;
   collection->_compactors = compactors;
 
   return true;
@@ -731,7 +831,9 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
+int TRI_LoadCollectionInfo (char const* path, 
+                            TRI_col_info_t* parameter,
+                            const bool versionWarning) {
   TRI_json_t* json;
   char* filename;
   char* error = NULL;
@@ -768,12 +870,14 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
+  
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // convert json
   n = json->_value._objects._length;
@@ -825,6 +929,17 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  // warn about wrong version of the collection
+  if (versionWarning && 
+      parameter->_type != TRI_COL_TYPE_SHAPE && 
+      parameter->_version < TRI_COL_VERSION) {
+    if (parameter->_name != NULL) {
+      // only warn if the collection version is older than expected, and if it's not a shape collection
+      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.", parameter->_name);
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1073,7 +1188,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   }
 
   // read parameter block, no need to lock as we are opening the collection
-  res = TRI_LoadCollectionInfo(path, &info);
+  res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot load collection parameter '%s': '%s'", path, TRI_last_error());
@@ -1153,6 +1268,41 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over the markers incollection journals journal
+///
+/// we do this on startup to find the most recent tick values
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IterateJournalsCollection (const char* const path,
+                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+  TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
+  TRI_vector_string_t* vector = &structure._journals;
+  size_t n = vector->_length;
+
+  if (n > 0) {
+    size_t i;
+
+    for (i = 0; i < n ; ++i) {
+      TRI_datafile_t* datafile;
+      char* filename;
+ 
+      filename = TRI_AtVectorString(vector, i);
+      LOG_DEBUG("iterating over collection journal file '%s'", filename);
+      datafile = TRI_OpenDatafile(filename);
+      if (datafile != NULL) {
+        TRI_IterateDatafile(datafile, iterator, NULL, true);  
+        TRI_CloseDatafile(datafile);
+        TRI_FreeDatafile(datafile);
+      }
+    }
+  }
+
+  TRI_DestroyFileStructureCollection(&structure);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1162,6 +1312,23 @@ bool TRI_IsSystemCollectionName (char const* name) {
   }
 
   return *name == '_';
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_TypeNameCollection (const TRI_col_type_e type) {
+  switch (type) {
+    case TRI_COL_TYPE_DOCUMENT:
+      return "document";
+    case TRI_COL_TYPE_EDGE:
+      return "edge";
+    case TRI_COL_TYPE_SHAPE:
+      return "shape";
+  }
+
+  return "unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

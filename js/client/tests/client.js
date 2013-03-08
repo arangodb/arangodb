@@ -154,16 +154,11 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare : function () {
-      if (internal.HAS_ICU) {
-        nfc = "Gr\u00FC\u00DF Gott.";
-        nfd = "Gru\u0308\u00DF Gott.";
+      nfc = "Gr\u00FC\u00DF Gott.";
+      nfd = "Gru\u0308\u00DF Gott.";
       
-        assertNotEqual(nfc, nfd);
-        assertNotEqual(COMPARE_STRING(nfc, nfd), true);        
-      }
-      else {
-        print("ICU_Compare ignored!");
-      }
+      assertNotEqual(nfc, nfd);
+      assertNotEqual(COMPARE_STRING(nfc, nfd), true);        
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,17 +166,12 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Normalize : function () {
-      if (internal.HAS_ICU) {
-        nfc = "Gr\u00FC\u00DF Gott.";
-        nfd = "Gru\u0308\u00DF Gott.";
+      nfc = "Gr\u00FC\u00DF Gott.";
+      nfd = "Gru\u0308\u00DF Gott.";
       
-        assertNotEqual(nfc, nfd);
-        assertEqual(NORMALIZE_STRING(nfd), nfc);
-        assertEqual(NORMALIZE_STRING(nfd), "Grüß Gott.");
-      }
-      else {
-        print("ICU_Normalize ignored!");
-      }
+      assertNotEqual(nfc, nfd);
+      assertEqual(NORMALIZE_STRING(nfd), nfc);
+      assertEqual(NORMALIZE_STRING(nfd), "Grüß Gott.");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,29 +179,23 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare_Skiplist_Sorting : function () {
-      if (internal.HAS_ICU) {
-
-        db._create("ICU_SORTED");
-        db["ICU_SORTED"].ensureSkiplist("test");
-        db["ICU_SORTED"].save({ test : "äää" });
-        db["ICU_SORTED"].save({ test : "aaa" });
-        db["ICU_SORTED"].save({ test : "aab" });
-        db["ICU_SORTED"].save({ test : "äaa" });
-        db["ICU_SORTED"].save({ test : "äää" });
-        db["ICU_SORTED"].save({ test : "Aaa" });
+      db._create("ICU_SORTED");
+      db["ICU_SORTED"].ensureSkiplist("test");
+      db["ICU_SORTED"].save({ test : "äää" });
+      db["ICU_SORTED"].save({ test : "aaa" });
+      db["ICU_SORTED"].save({ test : "aab" });
+      db["ICU_SORTED"].save({ test : "äaa" });
+      db["ICU_SORTED"].save({ test : "äää" });
+      db["ICU_SORTED"].save({ test : "Aaa" });
         
-        var y = db["ICU_SORTED"].range("test", "A", "z") ; 
+      var y = db["ICU_SORTED"].range("test", "A", "z") ; 
         
-        assertEqual(y.next().test, "Aaa");
-        assertEqual(y.next().test, "aaa");
-        assertEqual(y.next().test, "äaa");
-        assertEqual(y.next().test, "äää");
-        assertEqual(y.next().test, "äää");
-        assertEqual(y.next().test, "aab");
-      }
-      else {
-        print("ICU_Normalize ignored!");
-      }
+      assertEqual(y.next().test, "Aaa");
+      assertEqual(y.next().test, "aaa");
+      assertEqual(y.next().test, "äaa");
+      assertEqual(y.next().test, "äää");
+      assertEqual(y.next().test, "äää");
+      assertEqual(y.next().test, "aab");
     }
 
   };

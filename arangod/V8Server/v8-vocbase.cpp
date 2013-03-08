@@ -468,6 +468,13 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
     TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
     char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
 
+    if (cArgument == 0) {
+      error = "out of memory";
+
+      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
     TRI_PushBackVectorPointer(result, cArgument);
   }
 
@@ -5083,7 +5090,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_col_info_t info;
-  int res = TRI_LoadCollectionInfo(collection->_path, &info);
+  int res = TRI_LoadCollectionInfo(collection->_path, &info, false);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (key == "type") {
@@ -5319,7 +5326,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   TRI_col_info_t info;
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  int res = TRI_LoadCollectionInfo(collection->_path, &info);
+  int res = TRI_LoadCollectionInfo(collection->_path, &info, false);
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   TRI_FreeCollectionInfoOptions(&info);
@@ -6684,14 +6691,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // .............................................................................
   // create global variables
   // .............................................................................
-  
-  context->Global()->Set(TRI_V8_SYMBOL("HAS_ICU"),
-#ifdef TRI_ICU_VERSION
-                         v8::Boolean::New(true),
-#else
-                         v8::Boolean::New(false),
-#endif
-                         v8::ReadOnly);
   
   context->Global()->Set(TRI_V8_SYMBOL("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
   

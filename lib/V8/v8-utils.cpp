@@ -51,9 +51,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 
-#ifdef TRI_HAVE_ICU
 #include "unicode/normalizer2.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -1737,7 +1735,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
 }
 
-#ifdef TRI_HAVE_ICU
 TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
   _str(0), _length(0), _memoryZone(memoryZone) {
 
@@ -1752,16 +1749,6 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
     TRI_Free(_memoryZone, _str);
   }
 }
-#else
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
-  _str(0), _length(0), _memoryZone(memoryZone), _utf8Value(obj) {  
-  _str = *_utf8Value;
-  _length = _utf8Value.length();
-}
-
-TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
-}
-#endif
 
 v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
   v8::HandleScope scope;
@@ -1769,7 +1756,6 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
   v8::String::Value str(obj);
   size_t str_len = str.length();
   if (str_len > 0) {
-#ifdef TRI_HAVE_ICU  
     UErrorCode erroCode = U_ZERO_ERROR;
     const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
     
@@ -1792,9 +1778,6 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
     // ..........................................................................
 
     return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length())); 
-#else
-    return scope.Close(v8::String::New(*str, str_len)); 
-#endif
   }
   else {
     return scope.Close(v8::String::New("")); 
