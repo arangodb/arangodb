@@ -700,7 +700,8 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 
   shallow.$label = label || null;
 
-  ref = this._edges.save(out_vertex._properties._id, in_vertex._properties._id, shallow, waitForSync);
+  ref = this._edges.save(out_vertex._properties._id, 
+                         in_vertex._properties._id, shallow, waitForSync);
 
   return this.constructEdge(ref._id);
 };
