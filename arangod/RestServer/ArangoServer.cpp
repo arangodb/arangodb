@@ -62,6 +62,7 @@
 #include "Logger/Logger.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
+#include "Rest/Version.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
@@ -145,105 +146,6 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate full version string
-////////////////////////////////////////////////////////////////////////////////
-
-static string GetFullVersionString () {
-  UVersionInfo icuVersion;
-  char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
-  u_getVersion(icuVersion);
-  u_versionToString(icuVersion, icuVersionString);  
-  
-  ostringstream version;
-  version << "ArangoDB " << TRIAGENS_VERSION <<  
-             " -- " <<
-             "ICU " << icuVersionString << ", " <<
-             "V8 version " << v8::V8::GetVersion() << ", " 
-             "SSL engine " << ApplicationEndpointServer::getSslVersion();
-
-  return version.str();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate configure options string
-////////////////////////////////////////////////////////////////////////////////
-
-static string GetConfigureOptionsString () {
-  ostringstream configure;
- 
-#ifdef TRI_CONFIGURE_COMMAND
-#ifdef TRI_CONFIGURE_OPTIONS
-
-  configure << "configure:" << TRI_CONFIGURE_COMMAND << TRI_CONFIGURE_OPTIONS;
-
-#endif
-#endif
-
-  return configure.str();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate configure environment options string
-////////////////////////////////////////////////////////////////////////////////
-
-static string GetConfigureEnvironmentString () {
-  ostringstream env;
-
-#ifdef TRI_CONFIGURE_FLAGS
-  env << "env:" << TRI_CONFIGURE_FLAGS;
-#endif
-
-  return env.str();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a verbose information string about ArangoDB
-////////////////////////////////////////////////////////////////////////////////
-
-static string GetVerboseInformationString () {
-  string info(GetFullVersionString());
-
-#ifdef _WIN32
-  info += "\r\n";
-#else
-  info += "\n";
-#endif    
-  info.append("build: ").append(__DATE__).append(" ").append(__TIME__);
-
-#ifdef TRI_REPOSITORY_VERSION
-#ifdef _WIN32
-  info += "\r\n";
-#else
-  info += "\n";
-#endif    
-  
-  info.append("repository version: ").append(TRI_REPOSITORY_VERSION);
-#endif
-
-  string configure(GetConfigureOptionsString());
-  if (! configure.empty()) {
-#ifdef _WIN32
-    info += "\r\n";
-#else
-    info += "\n";
-#endif    
-    info.append(configure);
-  }
-  
-  string env(GetConfigureEnvironmentString());
-  if (! env.empty()) {
-#ifdef _WIN32
-    info += "\r\n";
-#else
-    info += "\n";
-#endif    
-    info.append(env);
-  }
-
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,7 +217,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 void ArangoServer::buildApplicationServer () {
   map<string, ProgramOptionsDescription> additional;
 
-  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", GetVerboseInformationString());
+  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
   _applicationServer->setSystemConfigFile("arangod.conf");
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
@@ -491,20 +393,10 @@ void ArangoServer::buildApplicationServer () {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
   
-  // dump versions of important components
-  LOGGER_INFO(GetFullVersionString());
+  // dump version details
+  LOGGER_INFO(rest::Version::getVerboseVersionString());
 
-  // dump configure plus compile environment
-#ifdef TRI_CONFIGURE_COMMAND 
-#ifdef TRI_CONFIGURE_OPTIONS  
-  LOGGER_DEBUG(GetConfigureOptionsString());
-#endif
-#endif
 
-#ifdef TRI_CONFIGURE_FLAGS
-  LOGGER_DEBUG(GetConfigureEnvironmentString());
-#endif
-  
   // .............................................................................
   // set language of default collator
   // .............................................................................
@@ -792,10 +684,10 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
     // run the shell
     if (mode != OperationMode::MODE_SCRIPT) {
-      printf("ArangoDB JavaScript emergency console [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+      cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
     }
     else {
-      LOGGER_INFO("V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION);
+      LOGGER_INFO(rest::Version::getVerboseVersionString());
     }
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
@@ -1100,7 +992,7 @@ int ArangoServer::executeRubyConsole () {
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
 
   // create a line editor
-  printf("ArangoDB MRuby emergency console [DB version %s]\n", TRIAGENS_VERSION);
+  cout << "ArangoDB MRuby emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
 
   MRLineEditor console(context->_mrb, ".arangod");
 

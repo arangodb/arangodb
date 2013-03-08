@@ -1,0 +1,18 @@
+> curl -X GET --dump - http://localhost:8529/_admin/version?details=true
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "server": "arango",
+  "version": "1.3.devel"
+  "details": {
+    "build-date": "Mar  8 2013 22:06:49",
+    "configure": "'./configure' '--enable-maintainer-mode' '--enable-relative' '--enable-all-in-one-icu' '--enable-all-in-one-v8'","icu-version":"49.1.2",
+    "libev-version": "4.11",
+    "openssl-version": "OpenSSL 1.0.1 14 Mar 2012",
+    "repository-version": "heads/devel-0-gdd446b51dd713656d0f3dc50e94e3ea88cd72a86", 
+    "server-version": "1.3.devel",
+    "v8-version":"3.16.14.1"
+  }
+}
