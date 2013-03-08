@@ -1089,7 +1089,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned igf a "If-Match" header or @LIT{rev} is given and the current 
+/// is returned if a "If-Match" header or @LIT{rev} is given and the current 
 /// document has a different version
 ///
 /// @EXAMPLES
