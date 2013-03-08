@@ -139,16 +139,6 @@ static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for transactions
-///
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-////////////////////////////////////////////////////////////////////////////////
-
-static int32_t const WRP_TRANSACTION_TYPE = 5;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
  
@@ -208,6 +198,25 @@ static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
   v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
 
   return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate an attribute name
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ValidateAttributeName (const char* attributeName, 
+                                   const bool allowInternal) {
+  if (attributeName == 0 || *attributeName == '\0') {
+    // empty name => fail
+    return false;
+  }
+
+  if (! allowInternal && *attributeName == '_') {
+    // internal attributes (_from, _to, _id, _key, ...) cannot be indexed => fail
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,11 +454,11 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
 /// @brief converts argument strings to TRI_vector_pointer_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int FillVectorPointerFromArguments (v8::Arguments const& argv,
-                                    TRI_vector_pointer_t* result,
-                                    size_t start,
-                                    size_t end,
-                                    string& error) {
+int AttributeNamesFromArguments (v8::Arguments const& argv,
+                                 TRI_vector_pointer_t* result,
+                                 size_t start,
+                                 size_t end,
+                                 string& error) {
 
   // ...........................................................................
   // convert the arguments into a "C" string and stuff them into a vector
@@ -459,7 +468,7 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
     v8::Handle<v8::Value> argument = argv[j];
 
     if (! argument->IsString() ) {
-      error = "invalid parameter";
+      error = "invalid attribute name";
 
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
       return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
@@ -473,6 +482,14 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
 
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    // cannot index internal attributes such as _key, _rev, _id, _from, _to...
+    if (! ValidateAttributeName(cArgument, false)) {
+      error = "invalid attribute name";
+
+      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
+      return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
     }
 
     TRI_PushBackVectorPointer(result, cArgument);
@@ -489,12 +506,13 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
       char* right = (char*) result->_buffer[k];
 
       if (TRI_EqualString(left, right)) {
-        error = "duplicate parameters";
+        error = "duplicate attribute names";
 
         TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
         return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
       }
     }
+
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -552,7 +570,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
 
-  int res = FillVectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
+  int res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
@@ -658,8 +676,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   }
   
   string attributeName = TRI_ObjectToString(argv[0]);
-  if (attributeName.empty()) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "expecting non-empty <attribute>")));
+  if (! ValidateAttributeName(attributeName.c_str(), false)) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "invalid index attribute name")));
   }
 
   // 2013-01-17: deactivated substring indexing option because there is no working implementation
@@ -4229,7 +4247,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   TRI_vector_pointer_t attributes;
   TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
 
-  int res = FillVectorPointerFromArguments(argv, &attributes, 0, argv.Length(), errorString);
+  int res = AttributeNamesFromArguments(argv, &attributes, 0, argv.Length(), errorString);
 
   // .............................................................................
   // Some sort of error occurred -- display error message and abort index creation
