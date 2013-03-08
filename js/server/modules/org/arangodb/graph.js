@@ -599,6 +599,7 @@ function Graph (name, vertices, edges, waitForSync) {
   this._properties = graphProperties;
 
   // and store the collections
+  this._gdb = gdb;
   this._vertices = vertices;
   this._edges = edges;
 
