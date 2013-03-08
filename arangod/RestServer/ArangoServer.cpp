@@ -155,8 +155,8 @@ static string GetFullVersionString () {
   u_versionToString(icuVersion, icuVersionString);  
   
   ostringstream version;
-  version << "ArangoDB " << TRIAGENS_VERSION << ", build " << 
-             __DATE__ << " " << __TIME__ << " -- " <<
+  version << "ArangoDB " << TRIAGENS_VERSION <<  
+             " -- " <<
              "ICU " << icuVersionString << ", " <<
              "V8 version " << v8::V8::GetVersion() << ", " 
              "SSL engine " << ApplicationEndpointServer::getSslVersion();
@@ -202,6 +202,23 @@ static string GetConfigureEnvironmentString () {
 
 static string GetVerboseInformationString () {
   string info(GetFullVersionString());
+
+#ifdef _WIN32
+  info += "\r\n";
+#else
+  info += "\n";
+#endif    
+  info.append("build: ").append(__DATE__).append(" ").append(__TIME__);
+
+#ifdef TRI_REPOSITORY_VERSION
+#ifdef _WIN32
+  info += "\r\n";
+#else
+  info += "\n";
+#endif    
+  
+  info.append("repository version: ").append(TRI_REPOSITORY_VERSION);
+#endif
 
   string configure(GetConfigureOptionsString());
   if (! configure.empty()) {

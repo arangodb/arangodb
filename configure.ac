@@ -51,6 +51,20 @@ AC_DEFINE_UNQUOTED(TRI_CONFIGURE_OPTIONS, "$TRI_CONFIGURE_OPTIONS", "" , [config
 AC_DEFINE_UNQUOTED(TRI_CONFIGURE_FLAGS, "$TRI_CONFIGURE_FLAGS", "" , [configure flags])
 
 
+dnl ----------------------------------------------------------------------------
+dnl grab the git version number if available
+dnl ----------------------------------------------------------------------------
+
+if test -d ".git"; then
+  TRI_REPOSITORY_VERSION=`git describe --all --tags --long --abbrev=40 --dirty="-dirty" 2> /dev/null`
+else
+  TRI_REPOSITORY_VERSION=""
+fi
+
+AC_SUBST(TRI_REPOSITORY_VERSION)
+AC_DEFINE_UNQUOTED(TRI_REPOSITORY_VERSION, "$TRI_REPOSITORY_VERSION", "" , [repository version])
+
+
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================
