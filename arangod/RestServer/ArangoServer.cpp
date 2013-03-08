@@ -155,7 +155,8 @@ static string GetFullVersionString () {
   u_versionToString(icuVersion, icuVersionString);  
   
   ostringstream version;
-  version << "ArangoDB " << TRIAGENS_VERSION << " -- " <<
+  version << "ArangoDB " << TRIAGENS_VERSION << ", build " << 
+             __DATE__ << " " << __TIME__ << " -- " <<
              "ICU " << icuVersionString << ", " <<
              "V8 version " << v8::V8::GetVersion() << ", " 
              "SSL engine " << ApplicationEndpointServer::getSslVersion();
