@@ -29,7 +29,6 @@
 
 #include "build.h"
 
-#include "Admin/RestAdminFeConfigurationHandler.h"
 #include "Admin/RestAdminLogHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -61,15 +60,15 @@ ApplicationAdminServer::ApplicationAdminServer ()
   : ApplicationFeature("admin"),
     _allowLogViewer(false),
     _allowAdminDirectory(false),
-    _allowFeConfiguration(false),
     _allowVersion(false),
     _adminDirectory(),
     _pathOptions(0),
-    _feConfiguration(),
     _name(),
     _version(),
-    _versionDataDirect(0),
-    _versionDataQueued(0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    _versionDataQueued(0),
+#endif    
+    _versionDataDirect(0) {
   _pathOptions = new PathHandler::Options();
 }
 
@@ -80,12 +79,14 @@ ApplicationAdminServer::ApplicationAdminServer ()
 ApplicationAdminServer::~ApplicationAdminServer () {
   delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
 
-  if (_versionDataDirect != 0) {
-    delete _versionDataDirect;
-  }
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_versionDataQueued != 0) {
     delete _versionDataQueued;
+  }
+#endif
+  
+  if (_versionDataDirect != 0) {
+    delete _versionDataDirect;
   }
 }
 
@@ -136,14 +137,6 @@ void ApplicationAdminServer::allowAdminDirectory (string const& adminDirectory) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows for a front-end configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationAdminServer::allowFeConfiguration () {
-  _allowFeConfiguration = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief allows for a version handler using the default version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -169,18 +162,9 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, string const& prefix) {
-  if (_allowVersion) {
-    if (! _versionDataDirect) {
-      _versionDataDirect = new RestVersionHandler::version_options_t;
-      _versionDataDirect->_name = _name;
-      _versionDataDirect->_version = _version;
-      _versionDataDirect->_isDirect = true;
-    }
-
-    factory->addHandler(prefix + "/version",
-                        RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
-                        (void*) _versionDataDirect);
-
+#if TRI_ENABLE_MAINTAINER_MODE    
+    // this handler does not provide any real benefit. we only use it to compare
+    // the performance of direct vs. the performance of queued execution
     if (! _versionDataQueued) {
       _versionDataQueued = new RestVersionHandler::version_options_t;
       _versionDataQueued->_name = _name;
@@ -192,6 +176,19 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, stri
     factory->addHandler(prefix + "/queued-version",
                         RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
                         (void*) _versionDataQueued);
+#endif
+  
+  if (_allowVersion) {
+    if (! _versionDataDirect) {
+      _versionDataDirect = new RestVersionHandler::version_options_t;
+      _versionDataDirect->_name = _name;
+      _versionDataDirect->_version = _version;
+      _versionDataDirect->_isDirect = true;
+    }
+
+    factory->addHandler(prefix + "/version",
+                        RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
+                        (void*) _versionDataDirect);
   }
 }
 
@@ -225,16 +222,6 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
       
     factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
   }
-  
-  // .............................................................................
-  // add a front-end configuration
-  // .............................................................................
-  
-  if (_allowFeConfiguration) {
-    factory->addHandler(prefix + "/fe-configuration", 
-                        RestHandlerCreator<RestAdminFeConfigurationHandler>::createData<char const*>,
-                        (void*) _feConfiguration.c_str());
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,12 +245,6 @@ void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDes
   if (_allowAdminDirectory) {
     options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
       ("server.admin-directory", &_adminDirectory, "directory containing the ADMIN front-end")
-    ;
-  }
-
-  if (_allowFeConfiguration) {
-    options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
-      ("server.fe-configuration", &_feConfiguration, "file to store the front-end preferences")
     ;
   }
 }
