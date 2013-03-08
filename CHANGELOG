@@ -1,8 +1,6 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
-* issue #442: pls update post install info on osx
-
 * issue #212: auto-increment support
 
   The feature can be used by creating a collection with the extra `keyOptions`
@@ -101,6 +99,8 @@ v1.3 (XXXX-XX-XX)
 
 v1.2.1 (XXXX-XX-XX)
 -------------------
+
+* issue #442: pls update post install info on osx
 
 * fixed conversion of special double values (NaN, -inf, +inf) when converting from 
   shapedjson to JSON
