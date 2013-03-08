@@ -8,8 +8,9 @@
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, 
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, 
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, 
-  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, VERSION, 
-  UPGRADE, BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
+  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
+  COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE, 
+  BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,7 +311,8 @@
   else {
     [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
       'COLOR_YELLOW', 'COLOR_BOLD_YELLOW', 'COLOR_WHITE', 'COLOR_BOLD_WHITE',
-      'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT',
+      'COLOR_CYAN', 'COLOR_BOLD_CYAN', 'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA',
+      'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT', 
       'COLOR_RESET' ].forEach(function(color) {
         internal.COLORS[color] = '';
       });
@@ -824,12 +826,60 @@
 /// @brief start color printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.startColorPrint = function (silent) {
+  internal.startColorPrint = function (color, silent) {
+    var schemes = {
+      arangodb: {
+        COLOR_PUNCTUATION: internal.COLORS.COLOR_RESET,
+        COLOR_STRING: internal.COLORS.COLOR_BOLD_MAGENTA,
+        COLOR_NUMBER: internal.COLORS.COLOR_BOLD_GREEN,
+        COLOR_INDEX: internal.COLORS.COLOR_BOLD_CYAN,
+        COLOR_TRUE: internal.COLORS.COLOR_BOLD_MAGENTA,
+        COLOR_FALSE: internal.COLORS.COLOR_BOLD_MAGENTA,
+        COLOR_NULL: internal.COLORS.COLOR_BOLD_YELLOW,
+        COLOR_UNDEFINED: internal.COLORS.COLOR_BOLD_YELLOW
+      }
+    };
+
     if (! internal.COLOR_OUTPUT && ! silent) {
       internal.print("starting color printing"); 
     }
 
-    internal.colors = internal.COLORS;
+    if (color === undefined || color === null) {
+      internal.colors = internal.COLORS;
+    }
+    else if (typeof color === "string") {
+      var c;
+
+      color = color.toLowerCase();
+
+      if (schemes.hasOwnProperty(color)) {
+        internal.colors = schemes[color];
+        for (c in internal.COLORS) {
+          if (internal.COLORS.hasOwnProperty(c) && ! internal.colors.hasOwnProperty(c)) {
+            internal.colors[c] = internal.COLORS[c];
+          }
+        }
+      }
+      else {
+        internal.colors = internal.COLORS;
+
+        var setColor = function (key) {
+          [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE', 
+            'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
+            internal.colors[what] = internal.COLORS[key];
+          });
+        };
+
+        for (c in internal.COLORS) {
+          if (internal.COLORS.hasOwnProperty(c) &&
+              c.replace(/^COLOR_/, '').toLowerCase() === color) {
+            setColor(c);
+            break;
+          }
+        }
+      }
+    }
+
     internal.COLOR_OUTPUT = true;
   };
 
@@ -856,7 +906,10 @@
     var oldColor = internal.COLOR_OUTPUT; 
 
     internal.startPrettyPrint(true); 
-    internal.startColorPrint(true); 
+
+    if (! oldColor) {
+      internal.startColorPrint(undefined, true); 
+    }
 
     for (i = 0; i < arguments.length; ++i) {
       internal.print(arguments[i]); 
