@@ -1320,9 +1320,11 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* found;
   TRI_doc_datafile_info_t* dfi;
+  TRI_key_generator_t* keyGenerator;
   TRI_voc_key_t key = NULL;
    
   primary = &collection->base;
+  keyGenerator = primary->_keyGenerator;
 
   CollectionRevisionUpdate(collection, marker);
 
@@ -1364,6 +1366,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     if (primary->base._maximumMarkerSize < markerSize) {
       primary->base._maximumMarkerSize = markerSize;
+    }
+
+    if (keyGenerator->track != NULL) {
+      keyGenerator->track(keyGenerator, key);
     }
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
@@ -1456,6 +1462,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
               (char*) key,
               (unsigned long long) d->_rid,
               (unsigned long) marker->_tick);
+    
+    if (keyGenerator->track != NULL) {
+      keyGenerator->track(keyGenerator, key);
+    }
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 

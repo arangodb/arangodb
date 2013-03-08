@@ -385,7 +385,7 @@ static uint64_t AutoIncrementNext (const uint64_t lastValue,
   if (next < offset) {
     next = offset;
   }
-  
+
   return next;
 }
 
@@ -442,7 +442,13 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
   else {
     // user has not specified a key, generate one based on rid
     uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
+  
+    // bounds and sanity checks
+    if (keyValue == UINT64_MAX || keyValue < data->_lastValue) {
+      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
+    }
 
+    assert(keyValue > data->_lastValue);
     // update our last value
     data->_lastValue = keyValue;
 
@@ -459,6 +465,26 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
   *outLength = (current - outBuffer);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief track a key while a collection is opened
+////////////////////////////////////////////////////////////////////////////////
+  
+static void AutoIncrementTrack (TRI_key_generator_t* const generator,
+                                const TRI_voc_key_t key) {
+  autoincrement_keygen_t* data;
+  uint64_t value;
+
+  data = (autoincrement_keygen_t*) generator->_data;
+  assert(data != NULL);
+
+  // check the numeric key part 
+  value = TRI_UInt64String(key);
+  if (value > data->_lastValue) {
+    // and update our last value
+    data->_lastValue = value;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,11 +561,13 @@ static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters)
     generator->init        = &TraditionalInit;
     generator->generate    = &TraditionalGenerate;
     generator->free        = &TraditionalFree;
+    generator->track       = NULL;
   }
   else if (type == TYPE_AUTOINCREMENT) {
     generator->init        = &AutoIncrementInit;
     generator->generate    = &AutoIncrementGenerate;
     generator->free        = &AutoIncrementFree;
+    generator->track       = &AutoIncrementTrack;
   }
 
   return generator;
