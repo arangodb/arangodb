@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* issue #443: For git-based builds include commit hash in version
+
 * issue #212: auto-increment support
 
   The feature can be used by creating a collection with the extra `keyOptions`
