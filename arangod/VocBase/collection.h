@@ -283,7 +283,8 @@ void TRI_InitCollectionInfo (TRI_vocbase_t*,
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t*, const TRI_col_info_t* const);
+void TRI_CopyCollectionInfo (TRI_col_info_t*, 
+                             const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a collection info block
@@ -298,7 +299,8 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 /// and to free it if not. 
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetDirectoryCollection (char const*, const TRI_col_info_t* const);
+char* TRI_GetDirectoryCollection (char const*, 
+                                  const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
@@ -340,13 +342,16 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// @brief creates a parameter info block from file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadCollectionInfo (char const*, TRI_col_info_t*);
+int TRI_LoadCollectionInfo (char const*, 
+                            TRI_col_info_t*,
+                            const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const*, const TRI_col_info_t* const);
+int TRI_SaveCollectionInfo (char const*, 
+                            const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
@@ -388,7 +393,7 @@ bool TRI_IterateCollection (TRI_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_IterateIndexCollection (TRI_collection_t*,
-                                 bool (*)(char const* filename, void*),
+                                 bool (*)(char const*, void*),
                                  void*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,10 +425,23 @@ TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const*);
 void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over markers in collection journals
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IterateJournalsCollection (const char* const,
+                                    bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool));
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSystemCollectionName (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_TypeNameCollection (const TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
