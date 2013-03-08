@@ -1803,7 +1803,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   parameter->_cid = cid;
   
   // check if we can generate the key generator
-  res = TRI_CreateKeyGenerator(parameter->_options, &keyGenerator);
+  res = TRI_CreateKeyGenerator(parameter->_keyOptions, &keyGenerator);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -2005,7 +2005,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   }
   
   // check if we can generate the key generator
-  res = TRI_CreateKeyGenerator(collection->_info._options, &keyGenerator);
+  res = TRI_CreateKeyGenerator(collection->_info._keyOptions, &keyGenerator);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -4971,7 +4971,7 @@ int TRI_InitMarker (TRI_doc_document_key_marker_t* marker,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // key generation failed
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    return res;
   }
     
   keySize += 1;

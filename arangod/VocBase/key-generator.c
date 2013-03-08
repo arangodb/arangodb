@@ -87,7 +87,7 @@ traditional_keygen_t;
 /// @brief name of traditional key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* NameTraditional = "traditional";
+static const char* TraditionalName = "traditional";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -220,6 +220,27 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the key generator
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* TraditionalToJson (const TRI_key_generator_t* const generator) {
+  TRI_json_t* json;
+  
+  traditional_keygen_t* data;
+  data = (traditional_keygen_t*) generator->_data;
+  assert(data != NULL);
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json != NULL) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TraditionalName));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, data->_allowUserKeys));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -246,7 +267,7 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
 /// @brief maximum value for offset value
 ////////////////////////////////////////////////////////////////////////////////
 
-#define AUTOINCREMENT_MAX_OFFSET    (1ULL << 60)
+#define AUTOINCREMENT_MAX_OFFSET    (UINT64_MAX)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief autoincrement keygen private data
@@ -265,7 +286,7 @@ autoincrement_keygen_t;
 /// @brief name of auto-increment key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* NameAutoIncrement = "autoincrement";
+static const char* AutoIncrementName = "autoincrement";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -469,6 +490,7 @@ static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief track a key while a collection is opened
+/// this function is used to update the _lastValue value
 ////////////////////////////////////////////////////////////////////////////////
   
 static void AutoIncrementTrack (TRI_key_generator_t* const generator,
@@ -485,6 +507,29 @@ static void AutoIncrementTrack (TRI_key_generator_t* const generator,
     // and update our last value
     data->_lastValue = value;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the key generator
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* AutoIncrementToJson (const TRI_key_generator_t* const generator) {
+  TRI_json_t* json;
+  
+  autoincrement_keygen_t* data;
+  data = (autoincrement_keygen_t*) generator->_data;
+  assert(data != NULL);
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json != NULL) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, AutoIncrementName));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, data->_allowUserKeys));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) data->_offset));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "increment", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) data->_increment));
+  }
+
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,11 +568,11 @@ static generator_type_e GeneratorType (const TRI_json_t* const parameters) {
 
   typeName = type->_value._string.data;
 
-  if (TRI_CaseEqualString(typeName, NameTraditional)) {
+  if (TRI_CaseEqualString(typeName, TraditionalName)) {
     return TYPE_TRADITIONAL;
   }
 
-  if (TRI_CaseEqualString(typeName, NameAutoIncrement)) {
+  if (TRI_CaseEqualString(typeName, AutoIncrementName)) {
     return TYPE_AUTOINCREMENT;
   }
 
@@ -562,12 +607,14 @@ static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters)
     generator->generate    = &TraditionalGenerate;
     generator->free        = &TraditionalFree;
     generator->track       = NULL;
+    generator->toJson      = &TraditionalToJson;
   }
   else if (type == TYPE_AUTOINCREMENT) {
     generator->init        = &AutoIncrementInit;
     generator->generate    = &AutoIncrementGenerate;
     generator->free        = &AutoIncrementFree;
     generator->track       = &AutoIncrementTrack;
+    generator->toJson      = &AutoIncrementToJson;
   }
 
   return generator;
@@ -593,17 +640,14 @@ static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters)
 int TRI_CreateKeyGenerator (const TRI_json_t* const parameters, 
                             TRI_key_generator_t** dst) {
   TRI_key_generator_t* generator;
-  TRI_json_t* options;
+  const TRI_json_t* options;
   int res;
 
   *dst = NULL;
   
   options = NULL;
-  if (parameters != NULL) {
-    options = TRI_LookupArrayJson(parameters, "keys");
-    if (options != NULL && options->_type != TRI_JSON_ARRAY) {
-      options = NULL;
-    }
+  if (parameters != NULL && parameters->_type == TRI_JSON_ARRAY) {
+    options = parameters;
   }
 
   generator = CreateGenerator(options);
