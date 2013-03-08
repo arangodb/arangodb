@@ -96,6 +96,7 @@ ERROR_ARANGO_DOCUMENT_KEY_BAD,1221,"illegal document key","Will be raised when a
 ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED,1222,"unexpected document key","Will be raised when a user-defined document key is supplied for collections with auto key generation."
 ERROR_ARANGO_INDEX_NEEDS_RESIZE,1223,"index needs resizing","Will be raised when an index is full and should be resized to contain more data."
 ERROR_ARANGO_DATADIR_NOT_WRITABLE,1224,"database directory not writable","Will be raised when the database directory is not writable for the current user."
+ERROR_ARANGO_OUT_OF_KEYS,1225,"out of keys","Will be raised when a key generator runs out of keys."
 
 ################################################################################
 ## ArangoDB storage errors

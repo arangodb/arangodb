@@ -480,32 +480,26 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
                              char const* name,
                              TRI_col_type_e type,
                              TRI_voc_size_t maximalSize,
-                             TRI_json_t* options) {
+                             TRI_json_t* keyOptions) {
   assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_info_t));
 
-  parameter->_version      = TRI_COL_VERSION;
-  parameter->_type         = type;
-  parameter->_cid          = 0;
-  parameter->_rid          = 0;
+  parameter->_version       = TRI_COL_VERSION;
+  parameter->_type          = type;
+  parameter->_cid           = 0;
+  parameter->_rid           = 0;
 
-  parameter->_deleted      = false;  
-  parameter->_isVolatile   = false;
-  parameter->_isSystem     = false;
-  parameter->_maximalSize  = (maximalSize / PageSize) * PageSize;
+  parameter->_deleted       = false;  
+  parameter->_isVolatile    = false;
+  parameter->_isSystem      = false;
+  parameter->_maximalSize   = (maximalSize / PageSize) * PageSize;
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
   }
+  parameter->_waitForSync   = vocbase->_defaultWaitForSync;
+  parameter->_keyOptions    = keyOptions;
+  
   TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
-
-  parameter->_waitForSync = vocbase->_defaultWaitForSync;
-  if (options) {
-    // parameter->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, options);
-    parameter->_options = options;
-  }
-  else {
-    parameter->_options = NULL;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -516,24 +510,25 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   assert(dst);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
-  dst->_version     = src->_version;
-  dst->_type        = src->_type;
-  dst->_cid         = src->_cid;
-  dst->_rid         = src->_rid;
+  dst->_version       = src->_version;
+  dst->_type          = src->_type;
+  dst->_cid           = src->_cid;
+  dst->_rid           = src->_rid;
 
-  dst->_deleted     = src->_deleted;  
-  dst->_isSystem    = src->_isSystem;
-  dst->_isVolatile  = src->_isVolatile;
-  dst->_maximalSize = src->_maximalSize;
-  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
-  dst->_waitForSync = src->_waitForSync;
+  dst->_deleted       = src->_deleted;  
+  dst->_isSystem      = src->_isSystem;
+  dst->_isVolatile    = src->_isVolatile;
+  dst->_maximalSize   = src->_maximalSize;
+  dst->_waitForSync   = src->_waitForSync;
 
-  if (src->_options) {
-    dst->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_options);
+  if (src->_keyOptions) {
+    dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
   }
   else {
-    dst->_options = NULL;
+    dst->_keyOptions  = NULL;
   }  
+  
+  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,9 +536,9 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
-  if (parameter->_options) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_options);
-    parameter->_options = NULL;
+  if (parameter->_keyOptions != NULL) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_keyOptions);
+    parameter->_keyOptions = NULL;
   }
 }
 
@@ -823,8 +818,8 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
       }
     }
     else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_ARRAY) {
-      if (TRI_EqualString(key->_value._string.data, "options")) {
-        parameter->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+      if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
+        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
       }
     }
   }
@@ -858,17 +853,17 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "cid",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_cid));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_deleted));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_isVolatile));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "cid",          TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_cid));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_deleted));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_isVolatile));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
   
-  if (info->_options) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",     TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, info->_options));
+  if (info->_keyOptions) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, info->_keyOptions));
   }
 
   // save json info to file
