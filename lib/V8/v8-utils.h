@@ -186,10 +186,6 @@ class TRI_Utf8ValueNFC {
     size_t _length;
     TRI_memory_zone_t* _memoryZone;
 
-#ifndef TRI_HAVE_ICU
-    v8::String::Utf8Value _utf8Value;
-#endif
-    
     // Disallow copying and assigning.
     TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&);
     void operator=(const TRI_Utf8ValueNFC&);
