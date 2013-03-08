@@ -380,6 +380,22 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   colors->Set(v8::String::New("COLOR_BOLD_WHITE"),
               v8::String::New(TRI_SHELL_COLOR_BOLD_WHITE),
               v8::ReadOnly);
+  
+  colors->Set(v8::String::New("COLOR_CYAN"),
+              v8::String::New(TRI_SHELL_COLOR_CYAN),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_CYAN"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_CYAN),
+              v8::ReadOnly);
+  
+  colors->Set(v8::String::New("COLOR_MAGENTA"),
+              v8::String::New(TRI_SHELL_COLOR_MAGENTA),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_MAGENTA"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_MAGENTA),
+              v8::ReadOnly);
 
   colors->Set(v8::String::New("COLOR_BLACK"),
               v8::String::New(TRI_SHELL_COLOR_BLACK),
