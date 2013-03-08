@@ -31,6 +31,7 @@
 #include "BasicsC/strings.h"
 #include "BasicsC/conversions.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -103,6 +104,18 @@ HttpHandler::status_e RestVersionHandler::execute () {
 
   TRI_InitStringJson(TRI_CORE_MEM_ZONE, &version, TRI_DuplicateString(_version.c_str()));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
+
+  bool found;
+  char const* detailsStr = _request->value("details", found);
+
+  if (found && StringUtils::boolean(detailsStr)) {
+    TRI_json_t details;
+
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &details);
+
+    Version::getJson(TRI_CORE_MEM_ZONE, &details);
+    TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "details", &details);
+  }
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);

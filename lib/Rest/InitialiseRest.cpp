@@ -43,6 +43,7 @@
 #include "Basics/InitialiseBasics.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/Version.h"
 #include "Rest/Url.h"
 #include "Statistics/statistics.h"
 
@@ -139,6 +140,8 @@ namespace triagens {
 #ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();
 #endif
+
+      Version::initialise();
     }
 
 

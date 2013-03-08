@@ -1,6 +1,10 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* added detailed output of server version and components for REST APIs
+  `/_admin/version` and `/_api/version`. To retrieve this extended information,
+  call the REST APIs with URL parameter `details=true`.
+
 * issue #443: For git-based builds include commit hash in version
 
 * issue #212: auto-increment support
