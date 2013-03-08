@@ -152,6 +152,8 @@ extern "C" {
 /// - 1224: @LIT{database directory not writable}
 ///   Will be raised when the database directory is not writable for the
 ///   current user.
+/// - 1225: @LIT{out of keys}
+///   Will be raised when a key generator runs out of keys.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -1016,6 +1018,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE                             (1224)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1225: ERROR_ARANGO_OUT_OF_KEYS
+///
+/// out of keys
+///
+/// Will be raised when a key generator runs out of keys.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_OUT_OF_KEYS                                      (1225)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
