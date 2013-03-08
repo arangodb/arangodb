@@ -62,7 +62,7 @@ function AutoIncrementSuite () {
 
     testCreateInvalidOffset : function () {
       try {
-        db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: -1 } } });
+        db._create(cn, { keyOptions: { type: "autoincrement", offset: -1 } });
         fail();
       }
       catch (err) {
@@ -76,7 +76,7 @@ function AutoIncrementSuite () {
 
     testCreateInvalidIncrement1 : function () {
       try {
-        db._create(cn, { createOptions: { keys: { type: "autoincrement", increment: 0 } } });
+        db._create(cn, { keyOptions: { type: "autoincrement", increment: 0 } });
         fail();
       }
       catch (err) {
@@ -90,7 +90,7 @@ function AutoIncrementSuite () {
 
     testCreateInvalidIncrement2 : function () {
       try {
-        db._create(cn, { createOptions: { keys: { type: "autoincrement", increment: -1 } } });
+        db._create(cn, { keyOptions: { type: "autoincrement", increment: -1 } });
         fail();
       }
       catch (err) {
@@ -104,7 +104,7 @@ function AutoIncrementSuite () {
 
     testCreateInvalidIncrement2 : function () {
       try {
-        db._create(cn, { createOptions: { keys: { type: "autoincrement", increment: 9999999999999 } } });
+        db._create(cn, { keyOptions: { type: "autoincrement", increment: 9999999999999 } });
         fail();
       }
       catch (err) {
@@ -117,14 +117,14 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidKey1 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", allowUserKeys: false } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", allowUserKeys: false } });
 
       try {
         c.save({ _key: "1234" }); // no user keys allowed
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code, err.errorNum);
       }
     },
 
@@ -133,7 +133,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidKey2 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", allowUserKeys: true } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", allowUserKeys: true } });
 
       try {
         c.save({ _key: "a1234" }); // invalid key
@@ -149,11 +149,13 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateOk1 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 12345678901234567 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 12345678901234567 } });
 
-      var options = c.properties().createOptions;
-      assertEqual("autoincrement", options.keys.type);
-      assertEqual(12345678901234567, options.keys.offset);
+      var options = c.properties().keyOptions;
+      assertEqual("autoincrement", options.type);
+      assertEqual(true, options.allowUserKeys);
+      assertEqual(1, options.increment);
+      assertEqual(12345678901234567, options.offset);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,10 +163,27 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateOk2 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement" } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement" } });
 
-      var options = c.properties().createOptions;
-      assertEqual("autoincrement", options.keys.type);
+      var options = c.properties().keyOptions;
+      assertEqual("autoincrement", options.type);
+      assertEqual(true, options.allowUserKeys);
+      assertEqual(1, options.increment);
+      assertEqual(0, options.offset);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with valid properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateOk3 : function () {
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", allowUserKeys: false, offset: 83, increment: 156 } });
+
+      var options = c.properties().keyOptions;
+      assertEqual("autoincrement", options.type);
+      assertEqual(false, options.allowUserKeys);
+      assertEqual(156, options.increment);
+      assertEqual(83, options.offset);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +191,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckUserKey : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", allowUserKeys: true } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", allowUserKeys: true } });
 
       var d1 = c.save({ _key: "1234" });
       assertEqual("1234", d1._key);
@@ -183,7 +202,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValues1 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 2, increment: 3 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 2, increment: 3 } });
 
       var d1 = c.save({ });
       assertEqual("2", d1._key);
@@ -216,7 +235,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValues2 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 19, increment: 1 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 19, increment: 1 } });
 
       var d1 = c.save({ });
       assertEqual("19", d1._key);
@@ -249,7 +268,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValuesUnload1 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 1, increment: 4 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 1, increment: 4 } });
 
       var d1 = c.save({ });
       assertEqual("1", d1._key);
@@ -286,7 +305,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValuesUnload2 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 0, increment: 2 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 0, increment: 2 } });
 
       var d1 = c.save({ });
       assertEqual("2", d1._key);
@@ -336,7 +355,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValuesMixedWithUserKeys : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 0, increment: 1 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 0, increment: 1 } });
 
       var d1 = c.save({ });
       assertEqual("1", d1._key);
@@ -365,7 +384,7 @@ function AutoIncrementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValuesDuplicates : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 0, increment: 1 } } });
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", offset: 0, increment: 1 } });
 
       var d1 = c.save({ });
       assertEqual("1", d1._key);
@@ -379,6 +398,44 @@ function AutoIncrementSuite () {
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test out of keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testOutOfKeys1 : function () {
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", allowUserKeys: true, offset: 0, increment: 1 } });
+
+      var d1 = c.save({ _key: "18446744073709551615" }); // still valid
+      assertEqual("18446744073709551615", d1._key);
+      
+      try {
+        c.save({ }); // should raise out of keys
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_OUT_OF_KEYS.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test out of keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testOutOfKeys2 : function () {
+      var c = db._create(cn, { keyOptions: { type: "autoincrement", allowUserKeys: true, offset: 0, increment: 10 } });
+
+      var d1 = c.save({ _key: "18446744073709551615" }); // still valid
+      assertEqual("18446744073709551615", d1._key);
+      
+      try {
+        c.save({ }); // should raise out of keys
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_OUT_OF_KEYS.code, err.errorNum);
       }
     }
 
@@ -411,14 +468,14 @@ function TraditionalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidKey1 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "traditional", allowUserKeys: false } } });
+      var c = db._create(cn, { keyOptions: { type: "traditional", allowUserKeys: false } });
 
       try {
         c.save({ _key: "1234" }); // no user keys allowed
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code, err.errorNum);
       }
     },
 
@@ -427,7 +484,7 @@ function TraditionalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidKey2 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "traditional", allowUserKeys: true } } });
+      var c = db._create(cn, { keyOptions: { type: "traditional", allowUserKeys: true } });
 
       try {
         c.save({ _key: "öä .mds 3 -6" }); // invalid key
@@ -443,10 +500,11 @@ function TraditionalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateOk1 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "traditional" } } });
+      var c = db._create(cn, { keyOptions: { type: "traditional" } });
 
-      var options = c.properties().createOptions;
-      assertEqual("traditional", options.keys.type);
+      var options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertEqual(true, options.allowUserKeys);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +512,23 @@ function TraditionalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateOk2 : function () {
-      db._create(cn, { createOptions: { keys: { } } });
+      var c = db._create(cn, { keyOptions: { } });
+      
+      var options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertEqual(true, options.allowUserKeys);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with valid properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateOk3 : function () {
+      var c = db._create(cn, { keyOptions: { allowUserKeys: false } });
+      
+      var options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertEqual(false, options.allowUserKeys);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -462,7 +536,11 @@ function TraditionalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckUserKey : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "traditional", allowUserKeys: true } } });
+      var c = db._create(cn, { keyOptions: { type: "traditional", allowUserKeys: true } });
+      
+      var options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertEqual(true, options.allowUserKeys);
 
       var d1 = c.save({ _key: "1234" });
       assertEqual("1234", d1._key);
@@ -473,7 +551,7 @@ function TraditionalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckAutoValues : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "traditional" } } });
+      var c = db._create(cn, { keyOptions: { type: "traditional" } });
 
       var d1 = parseFloat(c.save({ })._key);
       var d2 = parseFloat(c.save({ })._key);

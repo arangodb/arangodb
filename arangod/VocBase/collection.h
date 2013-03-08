@@ -222,7 +222,7 @@ typedef struct TRI_col_info_s {
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
-  struct TRI_json_s* _options;         // optional collection options
+  struct TRI_json_s* _keyOptions;      // options for key creation
 
   // flags
   bool               _deleted : 1;     // if true, collection has been deleted

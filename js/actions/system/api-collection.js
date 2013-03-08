@@ -55,11 +55,11 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   if (showProperties) {
     var properties = collection.properties();
 
-    result.waitForSync   = properties.waitForSync;
-    result.journalSize   = properties.journalSize;      
-    result.createOptions = properties.createOptions;
     result.isVolatile    = properties.isVolatile;
     result.isSystem      = properties.isSystem;
+    result.journalSize   = properties.journalSize;      
+    result.keyOptions    = properties.keyOptions;
+    result.waitForSync   = properties.waitForSync;
   }
 
   if (showCount) {
@@ -132,7 +132,20 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///   This option should threrefore be used for cache-type collections only, 
 ///   and not for data that cannot be re-created otherwise.
 ///
-/// - @LIT{options} (optional) Additional collection options
+/// - @LIT{keyOptions} (optional) additional options for key generation. If
+///   specified, then @LIT{keyOptions} should be a JSON array containing the
+///   following attributes (note: some of them are optional):
+///   - @LIT{type}: specifies the type of the key generator. The currently 
+///     available generators are @LIT{traditional} and @LIT{autoincrement}.
+///   - @LIT{allowUserKeys}: if set to @LIT{true}, then it is allowed to supply
+///     own key values in the @LIT{_key} attribute of a document. If set to 
+///     @LIT{false}, then the key generator will solely be responsible for
+///     generating keys and supplying own key values in the @LIT{_key} attribute
+///     of documents is considered an error.
+///   - @LIT{increment}: increment value for @LIT{autoincrement} key generator.
+///     Not used for other key generator types.
+///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
+///     Not used for other key generator types.
 ///
 /// - @LIT{type} (optional, default is @LIT{2}): the type of the collection to
 ///   create. The following values for @FA{type} are valid:
@@ -185,9 +198,9 @@ function post_api_collection (req, res) {
   if (body.hasOwnProperty("type")) {
     type = body.type;
   }
-
-  if (body.hasOwnProperty("createOptions")) {
-    parameter.createOptions = body.createOptions;
+  
+  if (body.hasOwnProperty("keyOptions")) {
+    parameter.keyOptions = body.keyOptions;
   }
 
   try {
@@ -210,7 +223,7 @@ function post_api_collection (req, res) {
     result.isSystem = parameter.isSystem || false;
     result.status = collection.status();
     result.type = collection.type();
-    result.createOptions = collection.createOptions;
+    result.keyOptions = collection.keyOptions;
     
     headers.location = "/" + API + "/" + result.name;
 

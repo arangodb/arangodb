@@ -1318,6 +1318,10 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer
 v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
   v8::HandleScope scope;
 
+  if (json == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return scope.Close(v8::Undefined());
