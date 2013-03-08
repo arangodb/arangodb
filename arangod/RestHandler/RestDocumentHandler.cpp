@@ -486,6 +486,22 @@ bool RestDocumentHandler::readDocument () {
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the document was found
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the document or collection was not found
+///
+/// @RESTRETURNCODE{304}
+/// is returned if the "If-None-Match" header is given and the document has
+/// same version 
+/// 
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or @LIT{rev} is given and the found 
+/// document has a different version
+///
 /// @EXAMPLES
 ///
 /// Use a document handle:
@@ -748,8 +764,8 @@ bool RestDocumentHandler::checkDocument () {
 /// in the @LIT{rev} URL parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
 /// revision id provided in the request. If there is a mismatch between the revision
-/// id, then by default a @LIT{HTTP 409} conflict is returned and no replacement is 
-/// performed. ArangoDB will return an HTTP @LIT{412 precondition failed} response then.
+/// id, then by default a @LIT{HTTP 412} conflict is returned and no replacement is 
+/// performed.
 ///
 /// The conditional update behavior can be overriden with the @FA{policy} URL parameter:
 ///
@@ -762,6 +778,27 @@ bool RestDocumentHandler::checkDocument () {
 /// If @FA{policy} is set to @LIT{last}, then the replacement will succeed, even if the
 /// revision id found in the database does not match the target revision id specified 
 /// in the request. You can use the @LIT{last} @FA{policy} to force replacements.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if collection or the document was not found
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or @LIT{rev} is given and the found 
+/// document has a different version
 ///
 /// @EXAMPLES
 ///
@@ -835,6 +872,27 @@ bool RestDocumentHandler::replaceDocument () {
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the @FA{policy} parameter. This is the same as when replacing 
 /// documents (see replacing documents for details).
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was created sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// document.  The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if collection or the document was not found
+///
+/// @RESTRETURNCODE{412}
+/// is returned if a "If-Match" header or @LIT{rev} is given and the found 
+/// document has a different version
 ///
 /// @EXAMPLES
 ///
@@ -971,7 +1029,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // generate result
-  generateUpdated(cid, (TRI_voc_key_t) key.c_str(), document._rid);
+  if (trx.synchronous()) {
+    generateCreated(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
+  }
+  else {
+    generateAccepted(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
+  }
 
   return true;
 }
@@ -984,7 +1047,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @REST{DELETE /_api/document/@FA{document-handle}}
 ///
 /// Deletes the document identified by @FA{document-handle}. If the document
-/// exists and could be deleted, then a @LIT{HTTP 204} is returned.
+/// exists and could be deleted, then a @LIT{HTTP 200} is returned.
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute @LIT{_id} contains the known
@@ -1010,6 +1073,24 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// applied. The @FA{waitForSync} URL parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{200}
+/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the document was deleted sucessfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection or the document was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// is returned igf a "If-Match" header or @LIT{rev} is given and the current 
+/// document has a different version
 ///
 /// @EXAMPLES
 ///
@@ -1086,7 +1167,12 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
   
-  generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
+  if (trx.synchronous()) {
+    generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
+  }
+  else {
+    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), rid);
+  }
   return true;
 }
 
