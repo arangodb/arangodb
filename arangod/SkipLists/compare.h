@@ -419,11 +419,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right->_data.data);
           }         
           
-#ifdef TRI_HAVE_ICU  
           result = TRI_compare_utf8(leftString,rightString);
-#else
-          result = strcmp(leftString,rightString);
-#endif
           return result;
         }
         case TRI_SHAPE_ARRAY:

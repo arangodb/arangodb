@@ -468,6 +468,13 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
     TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
     char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
 
+    if (cArgument == 0) {
+      error = "out of memory";
+
+      TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
     TRI_PushBackVectorPointer(result, cArgument);
   }
 

@@ -165,11 +165,8 @@ static int attributeWeightCompareFunction(const void* leftItem, const void* righ
 
   assert(l);
   assert(r);
-#ifdef TRI_HAVE_ICU  
+
   return TRI_compare_utf8(l->_attribute, r->_attribute);
-#else  
-  return (strcmp(l->_attribute, r->_attribute));
-#endif  
 }
 
 static int attributeWeightCompareFunctionPointer(const void* leftItem, const void* rightItem) {
@@ -179,11 +176,7 @@ static int attributeWeightCompareFunctionPointer(const void* leftItem, const voi
   assert(l);
   assert(r);
 
-#ifdef TRI_HAVE_ICU  
   return TRI_compare_utf8(l->_attribute, r->_attribute);
-#else  
-  return (strcmp(l->_attribute, r->_attribute));
-#endif  
 }
 
 
