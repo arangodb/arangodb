@@ -108,7 +108,6 @@ lib_libarango_client_a_SOURCES = \
 lib_libarango_fe_a_SOURCES = \
 	lib/Admin/ApplicationAdminServer.cpp \
 	lib/Admin/RestAdminBaseHandler.cpp \
-	lib/Admin/RestAdminFeConfigurationHandler.cpp \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \
