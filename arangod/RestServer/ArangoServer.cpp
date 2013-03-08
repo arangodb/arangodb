@@ -155,7 +155,8 @@ static string GetFullVersionString () {
   u_versionToString(icuVersion, icuVersionString);  
   
   ostringstream version;
-  version << "ArangoDB " << TRIAGENS_VERSION << " -- " <<
+  version << "ArangoDB " << TRIAGENS_VERSION <<  
+             " -- " <<
              "ICU " << icuVersionString << ", " <<
              "V8 version " << v8::V8::GetVersion() << ", " 
              "SSL engine " << ApplicationEndpointServer::getSslVersion();
@@ -201,6 +202,23 @@ static string GetConfigureEnvironmentString () {
 
 static string GetVerboseInformationString () {
   string info(GetFullVersionString());
+
+#ifdef _WIN32
+  info += "\r\n";
+#else
+  info += "\n";
+#endif    
+  info.append("build: ").append(__DATE__).append(" ").append(__TIME__);
+
+#ifdef TRI_REPOSITORY_VERSION
+#ifdef _WIN32
+  info += "\r\n";
+#else
+  info += "\n";
+#endif    
+  
+  info.append("repository version: ").append(TRI_REPOSITORY_VERSION);
+#endif
 
   string configure(GetConfigureOptionsString());
   if (! configure.empty()) {
@@ -687,6 +705,16 @@ int ArangoServer::startupServer () {
   // .............................................................................
 
   _applicationServer->start();
+  
+  // load authentication
+  TRI_LoadAuthInfoVocBase(_vocbase);
+  
+  // if the authentication info could not be loaded, but authentication is turned on,
+  // then we refuse to start 
+  if (! _vocbase->_authInfoLoaded && ! _applicationEndpointServer->isAuthenticationDisabled()) {
+    LOGGER_FATAL_AND_EXIT("could not load required authentication information");
+  }
+
 
   LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
 
@@ -725,6 +753,9 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // open the database
   openDatabase();
+  
+  // load authentication
+  TRI_LoadAuthInfoVocBase(_vocbase);
 
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
@@ -1048,6 +1079,9 @@ int ArangoServer::executeRubyConsole () {
 
   // open the database
   openDatabase();
+  
+  // load authentication
+  TRI_LoadAuthInfoVocBase(_vocbase);
 
   // set-up MRuby context
   _applicationMR->setVocbase(_vocbase);

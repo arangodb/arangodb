@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief datafiles
+/// @brief server id handling
 ///
 /// @file
 ///
@@ -21,25 +21,18 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_HEADERS_H
-#define TRIAGENS_DURHAM_VOC_BASE_HEADERS_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_SERVER_ID_H
+#define TRIAGENS_DURHAM_VOC_BASE_SERVER_ID_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-struct TRI_shaped_json_s;
-struct TRI_doc_mptr_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -51,48 +44,65 @@ struct TRI_doc_mptr_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief headers
+/// @brief mask value for significant bits of server id
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_headers_s {
-  struct TRI_doc_mptr_s* (*request) (struct TRI_headers_s*);
-  void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
-}
-TRI_headers_t;
+#define TRI_SERVER_ID_MASK 0x0000FFFFFFFFFFFFULL
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server id type
+////////////////////////////////////////////////////////////////////////////////
+
+typedef uint64_t TRI_server_id_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new simple headers structures
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize);
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a simple headers structures, but does not free the pointer
+/// @brief initialise the global server id to 0 on startup
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroySimpleHeaders (TRI_headers_t*);
+void TRI_InitialiseServerId (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a simple headers structures, but does not free the pointer
+/// @brief get the global server id
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSimpleHeaders (TRI_headers_t*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
+TRI_server_id_t TRI_GetServerId (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterates over all headers
+/// @brief establish the global server id
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateSimpleHeaders (TRI_headers_t*,
-                               void (*iterator)(struct TRI_doc_mptr_s const*, void*),
-                               void* data);
+void TRI_EstablishServerId (const TRI_server_id_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads server id from file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ReadServerId (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes server id to file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteServerId (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a new server id
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_GenerateServerId (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -101,6 +111,10 @@ void TRI_IterateSimpleHeaders (TRI_headers_t*,
 #ifdef __cplusplus
 }
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 #endif
 

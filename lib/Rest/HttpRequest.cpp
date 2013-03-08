@@ -1023,7 +1023,6 @@ vector<string> const& HttpRequest::suffix () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::addSuffix (char const* part) {
-#ifdef TRI_HAVE_ICU  
   string decoded = StringUtils::urlDecode(part);  
   size_t tmpLength = 0;
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
@@ -1034,9 +1033,6 @@ void HttpRequest::addSuffix (char const* part) {
   else {
     _suffix.push_back(decoded);
   }
-#else
-  _suffix.push_back(StringUtils::urlDecode(part));
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

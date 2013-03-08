@@ -1315,11 +1315,8 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char * qtr;
   char const * ptr;
   char const * end;
-  
-#ifdef TRI_HAVE_ICU
   char * utf8_nfc;
   size_t tmpLength = 0;
-#endif
   
   buffer = TRI_Allocate(zone, inLength + 1, false);
 
@@ -1416,7 +1413,6 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *qtr = '\0';
   *outLength = (size_t) (qtr - buffer);
 
-#ifdef TRI_HAVE_ICU
   if (*outLength > 0) {
     utf8_nfc = TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
     if (utf8_nfc) {
@@ -1425,7 +1421,6 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
       return utf8_nfc;
     }    
   }
-#endif
 
   // we might have wasted some space if the unescaped string is shorter than the
   // escaped one. this is the case if the string contained escaped characters

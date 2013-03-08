@@ -145,16 +145,6 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief verifies if header is still valid, possible returning a new one
-///
-/// this function currently does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t* VerifySimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
-  return header;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a header, putting it back onto the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,7 +183,6 @@ TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   }
 
   headers->base.request = RequestSimpleHeaders;
-  headers->base.verify  = VerifySimpleHeaders;
   headers->base.release = ReleaseSimpleHeaders;
 
   headers->_freelist = NULL;
