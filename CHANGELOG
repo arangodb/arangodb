@@ -1,6 +1,55 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* issue #212: auto-increment support
+
+  The feature can be used by creating a collection with the extra `keyOptions`
+  attribute as follows:
+
+      db._create("mycollection", { keyOptions: { type: "autoincrement", offset: 1, increment: 10, allowUserKeys: true } });
+
+  The `type` attribute will make sure the keys will be auto-generated if no 
+  `_key` attribute is specified for a document.
+
+  The `allowUserKeys` attribute determines whether users might still supply own 
+  `_key` values with documents or if this is considered an error.
+
+  The `increment` value determines the actual increment value, whereas the `offset` 
+  value can be used to seed to value sequence with a specific starting value. 
+  This will be useful later in a multi-master setup, when multiple servers can use
+  different auto-increment seed values and thus generate non-conflicting auto-increment values.
+
+  The default values currently are:
+
+  - `allowUserKeys`: `true`
+  - `offset`: `0`
+  - `increment`: `1`
+
+  The only other available key generator type currently is `traditional`. 
+  The `traditional` key generator will auto-generate keys in a fashion as ArangoDB 
+  always did (some increasing integer value, with a more or less unpredictable
+  increment value).
+
+  Note that for the `traditional` key generator there is no the option to disallow 
+  user-supplied keys and give the server the sole responsibility for key generation.
+
+  This also introduces the following errors that API implementors may want to check
+  the return values for:
+
+  - 1222: `document key unexpected`: will be raised when a document is created with
+    a `_key` attribute, but the underlying collection was set up with the key generator
+    attribute `allowUserKeys: false`.
+
+  - 1225: `out of keys`: will be raised when the auto-increment key generator runs
+    out of keys. This may happen when the next key to be generated is 2^64 or higher.
+    In practice, this will only happen if the values for `increment` or `offset` are
+    not set appropriately, or if users are allowed to supply own keys, those keys
+    are near the 2^64 threshold, and later the auto-increment feature kicks in and
+    generates keys that cross that threshold.
+
+    It will not occur in practice with proper configuration and proper usage of the
+    collections.
+
 * adjust startup log output to be more compact, less verbose
 
 * set the required minimum number of file descriptors to 256.
