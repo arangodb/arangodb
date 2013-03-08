@@ -147,7 +147,7 @@ ArangoCollection.prototype._PRINT = function () {
   var colors = require("internal").colors;
 
   output("[ArangoCollection ", 
-         colors.COLOR_STRING, this._id, colors.COLOR_RESET,
+         colors.COLOR_NUMBER, this._id, colors.COLOR_RESET,
          ", \"", 
          colors.COLOR_STRING, this.name(), colors.COLOR_RESET, 
          "\" (type ", type, ", status ", status, ")]");
