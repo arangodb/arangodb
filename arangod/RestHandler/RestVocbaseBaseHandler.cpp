@@ -412,6 +412,10 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       generateError(HttpResponse::BAD, res, "invalid document key");
       return;
     
+    case TRI_ERROR_ARANGO_OUT_OF_KEYS:
+      generateError(HttpResponse::SERVER_ERROR, res, "out of keys");
+      return;
+    
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
       generateError(HttpResponse::BAD, res, "collection does not allow using user-defined keys");
       return;
