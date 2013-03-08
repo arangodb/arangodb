@@ -27,6 +27,8 @@
 
 var jsunity = require("jsunity");
 
+var wait = require("internal").wait;
+var console = require("console");
 var arangodb = require("org/arangodb");
 
 var ArangoCollection = arangodb.ArangoCollection;
@@ -197,6 +199,16 @@ function AutoIncrementSuite () {
       
       var d5 = c.save({ });
       assertEqual("14", d5._key);
+      
+      // create a gap
+      var d6 = c.save({ _key: "100" });
+      assertEqual("100", d6._key);
+      
+      var d7 = c.save({ });
+      assertEqual("101", d7._key);
+
+      var d8 = c.save({ });
+      assertEqual("104", d8._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,29 +232,154 @@ function AutoIncrementSuite () {
       
       var d5 = c.save({ });
       assertEqual("23", d5._key);
+      
+      // create a gap
+      var d6 = c.save({ _key: "99" });
+      assertEqual("99", d6._key);
+      
+      var d7 = c.save({  });
+      assertEqual("100", d7._key);
+      
+      var d8 = c.save({  });
+      assertEqual("101", d8._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check auto values after unloading etc.
+////////////////////////////////////////////////////////////////////////////////
+
+    testCheckAutoValuesUnload1 : function () {
+      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 1, increment: 4 } } });
+
+      var d1 = c.save({ });
+      assertEqual("1", d1._key);
+
+      var d2 = c.save({ });
+      assertEqual("5", d2._key);
+      
+      var d3 = c.save({ });
+      assertEqual("9", d3._key);
+      
+      var d4 = c.save({ });
+      assertEqual("13", d4._key);
+     
+      c.unload();
+      console.log("waiting for collection to unload"); 
+      wait(5); 
+      assertEqual(ArangoCollection.STATUS_UNLOADED, c.status()); 
+     
+      d1 = c.save({ });
+      assertEqual("17", d1._key);
+
+      d2 = c.save({ });
+      assertEqual("21", d2._key);
+      
+      d3 = c.save({ });
+      assertEqual("25", d3._key);
+      
+      d4 = c.save({ });
+      assertEqual("29", d4._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check auto values after unloading etc.
+////////////////////////////////////////////////////////////////////////////////
+
+    testCheckAutoValuesUnload2 : function () {
+      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 0, increment: 2 } } });
+
+      var d1 = c.save({ });
+      assertEqual("2", d1._key);
+
+      var d2 = c.save({ });
+      assertEqual("4", d2._key);
+      
+      var d3 = c.save({ });
+      assertEqual("6", d3._key);
+      
+      var d4 = c.save({ });
+      assertEqual("8", d4._key);
+     
+      c.unload();
+      console.log("waiting for collection to unload"); 
+      wait(5); 
+      assertEqual(ArangoCollection.STATUS_UNLOADED, c.status()); 
+     
+      d1 = c.save({ });
+      assertEqual("10", d1._key);
+
+      // create a gap
+      d2 = c.save({ _key: "39" });
+      assertEqual("39", d2._key);
+      
+      d3 = c.save({ });
+      assertEqual("40", d3._key);
+      
+      // create a gap
+      d4 = c.save({ _key: "19567" });
+      assertEqual("19567", d4._key);
+      
+      c.unload();
+      console.log("waiting for collection to unload"); 
+      wait(5); 
+      assertEqual(ArangoCollection.STATUS_UNLOADED, c.status()); 
+      
+      d1 = c.save({  });
+      assertEqual("19568", d1._key);
+      
+      d2 = c.save({  });
+      assertEqual("19570", d2._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check auto values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckAutoValues3 : function () {
-      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 219, increment: 74 } } });
+    testCheckAutoValuesMixedWithUserKeys : function () {
+      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 0, increment: 1 } } });
 
       var d1 = c.save({ });
-      assertEqual("219", d1._key);
+      assertEqual("1", d1._key);
 
       var d2 = c.save({ });
-      assertEqual("293", d2._key);
+      assertEqual("2", d2._key);
       
-      var d3 = c.save({ });
-      assertEqual("367", d3._key);
+      var d3 = c.save({ _key: "100" });
+      assertEqual("100", d3._key);
       
-      var d4 = c.save({ });
-      assertEqual("441", d4._key);
+      var d4 = c.save({ _key: "3" });
+      assertEqual("3", d4._key);
       
-      var d5 = c.save({ });
-      assertEqual("515", d5._key);
+      var d5 = c.save({ _key: "99" });
+      assertEqual("99", d5._key);
+      
+      var d6 = c.save({ });
+      assertEqual("101", d6._key);
+
+      var d7 = c.save({ });
+      assertEqual("102", d7._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check auto values
+////////////////////////////////////////////////////////////////////////////////
+
+    testCheckAutoValuesDuplicates : function () {
+      var c = db._create(cn, { createOptions: { keys: { type: "autoincrement", offset: 0, increment: 1 } } });
+
+      var d1 = c.save({ });
+      assertEqual("1", d1._key);
+
+      var d2 = c.save({ });
+      assertEqual("2", d2._key);
+      
+      try {
+        c.save({ _key: "1" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
     }
 
   };

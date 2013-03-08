@@ -89,6 +89,7 @@ typedef struct TRI_key_generator_s {
 
   int (*init)(struct TRI_key_generator_s* const, const struct TRI_json_s* const);
   int (*generate)(struct TRI_key_generator_s* const, const size_t, const TRI_voc_rid_t, const char* const, char* const, size_t* const);
+  void (*track)(struct TRI_key_generator_s* const, const TRI_voc_key_t);
   void (*free)(struct TRI_key_generator_s* const);
 }
 TRI_key_generator_t;
