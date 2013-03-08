@@ -16,6 +16,7 @@ ERROR_BAD_PARAMETER,10,"bad parameter","Will be raised when the parameter does n
 ERROR_FORBIDDEN,11,"forbidden","Will be raised when you are missing permission for the operation."
 ERROR_OUT_OF_MEMORY_MMAP,12,"out of memory in mmap","Will be raised when there is a memory shortage."
 ERROR_CORRUPTED_CSV,13,"csv is corrupt","Will be raised when encountering a corrupt csv line."
+ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not found."
 
 ################################################################################
 ## HTTP standard errors

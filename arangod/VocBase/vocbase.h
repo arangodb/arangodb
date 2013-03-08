@@ -374,22 +374,23 @@ typedef struct TRI_vocbase_s {
   char* _path;
   char* _lockFile;
 
-  bool _removeOnDrop; // wipe collection from disk after dropping
-  bool _removeOnCompacted; // wipe datafile from disk after compaction
+  bool _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
+  bool _removeOnDrop;       // wipe collection from disk after dropping
+  bool _removeOnCompacted;  // wipe datafile from disk after compaction
   bool _defaultWaitForSync;
-  bool _forceSyncShapes; // force synching of shape data to disk
+  bool _forceSyncShapes;    // force synching of shape data to disk
+
   TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;
-
-  TRI_vector_pointer_t _collections;
-  TRI_vector_pointer_t _deadCollections; // pointers to collections dropped that can be removed later
+  TRI_vector_pointer_t  _collections;
+  TRI_vector_pointer_t  _deadCollections; // pointers to collections dropped that can be removed later
 
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
 
   TRI_associative_pointer_t _authInfo;
-  TRI_read_write_lock_t _authInfoLock;
+  TRI_read_write_lock_t     _authInfoLock;
 
   TRI_transaction_context_t* _transactionContext;
 
@@ -507,6 +508,12 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load authentication information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known collections

@@ -39,6 +39,8 @@ extern "C" {
 ///   Will be raised when there is a memory shortage.
 /// - 13: @LIT{csv is corrupt}
 ///   Will be raised when encountering a corrupt csv line.
+/// - 14: @LIT{file not found}
+///   Will be raised when a file is not found.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -516,6 +518,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CORRUPTED_CSV                                           (13)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 14: ERROR_FILE_NOT_FOUND
+///
+/// file not found
+///
+/// Will be raised when a file is not found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FILE_NOT_FOUND                                          (14)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

@@ -5083,7 +5083,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_col_info_t info;
-  int res = TRI_LoadCollectionInfo(collection->_path, &info);
+  int res = TRI_LoadCollectionInfo(collection->_path, &info, false);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (key == "type") {
@@ -5319,7 +5319,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   TRI_col_info_t info;
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  int res = TRI_LoadCollectionInfo(collection->_path, &info);
+  int res = TRI_LoadCollectionInfo(collection->_path, &info, false);
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   TRI_FreeCollectionInfoOptions(&info);
