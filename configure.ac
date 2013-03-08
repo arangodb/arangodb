@@ -24,7 +24,7 @@ AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
 
 
 dnl ----------------------------------------------------------------------------
-dnl grab the configure command and store it in m4 variables
+dnl grab the configure command, options and flags and store them in m4 variables
 dnl ----------------------------------------------------------------------------
 
 if test `expr -- [$]0 : "'.*"` = 0; then
@@ -33,19 +33,7 @@ else
   TRI_CONFIGURE_COMMAND="$TRI_CONFIGURE_COMMAND [$]0"
 fi
 
-for arg in $ac_configure_args; do
-  if test `expr -- $arg : "'.*"` = 0; then
-    if test `expr -- $arg : "--.*"` = 0; then
-      break;
-    fi
-    TRI_CONFIGURE_OPTIONS="$TRI_CONFIGURE_OPTIONS '[$]arg'"
-  else
-    if test `expr -- $arg : "'--.*"` = 0; then
-      break;
-    fi
-    TRI_CONFIGURE_OPTIONS="$TRI_CONFIGURE_OPTIONS [$]arg"
-  fi
-done
+TRI_CONFIGURE_OPTIONS="$ac_configure_args"
 
 for var in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS EXTRA_LDFLAGS_PROGRAM LIBS CC CXX; do
   eval val=\$$var
