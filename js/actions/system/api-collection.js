@@ -422,15 +422,9 @@ function get_api_collection (req, res) {
     
   // .............................................................................
   // /_api/collection/<name>
-  // /_api/collection/<identifier>?useId
   // .............................................................................
 
-  if (req.parameters.useId || parseInt(req.suffix[0],10)) {
-    name = parseInt(req.suffix[0], 10);
-  }
-  else {
-    name = decodeURIComponent(req.suffix[0]);
-  }
+  name = decodeURIComponent(req.suffix[0]);
     
   var collection = arangodb.db._collection(name);
 
