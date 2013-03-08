@@ -49,8 +49,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
-/// the filename must look like this: /.*<type>-XXX\.<ending>$/, where XXX is
-/// a number, and <type> and <ending> are arbitrary letters
+/// the filename must look like this: /.*type-XXX\.ending$/, where XXX is
+/// a number, and type and ending are arbitrary letters
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
