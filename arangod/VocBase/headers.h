@@ -56,7 +56,6 @@ struct TRI_doc_mptr_s;
 
 typedef struct TRI_headers_s {
   struct TRI_doc_mptr_s* (*request) (struct TRI_headers_s*);
-  struct TRI_doc_mptr_s* (*verify) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
   void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
 }
 TRI_headers_t;
