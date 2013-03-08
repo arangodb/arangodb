@@ -435,9 +435,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   // write document blob
   // .............................................................................
 
-  // verify the header pointer
-  header = document->_headers->verify(document->_headers, header);
-
   // generate crc
   TRI_FillCrcKeyMarkerDatafile(journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
 
@@ -1383,8 +1380,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         LOG_ERROR("out of memory");
         return false;
       }
-
-      header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
       CreateHeader(primary, datafile, marker, markerSize, header);
