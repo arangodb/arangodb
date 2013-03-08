@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* issue #442: pls update post install info on osx
+
 * issue #212: auto-increment support
 
   The feature can be used by creating a collection with the extra `keyOptions`
