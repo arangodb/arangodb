@@ -56,8 +56,8 @@ The content is a JSON object with two keys: `apps` and `libs`.
 this does not exist yet*).
 `apps` is an object that matches routes to files:
 
-* The key is the route you want to mount all 'Franks' defined in the file at
-* The value is the path to the JavaScript file you want to mount
+* The `key` is the route you want to mount at
+* The `value` is the path to the JavaScript file containing the `Frank`s you want to mount
 
 You can add multiple applications in one manifest in this way.
 
