@@ -4542,11 +4542,11 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
     if (idx != NULL) {
       result->Set(j++, IndexRep(c, idx));
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, idx);
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, idx);
     }
   }
 
-  TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, indexes);
+  TRI_FreeVectorPointer(TRI_CORE_MEM_ZONE, indexes);
 
   return scope.Close(result);
 }

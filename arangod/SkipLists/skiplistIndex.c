@@ -559,7 +559,7 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
     return;
   }  
   SkiplistIndex_destroy(slIndex);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, slIndex);
+  TRI_Free(TRI_CORE_MEM_ZONE, slIndex);
 }
 
 
@@ -597,21 +597,21 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
 SkiplistIndex* SkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex), true);
-  if (skiplistIndex == NULL) {
-    return NULL;
-  }
+  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
 
   skiplistIndex->unique = true;
   skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t), true);
   if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
   }    
     
   TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
                    sizeof(SkiplistIndexElement),
-                   NULL,NULL,TRI_SKIPLIST_PROB_HALF, 40);
+                   NULL,
+                   NULL,
+                   TRI_SKIPLIST_PROB_HALF, 
+                   40);
   /*  
   TRI_InitSkipList(skiplistIndex->skiplist.uniqueSkiplist,
                    sizeof(SkiplistIndexElement),
@@ -1028,21 +1028,22 @@ bool SkiplistIndex_update(SkiplistIndex* skiplistIndex, const SkiplistIndexEleme
 SkiplistIndex* MultiSkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex), true);
-  if (skiplistIndex == NULL) {
-    return NULL;
-  }
+  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
 
   skiplistIndex->unique = false;
   skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t), true);
   if (skiplistIndex->skiplist.nonUniqueSkiplist == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
   }    
     
   TRI_InitSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist,
                         sizeof(SkiplistIndexElement),
-                        NULL, NULL, NULL,TRI_SKIPLIST_PROB_HALF, 40);
+                        NULL, 
+                        NULL, 
+                        NULL,
+                        TRI_SKIPLIST_PROB_HALF, 
+                        40);
   /*                        
   TRI_InitSkipListMulti(skiplistIndex->skiplist.nonUniqueSkiplist,
                         sizeof(SkiplistIndexElement),
