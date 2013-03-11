@@ -183,7 +183,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
+      *mustFree = true;
       char* ptr = buffer->_buffer;
       buffer->_buffer = NULL;
 
@@ -304,7 +304,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
+      *mustFree = true;
       char* ptr = buffer->_buffer;
       buffer->_buffer = NULL;
 
@@ -427,7 +427,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
+      *mustFree = true;
       char* ptr = buffer->_buffer;
       buffer->_buffer = NULL;
 
@@ -536,7 +536,7 @@ struct SkiplistTest : public BenchmarkOperation {
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
+      *mustFree = true;
       char* ptr = buffer->_buffer;
       buffer->_buffer = NULL;
 
@@ -645,7 +645,7 @@ struct HashTest : public BenchmarkOperation {
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
+      *mustFree = true;
       char* ptr = buffer->_buffer;
       buffer->_buffer = NULL;
 
