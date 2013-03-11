@@ -5,7 +5,7 @@ require './arangodb.rb'
 
 describe ArangoDB do
   api = "/_api/user"
-  prefix = "api-users"
+  prefix = "api-user"
 
   context "user management:" do
 
@@ -140,14 +140,14 @@ describe ArangoDB do
 
     context "replacing users" do
       it "replace, no user" do
-        doc = ArangoDB.log_put("#{prefix}-replace", api) 
+        doc = ArangoDB.log_put("#{prefix}-replace-non", api) 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
       end
 
       it "replace non-existing user" do
-        doc = ArangoDB.log_put("#{prefix}-replace", api + "/users-1") 
+        doc = ArangoDB.log_put("#{prefix}-replace-non", api + "/users-1") 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(404)
@@ -155,18 +155,18 @@ describe ArangoDB do
 
       it "replace already removed user" do
         body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
-        doc = ArangoDB.log_post("#{prefix}-replace", api, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-replace-removed", api, :body => body)
 
         doc.code.should eq(201)
         
         # remove
-        doc = ArangoDB.log_delete("#{prefix}-replace", api + "/users-1") 
+        doc = ArangoDB.log_delete("#{prefix}-replace-removed", api + "/users-1") 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(202)
        
         # now replace
-        doc = ArangoDB.log_put("#{prefix}-replace", api + "/users-1") 
+        doc = ArangoDB.log_put("#{prefix}-replace-removed", api + "/users-1") 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(404)
@@ -174,11 +174,11 @@ describe ArangoDB do
       
       it "replace, empty body" do
         body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
-        doc = ArangoDB.log_post("#{prefix}-replace", api, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-replace-empty", api, :body => body)
         
         # replace 
         body = "{ }"
-        doc = ArangoDB.log_put("#{prefix}-replace", api + "/users-1", :body => body) 
+        doc = ArangoDB.log_put("#{prefix}-replace-empty", api + "/users-1", :body => body) 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
@@ -193,11 +193,11 @@ describe ArangoDB do
       
       it "replace existing user, no passwd" do
         body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
-        doc = ArangoDB.log_post("#{prefix}-replace", api, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-replace-nopass", api, :body => body)
         
         # replace 
         body = "{ \"active\" : false, \"extra\" : { \"foo\" : false } }"
-        doc = ArangoDB.log_put("#{prefix}-replace", api + "/users-1", :body => body) 
+        doc = ArangoDB.log_put("#{prefix}-replace-nopass", api + "/users-1", :body => body) 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
@@ -213,11 +213,11 @@ describe ArangoDB do
       
       it "replace existing user" do
         body = "{ \"username\" : \"users-1\", \"passwd\" : \"fox\", \"active\" : true, \"extra\" : { \"foo\" : true } }"
-        doc = ArangoDB.log_post("#{prefix}-replace", api, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-replace-exists", api, :body => body)
         
         # replace 
         body = "{ \"passwd\" : \"fox2\", \"active\" : false, \"extra\" : { \"foo\" : false } }"
-        doc = ArangoDB.log_put("#{prefix}-replace", api + "/users-1", :body => body) 
+        doc = ArangoDB.log_put("#{prefix}-replace-exists", api + "/users-1", :body => body) 
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
