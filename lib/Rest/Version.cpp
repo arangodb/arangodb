@@ -28,7 +28,7 @@
 #include "Rest/Version.h"
 
 #ifdef _WIN32
-  #include "BasicsC/win-utils.h"
+#include "BasicsC/win-utils.h"
 #endif
 
 #include "build.h"
