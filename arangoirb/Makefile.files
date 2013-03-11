@@ -14,10 +14,12 @@ bin_arangoirb_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangoirb_LDADD = \
+	lib/libarango_v8.a \
 	lib/libarango_mruby.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
+	@V8_LIBS@ \
 	@MRUBY_LIBS@
 
 bin_arangoirb_SOURCES = \
