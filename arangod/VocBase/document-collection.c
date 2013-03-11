@@ -2899,12 +2899,8 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
   size_t n;
   size_t i;
 
-  vector = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
-  if (!vector) {
-    return NULL;
-  }
-
-  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
+  vector = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+  TRI_InitVectorPointer(vector, TRI_CORE_MEM_ZONE);
 
   n = document->_allIndexes._length;
 
