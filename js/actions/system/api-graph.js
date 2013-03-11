@@ -680,7 +680,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until vertex has been sync to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of a vertex
@@ -733,7 +733,7 @@ function put_graph_vertex (req, res, g) {
 /// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until vertex has been sync to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of a vertex
@@ -892,6 +892,11 @@ function process_labels_filter (data, labels) {
 /// - @LIT{value}: the value of the @LIT{key}
 /// - @LIT{compare}: a compare operator
 //
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
+///
 /// @EXAMPLES
 ///
 /// Select all vertices
@@ -950,8 +955,7 @@ function post_graph_all_vertices (req, res, g) {
 ///
 /// @RESTHEADER{POST /_api/graph/@FA{graph-name}/vertices/@FA{vertice-name},get vertices}
 ///
-/// @REST{POST /_api/graph/@FA{graph-name}/vertices/@FA{vertice-name}}
-///
+/// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the result:
@@ -971,6 +975,11 @@ function post_graph_all_vertices (req, res, g) {
 /// - @LIT{key}: filter the result vertices by a key value pair
 /// - @LIT{value}: the value of the @LIT{key}
 /// - @LIT{compare}: a compare operator
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
 ///
 /// @EXAMPLES
 ///
@@ -1076,7 +1085,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until edge has been sync to disk.
 ///
 /// @RESTDESCRIPTION
 /// Creates an edge in a graph.
@@ -1217,7 +1226,7 @@ function get_graph_edge (req, res, g) {
 /// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until edge has been sync to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of an edge
@@ -1352,7 +1361,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until edge has been sync to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of an edge
@@ -1405,7 +1414,7 @@ function put_graph_edge (req, res, g) {
 /// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until edge has been sync to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of an edge
@@ -1466,8 +1475,7 @@ function patch_graph_edge (req, res, g) {
 ///
 /// @RESTHEADER{POST /_api/graph/@FA{graph-name}/edges,get edges}
 ///
-/// @REST{POST /_api/graph/@FA{graph-name}/edges}
-///
+/// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the result:
@@ -1485,6 +1493,11 @@ function patch_graph_edge (req, res, g) {
 /// - @LIT{key}: filter the result edges by a key value pair
 /// - @LIT{value}: the value of the @LIT{key}
 /// - @LIT{compare}: a compare operator
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
 ///
 /// @EXAMPLES
 ///
@@ -1576,6 +1589,11 @@ function post_graph_all_edges (req, res, g) {
 /// - @LIT{key}: filter the result vertices by a key value pair
 /// - @LIT{value}: the value of the @LIT{key}
 /// - @LIT{compare}: a compare operator
+///
+/// @RESTRETURNCODES
+/// 
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
 ///
 /// @EXAMPLES
 ///
