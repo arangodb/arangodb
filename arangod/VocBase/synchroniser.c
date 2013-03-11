@@ -287,8 +287,6 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
 
   n = base->_compactors._length;
 
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
   for (i = 0;  i < n;) {
     compactor = base->_compactors._buffer[i];
 
