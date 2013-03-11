@@ -128,22 +128,6 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateCapConstraint (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* newDoc,
-                                TRI_doc_mptr_t const* oldDoc,
-                                TRI_doc_mptr_t const* oldData) {
-  TRI_cap_constraint_t* cap;
-
-  cap = (TRI_cap_constraint_t*) idx;
-  TRI_MoveToBackLinkedArray(&cap->_array, newDoc);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -185,7 +169,6 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collectio
 
   cap->base.insert     = InsertCapConstraint;
   cap->base.postInsert = PostInsertCapConstraint;
-  cap->base.update     = UpdateCapConstraint;
   cap->base.remove     = RemoveCapConstraint;
 
   TRI_InitLinkedArray(&cap->_array, TRI_CORE_MEM_ZONE);

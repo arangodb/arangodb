@@ -122,7 +122,9 @@ typedef struct TRI_index_s {
 
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+#if 0
   int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*);
+#endif
 
   // NULL by default. will only be called if non-NULL
   int (*postInsert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
