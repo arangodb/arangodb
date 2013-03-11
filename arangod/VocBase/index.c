@@ -35,6 +35,8 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "CapConstraint/cap-constraint.h"
+#include "GeoIndex/geo-index.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-wordlist.h"
 #include "HashIndex/hash-index.h"

@@ -527,29 +527,6 @@ static int ReadServerId (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the path buffer allocated for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void FreeCollectionPath (TRI_vocbase_col_t* const collection) {
-  if (collection->_path) {
-    TRI_Free(TRI_CORE_MEM_ZONE, (char*) collection->_path);
-  }
-  collection->_path = NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
-  FreeCollectionPath(collection);
-
-  TRI_DestroyReadWriteLock(&collection->_lock);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
 ///
 /// Caller must hold TRI_WRITE_LOCK_COLLECTIONS_VOCBASE.
