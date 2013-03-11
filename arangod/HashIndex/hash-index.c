@@ -509,89 +509,6 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document from a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateHashIndex (TRI_index_t* idx,
-                            const TRI_doc_mptr_t* newDoc,
-                            const TRI_doc_mptr_t* oldDoc,
-                            const TRI_doc_mptr_t* oldData) {
-  TRI_hash_index_element_t hashElement;
-  TRI_hash_index_t* hashIndex;
-  int res;
-
-  hashIndex = (TRI_hash_index_t*) idx;
-
-  // ............................................................................
-  // Remove the old document
-  //
-  // For non-transactional collections `newData` and `oldData` will be equal.
-  // We need to use the oldData pointer and fix the master pointer afterwards.
-  // ............................................................................
-
-  res = HashIndexHelperAllocate(hashIndex, &hashElement, oldData, true);
-
-  hashElement._document = CONST_CAST(oldDoc);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (hashIndex->base._unique) {
-      res = HashIndex_remove(hashIndex, &hashElement);
-    }
-    else {
-      res = MultiHashIndex_remove(hashIndex, &hashElement);
-    }
-
-    // ..........................................................................
-    // This error is common, when a document 'update' occurs, but fails
-    // due to the fact that a duplicate entry already exists, when the 'rollback'
-    // is applied, there is no document to remove -- so we get this error.
-    // ..........................................................................
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_DEBUG("could not remove existing document from hash index in UpdateHashIndex");
-    }
-  }
-
-  else if (res == TRI_ERROR_OUT_OF_MEMORY) {
-    return res;
-  }
-
-  else {
-    LOG_WARNING("existing document was not removed from hash index in UpdateHashIndex");
-
-    res = AllocateSubObjectsHashIndexElement(hashIndex, &hashElement);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-
-  // ............................................................................
-  // Fill the new values
-  // ............................................................................
-
-  res = HashIndexHelperAllocate(hashIndex, &hashElement, newDoc, false);
-
-  // probably fields do not match.
-  if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // ............................................................................
-  // Attempt to add the hash entry from the new doc, this will free the
-  // memory allocated.
-  // ............................................................................
-
-  if (hashIndex->base._unique) {
-    res = HashIndex_insert(hashIndex, &hashElement);
-  }
-  else {
-    res = MultiHashIndex_insert(hashIndex, &hashElement);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -661,7 +578,6 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
 
   hashIndex->base.insert = InsertHashIndex;
   hashIndex->base.remove = RemoveHashIndex;
-  hashIndex->base.update = UpdateHashIndex;
 
   // ...........................................................................
   // Copy the contents of the path list vector into a new vector and store this
