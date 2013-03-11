@@ -453,17 +453,6 @@ static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update methods does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdatePrimary (TRI_index_t* idx,
-                          TRI_doc_mptr_t const* newDoc,
-                          TRI_doc_mptr_t const* oldDoc,
-                          TRI_doc_mptr_t const* oldData) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -526,7 +515,6 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* collection
 
   primary->insert = InsertPrimary;
   primary->remove = RemovePrimary;
-  primary->update = UpdatePrimary;
   primary->json = JsonPrimary;
 
   return primary;
@@ -715,17 +703,6 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update method does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateEdge (TRI_index_t* idx,
-                       TRI_doc_mptr_t const* newDoc,
-                       TRI_doc_mptr_t const *oldDoc,
-                       TRI_doc_mptr_t const* oldData) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove an edge 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -819,7 +796,6 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
   TRI_InitIndex(&edgeIndex->base, TRI_IDX_TYPE_EDGE_INDEX, collection, false); 
   edgeIndex->base.insert  = InsertEdge;
   edgeIndex->base.remove  = RemoveEdge;
-  edgeIndex->base.update  = UpdateEdge;
   edgeIndex->base.json    = JsonEdge;
 
   TRI_InitMultiPointer(&edgeIndex->_edges,
@@ -1250,119 +1226,6 @@ static int RemovePriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc
   return res;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document from a priority queue index
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdatePriorityQueueIndex (TRI_index_t* idx,
-                                     TRI_doc_mptr_t const* newDoc, 
-                                     TRI_doc_mptr_t const* oldDoc,
-                                     TRI_doc_mptr_t const* oldData) {
-                             
-  // ..........................................................................
-  // Note: The oldDoc is represented by the TRI_shaped_json_t rather than by
-  //       a TRI_doc_mptr_t object. However for non-unique indexes (such as this
-  //       one) we must pass the document shape to the hash remove function.
-  // ..........................................................................
-  
-  union { void* p; void const* c; } cnv;
-  PQIndexElement pqElement;
-  TRI_priorityqueue_index_t* pqIndex;
-  TRI_shaped_json_t shapedJson;
-  int res;  
-  
-  // ............................................................................
-  // Obtain the priority queue index structure
-  // ............................................................................
-  
-  pqIndex = (TRI_priorityqueue_index_t*) idx;
-
-  if (idx == NULL) {
-    LOG_WARNING("internal error in UpdatePriorityQueueIndex");
-    return TRI_ERROR_INTERNAL;
-  }
-
-  // ............................................................................
-  // Allocate some memory for the HashIndexElement structure
-  // ............................................................................
-
-  pqElement.numFields  = pqIndex->_paths._length;
-  pqElement.fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * pqElement.numFields, false);
-  pqElement.collection = pqIndex->base._collection;
-
-  if (pqElement.fields == NULL) {
-    LOG_WARNING("out-of-memory in UpdatePriorityQueueIndex");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }  
-  
-
-  // ............................................................................
-  // Fill in the fields with the values from oldDoc
-  // ............................................................................
-    
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldData->_data);
-
-  res = PriorityQueueIndexHelper(pqIndex, &pqElement, NULL, &shapedJson);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-
-    cnv.c = newDoc;
-    pqElement.data = cnv.p;
-      
-    // ............................................................................
-    // Remove the priority queue index entry and return.
-    // ............................................................................
-
-    res = PQIndex_remove(pqIndex->_pqIndex, &pqElement);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("could not remove old document from priority queue index in UpdatePriorityQueueIndex");
-    }
-  }    
-
-  else {
-    LOG_WARNING("could not remove old document from priority queue index in UpdatePriorityQueueIndex");
-  }
-  
-  // ............................................................................
-  // Fill the shaped json simple list from the document
-  // ............................................................................
-
-  res = PriorityQueueIndexHelper(pqIndex, &pqElement, newDoc, NULL); 
-
-  if (res == -1) {
-
-    // ..........................................................................
-    // probably fields do not match  
-    // ..........................................................................
-
-    return TRI_ERROR_INTERNAL;
-  }    
-  
-  // ............................................................................
-  // It is possible that while we have the correct attribute name, the type is
-  // not double. Skip this document for now.  
-  // ............................................................................
-  
-  else if (res == -2) {
-    return TRI_ERROR_NO_ERROR;
-  } 
-
-  
-  else if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }  
-
-  // ............................................................................
-  // Attempt to add the priority queue entry from the new doc
-  // ............................................................................
-
-  res = PQIndex_insert(pqIndex->_pqIndex, &pqElement);
-  
-  return res;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1415,7 +1278,6 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
 
   pqIndex->base.insert = InsertPriorityQueueIndex;
   pqIndex->base.remove = RemovePriorityQueueIndex;
-  pqIndex->base.update = UpdatePriorityQueueIndex;
 
   // ...........................................................................
   // Copy the contents of the path list vector into a new vector and store this
@@ -2165,236 +2027,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   
   return res;
 }
-
-
-static int UpdateSkiplistIndex (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* newDoc, 
-                                TRI_doc_mptr_t const* oldDoc,
-                                TRI_doc_mptr_t const* oldData) {
-                             
-  // ..........................................................................
-  // Note: The oldDoc is represented by the TRI_shaped_json_t rather than by
-  //       a TRI_doc_mptr_t object. However for non-unique indexes we must
-  //       pass the document shape to the hash remove function.
-  // ..........................................................................
-  
-  union { void* p; void const* c; } cnv;
-  SkiplistIndexElement skiplistElement;
-  TRI_skiplist_index_t* skiplistIndex;
-  TRI_shaped_json_t shapedJson;
-  int res;  
-
-  
-  // ............................................................................
-  // Obtain the skiplist index structure
-  // ............................................................................
-  
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
-  if (idx == NULL) {
-    LOG_WARNING("internal error in UpdateSkiplistIndex");
-    return TRI_ERROR_INTERNAL;
-  }
-
-
-  // ............................................................................
-  // Allocate some memory for the SkiplistIndexElement structure
-  // ............................................................................
-
-  skiplistElement.numFields  = skiplistIndex->_paths._length;
-  skiplistElement.fields     = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistElement.numFields, false);
-  skiplistElement.collection = skiplistIndex->base._collection;
-  
-  if (skiplistElement.fields == NULL) {
-    LOG_WARNING("out-of-memory in UpdateSkiplistIndex");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }  
-      
-  
-  // ............................................................................
-  // Update for unique skiplist index
-  // ............................................................................
-  
-  
-  // ............................................................................
-  // Fill in the fields with the values from oldDoc
-  // ............................................................................
-  
-  if (skiplistIndex->base._unique) {
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldData->_data);
-  
-    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, NULL, &shapedJson);
-      
-    if (res == TRI_ERROR_NO_ERROR) {
-    
-      // ............................................................................
-      // We must fill the skiplistElement with the value of the document shape -- this
-      // is necessary when we attempt to remove non-unique skiplist indexes.
-      // ............................................................................
-      cnv.c = newDoc; // we are assuming here that the doc ptr does not change
-      skiplistElement.data = cnv.p;
-      
-      
-      // ............................................................................
-      // Remove the skiplist index entry and return.
-      // ............................................................................
-      
-      res = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
-      
-      if (res != TRI_ERROR_NO_ERROR) {
-      
-        // ..........................................................................
-        // This error is common, when a document 'update' occurs, but fails
-        // due to the fact that a duplicate entry already exists, when the 'rollback'
-        // is applied, there is no document to remove -- so we get this error.
-        // ..........................................................................
-        
-        LOG_WARNING("could not remove existing document from skiplist index in UpdateSkiplistIndex");
-      }
-      
-    }    
-
-    // ..............................................................................
-    // Here we are assuming that the existing document could not be removed, because
-    // the doc did not have the correct attributes. TODO: do not make this assumption.
-    // ..............................................................................
-
-    else if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
-    }
-    
-    // ..............................................................................
-    // some other error
-    // ..............................................................................
-    
-    else {
-      LOG_WARNING("existing document was not removed from skiplist index in UpdateSkiplistIndex");
-    }
-    
-    
-    // ............................................................................
-    // Fill the json simple list from the document
-    // ............................................................................
-    
-    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, newDoc, NULL);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-    
-      // ..........................................................................
-      // Deallocated memory given to skiplistElement.fields
-      // ..........................................................................
-    
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
-      
-      if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
-      
-        // ........................................................................
-        // probably fields do not match. 
-        // ........................................................................
-
-        return TRI_ERROR_NO_ERROR;
-      }
-    
-      return res;
-    }    
-
-
-    // ............................................................................
-    // Attempt to add the skiplist entry from the new doc
-    // ............................................................................
-    
-    res = SkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
-  }
-
-  
-  // ............................................................................
-  // Update for non-unique skiplist index
-  // ............................................................................
-
-  else {
-  
-    // ............................................................................
-    // Fill in the fields with the values from oldDoc
-    // ............................................................................    
-
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldData->_data);
-
-    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, NULL, &shapedJson);
-    
-    if (res == TRI_ERROR_NO_ERROR) {
-    
-      // ............................................................................
-      // We must fill the skiplistElement with the value of the document shape -- this
-      // is necessary when we attempt to remove non-unique skiplist indexes.
-      // ............................................................................
-      
-      cnv.c = newDoc;
-      skiplistElement.data = cnv.p;
-      
-      
-      // ............................................................................
-      // Remove the skiplist index entry and return.
-      // ............................................................................
-      
-      res = MultiSkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
-      
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("could not remove old document from (non-unique) skiplist index  UpdateSkiplistIndex");
-      }
-      
-    }    
-
-    else if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING) {
-    }
-    
-    // ..............................................................................
-    // some other error
-    // ..............................................................................
-    
-    else {
-      LOG_WARNING("existing document was not removed from (non-unique) skiplist index in UpdateSkiplistIndex");
-    }
-
-
-    
-    // ............................................................................
-    // Fill the shaped json simple list from the document
-    // ............................................................................
-    
-    res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, newDoc, NULL);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-    
-      // ..........................................................................
-      // Deallocated memory given to skiplistElement.fields
-      // ..........................................................................
-    
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
-      
-      if (res == TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING) {
-      
-        // ........................................................................
-        // probably fields do not match. 
-        // ........................................................................
-
-        return TRI_ERROR_NO_ERROR;
-      }
-    
-      return res;
-    }    
-
-
-    // ............................................................................
-    // Attempt to add the skiplist entry from the new doc
-    // ............................................................................
-    res = MultiSkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
-    
-  }
-  
-  
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);  
-  
-  return res;
-}
-  
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
@@ -2415,7 +2048,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
 
   skiplistIndex->base.insert = InsertSkiplistIndex;
   skiplistIndex->base.remove = RemoveSkiplistIndex;
-  skiplistIndex->base.update = UpdateSkiplistIndex;
   
   // ...........................................................................
   // Copy the contents of the shape list vector into a new vector and store this
@@ -2687,39 +2319,6 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in a fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateFulltextIndex (TRI_index_t* idx, 
-                                TRI_doc_mptr_t const* newDoc, 
-                                TRI_doc_mptr_t const* oldDoc,
-                                TRI_doc_mptr_t const* oldData) {
-  TRI_fulltext_index_t* fulltextIndex;
-  TRI_fulltext_wordlist_t* wordlist;
-  int res;  
-    
-  assert(idx);
-  
-  wordlist = GetWordlist(idx, newDoc);
-
-  res = TRI_ERROR_NO_ERROR;
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
-
-  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) newDoc));
-  
-  if (wordlist != NULL && wordlist->_numWords > 0) {
-    // TODO: use status codes
-    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) newDoc), wordlist)) {
-      res = TRI_ERROR_INTERNAL;
-    }
-  }
-
-  TRI_FreeWordlistFulltextIndex(wordlist);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function for the fulltext index
 ///
 /// This will incrementally clean the index by removing document/word pairs
@@ -2793,7 +2392,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
 
   fulltextIndex->base.insert  = InsertFulltextIndex;
   fulltextIndex->base.remove  = RemoveFulltextIndex;
-  fulltextIndex->base.update  = UpdateFulltextIndex;
   fulltextIndex->base.cleanup = CleanupFulltextIndex;
  
   fulltextIndex->_fulltextIndex = fts;
@@ -3428,134 +3026,6 @@ static int RemoveBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   return result;
 }
 
-
-static int UpdateBitarrayIndex (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* newDoc, 
-                                TRI_doc_mptr_t const* oldDoc,
-                                TRI_doc_mptr_t const* oldData) {
-
-  union { void* p; void const* c; } cnv;
-                            
-  // ..........................................................................
-  // Note: The oldDoc is represented by the TRI_shaped_json_t rather than by
-  //       a TRI_doc_mptr_t object. 
-  // ..........................................................................
-  
-  BitarrayIndexElement element;
-  TRI_bitarray_index_t* baIndex;
-  TRI_shaped_json_t shapedJson;
-  int result;  
-
-  
-  // ............................................................................
-  // Obtain the bitarray index structure
-  // ............................................................................
-  
-  baIndex = (TRI_bitarray_index_t*) idx;
-  if (idx == NULL) {
-    LOG_WARNING("internal error in UpdateBitarrayIndex");
-    return TRI_ERROR_INTERNAL;
-  }
-
-
-  // ............................................................................
-  // Allocate some memory for the element structure
-  // ............................................................................
-
-  element.numFields  = baIndex->_paths._length;
-  element.fields     = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
-  element.collection = baIndex->base._collection;
-  
-  if (element.fields == NULL) {
-    LOG_WARNING("out-of-memory in UpdateBitarrayIndex");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }  
-      
-  
-  // ............................................................................
-  // Fill in the fields with the values from oldDoc
-  // ............................................................................    
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldData->_data);
-
-  result = BitarrayIndexHelper(baIndex, &element, NULL, &shapedJson);
-  
-
-  // ............................................................................
-  // Problems, problems, problems. Could be the new doc does not have the 
-  // attributes to be inserted into the index, or perhaps the old doc was never
-  // there.
-  // ............................................................................
-  
-  if (result != TRI_ERROR_NO_ERROR) {  
-    if (result != TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-      LOG_WARNING("error returned when an attempt to update bitarray index");
-      return result;
-    }
-  }
-  
-
-  // ............................................................................
-  // Remove the old entry in the index -- we do not require the oldDoc
-  // ............................................................................
-  
-  cnv.c = newDoc;
-  element.data = cnv.p;
-  result = BitarrayIndex_remove(baIndex->_bitarrayIndex, &element);
-  
-  if (result != TRI_ERROR_NO_ERROR) {
-    if (result != TRI_WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-      LOG_WARNING("error returned during removal phase when an attempt to update bitarray index");
-      return result;
-    }
-  }
-
-
-  // ............................................................................
-  // Fill in the fields with the values from newDoc
-  // ............................................................................    
-
-  result = BitarrayIndexHelper(baIndex, &element, newDoc, NULL);
-  
-  if (result != TRI_ERROR_NO_ERROR) {
-  
-    // ..........................................................................
-    // Deallocated the memory already allocated to element.fields
-    // ..........................................................................
-      
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-    element.numFields = 0;
-       
-    
-    // ..........................................................................
-    // It may happen that the document does not have the necessary attributes to 
-    // be included within the bitarray index, in this case do not report back an error.
-    // ..........................................................................
-    
-    if (result == TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) { 
-      if (! baIndex->_supportUndef) {
-        return TRI_ERROR_NO_ERROR;
-      }  
-      result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);
-    }
-    return result;
-  }    
-  
-  
-  result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);
-  
-  // ............................................................................
-  // Since we have allocated memory to element.fields above, we have to deallocate
-  // this here.
-  // ............................................................................
-      
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-  return result;
-}
-  
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
@@ -3635,7 +3105,6 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
 
   baIndex->base.insert      = InsertBitarrayIndex;
   baIndex->base.remove      = RemoveBitarrayIndex;
-  baIndex->base.update      = UpdateBitarrayIndex;
     
   baIndex->_supportUndef    = supportUndef;
   baIndex->_bitarrayIndex   = NULL;
