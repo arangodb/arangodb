@@ -651,7 +651,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   }
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (create) {
     if (index->IsObject()) {
@@ -754,7 +754,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   }
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (create) {
     if (index->IsObject()) {
@@ -1567,7 +1567,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
   ResourceHolder holder;
   TRI_json_t* json = idx->json(idx, primary);
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+  if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -3678,7 +3678,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   ResourceHolder holder;
 
   TRI_json_t* json = idx->json(idx, primary);
-  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
+  if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
     ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
@@ -3903,9 +3903,9 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       if (theIndex->IsObject()) {
         theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), indexCreated ? v8::True() : v8::False());
       }
+    
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
-      
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
   
@@ -4286,7 +4286,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   TRI_json_t* json = idx->json(idx, primary);
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (index->IsObject()) {
     index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
