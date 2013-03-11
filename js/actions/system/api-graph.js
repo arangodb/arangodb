@@ -587,6 +587,7 @@ function delete_graph_vertex (req, res, g) {
   }
   catch (err) {
     actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    return;
   }
     
   if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -604,6 +605,72 @@ function delete_graph_vertex (req, res, g) {
 
   actions.resultOk(req, res, returnCode, { "deleted" : true });
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update (PUT or PATCH) a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+function update_graph_vertex (req, res, g, isPatch) {
+  var v = null;
+
+  try {
+    v = vertex_by_request(req, g);
+  }
+  catch (err) {
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+    return;
+  }
+
+  if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
+    return;
+  } 
+
+  try {
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
+
+    if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "error in request body");
+      return;
+    }
+
+    var waitForSync = g._vertices.properties().waitForSync;
+    if (req.parameters['waitForSync']) {
+      waitForSync = true;
+    }
+    
+    var shallow = json.shallowCopy;
+
+    var id2 = null;
+    if (isPatch) {
+      var keepNull = req.parameters['keepNull'];
+      if (keepNull != undefined || keepNull == "false") {
+        keepNull = false;
+      }
+      else {
+        keepNull = true;
+      }
+
+      id2 = g._vertices.update(v._properties, json, true, keepNull, waitForSync);      
+    }
+    else {
+      id2 = g._vertices.replace(v._properties, shallow, true, waitForSync);      
+    }
+
+    var result = g._vertices.document(id2);
+
+    var headers = {
+      "Etag" :  result._rev
+    }
+
+    var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
+    
+    actions.resultOk(req, res, returnCode, { "vertex" : result }, headers );
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
@@ -655,49 +722,7 @@ function delete_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_vertex (req, res, g) {
-  var v = null;
-
-  try {
-    v = vertex_by_request(req, g);
-  }
-  catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
-    return;
-  }
-
-  if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
-    return;
-  } 
-
-  try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
-
-    if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "error in request body");
-      return;
-    }
-
-    var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
-      waitForSync = true;
-    }
-    
-    var shallow = json.shallowCopy;
-
-    var id2 = g._vertices.replace(v._properties, shallow, true, waitForSync);
-    var result = g._vertices.document(id2);
-
-    var headers = {
-      "Etag" :  result._rev
-    }
-
-    var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
-    actions.resultOk(req, res, returnCode, { "vertex" : result }, headers );
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
-  }
+  update_graph_vertex(req, res, g, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -761,55 +786,7 @@ function put_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_vertex (req, res, g) {
-  var v = null;
-
-  try {
-    v = vertex_by_request(req, g);
-  }
-  catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
-    return;
-  }
-
-  if (matchError(req, res, v._properties, actions.ERROR_GRAPH_INVALID_VERTEX)) {
-    return;
-  } 
-
-  try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
-
-    if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "error in request body");
-      return;
-    }
-    
-    var keepNull = req.parameters['keepNull'];
-    if (keepNull != undefined || keepNull == "false") {
-      keepNull = false;
-    }
-    else {
-      keepNull = true;
-    }
-
-    var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
-      waitForSync = true;
-    }
-
-    var id2 = g._vertices.update(v._properties, json, true, keepNull, waitForSync);
-    var result = g._vertices.document(id2);
-
-    var headers = {
-      "Etag" :  result._rev
-    }
-    
-    var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
-    actions.resultOk(req, res, returnCode, { "vertex" : result }, headers );
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
-  }
+  update_graph_vertex(req, res, g, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1282,6 +1259,7 @@ function delete_graph_edge (req, res, g) {
   }
   catch (err) {
     actions.resultNotFound(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    return;
   }
 
   if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
@@ -1298,6 +1276,72 @@ function delete_graph_edge (req, res, g) {
   var returnCode = waitForSync ? actions.HTTP_OK : actions.HTTP_ACCEPTED;
 
   actions.resultOk(req, res, returnCode, { "deleted" : true });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update (PUT or PATCH) an edge
+////////////////////////////////////////////////////////////////////////////////
+
+function update_graph_edge (req, res, g, isPatch) {
+  var e = null;
+
+  try {
+    e = edge_by_request(req, g);
+  }
+  catch (err) {
+    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+    return;
+  }
+
+  if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
+    return;
+  } 
+  
+  try {
+    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
+
+    if (json === undefined) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "error in request body");
+      return;
+    }
+
+    var waitForSync = g._edges.properties().waitForSync;
+    if (req.parameters['waitForSync']) {
+      waitForSync = true;
+    }
+    
+    var shallow = json.shallowCopy;
+    shallow.$label = e._properties.$label;
+    
+    var id2 = null;
+    if (isPatch) {
+      var keepNull = req.parameters['keepNull'];
+      if (keepNull != undefined || keepNull == "false") {
+        keepNull = false;
+      }
+      else {
+        keepNull = true;
+      }
+    
+      id2 = g._edges.update(e._properties, shallow, true, keepNull, waitForSync);      
+    }
+    else {
+      id2 = g._edges.replace(e._properties, shallow, true, waitForSync);      
+    }
+
+    var result = g._edges.document(id2);
+
+    var headers = {
+      "Etag" :  result._rev
+    }
+ 
+    var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
+    
+    actions.resultOk(req, res, returnCode, { "edge" : result}, headers );
+  }
+  catch (err) {
+    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+  }  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1350,50 +1394,7 @@ function delete_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_edge (req, res, g) {
-  var e = null;
-
-  try {
-    e = edge_by_request(req, g);
-  }
-  catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
-    return;
-  }
-
-  if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
-    return;
-  } 
-  
-  try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
-
-    if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "error in request body");
-      return;
-    }
-
-    var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
-      waitForSync = true;
-    }
-    
-    var shallow = json.shallowCopy;
-    shallow.$label = e._properties.$label;
-
-    var id2 = g._edges.replace(e._properties, shallow, true, waitForSync);
-    var result = g._edges.document(id2);
-
-    var headers = {
-      "Etag" :  result._rev
-    }
- 
-    var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
-    actions.resultOk(req, res, returnCode, { "edge" : result}, headers );
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
-  }
+  update_graph_edge (req, res, g, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1457,58 +1458,7 @@ function put_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_edge (req, res, g) {
-  var e = null;
-
-  try {
-    e = edge_by_request(req, g);
-  }
-  catch (err) {
-    actions.resultNotFound(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
-    return;
-  }
-  
-  if (matchError(req, res, e._properties, actions.ERROR_GRAPH_INVALID_EDGE)) {
-    return;
-  } 
-    
-  try {
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
-
-    if (json === undefined) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "error in request body");
-      return;
-    }
-    
-    var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters['waitForSync']) {
-      waitForSync = true;
-    }
-    
-    var keepNull = req.parameters['keepNull'];
-    if (keepNull != undefined || keepNull == "false") {
-      keepNull = false;
-    }
-    else {
-      keepNull = true;
-    }
-    
-    var shallow = json.shallowCopy;
-    shallow.$label = e._properties.$label;
-
-    var id2 = g._edges.update(e._properties, shallow, true, keepNull, waitForSync);
-    var result = g._edges.document(id2);
-
-    var headers = {
-      "Etag" :  result._rev
-    }
- 
-    var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
-    actions.resultOk(req, res, returnCode, { "edge" : result}, headers );
-  }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
-  }
+  update_graph_edge (req, res, g, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
