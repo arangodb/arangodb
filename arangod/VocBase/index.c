@@ -514,23 +514,10 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* collection
   char* id;
 
   // create primary index
-  primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
-  if (primary == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return NULL;
-  }
+  primary = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
   
-  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_id");
-
-  if (id == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, primary);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return NULL;
-  }
-  
-  TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
+  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
+  TRI_InitVectorString(&primary->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&primary->_fields, id);
   
   TRI_InitIndex(primary, TRI_IDX_TYPE_PRIMARY_INDEX, collection, true);
@@ -561,7 +548,7 @@ void TRI_DestroyPrimaryIndex (TRI_index_t* idx) {
 
 void TRI_FreePrimaryIndex (TRI_index_t* idx) {
  TRI_DestroyPrimaryIndex(idx);
- TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx); 
+ TRI_Free(TRI_CORE_MEM_ZONE, idx); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -822,22 +809,11 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
   char* id;
 
   // create index
-  edgeIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_index_t), false);
-  if (edgeIndex == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return NULL;
-  }
+  edgeIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false);
   
-  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_from");
-  if (id == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, edgeIndex);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return NULL;
-  }
+  id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
   
-  TRI_InitVectorString(&edgeIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&edgeIndex->base._fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&edgeIndex->base._fields, id);
  
   TRI_InitIndex(&edgeIndex->base, TRI_IDX_TYPE_EDGE_INDEX, collection, false); 
@@ -889,7 +865,7 @@ void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
 
 void TRI_FreeEdgeIndex (TRI_index_t* idx) {
   TRI_DestroyEdgeIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2229,7 +2205,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx,
   skiplistElement.collection = skiplistIndex->base._collection;
   
   if (skiplistElement.fields == NULL) {
-    LOG_WARNING("out-of-memory in UpdateHashIndex");
+    LOG_WARNING("out-of-memory in UpdateSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
       
@@ -2431,10 +2407,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
   int result;
   size_t j;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
-  if (! skiplistIndex) {
-    return NULL;
-  }
+  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
   
   TRI_InitIndex(&skiplistIndex->base, TRI_IDX_TYPE_SKIPLIST_INDEX, collection, unique); 
   skiplistIndex->base.json = JsonSkiplistIndex;
@@ -2456,16 +2429,16 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
     TRI_PushBackVector(&skiplistIndex->_paths, &shape);
   }
 
-  TRI_InitVectorString(&skiplistIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&skiplistIndex->base._fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
-    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+    char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
 
     if (copy == NULL) {
       TRI_DestroyVector(&skiplistIndex->_paths);
       TRI_DestroyVectorString(&skiplistIndex->base._fields);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+      TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
       return NULL;
@@ -2484,7 +2457,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
   if (skiplistIndex->_skiplistIndex == NULL) {
     TRI_DestroyVector(&skiplistIndex->_paths);
     TRI_DestroyVectorString(&skiplistIndex->base._fields);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when creating skiplist structure");
     return NULL;
   }  
@@ -2502,7 +2475,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
     TRI_DestroyVector(&skiplistIndex->_paths);
     TRI_DestroyVectorString(&skiplistIndex->base._fields);
     SkiplistIndex_free(skiplistIndex->_skiplistIndex);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
     return NULL;
   }
@@ -2539,7 +2512,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
     return;
   }  
   TRI_DestroySkiplistIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2805,16 +2778,8 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
 
-  copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, attributeName);
-  if (copy == NULL) {
-    return NULL;
-  }
-
-  fulltextIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_index_t), false);
-  if (! fulltextIndex) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
-    return NULL;
-  }
+  copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, attributeName);
+  fulltextIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_fulltext_index_t), false);
 
   fts = TRI_CreateFtsIndex(2048, 1, 1); 
   if (fts == NULL) {
@@ -2836,7 +2801,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   fulltextIndex->_attribute = attribute;
   fulltextIndex->_minWordLength = (minWordLength > 0 ? minWordLength : 1);
   
-  TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&fulltextIndex->base._fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 
 
   return &fulltextIndex->base;
@@ -2872,7 +2837,7 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
   } 
    
   TRI_DestroyFulltextIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3662,11 +3627,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // attempt to allocate memory for the bit array index structure
   // ...........................................................................
   
-  baIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
-  if (baIndex == NULL) {
-    LOG_WARNING("bitarray index creation failed -- out of memory");
-    return NULL;
-  }
+  baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
   
   TRI_InitIndex(&baIndex->base, TRI_IDX_TYPE_BITARRAY_INDEX, collection, false); 
   baIndex->base.json        = JsonBitarrayIndex;
@@ -3702,17 +3663,17 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // c strings - saves us looking these up at a latter stage
   // ...........................................................................
   
-  TRI_InitVectorString(&baIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&baIndex->base._fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
-    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+    char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
 
     if (copy == NULL) {
       TRI_DestroyVector(&baIndex->_values);
       TRI_DestroyVector(&baIndex->_paths);
       TRI_DestroyVectorString(&baIndex->base._fields);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, baIndex);
+      TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
       return NULL;
@@ -3747,7 +3708,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
     if (value == NULL) {    
       TRI_DestroyVector(&baIndex->_paths);
       TRI_DestroyVector(&baIndex->_values);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
+      TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     }      
@@ -3772,7 +3733,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   if (cardinality > 64) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- more than 64 possible values");
     return NULL;
   }
@@ -3781,7 +3742,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   if (cardinality < 1 ) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- no index values defined");
     return NULL;
   }
@@ -3799,7 +3760,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- internal error when assigning function calls");
     return NULL;
   }
@@ -3815,7 +3776,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
     TRI_FreeBitarrayIndex(&baIndex->base);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
     return NULL;
   }  
@@ -3858,7 +3819,7 @@ void TRI_FreeBitarrayIndex (TRI_index_t* idx) {
     return;
   }  
   TRI_DestroyBitarrayIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
