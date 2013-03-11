@@ -696,7 +696,7 @@ void TRI_DestroyHashIndex (TRI_index_t* idx) {
 
 void TRI_FreeHashIndex (TRI_index_t* idx) {
   TRI_DestroyHashIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
