@@ -1545,6 +1545,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     
       header = collection->_headers->request(collection->_headers);
       // TODO: header might be NULL and must be checked
+      if (header == NULL) {
+        LOG_ERROR("out of memory");
+        return false;
+      }
 
       header->_rid       = d->_rid;
       header->_validFrom = marker->_tick;
