@@ -456,12 +456,8 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
     gc.data = CONST_CAST(doc);
 
-    res = GeoIndex_remove(geo->_geoIndex, &gc);
-
-    if (res != 0) {
-      LOG_DEBUG("cannot remove old index entry: %d", res);
-      return TRI_set_errno(TRI_ERROR_INTERNAL);
-    }
+    // ignore non-existing elements in geo-index
+    GeoIndex_remove(geo->_geoIndex, &gc);
   }
 
   return TRI_ERROR_NO_ERROR;

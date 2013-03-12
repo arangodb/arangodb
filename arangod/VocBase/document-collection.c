@@ -682,6 +682,8 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("encountered error '%s' during rollback of update", TRI_errno_string(res));
     }
+
+    return res;
   }
 
   // .............................................................................

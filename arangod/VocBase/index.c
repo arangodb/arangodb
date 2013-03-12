@@ -39,6 +39,7 @@
 #include "GeoIndex/geo-index.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-wordlist.h"
+#include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
@@ -1666,108 +1667,58 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_ope
 ////////////////////////////////////////////////////////////////////////////////
 
 static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex, 
-                                SkiplistIndexElement* skiplistElement,
-                                const TRI_doc_mptr_t* document,
-                                const TRI_shaped_json_t* shapedDoc) {
-  union { void* p; void const* c; } cnv;
+                               TRI_skiplist_index_element_t* skiplistElement,
+                               const TRI_doc_mptr_t* document) {
   TRI_shaped_json_t shapedObject;
   TRI_shape_access_t const* acc;
+  char const* ptr;
   size_t j;
   
-  if (shapedDoc != NULL) {
-  
-    // ..........................................................................
-    // Attempting to locate a entry using TRI_shaped_json_t object. Use this
-    // when we wish to remove a entry and we only have the "keys" rather than
-    // having the document (from which the keys would follow).
-    // ..........................................................................
+  // ..........................................................................
+  // Assign the document to the SkiplistIndexElement structure so that it can 
+  // be retrieved later.
+  // ..........................................................................
+
+  skiplistElement->_document = CONST_CAST(document);
+  ptr = (char const*) skiplistElement->_document->_data;
     
-    skiplistElement->data = NULL;
-    
- 
-    for (j = 0; j < skiplistIndex->_paths._length; ++j) {
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
+  for (j = 0; j < skiplistIndex->_paths._length; ++j) {
+    TRI_shaped_json_t shapedJson;
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
       
-      // ..........................................................................
-      // Determine if document has that particular shape 
-      // ..........................................................................
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
 
-      acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+    // ..........................................................................
+    // Determine if document has that particular shape 
+    // ..........................................................................
 
-      if (acc == NULL || acc->_shape == NULL) {
-        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_UPDATE_ATTRIBUTE_MISSING;
-      }  
+    acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
+
+    if (acc == NULL || acc->_shape == NULL) {
+      // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
+      return TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
+    }  
       
       
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................    
+    // ..........................................................................
+    // Extract the field
+    // ..........................................................................    
 
-      if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        return TRI_ERROR_INTERNAL;
-      }
-      
-      // ..........................................................................
-      // Store the json shaped Object -- this is what will be hashed
-      // ..........................................................................    
-
-      skiplistElement->fields[j] = shapedObject;
+    if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
+      // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
+      return TRI_ERROR_INTERNAL;
     }
-  }
-  
-  else if (document != NULL) {
-  
+
     // ..........................................................................
-    // Assign the document to the SkiplistIndexElement structure so that it can 
-    // be retrieved later.
-    // ..........................................................................
-    cnv.c = document;
-    skiplistElement->data = cnv.p;
- 
-    
-    for (j = 0; j < skiplistIndex->_paths._length; ++j) {
-      TRI_shaped_json_t shapedJson;
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
-      
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+    // Store the field
+    // ..........................................................................    
 
-      // ..........................................................................
-      // Determine if document has that particular shape 
-      // ..........................................................................
-
-      acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
-
-      if (acc == NULL || acc->_shape == NULL) {
-        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        return TRI_WARNING_ARANGO_INDEX_SKIPLIST_DOCUMENT_ATTRIBUTE_MISSING;
-      }  
-      
-      
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................    
-
-      if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-        // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
-        return TRI_ERROR_INTERNAL;
-      }
-
-      // ..........................................................................
-      // Store the field
-      // ..........................................................................    
-
-      skiplistElement->fields[j] = shapedObject;
-    }
-  }
-  
-  else {
-    return TRI_ERROR_INTERNAL;
+    skiplistElement->_subObjects[j]._sid = shapedObject._sid;
+    skiplistElement->_subObjects[j]._length = shapedObject._data.length;
+    skiplistElement->_subObjects[j]._offset = ((char const*) shapedObject._data.data) - ptr;
   }
   
   return TRI_ERROR_NO_ERROR;
-  
 } // end of static function SkiplistIndexHelper
 
 
@@ -1778,10 +1729,9 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
 
 static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
-  SkiplistIndexElement skiplistElement;
+  TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
-
   
   // ............................................................................
   // Obtain the skip listindex structure
@@ -1792,7 +1742,6 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     LOG_WARNING("internal error in InsertSkiplistIndex");
     return TRI_ERROR_INTERNAL;
   }
-  
 
   // ............................................................................
   // Allocate storage to shaped json objects stored as a simple list.
@@ -1800,17 +1749,15 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // ............................................................................
     
   skiplistElement.numFields   = skiplistIndex->_paths._length;
-  skiplistElement.fields      = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistElement.numFields, false);
+  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistElement.numFields, false);
   skiplistElement.collection  = skiplistIndex->base._collection;
   
-  if (skiplistElement.fields == NULL) {
+  if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
   
-  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL);
-    
-  
+  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
   // ............................................................................
   // most likely the cause of this error is that the 'shape' of the document
   // does not match the 'shape' of the index structure -- so the document
@@ -1823,8 +1770,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // Deallocated the memory already allocated to skiplistElement.fields
     // ..........................................................................
       
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
-    
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
     
     // ..........................................................................
     // It may happen that the document does not have the necessary attributes to 
@@ -1837,7 +1783,6 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     
     return res;
   }    
-  
 
   // ............................................................................
   // Fill the json field list from the document for unique skiplist index
@@ -1855,13 +1800,12 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     res = MultiSkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
   }
 
-  
   // ............................................................................
   // Memory which has been allocated to skiplistElement.fields remains allocated
   // contents of which are stored in the hash array.
   // ............................................................................
       
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
   
   return res;
 }
@@ -1940,30 +1884,25 @@ static void RemoveIndexSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
 
 static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   
-  SkiplistIndexElement skiplistElement;
+  TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
-  
 
   // ............................................................................
   // Obtain the skiplist index structure
   // ............................................................................
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
-  if (idx == NULL) {
-    LOG_WARNING("internal error in RemoveSkiplistIndex");
-    return TRI_ERROR_INTERNAL;
-  }
 
+  skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // ............................................................................
   // Allocate some memory for the SkiplistIndexElement structure
   // ............................................................................
 
-  skiplistElement.numFields  = skiplistIndex->_paths._length;
-  skiplistElement.fields     = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistElement.numFields, false);
-  skiplistElement.collection = skiplistIndex->base._collection;
+  skiplistElement.numFields   = skiplistIndex->_paths._length;
+  skiplistElement._subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * skiplistElement.numFields, false);
+  skiplistElement.collection  = skiplistIndex->base._collection;
   
-  if (skiplistElement.fields == NULL) {
+  if (skiplistElement._subObjects == NULL) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
@@ -1972,8 +1911,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // Fill the json field list from the document
   // ..........................................................................
   
-  
-  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc, NULL);
+  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
   
   // ..........................................................................
   // Error returned generally implies that the document never was part of the 
@@ -1986,8 +1924,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // Deallocate memory allocated to skiplistElement.fields above
     // ........................................................................
     
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
-    
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
     
     // ........................................................................
     // It may happen that the document does not have the necessary attributes
@@ -2001,7 +1938,6 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     
     return res;  
   }
-  
   
   // ............................................................................
   // Attempt the removal for unique skiplist indexes
@@ -2023,7 +1959,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // Deallocate memory allocated to skiplistElement.fields above
   // ............................................................................
     
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement.fields);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
   
   return res;
 }
