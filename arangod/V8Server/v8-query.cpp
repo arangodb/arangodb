@@ -1040,7 +1040,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
 
   while (true) {
-    SkiplistIndexElement* indexElement = (SkiplistIndexElement*) skiplistIterator->_next(skiplistIterator);
+    TRI_skiplist_index_element_t* indexElement = (TRI_skiplist_index_element_t*) skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
       break;
@@ -1057,7 +1057,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
         }
       }
       
-      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) indexElement->data, barrier);
+      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) indexElement->_document, barrier);
 
       if (doc.IsEmpty()) {
         error = true;

@@ -45,53 +45,37 @@
 
 #define USE_STATIC_SKIPLIST_COMPARE 1
 
-#define SKIPLIST_ELEMENT_TYPE(a,b) \
-  struct a {                       \
-    size_t numFields;              \
-    TRI_shaped_json_t* fields;     \
-    void* data;                    \
-    void* collection;              \
-  } b
-  
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-static int IndexStaticCopyElementElement (TRI_skiplist_base_t* skiplist, void* left, void* right) {
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
-
-  LocalElement_t* leftElement  = (LocalElement_t*)(left);
-  LocalElement_t* rightElement = (LocalElement_t*)(right);
-
+static int IndexStaticCopyElementElement (TRI_skiplist_base_t* skiplist,
+                                          TRI_skiplist_index_element_t* leftElement,
+                                          TRI_skiplist_index_element_t* rightElement) {
   if (leftElement == NULL || rightElement == NULL) {
-    assert(0);
     return TRI_ERROR_INTERNAL;
   }
     
-  leftElement->numFields  = rightElement->numFields;
-  leftElement->data       = rightElement->data;
-  leftElement->collection = rightElement->collection;
-  leftElement->fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * leftElement->numFields, false);
+  leftElement->numFields   = rightElement->numFields;
+  leftElement->_document   = rightElement->_document;
+  leftElement->collection  = rightElement->collection;
+  leftElement->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * leftElement->numFields, false);
   
-  if (leftElement->fields == NULL) {
+  if (leftElement->_subObjects == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  memcpy(leftElement->fields, rightElement->fields, sizeof(TRI_shaped_json_t) * leftElement->numFields);
+  memcpy(leftElement->_subObjects, rightElement->_subObjects, sizeof(TRI_shaped_sub_t) * leftElement->numFields);
   
   return TRI_ERROR_NO_ERROR;  
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an element -- removing any allocated memory within the structure
 ////////////////////////////////////////////////////////////////////////////////
 
-static void IndexStaticDestroyElement(TRI_skiplist_base_t* skiplist, void* element) {
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
+static void IndexStaticDestroyElement (TRI_skiplist_base_t* skiplist,
+                                       TRI_skiplist_index_element_t* element) {
 
   // ...........................................................................
   // Each 'field' in the hElement->fields is a TRI_shaped_json_t object, this
@@ -101,17 +85,12 @@ static void IndexStaticDestroyElement(TRI_skiplist_base_t* skiplist, void* eleme
   // when the document has been destroyed.
   // ...........................................................................
   
-  LocalElement_t* hElement = (LocalElement_t*)(element);
   if (element != NULL) {
-    if (hElement->fields != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hElement->fields);
+    if (element->_subObjects != NULL) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
     }  
   }  
 }
-
-
-
-
 
 // .............................................................................
 // left < right  return -1
@@ -128,14 +107,13 @@ typedef struct weighted_attribute_s {
   const TRI_shaper_t* _shaper;
 } weighted_attribute_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper method to deal with freeing memory associated with
 /// the weight comparisions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void freeShapeTypeJsonArrayHelper(weighted_attribute_t** leftWeightedList, 
-                                         weighted_attribute_t** rightWeightedList) {
+static void freeShapeTypeJsonArrayHelper (weighted_attribute_t** leftWeightedList, 
+                                          weighted_attribute_t** rightWeightedList) {
   if (*leftWeightedList != NULL) {                                         
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, *leftWeightedList);
     *leftWeightedList = NULL;
@@ -148,9 +126,10 @@ static void freeShapeTypeJsonArrayHelper(weighted_attribute_t** leftWeightedList
 
 
 // return the number of entries
-static int compareShapeTypeJsonArrayHelper(const TRI_shape_t* shape, const TRI_shaper_t* shaper, 
-                                           const TRI_shaped_json_t* shapedJson,
-                                           weighted_attribute_t** attributeArray) {
+static int compareShapeTypeJsonArrayHelper (const TRI_shape_t* shape,
+                                            const TRI_shaper_t* shaper, 
+                                            const TRI_shaped_json_t* shapedJson,
+                                            weighted_attribute_t** attributeArray) {
   char* charShape = (char*)(shape);
   TRI_shape_size_t fixedEntries;     // the number of entries in the JSON array whose value is of a fixed size
   TRI_shape_size_t variableEntries;  // the number of entries in the JSON array whose value is not of a known fixed size
@@ -166,7 +145,6 @@ static int compareShapeTypeJsonArrayHelper(const TRI_shape_t* shape, const TRI_s
   
   *attributeArray = NULL;
   
-  
   // .............................................................................
   // Determine the number of fixed sized values
   // .............................................................................
@@ -174,14 +152,12 @@ static int compareShapeTypeJsonArrayHelper(const TRI_shape_t* shape, const TRI_s
   charShape = charShape + sizeof(TRI_shape_t);           
   fixedEntries = *((TRI_shape_size_t*)(charShape));
 
-  
   // .............................................................................
   // Determine the number of variable sized values
   // .............................................................................
   
   charShape = charShape + sizeof(TRI_shape_size_t);
   variableEntries = *((TRI_shape_size_t*)(charShape));
-
 
   // .............................................................................
   // It may happen that the shaped_json_array is 'empty {}'
@@ -191,16 +167,15 @@ static int compareShapeTypeJsonArrayHelper(const TRI_shape_t* shape, const TRI_s
     return 0;
   }  
   
-
   // .............................................................................
   // Allocate memory to hold the attribute information required for comparison
   // .............................................................................
   
   *attributeArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizeof(weighted_attribute_t) * (fixedEntries + variableEntries)), false);   
+
   if (*attributeArray == NULL) {
     return -1;
   }
-
 
   // .............................................................................
   // Determine the list of shape identifiers
@@ -247,7 +222,7 @@ static int compareShapeTypeJsonArrayHelper(const TRI_shape_t* shape, const TRI_s
 /// @brief Compares to weighted attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int attributeWeightCompareFunction(const void* leftItem, const void* rightItem) {
+static int attributeWeightCompareFunction (const void* leftItem, const void* rightItem) {
   const weighted_attribute_t* l = (const weighted_attribute_t*)(leftItem);
   const weighted_attribute_t* r = (const weighted_attribute_t*)(rightItem);
 
@@ -256,41 +231,86 @@ static int attributeWeightCompareFunction(const void* leftItem, const void* righ
   return 0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper method for recursion for CompareShapedJsonShapedJson
+/// @brief Helper method for recursion for comparison
+///
+/// You must either supply (leftDocument, leftObject) or leftShaped.
+/// You must either supply (rightDocument, rightObject) or rightShaped.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
+static int CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
+                              TRI_shaped_sub_t* leftObject,
+                              TRI_shaped_json_t const* leftShaped,
+                              TRI_doc_mptr_t* rightDocument,
+                              TRI_shaped_sub_t* rightObject,
+                              TRI_shaped_json_t const* rightShaped,
+                              TRI_shaper_t* leftShaper,
+                              TRI_shaper_t* rightShaper) {
   
-  int result;
-  int i;
-  size_t j;
+  TRI_shape_t const* leftShape;
+  TRI_shape_t const* rightShape;
+  TRI_shaped_json_t left;
   TRI_shape_type_t leftType;
   TRI_shape_type_t rightType;
-  const TRI_shape_t* leftShape;
-  const TRI_shape_t* rightShape;
-  size_t leftListLength;
-  size_t rightListLength;
-  size_t listLength;
   TRI_shaped_json_t leftElement;
+  TRI_shaped_json_t right;
   TRI_shaped_json_t rightElement;
+  char const* ptr;
   char* leftString;
   char* rightString;
+  int i;
+  int leftNumWeightedList;
+  int numWeightedList;
+  int result;
+  int rightNumWeightedList;
+  size_t j;
+  size_t leftListLength;
+  size_t listLength;
+  size_t rightListLength;
   weighted_attribute_t* leftWeightedList;
   weighted_attribute_t* rightWeightedList;
-  int leftNumWeightedList;
-  int rightNumWeightedList;
-  int numWeightedList;
   
-  leftShape  = leftShaper->lookupShapeId(leftShaper, left->_sid);
-  rightShape = rightShaper->lookupShapeId(rightShaper, right->_sid);
+  // left is either a shaped json or a shaped sub object
+  if (leftDocument != NULL) {
+    ptr = (char const*) leftDocument->_data;
+
+    left._sid = leftObject->_sid;
+    left._data.length = leftObject->_length;
+    left._data.data = CONST_CAST(ptr + leftObject->_offset);
+  }
+  else {
+    left = *leftShaped;
+  }
+    
+  // right is either a shaped json or a shaped sub object
+  if (rightDocument != NULL) {
+    ptr = (char const*) rightDocument->_data;
+
+    right._sid = rightObject->_sid;
+    right._data.length = rightObject->_length;
+    right._data.data = CONST_CAST(ptr + rightObject->_offset);
+  }
+  else {
+    right = *rightShaped;
+  }
+    
+  // get shape and type
+  leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
+  rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+
   leftType   = leftShape->_type;
   rightType  = rightShape->_type;
-    
+
+  // .............................................................................
+  // check ALL combination of leftType and rightType
+  // .............................................................................
+
   switch (leftType) {
-  
+
+    // .............................................................................
+    // illegal type
+    // .............................................................................
+
     case TRI_SHAPE_ILLEGAL: {
       switch (rightType) {
         case TRI_SHAPE_ILLEGAL: {
@@ -310,7 +330,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_ILLEGAL
 
-    
+    // .............................................................................
+    // NULL
+    // .............................................................................
+
     case TRI_SHAPE_NULL: {
       switch (rightType) {
         case TRI_SHAPE_ILLEGAL: {
@@ -331,7 +354,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_NULL
-    
+
+    // .............................................................................
+    // BOOLEAN
+    // .............................................................................
 
     case TRI_SHAPE_BOOLEAN: {
       switch (rightType) {
@@ -341,10 +367,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
         case TRI_SHAPE_BOOLEAN: {
           // check which is false and which is true!
-          if ( *((TRI_shape_boolean_t*)(left->_data.data)) == *((TRI_shape_boolean_t*)(right->_data.data)) ) {
+          if ( *((TRI_shape_boolean_t*)(left._data.data)) == *((TRI_shape_boolean_t*)(right._data.data)) ) {
             return 0;          
           }  
-          if ( *((TRI_shape_boolean_t*)(left->_data.data)) < *((TRI_shape_boolean_t*)(right->_data.data)) ) {
+          if ( *((TRI_shape_boolean_t*)(left._data.data)) < *((TRI_shape_boolean_t*)(right._data.data)) ) {
             return -1;          
           }  
           return 1;
@@ -361,7 +387,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_BOOLEAN
 
-    
+    // .............................................................................
+    // NUMBER
+    // .............................................................................
+
     case TRI_SHAPE_NUMBER: {
       switch (rightType) {
         case TRI_SHAPE_ILLEGAL: 
@@ -371,10 +400,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
         case TRI_SHAPE_NUMBER: {
           // compare the numbers
-          if ( *((TRI_shape_number_t*)(left->_data.data)) == *((TRI_shape_number_t*)(right->_data.data)) ) {          
+          if ( *((TRI_shape_number_t*)(left._data.data)) == *((TRI_shape_number_t*)(right._data.data)) ) {
             return 0;          
           }  
-          if ( *((TRI_shape_number_t*)(left->_data.data)) < *((TRI_shape_number_t*)(right->_data.data)) ) {
+          if ( *((TRI_shape_number_t*)(left._data.data)) < *((TRI_shape_number_t*)(right._data.data)) ) {
             return -1;          
           }  
           return 1;
@@ -390,8 +419,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_NUMBER
     
-    
-    
+    // .............................................................................
+    // STRING
+    // .............................................................................
+
     case TRI_SHAPE_SHORT_STRING: 
     case TRI_SHAPE_LONG_STRING: {
       switch (rightType) {
@@ -406,17 +437,17 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           // compare strings
           // extract the strings
           if (leftType == TRI_SHAPE_SHORT_STRING) {
-            leftString = (char*)(sizeof(TRI_shape_length_short_string_t) + left->_data.data);
+            leftString = (char*)(sizeof(TRI_shape_length_short_string_t) + left._data.data);
           }
           else {
-            leftString = (char*)(sizeof(TRI_shape_length_long_string_t) + left->_data.data);
+            leftString = (char*)(sizeof(TRI_shape_length_long_string_t) + left._data.data);
           }          
           
           if (rightType == TRI_SHAPE_SHORT_STRING) {
-            rightString = (char*)(sizeof(TRI_shape_length_short_string_t) + right->_data.data);
+            rightString = (char*)(sizeof(TRI_shape_length_short_string_t) + right._data.data);
           }
           else {
-            rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right->_data.data);
+            rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right._data.data);
           }         
           
           result = TRI_compare_utf8(leftString,rightString);
@@ -432,6 +463,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
     } // end of case TRI_SHAPE_LONG/SHORT_STRING 
 
     
+    // .............................................................................
+    // HOMOGENEOUS LIST
+    // .............................................................................
+
     case TRI_SHAPE_HOMOGENEOUS_LIST: 
     case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST: 
     case TRI_SHAPE_LIST: {
@@ -447,9 +482,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         case TRI_SHAPE_HOMOGENEOUS_LIST:
         case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST: 
         case TRI_SHAPE_LIST: {
+
           // unfortunately recursion: check the types of all the entries
-          leftListLength  = *((TRI_shape_length_list_t*)(left->_data.data));
-          rightListLength = *((TRI_shape_length_list_t*)(right->_data.data));
+          leftListLength  = *((TRI_shape_length_list_t*)(left._data.data));
+          rightListLength = *((TRI_shape_length_list_t*)(right._data.data));
           
           // determine the smallest list
           if (leftListLength > rightListLength) {
@@ -460,33 +496,54 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           }
           
           for (j = 0; j < listLength; ++j) {
-          
             if (leftType == TRI_SHAPE_HOMOGENEOUS_LIST) {
               TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(leftShape),
-                                              left,j,&leftElement);
+                                              &left,
+                                              j,
+                                              &leftElement);
             }            
             else if (leftType == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
               TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*)(leftShape),
-                                                   left,j,&leftElement);
+                                                   &left,
+                                                   j,
+                                                   &leftElement);
             }
             else {
-              TRI_AtListShapedJson((const TRI_list_shape_t*)(leftShape),left,j,&leftElement);
+              TRI_AtListShapedJson((const TRI_list_shape_t*)(leftShape),
+                                   &left,
+                                   j,
+                                   &leftElement);
             }
             
             
             if (rightType == TRI_SHAPE_HOMOGENEOUS_LIST) {
               TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*)(rightShape),
-                                              right,j,&rightElement);
+                                              &right,
+                                              j,
+                                              &rightElement);
             }            
             else if (rightType == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
               TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*)(rightShape),
-                                                   right,j,&rightElement);
+                                                   &right,
+                                                   j,
+                                                   &rightElement);
             }
             else {
-              TRI_AtListShapedJson((const TRI_list_shape_t*)(rightShape),right,j,&rightElement);
+              TRI_AtListShapedJson((const TRI_list_shape_t*)(rightShape),
+                                   &right,
+                                   j,
+                                   &rightElement);
             }
             
-            result = CompareShapeTypes (&leftElement, &rightElement, leftShaper, rightShaper);
+            result = CompareShapeTypes(NULL,
+                                       NULL,
+                                       &leftElement,
+                                       NULL,
+                                       NULL,
+                                       &rightElement,
+                                       leftShaper,
+                                       rightShaper);
+
             if (result != 0) { 
               return result;
             }  
@@ -510,8 +567,10 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_LIST ... 
     
-    
-    
+    // .............................................................................
+    // ARRAY
+    // .............................................................................
+
     case TRI_SHAPE_ARRAY: {
       switch (rightType) {
         case TRI_SHAPE_ILLEGAL: 
@@ -527,7 +586,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
         
         case TRI_SHAPE_ARRAY: {
-          assert(0);
+
           // ............................................................................  
           // We are comparing a left JSON array with another JSON array on the right
           // The comparison works as follows:
@@ -553,15 +612,13 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           //   If lv_j > rv_j return 1
           //   If lv_j == rv_j, then repeat the process with j+1.
           // ............................................................................  
-
           
           // ............................................................................
           // generate the left and right lists.
           // ............................................................................
 
-          leftNumWeightedList  = compareShapeTypeJsonArrayHelper(leftShape, leftShaper, left, &leftWeightedList);
-          rightNumWeightedList = compareShapeTypeJsonArrayHelper(rightShape, rightShaper, right, &rightWeightedList);
-
+          leftNumWeightedList  = compareShapeTypeJsonArrayHelper(leftShape, leftShaper, &left, &leftWeightedList);
+          rightNumWeightedList = compareShapeTypeJsonArrayHelper(rightShape, rightShaper, &right, &rightWeightedList);
 
           // ............................................................................
           // If the left and right both resulted in errors, we return equality for want
@@ -581,8 +638,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return -1; // attempt to compare as low as possible
           }
-          
-          
+         
           // ............................................................................
           // If the right had an error, we rank the right as the largest item in the order
           // ............................................................................
@@ -592,7 +648,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             return 1;
           }
 
-
           // ............................................................................
           // Are we comparing two empty shaped_json_arrays?
           // ............................................................................
@@ -601,7 +656,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 0; 
           }
-          
 
           // ............................................................................
           // If the left is empty, then it is smaller than the right, right?
@@ -611,8 +665,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return -1; 
           }
-
-          
+         
           // ............................................................................
           // ...and the opposite of the above.
           // ............................................................................
@@ -621,8 +674,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             freeShapeTypeJsonArrayHelper(&leftWeightedList, &rightWeightedList);
             return 1; 
           }
-          
-          
 
           // ..............................................................................
           // We now have to sort the left and right weighted list according to attribute weight
@@ -630,7 +681,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
 
           qsort(leftWeightedList, leftNumWeightedList, sizeof(weighted_attribute_t), attributeWeightCompareFunction);
           qsort(rightWeightedList, rightNumWeightedList, sizeof(weighted_attribute_t), attributeWeightCompareFunction);                         
-
 
           // ..............................................................................
           // check the weight and if equal check the values. Notice that numWeightedList
@@ -640,13 +690,20 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           numWeightedList = (leftNumWeightedList < rightNumWeightedList ? leftNumWeightedList: rightNumWeightedList);          
           
           for (i = 0; i < numWeightedList; ++i) {
-          
             if (leftWeightedList[i]._weight != rightWeightedList[i]._weight) {
               result = (leftWeightedList[i]._weight < rightWeightedList[i]._weight ? -1: 1);
               break;
             }
             
-            result = CompareShapeTypes (&(leftWeightedList[i]._value), &(rightWeightedList[i]._value), leftShaper, rightShaper);
+            result = CompareShapeTypes(NULL,
+                                       NULL,
+                                       &(leftWeightedList[i]._value),
+                                       NULL,
+                                       NULL,
+                                       &(rightWeightedList[i]._value),
+                                       leftShaper,
+                                       rightShaper);
+
             if (result != 0) { 
               break;
             }  
@@ -659,7 +716,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,rightWeightedList[i]._weight,name);
             end oreste debug */
           }        
-          
           
           if (result == 0) {
             // ............................................................................
@@ -685,22 +741,21 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_ARRAY
-    
   } // end of switch (leftType)
   
   assert(false);
-
   return 0; //shut the vc++ up
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Compare a shapded json object recursively if necessary
+/// @brief compares a key and an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
-
+static int CompareKeyElement (TRI_shaped_json_t const* left,
+                              TRI_skiplist_index_element_t* right,
+                              size_t rightPosition,
+                              TRI_shaper_t* leftShaper,
+                              TRI_shaper_t* rightShaper) {
   int result;
   
   // ............................................................................
@@ -714,7 +769,6 @@ static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI
   // lists: lexicorgraphically and within each slot according to these rules.
   // ............................................................................
 
-
   if (left == NULL && right == NULL) {
     return 0;
   }
@@ -727,8 +781,14 @@ static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI
     return 1;
   }
     
-  result = CompareShapeTypes (left, right, leftShaper, rightShaper);
-  
+  result = CompareShapeTypes(NULL,
+                             NULL, 
+                             left,
+                             right->_document,
+                             &right->_subObjects[rightPosition],
+                             NULL,
+                             leftShaper,
+                             rightShaper);
   
   // ............................................................................
   // In the above function CompareShaeTypes we use strcmp which may return
@@ -743,27 +803,86 @@ static int CompareShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI
     result = 1; 
   }
   
-  
   return result;
-  
 }  // end of function CompareShapedJsonShapedJson
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares elements
+////////////////////////////////////////////////////////////////////////////////
+
+static int CompareElementElement (TRI_skiplist_index_element_t* left,
+                                  size_t leftPosition,
+                                  TRI_skiplist_index_element_t* right,
+                                  size_t rightPosition,
+                                  TRI_shaper_t* leftShaper,
+                                  TRI_shaper_t* rightShaper) {
+  int result;
+  
+  // ............................................................................
+  // the following order is currently defined for placing an order on documents
+  // undef < null < boolean < number < strings < lists < hash arrays
+  // note: undefined will be treated as NULL pointer not NULL JSON OBJECT
+  // within each type class we have the following order
+  // boolean: false < true
+  // number: natural order
+  // strings: lexicographical
+  // lists: lexicorgraphically and within each slot according to these rules.
+  // ............................................................................
+
+  if (left == NULL && right == NULL) {
+    return 0;
+  }
+
+  if (left == NULL && right != NULL) {
+    return -1;
+  }
+
+  if (left != NULL && right == NULL) {
+    return 1;
+  }
+    
+  result = CompareShapeTypes(left->_document,
+                             &left->_subObjects[leftPosition],
+                             NULL, 
+                             right->_document,
+                             &right->_subObjects[rightPosition],
+                             NULL,
+                             leftShaper,
+                             rightShaper);
+  
+  // ............................................................................
+  // In the above function CompareShaeTypes we use strcmp which may return
+  // an integer greater than 1 or less than -1. From this function we only
+  // need to know whether we have equality (0), less than (-1)  or greater than (1)
+  // ............................................................................
+  
+  if (result < 0) { 
+    result = -1; 
+  }
+  else if (result > 0) { 
+    result = 1; 
+  }
+  
+  return result;
+}  // end of function CompareShapedJsonShapedJson
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares two elements in a skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist, void* leftElement, void* rightElement, int defaultEqual) {                                
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
+static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist,
+                                             TRI_skiplist_index_element_t* leftElement,
+                                             TRI_skiplist_index_element_t* rightElement,
+                                             int defaultEqual) {                                
+
   // .............................................................................
   // Compare two elements and determines:
   // left < right   : return -1
   // left == right  : return 0
   // left > right   : return 1
   // .............................................................................
+
   int compareResult;                                    
-  LocalElement_t* hLeftElement  = (LocalElement_t*)(leftElement);
-  LocalElement_t* hRightElement = (LocalElement_t*)(rightElement);
   TRI_shaper_t* leftShaper;
   TRI_shaper_t* rightShaper;
   size_t j;
@@ -800,24 +919,29 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist, vo
   // list entries. 
   // ............................................................................
   
-  if (hLeftElement->numFields != hRightElement->numFields) {
+  if (leftElement->numFields != rightElement->numFields) {
     assert(false);
   }
-  
   
   // ............................................................................
   // The document could be the same -- so no further comparison is required.
   // ............................................................................
-  if (hLeftElement->data == hRightElement->data) {
+
+  if (leftElement->_document == rightElement->_document) {
     return 0;
   }    
+  
+  leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
+  
+  for (j = 0;  j < leftElement->numFields;  j++) {
+    compareResult = CompareElementElement(leftElement,
+                                          j,
+                                          rightElement,
+                                          j,
+                                          leftShaper,
+                                          rightShaper);
 
-  
-  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
-  
-  for (j = 0; j < hLeftElement->numFields; j++) {
-    compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
     if (compareResult != 0) {
       return compareResult;
     }
@@ -834,14 +958,14 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist, vo
   return defaultEqual;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key and an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* leftElement, void* rightElement, int defaultEqual) {
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
+static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist,
+                                         TRI_skiplist_index_key_t* leftElement,
+                                         TRI_skiplist_index_element_t* rightElement,
+                                         int defaultEqual) {
 
   // .............................................................................
   // Compare two elements and determines:
@@ -849,10 +973,9 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
   // left == right  : return 0
   // left > right   : return 1
   // .............................................................................
+
   int compareResult;                               
   size_t numFields;
-  LocalElement_t* hLeftElement  = (LocalElement_t*)(leftElement);
-  LocalElement_t* hRightElement = (LocalElement_t*)(rightElement);
   TRI_shaper_t* leftShaper;
   TRI_shaper_t* rightShaper;
   size_t j;
@@ -881,40 +1004,29 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
     return 1;
   }    
 
-  if (leftElement == rightElement) {
-    return 0;
-  }    
-    
-  // ............................................................................
-  // The document could be the same -- so no further comparison is required.
-  // ............................................................................
-  if (hLeftElement->data == hRightElement->data) {
-    return 0;
-  }    
-  
   // ............................................................................
   // This call back function is used when we query the index, as such
   // the number of fields which we are using for the query may be less than
   // the number of fields that the index is defined with.
   // ............................................................................
-
   
-  if (hLeftElement->numFields < hRightElement->numFields) {
-    numFields = hLeftElement->numFields;
+  if (leftElement->numFields < rightElement->numFields) {
+    numFields = leftElement->numFields;
   }
   else {
-    numFields = hRightElement->numFields;
+    numFields = rightElement->numFields;
   }
   
-  
-  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
-    compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), 
-                                                (j + hRightElement->fields),
-                                                leftShaper,
-                                                rightShaper);
+    compareResult = CompareKeyElement(&leftElement->fields[j], 
+                                      rightElement,
+                                      j,
+                                      leftShaper,
+                                      rightShaper);
+
     if (compareResult != 0) {
       return compareResult;
     }
@@ -924,10 +1036,9 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
   // The 'keys' match -- however, we may only have a partial match in reality 
   // if not all keys comprising index have been used.
   // ............................................................................
+
   return defaultEqual;
 }
-
-
 
 //--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
@@ -935,19 +1046,15 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
 //--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to determine the order of two elements
 ////////////////////////////////////////////////////////////////////////////////
 
-static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSkiplist, void* leftElement, void* rightElement, int defaultEqual) {
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
-
+static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSkiplist,
+                                                  TRI_skiplist_index_element_t* leftElement,
+                                                  TRI_skiplist_index_element_t* rightElement,
+                                                  int defaultEqual) {
   int compareResult;                                    
-  LocalElement_t* hLeftElement  = (LocalElement_t*)(leftElement);
-  LocalElement_t* hRightElement = (LocalElement_t*)(rightElement);
   TRI_shaper_t* leftShaper;
   TRI_shaper_t* rightShaper;
   size_t j;
@@ -969,20 +1076,25 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
     return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }    
 
-  if (hLeftElement->numFields != hRightElement->numFields) {
+  if (leftElement->numFields != rightElement->numFields) {
     assert(false);
   }
   
-  if (hLeftElement->data == hRightElement->data) {
+  if (leftElement->_document == rightElement->_document) {
     return TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL;
   }    
 
-
-  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
   
-  for (j = 0; j < hLeftElement->numFields; j++) {
-    compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
+  for (j = 0;  j < leftElement->numFields;  j++) {
+    compareResult = CompareElementElement(leftElement,
+                                          j,
+                                          rightElement,
+                                          j,
+                                          leftShaper,
+                                          rightShaper);
+
     if (compareResult != 0) {
     
       // ......................................................................
@@ -1000,19 +1112,16 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
   return defaultEqual;  
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to determine the order of two keys
 ////////////////////////////////////////////////////////////////////////////////
 
-static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkiplist, void* leftElement, void* rightElement, int defaultEqual) {
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
-
+static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkiplist,
+                                               TRI_skiplist_index_key_t* leftElement,
+                                               TRI_skiplist_index_element_t* rightElement,
+                                               int defaultEqual) {
   int compareResult;                                    
   size_t numFields;
-  LocalElement_t* hLeftElement  = (LocalElement_t*)(leftElement);
-  LocalElement_t* hRightElement = (LocalElement_t*)(rightElement);
   TRI_shaper_t* leftShaper;
   TRI_shaper_t* rightShaper;
   size_t j;
@@ -1029,34 +1138,29 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
     return -1;
   }    
   
-  
-  // ............................................................................
-  // The document could be the same -- so no further comparison is required.
-  // ............................................................................
-
-  if (hLeftElement->data == hRightElement->data) {
-    return 0;
-  }    
-
-  
   // ............................................................................
   // This call back function is used when we query the index, as such
   // the number of fields which we are using for the query may be less than
   // the number of fields that the index is defined with.
   // ............................................................................
   
-  if (hLeftElement->numFields < hRightElement->numFields) {
-    numFields = hLeftElement->numFields;
+  if (leftElement->numFields < rightElement->numFields) {
+    numFields = leftElement->numFields;
   }
   else {
-    numFields = hRightElement->numFields;
+    numFields = rightElement->numFields;
   }
   
-  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
-    compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
+    compareResult = CompareKeyElement(&leftElement->fields[j],
+                                      rightElement,
+                                      j,
+                                      leftShaper,
+                                      rightShaper);
+
     if (compareResult != 0) {
       return compareResult;
     }
@@ -1070,26 +1174,15 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
 /// @brief used to determine the order of two keys
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IndexStaticMultiEqualElementElement (TRI_skiplist_multi_t* multiSkiplist, void* leftElement, void* rightElement) {
-
-  typedef SKIPLIST_ELEMENT_TYPE(LocalElement_s,LocalElement_t);
-
-  LocalElement_t* hLeftElement  = (LocalElement_t*)(leftElement);
-  LocalElement_t* hRightElement = (LocalElement_t*)(rightElement);
-
+static bool IndexStaticMultiEqualElementElement (TRI_skiplist_multi_t* multiSkiplist,
+                                                 TRI_skiplist_index_element_t* leftElement,
+                                                 TRI_skiplist_index_element_t* rightElement) {
   if (leftElement == rightElement) {
     return true;
   }    
 
-  return (hLeftElement->data == hRightElement->data);
+  return (leftElement->_document == rightElement->_document);
 }
-
-
-
-
-
-
-
 
 #ifdef __cplusplus
 }
