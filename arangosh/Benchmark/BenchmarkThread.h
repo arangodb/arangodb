@@ -79,7 +79,9 @@ namespace triagens {
                          BenchmarkCounter<unsigned long>* operationsCounter,
                          Endpoint* endpoint, 
                          const string& username, 
-                         const string& password) 
+                         const string& password,
+                         double requestTimeout,
+                         double connectTimeout) 
           : Thread("arangob"), 
             _operation(operation),
             _startCondition(condition),
@@ -91,6 +93,8 @@ namespace triagens {
             _endpoint(endpoint),
             _username(username),
             _password(password),
+            _requestTimeout(requestTimeout),
+            _connectTimeout(connectTimeout),
             _client(0),
             _connection(0),
             _offset(0),
@@ -136,7 +140,7 @@ namespace triagens {
         virtual void run () {
           allowAsynchronousCancelation();
 
-          _connection = GeneralClientConnection::factory(_endpoint, 10.0, 10.0, 3);
+          _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3);
           if (_connection == 0) {
             LOGGER_FATAL_AND_EXIT("out of memory");
           }
@@ -449,6 +453,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const string _password;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the request timeout (in s)
+////////////////////////////////////////////////////////////////////////////////
+
+        double _requestTimeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the connection timeout (in s)
+////////////////////////////////////////////////////////////////////////////////
+
+        double _connectTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief underlying client
