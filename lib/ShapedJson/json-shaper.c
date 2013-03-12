@@ -482,6 +482,7 @@ static TRI_shape_t const* FindShapeShape (TRI_shaper_t* shaper, TRI_shape_t* sha
   }
 
   shape->_sid = s->_shapes._length + 1;
+  assert(shape->_sid > 0);
 
   TRI_InsertElementAssociativePointer(&s->_shapeDictionary, shape, false);
 

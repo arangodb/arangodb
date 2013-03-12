@@ -449,8 +449,6 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   // and remove old entry
   if (ok) {
-    int res;
-
     gc.latitude = latitude;
     gc.longitude = longitude;
 
