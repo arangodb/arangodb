@@ -35,7 +35,7 @@
 #include <mach/mach_host.h>
 #include <mach/mach_port.h>
 #include <mach/mach_traps.h>
-#include <mach/shared_memory_server.h>
+// #include <mach/shared_memory_server.h>
 #include <mach/task.h>
 #include <mach/thread_act.h>
 #include <mach/vm_map.h>
@@ -265,6 +265,7 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
   {
     kern_return_t rc;
     struct task_basic_info t_info;
+/*
     struct host_basic_info h_info;
     struct vm_region_basic_info_64 vm_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
@@ -278,7 +279,6 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 
     if (rc == KERN_SUCCESS) {
       rc = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&h_info, &h_info_count);
-
       if (rc == KERN_SUCCESS) {
         rc = vm_region_64(mach_task_self(), &address, &size, VM_REGION_BASIC_INFO, (vm_region_info_t)&vm_info, &vm_info_count, &object_name);
 
@@ -296,6 +296,20 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
         }
       }
     }
+*/
+    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+
+    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+    if (rc == KERN_SUCCESS) {
+      result._virtualSize = t_info.virtual_size;
+      result._residentSize = t_info.resident_size;
+    }
+    else {
+      result._virtualSize = 0;
+      result._residentSize = 0;
+    }
+
+
   }
 #endif
 
