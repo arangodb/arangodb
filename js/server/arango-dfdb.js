@@ -197,7 +197,7 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
 /// @brief checks a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-function CheckDatafile (collection, type, datafile) {
+function CheckDatafile (collection, type, datafile, issues) {
   printf("Datafile\n");
   printf("  path: %s\n", datafile);
   printf("  type: %s\n", type);
@@ -209,42 +209,79 @@ function CheckDatafile (collection, type, datafile) {
   printf("  total used: %d\n", scan.endPosition);
   printf("  # of entries: %d\n", scan.numberMarkers);
 
+  // set default value to unknown
+  var statusMessage = "UNKNOWN (" + scan.status + ")"; 
+  var color = internal.COLORS.COLOR_YELLOW;
+
   switch (scan.status) {
     case 1:
-      printf("  status: OK\n");
+      statusMessage = "OK";
+      color = internal.COLORS.COLOR_GREEN;
       break;
 
-    case 2:
-      printf("  status: NOT OK (reached empty marker)\n");
+    case 1:
+      statusMessage = "NOT OK (reached empty marker)";
+      color = internal.COLORS.COLOR_RED;
       break;
 
     case 3:
-      printf("  status: FATAL (reached corrupt marker)\n");
+      statusMessage = "FATAL (reached corrupt marker)";
+      color = internal.COLORS.COLOR_RED;
       break;
 
     case 4:
-      printf("  status: FATAL (crc failed)\n");
+      statusMessage = "FATAL (crc failed)";
+      color = internal.COLORS.COLOR_RED;
       break;
 
     case 5:
-      printf("  status: FATAL (cannot open datafile or too small)\n");
-      break;
-
-    default:
-      printf("  status: UNKNOWN (%d)\n", scan.status);
+      statusMessage = "FATAL (cannot open datafile or too small)";
+      color = internal.COLORS.COLOR_RED;
       break;
   }
 
-  printf("\n");
+  printf(color);
+  printf("  status: %s\n\n", statusMessage);
+  printf(internal.COLORS.COLOR_RESET);
+
+  if (scan.status !== 1) {
+    issues.push({ 
+      collection: collection.name(), 
+      path: datafile, 
+      type: type, 
+      status: scan.status, 
+      message: statusMessage 
+    });
+  }
 
   if (scan.numberMarkers === 0) {
+    issues.push({
+      collection: collection.name(), 
+      path: datafile, 
+      type: type, 
+      status: scan.status, 
+      message: "datafile contains no entries"
+    });
+
+    printf(internal.COLORS.COLOR_YELLOW);
     printf("WARNING: datafile contains no entries!\n");
+    printf(internal.COLORS.COLOR_RESET);
     RemoveDatafile(collection, type, datafile);
     return;
   }
 
   if (scan.entries[0].type !== 1000) {
+    issues.push({
+      collection: collection.name(), 
+      path: datafile, 
+      type: type, 
+      status: scan.status, 
+      message: "datafile contains no header marker!"
+    });
+
+    printf(internal.COLORS.COLOR_YELLOW);
     printf("WARNING: datafile contains no header marker!\n");
+    printf(internal.COLORS.COLOR_RESET);
     RemoveDatafile(collection, type, datafile);
     return;
   }
@@ -260,7 +297,7 @@ function CheckDatafile (collection, type, datafile) {
 /// @brief checks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function CheckCollection (collection) {
+function CheckCollection (collection, issues) {
   printf("Database\n");
   printf("  path: %s\n", internal.db._path);
   printf("\n");
@@ -279,15 +316,15 @@ function CheckCollection (collection) {
   printf("\n");
 
   for (var i = 0;  i < datafiles.journals.length;  ++i) {
-    CheckDatafile(collection, "journal", datafiles.journals[i]);
+    CheckDatafile(collection, "journal", datafiles.journals[i], issues);
   }
 
   for (var i = 0;  i < datafiles.datafiles.length;  ++i) {
-    CheckDatafile(collection, "datafiles", datafiles.datafiles[i]);
+    CheckDatafile(collection, "datafiles", datafiles.datafiles[i], issues);
   }
 
   for (var i = 0;  i < datafiles.compactors.length;  ++i) {
-    CheckDatafile(collection, "compactor", datafiles.compactors[i]);
+    CheckDatafile(collection, "compactor", datafiles.compactors[i], issues);
   }
 }
 
@@ -352,6 +389,8 @@ function main (argv) {
     }
   }
 
+  var issues = [ ];
+
   for (i = 0;  i < a.length;  ++i) {
     var collection = collections[a[i]];
 
@@ -373,7 +412,23 @@ function main (argv) {
 
     printf("\n");
 
-    CheckCollection(collection);
+    CheckCollection(collection, issues);
+  }
+
+ 
+  if (issues.length > 0) {
+    // report issues
+    printf("%d issues found:\n", issues.length);
+
+    for (i = 0; i < issues.length; ++i) {
+      var issue = issues[i];
+      printf("Issue #%d\n  collection: %s\n  path: %s\n  type: %s\n  message: %s\n\n", 
+             i,
+             issue.collection,
+             issue.path,
+             String(issue.type),
+             issue.message);
+    }
   }
 }
 
