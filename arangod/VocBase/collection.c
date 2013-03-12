@@ -351,9 +351,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         }
 
         if (cm->_cid != collection->_info._cid) {
-          LOG_ERROR("collection identifier mismatch, expected %lu, found %lu",
-                    (unsigned long) collection->_info._cid,
-                    (unsigned long) cm->_cid);
+          LOG_ERROR("collection identifier mismatch, expected %llu, found %llu",
+                    (unsigned long long) collection->_info._cid,
+                    (unsigned long long) cm->_cid);
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
