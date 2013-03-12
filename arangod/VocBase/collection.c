@@ -176,7 +176,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   files = TRI_FilesDirectory(path);
   n = files._length;
 
-  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
+  regcomp(&re, "^(temp|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
@@ -231,6 +231,13 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           TRI_PushBackVectorString(&structure._datafiles, filename);
         }
 
+        // temporary file, we can delete it!
+        else if (TRI_EqualString2("temp", first, firstLen)) {
+          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
+          TRI_UnlinkFile(filename);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+        }
+
         // ups, what kind of file is that
         else {
           LOG_ERROR("unknown datafile type '%s'", file);
@@ -282,7 +289,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   files = TRI_FilesDirectory(collection->_directory);
   n = files._length;
 
-  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
+  regcomp(&re, "^(temp|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
@@ -337,6 +344,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
         // check the document header
         ptr  = datafile->_data;
+        // skip the datafile header
         ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
         cm   = (TRI_col_header_marker_t*) ptr;
 
@@ -398,6 +406,13 @@ static bool CheckCollection (TRI_collection_t* collection) {
             TRI_PushBackVectorPointer(&datafiles, datafile);
           }
         }
+
+        // temporary file, we can delete it!
+        else if (TRI_EqualString2("temp", first, firstLen)) {
+          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
+          TRI_UnlinkFile(filename);
+        }
+
         else {
           LOG_ERROR("unknown datafile '%s'", file);
         }

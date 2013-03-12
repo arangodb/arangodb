@@ -290,7 +290,9 @@ int main (int argc, char* argv[]) {
         &operationsCounter,
         endpoint,
         BaseClient.username(), 
-        BaseClient.password());
+        BaseClient.password(),
+        BaseClient.requestTimeout(),
+        BaseClient.connectTimeout());
 
     threads.push_back(thread);
     thread->setOffset(i * realStep);
