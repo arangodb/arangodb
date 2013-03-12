@@ -1118,6 +1118,8 @@ static void InitDocumentMarker (TRI_doc_document_key_marker_t* marker,
   if (generateRid) {
     marker->_rid = marker->base._tick = TRI_NewTickVocBase();
   }
+  
+  assert(json->_sid != 0);
 
   marker->_sid = 0;
   marker->_shape = json->_sid;
