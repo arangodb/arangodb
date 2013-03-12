@@ -250,37 +250,68 @@ function CheckDatafile (collection, type, datafile, issues) {
       path: datafile, 
       type: type, 
       status: scan.status, 
-      message: statusMessage 
+      message: statusMessage, 
+      color: color 
     });
   }
 
   if (scan.numberMarkers === 0) {
+    statusMessage = "datafile contains no entries";
+    color = internal.COLORS.COLOR_YELLOW;
+
     issues.push({
       collection: collection.name(), 
       path: datafile, 
       type: type, 
       status: scan.status, 
-      message: "datafile contains no entries"
+      message: statusMessage,
+      color: color 
     });
 
-    printf(internal.COLORS.COLOR_YELLOW);
-    printf("WARNING: datafile contains no entries!\n");
+    printf(color);
+    printf("WARNING: %s\n", statusMessage);
     printf(internal.COLORS.COLOR_RESET);
     RemoveDatafile(collection, type, datafile);
     return;
   }
 
   if (scan.entries[0].type !== 1000) {
+    // asserting a TRI_DF_MARKER_HEADER as first marker
+    statusMessage = "datafile contains no datafile header marker at pos #0!";
+    color = internal.COLORS.COLOR_YELLOW;
+
     issues.push({
       collection: collection.name(), 
       path: datafile, 
       type: type, 
       status: scan.status, 
-      message: "datafile contains no header marker!"
+      message: statusMessage,
+      color: color 
     });
 
-    printf(internal.COLORS.COLOR_YELLOW);
-    printf("WARNING: datafile contains no header marker!\n");
+    printf(color);
+    printf("WARNING: %s\n", statusMessage);
+    printf(internal.COLORS.COLOR_RESET);
+    RemoveDatafile(collection, type, datafile);
+    return;
+  }
+
+  if (scan.entries.length == 2 && scan.entries[1].type !== 2000) {
+    // asserting a TRI_COL_MARKER_HEADER as second marker
+    statusMessage = "datafile contains no collection header marker at pos #1!";
+    color = internal.COLORS.COLOR_YELLOW;
+
+    issues.push({
+      collection: collection.name(), 
+      path: datafile, 
+      type: type, 
+      status: scan.status, 
+      message: statusMessage,
+      color: color
+    });
+
+    printf(color);
+    printf("WARNING: %s\n", statusMessage);
     printf(internal.COLORS.COLOR_RESET);
     RemoveDatafile(collection, type, datafile);
     return;
@@ -418,16 +449,20 @@ function main (argv) {
  
   if (issues.length > 0) {
     // report issues
-    printf("%d issues found:\n", issues.length);
+    printf("\n%d issue(s) found:\n------------------------------------------\n", issues.length);
 
     for (i = 0; i < issues.length; ++i) {
       var issue = issues[i];
-      printf("Issue #%d\n  collection: %s\n  path: %s\n  type: %s\n  message: %s\n\n", 
+      printf("  issue #%d\n    collection: %s\n    path: %s\n    type: %s\n",
              i,
              issue.collection,
              issue.path,
-             String(issue.type),
-             issue.message);
+             String(issue.type));
+
+      printf("%s", issue.color);
+      printf("    message: %s", issue.message);
+      printf("%s", internal.COLORS.COLOR_RESET);
+      printf("\n\n");
     }
   }
 }
