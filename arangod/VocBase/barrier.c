@@ -116,7 +116,9 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 
     if (ptr->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK ||
         ptr->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK ||
-        ptr->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
+        ptr->_type == TRI_BARRIER_DATAFILE_CALLBACK ||
+        ptr->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
+
       // free data still allocated in barrier elements
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
     }
@@ -176,6 +178,26 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 
   element->_line = line;
   element->_filename = filename;
+
+  LinkBarrierElement(&element->base, container);
+
+  return &element->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new compaction barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container) {
+  TRI_barrier_compaction_t* element;
+
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_compaction_t), false);
+
+  if (element == NULL) {
+    return NULL;
+  }
+
+  element->base._type = TRI_BARRIER_COLLECTION_COMPACTION;
 
   LinkBarrierElement(&element->base, container);
 
