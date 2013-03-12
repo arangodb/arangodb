@@ -105,6 +105,18 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the type name for a file
+////////////////////////////////////////////////////////////////////////////////
+
+static char* FileTypeName (const bool compactor) {
+  if (compactor) {
+    return "compactor";
+  }
+
+  return "journal";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -114,41 +126,30 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
   int res;
-  char* filename;
 
   collection = &primary->base;
 
   if (collection->_info._isVolatile) {
     // in-memory collection
-    filename = NULL;
+    journal = TRI_CreateDatafile(NULL, collection->_info._maximalSize);
   }
   else {
     char* jname;
     char* number;
+    char* filename;
 
-    // construct a suitable filename
-    number = TRI_StringUInt64(TRI_NewTickVocBase());
-
-    if (compactor) {
-      jname = TRI_Concatenate3String("journal-", number, ".db");
-    }
-    else {
-      jname = TRI_Concatenate3String("compactor-", number, ".db");
-    }
-
+    // construct a suitable filename (which is temporary at the beginning)
+    number   = TRI_StringUInt64(TRI_NewTickVocBase());
+    jname    = TRI_Concatenate3String("temp-", number, ".db");
     filename = TRI_Concatenate2File(collection->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-  }
-
-  // create journal file
-  journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
     
-  if (filename != NULL) {
+    journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
-  
+
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
       collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
@@ -162,12 +163,47 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     return NULL;
   }
 
-  LOG_TRACE("created a new primary journal '%s'", journal->getName(journal));
+  LOG_TRACE("created new %s '%s'", FileTypeName(compactor), journal->getName(journal));
+  
+  
+  // create a collection header, still in the temporary file
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    collection->_lastError = journal->_lastError;
+    LOG_ERROR("cannot create document header in %s '%s': %s", FileTypeName(compactor), journal->getName(journal), TRI_last_error());
+    
+    TRI_FreeDatafile(journal);
+
+    return NULL;
+  }
+
+  memset(&cm, 0, sizeof(cm));
+  cm.base._size = sizeof(TRI_col_header_marker_t);
+  cm.base._type = TRI_COL_MARKER_HEADER;
+  cm.base._tick = TRI_NewTickVocBase();
+
+  cm._cid = collection->_info._cid;
+
+  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
+
+  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    collection->_lastError = journal->_lastError;
+    LOG_ERROR("cannot create document header in %s '%s': %s", FileTypeName(journal), journal->getName(journal), TRI_last_error());
+    
+    TRI_FreeDatafile(journal);
+
+    return NULL;
+  }
 
 
+  // if a physical file, we can rename it from the temporary name to the correct name
   if (journal->isPhysical(journal)) {
     char* jname;
     char* number;
+    char* filename;
     bool ok;
 
     // and use the correct name
@@ -188,48 +224,19 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     ok = TRI_RenameDatafile(journal, filename);
 
     if (! ok) {
-      LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
+      LOG_ERROR("failed to rename the %s to '%s': %s", FileTypeName(compactor), filename, TRI_last_error());
+      TRI_FreeDatafile(journal);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      return NULL;
     }
     else {
-      LOG_TRACE("renamed journal to '%s'", filename);
+      LOG_TRACE("renamed %s to '%s'", FileTypeName(compactor), filename);
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 
-
-  // create a collection header
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
-    
-    TRI_FreeDatafile(journal);
-
-    return NULL;
-  }
-
-  memset(&cm, 0, sizeof(cm));
-
-  cm.base._size = sizeof(TRI_col_header_marker_t);
-  cm.base._type = TRI_COL_MARKER_HEADER;
-  cm.base._tick = TRI_NewTickVocBase();
-
-  cm._cid = collection->_info._cid;
-
-  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
-
-  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
-    
-    TRI_FreeDatafile(journal);
-
-    return NULL;
-  }
 
   // that's it
   if (compactor) {
