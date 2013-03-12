@@ -707,7 +707,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         }
       }
       else {
-        // we found a colleciton that is still active
+        // we found a collection that is still active
         TRI_col_type_e type = info._type;
 
         if (TRI_IS_DOCUMENT_COLLECTION(type)) {
