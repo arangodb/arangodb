@@ -666,7 +666,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
 
-  // save the old data, remember (oldHeader and newHeader might be identical)
+  // save the old data, remember
   oldData = *oldHeader;
 
   // .............................................................................
@@ -676,7 +676,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   res = DeleteSecondaryIndexes(document, oldHeader);
 
   // reenter the document in case of failure, ignore errors during rollback
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (context->_allowRollback && res != TRI_ERROR_NO_ERROR) {
     res = CreateSecondaryIndexes(document, oldHeader);
 
     if (res != TRI_ERROR_NO_ERROR) {

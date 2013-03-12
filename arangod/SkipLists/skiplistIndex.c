@@ -994,7 +994,13 @@ int SkiplistIndex_insert (SkiplistIndex* skiplistIndex, TRI_skiplist_index_eleme
 
 int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, TRI_skiplist_index_element_t* element) {
   int result;
+
   result = TRI_RemoveElementSkipList(skiplistIndex->skiplist.uniqueSkiplist, element, NULL); 
+
+  if (result == TRI_WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
   return result;
 }
 
