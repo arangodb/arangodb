@@ -267,8 +267,9 @@ static int HashIndex_remove (TRI_hash_index_t* hashIndex,
 
   res = TRI_RemoveElementHashArray(&hashIndex->_hashArray, element);
 
+  // these might happen when rolling back
   if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_NO_ERROR;
   }
 
   return res;
