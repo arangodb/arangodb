@@ -440,6 +440,7 @@ unittests-import:
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
+	@sleep 5
 	@echo
 
 
@@ -460,6 +461,7 @@ unittests-upgrade:
 
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
+	@sleep 2 
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --upgrade || test "x$(FORCE)" == "x1"

@@ -59,7 +59,8 @@ typedef enum {
   TRI_BARRIER_ELEMENT,
   TRI_BARRIER_DATAFILE_CALLBACK,
   TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK,
-  TRI_BARRIER_COLLECTION_DROP_CALLBACK
+  TRI_BARRIER_COLLECTION_DROP_CALLBACK,
+  TRI_BARRIER_COLLECTION_COMPACTION
 }
 TRI_barrier_type_e;
 
@@ -88,6 +89,15 @@ typedef struct TRI_barrier_blocker_s {
   char const* _filename;
 }
 TRI_barrier_blocker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barrier compaction
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_barrier_compaction_s {
+  TRI_barrier_t base;
+}
+TRI_barrier_compaction_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief barrier element datafile callback
@@ -169,6 +179,12 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e 
 TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
                                           size_t line,
                                           char const* filename);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new compaction barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile deletion barrier

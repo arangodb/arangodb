@@ -39,6 +39,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
+#include "3rdParty/V8/include/v8.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -467,6 +468,22 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         }
       }
     }
+  }
+
+  // copy request array parameter (a[]=1&a[]=2&...)
+  map<string, vector<char const*>* > arrayValues = request->arrayValues();
+
+  for (map<string, vector<char const*>* >::iterator i = arrayValues.begin();  i != arrayValues.end();  ++i) {
+    string const& k = i->first;
+    vector<char const*>* v = i->second;
+
+    v8::Handle<v8::Array> list = v8::Array::New();
+
+    for (size_t i = 0; i < v->size(); ++i) {
+      list->Set(i, v8::String::New(v->at(i)));
+    }
+
+    valuesObject->Set(v8::String::New(k.c_str()), list);
   }
 
   req->Set(v8g->ParametersKey, valuesObject);

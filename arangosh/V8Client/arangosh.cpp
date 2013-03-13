@@ -1570,7 +1570,7 @@ int main (int argc, char* argv[]) {
     printf("%s                       |___/      %s           %s\n", g, r, z);
 #endif
 
-    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) triAGENS GmbH" << endl;
 
     ostringstream info;
 

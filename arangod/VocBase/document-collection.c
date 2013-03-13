@@ -2136,6 +2136,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
 int TRI_CloseDocumentCollection (TRI_document_collection_t* collection) {
   int res;
 
+  // closes all open compactors, journals, datafiles
   res = TRI_CloseCollection(&collection->base.base);
 
   if (res != TRI_ERROR_NO_ERROR) {

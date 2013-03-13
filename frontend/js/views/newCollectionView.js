@@ -57,8 +57,8 @@ var newCollectionView = Backbone.View.extend({
       return 0;
     }
 
-    var returnval = window.arangoCollectionsStore.newCollection(collName, wfs, isSystem, journalSizeString, collType);
-    if (returnval === true) {
+    var returnobj = window.arangoCollectionsStore.newCollection(collName, wfs, isSystem, journalSizeString, collType);
+    if (returnobj.status === true) {
       self.hidden();
       $("#add-collection").modal('hide');
       arangoHelper.arangoNotification("Collection created");
@@ -66,7 +66,7 @@ var newCollectionView = Backbone.View.extend({
     else {
       self.hidden();
       $("#add-collection").modal('hide');
-      arangoHelper.arangoError("Collection error");
+      arangoHelper.arangoError(returnobj.errorMessage);
     }
     window.arangoCollectionsStore.fetch({
       success: function () {

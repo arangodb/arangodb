@@ -358,14 +358,14 @@ static void WaitCompactSync (TRI_document_collection_t* collection, TRI_datafile
 /// @brief compactify a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fid) {
+static void CompactifyDatafile (TRI_document_collection_t* document, TRI_voc_fid_t fid) {
   TRI_datafile_t* df;
   TRI_primary_collection_t* primary;
   bool ok;
   size_t n;
   size_t i;
 
-  primary = &sim->base;
+  primary = &document->base;
 
   // locate the datafile
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
@@ -389,7 +389,7 @@ static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fi
   // now compactify the datafile
   LOG_DEBUG("starting to compactify datafile '%s'", df->_filename);
 
-  ok = TRI_IterateDatafile(df, Compactifier, sim, false);
+  ok = TRI_IterateDatafile(df, Compactifier, document, false);
 
   if (! ok) {
     LOG_WARNING("failed to compactify the datafile '%s'", df->_filename);
@@ -397,7 +397,7 @@ static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fi
   }
 
   // wait for the journals to sync
-  WaitCompactSync(sim, df);
+  WaitCompactSync(document, df);
 
   // remove the datafile from the list of datafiles
   TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
@@ -428,26 +428,29 @@ static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fi
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CompactifyDocumentCollection (TRI_document_collection_t* sim) {
+static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   TRI_primary_collection_t* primary;
   TRI_vector_t vector;
-  size_t n;
-  size_t i;
-  bool worked = false;
+  size_t i, n;
 
-  primary = &sim->base;
+  primary = &document->base;
 
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchroniser,
   // compactor and data-modification threads (e.g. POST /_api/document)
   if (! TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(primary)) {
-    return worked;
+    return false;
+  }
+
+  n = primary->base._datafiles._length;
+  if (n == 0) {
+    // nothing to compact
+    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+    return false;
   }
 
   // copy datafile information
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
-
-  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
@@ -456,20 +459,38 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* sim) {
     df = primary->base._datafiles._buffer[i];
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, df->_fid);
 
-    TRI_PushBackVector(&vector, dfi);
+    if (dfi->_numberDead > 0) {
+      // only use those datafiles that contain dead objects
+      TRI_PushBackVector(&vector, dfi);
+
+      // we stop at the first datafile.
+      // this is better than going over all datafiles in a collection in one go
+      // because the compactor is single-threaded, and collecting all datafiles
+      // might take a long time (it might even be that there is a request to
+      // delete the collection in the middle of compaction, but the compactor
+      // will not pick this up as it is read-locking the collection status)
+      break;
+    }
   }
 
+  // can now continue without the lock
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
+
+  if (vector._length == 0) {
+    // cleanup local variables
+    TRI_DestroyVector(&vector);
+    return false;
+  }
+
   // handle datafiles with dead objects
-  for (i = 0;  i < vector._length;  ++i) {
+  n = vector._length;
+  for (i = 0;  i < n;  ++i) {
     TRI_doc_datafile_info_t* dfi;
 
     dfi = TRI_AtVector(&vector, i);
 
-    if (dfi->_numberDead == 0) {
-      continue;
-    }
+    assert(dfi->_numberDead > 0);
 
     LOG_DEBUG("datafile = %lu, alive = %lu / %lu, dead = %lu / %lu, deletions = %lu",
               (unsigned long) dfi->_fid,
@@ -479,14 +500,13 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* sim) {
               (unsigned long) dfi->_sizeDead,
               (unsigned long) dfi->_numberDeletion);
 
-    CompactifyDatafile(sim, dfi->_fid);
-    worked = true;
+    CompactifyDatafile(document, dfi->_fid);
   }
 
   // cleanup local variables
   TRI_DestroyVector(&vector);
 
-  return worked;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -515,8 +535,7 @@ void TRI_CompactorVocBase (void* data) {
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
-    size_t n;
-    size_t i;
+    size_t i, n;
     TRI_col_type_e type;
     // keep initial _state value as vocbase->_state might change during compaction loop
     int state = vocbase->_state;
@@ -553,10 +572,10 @@ void TRI_CompactorVocBase (void* data) {
       worked = false;
       type = primary->base._info._type;
 
-      // for simple collection, compactify datafiles
+      // for document collection, compactify datafiles
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-          TRI_barrier_t* ce = TRI_CreateBarrierElement(&primary->_barrierList);
+          TRI_barrier_t* ce = TRI_CreateBarrierCompaction(&primary->_barrierList);
 
           if (ce == NULL) {
             // out of memory
