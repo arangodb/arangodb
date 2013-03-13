@@ -49,8 +49,6 @@ using namespace triagens::basics;
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-int errors;
-
 char ix[1000];  /* working array for (void *) data  */
 char iy[30];
 
@@ -265,8 +263,6 @@ void runTest (int mode)
     double d1;
     int i,j,r;
     void* nullp = 0;
-
-    errors=0;
 
 /*           1-9 some real world distance          */
 /*   1 is London    +51.500000 -0.166666           */

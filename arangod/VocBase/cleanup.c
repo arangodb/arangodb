@@ -78,14 +78,14 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
+static void CleanupDocumentCollection (TRI_document_collection_t* document) {
   // loop until done
   while (true) {
     TRI_barrier_list_t* container;
     TRI_barrier_t* element;
     bool hasUnloaded = false;
 
-    container = &sim->base._barrierList;
+    container = &document->base._barrierList;
     element = NULL;
 
     // check and remove all callback elements at the beginning of the list
@@ -95,7 +95,9 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
     // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
     // to document data in a datafile. We must then not unload or remove a file
 
-    if (container->_begin == NULL || container->_begin->_type == TRI_BARRIER_ELEMENT) {
+    if (container->_begin == NULL ||
+        container->_begin->_type == TRI_BARRIER_ELEMENT ||
+        container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
       // did not find anything at the head of the barrier list or found an element marker
       // this means we must exit and cannot throw away datafiles and can unload collections
       TRI_UnlockSpin(&container->_lock);

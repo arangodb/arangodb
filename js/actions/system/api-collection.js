@@ -205,7 +205,11 @@ function post_api_collection (req, res) {
 
   try {
     var collection;
-
+    if (typeof(type) === "string") {
+      if (type.toLowerCase() === "edge") {
+        type = arangodb.ArangoCollection.TYPE_EDGE;
+      }
+    }
     if (type === arangodb.ArangoCollection.TYPE_EDGE) {
       collection = arangodb.db._createEdgeCollection(name, parameter);
     }
