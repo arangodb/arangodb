@@ -129,7 +129,8 @@ BISON_FILES += \
 if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
-	arangod/Ahuacatl/ahuacatl-grammar.h
+	arangod/Ahuacatl/ahuacatl-grammar.h \
+	arangod/Ahuacatl/ahuacatl-grammar.c
 endif
 
 ################################################################################
