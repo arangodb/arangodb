@@ -336,8 +336,18 @@ GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 GTAGS:
 	echo $(GTAGS_FILES) | tr " " "\n" | gtags -i -f -
 
+################################################################################
+### @brief cleanup source and header files
+################################################################################
+
+.PHONY: update-disclaimer
+
+update-disclaimer:
+	find lib arangod arangosh arangoirb "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec utils/cleanupCFiles "{}" ";"
+	find lib arangod arangosh arangoirb "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec chmod "644" "{}" ";"
+
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                      DEPENDENCIES
+## --section--                                                      DEPENDENCIES
 ## -----------------------------------------------------------------------------
 
 ################################################################################
