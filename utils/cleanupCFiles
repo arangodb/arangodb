@@ -95,6 +95,9 @@ sub formatFile ($$$) {
   # set to true, if we processing a header file
   my $isHeaderFile = 0;
 
+  # set to true, if we processing a JavaScript file
+  my $isJavaScript = 0;
+
   # set to true, if we have seen the preamble
   my $preambleDone = 0;
 
@@ -143,6 +146,10 @@ sub formatFile ($$$) {
     print STDERR "INFO guard name is $guardName\n";
   }
 
+  if ($filename =~ /\_JS$/) {
+    $isJavaScript = 1;
+  }
+
   print STDERR "INFO processing $file ($absPath)\n";
 
   # -----------------------------------------------------------------------------
@@ -173,7 +180,12 @@ sub formatFile ($$$) {
     }
 
     if ($line =~ /\/\/ outline-regexp:/) {
-      $line = '// outline-regexp: "/// @brief\\\\|/// {@inheritDoc}\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}"';
+      if ($isJavaScript == 1) {
+	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
+      }
+      else {
+	$line = '// outline-regexp: "/// @brief\\\\|/// {@inheritDoc}\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}"';
+      }
     }
 
     if ($line =~ /^[ \t]*(\/\/\/.*)$/) {
@@ -184,8 +196,10 @@ sub formatFile ($$$) {
       $line = "$1";
     }
 
-    if ($line =~ /^#include <((Admin|ApplicationServer|Basics|BasicsC|Dipatcher|GeneralServer|GeoIndex|Handler|Hpdf|HttpServer|JsonParserX|LineClient|LineServer|Logger|Rest|ResultGenerator|Scheduler|Server|Session|SessionVoc|Snapshot|Variant|VocBase)\/.*)>/) {
-      $line = "#include \"$1\"";
+    if ($isJavaScript == 0) {
+      if ($line =~ /^#include <((Admin|ApplicationServer|Basics|BasicsC|Dipatcher|GeneralServer|GeoIndex|Handler|Hpdf|HttpServer|JsonParserX|LineClient|LineServer|Logger|Rest|ResultGenerator|Scheduler|Server|Session|SessionVoc|Snapshot|Variant|VocBase)\/.*)>/) {
+	$line = "#include \"$1\"";
+      }
     }
 
     if (! $preambleDone) {

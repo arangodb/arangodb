@@ -345,6 +345,9 @@ GTAGS:
 update-disclaimer:
 	find lib arangod arangosh arangoirb "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec utils/cleanupCFiles "{}" ";"
 	find lib arangod arangosh arangoirb "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec chmod "644" "{}" ";"
+	find js/common/bootstrap js/client/bootstrap js/server/bootstrap -name "*.js" -a ! -name errors.js -exec utils/cleanupCFiles "{}" ";"
+	find js/common/modules/org/arangodb js/client/modules/org/arangodb js/server/modules/org/arangodb -name "*.js"
+	find js -name "*.js"  -exec chmod "644" "{}" ";"
 
 ## -----------------------------------------------------------------------------
 ## --section--                                                      DEPENDENCIES
