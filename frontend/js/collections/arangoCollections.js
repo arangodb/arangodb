@@ -137,7 +137,8 @@ window.arangoCollections = Backbone.Collection.extend({
       checkCollectionName: function (name) {
       },
       newCollection: function (collName, wfs, isSystem, journalSize, collType) {
-        var returnval = false;
+        var returnobj = {};
+        returnobj.status = false;
         $.ajax({
           cache: false,
           type: "POST",
@@ -147,13 +148,14 @@ window.arangoCollections = Backbone.Collection.extend({
           processData: false,
           async: false,
           success: function(data) {
-            returnval = true;
+            returnobj.status = true;
           },
           error: function(data) {
-            returnval = false;
+            returnobj.status = false;
+            returnobj.errorMessage = JSON.parse(data.responseText).errorMessage;
           }
         });
-        return returnval;
+        return returnobj;
       },
       renameCollection: function (id, name) {
         $.ajax({
