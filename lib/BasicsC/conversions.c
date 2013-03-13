@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "conversions.h"
@@ -67,19 +67,19 @@ bool TRI_BooleanString (char const* str) {
   if (TRI_CaseEqualString(str, "true")) {
     return true;
   }
-  
+
   if (TRI_CaseEqualString(str, "yes")) {
     return true;
   }
-  
+
   if (TRI_CaseEqualString(str, "on")) {
     return true;
   }
-  
+
   if (TRI_CaseEqualString(str, "y")) {
     return true;
   }
-  
+
   if (TRI_EqualString(str, "1")) {
     return true;
   }
@@ -370,14 +370,14 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length) {
 /// @brief convert to string from int8, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringInt8InPlace (int8_t attr, char* buffer) {
   char* p;
-  
+
   if (attr == INT8_MIN) {
     memcpy(buffer, "-128\0", 4);
     return 3;
@@ -403,8 +403,8 @@ size_t TRI_StringInt8InPlace (int8_t attr, char* buffer) {
 /// @brief convert to string from uint8, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -426,14 +426,14 @@ size_t TRI_StringUInt8InPlace (uint8_t attr, char* buffer) {
 /// @brief convert to string from int16, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringInt16InPlace (int16_t attr, char* buffer) {
   char* p;
-  
+
   if (attr == INT16_MIN) {
     memcpy(buffer, "-32768\0", 7);
     return 6;
@@ -461,8 +461,8 @@ size_t TRI_StringInt16InPlace (int16_t attr, char* buffer) {
 /// @brief convert to string from uint16, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -486,14 +486,14 @@ size_t TRI_StringUInt16InPlace (uint16_t attr, char* buffer) {
 /// @brief convert to string from int32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringInt32InPlace (int32_t attr, char* buffer) {
   char* p;
-  
+
   if (attr == INT32_MIN) {
     memcpy(buffer, "-2147483648\0", 12);
     return 11;
@@ -526,8 +526,8 @@ size_t TRI_StringInt32InPlace (int32_t attr, char* buffer) {
 /// @brief convert to string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -556,14 +556,14 @@ size_t TRI_StringUInt32InPlace (uint32_t attr, char* buffer) {
 /// @brief convert to string from int64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
   char* p;
-  
+
   if (attr == INT64_MIN) {
     memcpy(buffer, "-9223372036854775808\0", 21);
     return 20;
@@ -575,7 +575,7 @@ size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
   }
 
   p = buffer;
-  
+
   if (attr < 0) {
     *p++ = '-';
     attr = -attr;
@@ -615,14 +615,14 @@ size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
 /// @brief convert to string from uint64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringUInt64InPlace (uint64_t attr, char* buffer) {
   char* p;
-  
+
   if ((attr >> 32) == 0) {
     // shortcut
     return TRI_StringUInt32InPlace((uint32_t) attr, buffer);
@@ -676,7 +676,7 @@ char* TRI_StringInt8 (int8_t attr) {
 char* TRI_StringUInt8 (uint8_t attr) {
   char buffer[3];
   size_t len;
-  
+
   len = TRI_StringUInt8InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -702,7 +702,7 @@ char* TRI_StringInt16 (int16_t attr) {
 char* TRI_StringUInt16 (uint16_t attr) {
   char buffer[6];
   size_t len;
-  
+
   len = TRI_StringUInt16InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -728,7 +728,7 @@ char* TRI_StringInt32 (int32_t attr) {
 char* TRI_StringUInt32 (uint32_t attr) {
   char buffer[11];
   size_t len;
-  
+
   len = TRI_StringUInt32InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -754,7 +754,7 @@ char* TRI_StringInt64 (int64_t attr) {
 char* TRI_StringUInt64 (uint64_t attr) {
   char buffer[21];
   size_t len;
-  
+
   len = TRI_StringUInt64InPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -777,16 +777,16 @@ char* TRI_StringDouble (double value) {
 /// @brief convert to hex string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringUInt32HexInPlace (uint32_t attr, char* buffer) {
   char* p;
-  
+
   p = buffer;
-  
+
   if (0x10000000U <= attr) { *p++ = HEX[(attr / 0x10000000U) % 0x10]; }
   if ( 0x1000000U <= attr) { *p++ = HEX[(attr /  0x1000000U) % 0x10]; }
   if (  0x100000U <= attr) { *p++ = HEX[(attr /   0x100000U) % 0x10]; }
@@ -805,14 +805,14 @@ size_t TRI_StringUInt32HexInPlace (uint32_t attr, char* buffer) {
 /// @brief convert to hex string from uint64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringUInt64HexInPlace (uint64_t attr, char* buffer) {
   char* p;
-  
+
   p = buffer;
 
   if (0x1000000000000000ULL <= attr) { *p++ = HEX[(attr / 0x1000000000000000ULL) % 0x10]; }
@@ -844,7 +844,7 @@ size_t TRI_StringUInt64HexInPlace (uint64_t attr, char* buffer) {
 char* TRI_StringUInt32Hex (uint32_t attr) {
   char buffer[9];
   size_t len;
-  
+
   len = TRI_StringUInt32HexInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -857,7 +857,7 @@ char* TRI_StringUInt32Hex (uint32_t attr) {
 char* TRI_StringUInt64Hex (uint64_t attr) {
   char buffer[17];
   size_t len;
-  
+
   len = TRI_StringUInt64HexInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -868,16 +868,16 @@ char* TRI_StringUInt64Hex (uint64_t attr) {
 /// @brief convert to octal string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringUInt32OctalInPlace (uint32_t attr, char* buffer) {
   char* p;
-  
+
   p = buffer;
-  
+
   if (010000000000UL <= attr) { *p++ = (char) ((attr / 010000000000UL) % 010 + '0'); }
   if ( 01000000000UL <= attr) { *p++ = (char) ((attr /  01000000000UL) % 010 + '0'); }
   if (  0100000000UL <= attr) { *p++ = (char) ((attr /   0100000000UL) % 010 + '0'); }
@@ -899,14 +899,14 @@ size_t TRI_StringUInt32OctalInPlace (uint32_t attr, char* buffer) {
 /// @brief convert to octal string from uint64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringUInt64OctalInPlace (uint64_t attr, char* buffer) {
   char* p;
-  
+
   p = buffer;
   if (01000000000000000000000ULL <= attr) { *p++ = (char) ((attr / 01000000000000000000000ULL) % 010 + '0'); }
   if ( 0100000000000000000000ULL <= attr) { *p++ = (char) ((attr /  0100000000000000000000ULL) % 010 + '0'); }
@@ -943,7 +943,7 @@ size_t TRI_StringUInt64OctalInPlace (uint64_t attr, char* buffer) {
 char* TRI_StringUInt32Octal (uint32_t attr) {
   char buffer[9];
   size_t len;
-  
+
   len = TRI_StringUInt32OctalInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -956,7 +956,7 @@ char* TRI_StringUInt32Octal (uint32_t attr) {
 char* TRI_StringUInt64Octal (uint64_t attr) {
   char buffer[17];
   size_t len;
-  
+
   len = TRI_StringUInt64OctalInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
@@ -968,5 +968,5 @@ char* TRI_StringUInt64Octal (uint64_t attr) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

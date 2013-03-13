@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -287,7 +287,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   if (_logSyslog != "") {
     TRI_CreateLogAppenderSyslog(_logPrefix.c_str(), _logSyslog.c_str());
   }
-#endif  
+#endif
 
   if (_logFile.length() > 0) {
     string filename = _logFile;
@@ -433,23 +433,23 @@ bool ApplicationServer::parse (int argc,
   try {
     switch (_randomGenerator) {
       case 1: {
-        Random::selectVersion(Random::RAND_MERSENNE);  
+        Random::selectVersion(Random::RAND_MERSENNE);
         break;
       }
       case 2: {
-        Random::selectVersion(Random::RAND_RANDOM);  
+        Random::selectVersion(Random::RAND_RANDOM);
         break;
       }
       case 3: {
-        Random::selectVersion(Random::RAND_URANDOM);  
+        Random::selectVersion(Random::RAND_URANDOM);
         break;
       }
       case 4: {
-        Random::selectVersion(Random::RAND_COMBINED);  
+        Random::selectVersion(Random::RAND_COMBINED);
         break;
       }
       case 5: {
-        Random::selectVersion(Random::RAND_WIN32);  
+        Random::selectVersion(Random::RAND_WIN32);
         break;
       }
       default: {
@@ -621,7 +621,7 @@ void ApplicationServer::stop () {
     feature->stop();
     LOGGER_TRACE("shut down server feature '" << feature->getName() << "'");
   }
-  
+
 
 }
 
@@ -854,7 +854,7 @@ bool ApplicationServer::checkParent () {
 
 // unfortunately even though windows has <signal.h>, there is no
 // kill method defined. Notice that the kill below is not to terminate
-// the process. 
+// the process.
 #ifdef TRI_HAVE_SIGNAL_H
   if (_watchParent != 0) {
 #ifdef TRI_HAVE_POSIX
@@ -932,12 +932,12 @@ bool ApplicationServer::readConfigurationFile () {
     if (envResult != 0) {
       homeDrive = string(envResult);
     }
-    
+
     envResult = getenv("HOMEPATH");
     if (envResult != 0) {
       homePath = string(envResult);
     }
-    
+
     if (! homeDrive.empty() && ! homePath.empty()) {
       homeDir = homeDrive + homePath;
     }
@@ -947,7 +947,7 @@ bool ApplicationServer::readConfigurationFile () {
 #else
     homeEnv = string("$HOME");
     envResult = getenv("HOME");
-    if (envResult != 0) { 
+    if (envResult != 0) {
       homeDir = string(envResult);
     }
     else {
@@ -1163,5 +1163,5 @@ void ApplicationServer::extractPrivileges() {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

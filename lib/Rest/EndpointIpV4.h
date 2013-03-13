@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ENDPOINT_IPV4_H
-#define TRIAGENS_FYN_REST_ENDPOINT_IPV4 H 1
+#ifndef TRIAGENS_REST_ENDPOINT_IP_V4_H
+#define TRIAGENS_REST_ENDPOINT_IP_V4_H 1
 
 #include "Rest/EndpointIp.h"
 
@@ -55,18 +55,18 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV4 (const EndpointType, 
+        EndpointIpV4 (const EndpointType,
                       const ProtocolType,
                       const EncryptionType,
-                      const std::string&, 
+                      const std::string&,
                       int,
-                      const std::string&, 
+                      const std::string&,
                       const uint16_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         ~EndpointIpV4 ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,13 +81,13 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-    
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get endpoint domain
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         int getDomain () const {
           return AF_INET;
         }
@@ -114,5 +114,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

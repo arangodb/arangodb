@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
@@ -153,8 +153,8 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
 ///
-/// this method will check the "createCollection" attribute of the request. if 
-/// it is set to true, it will verify that the named collection actually exists. 
+/// this method will check the "createCollection" attribute of the request. if
+/// it is set to true, it will verify that the named collection actually exists.
 /// if the collection does not yet exist, it will create it on the fly.
 /// if the "createCollection" attribute is not set or set to false, nothing will
 /// happen, and the collection name will not be checked
@@ -199,13 +199,13 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
   _response->setContentType("application/json; charset=utf-8");
 
   if (responseCode != HttpResponse::OK) {
-    // 200 OK is sent is case of delete or update. 
+    // 200 OK is sent is case of delete or update.
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
     // handle does not need to be RFC 2047-encoded
     _response->setHeader("location", 8, DOCUMENT_PATH + "/" + handle);
   }
- 
+
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
@@ -225,7 +225,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (const TRI_voc_cid_t cid,
                                                        TRI_voc_key_t key) {
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                "document " + DOCUMENT_PATH + "/" + 
+                "document " + DOCUMENT_PATH + "/" +
                 DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key) + " not found");
 }
 
@@ -234,7 +234,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (const TRI_voc_cid_t cid,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotImplemented (const string& path) {
-  generateError(HttpResponse::NOT_IMPLEMENTED, 
+  generateError(HttpResponse::NOT_IMPLEMENTED,
                 TRI_ERROR_NOT_IMPLEMENTED,
                 "'" + path + "' not implemented");
 }
@@ -244,7 +244,7 @@ void RestVocbaseBaseHandler::generateNotImplemented (const string& path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateForbidden () {
-  generateError(HttpResponse::FORBIDDEN, 
+  generateError(HttpResponse::FORBIDDEN,
                 TRI_ERROR_FORBIDDEN,
                 "operation forbidden");
 }
@@ -254,19 +254,19 @@ void RestVocbaseBaseHandler::generateForbidden () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (const TRI_voc_cid_t cid,
-                                                         TRI_voc_key_t key, 
+                                                         TRI_voc_key_t key,
                                                          TRI_voc_rid_t rid) {
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
-    .appendText("{\"error\":true,\"code\":")  
+    .appendText("{\"error\":true,\"code\":")
     .appendInteger((int32_t) HttpResponse::PRECONDITION_FAILED)
     .appendText(",\"errorNum\":")
     .appendInteger((int32_t) TRI_ERROR_ARANGO_CONFLICT)
     .appendText(",\"errorMessage\":\"precondition failed\"")
-    .appendText(",\"_id\":\"") 
+    .appendText(",\"_id\":\"")
     .appendText(DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), key))
     .appendText("\",\"_rev\":\"")
     .appendText(StringUtils::itoa(rid))
@@ -295,7 +295,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
                                                TRI_shaper_t* shaper,
                                                const bool generateBody) {
   if (document == 0) {
-    generateError(HttpResponse::SERVER_ERROR, 
+    generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "document pointer is null, should not happen");
     return;
@@ -380,7 +380,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
 /// @brief generate an error message for a transaction error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateTransactionError (const string& collectionName, 
+void RestVocbaseBaseHandler::generateTransactionError (const string& collectionName,
                                                        const int res,
                                                        TRI_voc_key_t key,
                                                        TRI_voc_rid_t rid) {
@@ -388,7 +388,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
-        generateError(HttpResponse::BAD, res, "no collection name specified"); 
+        generateError(HttpResponse::BAD, res, "no collection name specified");
       }
       else {
         // collection name specified but collection not found
@@ -407,23 +407,23 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
     case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
       generateError(HttpResponse::BAD, res, "geo constraint violated");
       return;
-    
+
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
       generateError(HttpResponse::BAD, res, "invalid document key");
       return;
-    
+
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
       generateError(HttpResponse::SERVER_ERROR, res, "out of keys");
       return;
-    
+
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
       generateError(HttpResponse::BAD, res, "collection does not allow using user-defined keys");
       return;
-    
+
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
       generateDocumentNotFound(_resolver.getCollectionId(collectionName), key);
       return;
-    
+
     case TRI_ERROR_ARANGO_CONFLICT:
       generatePreconditionFailed(_resolver.getCollectionId(collectionName), key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
@@ -437,7 +437,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, 
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
                                                        char const* parameter) {
   bool found;
   char const* etag = _request->header(header, found);
@@ -526,12 +526,12 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 
   if (json == 0) {
     if (errmsg == 0) {
-      generateError(HttpResponse::BAD, 
+      generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "cannot parse json object");
     }
     else {
-      generateError(HttpResponse::BAD, 
+      generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
 
@@ -542,7 +542,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   }
 
   if (TRI_HasDuplicateKeyJson(json)) {
-    generateError(HttpResponse::BAD, 
+    generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "cannot parse json object");
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -616,7 +616,7 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  
+
   key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
 
   return TRI_ERROR_NO_ERROR;
@@ -628,5 +628,5 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

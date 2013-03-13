@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-list.h"
@@ -67,7 +67,7 @@
 static int CompareEntries (const void* lhs, const void* rhs) {
   TRI_fulltext_list_entry_t l = (*(TRI_fulltext_list_entry_t*) lhs);
   TRI_fulltext_list_entry_t r = (*(TRI_fulltext_list_entry_t*) rhs);
-  
+
   if (l < r) {
     return -1;
   }
@@ -94,7 +94,7 @@ static inline bool IsSorted (const TRI_fulltext_list_t* const list) {
 /// @brief return whether the list is sorted
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void SetIsSorted (TRI_fulltext_list_t* const list, 
+static inline void SetIsSorted (TRI_fulltext_list_t* const list,
                                 const bool value) {
   uint32_t* head = (uint32_t*) list;
 
@@ -133,7 +133,7 @@ static inline uint32_t GetNumEntries (const TRI_fulltext_list_t* const list) {
 /// @brief set the number of entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void SetNumEntries (TRI_fulltext_list_t* const list, 
+static inline void SetNumEntries (TRI_fulltext_list_t* const list,
                                   const uint32_t value) {
   uint32_t* head = (uint32_t*) list;
 
@@ -154,7 +154,7 @@ static inline uint32_t GetNumAllocated (const TRI_fulltext_list_t* const list) {
 /// @brief set the number of allocated entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void SetNumAllocated (TRI_fulltext_list_t* const list, 
+static inline void SetNumAllocated (TRI_fulltext_list_t* const list,
                                     const uint32_t value) {
   uint32_t* head = (uint32_t*) list;
 
@@ -183,8 +183,8 @@ static void InitList (TRI_fulltext_list_t* const list, const uint32_t size) {
 
 static void SortList (TRI_fulltext_list_t* const list) {
   uint32_t numEntries;
- 
-  if (IsSorted(list)) { 
+
+  if (IsSorted(list)) {
     // nothing to do
     return;
   }
@@ -225,7 +225,7 @@ static inline size_t MemoryList (const uint32_t size) {
 /// @brief clone a list by copying an existing one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_CloneListFulltextIndex (const TRI_fulltext_list_t* const source) { 
+TRI_fulltext_list_t* TRI_CloneListFulltextIndex (const TRI_fulltext_list_t* const source) {
   TRI_fulltext_list_t* list;
   uint32_t numEntries;
 
@@ -304,7 +304,7 @@ size_t TRI_MemoryListFulltextIndex (const TRI_fulltext_list_t* const list) {
 /// this will create a new list and free both lhs & rhs
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs, 
+TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
                                                     TRI_fulltext_list_t* rhs) {
   TRI_fulltext_list_t* list;
   TRI_fulltext_list_entry_t last;
@@ -314,7 +314,7 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
   uint32_t l, r;
   uint32_t numLhs, numRhs;
   uint32_t listPos;
-  
+
   if (lhs == NULL) {
     return rhs;
   }
@@ -342,7 +342,7 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
     TRI_FreeListFulltextIndex(rhs);
     return NULL;
   }
-  
+
   SortList(lhs);
   lhsEntries = GetStart(lhs);
   l = 0;
@@ -367,7 +367,7 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
     if (l >= numLhs && r >= numRhs) {
       break;
     }
-    
+
     if (l >= numLhs && r < numRhs) {
       listEntries[listPos++] = last = rhsEntries[r++];
     }
@@ -384,7 +384,7 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
 
   SetNumEntries(list, listPos);
   SetIsSorted(list, true);
-    
+
   TRI_FreeListFulltextIndex(lhs);
   TRI_FreeListFulltextIndex(rhs);
 
@@ -396,7 +396,7 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
 /// this will create a new list and free both lhs & rhs
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs, 
+TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs,
                                                      TRI_fulltext_list_t* rhs) {
   TRI_fulltext_list_t* list;
   TRI_fulltext_list_entry_t last;
@@ -406,12 +406,12 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs,
   uint32_t l, r;
   uint32_t numLhs, numRhs;
   uint32_t listPos;
- 
-  // check if one of the pointers is NULL 
+
+  // check if one of the pointers is NULL
   if (lhs == NULL) {
     return rhs;
   }
- 
+
   if (rhs == NULL) {
     return lhs;
   }
@@ -441,7 +441,7 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t* lhs,
     TRI_FreeListFulltextIndex(rhs);
     return NULL;
   }
-  
+
   SortList(lhs);
   lhsEntries = GetStart(lhs);
   l = 0;
@@ -485,12 +485,12 @@ again:
 
   SetNumEntries(list, listPos);
   SetIsSorted(list, true);
-    
+
   TRI_FreeListFulltextIndex(lhs);
   TRI_FreeListFulltextIndex(rhs);
-  
+
   // printf("result list has %lu\n\n", (unsigned long) listPos);
-  
+
   return list;
 }
 
@@ -499,7 +499,7 @@ again:
 /// this will modify list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* list, 
+TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* list,
                                                    TRI_fulltext_list_t* exclude) {
   TRI_fulltext_list_entry_t* listEntries;
   TRI_fulltext_list_entry_t* excludeEntries;
@@ -518,7 +518,7 @@ TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* list,
 
   numEntries = GetNumEntries(list);
   numExclude = GetNumEntries(exclude);
-  
+
   if (numEntries == 0 || numExclude == 0) {
     // original list or exclusion list are empty
     TRI_FreeListFulltextIndex(exclude);
@@ -563,7 +563,7 @@ TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* list,
 /// this might free the old list and allocate a new, bigger one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list, 
+TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
                                                   const TRI_fulltext_list_entry_t entry) {
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numAllocated;
@@ -609,9 +609,9 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
     list = clone;
     listEntries  = GetStart(list);
   }
-  
+
   if (unsort) {
-    SetIsSorted(list, false); 
+    SetIsSorted(list, false);
   }
 
   // insert at the end
@@ -626,21 +626,21 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
 /// returns the number of entries remaining in the list after rewrite
 /// the map is provided by the routines that handle the compaction
 ////////////////////////////////////////////////////////////////////////////////
-    
-uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const list, 
+
+uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const list,
                                        const void* const data) {
   TRI_fulltext_list_entry_t* listEntries;
   TRI_fulltext_list_entry_t* map;
   uint32_t numEntries;
   uint32_t i, j;
-  
+
   numEntries  = GetNumEntries(list);
   if (numEntries == 0) {
     return 0;
   }
 
   map = (TRI_fulltext_list_entry_t*) data;
-  listEntries = GetStart(list); 
+  listEntries = GetStart(list);
   j = 0;
 
   for (i = 0; i < numEntries; ++i) {
@@ -677,9 +677,9 @@ void TRI_DumpListFulltextIndex (const TRI_fulltext_list_t* const list) {
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numEntries;
   uint32_t i;
- 
+
   numEntries = GetNumEntries(list);
-  listEntries = GetStart(list); 
+  listEntries = GetStart(list);
 
   printf("(");
 
@@ -720,5 +720,5 @@ TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (const TRI_fulltext_list_t
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

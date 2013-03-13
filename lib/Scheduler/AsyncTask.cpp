@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncTask.h"
@@ -85,10 +85,10 @@ void AsyncTask::cleanup () {
 
 bool AsyncTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
-  
+
   if (watcher == token && (revents & EVENT_ASYNC)) {
     result = handleAsync();
   }
-  
+
   return result;
 }

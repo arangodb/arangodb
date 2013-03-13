@@ -5,40 +5,30 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_INDEX_ITERATORS_INDEX_ITERATOR_H
-#define TRIAGENS_DURHAM_INDEX_ITERATORS_INDEX_ITERATOR_H 1
+#ifndef TRIAGENS_INDEX_ITERATORS_INDEX_ITERATOR_H
+#define TRIAGENS_INDEX_ITERATORS_INDEX_ITERATOR_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
@@ -63,7 +53,7 @@ extern "C" {
 
 // .............................................................................
 // Essentially an interator consists of a sequence of 'intervals'. The iterator
-// iterators over each 'interval'. The exact meaning of an 'interval' will 
+// iterators over each 'interval'. The exact meaning of an 'interval' will
 // vary with the type of index that the iterator is used for. For example,
 // in a Skiplist Index, 'intervals' are actual intervals with end points. For
 // a Bitarray index there is only one 'interval' which consists of a vector list
@@ -91,29 +81,29 @@ typedef struct TRI_index_iterator_s {
   size_t _currentInterval;  // the current interval we are operating with
   void* _cursor;            // initially null -- the position within an interval -- typecast to appropriate structure
   void* _currentDocument;   // the result of a call to _next or _prev is stored here.
-  
+
   // ...........................................................................
   // Iteration callback functions:
   //
   // _filter := a function which performs a final filter on a document before
-  //            releasing it as available. This function is provided by the 
+  //            releasing it as available. This function is provided by the
   //            client using the index. If null, then not filter is performed.
   //
-  // _hasNext := returns true if there is a next document WITHOUT advancing the 
+  // _hasNext := returns true if there is a next document WITHOUT advancing the
   //             iterator.
-  // 
+  //
   // _next := increments the iterator by 1 and returns a document handle if available.
   //          Will return NULL if no document is available or if the _filter function
-  //          above excludes the document.  
+  //          above excludes the document.
   //
   // _nexts := similar to _next, except it advances the iterator by jumpSize
   //
-  // _hasPrev := returns true if there is a previous document WITHOUT advancing 
+  // _hasPrev := returns true if there is a previous document WITHOUT advancing
   //             the iterator.
-  // 
+  //
   // _prev := decrements the iterator by 1 and returns a document handle if available.
   //          Will return NULL if no document is available or if the _filter function
-  //          above excludes the document.  
+  //          above excludes the document.
   //
   // _prevs := similar to _prev., except it retreats the iterator by jumpSize.
   //
@@ -121,35 +111,35 @@ typedef struct TRI_index_iterator_s {
   // the role of these functions is reversed.
   //
   // Note that these functions are assigned when an interator is returned for
-  // an index lookup request. There is NO globally accessible create index 
+  // an index lookup request. There is NO globally accessible create index
   // iterator function
   // ...........................................................................
 
-  bool  (*_filter)  (struct TRI_index_iterator_s*);  
+  bool  (*_filter)  (struct TRI_index_iterator_s*);
   bool  (*_hasNext) (struct TRI_index_iterator_s*);
   void* (*_next)    (struct TRI_index_iterator_s*);
   void* (*_nexts)   (struct TRI_index_iterator_s*, int64_t jumpSize);
   bool  (*_hasPrev) (struct TRI_index_iterator_s*);
   void* (*_prev)    (struct TRI_index_iterator_s*);
-  void* (*_prevs)   (struct TRI_index_iterator_s*, int64_t jumpSize);  
-  void  (*_reset)   (struct TRI_index_iterator_s*, bool beginning);  
-  
-  
+  void* (*_prevs)   (struct TRI_index_iterator_s*, int64_t jumpSize);
+  void  (*_reset)   (struct TRI_index_iterator_s*, bool beginning);
+
+
   // ...........................................................................
   // Index related callback functions:
   //
-  // _destroyIterator := since the structure of the 'intervals' is dependent 
+  // _destroyIterator := since the structure of the 'intervals' is dependent
   //                     on the type of index used, then this callback will
   //                     correctly deallocate memory to all of the interval
   //                     structures and the cursor structure.
   //
   // Note that these functions are assigned when an interator is returned for
-  // an index lookup request. There is NO globally accessible create index 
+  // an index lookup request. There is NO globally accessible create index
   // iterator function
   // ...........................................................................
 
   void  (*_destroyIterator) (struct TRI_index_iterator_s*);
-  
+
 } TRI_index_iterator_t;
 
 
@@ -200,6 +190,6 @@ void TRI_FreeIndexIterator (TRI_index_iterator_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_EDGE_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_EDGE_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_EDGE_COLLECTION_H
+#define TRIAGENS_VOC_BASE_EDGE_COLLECTION_H 1
 
 #include "VocBase/document-collection.h"
 
@@ -91,7 +91,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for edge flags
 /// the type is an integer which indicates the edge direction (IN/OUT)
-/// plus two extra bits that indicate whether the edge is self-reflexive and 
+/// plus two extra bits that indicate whether the edge is self-reflexive and
 /// whether the edge is directed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -160,8 +160,8 @@ TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e);
 /// @brief compose edge flags aggregate out of multiple individual parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e, 
-                                const bool); 
+TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e,
+                                const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
@@ -184,5 +184,5 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

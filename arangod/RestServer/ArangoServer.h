@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
@@ -194,7 +194,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of command line arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,12 +268,12 @@ namespace triagens {
 /// @CMDOPT{\--database.directory @CA{directory}}
 ///
 /// The directory containing the collections and datafiles. Defaults
-/// to @LIT{/var/lib/arango}. When specifying the database directory, please 
+/// to @LIT{/var/lib/arango}. When specifying the database directory, please
 /// make sure the directory is actually writable by the arangod process.
 ///
 /// You should further not use a database directory which is provided by a
 /// network filesystem such as NFS. The reason is that networked filesystems
-/// might cause inconsistencies when there are multiple parallel readers or 
+/// might cause inconsistencies when there are multiple parallel readers or
 /// writers or they lack features required by arangod (e.g. flock()).
 ///
 /// @CMDOPT{@CA{directory}}
@@ -351,7 +351,7 @@ namespace triagens {
 ///
 /// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
 ///
-/// Force syncing of shape data to disk when writing shape information. 
+/// Force syncing of shape data to disk when writing shape information.
 /// If turned off, syncing will still happen for shapes of collections that
 /// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
 /// will always happen, regards of the value of waitForSync.
@@ -406,9 +406,9 @@ namespace triagens {
 ///
 /// @CMDOPT{\-\-default-language @CA{default-language}}
 ///
-/// The default language ist used for sorting and comparing strings. 
-/// The language value is a two-letter language code (ISO-639) or it is 
-/// composed by a two-letter language code with and a two letter country code 
+/// The default language ist used for sorting and comparing strings.
+/// The language value is a two-letter language code (ISO-639) or it is
+/// composed by a two-letter language code with and a two letter country code
 /// (ISO-3166). Valid languages are "de", "en", "en_US" or "en_UK".
 ///
 /// The default default-language is set to be the system locale on that platform.
@@ -437,5 +437,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

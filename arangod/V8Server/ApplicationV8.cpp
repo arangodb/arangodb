@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationV8.h"
@@ -61,7 +61,7 @@ namespace {
 
   class V8GcThread : public Thread {
     public:
-      V8GcThread (ApplicationV8* applicationV8) 
+      V8GcThread (ApplicationV8* applicationV8)
         : Thread("v8-gc"),
           _applicationV8(applicationV8),
           _lock(),
@@ -88,7 +88,7 @@ namespace {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the global GC timestamp 
+/// @brief set the global GC timestamp
 ////////////////////////////////////////////////////////////////////////////////
 
       void updateGcStamp (double value) {
@@ -296,7 +296,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
-  
+
   ++context->_dirt;
 
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
@@ -313,7 +313,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     _freeContexts.push_back(context);
     _busyContexts.erase(context);
   }
-  
+
   guard.broadcast();
 
   LOGGER_TRACE("returned dirty V8 context");
@@ -325,7 +325,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
 void ApplicationV8::addGlobalContextMethod (string const& method) {
   CONDITION_LOCKER(guard, _contextCondition);
-  
+
   for (vector<V8Context*>::iterator i = _freeContexts.begin();  i != _freeContexts.end();  ++i) {
     V8Context* context = *i;
 
@@ -362,7 +362,7 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
 
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
   size_t pickedContextNr = 0; // index of context with lowest GC stamp
-  
+
   for (size_t i = 0; i < n; ++i) {
     // compare last GC stamp
     if (_freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
@@ -370,7 +370,7 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
     }
   }
   // we now have the context to clean up in pickedContextNr
-    
+
   // this is the context to clean up
   context = _freeContexts[pickedContextNr];
   assert(context != 0);
@@ -449,8 +449,8 @@ void ApplicationV8::collectGarbage () {
         useReducedWait =  (context != 0);
       }
     }
-   
-    // update last gc time   
+
+    // update last gc time
     double lastGc = TRI_microtime();
     gc->updateGcStamp(lastGc);
 
@@ -554,10 +554,10 @@ bool ApplicationV8::prepare () {
 
     LOGGER_INFO("using " << StringUtils::join(paths, ", "));
   }
-  
+
   _startupLoader.setDirectory(_startupPath);
 
-  
+
   // set up action loader
   if (_useActions) {
     _actionLoader.setDirectory(_actionPath);
@@ -568,7 +568,7 @@ bool ApplicationV8::prepare () {
     LOGGER_INFO("using V8 options '" << _v8Options << "'");
     v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
   }
-  
+
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
@@ -714,7 +714,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
     v8::Handle<v8::Value> result = _startupLoader.executeGlobalScript(context->_context, "server/version-check.js");
-  
+
     if (! TRI_ObjectToBoolean(result)) {
       if (_performUpgrade) {
         LOGGER_FATAL_AND_EXIT("Database upgrade failed. Please inspect the logs from the upgrade procedure");
@@ -723,7 +723,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
         LOGGER_FATAL_AND_EXIT("Database version check failed. Please start the server with the --upgrade option");
       }
     }
-    
+
     LOGGER_DEBUG("database version check passed");
   }
 
@@ -733,7 +733,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     context->_context->Exit();
     context->_isolate->Exit();
     delete context->_locker;
-    
+
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
@@ -760,7 +760,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   delete context->_locker;
 
   context->_lastGcStamp = TRI_microtime();
-  
+
   LOGGER_TRACE("initialised V8 context #" << i);
 
   _freeContexts.push_back(context);
@@ -784,7 +784,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   v8::V8::LowMemoryNotification();
   while (! v8::V8::IdleNotification()) {
   }
- 
+
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
 
   if (v8g) {
@@ -810,5 +810,5 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

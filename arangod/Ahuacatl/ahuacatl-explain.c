@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-explain.h"
@@ -49,19 +49,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a string describing its type
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static TRI_json_t* NodeType (const TRI_aql_node_t* const node) {
   TRI_json_t* result;
   TRI_string_buffer_t buffer;
 
   assert(node);
-  
+
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_AppendStringStringBuffer(&buffer, TRI_NodeGroupAql(node, true));
 
   result = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
-  
+
   TRI_DestroyStringBuffer(&buffer);
 
   return result;
@@ -70,7 +70,7 @@ static TRI_json_t* NodeType (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a string describing its content
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static TRI_json_t* NodeDescription (const TRI_aql_node_t* const node) {
   TRI_string_buffer_t buffer;
   TRI_json_t* result;
@@ -78,7 +78,7 @@ static TRI_json_t* NodeDescription (const TRI_aql_node_t* const node) {
   assert(node);
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  
+
   TRI_NodeStringAql(&buffer, node);
 
   result = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
@@ -90,7 +90,7 @@ static TRI_json_t* NodeDescription (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add an expression node to the json result structure
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static bool AddNodeValue (TRI_json_t* row, TRI_aql_node_t* const node) {
   TRI_json_t* result;
   TRI_json_t* type;
@@ -100,30 +100,30 @@ static bool AddNodeValue (TRI_json_t* row, TRI_aql_node_t* const node) {
   if (result == NULL) {
     return false;
   }
-      
+
   type = NodeType(node);
   if (type != NULL) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
-                         "type", 
+                         "type",
                          type);
   }
-  
+
   value = NodeDescription(node);
   if (value != NULL) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
-                         "value", 
+                         "value",
                          value);
   }
 
   if (node->_type == TRI_AQL_NODE_COLLECTION) {
     TRI_json_t* extra = TRI_GetJsonCollectionHintAql(TRI_AQL_NODE_DATA(node));
-    
+
     if (extra != NULL) {
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            result,
-                           "extra", 
+                           "extra",
                            extra);
     }
   }
@@ -136,7 +136,7 @@ static bool AddNodeValue (TRI_json_t* row, TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a row to the result json structure
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static inline bool AddRow (TRI_aql_explain_t* const explain, TRI_json_t* value) {
   return TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, explain->_result, value) == TRI_ERROR_NO_ERROR;
 }
@@ -153,20 +153,20 @@ static inline TRI_json_t* GetRowProtoType (TRI_aql_explain_t* const explain,
   if (row == NULL) {
     return NULL;
   }
-  
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                        row,
-                       "id", 
+                       "id",
                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) ++explain->_count));
-  
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                        row,
-                       "loopLevel", 
+                       "loopLevel",
                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) explain->_level));
-  
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                        row,
-                       "type", 
+                       "type",
                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_NodeNameAql(type)));
 
   return row;
@@ -184,7 +184,7 @@ static TRI_aql_explain_t* CreateExplain (void) {
   if (explain == NULL) {
     return NULL;
   }
-  
+
   explain->_count = 0;
   explain->_level = 0;
 
@@ -216,11 +216,11 @@ static void FreeExplain (TRI_aql_explain_t* const explain) {
 /// @brief process a single statement
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker, 
+static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
                                          TRI_aql_node_t* node) {
   TRI_aql_explain_t* explain;
   TRI_aql_node_type_e type = node->_type;
-  
+
   explain = (TRI_aql_explain_t*) walker->_data;
 
   switch (type) {
@@ -251,9 +251,9 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 
       row = GetRowProtoType(explain, TRI_AQL_NODE_REFERENCE);
       variableNode = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "resultVariable", 
+                           "resultVariable",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
 
       AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 2));
@@ -261,11 +261,11 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 
       row = GetRowProtoType(explain, TRI_AQL_NODE_EXPAND);
       variableNode = TRI_AQL_NODE_MEMBER(node, 1);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "resultVariable", 
+                           "resultVariable",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-      
+
       AddNodeValue(row, TRI_AQL_NODE_MEMBER(node, 3));
       AddRow(explain, row);
       break;
@@ -276,9 +276,9 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "resultVariable", 
+                           "resultVariable",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
 
       AddRow(explain, row);
@@ -292,20 +292,20 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "resultVariable", 
+                           "resultVariable",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-     
-      hint = TRI_AQL_NODE_DATA(node); 
+
+      hint = TRI_AQL_NODE_DATA(node);
       if (hint != NULL &&
           hint->_limit._status == TRI_AQL_LIMIT_USE) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              row,
-                             "limit", 
+                             "limit",
                              TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
-      
+
       AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
@@ -315,7 +315,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_RETURN_EMPTY: {
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_json_t* row;
-      
+
       row = GetRowProtoType(explain, node->_type);
       AddNodeValue(row, expressionNode);
       AddRow(explain, row);
@@ -338,11 +338,11 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "resultVariable", 
+                           "resultVariable",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
-     
+
       AddNodeValue(row, expressionNode);
       AddRow(explain, row);
       break;
@@ -362,19 +362,19 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_aql_node_t* offsetNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_aql_node_t* countNode = TRI_AQL_NODE_MEMBER(node, 1);
       TRI_json_t* row;
-      
+
       row = GetRowProtoType(explain, node->_type);
 
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "offset", 
+                           "offset",
                            TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) TRI_AQL_NODE_INT(offsetNode)));
 
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            row,
-                           "count", 
+                           "count",
                            TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) TRI_AQL_NODE_INT(countNode)));
-      
+
       AddRow(explain, row);
       break;
     }
@@ -382,15 +382,15 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_COLLECT: {
       TRI_aql_node_t* listNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_json_t* row;
-      
+
       row = GetRowProtoType(explain, node->_type);
-       
+
       if (node->_members._length > 1) {
         TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 1);
 
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              row,
-                             "resultVariable", 
+                             "resultVariable",
                              TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
       }
 
@@ -407,7 +407,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -435,12 +435,12 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
     return NULL;
   }
 
-  walker = TRI_CreateStatementWalkerAql((void*) explain, 
+  walker = TRI_CreateStatementWalkerAql((void*) explain,
                                         false,
                                         NULL,
                                         &ProcessStatement,
                                         NULL);
-   
+
   if (walker == NULL) {
     FreeExplain(explain);
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -448,11 +448,11 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
     return NULL;
   }
 
-  TRI_WalkStatementsAql(walker, context->_statements); 
+  TRI_WalkStatementsAql(walker, context->_statements);
   result = explain->_result;
 
   FreeExplain(explain);
-   
+
   TRI_FreeStatementWalkerAql(walker);
 
   return result;
@@ -464,5 +464,5 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

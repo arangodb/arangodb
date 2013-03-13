@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_APPLICATION_SERVER_APPLICATION_SERVER_H
@@ -706,11 +706,11 @@ namespace triagens {
 /// This option allows the user to specify the name of a file to which
 /// information is logged. By default, if no log file is specified, the standard
 /// output is used. Note that if the file named by @CA{filename} does not
-/// exist, it will be created. If the file cannot be created (e.g. due to 
-/// missing file privileges), the server will refuse to start. If the specified 
-/// file already exists, output is appended to that file. 
+/// exist, it will be created. If the file cannot be created (e.g. due to
+/// missing file privileges), the server will refuse to start. If the specified
+/// file already exists, output is appended to that file.
 ///
-/// Use @LIT{+} to log to standard error. Use @LIT{-} to log to standard output. 
+/// Use @LIT{+} to log to standard error. Use @LIT{-} to log to standard output.
 /// Use @LIT{""} to disable logging to file.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -830,5 +830,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

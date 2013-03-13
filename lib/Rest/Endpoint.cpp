@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Endpoint.h"
@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
-#if TRI_HAVE_LINUX_SOCKETS  
+#if TRI_HAVE_LINUX_SOCKETS
 #include "Rest/EndpointUnixDomain.h"
 #endif
 #include "Rest/EndpointIpV4.h"
@@ -57,9 +57,9 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
-      
-Endpoint::Endpoint (const Endpoint::EndpointType type, 
-                    const Endpoint::DomainType domainType, 
+
+Endpoint::Endpoint (const Endpoint::EndpointType type,
+                    const Endpoint::DomainType domainType,
                     const Endpoint::ProtocolType protocol,
                     const Endpoint::EncryptionType encryption,
                     const std::string& specification,
@@ -78,7 +78,7 @@ Endpoint::Endpoint (const Endpoint::EndpointType type,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an endpoint
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 Endpoint::~Endpoint () {
 }
 
@@ -115,7 +115,7 @@ Endpoint* Endpoint::serverFactory (const std::string& specification, int listenB
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::factory (const Endpoint::EndpointType type, 
+Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
                              const std::string& specification,
                              int listenBacklog) {
   if (specification.size() < 7) {
@@ -148,17 +148,17 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
       return 0;
     }
   }
-  
+
   EncryptionType encryption = ENCRYPTION_NONE;
   string domainType = StringUtils::tolower(copy.substr(0, 7));
 
 
   if (StringUtils::isPrefix(domainType, "ssl://")) {
-    // ssl 
+    // ssl
     encryption = ENCRYPTION_SSL;
   }
 
-#if TRI_HAVE_LINUX_SOCKETS  
+#if TRI_HAVE_LINUX_SOCKETS
   else if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
     return new EndpointUnixDomain(type, protocol, specification, listenBacklog, copy.substr(strlen("unix://")));
@@ -178,10 +178,10 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
 
   // tcp/ip or ssl
   copy = copy.substr(strlen("tcp://"), copy.length());
-  
+
   if (copy[0] == '[') {
     // ipv6
-    found = copy.find("]:", 1);    
+    found = copy.find("]:", 1);
     if (found != string::npos && found > 2 && found + 2 < copy.size()) {
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
@@ -226,14 +226,14 @@ bool Endpoint::operator== (Endpoint const &that) const {
 /// @brief return the default endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string Endpoint::getDefaultEndpoint () {   
+const std::string Endpoint::getDefaultEndpoint () {
    return "tcp://" + EndpointIp::_defaultHost + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set socket timeout
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   struct timeval tv;
 
@@ -243,14 +243,14 @@ void Endpoint::setTimeout (TRI_socket_t s, double timeout) {
   tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
 
   // conversion to (const char*) ensures windows does not complain
-  setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)); 
+  setsockopt(s.fileHandle, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv));
   setsockopt(s.fileHandle, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set common socket flags
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 bool Endpoint::setSocketFlags (TRI_socket_t s) {
   if (_encryption == ENCRYPTION_SSL && _type == ENDPOINT_CLIENT) {
     // SSL client endpoints are not set to non-blocking
@@ -264,7 +264,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
 
     return false;
   }
-  
+
   // set close-on-exec flag, executed for both client and server endpoints
   ok = TRI_SetCloseOnExitSocket(s);
   if (!ok) {
@@ -282,5 +282,5 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

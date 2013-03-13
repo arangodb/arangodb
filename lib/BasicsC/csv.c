@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "csv.h"
@@ -113,7 +113,7 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser) {
 /// note that the separator string must be valid until the parser is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser, 
+void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser,
                                 char separator) {
   parser->_separator = separator;
 }
@@ -122,7 +122,7 @@ void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser,
 /// @brief set the quote character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser, 
+void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser,
                             char quote,
                             bool useQuote) {
   parser->_quote = quote;
@@ -280,7 +280,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           while (ptr < parser->_stop && *ptr != parser->_separator && *ptr != '\n') {
             ptr++;
           }
-          
+
           // found separator or eol
           if (ptr < parser->_stop) {
 
@@ -299,7 +299,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
               parser->_state = TRI_CSV_PARSER_BOL;
             }
           }
-          
+
           // need more input
           else {
             parser->_written = qtr;
@@ -360,7 +360,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           while (ptr < parser->_stop && *ptr != parser->_quote) {
             *qtr++ = *ptr++;
           }
-          
+
           // found quote, need at least another quote, a separator, or a eol
           if (ptr + 1 < parser->_stop) {
             ++ptr;
@@ -371,7 +371,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
               ptr++;
               break;
             }
-            
+
             // ignore spaces
             while ((*ptr == ' ' || *ptr == '\t') && (ptr + 1) < parser->_stop) {
               ++ptr;
@@ -404,7 +404,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
               ptr++;
             }
-            
+
             // ups
             else {
               parser->_state = TRI_CSV_PARSER_CORRUPTED;
@@ -432,5 +432,5 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

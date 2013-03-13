@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
@@ -44,7 +44,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a node is a bind parameter and convert it into a value node 
+/// @brief check if a node is a bind parameter and convert it into a value node
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
@@ -57,25 +57,25 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
   if (!node || node->_type != TRI_AQL_NODE_PARAMETER) {
     return node;
   }
-  
+
   // we found a parameter node
   context = (TRI_aql_context_t*) walker->_data;
   assert(context);
 
   bindValues = (TRI_associative_pointer_t*) &context->_parameters._values;
   assert(bindValues);
-  
+
   name = TRI_AQL_NODE_STRING(node);
   assert(name);
-     
+
   bind = (TRI_aql_bind_parameter_t*) TRI_LookupByKeyAssociativePointer(bindValues, name);
   if (bind) {
     if (*name == '@') {
       // a collection name bind parameter
       if (bind->_value->_type == TRI_JSON_STRING) {
-        char* collectionName = TRI_RegisterStringAql(context, 
-                                                     bind->_value->_value._string.data, 
-                                                     strlen(bind->_value->_value._string.data), 
+        char* collectionName = TRI_RegisterStringAql(context,
+                                                     bind->_value->_value._string.data,
+                                                     strlen(bind->_value->_value._string.data),
                                                      false);
 
         node = TRI_CreateNodeCollectionAql(context, collectionName);
@@ -93,7 +93,7 @@ static TRI_aql_node_t* ModifyNode (TRI_aql_statement_walker_t* const walker,
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
     }
   }
-  
+
   return node;
 }
 
@@ -148,7 +148,7 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
 /// @brief hash bind parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashBindParameterAql (TRI_associative_pointer_t* array, 
+uint64_t TRI_HashBindParameterAql (TRI_associative_pointer_t* array,
                                    void const* element) {
   TRI_aql_bind_parameter_t* parameter = (TRI_aql_bind_parameter_t*) element;
 
@@ -159,8 +159,8 @@ uint64_t TRI_HashBindParameterAql (TRI_associative_pointer_t* array,
 /// @brief comparison function used to determine bind parameter equality
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualBindParameterAql (TRI_associative_pointer_t* array, 
-                                void const* key, 
+bool TRI_EqualBindParameterAql (TRI_associative_pointer_t* array,
+                                void const* key,
                                 void const* element) {
   TRI_aql_bind_parameter_t* parameter = (TRI_aql_bind_parameter_t*) element;
 
@@ -229,7 +229,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
     TRI_aql_bind_parameter_t* parameter;
 
     assert(name);
-    assert(name->_type == TRI_JSON_STRING); 
+    assert(name->_type == TRI_JSON_STRING);
     assert(value);
 
     parameter = CreateParameter(name->_value._string.data, value);
@@ -237,7 +237,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
- 
+
     TRI_InsertKeyAssociativePointer(&context->_parameters._values, parameter->_name, parameter, false);
   }
 
@@ -293,7 +293,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
 /// @brief inject values of bind parameters into query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) { 
+bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
   TRI_aql_statement_walker_t* walker;
 
   assert(context);
@@ -302,7 +302,7 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
     // no bind parameters used in query, instantly return
     return true;
   }
-  
+
   walker = TRI_CreateStatementWalkerAql(context, true, &ModifyNode, NULL, NULL);
   if (walker == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -324,5 +324,5 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_VOC_SHAPER_H
-#define TRIAGENS_DURHAM_VOC_BASE_VOC_SHAPER_H 1
+#ifndef TRIAGENS_VOC_BASE_VOC_SHAPER_H
+#define TRIAGENS_VOC_BASE_VOC_SHAPER_H 1
 
 #include "BasicsC/common.h"
 
@@ -145,7 +145,7 @@ int TRI_CloseVocShaper (TRI_shaper_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t*,
-                                                     TRI_shape_sid_t, 
+                                                     TRI_shape_sid_t,
                                                      TRI_shape_pid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,5 +171,5 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

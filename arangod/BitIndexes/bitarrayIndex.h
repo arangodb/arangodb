@@ -5,40 +5,30 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_BITINDEXES_BITARRAY_INDEX_H
-#define TRIAGENS_DURHAM_BITINDEXES_BITARRAY_INDEX_H 1
+#ifndef TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H
+#define TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 #include "BitIndexes/bitarray.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
@@ -76,7 +66,7 @@ typedef struct {
 typedef struct {
   size_t _numElements;
   BitarrayIndexElement* _elements; // simple list of elements
-} BitarrayIndexElements;  
+} BitarrayIndexElements;
 
 
 
@@ -122,16 +112,16 @@ int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, TRI_vector_t
 
 int BitarrayIndex_add (BitarrayIndex*, BitarrayIndexElement*);
 
-TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,  
-                                          TRI_index_operator_t*, 
+TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex*,
+                                          TRI_index_operator_t*,
                                           TRI_vector_t*,
                                           void*,
                                           bool (*filter) (TRI_index_iterator_t*) );
 
-                                         
+
 int BitarrayIndex_insert (BitarrayIndex*, BitarrayIndexElement*);
 
-int BitarrayIndex_remove (BitarrayIndex*, BitarrayIndexElement*); 
+int BitarrayIndex_remove (BitarrayIndex*, BitarrayIndexElement*);
 
 int BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const BitarrayIndexElement*);
 
@@ -145,6 +135,6 @@ int BitarrayIndex_update (BitarrayIndex*, const BitarrayIndexElement*, const Bit
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

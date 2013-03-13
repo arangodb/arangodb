@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationAdminServer.h"
@@ -67,7 +67,7 @@ ApplicationAdminServer::ApplicationAdminServer ()
     _version(),
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     _versionDataQueued(0),
-#endif    
+#endif
     _versionDataDirect(0) {
   _pathOptions = new PathHandler::Options();
 }
@@ -84,7 +84,7 @@ ApplicationAdminServer::~ApplicationAdminServer () {
     delete _versionDataQueued;
   }
 #endif
-  
+
   if (_versionDataDirect != 0) {
     delete _versionDataDirect;
   }
@@ -162,7 +162,7 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, string const& prefix) {
-#if TRI_ENABLE_MAINTAINER_MODE    
+#if TRI_ENABLE_MAINTAINER_MODE
     // this handler does not provide any real benefit. we only use it to compare
     // the performance of direct vs. the performance of queued execution
     if (! _versionDataQueued) {
@@ -177,7 +177,7 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, stri
                         RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
                         (void*) _versionDataQueued);
 #endif
-  
+
   if (_allowVersion) {
     if (! _versionDataDirect) {
       _versionDataDirect = new RestVersionHandler::version_options_t;
@@ -211,7 +211,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   // add a web-admin directory
   // .............................................................................
-  
+
   if (_allowAdminDirectory) {
     LOGGER_DEBUG("using JavaScript front-end path '" << _adminDirectory << "'");
 
@@ -219,7 +219,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
-      
+
     factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
   }
 }
@@ -267,5 +267,5 @@ bool ApplicationAdminServer::prepare () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
@@ -55,7 +55,7 @@ bool TRI_InitParserAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse & validate the query string
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 bool TRI_ParseAql (TRI_aql_context_t* const context) {
   if (!TRI_StartScopeAql(context, TRI_AQL_SCOPE_MAIN)) {
     return false;
@@ -83,7 +83,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
                            const int column) {
   char buffer[1024];
   char* region;
-  
+
   assert(context);
   assert(context->_query);
   assert(message);
@@ -96,24 +96,24 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
     return;
   }
 
-  // note: line numbers reported by bison/flex start at 1, columns start at 0 
-  snprintf(buffer, 
-           sizeof(buffer), 
-           "%d:%d %s near '%s'", 
+  // note: line numbers reported by bison/flex start at 1, columns start at 0
+  snprintf(buffer,
+           sizeof(buffer),
+           "%d:%d %s near '%s'",
            line,
            column + 1,
            message,
            region);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, region);
-  TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer); 
+  TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_PARSE, buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief push something on the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PushStackParseAql (TRI_aql_context_t* const context, 
+bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
                             const void* const value) {
   assert(context);
 
@@ -170,5 +170,5 @@ char* TRI_GetNameParseAql (TRI_aql_context_t* const context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "terminal-utils.h"
@@ -46,7 +46,7 @@
 
 int TRI_ColumnsWidth (void) {
   char* e;
-  
+
   e = getenv("COLUMNS");
 
   if (e != 0) {
@@ -71,7 +71,7 @@ int TRI_ColumnsWidth (void) {
 void TRI_SetStdinVisibility (bool visible) {
 #ifdef TRI_HAVE_TERMIOS_H
   struct termios tty;
-  
+
   tcgetattr(STDIN_FILENO, &tty);
   if (visible) {
     tty.c_lflag |= ECHO;
@@ -89,5 +89,5 @@ void TRI_SetStdinVisibility (bool visible) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

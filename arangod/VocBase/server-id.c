@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -98,19 +98,19 @@ int TRI_ReadServerId (char const* filename) {
   TRI_json_t* json;
   TRI_json_t* idString;
   TRI_server_id_t foundId;
-  
+
   assert(filename != NULL);
 
   if (! TRI_ExistsFile(filename)) {
-    return TRI_ERROR_FILE_NOT_FOUND; 
+    return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL); 
+  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
   if (json == NULL) {
-    return TRI_ERROR_INTERNAL; 
+    return TRI_ERROR_INTERNAL;
   }
 
-  idString = TRI_LookupArrayJson(json, "serverId"); 
+  idString = TRI_LookupArrayJson(json, "serverId");
 
   if (idString == NULL || idString->_type != TRI_JSON_STRING) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -138,7 +138,7 @@ int TRI_ReadServerId (char const* filename) {
 int TRI_WriteServerId (char const* filename) {
   TRI_json_t* json;
   char* idString;
-  char buffer[32];  
+  char buffer[32];
   size_t len;
   time_t tt;
   struct tm tb;
@@ -146,7 +146,7 @@ int TRI_WriteServerId (char const* filename) {
 
   assert(filename != NULL);
 
-  // create a json object 
+  // create a json object
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   if (json == NULL) {
     // out of memory
@@ -155,11 +155,11 @@ int TRI_WriteServerId (char const* filename) {
   }
 
   assert(ServerId != 0);
- 
+
   idString = TRI_StringUInt64((uint64_t) ServerId);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
   TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-  
+
   tt = time(0);
   TRI_gmtime(tt, &tb);
   len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
@@ -168,7 +168,7 @@ int TRI_WriteServerId (char const* filename) {
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
   ok = TRI_SaveJson(filename, json);
-    
+
   if (! ok) {
     LOG_ERROR("could not save shutdown information in file '%s': %s", filename, TRI_last_error());
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -190,12 +190,12 @@ int TRI_WriteServerId (char const* filename) {
 int TRI_GenerateServerId () {
   uint64_t randomValue = 0ULL; // init for our friend Valgrind
   uint32_t* value;
-  
+
   // save two uint32_t values
   value = (uint32_t*) &randomValue;
   *(value++) = TRI_UInt32Random();
   *(value)   = TRI_UInt32Random();
-  
+
   // use the lower 6 bytes only
   randomValue &= TRI_SERVER_ID_MASK;
 
@@ -210,5 +210,5 @@ int TRI_GenerateServerId () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

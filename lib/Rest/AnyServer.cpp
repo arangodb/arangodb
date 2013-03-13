@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,12 +23,12 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AnyServer.h"
 
-#ifdef TRI_HAVE_SYS_WAIT_H         
+#ifdef TRI_HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
 
@@ -151,7 +151,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
     LOGGER_FATAL_AND_EXIT("cannot fork");
   }
 
-  // Upon successful completion, fork() shall return 0 to the child process and 
+  // Upon successful completion, fork() shall return 0 to the child process and
   // shall return the process ID of the child process to the parent process.
 
   // if we got a good PID, then we can exit the parent process
@@ -268,7 +268,7 @@ int AnyServer::start () {
   if (_applicationServer == 0) {
     buildApplicationServer();
   }
-  
+
   if (_supervisorMode) {
     return startupSupervisor();
   }
@@ -338,35 +338,35 @@ int AnyServer::startupSupervisor () {
   static time_t MIN_TIME_ALIVE_IN_SEC = 30;
 
   LOGGER_INFO("starting up in supervisor mode");
-  
+
   CheckPidFile(_pidFile);
 
   _applicationServer->setupLogging(false, true);
 
   string current;
   int result = forkProcess(_workingDirectory, current);
-  
+
   // main process
   if (result != 0) {
     return 0;
   }
-  
+
   // child process
   else {
     time_t startTime = time(0);
     time_t t;
     bool done = false;
     result = 0;
-    
+
     while (! done) {
-      
+
       // fork of the server
       TRI_pid_t pid = fork();
-      
+
       if (pid < 0) {
         TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
       }
-      
+
       // parent
       if (0 < pid) {
         _applicationServer->setupLogging(false, true);
@@ -375,7 +375,7 @@ int AnyServer::startupSupervisor () {
         int status;
         waitpid(pid, &status, 0);
         bool horrible = true;
-        
+
         if (WIFEXITED(status)) {
 
           // give information about cause of death
@@ -388,7 +388,7 @@ int AnyServer::startupSupervisor () {
             t = time(0) - startTime;
 
             LOGGER_ERROR("child " << pid << " died a horrible death, exit status " << WEXITSTATUS(status));
-            
+
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOGGER_ERROR("child only survived for " << t << " seconds, this will not work - please fix the error first");
@@ -408,7 +408,7 @@ int AnyServer::startupSupervisor () {
               done = true;
               horrible = false;
               break;
-              
+
             default:
               t = time(0) - startTime;
 
@@ -437,11 +437,11 @@ int AnyServer::startupSupervisor () {
           }
         }
       }
-      
+
       // child
       else {
         _applicationServer->setupLogging(true, false);
-        
+
         // write the pid file
         WritePidFile(_pidFile, TRI_CurrentProcessId());
 
@@ -449,11 +449,11 @@ int AnyServer::startupSupervisor () {
 #ifdef TRI_HAVE_PRCTL
         prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
 #endif
-        
+
         // startup server
         prepareServer();
         result = startupServer();
-        
+
         // remove pid file
         if (! FileUtils::remove(_pidFile)) {
           LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
@@ -464,7 +464,7 @@ int AnyServer::startupSupervisor () {
       }
     }
   }
-  
+
   return result;
 }
 
@@ -474,34 +474,34 @@ int AnyServer::startupSupervisor () {
 
 int AnyServer::startupDaemon () {
   LOGGER_INFO("starting up in daemon mode");
-  
+
   CheckPidFile(_pidFile);
 
   _applicationServer->setupLogging(false, true);
 
   string current;
   int result = forkProcess(_workingDirectory, current);
-  
+
   // main process
   if (result != 0) {
     TRI_SetProcessTitle("arangodb [daemon]");
     WritePidFile(_pidFile, result);
   }
-  
+
   // child process
   else {
     _applicationServer->setupLogging(true, false);
-    
+
     // and startup server
     prepareServer();
     result = startupServer();
-    
+
     // remove pid file
     if (! FileUtils::remove(_pidFile)) {
       LOGGER_DEBUG("cannot remove pid file '" << _pidFile << "'");
     }
   }
-  
+
   return result;
 }
 
@@ -512,7 +512,7 @@ int AnyServer::startupSupervisor () {
 }
 
 int AnyServer::startupDaemon () {
-  return 0;   
+  return 0;
 }
 
 #endif
@@ -523,5 +523,5 @@ int AnyServer::startupDaemon () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

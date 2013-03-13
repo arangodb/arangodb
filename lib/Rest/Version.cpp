@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Rest/Version.h"
@@ -129,7 +129,7 @@ std::string Version::getICUVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get configure 
+/// @brief get configure
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getConfigure () {
@@ -138,9 +138,9 @@ std::string Version::getConfigure () {
 #ifdef TRI_CONFIGURE_COMMAND
 #ifdef TRI_CONFIGURE_OPTIONS
   configure.append(TRI_CONFIGURE_COMMAND).append(TRI_CONFIGURE_OPTIONS);
-#endif          
-#endif         
-  return configure; 
+#endif
+#endif
+  return configure;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,8 +152,8 @@ std::string Version::getConfigureEnvironment () {
 
 #ifdef TRI_CONFIGURE_FLAGS
   env.append(TRI_CONFIGURE_FLAGS);
-#endif          
-  return env; 
+#endif
+  return env;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +165,7 @@ std::string Version::getRepositoryVersion () {
   return std::string(TRI_REPOSITORY_VERSION);
 #else
   return std::string("");
-#endif          
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,10 +183,10 @@ std::string Version::getBuildDate () {
 std::string Version::getVerboseVersionString () {
   std::ostringstream version;
 
-  version << "ArangoDB " << getServerVersion() <<  
+  version << "ArangoDB " << getServerVersion() <<
     " -- " <<
     "ICU " << getICUVersion() << ", " <<
-    "V8 version " << getV8Version() << ", " 
+    "V8 version " << getV8Version() << ", "
     "SSL engine " << getOpenSSLVersion();
 
   return version.str();
@@ -212,7 +212,7 @@ std::string Version::getDetailed () {
       result += "\r\n";
 #else
       result += "\n";
-#endif    
+#endif
     }
   }
 
@@ -259,5 +259,5 @@ std::map<std::string, std::string> Version::Values;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

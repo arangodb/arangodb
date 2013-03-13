@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Jan Steemann
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "edge-collection.h"
@@ -89,14 +89,14 @@ static bool IsReflexive (const TRI_edge_header_t* const edge) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FindEdges (const TRI_edge_direction_e direction,
-                       TRI_multi_pointer_t* idx, 
+                       TRI_multi_pointer_t* idx,
                        TRI_vector_pointer_t* result,
                        TRI_edge_header_t* entry,
                        const int matchType) {
   union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
   TRI_vector_pointer_t found;
   TRI_edge_header_t* edge;
-  
+
   entry->_flags = TRI_LookupFlagsEdge(direction);
   found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, idx, entry);
 
@@ -106,7 +106,7 @@ static bool FindEdges (const TRI_edge_direction_e direction,
     if (result->_capacity == 0) {
       int res;
 
-      // if result vector is still empty and we have results, re-init the 
+      // if result vector is still empty and we have results, re-init the
       // result vector to a "good" size. this will save later reallocations
       res = TRI_InitVectorPointer2(result, TRI_UNKNOWN_MEM_ZONE, found._length);
       if (res != TRI_ERROR_NO_ERROR) {
@@ -127,8 +127,8 @@ static bool FindEdges (const TRI_edge_direction_e direction,
 
       // if matchType is 1, we'll return all found edges without further filtering
       //
-      // if matchType is 2 (inEdges or outEdges query), the direction is reversed. 
-      // We'll exclude all self-reflexive edges now (we already got them in iteration 1), 
+      // if matchType is 2 (inEdges or outEdges query), the direction is reversed.
+      // We'll exclude all self-reflexive edges now (we already got them in iteration 1),
       // and alsoexclude all unidirectional edges
       //
       // if matchType is 3, the direction is also reversed. We'll exclude all
@@ -144,9 +144,9 @@ static bool FindEdges (const TRI_edge_direction_e direction,
 
       TRI_PushBackVectorPointer(result, cnv.v);
     }
-  } 
-    
-  
+  }
+
+
   TRI_DestroyVectorPointer(&found);
 
   return true;
@@ -186,8 +186,8 @@ TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e direction) {
 /// @brief compose edge flags aggregate out of multiple individual parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e direction, 
-                                const bool isReflexive) { 
+TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e direction,
+                                const bool isReflexive) {
   TRI_edge_flags_t result = TRI_LookupFlagsEdge(direction);
 
   if (isReflexive) {
@@ -209,14 +209,14 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
   TRI_edge_header_t entry;
   TRI_multi_pointer_t* edgesIndex;
 
-  // search criteria 
+  // search criteria
   entry._mptr = NULL;
   entry._cid = cid;
   entry._searchKey._key = key;
 
   // initialise the result vector
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
-  
+
   edgesIndex = FindEdgesIndex(document);
   if (edgesIndex == NULL) {
     LOG_ERROR("collection does not have an edges index");
@@ -247,5 +247,5 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

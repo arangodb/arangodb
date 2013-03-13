@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statement-dump.h"
@@ -47,7 +47,7 @@
 
 static void PrintIndent (TRI_aql_dump_t* const state) {
   int64_t i;
-  
+
   for (i = 0; i < state->_indent; ++i) {
     printf("  ");
   }
@@ -122,7 +122,7 @@ static inline void Outdent (TRI_aql_dump_t* const state) {
 /// @brief dump an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker, 
+static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker,
                                  TRI_aql_node_t* const node) {
   TRI_aql_dump_t* state = (TRI_aql_dump_t*) walker->_data;
 
@@ -136,7 +136,7 @@ static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker,
   Indent(state);
 
   switch (node->_type) {
-    case TRI_AQL_NODE_VALUE: 
+    case TRI_AQL_NODE_VALUE:
       DumpValue(state, node);
       break;
 
@@ -156,7 +156,7 @@ static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker,
       PrintIndent(state);
       printf("asc/desc: %lu\n", (unsigned long) TRI_AQL_NODE_BOOL(node));
       break;
-    
+
     default: {
       // nada
     }
@@ -181,13 +181,13 @@ static TRI_aql_node_t* DumpStatementStart (TRI_aql_statement_walker_t* const wal
   Indent((TRI_aql_dump_t*) walker->_data);
 
   return DumpNode(walker, node);
-}      
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* DumpStatementEnd (TRI_aql_statement_walker_t* const walker, 
+static TRI_aql_node_t* DumpStatementEnd (TRI_aql_statement_walker_t* const walker,
                                          TRI_aql_node_t* const node) {
   if (node == NULL) {
     return node;
@@ -197,10 +197,10 @@ static TRI_aql_node_t* DumpStatementEnd (TRI_aql_statement_walker_t* const walke
   Outdent((TRI_aql_dump_t*) walker->_data);
 
   return node;
-}      
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -222,11 +222,11 @@ void TRI_DumpStatementsAql (TRI_aql_statement_list_t* const statements) {
 
   state._indent = 0;
 
-  walker = TRI_CreateStatementWalkerAql((void*) &state, 
+  walker = TRI_CreateStatementWalkerAql((void*) &state,
                                         false,
-                                        &DumpNode, 
-                                        &DumpStatementStart, 
-                                        &DumpStatementEnd); 
+                                        &DumpNode,
+                                        &DumpStatementStart,
+                                        &DumpStatementEnd);
   if (walker == NULL) {
     return;
   }
@@ -242,5 +242,5 @@ void TRI_DumpStatementsAql (TRI_aql_statement_list_t* const statements) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

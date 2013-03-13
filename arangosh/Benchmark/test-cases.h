@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 using namespace std;
@@ -36,7 +36,7 @@ static bool DeleteCollection (SimpleClient*, const string&);
 
 static bool CreateCollection (SimpleClient*, const string&, const int);
 
-static bool CreateIndex (SimpleClient*, const string&, const string&, const string&); 
+static bool CreateIndex (SimpleClient*, const string&, const string&, const string&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              benchmark test cases
@@ -52,7 +52,7 @@ static bool CreateIndex (SimpleClient*, const string&, const string&, const stri
 ////////////////////////////////////////////////////////////////////////////////
 
 struct VersionTest : public BenchmarkOperation {
-  VersionTest () 
+  VersionTest ()
     : BenchmarkOperation () {
   }
 
@@ -68,14 +68,14 @@ struct VersionTest : public BenchmarkOperation {
 
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     static string url = "/_api/version";
-    
+
     return url;
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return HttpRequest::HTTP_REQUEST_GET;
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     static const char* payload = "";
 
@@ -83,7 +83,7 @@ struct VersionTest : public BenchmarkOperation {
     *length = 0;
     return payload;
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -104,13 +104,13 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCrudAppendTest : public BenchmarkOperation {
-  DocumentCrudAppendTest () 
+  DocumentCrudAppendTest ()
     : BenchmarkOperation () {
   }
 
   ~DocumentCrudAppendTest () {
   }
-  
+
   bool setUp (SimpleClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
@@ -118,7 +118,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
   void tearDown () {
   }
-  
+
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 4;
 
@@ -153,7 +153,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     const size_t mod = globalCounter % 4;
 
@@ -179,7 +179,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
           TRI_AppendStringStringBuffer(buffer, "\":false");
         }
       }
-    
+
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
@@ -201,7 +201,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       return 0;
     }
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -222,13 +222,13 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCrudTest : public BenchmarkOperation {
-  DocumentCrudTest () 
+  DocumentCrudTest ()
     : BenchmarkOperation () {
   }
 
   ~DocumentCrudTest () {
   }
-  
+
   bool setUp (SimpleClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
@@ -274,7 +274,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     const size_t mod = globalCounter % 5;
 
@@ -300,7 +300,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
           TRI_AppendStringStringBuffer(buffer, "\":false");
         }
       }
-    
+
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
@@ -322,7 +322,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       return 0;
     }
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -343,13 +343,13 @@ struct DocumentCrudTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EdgeCrudTest : public BenchmarkOperation {
-  EdgeCrudTest () 
+  EdgeCrudTest ()
     : BenchmarkOperation () {
   }
 
   ~EdgeCrudTest () {
   }
-  
+
   bool setUp (SimpleClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 3);
@@ -397,7 +397,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     const size_t mod = globalCounter % 4;
 
@@ -423,7 +423,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
           TRI_AppendStringStringBuffer(buffer, "\":false");
         }
       }
-    
+
       TRI_AppendCharStringBuffer(buffer, '}');
 
       *length = TRI_LengthStringBuffer(buffer);
@@ -445,7 +445,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       return 0;
     }
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -466,13 +466,13 @@ struct EdgeCrudTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct SkiplistTest : public BenchmarkOperation {
-  SkiplistTest () 
+  SkiplistTest ()
     : BenchmarkOperation () {
   }
 
   ~SkiplistTest () {
   }
-  
+
   bool setUp (SimpleClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2) &&
@@ -516,7 +516,7 @@ struct SkiplistTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     const size_t mod = globalCounter % 4;
 
@@ -554,7 +554,7 @@ struct SkiplistTest : public BenchmarkOperation {
       return 0;
     }
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -575,13 +575,13 @@ struct SkiplistTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct HashTest : public BenchmarkOperation {
-  HashTest () 
+  HashTest ()
     : BenchmarkOperation () {
   }
 
   ~HashTest () {
   }
-  
+
   bool setUp (SimpleClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2) &&
@@ -625,7 +625,7 @@ struct HashTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     const size_t mod = globalCounter % 4;
 
@@ -663,7 +663,7 @@ struct HashTest : public BenchmarkOperation {
       return 0;
     }
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -684,7 +684,7 @@ struct HashTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCreationTest : public BenchmarkOperation {
-  DocumentCreationTest () 
+  DocumentCreationTest ()
     : BenchmarkOperation (),
       _url(),
       _buffer(0) {
@@ -703,7 +703,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
         TRI_AppendCharStringBuffer(_buffer, ',');
       }
     }
-    
+
     TRI_AppendCharStringBuffer(_buffer, '}');
 
     _length = TRI_LengthStringBuffer(_buffer);
@@ -712,7 +712,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   ~DocumentCreationTest () {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
-  
+
   bool setUp (SimpleClient* client) {
     return DeleteCollection(client, Collection) &&
            CreateCollection(client, Collection, 2);
@@ -720,7 +720,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 
   void tearDown () {
   }
-  
+
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return _url;
   }
@@ -728,13 +728,13 @@ struct DocumentCreationTest : public BenchmarkOperation {
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     *mustFree = false;
     *length = _length;
     return (const char*) _buffer->_buffer;
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -743,7 +743,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   string _url;
 
   TRI_string_buffer_t* _buffer;
-  
+
   size_t _length;
 };
 
@@ -761,7 +761,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct CollectionCreationTest : public BenchmarkOperation {
-  CollectionCreationTest () 
+  CollectionCreationTest ()
     : BenchmarkOperation (),
       _url() {
     _url = "/_api/collection";
@@ -770,7 +770,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
   ~CollectionCreationTest () {
   }
-  
+
   BenchmarkCounter<uint64_t>* getSharedCounter () {
     if (_counter == 0) {
       _counter = new BenchmarkCounter<uint64_t>(0, 1024 * 1024);
@@ -778,14 +778,14 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
     return _counter;
   }
-  
+
   bool setUp (SimpleClient* client) {
     return true;
   }
 
   void tearDown () {
   }
-  
+
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return _url;
   }
@@ -793,7 +793,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
-  
+
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
     BenchmarkCounter<uint64_t>* ctr = getSharedCounter();
     TRI_string_buffer_t* buffer;
@@ -810,15 +810,15 @@ struct CollectionCreationTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\"}");
 
     *length = TRI_LengthStringBuffer(buffer);
-   
+
     // this will free the string buffer frame, but not the string
-    data = buffer->_buffer; 
+    data = buffer->_buffer;
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     *mustFree = true;
     return (const char*) data;
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -855,8 +855,8 @@ static bool DeleteCollection (SimpleClient* client, const string& name) {
   result = client->request(HttpRequest::HTTP_REQUEST_DELETE,
                            "/_api/collection/" + name,
                            "",
-                           0, 
-                           headerFields); 
+                           0,
+                           headerFields);
 
   bool failed = true;
   if (result != 0) {
@@ -874,8 +874,8 @@ static bool DeleteCollection (SimpleClient* client, const string& name) {
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateCollection (SimpleClient* client, 
-                              const string& name, 
+static bool CreateCollection (SimpleClient* client,
+                              const string& name,
                               const int type) {
   map<string, string> headerFields;
   SimpleHttpResult* result = 0;
@@ -884,12 +884,12 @@ static bool CreateCollection (SimpleClient* client,
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
                            "/_api/collection",
                            payload.c_str(),
-                           payload.size(), 
-                           headerFields); 
+                           payload.size(),
+                           headerFields);
 
   bool failed = true;
 
-  if (result != 0) { 
+  if (result != 0) {
     if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
     }
@@ -904,9 +904,9 @@ static bool CreateCollection (SimpleClient* client,
 /// @brief create an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateIndex (SimpleClient* client,  
-                         const string& name, 
-                         const string& type, 
+static bool CreateIndex (SimpleClient* client,
+                         const string& name,
+                         const string& type,
                          const string& fields) {
   map<string, string> headerFields;
   SimpleHttpResult* result = 0;
@@ -915,12 +915,12 @@ static bool CreateIndex (SimpleClient* client,
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
                            "/_api/index?collection=" + name,
                            payload.c_str(),
-                           payload.size(), 
-                           headerFields); 
+                           payload.size(),
+                           headerFields);
 
   bool failed = true;
 
-  if (result != 0) { 
+  if (result != 0) {
     if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
     }
@@ -934,7 +934,7 @@ static bool CreateIndex (SimpleClient* client,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the test case for a name
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static BenchmarkOperation* GetTestCase (const string& name) {
   if (name == "version") {
     return new VersionTest();
@@ -974,5 +974,5 @@ static BenchmarkOperation* GetTestCase (const string& name) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

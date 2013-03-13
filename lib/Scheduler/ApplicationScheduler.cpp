@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -63,7 +63,7 @@ namespace {
 #include <windows.h>
 #include <stdio.h>
 
-bool static CtrlHandler(DWORD eventType); 
+bool static CtrlHandler(DWORD eventType);
 static SignalTask* localSignalTask;
 
 #endif
@@ -80,7 +80,7 @@ static SignalTask* localSignalTask;
       ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         localSignalTask = this;
         // TODO: Variable 'result' is assigned a value that is never used
-        int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true); 
+        int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true);
       }
 
     public:
@@ -196,9 +196,9 @@ static SignalTask* localSignalTask;
   bool CtrlHandler(DWORD eventType) {
     ControlCTask* ccTask = (ControlCTask*)(localSignalTask);
     string msg = ccTask->_server->getName() + " [shutting down]";
-    bool shutdown = false;    
+    bool shutdown = false;
     string shutdownMessage;
-    
+
     // .........................................................................
     // TODO: popup message
     // .........................................................................
@@ -208,7 +208,7 @@ static SignalTask* localSignalTask;
 
       case CTRL_BREAK_EVENT: {
         //TODO: windows does not appreciate changing the environment in this manner
-        //TRI_SetProcessTitle(msg.c_str()); 
+        //TRI_SetProcessTitle(msg.c_str());
         shutdown = true;
         shutdownMessage = "control-break received";
         break;
@@ -229,7 +229,7 @@ static SignalTask* localSignalTask;
         shutdownMessage = "window-close received";
         break;
       }
-      
+
       case CTRL_LOGOFF_EVENT: {
         //TODO: windows does not appreciate changing the environment in this manner
         //TRI_SetProcessTitle(msg.c_str());
@@ -263,7 +263,7 @@ static SignalTask* localSignalTask;
       LOGGER_INFO(shutdownMessage << ", beginning shut down sequence");
       ccTask->_server->beginShutdown();
       ++ccTask->_seen;
-      return true; 
+      return true;
     }
 
      // ............................................................................
@@ -407,9 +407,9 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
 #ifdef _WIN32
     // ...........................................................................
-    // since we are trying to use libev, then only select is available 
+    // since we are trying to use libev, then only select is available
     // no point in allowing this to be configured at this stage. Perhaps if we
-    // eventually write a native libev we can offer something.  
+    // eventually write a native libev we can offer something.
     // ...........................................................................
     //("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
 #else
@@ -697,5 +697,5 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

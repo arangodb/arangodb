@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointIpV4.h"
@@ -52,9 +52,9 @@ using namespace triagens::rest;
 EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
                             const Endpoint::ProtocolType protocol,
                             const Endpoint::EncryptionType encryption,
-                            const std::string& specification, 
+                            const std::string& specification,
                             int listenBacklog,
-                            const std::string& host, 
+                            const std::string& host,
                             const uint16_t port) :
     EndpointIp(type, DOMAIN_IPV4, protocol, encryption, specification, listenBacklog, host, port) {
 }
@@ -72,5 +72,5 @@ EndpointIpV4::~EndpointIpV4 () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

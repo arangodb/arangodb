@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_DATAFILE_H
-#define TRIAGENS_DURHAM_VOC_BASE_DATAFILE_H 1
+#ifndef TRIAGENS_VOC_BASE_DATAFILE_H
+#define TRIAGENS_VOC_BASE_DATAFILE_H 1
 
 #include "BasicsC/common.h"
 
@@ -117,7 +117,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum size of a single marker (in bytes)
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 #define TRI_MARKER_MAXIMAL_SIZE (256 * 1024 * 1024)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ TRI_df_state_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_MARKER_MIN                    = 999,  // not a real marker type, 
+  TRI_MARKER_MIN                    = 999,  // not a real marker type,
                                             // but used for bounds checking
 
   TRI_DF_MARKER_HEADER              = 1000,
@@ -170,7 +170,7 @@ typedef enum {
   TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
   TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
   TRI_DOC_MARKER_EDGE               = 3006,
-          
+
   TRI_DOC_MARKER_KEY_DOCUMENT       = 3007, // new marker with key values
   TRI_DOC_MARKER_KEY_EDGE           = 3008, // new marker with key values
   TRI_DOC_MARKER_KEY_DELETION       = 3009, // new marker with key values
@@ -222,7 +222,7 @@ TRI_df_scan_t;
 
 typedef struct TRI_df_scan_entry_s {
   TRI_voc_size_t _position;
-  TRI_voc_size_t _size;    
+  TRI_voc_size_t _size;
   TRI_voc_tick_t _tick;
 
   TRI_df_marker_type_t _type;
@@ -258,7 +258,7 @@ typedef struct TRI_datafile_s {
   void (*destroy)(struct TRI_datafile_s*); // destroys the datafile
   bool (*sync)(const struct TRI_datafile_s* const, char const*, char const*); // syncs the datafile
   int (*truncate)(struct TRI_datafile_s* const, const off_t); // truncates the datafile to a specific length
-  
+
   int _lastError;                // last (cirtical) error
   bool _full;                    // at least one request was rejected because there is not enough room
   bool _isSealed;                // true, if footer has been written
@@ -436,7 +436,7 @@ TRI_df_skip_marker_t;
 /// ref TRI_CreatePhysicalDatafile, based on the first parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateDatafile (char const*, 
+TRI_datafile_t* TRI_CreateDatafile (char const*,
                                     TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -464,7 +464,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
 /// automatically adds a @ref TRI_df_footer_marker_t to the file.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreatePhysicalDatafile (char const*, 
+TRI_datafile_t* TRI_CreatePhysicalDatafile (char const*,
                                             TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,5 +625,5 @@ void TRI_DestroyDatafileScan (TRI_df_scan_t* scan);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

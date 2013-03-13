@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-variable.h"
@@ -41,7 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
-                                           TRI_aql_node_t* const definingNode) { 
+                                           TRI_aql_node_t* const definingNode) {
   TRI_aql_variable_t* variable;
 
   variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
@@ -92,10 +92,10 @@ void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash variable 
+/// @brief hash variable
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashVariableAql (TRI_associative_pointer_t* array, 
+uint64_t TRI_HashVariableAql (TRI_associative_pointer_t* array,
                               void const* element) {
   TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
 
@@ -106,8 +106,8 @@ uint64_t TRI_HashVariableAql (TRI_associative_pointer_t* array,
 /// @brief comparison function used to determine variable equality
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualVariableAql (TRI_associative_pointer_t* array, 
-                           void const* key, 
+bool TRI_EqualVariableAql (TRI_associative_pointer_t* array,
+                           void const* key,
                            void const* element) {
   TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
 
@@ -116,7 +116,7 @@ bool TRI_EqualVariableAql (TRI_associative_pointer_t* array,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a variable name follows the required naming convention 
+/// @brief checks if a variable name follows the required naming convention
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsValidVariableNameAql (const char* const name) {
@@ -142,5 +142,5 @@ bool TRI_IsValidVariableNameAql (const char* const name) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

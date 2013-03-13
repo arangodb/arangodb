@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,27 +22,27 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathHandler.h"
 
 #include <fstream>
 
-#include <Basics/FileUtils.h>
-#include <Logger/Logger.h>
-#include <Basics/StringBuffer.h>
-#include <Rest/HttpRequest.h>
-#include <Rest/HttpResponse.h>
+#include "Basics/FileUtils.h"
+#include "Logger/Logger.h"
+#include "Basics/StringBuffer.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 
 using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // constructors and destructores
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     PathHandler::PathHandler (HttpRequest* request, Options const* options)
       : HttpHandler(request),
@@ -58,9 +58,9 @@ namespace triagens {
       }
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // Handler methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     HttpHandler::status_e PathHandler::execute () {
       static string const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
@@ -71,7 +71,7 @@ namespace triagens {
 
       if (names.empty() && ! defaultFile.empty()) {
         string url = _request->requestPath();
-       
+
         if (! url.empty() && url[url.size() - 1] != '/') {
           url += '/';
         }

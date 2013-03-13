@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
@@ -65,7 +65,7 @@ namespace triagens {
 
         SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
                                              const triagens::arango::CollectionNameResolver& resolver,
-                                             const TRI_transaction_cid_t cid) : 
+                                             const TRI_transaction_cid_t cid) :
           SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_READ) {
         }
 
@@ -75,7 +75,7 @@ namespace triagens {
 
         SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
                                              const triagens::arango::CollectionNameResolver& resolver,
-                                             const string& name) : 
+                                             const string& name) :
           SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_READ) {
         }
 
@@ -99,5 +99,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

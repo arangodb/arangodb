@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "collection.h"
@@ -62,7 +62,7 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
   if (pos1 == NULL) {
     return 0;
   }
-  
+
   pos2 = strrchr(filename, '-');
 
   if (pos2 == NULL || pos2 > pos1) {
@@ -73,14 +73,14 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two filenames, based on the numeric part contained in 
+/// @brief compare two filenames, based on the numeric part contained in
 /// the filename
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FilenameComparator (const void* lhs, const void* rhs) {
   const char* l = *((char**) lhs);
   const char* r = *((char**) rhs);
- 
+
   const uint64_t numLeft  = GetNumericFilenamePart(l);
   const uint64_t numRight = GetNumericFilenamePart(r);
 
@@ -91,7 +91,7 @@ static int FilenameComparator (const void* lhs, const void* rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two datafiles, based on the numeric part contained in 
+/// @brief compare two datafiles, based on the numeric part contained in
 /// the filename
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -145,7 +145,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   memset(collection, 0, sizeof(TRI_collection_t));
 
   TRI_CopyCollectionInfo(&collection->_info, info);
-  
+
   collection->_vocbase = vocbase;
 
   collection->_state = TRI_COL_STATE_WRITE;
@@ -253,7 +253,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_DestroyVectorString(&files);
 
   regfree(&re);
-  
+
   // now sort the files in the structures that we created.
   // the sorting allows us to iterate the files in the correct order
   SortFilenames(&structure._journals);
@@ -487,7 +487,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   }
 
   TRI_DestroyVectorPointer(&all);
-  
+
   // sort the datafiles.
   // this allows us to iterate them in the correct order
   SortDatafiles(&datafiles);
@@ -515,7 +515,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
   n = vector->_length;
   for (i = 0; i < n ; ++i) {
     TRI_datafile_t* datafile = (TRI_datafile_t*) vector->_buffer[i];
-    
+
     LOG_TRACE("freeing collection datafile");
 
     assert(datafile);
@@ -559,7 +559,7 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
   size_t n = files->_length;
   size_t i;
   bool result = true;
-  
+
   for (i = 0;  i < n;  ++i) {
     datafile = files->_buffer[i];
 
@@ -586,7 +586,7 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a collection parameter block
-/// (options are added to the TRI_col_info_t* and have to be freed by the 
+/// (options are added to the TRI_col_info_t* and have to be freed by the
 ///  TRI_FreeCollectionInfoOptions() function)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -604,7 +604,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_cid           = 0;
   parameter->_rid           = 0;
 
-  parameter->_deleted       = false;  
+  parameter->_deleted       = false;
   parameter->_isVolatile    = false;
   parameter->_isSystem      = false;
   parameter->_maximalSize   = (maximalSize / PageSize) * PageSize;
@@ -613,7 +613,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   }
   parameter->_waitForSync   = vocbase->_defaultWaitForSync;
   parameter->_keyOptions    = keyOptions;
-  
+
   TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
 }
 
@@ -630,7 +630,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_cid           = src->_cid;
   dst->_rid           = src->_rid;
 
-  dst->_deleted       = src->_deleted;  
+  dst->_deleted       = src->_deleted;
   dst->_isSystem      = src->_isSystem;
   dst->_isVolatile    = src->_isVolatile;
   dst->_maximalSize   = src->_maximalSize;
@@ -641,8 +641,8 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   }
   else {
     dst->_keyOptions  = NULL;
-  }  
-  
+  }
+
   TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
 }
 
@@ -661,7 +661,7 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
 /// @brief get the full directory name for a collection
 ///
 /// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not. 
+/// and to free it if not.
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetDirectoryCollection (char const* path,
@@ -670,7 +670,7 @@ char* TRI_GetDirectoryCollection (char const* path,
 
   assert(path);
   assert(parameter);
-  
+
   // shape collections use just the name, e.g. path/SHAPES
   if (parameter->_type == TRI_COL_TYPE_SHAPE) {
     filename = TRI_Concatenate2File(path, parameter->_name);
@@ -757,7 +757,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
     LOG_ERROR("cannot create collection '%s' in '%s', directory already exists",
               parameter->_name, filename);
-    
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return NULL;
@@ -767,7 +767,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   if (! TRI_CreateDirectory(filename)) {
     LOG_ERROR("cannot create collection '%s' in '%s' as '%s': %s",
               parameter->_name,
-              path, 
+              path,
               filename,
               TRI_last_error());
 
@@ -791,9 +791,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // we are passing filename to this struct, so we must not free it if you use the struct later
   InitCollection(vocbase, collection, filename, parameter);
   /* PANAIA: 1) the parameter file if it exists must be removed
-             2) if collection 
+             2) if collection
   */
-  
+
   return collection;
 }
 
@@ -805,9 +805,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
 void TRI_DestroyCollection (TRI_collection_t* collection) {
   assert(collection);
-  
+
   TRI_FreeCollectionInfoOptions(&collection->_info);
-          
+
   FreeDatafilesVector(&collection->_datafiles);
   FreeDatafilesVector(&collection->_journals);
   FreeDatafilesVector(&collection->_compactors);
@@ -846,7 +846,7 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadCollectionInfo (char const* path, 
+int TRI_LoadCollectionInfo (char const* path,
                             TRI_col_info_t* parameter,
                             const bool versionWarning) {
   TRI_json_t* json;
@@ -891,7 +891,7 @@ int TRI_LoadCollectionInfo (char const* path,
 
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
-  
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // convert json
@@ -946,8 +946,8 @@ int TRI_LoadCollectionInfo (char const* path,
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // warn about wrong version of the collection
-  if (versionWarning && 
-      parameter->_type != TRI_COL_TYPE_SHAPE && 
+  if (versionWarning &&
+      parameter->_type != TRI_COL_TYPE_SHAPE &&
       parameter->_version < TRI_COL_VERSION) {
     if (parameter->_name != NULL) {
       // only warn if the collection version is older than expected, and if it's not a shape collection
@@ -969,7 +969,7 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
   TRI_json_t* json;
   char* filename;
   bool ok;
-  
+
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
 
   // create a json info object
@@ -984,14 +984,14 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
   }
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "cid",          TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_cid));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_deleted));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_isVolatile));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
-  
+
   if (info->_keyOptions) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, info->_keyOptions));
   }
@@ -1019,8 +1019,8 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
 /// Note: the parameter pointer might be 0 when a collection gets unloaded!!!!
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase, 
-                                       TRI_collection_t* collection, 
+int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
+                                       TRI_collection_t* collection,
                                        TRI_col_info_t const* parameter) {
 
   if (TRI_IS_DOCUMENT_COLLECTION(collection->_info._type)) {
@@ -1034,7 +1034,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     if (collection->_info._maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
       collection->_info._maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
     }
-  
+
     // the following collection properties are intentionally not updated as updating
     // them would be very complicated:
     // - _cid
@@ -1151,7 +1151,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
 
   return result;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over all index files of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1224,7 +1224,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   }
 
   InitCollection(vocbase, collection, TRI_DuplicateString(path), &info);
-  
+
   TRI_FreeCollectionInfoOptions(&info);
 
   // check for journals and datafiles
@@ -1300,12 +1300,12 @@ bool TRI_IterateJournalsCollection (const char* const path,
     for (i = 0; i < n ; ++i) {
       TRI_datafile_t* datafile;
       char* filename;
- 
+
       filename = TRI_AtVectorString(vector, i);
       LOG_DEBUG("iterating over collection journal file '%s'", filename);
       datafile = TRI_OpenDatafile(filename);
       if (datafile != NULL) {
-        TRI_IterateDatafile(datafile, iterator, NULL, true);  
+        TRI_IterateDatafile(datafile, iterator, NULL, true);
         TRI_CloseDatafile(datafile);
         TRI_FreeDatafile(datafile);
       }
@@ -1352,5 +1352,5 @@ char* TRI_TypeNameCollection (const TRI_col_type_e type) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

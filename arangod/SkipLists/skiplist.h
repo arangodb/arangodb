@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +21,13 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef TRIAGENS_BASICS_C_SKIPLIST_H
-#define TRIAGENS_BASICS_C_SKIPLIST_H 1
+#ifndef TRIAGENS_SKIP_LISTS_SKIPLIST_H
+#define TRIAGENS_SKIP_LISTS_SKIPLIST_H 1
 
 #include "BasicsC/common.h"
 
@@ -62,8 +62,8 @@ typedef enum {
   TRI_SKIPLIST_PROB_HALF,
   TRI_SKIPLIST_PROB_THIRD,
   TRI_SKIPLIST_PROB_QUARTER
-} 
-TRI_skiplist_prob_e;  
+}
+TRI_skiplist_prob_e;
 
 
 typedef enum {
@@ -72,8 +72,8 @@ typedef enum {
   TRI_SKIPLIST_COMPARE_STRICTLY_EQUAL = 0,
   TRI_SKIPLIST_COMPARE_SLIGHTLY_LESS = -2,
   TRI_SKIPLIST_COMPARE_SLIGHTLY_GREATER = 2
-} 
-TRI_skiplist_compare_e;  
+}
+TRI_skiplist_compare_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief storage structure for a node's nearest neighbours
@@ -91,12 +91,12 @@ TRI_skiplist_nb_t; // nearest neighbour;
 
 typedef struct TRI_skiplist_node_s {
   TRI_skiplist_nb_t* _column; // these represent the levels
-  uint32_t _colLength; 
+  uint32_t _colLength;
   void* _extraData;
-  TRI_skiplist_index_element_t _element;  
-} 
+  TRI_skiplist_index_element_t _element;
+}
 TRI_skiplist_node_t;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The base structure of a skiplist (unique and non-unique)
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +104,7 @@ TRI_skiplist_node_t;
 typedef struct TRI_skiplist_base_s {
   // ...........................................................................
   // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
-  // stored in the skip list. 
+  // stored in the skip list.
   // ...........................................................................
 
   uint32_t _maxHeight;
@@ -114,13 +114,13 @@ typedef struct TRI_skiplist_base_s {
   // ...........................................................................
 
   uint32_t _elementSize;
-  
+
   // ...........................................................................
   // The actual list itself
   // ...........................................................................
 
-  char* _skiplist; 
-  
+  char* _skiplist;
+
   // ...........................................................................
   // The probability which is used to determine the level for insertions
   // into the list. Note the following
@@ -129,11 +129,11 @@ typedef struct TRI_skiplist_base_s {
   TRI_skiplist_prob_e _prob;
   int32_t             _numRandom;
   uint32_t*           _random;
-  
-  
+
+
   TRI_skiplist_node_t _startNode;
   TRI_skiplist_node_t _endNode;
-  
+
 }
 TRI_skiplist_base_t;
 
@@ -175,7 +175,7 @@ typedef struct TRI_skiplist_s {
   int (*compareKeyElement) (struct TRI_skiplist_s*,
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
-                            int);    
+                            int);
 }
 TRI_skiplist_t;
 
@@ -192,7 +192,7 @@ TRI_skiplist_t;
 
 typedef struct TRI_skiplist_synced_s {
   TRI_skiplist_t _base;
-  TRI_read_write_lock_t _lock;  
+  TRI_read_write_lock_t _lock;
 } TRI_skiplist_synced_t;
 
 
@@ -284,7 +284,7 @@ TRI_skiplist_node_t* TRI_NextNodeSkipList (TRI_skiplist_t* skiplist,
 /// @brief given a node returns the prev node in the skip list, if the beginning is reached returns the start node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_PrevNodeSkipList (TRI_skiplist_t* skiplist, 
+TRI_skiplist_node_t* TRI_PrevNodeSkipList (TRI_skiplist_t* skiplist,
                                            TRI_skiplist_node_t* currentNode);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ TRI_skiplist_node_t* TRI_PrevNodeSkipList (TRI_skiplist_t* skiplist,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveElementSkipList (TRI_skiplist_t* skiplist,
-                               TRI_skiplist_index_element_t* element, 
+                               TRI_skiplist_index_element_t* element,
                                TRI_skiplist_index_element_t* old);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +344,7 @@ typedef struct TRI_skiplist_multi_s {
                             TRI_skiplist_index_key_t*,
                             TRI_skiplist_index_element_t*,
                             int);
-  
+
   // ...........................................................................
   // Returns true if the element is an exact copy, or if the data which the
   // element points to is an exact copy
@@ -362,7 +362,7 @@ TRI_skiplist_multi_t;
 
 typedef struct TRI_skiplist_synced_multi_s {
   TRI_skiplist_t _base;
-  TRI_read_write_lock_t _lock;  
+  TRI_read_write_lock_t _lock;
 } TRI_skiplist_synced_multi_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +385,7 @@ typedef struct TRI_skiplist_synced_multi_s {
 void TRI_InitSkipListMulti (TRI_skiplist_multi_t*,
                             TRI_skiplist_prob_e,
                             uint32_t);
-                                              
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a multi skip list, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,7 +436,7 @@ TRI_skiplist_node_t* TRI_LeftLookupByKeySkipListMulti (TRI_skiplist_multi_t* ski
 /// @brief given a node returns the next node in the skip list, if the end is reached returns the end node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_NextNodeSkipListMulti (TRI_skiplist_multi_t* skiplist, 
+TRI_skiplist_node_t* TRI_NextNodeSkipListMulti (TRI_skiplist_multi_t* skiplist,
                                                 TRI_skiplist_node_t* currentNode);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,5 +479,5 @@ TRI_skiplist_node_t* TRI_StartNodeSkipListMulti (TRI_skiplist_multi_t* skiplist)
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
