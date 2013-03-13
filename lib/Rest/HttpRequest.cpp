@@ -65,6 +65,7 @@ HttpRequest::HttpRequest (char const* header, size_t length)
   : _requestPath(EMPTY_STR),
     _headers(5),
     _values(10),
+    _arrayValues(10),
     _contentLength(0),
     _body(0),
     _bodySize(0),
@@ -93,6 +94,7 @@ HttpRequest::HttpRequest ()
   : _requestPath(EMPTY_STR),
     _headers(1),
     _values(1),
+    _arrayValues(1),
     _contentLength(0),
     _body(0),
     _bodySize(0),
@@ -110,6 +112,19 @@ HttpRequest::HttpRequest ()
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpRequest::~HttpRequest () {
+  basics::Dictionary< vector<char const*>* >::KeyValue const* begin;
+  basics::Dictionary< vector<char const*>* >::KeyValue const* end;
+  for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
+    char const* key = begin->_key;
+
+    if (key == 0) {
+      continue;
+    }
+
+    vector<char const*>* v = begin->_value;
+    delete v;
+  }
+  
   for (vector<char*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
@@ -355,6 +370,61 @@ map<string, string> HttpRequest::values () const {
   map<string, string> result;
 
   for (_values.range(begin, end);  begin < end;  ++begin) {
+    char const* key = begin->_key;
+
+    if (key == 0) {
+      continue;
+    }
+
+    result[key] = begin->_value;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+vector<char const*> const* HttpRequest::arrayValue (char const* key) const {
+  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+
+  if (kv == 0) {
+    return 0;
+  }
+  else {
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+vector<char const*> const* HttpRequest::arrayValue (char const* key, bool& found) const {
+  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+
+  if (kv == 0) {
+    found = false;
+    return 0;
+  }
+  else {
+    found = true;
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+map<string, vector<char const*>* > HttpRequest::arrayValues () const {
+  basics::Dictionary< vector<char const*>* >::KeyValue const* begin;
+  basics::Dictionary< vector<char const*>* >::KeyValue const* end;
+
+  map<string, vector<char const*>* > result;
+
+  for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
     if (key == 0) {
@@ -911,7 +981,14 @@ void HttpRequest::setValues (char* buffer, char* end) {
         *value = '\0';
       }
 
-      _values.insert(keyBegin, key - keyBegin, valueBegin);
+      if (key - keyBegin > 2 && (*(key - 2)) == '[' &&  (*(key - 1)) == ']') {
+        // found parameter xxx[] 
+        *(key - 2) = '\0';
+        setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
+      }
+      else {
+        _values.insert(keyBegin, key - keyBegin, valueBegin);        
+      }
 
       keyBegin = key = buffer + 1;
       valueBegin = value = 0;
@@ -971,7 +1048,15 @@ void HttpRequest::setValues (char* buffer, char* end) {
       *value = '\0';
     }
 
-    _values.insert(keyBegin, key - keyBegin, valueBegin);
+    if (key - keyBegin > 2 && (*(key - 2)) == '[' &&  (*(key - 1)) == ']') {
+      // found parameter xxx[] 
+      *(key - 2) = '\0';
+      setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
+    }
+    else {
+      _values.insert(keyBegin, key - keyBegin, valueBegin);
+    }
+    
   }
 }
 
@@ -1100,6 +1185,25 @@ const string& HttpRequest::getMultipartContentType () {
   static const string contentType = "multipart/form-data";
 
   return contentType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set array value
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setArrayValue (char* key, size_t length, char const* value) {
+  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+  vector<char const*>* v = 0;
+  
+  if (kv == 0) {
+    v = new vector<char const*>;
+    _arrayValues.insert(key, length, v);         
+  }
+  else {
+    v = kv->_value;
+  }
+  
+  v->push_back(value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
