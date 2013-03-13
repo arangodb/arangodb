@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -113,7 +113,7 @@ function print_plain () {
 
   var c = internal.COLOR_OUTPUT;
   internal.COLOR_OUTPUT = false;
-  
+
   try {
     internal.print.apply(internal.print, arguments);
 
@@ -124,8 +124,8 @@ function print_plain () {
     internal.PRETTY_PRINT = p;
     internal.COLOR_OUTPUT = c;
 
-    throw e.message;    
-  }  
+    throw e.message;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,9 +394,9 @@ function stop_color_print () {
         }
         catch (err) {
           if (console.hasOwnProperty('error')) {
-            console.error("cannot load package '%s': %s - %s", 
-                          main, 
-                          String(err), 
+            console.error("cannot load package '%s': %s - %s",
+                          main,
+                          String(err),
                           String(err.stack));
           }
         }
@@ -418,9 +418,9 @@ function stop_color_print () {
 
     paths = pkg._paths;
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // normal modules, file based
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -458,9 +458,9 @@ function stop_color_print () {
 
     paths = internal.MODULES_PATH;
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // normal modules, file based
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -483,9 +483,9 @@ function stop_color_print () {
       }
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // normal modules, database based
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     if (internal.db !== undefined) {
       mc = internal.db._collection("_modules");
@@ -535,7 +535,7 @@ function stop_color_print () {
 
     // try to execute the module source code
     content = "(function (module, exports, require, print) {"
-            + description.content 
+            + description.content
             + "\n});";
 
     fun = internal.execute(content, undefined, description.name);
@@ -791,7 +791,7 @@ function stop_color_print () {
     }
 
     internal.output('[module "' + this.id + '"'
-                    + ', type "' + this._type + '"' 
+                    + ', type "' + this._type + '"'
                     + ', package "' + this._package.id + '"'
                     + parent
                     + ', origin "' + this._origin + '"'
@@ -827,5 +827,5 @@ function stop_color_print () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
