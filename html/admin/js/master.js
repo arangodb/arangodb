@@ -10,7 +10,7 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.";
++ "Welcome to arangosh Copyright (c) triAGENS GmbH.";
 
 var existingCharts; 
 var statDivCount;  
