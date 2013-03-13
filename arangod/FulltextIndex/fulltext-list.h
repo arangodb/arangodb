@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FULLTEXT_FULLTEXT_LIST_H
-#define TRIAGENS_FULLTEXT_FULLTEXT_LIST_H 1
+#ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_LIST_H
+#define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_LIST_H 1
 
 #include "fulltext-common.h"
 
@@ -72,7 +72,7 @@ typedef uint32_t TRI_fulltext_list_entry_t;
 /// @brief clone a list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_CloneListFulltextIndex (const TRI_fulltext_list_t* const); 
+TRI_fulltext_list_t* TRI_CloneListFulltextIndex (const TRI_fulltext_list_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a list
@@ -110,7 +110,7 @@ size_t TRI_MemoryListFulltextIndex (const TRI_fulltext_list_t* const);
 /// this will create a new list and free both lhs & rhs
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t*, 
+TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t*,
                                                     TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +118,7 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t*,
 /// this will create a new list and free both lhs & rhs
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t*, 
+TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t*,
                                                      TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +126,7 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t*,
 /// this will modify the result in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t*, 
+TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t*,
                                                    TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,15 +134,15 @@ TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t*,
 /// this might free the old list and allocate a new, bigger one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t*, 
+TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t*,
                                                   const TRI_fulltext_list_entry_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rewrites the list of entries using a map of values
 /// returns the number of entries remaining in the list after rewrite
 ////////////////////////////////////////////////////////////////////////////////
-    
-uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const, 
+
+uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const,
                                        const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,5 +177,5 @@ TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (const TRI_fulltext_list_t
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SslClientConnection.h"
@@ -35,7 +35,7 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 #include <sys/socket.h>
-#endif 
+#endif
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -71,11 +71,11 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
                                           double requestTimeout,
                                           double connectTimeout,
                                           size_t connectRetries) :
-  GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries), 
+  GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
   _ssl(0),
   _ctx(0) {
   _socket.fileHandle = 0;
-  _socket.fileDescriptor = 0;  
+  _socket.fileDescriptor = 0;
   _ctx = SSL_CTX_new(TLSv1_method());
   if (_ctx) {
     SSL_CTX_set_cipher_list(_ctx, "ALL");
@@ -148,7 +148,7 @@ bool SslClientConnection::connectSocket () {
     _socket.fileDescriptor = 0;
     return false;
   }
-  
+
   return true;
 }
 
@@ -208,7 +208,7 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
   if (_ssl == 0) {
     return false;
   }
-  
+
   int written = SSL_write(_ssl, buffer, length);
   switch (SSL_get_error(_ssl, written)) {
     case SSL_ERROR_NONE:
@@ -235,12 +235,12 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   if (_ssl == 0) {
     return false;
   }
-  
+
   do {
     char buffer[READBUFFER_SIZE];
 
@@ -265,23 +265,23 @@ bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
     }
   }
   while (readable());
-  
+
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the connection is readable
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 bool SslClientConnection::readable () {
   // must use SSL_pending() and not select() as SSL_read() might read more
   // bytes from the socket into the _ssl structure than we actually requested
   // via SSL_read().
   // if we used select() to check whether there is more data available, select()
-  // might return 0 already but we might not have consumed all bytes yet 
+  // might return 0 already but we might not have consumed all bytes yet
 
   // ...........................................................................
-  // SSL_pending(...) is an OpenSSL function which returns the number of bytes 
+  // SSL_pending(...) is an OpenSSL function which returns the number of bytes
   // which are available inside ssl for reading.
   // ...........................................................................
 

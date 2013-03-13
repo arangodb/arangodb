@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_SCOPE_H
-#define TRIAGENS_DURHAM_AHUACATL_SCOPE_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_SCOPE_H
+#define TRIAGENS_AHUACATL_AHUACATL_SCOPE_H 1
 
 #include "BasicsC/associative.h"
 #include "BasicsC/vector.h"
@@ -75,14 +75,14 @@ TRI_aql_scope_e;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limit type, used in scope and hints
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 typedef struct TRI_aql_limit_s {
   int64_t                _offset;
   int64_t                _limit;
   TRI_aql_limit_status_e _status;
   uint32_t               _found;
   bool                   _hasFilter;
-} 
+}
 TRI_aql_limit_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,8 +180,8 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const, const char* const);
 /// @brief push a variable into the current scope's symbol table
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddVariableScopeAql (TRI_aql_context_t* const, 
-                              const char*, 
+bool TRI_AddVariableScopeAql (TRI_aql_context_t* const,
+                              const char*,
                               TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,5 +196,5 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

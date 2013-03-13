@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpHandler.h"
@@ -141,7 +141,7 @@ Job* HttpHandler::createJob (AsyncJobServer* server) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure the handler has only one response, otherwise we'd have a leak
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void HttpHandler::removePreviousResponse () {
   if (_response != 0) {
     delete _response;
@@ -171,5 +171,5 @@ HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) 
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

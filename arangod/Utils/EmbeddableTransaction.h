@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H
-#define TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H
+#define TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H 1
 
 #include "VocBase/transaction.h"
 
@@ -107,14 +107,14 @@ namespace triagens {
           if (this->isEmbedded()) {
             return TRI_ERROR_NO_ERROR;
           }
-          
+
           if (_trx != 0) {
             this->unregisterTransaction();
-             
+
             TRI_FreeTransaction(_trx);
             _trx = 0;
           }
-          
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -158,5 +158,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgeHandler.h"
@@ -77,11 +77,11 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ///
 /// @REST{POST /_api/edge?collection=@FA{collection-name}&from=@FA{from-handle}&to=@FA{to-handle}}
 ///
-/// Creates a new edge in the collection identified by @FA{collection-name}.  
-/// A JSON representation of the edge document must be passed as the body of 
+/// Creates a new edge in the collection identified by @FA{collection-name}.
+/// A JSON representation of the edge document must be passed as the body of
 /// the POST request. This JSON object may contain the edge's document key in
-/// the @LIT{_key} attribute if needed. 
-/// The document handle of the start point must be passed in @FA{from-handle}. 
+/// the @LIT{_key} attribute if needed.
+/// The document handle of the start point must be passed in @FA{from-handle}.
 /// The document handle of the end point must be passed in @FA{to-handle}.
 ///
 /// @LIT{from-handle} and @LIT{to-handle} are immutable once the edge has been
@@ -154,19 +154,19 @@ bool RestEdgeHandler::createDocument () {
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
-  
+
   if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
-  
+
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
-  
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
- 
-  int res = trx.begin(); 
+
+  int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
@@ -178,7 +178,7 @@ bool RestEdgeHandler::createDocument () {
   edge._toCid = cid;
   edge._fromKey = 0;
   edge._toKey = 0;
-  
+
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
   holder.registerString(TRI_CORE_MEM_ZONE, edge._fromKey);
 
@@ -204,11 +204,11 @@ bool RestEdgeHandler::createDocument () {
     }
     return false;
   }
-  
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
-  
+
   // will hold the result
   TRI_doc_mptr_t document;
   res = trx.createEdge(&document, json, waitForSync, &edge, true);
@@ -217,7 +217,7 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
   // outside write transaction
   // .............................................................................
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
@@ -242,5 +242,5 @@ bool RestEdgeHandler::createDocument () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

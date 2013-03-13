@@ -1,19 +1,19 @@
 /* A Bison parser, made by GNU Bison 2.5.  */
 
 /* Bison implementation for Yacc-like parsers in C
-   
+
       Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
-   
+
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
@@ -26,7 +26,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-   
+
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -79,9 +79,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <BasicsC/common.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/common.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/strings.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -221,7 +221,7 @@ typedef struct YYLTYPE
 ////////////////////////////////////////////////////////////////////////////////
 
 int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register parse error
 ////////////////////////////////////////////////////////////////////////////////
@@ -1804,11 +1804,11 @@ yyreduce:
 #line 206 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node;
-      
+
       if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_FOR)) {
         ABORT_OOM
       }
-      
+
       node = TRI_CreateNodeForAql(context, (yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
       if (! node) {
         ABORT_OOM
@@ -1829,7 +1829,7 @@ yyreduce:
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -1845,7 +1845,7 @@ yyreduce:
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -1858,7 +1858,7 @@ yyreduce:
 #line 251 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
-      
+
       if (! node) {
         ABORT_OOM
       }
@@ -1876,7 +1876,7 @@ yyreduce:
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -1939,7 +1939,7 @@ yyreduce:
 #line 301 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
-      
+
       if (! node) {
         ABORT_OOM
       }
@@ -1958,7 +1958,7 @@ yyreduce:
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2033,15 +2033,15 @@ yyreduce:
 /* Line 1821 of yacc.c  */
 #line 359 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), (yyvsp[(2) - (2)].node)); 
+      TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), (yyvsp[(2) - (2)].node));
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
     }
     break;
 
@@ -2054,7 +2054,7 @@ yyreduce:
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2070,15 +2070,15 @@ yyreduce:
       if (! node) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
-      
+
       // $$ = node;
     }
     break;
@@ -2100,7 +2100,7 @@ yyreduce:
       if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_SUBQUERY)) {
         ABORT_OOM
       }
-      
+
     }
     break;
 
@@ -2112,7 +2112,7 @@ yyreduce:
       TRI_aql_node_t* result;
       TRI_aql_node_t* subQuery;
       TRI_aql_node_t* nameNode;
-      
+
       if (! TRI_EndScopeAql(context)) {
         ABORT_OOM
       }
@@ -2121,7 +2121,7 @@ yyreduce:
       if (! subQuery) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, subQuery)) {
         ABORT_OOM
       }
@@ -2263,7 +2263,7 @@ yyreduce:
 
 /* Line 1821 of yacc.c  */
 #line 505 "arangod/Ahuacatl/ahuacatl-grammar.y"
-    { 
+    {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryNotAql(context, (yyvsp[(2) - (2)].node));
       if (! node) {
         ABORT_OOM
@@ -2684,11 +2684,11 @@ yyreduce:
       if (! varname) {
         ABORT_OOM
       }
-      
+
       // push the varname onto the stack
       TRI_PushStackParseAql(context, varname);
-      
-      // push on the stack what's going to be expanded (will be popped when we come back) 
+
+      // push on the stack what's going to be expanded (will be popped when we come back)
       TRI_PushStackParseAql(context, (yyvsp[(1) - (1)].node));
 
       // create a temporary variable for the row iterator (will be popped by "expansion" rule")
@@ -2716,7 +2716,7 @@ yyreduce:
 
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, (yyvsp[(4) - (4)].node));
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, expand)) {
         ABORT_OOM
       }
@@ -2742,7 +2742,7 @@ yyreduce:
     {
       // variable or collection
       TRI_aql_node_t* node;
-      
+
       if (TRI_VariableExistsScopeAql(context, (yyvsp[(1) - (1)].strval))) {
         node = TRI_CreateNodeReferenceAql(context, (yyvsp[(1) - (1)].strval));
       }
@@ -2764,7 +2764,7 @@ yyreduce:
 #line 809 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-      
+
       if (! (yyval.node)) {
         ABORT_OOM
       }
@@ -2778,7 +2778,7 @@ yyreduce:
     {
       // named variable access, e.g. variable.reference
       (yyval.node) = TRI_CreateNodeAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
-      
+
       if (! (yyval.node)) {
         ABORT_OOM
       }
@@ -2792,7 +2792,7 @@ yyreduce:
     {
       // indexed variable access, e.g. variable[index]
       (yyval.node) = TRI_CreateNodeIndexedAql(context, (yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
-      
+
       if (! (yyval.node)) {
         ABORT_OOM
       }
@@ -2909,13 +2909,13 @@ yyreduce:
       if (! (yyvsp[(1) - (1)].strval)) {
         ABORT_OOM
       }
-      
+
       value = TRI_DoubleString((yyvsp[(1) - (1)].strval));
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
         TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
         YYABORT;
       }
-      
+
       node = TRI_CreateNodeValueDoubleAql(context, value);
       if (! node) {
         ABORT_OOM

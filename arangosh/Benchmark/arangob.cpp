@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
@@ -175,7 +175,7 @@ static int GetStartCounter () {
 /// @brief print a status line (if ! quiet)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Status (const string& value) {    
+static void Status (const string& value) {
   if (! BaseClient.quiet()) {
     cout << value << endl;
   }
@@ -187,7 +187,7 @@ static void Status (const string& value) {
 
 static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
-  
+
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
@@ -204,11 +204,11 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   vector<string> arguments;
   description.arguments(&arguments);
-  
+
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangob.conf");
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +239,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-  
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -267,7 +267,7 @@ int main (int argc, char* argv[]) {
   vector<BenchmarkThread*> threads;
 
   const double stepSize = (double) Operations / (double) Concurrency;
-  int64_t realStep = (int64_t) stepSize; 
+  int64_t realStep = (int64_t) stepSize;
   if (stepSize - (double) ((int64_t) stepSize) > 0.0) {
     realStep++;
   }
@@ -276,7 +276,7 @@ int main (int argc, char* argv[]) {
   }
   // add some more offset we don't get into trouble with threads of different speed
   realStep += 10000;
- 
+
   // start client threads
   for (int i = 0; i < Concurrency; ++i) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
@@ -285,11 +285,11 @@ int main (int argc, char* argv[]) {
     BenchmarkThread* thread = new BenchmarkThread(testCase,
         &startCondition,
         &UpdateStartCounter,
-        i, 
+        i,
         (unsigned long) BatchSize,
         &operationsCounter,
         endpoint,
-        BaseClient.username(), 
+        BaseClient.username(),
         BaseClient.password(),
         BaseClient.requestTimeout(),
         BaseClient.connectTimeout());
@@ -298,7 +298,7 @@ int main (int argc, char* argv[]) {
     thread->setOffset(i * realStep);
     thread->start();
   }
- 
+
   // give all threads a chance to start so they will not miss the broadcast
   while (GetStartCounter() < Concurrency) {
     usleep(5000);
@@ -333,7 +333,7 @@ int main (int argc, char* argv[]) {
       lastReportValue = numOperations + stepValue;
     }
 
-    usleep(50000); 
+    usleep(50000);
   }
 
   double time = ((double) timer.time()) / 1000000.0;
@@ -366,7 +366,7 @@ int main (int argc, char* argv[]) {
       cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
     }
   }
-  
+
   testCase->tearDown();
 
   for (int i = 0; i < Concurrency; ++i) {
@@ -392,5 +392,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

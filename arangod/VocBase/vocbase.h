@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H
-#define TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H 1
+#ifndef TRIAGENS_VOC_BASE_VOCBASE_H
+#define TRIAGENS_VOC_BASE_VOCBASE_H 1
 
 #include "BasicsC/common.h"
 
@@ -394,18 +394,18 @@ typedef struct TRI_vocbase_s {
   // 1 = normal operation/running
   // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
   // 3 = shutdown in progress/waiting for cleanup thread to finish
-  sig_atomic_t _state; 
+  sig_atomic_t _state;
 
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
   TRI_thread_t _cleanup;
 
   struct TRI_shadow_store_s* _cursors;
-  TRI_associative_pointer_t* _functions; 
+  TRI_associative_pointer_t* _functions;
 
   TRI_condition_t _cleanupCondition;
   TRI_condition_t _syncWaitersCondition;
-  int64_t _syncWaiters;  
+  int64_t _syncWaiters;
 }
 TRI_vocbase_t;
 
@@ -544,15 +544,15 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_
 /// @brief finds a collection by name or creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t*, 
-                                                          char const*, 
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t*,
+                                                          char const*,
                                                           const TRI_col_type_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, 
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
                                                 struct TRI_col_info_s*,
                                                 TRI_voc_cid_t cid);
 
@@ -654,5 +654,5 @@ void TRI_ShutdownVocBase (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

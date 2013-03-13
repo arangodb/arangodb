@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_APPLICATION_V8_H
-#define TRIAGENS_REST_SERVER_APPLICATION_V8_H 1
+#ifndef TRIAGENS_V8SERVER_APPLICATION_V8_H
+#define TRIAGENS_V8SERVER_APPLICATION_V8_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
 
@@ -136,7 +136,7 @@ namespace triagens {
           std::vector<std::string> _globalMethods;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of requests since last GC of the context 
+/// @brief number of requests since last GC of the context
 ////////////////////////////////////////////////////////////////////////////////
 
           size_t _dirt;
@@ -301,7 +301,7 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine which of the free contexts should be picked for the GC
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,7 +391,7 @@ namespace triagens {
 /// @CMDOPT{\--upgrade}
 ///
 /// Specifying this option will make the server perform a database upgrade at
-/// start. A database upgrade will first compare the version number stored in 
+/// start. A database upgrade will first compare the version number stored in
 /// the file VERSION in the database directory with the current server version.
 ///
 /// If the two version numbers match, the server will start normally.
@@ -399,7 +399,7 @@ namespace triagens {
 /// If the version number found in the database directory is higher than the
 /// version number the server is running, the server expects this is an
 /// unintentional downgrade and will warn about this. It will however start
-/// normally. Using the server in these conditions is however not recommended 
+/// normally. Using the server in these conditions is however not recommended
 /// nor supported.
 ///
 /// If the version number found in the database directory is lower than the
@@ -441,7 +441,7 @@ namespace triagens {
 /// @CMDOPT{\--javascript.gc-frequency @CA{frequency}}
 ///
 /// Specifies the frequency (in seconds) for the automatic garbage collection of
-/// JavaScript objects. This setting is useful to have the garbage collection 
+/// JavaScript objects. This setting is useful to have the garbage collection
 /// still work in periods with no or little numbers of requests.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -557,5 +557,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

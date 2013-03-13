@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009, triagens GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpClient.h"
@@ -45,9 +45,9 @@ using namespace std;
 namespace triagens {
   namespace httpclient {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
       SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
@@ -56,18 +56,18 @@ namespace triagens {
     SimpleHttpClient::~SimpleHttpClient () {
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
             const string& location,
             const char* body,
             size_t bodyLength,
             const map<string, string>& headerFields) {
-     
+
       assert(_result == 0);
-       
+
       _result = new SimpleHttpResult;
       _errorMessage = "";
 
@@ -95,7 +95,7 @@ namespace triagens {
             else {
               _written += bytesWritten;
               if (_written == _writeBuffer.length())  {
-                _state = IN_READ_HEADER;        
+                _state = IN_READ_HEADER;
               }
             }
             break;
@@ -136,23 +136,23 @@ namespace triagens {
 
         remainingTime = endTime - now();
       }
-      
+
       if (isWorking() && _errorMessage == "" ) {
         setErrorMessage("Request timeout reached");
       }
-      
+
       // set result type in getResult()
       SimpleHttpResult* result = getResult();
-      
+
       _result = 0;
-      
+
       return result;
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // private methods
-    // -----------------------------------------------------------------------------
-    
+// -----------------------------------------------------------------------------
+
     void SimpleHttpClient::reset () {
       SimpleClient::reset();
       if (_result) {
@@ -160,9 +160,9 @@ namespace triagens {
       }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief sets username and password 
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets username and password
+////////////////////////////////////////////////////////////////////////////////
 
     void SimpleHttpClient::setUserNamePassword (
             const string& prefix,
@@ -212,7 +212,7 @@ namespace triagens {
         _connection->resetNumConnectRetries();
       }
 
-      ///////////////////// fill the write buffer //////////////////////////////      
+///////////////////// fill the write buffer //////////////////////////////
       _writeBuffer.clear();
 
       HttpRequest::appendMethod(method, &_writeBuffer);
@@ -268,7 +268,7 @@ namespace triagens {
 
       LOGGER_TRACE("Request: " << _writeBuffer.c_str());
 
-      //////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 
       if (_state != FINISHED) {
@@ -288,9 +288,9 @@ namespace triagens {
     }
 
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // private methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     bool SimpleHttpClient::readHeader () {
       char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
@@ -312,15 +312,15 @@ namespace triagens {
             return readChunkedHeader();
           }
           else if (_result->getContentLength()) {
-            
+
             if (_result->getContentLength() > _maxPacketSize) {
               setErrorMessage("Content-Length > max packet size found", true);
-              
-              // reset connection 
+
+              // reset connection
               this->close();
               _state = DEAD;
-          
-              return false;              
+
+              return false;
             }
 
             _state = IN_READ_BODY;
@@ -376,20 +376,20 @@ namespace triagens {
           // OK: last content length found
 
           _result->setResultType(SimpleHttpResult::COMPLETE);
-          
+
           _state = FINISHED;
-          
+
           return true;
         }
 
         if (contentLength > _maxPacketSize) {
           // failed: too many bytes
-          
+
           setErrorMessage("Content-Length > max packet size found!", true);
-          // reset connection 
+          // reset connection
           this->close();
           _state = DEAD;
-          
+
           return false;
         }
 

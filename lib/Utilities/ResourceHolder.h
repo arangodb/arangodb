@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_UTILITIES_RESOURCE_HOLDER_H
@@ -63,7 +63,7 @@ class ResourceHolder {
     TYPE_JSON,
     TYPE_SHAPED_JSON,
     TYPE_BARRIER
-  } 
+  }
   resource_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ class ResourceHolder {
   struct Resource {
     Resource (const resource_type_e type,
               void* const context,
-              void* const value) : 
+              void* const value) :
       _type(type),
       _context(context),
       _value(value) {
@@ -81,7 +81,7 @@ class ResourceHolder {
 
     ~Resource () {
       switch (_type) {
-        case TYPE_STRING: 
+        case TYPE_STRING:
           TRI_FreeString((TRI_memory_zone_t*) _context, (char*) _value);
           break;
         case TYPE_JSON:
@@ -254,5 +254,5 @@ class ResourceHolder {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

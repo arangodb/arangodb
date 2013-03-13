@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H
@@ -73,7 +73,7 @@ namespace triagens {
                                      const triagens::arango::CollectionNameResolver& resolver,
                                      const TRI_transaction_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, resolver), 
+          Transaction<T>(vocbase, resolver),
           _cid(cid) {
 
           // add the (sole) collection
@@ -127,7 +127,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection's barrier list
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         inline TRI_barrier_list_t* barrierList () {
           return &primaryCollection()->_barrierList;
         }
@@ -186,9 +186,9 @@ namespace triagens {
 /// @brief read all documents within a transaction, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t>& docs, 
+        int read (vector<TRI_doc_mptr_t>& docs,
                   TRI_barrier_t** barrier,
-                  TRI_voc_ssize_t skip, 
+                  TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
                   uint32_t* total) {
           TRI_primary_collection_t* primary = primaryCollection();
@@ -226,5 +226,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

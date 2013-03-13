@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Exceptions.h"
@@ -71,7 +71,7 @@ char const * TriagensError::what () const throw() {
 /// @brief exception for internal errors
 ////////////////////////////////////////////////////////////////////////////////
 
-InternalError::InternalError (string const& details, char const* file, int line) 
+InternalError::InternalError (string const& details, char const* file, int line)
   : TriagensError("internal error", details, file, line) {
 }
 
@@ -99,7 +99,7 @@ FileError::FileError (string const& func,
                       string const& mode,
                       int error,
                       char const* file,
-                      int line) 
+                      int line)
   : TriagensError("file-error", details, file, line),
     _filename(filename),
     _mode(mode),
@@ -107,12 +107,12 @@ FileError::FileError (string const& func,
   if (! mode.empty()) {
     _message += " mode = '" + _mode + "'";
   }
-  
+
   if (_error != 0) {
     _message += " errno = " + StringUtils::itoa(_error) + ""
              +  " error = '" + strerror(_error) + "'";
   }
-  
+
   if (! _filename.empty()) {
     _message += " file = '" + _filename + "'";
   }
@@ -140,7 +140,7 @@ void FileError::setFilename (string const& filename) {
 ParseError::ParseError (string const& details,
                         int lineNumber,
                         char const* file,
-                        int line) 
+                        int line)
   : TriagensError("parse-error", details, file, line),
     _lineNumber(lineNumber) {
   if (_lineNumber != -1) {
@@ -192,5 +192,5 @@ ParameterError::~ParameterError () throw () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

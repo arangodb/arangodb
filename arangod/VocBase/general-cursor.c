@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/logging.h>
+#include "BasicsC/logging.h"
 
 #include "VocBase/general-cursor.h"
 
@@ -114,7 +114,7 @@ void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next element 
+/// @brief returns the next element
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_general_cursor_row_t NextGeneralCursor (TRI_general_cursor_t* const cursor) {
@@ -131,7 +131,7 @@ static inline TRI_general_cursor_row_t NextGeneralCursor (TRI_general_cursor_t* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted 
+/// @brief checks if the cursor is exhausted
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool HasNextGeneralCursor (const TRI_general_cursor_t* const cursor) {
@@ -168,7 +168,7 @@ static inline TRI_general_cursor_length_t GetBatchSizeGeneralCursor (const TRI_g
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees a cursor 
+/// @brief frees a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
@@ -179,7 +179,7 @@ void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
   cursor->_deleted = true;
 
   TRI_FreeCursorResult(cursor->_result);
-  
+
   TRI_DestroyMutex(&cursor->_lock);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursor);
 
@@ -190,7 +190,7 @@ void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
 /// @brief create a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* result, 
+TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* result,
                                                const bool doCount,
                                                const TRI_general_cursor_length_t batchSize) {
   TRI_general_cursor_t* cursor;
@@ -199,23 +199,23 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* resu
   if (!cursor) {
     return NULL;
   }
-  
-  cursor->_result = result; 
+
+  cursor->_result = result;
   cursor->_currentRow = 0;
   cursor->_length = result->getLength(result);
 
   cursor->_hasCount = doCount;
   cursor->_batchSize = batchSize;
   cursor->_deleted = false;
-  
+
   cursor->next = NextGeneralCursor;
   cursor->hasNext = HasNextGeneralCursor;
   cursor->hasCount = HasCountGeneralCursor;
   cursor->getBatchSize = GetBatchSizeGeneralCursor;
   cursor->free = TRI_FreeGeneralCursor;
-  
+
   TRI_InitMutex(&cursor->_lock);
-  
+
   LOG_TRACE("created general cursor");
 
   return cursor;
@@ -244,13 +244,13 @@ void TRI_UnlockGeneralCursor (TRI_general_cursor_t* const cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShadowGeneralCursor (void* data) {
-  TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) data; 
+  TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) data;
 
   TRI_FreeGeneralCursor(cursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create shadow data store for cursors 
+/// @brief create shadow data store for cursors
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shadow_store_t* TRI_CreateShadowsGeneralCursor (void) {
@@ -263,5 +263,5 @@ TRI_shadow_store_t* TRI_CreateShadowsGeneralCursor (void) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

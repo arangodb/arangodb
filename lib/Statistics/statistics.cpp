@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
@@ -407,9 +407,9 @@ StatisticsDistribution* BytesReceivedDistribution;
 
 #ifdef TRI_ENABLE_HIRES_FIGURES
 
-double TRI_StatisticsTime () { 
+double TRI_StatisticsTime () {
   struct timespec tp;
-  
+
   clock_gettime(CLOCK_REALTIME, &tp);
 
   return tp.tv_sec + (tp.tv_nsec / 1000000000.0);
@@ -417,7 +417,7 @@ double TRI_StatisticsTime () {
 
 #else
 
-double TRI_StatisticsTime () { 
+double TRI_StatisticsTime () {
   return (double)(time(0));
 }
 
@@ -452,7 +452,7 @@ void TRI_InitialiseStatistics () {
   RequestTimeDistribution = new StatisticsDistribution(RequestTimeDistributionVector);
   QueueTimeDistribution = new StatisticsDistribution(RequestTimeDistributionVector);
   BytesSentDistribution = new StatisticsDistribution(BytesSentDistributionVector);
-  BytesReceivedDistribution = new StatisticsDistribution(BytesReceivedDistributionVector); 
+  BytesReceivedDistribution = new StatisticsDistribution(BytesReceivedDistributionVector);
 
   // .............................................................................
   // generate the request statistics queue

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_ASSOCIATIVE_H
@@ -296,14 +296,14 @@ void TRI_FreeAssociativePointer (TRI_memory_zone_t*, TRI_associative_pointer_t*)
 /// @brief General hash function that can be used to hash a pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t*, 
+uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t*,
                                                void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a string key
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t*, 
+uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t*,
                                               void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,5 +510,5 @@ size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

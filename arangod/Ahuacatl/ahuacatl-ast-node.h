@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_AST_NODE_H
-#define TRIAGENS_DURHAM_AHUACATL_AST_NODE_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_AST_NODE_H
+#define TRIAGENS_AHUACATL_AHUACATL_AST_NODE_H 1
 
 #include "BasicsC/common.h"
 
@@ -91,8 +91,8 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (struct TRI_aql_context_s* const,
 /// @brief create an AST filter node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeFilterAql (struct TRI_aql_context_s* const, 
-                                         const TRI_aql_node_t* const); 
+TRI_aql_node_t* TRI_CreateNodeFilterAql (struct TRI_aql_context_s* const,
+                                         const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST return node
@@ -121,7 +121,7 @@ TRI_aql_node_t* TRI_CreateNodeSortAql (struct TRI_aql_context_s* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeSortElementAql (struct TRI_aql_context_s* const,
-                                              const TRI_aql_node_t* const, 
+                                              const TRI_aql_node_t* const,
                                               const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,14 +160,14 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (struct TRI_aql_context_s* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeCollectionAql (struct TRI_aql_context_s* const,
-                                             const char* const); 
+                                             const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST reference node
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeReferenceAql (struct TRI_aql_context_s* const,
-                                            const char* const); 
+                                            const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unary plus node
@@ -195,7 +195,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorUnaryNotAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (struct TRI_aql_context_s* const,
-                                                    const TRI_aql_node_t* const, 
+                                                    const TRI_aql_node_t* const,
                                                     const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,7 +203,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryAndAql (struct TRI_aql_context_s* co
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +211,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryOrAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (struct TRI_aql_context_s* const,
-                                                     const TRI_aql_node_t* const, 
+                                                     const TRI_aql_node_t* const,
                                                      const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,7 +219,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryPlusAql (struct TRI_aql_context_s* c
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (struct TRI_aql_context_s* const,
-                                                      const TRI_aql_node_t* const, 
+                                                      const TRI_aql_node_t* const,
                                                       const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,7 +227,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryMinusAql (struct TRI_aql_context_s* 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (struct TRI_aql_context_s* const,
-                                                      const TRI_aql_node_t* const, 
+                                                      const TRI_aql_node_t* const,
                                                       const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +235,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryTimesAql (struct TRI_aql_context_s* 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (struct TRI_aql_context_s* const,
-                                                    const TRI_aql_node_t* const, 
+                                                    const TRI_aql_node_t* const,
                                                     const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,7 +243,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryDivAql (struct TRI_aql_context_s* co
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryModAql (struct TRI_aql_context_s* const,
-                                                    const TRI_aql_node_t* const, 
+                                                    const TRI_aql_node_t* const,
                                                     const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +251,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryModAql (struct TRI_aql_context_s* co
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +259,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryEqAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +267,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryNeAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,7 +275,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLtAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,7 +283,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryLeAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,7 +291,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGtAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +299,7 @@ TRI_aql_node_t* TRI_CreateNodeOperatorBinaryGeAql (struct TRI_aql_context_s* con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeOperatorBinaryInAql (struct TRI_aql_context_s* const,
-                                                   const TRI_aql_node_t* const, 
+                                                   const TRI_aql_node_t* const,
                                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +331,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (struct TRI_aql_context_s* cons
 
 TRI_aql_node_t* TRI_CreateNodeIndexedAql (struct TRI_aql_context_s* const,
                                           const TRI_aql_node_t* const,
-                                          const TRI_aql_node_t* const); 
+                                          const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST expand node
@@ -380,13 +380,13 @@ TRI_aql_node_t* TRI_CreateNodeValueStringAql (struct TRI_aql_context_s* const,
 /// @brief create an AST list node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeListAql (struct TRI_aql_context_s* const); 
+TRI_aql_node_t* TRI_CreateNodeListAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST array node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeArrayAql (struct TRI_aql_context_s* const); 
+TRI_aql_node_t* TRI_CreateNodeArrayAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
@@ -394,7 +394,7 @@ TRI_aql_node_t* TRI_CreateNodeArrayAql (struct TRI_aql_context_s* const);
 
 TRI_aql_node_t* TRI_CreateNodeFcallAql (struct TRI_aql_context_s* const,
                                         const char* const,
-                                        const TRI_aql_node_t* const); 
+                                        const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST array element node
@@ -402,20 +402,20 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (struct TRI_aql_context_s* const,
 
 TRI_aql_node_t* TRI_CreateNodeArrayElementAql (struct TRI_aql_context_s* const,
                                                const char* const,
-                                               const TRI_aql_node_t* const); 
+                                               const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a value to the end of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PushListAql (struct TRI_aql_context_s* const, 
+bool TRI_PushListAql (struct TRI_aql_context_s* const,
                       const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a value to the end of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PushArrayAql (struct TRI_aql_context_s* const, 
+bool TRI_PushArrayAql (struct TRI_aql_context_s* const,
                        const char* const,
                        const TRI_aql_node_t* const);
 
@@ -434,7 +434,7 @@ bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reverse a relational operator
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 TRI_aql_node_type_e TRI_ReverseOperatorRelationalAql (const TRI_aql_node_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,5 +449,5 @@ TRI_aql_node_type_e TRI_ReverseOperatorRelationalAql (const TRI_aql_node_type_e)
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

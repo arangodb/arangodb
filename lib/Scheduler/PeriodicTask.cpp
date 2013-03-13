@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PeriodicTask.h"
@@ -67,7 +67,7 @@ void PeriodicTask::resetTimer (double offset, double interval) {
 bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
-  
+
   watcher = scheduler->installPeriodicEvent(loop, this, offset, interval);
   if (watcher == -1) {
     return false;
@@ -91,10 +91,10 @@ void PeriodicTask::cleanup () {
 
 bool PeriodicTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
-  
+
   if (token == watcher && (revents & EVENT_PERIODIC)) {
     result = handlePeriod();
   }
-  
+
   return result;
 }

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-functions.h"
@@ -87,7 +87,7 @@ typedef struct param_s {
   bool _array      : 1;
   bool _collection : 1;
   bool _regex      : 1;
-} 
+}
 param_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,9 +126,9 @@ static param_t InitParam (void) {
 /// @brief check the type of an argument for a function call
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckArgumentType (TRI_aql_node_t* parameter, 
+static bool CheckArgumentType (TRI_aql_node_t* parameter,
                                const param_t* const allowed) {
-  param_t found = InitParam(); 
+  param_t found = InitParam();
 
   if (parameter->_type == TRI_AQL_NODE_PARAMETER) {
     // node is a bind parameter
@@ -208,17 +208,17 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
     // argument is a bool value, and this is allowed
     return true;
   }
-  
+
   if (allowed->_number && found._number) {
     // argument is a numeric value, and this is allowed
     return true;
   }
-  
+
   if ((allowed->_string || allowed->_regex) && found._string) {
     // argument is a string value, and this is allowed
     return true;
   }
-  
+
   if (allowed->_list && found._list) {
     // argument is a list, and this is allowed
     return true;
@@ -251,7 +251,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
   bool parse = true;
 
   assert(function);
- 
+
   pattern = function->_argPattern;
   while (parse) {
     c = *pattern++;
@@ -301,7 +301,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
 /// @brief hash function used to hash function struct
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashFunction (TRI_associative_pointer_t* array, 
+static uint64_t HashFunction (TRI_associative_pointer_t* array,
                               void const* element) {
   TRI_aql_function_t* function = (TRI_aql_function_t*) element;
 
@@ -312,8 +312,8 @@ static uint64_t HashFunction (TRI_associative_pointer_t* array,
 /// @brief comparison function used to determine function name equality
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualName (TRI_associative_pointer_t* array, 
-                       void const* key, 
+static bool EqualName (TRI_associative_pointer_t* array,
+                       void const* key,
                        void const* element) {
   TRI_aql_function_t* function = (TRI_aql_function_t*) element;
 
@@ -338,34 +338,34 @@ static bool EqualName (TRI_associative_pointer_t* array,
 /// a PATHS query
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckPathRestriction (TRI_aql_field_access_t* fieldAccess, 
+static bool CheckPathRestriction (TRI_aql_field_access_t* fieldAccess,
                                   TRI_aql_context_t* const context,
                                   TRI_aql_node_t* vertexCollection,
-                                  const char* lookFor, 
+                                  const char* lookFor,
                                   char* name,
                                   const size_t n) {
   size_t len;
 
   assert(fieldAccess);
   assert(lookFor);
-  
+
   len = strlen(lookFor);
   if (len == 0) {
     return false;
   }
 
-  if (n > fieldAccess->_variableNameLength + len && 
+  if (n > fieldAccess->_variableNameLength + len &&
       memcmp((void*) lookFor, (void*) name, len) == 0) {
     // we'll now patch the collection hint
     TRI_aql_collection_hint_t* hint;
 
     // field name is collection.source.XXX, e.g. users.source._id
     LOG_DEBUG("optimising PATHS() field access %s", fieldAccess->_fullName);
- 
+
     // we can now modify this fieldaccess in place to collection.XXX, e.g. users._id
     // copy trailing \0 byte as well
     memmove(name, name + len - 1, n - fieldAccess->_variableNameLength - len + 2);
-    
+
     // attach the modified fieldaccess to the collection
     hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(vertexCollection));
     hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
@@ -390,7 +390,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   char* directionValue;
   char* name;
   size_t n;
-  
+
   args = TRI_AQL_NODE_MEMBER(fcallNode, 0);
 
   if (args == NULL) {
@@ -426,7 +426,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   }
 
   // check if we have a filter on LENGTH(edges)
-  if (args->_members._length <= 4 && 
+  if (args->_members._length <= 4 &&
       TRI_EqualString(name, ".edges.LENGTH()")) {
     // length restriction, can only be applied if length parameters are not already set
     TRI_json_t* value;
@@ -546,25 +546,25 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the array with the function declarations 
+/// @brief initialise the array with the function declarations
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   TRI_associative_pointer_t* functions;
   bool result = true;
-  
-  functions = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false); 
+
+  functions = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false);
 
   if (functions == NULL) {
     return NULL;
   }
 
-  TRI_InitAssociativePointer(functions, 
-                             TRI_UNKNOWN_MEM_ZONE, 
-                             TRI_HashStringKeyAssociativePointer, 
-                             HashFunction, 
-                             EqualName, 
-                             NULL); 
+  TRI_InitAssociativePointer(functions,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             TRI_HashStringKeyAssociativePointer,
+                             HashFunction,
+                             EqualName,
+                             NULL);
 
   // . = argument of any type (except collection)
   // c = collection name, will be converted into list with documents
@@ -593,11 +593,11 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("TO_LIST", "CAST_LIST", true, false, ".", NULL);
 
   // string functions
-  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+", NULL); 
-  REGISTER_FUNCTION("CONCAT_SEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+", NULL); 
-  REGISTER_FUNCTION("CHAR_LENGTH", "CHAR_LENGTH", true, false, "s", NULL); 
-  REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s", NULL); 
-  REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s", NULL); 
+  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+", NULL);
+  REGISTER_FUNCTION("CONCAT_SEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+", NULL);
+  REGISTER_FUNCTION("CHAR_LENGTH", "CHAR_LENGTH", true, false, "s", NULL);
+  REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s", NULL);
+  REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s", NULL);
   REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n", NULL);
   REGISTER_FUNCTION("CONTAINS", "STRING_CONTAINS", true, false, "s,s|b", NULL);
   REGISTER_FUNCTION("LIKE", "STRING_LIKE", true, false, "s,r|b", NULL);
@@ -605,7 +605,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("RIGHT", "STRING_RIGHT", true, false, "s,n", NULL);
   REGISTER_FUNCTION("TRIM", "STRING_TRIM", true, false, "s|n", NULL);
 
-  // numeric functions 
+  // numeric functions
   REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n", NULL);
   REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, "n", NULL);
   REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, "n", NULL);
@@ -630,10 +630,10 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "ls", NULL);
   REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l", NULL);
   REGISTER_FUNCTION("LAST", "LAST", true, false, "l", NULL);
-  
+
   // document functions
-  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s", NULL); 
-  REGISTER_FUNCTION("ATTRIBUTES", "ATTRIBUTES", true, false, "a|b,b", NULL); 
+  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s", NULL);
+  REGISTER_FUNCTION("ATTRIBUTES", "ATTRIBUTES", true, false, "a|b,b", NULL);
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
   REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h,sl", NULL);
@@ -653,11 +653,11 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("TRAVERSAL", "GRAPH_TRAVERSAL", false, false, "h,h,s,s,a", NULL);
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s,a", NULL);
   REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s", NULL);
-  
+
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, ".", NULL); // simple non-deterministic wrapper to avoid optimisations at parse time
-  REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, "", NULL); 
+  REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, "", NULL);
   REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".|+", NULL);
   REGISTER_FUNCTION("FIRST_LIST", "FIRST_LIST", true, false, ".|+", NULL);
   REGISTER_FUNCTION("FIRST_DOCUMENT", "FIRST_DOCUMENT", true, false, ".|+", NULL);
@@ -671,7 +671,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the array with the function declarations 
+/// @brief free the array with the function declarations
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFunctionsAql (TRI_associative_pointer_t* functions) {
@@ -729,14 +729,14 @@ const char* TRI_GetInternalNameFunctionAql (const TRI_aql_function_t* const func
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
-                              const char* const externalName, 
-                              const char* const internalName, 
+                              const char* const externalName,
+                              const char* const internalName,
                               const bool isDeterministic,
                               const bool isGroup,
                               const char* const argPattern,
                               void (*optimise)(const TRI_aql_node_t* const, TRI_aql_context_t* const, TRI_aql_field_access_t*)) {
   TRI_aql_function_t* function;
-  
+
   function = (TRI_aql_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_function_t), false);
 
   if (function == NULL) {
@@ -765,8 +765,8 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     return false;
   }
 
-  function->_isDeterministic = isDeterministic; 
-  function->_isGroup = isGroup; 
+  function->_isDeterministic = isDeterministic;
+  function->_isGroup = isGroup;
   function->_argPattern = argPattern;
   function->optimise = optimise;
 
@@ -789,7 +789,7 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
 
   assert(function);
 
-  i = 0; 
+  i = 0;
   pattern = function->_argPattern;
   while ((c = *pattern++)) {
     switch (c) {
@@ -802,7 +802,7 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
         }
         foundArg = false;
         break;
-      case 'h': 
+      case 'h':
         if (i == checkArg) {
           return true;
         }
@@ -846,7 +846,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate argument types
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* parameter = (TRI_aql_node_t*) TRI_AQL_NODE_MEMBER(parameters, i);
-    
+
     if (repeat) {
       // last argument is repeated
       ARG_CHECK
@@ -862,7 +862,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
 
       while (parse && ! eof) {
         char c = *pattern++;
-        
+
         switch (c) {
           case '\0':
             parse = false;
@@ -954,5 +954,5 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

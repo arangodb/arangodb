@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-shell.h"
@@ -380,7 +380,7 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   colors->Set(v8::String::New("COLOR_BOLD_WHITE"),
               v8::String::New(TRI_SHELL_COLOR_BOLD_WHITE),
               v8::ReadOnly);
-  
+
   colors->Set(v8::String::New("COLOR_CYAN"),
               v8::String::New(TRI_SHELL_COLOR_CYAN),
               v8::ReadOnly);
@@ -388,7 +388,7 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   colors->Set(v8::String::New("COLOR_BOLD_CYAN"),
               v8::String::New(TRI_SHELL_COLOR_BOLD_CYAN),
               v8::ReadOnly);
-  
+
   colors->Set(v8::String::New("COLOR_MAGENTA"),
               v8::String::New(TRI_SHELL_COLOR_MAGENTA),
               v8::ReadOnly);
@@ -415,8 +415,8 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
 
   colors->Set(v8::String::New("COLOR_RESET"),
               v8::String::New(TRI_SHELL_COLOR_RESET),
-              v8::ReadOnly);    
-  
+              v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("COLORS"), colors, v8::ReadOnly);
 }
 
@@ -426,5 +426,5 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

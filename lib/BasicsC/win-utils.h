@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_WIN_UTILS_H
@@ -106,14 +106,14 @@ int TRI_openFile (const char* filename, int openFlags);
 // this provides a translation
 // .............................................................................
 
-void TRI_sleep(unsigned long); 
+void TRI_sleep(unsigned long);
 
 
 // .............................................................................
 // there is no usleep (micro sleep) in windows, so we create one here
 // .............................................................................
 
-void TRI_usleep(unsigned long); 
+void TRI_usleep(unsigned long);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -127,5 +127,5 @@ void TRI_usleep(unsigned long);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

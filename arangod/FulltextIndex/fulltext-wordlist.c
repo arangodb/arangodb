@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-wordlist.h"
@@ -37,7 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare words, using fruitsort 
+/// @brief compare words, using fruitsort
 ////////////////////////////////////////////////////////////////////////////////
 
 #define FSRT_INSTANCE SortFulltext
@@ -85,7 +85,7 @@ static uint32_t SortFulltextRandomGenerator (void) {
 TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
                                                           const size_t numWords) {
   TRI_fulltext_wordlist_t* wordlist;
-  
+
   wordlist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false);
   if (wordlist == NULL) {
     return NULL;
@@ -103,7 +103,7 @@ TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
 
 void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
   uint32_t i;
-  
+
   for (i = 0; i < wordlist->_numWords; ++i) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_words[i]);
   }
@@ -143,7 +143,7 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* const wordlist) {
     return;
   }
 
-  SortWordlistFulltext((const char**) wordlist->_words, (const char**) (wordlist->_words + wordlist->_numWords)); 
+  SortWordlistFulltext((const char**) wordlist->_words, (const char**) (wordlist->_words + wordlist->_numWords));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,6 +152,6 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* const wordlist) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

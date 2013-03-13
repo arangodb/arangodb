@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "json-shaper.h"
@@ -74,7 +74,7 @@ typedef struct array_shaper_s {
 
   TRI_associative_pointer_t _shapeDictionary;
   TRI_vector_pointer_t _shapes;
-  
+
   // todo: add attribute weight structure
 }
 array_shaper_t;
@@ -142,7 +142,7 @@ static uint64_t HashNameKeyAttributePath (TRI_associative_synced_t* array, void 
   char const* k;
 
   k = (char const*) key;
-  
+
   return TRI_FnvHashString(k);
 }
 
@@ -173,13 +173,13 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
   k = (char const*) key;
   e = (char const*) element;
   ee = (TRI_shape_path_t const*) element;
-  
+
   return TRI_EqualString(k,e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
-  /*                          
+  /*
   return TRI_EqualString2(k,
                           e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t),
                           ee->_nameLength - 1);
-  */                          
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +200,7 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   void const* p;
 
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
-  
+
   if (p != NULL) {
     return ((TRI_shape_path_t const*) p)->_pid;
   }
@@ -576,7 +576,7 @@ TRI_shaper_t* TRI_CreateArrayShaper (TRI_memory_zone_t* zone) {
   shaper->base.findShape = FindShapeShape;
   shaper->base.lookupShapeId = LookupShapeId;
   shaper->base.lookupAttributeWeight = LookupAttributeWeight;
-  
+
   // handle basics
   ok = TRI_InsertBasicTypesShaper(&shaper->base);
 
@@ -860,5 +860,5 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

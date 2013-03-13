@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -124,7 +124,7 @@ static bool LoadJavaScriptFile (char const* filename,
   }
 
   if (useGlobalContext) {
-    char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, 
+    char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE,
                                                    "(function() { ",
                                                    content,
                                                    "/* end-of-file */ })()");
@@ -305,7 +305,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: parse(<script>)")));
   }
-  
+
   v8::Handle<v8::Value> source = argv[0];
   v8::Handle<v8::Value> filename;
 
@@ -315,7 +315,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   else {
     filename = v8::String::New("(snippet)");
   }
-  
+
   if (! source->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
   }
@@ -327,7 +327,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
     string err = TRI_StringifyV8Exception(&tryCatch);
     return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
   }
-  
+
   // compilation failed, we don't know why
   if (script.IsEmpty()) {
     return scope.Close(v8::False());
@@ -365,7 +365,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   if (! source->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
   }
-  
+
   bool useSandbox = sandboxValue->IsObject();
   v8::Handle<v8::Object> sandbox;
   v8::Handle<v8::Context> context;
@@ -409,7 +409,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
       context->DetachGlobal();
       context->Exit();
     }
-  
+
     return scope.Close(v8::Undefined());
   }
 
@@ -750,7 +750,7 @@ static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
   if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomNumbers(<length>)")));
   }
-  
+
   int length = (int) TRI_ObjectToInt64(argv[0]);
 
   string str = JSNumGenerator.random(length);
@@ -771,7 +771,7 @@ static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
   if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomAlphaNumbers(<length>)")));
   }
-  
+
   int length = (int) TRI_ObjectToInt64(argv[0]);
 
   string str = JSAlphaNumGenerator.random(length);
@@ -786,13 +786,13 @@ static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
 /// Generates a string containing numbers and characters (length 8).
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {  
+static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomSalt()")));
   }
-  
+
   string str = JSSaltGenerator.random(8);
   return scope.Close(v8::String::New(str.c_str(), str.length()));
 }
@@ -805,15 +805,15 @@ static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {
 /// Generates a base64 encoded nonce string. (length of the string is 16)
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {  
+static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: createNonce()")));
   }
-  
+
   string str =  Nonce::createNonce();
-  
+
   return scope.Close(v8::String::New(str.c_str(), str.length()));
 }
 
@@ -831,7 +831,7 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
   if (argv.Length() != 1 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: checkAndMarkNonce(<nonce>)")));
   }
-  
+
   TRI_Utf8ValueNFC base64u(TRI_CORE_MEM_ZONE, argv[0]);
 
   if (base64u.length() != 16) {
@@ -845,7 +845,7 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
   }
 
   bool valid = Nonce::checkAndMark(raw);
-      
+
   return scope.Close(v8::Boolean::New(valid));
 }
 
@@ -1066,7 +1066,7 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
-  
+
   TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*content == 0) {
@@ -1074,7 +1074,7 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
   }
 
   ofstream file;
-  
+
   file.open(*name, ios::out | ios::binary);
   if (file.is_open()) {
     file << *content;
@@ -1298,7 +1298,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: wait(<seconds>)")));
   }
-  
+
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
@@ -1485,7 +1485,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
 void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
-  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());  
+  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
   const char* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
 
@@ -1501,7 +1501,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
   else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, message->GetScriptResourceName());
     const char* filenameString = *filename;
-#ifdef TRI_ENABLE_LOGGER 
+#ifdef TRI_ENABLE_LOGGER
     // if ifdef is not used, the compiler will complain about linenum being unused
     int linenum = message->GetLineNumber();
 #endif
@@ -1683,8 +1683,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (v8g == 0) {
-    // this check is necessary because when building arangosh, we do not include v8-vocbase and 
-    // this init function is the first one we call 
+    // this check is necessary because when building arangosh, we do not include v8-vocbase and
+    // this init function is the first one we call
     v8g = new TRI_v8_global_t;
     isolate->SetData(v8g);
   }
@@ -1692,13 +1692,13 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   // .............................................................................
   // create the global functions
   // .............................................................................
-  
+
   TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
-  
+
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
@@ -1709,7 +1709,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);   
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
@@ -1741,7 +1741,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8:
    v8::String::Value str(obj);
    size_t str_len = str.length();
 
-   _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);     
+   _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);
 }
 
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
@@ -1752,35 +1752,35 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
 
 v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
   v8::HandleScope scope;
-  
+
   v8::String::Value str(obj);
   size_t str_len = str.length();
   if (str_len > 0) {
     UErrorCode erroCode = U_ZERO_ERROR;
     const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
-    
+
     if (U_FAILURE(erroCode)) {
       //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
-      return scope.Close(v8::String::New(*str, str_len)); 
+      return scope.Close(v8::String::New(*str, str_len));
     }
 
     UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), erroCode);
 
     if (U_FAILURE(erroCode)) {
       //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
-      return scope.Close(v8::String::New(*str, str_len)); 
+      return scope.Close(v8::String::New(*str, str_len));
     }
-    
+
     // ..........................................................................
     // Take note here: we are assuming that the ICU type UChar is two bytes.
     // There is no guarantee that this will be the case on all platforms and
     // compilers. v8 expects uint16_t (2 bytes)
     // ..........................................................................
 
-    return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length())); 
+    return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length()));
   }
   else {
-    return scope.Close(v8::String::New("")); 
+    return scope.Close(v8::String::New(""));
   }
 }
 
@@ -1790,5 +1790,5 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "socket-utils.h"
@@ -67,21 +67,21 @@ int TRI_closesocket(TRI_socket_t s) {
   int res = 0;
   // if this is the last file descriptor associated with the open file
   // I really hope the resources are released under both windows and linux
-  #ifdef _WIN32  
+  #ifdef _WIN32
 /*
     if (s.fileHandle > 0) {
       res = shutdown(s.fileHandle,2);
       res = closesocket(s.fileHandle);
-    }  
+    }
 */
     if (s.fileDescriptor > 0) {
       res = _close(s.fileDescriptor);
-    }  
+    }
   #else
     if (s.fileDescriptor > 0) {
-      res = close(s.fileDescriptor); 
-    }  
-  #endif  
+      res = close(s.fileDescriptor);
+    }
+  #endif
   return res;
 }
 
@@ -92,7 +92,7 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flag
     res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
   #else
     res = read(s.fileDescriptor, buffer, numBytesToRead);
-  #endif  
+  #endif
   return res;
 }
 
@@ -105,7 +105,7 @@ int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, 
     res = (int)(write(s.fileHandle, buffer, numBytesToWrite));
   #endif
   return res;
-}  
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets close-on-exit for a socket
@@ -208,5 +208,5 @@ void TRI_ShutdownSockets (void) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
@@ -61,7 +61,7 @@ namespace triagens {
 /// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        AhuacatlTransaction (struct TRI_vocbase_s* const vocbase, 
+        AhuacatlTransaction (struct TRI_vocbase_s* const vocbase,
                              const triagens::arango::CollectionNameResolver& resolver,
                              TRI_aql_context_t* const context) :
           Transaction<T>(vocbase, resolver) {
@@ -71,12 +71,12 @@ namespace triagens {
           TRI_vector_pointer_t* collections = &context->_collections;
 
           const size_t n = collections->_length;
-          
+
           for (size_t i = 0; i < n; ++i) {
             TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
-         
-            TRI_transaction_cid_t cid = 0; 
-            TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name); 
+
+            TRI_transaction_cid_t cid = 0;
+            TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name);
             if (col != 0) {
               cid = (TRI_transaction_cid_t) col->_cid;
             }
@@ -108,5 +108,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

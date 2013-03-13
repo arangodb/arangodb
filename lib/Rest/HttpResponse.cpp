@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpResponse.h"
@@ -86,7 +86,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case SERVICE_UNAVAILABLE:  return "503 Service Temporarily Unavailable";
 
     // default
-    default:                   
+    default:
       LOGGER_WARNING("unknown HTTP response code " << code << " returned");
       return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
   }
@@ -225,11 +225,11 @@ size_t HttpResponse::contentLength () {
   }
   else {
     Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
-    
+
     if (kv == 0) {
       return 0;
     }
-    
+
     return StringUtils::uint32(kv->_value);
   }
 }
@@ -249,7 +249,7 @@ void HttpResponse::setContentType (string const& contentType) {
 string HttpResponse::header (string const& key) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
-  
+
   if (kv == 0) {
     return "";
   }
@@ -264,7 +264,7 @@ string HttpResponse::header (string const& key) const {
 
 string HttpResponse::header (const char* key, const size_t keyLength) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
-  
+
   if (kv == 0) {
     return "";
   }
@@ -280,7 +280,7 @@ string HttpResponse::header (const char* key, const size_t keyLength) const {
 string HttpResponse::header (string const& key, bool& found) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
-  
+
   if (kv == 0) {
     found = false;
     return "";
@@ -297,7 +297,7 @@ string HttpResponse::header (string const& key, bool& found) const {
 
 string HttpResponse::header (const char* key, const size_t keyLength, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
-  
+
   if (kv == 0) {
     found = false;
     return "";
@@ -315,19 +315,19 @@ string HttpResponse::header (const char* key, const size_t keyLength, bool& foun
 map<string, string> HttpResponse::headers () const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
-  
+
   map<string, string> result;
-  
+
   for (_headers.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
-    
+
     if (key == 0) {
       continue;
     }
-    
+
     result[key] = begin->_value;
   }
-  
+
   return result;
 }
 
@@ -341,9 +341,9 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, string co
   }
   else {
     char const* v = StringUtils::duplicate(value);
-    
+
     _headers.insert(key, keyLength, v);
-    
+
     _freeables.push_back(v);
   }
 }
@@ -367,18 +367,18 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, const cha
 
 void HttpResponse::setHeader (string const& key, string const& value) {
   string lk = StringUtils::tolower(key);
-  
+
   if (value.empty()) {
     _headers.erase(lk.c_str());
   }
   else {
     StringUtils::trimInPlace(lk);
-    
+
     char const* k = StringUtils::duplicate(lk);
     char const* v = StringUtils::duplicate(value);
-    
+
     _headers.insert(k, lk.size(), v);
-    
+
     _freeables.push_back(k);
     _freeables.push_back(v);
   }
@@ -389,54 +389,54 @@ void HttpResponse::setHeader (string const& key, string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
-  
+
   // make a copy we can change, this buffer will be deleted in the destructor
   char* headerBuffer = new char[headers.size() + 1];
   memcpy(headerBuffer, headers.c_str(), headers.size() + 1);
-  
+
   _freeables.push_back(headerBuffer);
-  
+
   // check for '\n' (we check for '\r' later)
   int lineNum = includeLine0 ? 0 : 1;
-  
+
   char* start = headerBuffer;
   char* end = headerBuffer + headers.size();
   char* end1 = start;
-  
+
   for (; end1 < end && *end1 != '\n';  ++end1) {
   }
-  
+
   while (start < end) {
     char* end2 = end1;
-    
+
     if (start < end2 && end2[-1] == '\r') {
       --end2;
     }
-    
+
     // the current line is [start, end2)
     if (start < end2) {
-      
+
       // now split line at the first spaces
       char* end3 = start;
-      
+
       for (; end3 < end2 && *end3 != ' ' && *end3 != ':'; ++end3) {
         *end3 = ::tolower(*end3);
       }
-      
+
       // the current token is [start, end3) and all in lower case
       if (lineNum == 0) {
-        
+
         // the start should be HTTP/1.1 followed by blanks followed by the result code
         if (start + 8 <= end3 && memcmp(start, "http/1.1", 8) == 0) {
-          
+
           char* start2 = end3;
-          
+
           for (; start2 < end2 && (*start2 == ' ' || *start2 == ':');  ++start2) {
           }
-          
+
           if (start2 < end2) {
             *end2 = '\0';
-            
+
             _code = static_cast<HttpResponseCode>(::atoi(start2));
           }
           else {
@@ -447,28 +447,28 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
           _code = NOT_IMPLEMENTED;
         }
       }
-      
+
       // normal header field, key is [start, end3) and the value is [start2, end4)
       else {
         for (;  end3 < end2 && *end3 != ':';  ++end3) {
           *end3 = ::tolower(*end3);
         }
-        
+
         *end3 = '\0';
-        
+
         if (end3 < end2) {
           char* start2 = end3 + 1;
-          
+
           for (;  start2 < end2 && *start2 == ' ';  ++start2) {
           }
-          
+
           char* end4 = end2;
-          
+
           for (;  start2 < end4 && *(end4 - 1) == ' ';  --end4) {
           }
-          
+
           *end4 = '\0';
-          
+
           _headers.insert(start, end3 - start, start2);
         }
         else {
@@ -476,12 +476,12 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
         }
           }
     }
-    
+
     start = end1 + 1;
-    
+
     for (end1 = start; end1 < end && *end1 != '\n';  ++end1) {
     }
-    
+
     lineNum++;
   }
 }
@@ -492,19 +492,19 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 
 HttpResponse* HttpResponse::swap () {
   HttpResponse* response = new HttpResponse(_code);
-  
+
   response->_headers.swap(&_headers);
   response->_body.swap(&_body);
   response->_freeables.swap(_freeables);
-  
+
   bool isHeadResponse = response->_isHeadResponse;
   response->_isHeadResponse = _isHeadResponse;
   _isHeadResponse = isHeadResponse;
-  
+
   size_t bodySize = response->_bodySize;
   response->_bodySize = _bodySize;
   _bodySize = bodySize;
-  
+
   return response;
 }
 
@@ -516,41 +516,41 @@ void HttpResponse::writeHeader (StringBuffer* output) {
   output->appendText("HTTP/1.1 ");
   output->appendText(responseString(_code));
   output->appendText("\r\n");
-  
+
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
-  
+
   bool seenTransferEncoding = false;
   string transferEncoding;
-  
+
   for (_headers.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
-    
+
     if (key == 0) {
       continue;
     }
 
     const size_t keyLength = strlen(key);
-    
+
     // ignore content-length
     if (keyLength == 14 && *key == 'c' && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
-    
+
     if (keyLength == 17 && *key == 't' && memcmp(key, "transfer-encoding", keyLength) == 0) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
     }
-    
+
     char const* value = begin->_value;
-    
+
     output->appendText(key, keyLength);
     output->appendText(": ", 2);
     output->appendText(value);
     output->appendText("\r\n", 2);
   }
-  
+
   if (seenTransferEncoding && transferEncoding == "chunked") {
     output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
   }
@@ -560,23 +560,23 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendText(transferEncoding);
       output->appendText("\r\n", 2);
     }
-   
+
     output->appendText("content-length: ", 16);
-    
+
     if (_isHeadResponse) {
       // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
       //
       // 14.13 Content-Length
       //
-      // The Content-Length entity-header field indicates the size of the entity-body, 
-      // in decimal number of OCTETs, sent to the recipient or, in the case of the HEAD method, 
-      // the size of the entity-body that would have been sent had the request been a GET. 
+      // The Content-Length entity-header field indicates the size of the entity-body,
+      // in decimal number of OCTETs, sent to the recipient or, in the case of the HEAD method,
+      // the size of the entity-body that would have been sent had the request been a GET.
       output->appendInteger(_bodySize);
     }
     else {
       output->appendInteger(_body.length());
     }
-    
+
     output->appendText("\r\n\r\n", 4);
   }
   // end of header, body to follow
@@ -623,5 +623,5 @@ void HttpResponse::headResponse (size_t size) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

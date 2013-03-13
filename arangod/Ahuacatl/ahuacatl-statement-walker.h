@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H
-#define TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_STATEMENT_WALKER_H
+#define TRIAGENS_AHUACATL_AHUACATL_STATEMENT_WALKER_H 1
 
 #include "BasicsC/common.h"
 #include "BasicsC/vector.h"
@@ -73,7 +73,7 @@ TRI_aql_statement_walker_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for node visitation function
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 typedef TRI_aql_node_t* (*TRI_aql_visit_f)(TRI_aql_statement_walker_t* const, TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restrict a offset/limit combination for the top scope to not apply
-/// a limit optimisation on collection access, but to apply it on for loop 
+/// a limit optimisation on collection access, but to apply it on for loop
 /// traversal. this is applied when a FILTER statement is found in a scope
 /// and that is later followed by a LIMIT statement
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ TRI_vector_pointer_t* TRI_GetCurrentRangesStatementWalkerAql (TRI_aql_statement_
 /// @brief set current ranges in top scope of statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const, 
+void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const,
                                              TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,7 @@ struct TRI_aql_variable_s* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void*,
-                                                          const bool, 
+                                                          const bool,
                                                           TRI_aql_visit_f,
                                                           TRI_aql_visit_f,
                                                           TRI_aql_visit_f);
@@ -177,5 +177,5 @@ void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-index.h"
@@ -32,7 +32,7 @@
 #include "BasicsC/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
-#include "Ahuacatl/ahuacatl-context.h" 
+#include "Ahuacatl/ahuacatl-context.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -56,19 +56,19 @@ static void LogIndexString (const char* const what,
   if (buffer == NULL) {
     return;
   }
-  
+
   for (i = 0; i < idx->_fields._length; i++) {
     if (i > 0) {
-      TRI_AppendStringStringBuffer(buffer, ", "); 
+      TRI_AppendStringStringBuffer(buffer, ", ");
     }
 
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  LOG_TRACE("%s %s index (%s) for '%s'", 
+  LOG_TRACE("%s %s index (%s) for '%s'",
             what,
-            TRI_TypeNameIndex(idx), 
-            buffer->_buffer, 
+            TRI_TypeNameIndex(idx),
+            buffer->_buffer,
             collectionName);
 
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
@@ -89,7 +89,7 @@ static bool IsExactCandidate (const TRI_aql_field_access_t* const candidate) {
     return true;
   }
 
-  if (candidate->_type == TRI_AQL_ACCESS_REFERENCE && 
+  if (candidate->_type == TRI_AQL_ACCESS_REFERENCE &&
       candidate->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
     // == ref
     return true;
@@ -101,16 +101,16 @@ static bool IsExactCandidate (const TRI_aql_field_access_t* const candidate) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pick or replace an index
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
-                                   TRI_aql_index_t* pickedIndex, 
+                                   TRI_aql_index_t* pickedIndex,
                                    const TRI_index_t* const idx,
                                    TRI_vector_pointer_t* fieldAccesses) {
   bool isBetter = false;
 
   assert(idx);
   assert(fieldAccesses);
-  
+
   if (pickedIndex == NULL) {
     pickedIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_index_t), false);
     pickedIndex->_idx = NULL;
@@ -123,74 +123,74 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  
+
   // ...........................................................................
   // If we do not have an index yet, then this index will do. As has been said
   // before 'any index is better than none'
   // ...........................................................................
-  
+
   if (pickedIndex->_idx == NULL) {
     pickedIndex->_idx = (TRI_index_t*) idx;
     pickedIndex->_fieldAccesses = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, fieldAccesses);
     return pickedIndex;
   }
-  
-  
+
+
   // ...........................................................................
   // We have previously selected an index, if it happens to be the primary then
   // we stick with it.
   // ...........................................................................
-  
+
   if (pickedIndex->_idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     return pickedIndex;
   }
-  
-    
+
+
   // ...........................................................................
   // Now go through the various possibilities if we have not located something
   // better.
   // ...........................................................................
-  
-  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) ) {  
+
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) ) {
     // .........................................................................
     // If we can used the primary index, then this is better than any other
-    // index so use it. 
+    // index so use it.
     // .........................................................................
     isBetter = true;
-  }  
-  
+  }
 
-  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {  
+
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {
     // .........................................................................
     // If the index type is a hash index, use this -- but only if we have NOT
     // located something better BEFORE.
     // .........................................................................
     isBetter = true;
   }
-  
-  
-  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && 
-       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX) ) {  
+
+
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) &&
+       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX) ) {
     // .........................................................................
     // If the index type is a skiplist index, use this -- but only if we have NOT
     // located something better BEFORE.
     // .........................................................................
     isBetter = true;
   }
-  
-  
-  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) && 
-       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX)              &&  
-       (pickedIndex->_idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) ) {  
+
+
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) &&
+       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX)              &&
+       (pickedIndex->_idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) ) {
     // .........................................................................
     // If the index type is a bitarray index, use this -- but only if we have NOT
     // located something better BEFORE.
     // .........................................................................
     isBetter = true;
   }
-  
-  
-  if ( (isBetter == false) && (idx->_unique == true) && (pickedIndex->_idx->_unique == false) ) {  
+
+
+  if ( (isBetter == false) && (idx->_unique == true) && (pickedIndex->_idx->_unique == false) ) {
     // .........................................................................
     // If the index is a unique one and the picked index is non-unique, then
     // replace it with the unique overriding the preferences above. E.g. if
@@ -200,22 +200,22 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
     isBetter = true;
   }
 
-  
-  if ( (isBetter == false) && 
+
+  if ( (isBetter == false) &&
        (fieldAccesses->_length < pickedIndex->_fieldAccesses->_length ) &&
-       (idx->_unique == true) ) {  
-    isBetter = true;       
+       (idx->_unique == true) ) {
+    isBetter = true;
   }
-  
-  
-  if ( (isBetter == false) && 
+
+
+  if ( (isBetter == false) &&
        (fieldAccesses->_length >  pickedIndex->_fieldAccesses->_length ) &&
-       (idx->_unique == false) ) {  
-    isBetter = true;       
+       (idx->_unique == false) ) {
+    isBetter = true;
   }
-  
-  
-  if (isBetter) { 
+
+
+  if (isBetter) {
     if (pickedIndex->_fieldAccesses != NULL) {
       TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, pickedIndex->_fieldAccesses);
     }
@@ -257,7 +257,7 @@ static bool CanUseIndex (const TRI_index_t* const idx) {
   }
 
   return true;
-}   
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -293,25 +293,25 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
-  size_t i, n; 
+  size_t i, n;
 
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
   assert(context);
   assert(collectionName);
   assert(candidates);
-  
+
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
     size_t numIndexFields;
     bool lastTypeWasExact;
     size_t j;
-   
+
     if (! CanUseIndex(idx)) {
-      continue; 
+      continue;
     }
-      
+
     LogIndexString("checking", idx, collectionName);
 
     TRI_ClearVectorPointer(&matches);
@@ -335,8 +335,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       // now loop over all candidates
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
-      
-        if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE || 
+
+        if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE ||
             candidate->_type == TRI_AQL_ACCESS_ALL) {
           // wrong index type, doesn't help us at all
           continue;
@@ -352,7 +352,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         }
         else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
           // edge index key names must be treated differently. _from and _to can be used independently
-          if (! TRI_EqualString("_from", fieldName) && 
+          if (! TRI_EqualString("_from", fieldName) &&
               ! TRI_EqualString("_to", fieldName)) {
             continue;
           }
@@ -369,30 +369,30 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
             // wrong access type for primary index
             continue;
           }
-          
+
           TRI_PushBackVectorPointer(&matches, candidate);
         }
-        
+
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
           if (! IsExactCandidate(candidate)) {
             // wrong access type for hash index
             continue;
           }
-          
+
           if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
             // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
           }
-          
+
           TRI_PushBackVectorPointer(&matches, candidate);
         }
-        
+
         else if (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) {
           if (! IsExactCandidate(candidate)) {
             // wrong access type for hash index
             continue;
           }
-          
+
           if (candidate->_type == TRI_AQL_ACCESS_LIST) {
             // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
@@ -400,19 +400,19 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
           TRI_PushBackVectorPointer(&matches, candidate);
         }
-        
+
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
           bool candidateIsExact;
 
           if (candidate->_type != TRI_AQL_ACCESS_EXACT &&
-              candidate->_type != TRI_AQL_ACCESS_LIST && 
-              candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE && 
+              candidate->_type != TRI_AQL_ACCESS_LIST &&
+              candidate->_type != TRI_AQL_ACCESS_RANGE_SINGLE &&
               candidate->_type != TRI_AQL_ACCESS_RANGE_DOUBLE &&
               candidate->_type != TRI_AQL_ACCESS_REFERENCE) {
             // wrong access type for skiplists
             continue;
           }
-          
+
           if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
             // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
@@ -447,7 +447,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     }
 
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && TRI_NeedsFullCoverageIndex(idx)) { 
+    if (matches._length < numIndexFields && TRI_NeedsFullCoverageIndex(idx)) {
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
     }
@@ -471,5 +471,5 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

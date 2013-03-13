@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,9 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_HTTP_SERVER_HTTP_HANDLER_H
@@ -125,7 +124,7 @@ namespace triagens {
 /// @addtogroup GeneralServer
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +168,7 @@ namespace triagens {
 /// @brief ensure the handler has only one response, otherwise we'd have a leak
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removePreviousResponse (); 
+        void removePreviousResponse ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new HTTP response
@@ -226,5 +225,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

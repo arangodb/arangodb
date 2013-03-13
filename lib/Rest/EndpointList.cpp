@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointList.h"
 
-#include <Logger/Logger.h>
+#include "Logger/Logger.h"
 
 using namespace triagens::rest;
 
@@ -47,7 +47,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint list
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 EndpointList::EndpointList () :
    _lists() {
 }
@@ -55,13 +55,13 @@ EndpointList::EndpointList () :
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy an endpoint list
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 EndpointList::~EndpointList () {
   for (map<string, ListType>::iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
       delete *i2;
     }
- 
+
     (*i).second.clear();
   }
 }
@@ -83,7 +83,7 @@ EndpointList::~EndpointList () {
 /// @brief count the number of elements in a sub-list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t EndpointList::count (const Endpoint::ProtocolType protocol, 
+size_t EndpointList::count (const Endpoint::ProtocolType protocol,
                             const Endpoint::EncryptionType encryption) const {
 
    map<string, ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
@@ -98,7 +98,7 @@ size_t EndpointList::count (const Endpoint::ProtocolType protocol,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump all endpoints used
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 void EndpointList::dump () const {
   for (map<string, ListType>::const_iterator i = _lists.begin(); i != _lists.end(); ++i) {
     for (ListType::const_iterator i2 = (*i).second.begin(); i2 != (*i).second.end(); ++i2) {
@@ -110,7 +110,7 @@ void EndpointList::dump () const {
 /// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType protocol, 
+EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType protocol,
                                                    const Endpoint::EncryptionType encryption) const {
 
   EndpointList::ListType result;
@@ -129,7 +129,7 @@ EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType 
 /// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::addEndpoint (const Endpoint::ProtocolType protocol, 
+bool EndpointList::addEndpoint (const Endpoint::ProtocolType protocol,
                                 const Endpoint::EncryptionType encryption, Endpoint* endpoint) {
 
   _lists[getKey(protocol, encryption)].insert(endpoint);
@@ -143,5 +143,5 @@ bool EndpointList::addEndpoint (const Endpoint::ProtocolType protocol,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

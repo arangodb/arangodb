@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,14 +22,14 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_JSON_UTILITIES_H
 #define TRIAGENS_BASICS_C_JSON_UTILITIES_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/json.h>
+#include "BasicsC/common.h"
+#include "BasicsC/json.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,7 +73,7 @@ bool TRI_CheckInListJson (const TRI_json_t* const, const TRI_json_t* const);
 /// lower and upper are the bounds values. if both lower and upper have a value,
 /// then each list element is checked against the range (lower ... uppper).
 /// if either lower or upper are null, then the comparison is done as either
-/// (-inf ... upper) or (lower ... +inf). 
+/// (-inf ... upper) or (lower ... +inf).
 ///
 /// using the boolean flags includeLower and includeUpper it can be specified
 /// whether the bounds values are part of the range (true) or not (false)
@@ -88,7 +88,7 @@ TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uniquify a sorted json list into a new list
 ///
-/// it is a prerequisite that the input list is already sorted. 
+/// it is a prerequisite that the input list is already sorted.
 /// otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,7 +101,7 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const);
 /// both input lists are already sorted. otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const, 
+TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const,
                                    const TRI_json_t* const,
                                    const bool);
 
@@ -112,7 +112,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const,
 /// both input lists are already sorted. otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const, 
+TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const,
                                     const TRI_json_t* const,
                                     const bool);
 
@@ -132,9 +132,9 @@ bool TRI_HasDuplicateKeyJson (const TRI_json_t* const);
 /// @brief merge two JSON documents into one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_MergeJson (TRI_memory_zone_t*, 
-                           const TRI_json_t* const, 
-                           const TRI_json_t* const, 
+TRI_json_t* TRI_MergeJson (TRI_memory_zone_t*,
+                           const TRI_json_t* const,
+                           const TRI_json_t* const,
                            const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,5 +149,5 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

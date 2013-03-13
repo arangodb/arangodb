@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoServer.h"
@@ -123,7 +123,7 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
-  
+
   // add batch handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
@@ -223,14 +223,14 @@ void ArangoServer::buildApplicationServer () {
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(string(".arango") + string(1, TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
-  
+
   // .............................................................................
-  // multi-threading scheduler 
+  // multi-threading scheduler
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
   _applicationScheduler->allowMultiScheduler(true);
-  
+
   _applicationServer->addFeature(_applicationScheduler);
 
   // .............................................................................
@@ -311,7 +311,7 @@ void ArangoServer::buildApplicationServer () {
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
-  
+
   // .............................................................................
   // javascript options
   // .............................................................................
@@ -339,7 +339,7 @@ void ArangoServer::buildApplicationServer () {
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
-   
+
   additional["JAVASCRIPT Options:help-devel"]
     ("jslint", &_jslint, "do not start as server, run js lint instead")
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
@@ -348,7 +348,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // server options
   // .............................................................................
-  
+
   // .............................................................................
   // for this server we display our own options such as port to use
   // .............................................................................
@@ -358,11 +358,11 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
   ;
-  
+
 
   bool disableStatistics = false;
 
-#if TRI_ENABLE_FIGURES  
+#if TRI_ENABLE_FIGURES
   additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-statistics", &disableStatistics, "turn off statistics gathering")
   ;
@@ -371,7 +371,7 @@ void ArangoServer::buildApplicationServer () {
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
-  
+
   // .............................................................................
   // endpoint server
   // .............................................................................
@@ -383,8 +383,8 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
-  
-  
+
+
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
@@ -392,7 +392,7 @@ void ArangoServer::buildApplicationServer () {
   if (! _applicationServer->parse(_argc, _argv, additional)) {
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();
   }
-  
+
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
@@ -402,7 +402,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   string languageName;
-  
+
   Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
@@ -410,18 +410,18 @@ void ArangoServer::buildApplicationServer () {
   else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
-    
+
 
   // .............................................................................
   // init nonces
   // .............................................................................
-  
+
   uint32_t optionNonceHashSize = 0; // TODO: add a server option
   if (optionNonceHashSize > 0) {
-    LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );        
+    LOGGER_DEBUG("setting nonce hash size to '" << optionNonceHashSize << "'" );
     Nonce::create(optionNonceHashSize);
   }
-  
+
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................
@@ -461,7 +461,7 @@ void ArangoServer::buildApplicationServer () {
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
-  if (mode == OperationMode::MODE_CONSOLE || 
+  if (mode == OperationMode::MODE_CONSOLE ||
       mode == OperationMode::MODE_UNITTESTS ||
       mode == OperationMode::MODE_JSLINT ||
       mode == OperationMode::MODE_SCRIPT) {
@@ -506,7 +506,7 @@ void ArangoServer::buildApplicationServer () {
     if (absoluteFile != 0) {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
- 
+
       LOGGER_DEBUG("using absolute pid file '" << _pidFile << "'");
     }
     else {
@@ -528,7 +528,7 @@ int ArangoServer::startupServer () {
 
   openDatabase();
 
-  
+
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -556,7 +556,7 @@ int ArangoServer::startupServer () {
 
   _applicationServer->prepare();
 
-  
+
   // .............................................................................
   // create the dispatcher
   // .............................................................................
@@ -565,8 +565,8 @@ int ArangoServer::startupServer () {
 
 
   _applicationServer->prepare2();
-  
-    
+
+
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
@@ -580,7 +580,7 @@ int ArangoServer::startupServer () {
 
   // create the server
   _applicationEndpointServer->buildServers();
-    
+
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
   DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
@@ -590,19 +590,19 @@ int ArangoServer::startupServer () {
   handlerFactory->addPrefixHandler("/",
                                    RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
                                    (void*) &httpOptions);
-  
+
 
   // .............................................................................
   // start the main event loop
   // .............................................................................
 
   _applicationServer->start();
-  
+
   // load authentication
   TRI_LoadAuthInfoVocBase(_vocbase);
-  
+
   // if the authentication info could not be loaded, but authentication is turned on,
-  // then we refuse to start 
+  // then we refuse to start
   if (! _vocbase->_authInfoLoaded && ! _applicationEndpointServer->isAuthenticationDisabled()) {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
@@ -611,7 +611,7 @@ int ArangoServer::startupServer () {
   LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
 
   _applicationServer->wait();
-  
+
   // .............................................................................
   // and cleanup
   // .............................................................................
@@ -645,7 +645,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   // open the database
   openDatabase();
-  
+
   // load authentication
   TRI_LoadAuthInfoVocBase(_vocbase);
 
@@ -692,7 +692,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
-        
+
     ok = true;
 
     switch (mode) {
@@ -865,16 +865,16 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     }
   }
 
-  // ............................................................................. 
+  // .............................................................................
   // and return from the context and isolate
-  // ............................................................................. 
+  // .............................................................................
 
   _applicationV8->exitContext(context);
 
   _applicationV8->close();
   _applicationV8->stop();
 
-  
+
   closeDatabase();
   Random::shutdown();
 
@@ -971,7 +971,7 @@ int ArangoServer::executeRubyConsole () {
 
   // open the database
   openDatabase();
-  
+
   // load authentication
   TRI_LoadAuthInfoVocBase(_vocbase);
 
@@ -1086,9 +1086,9 @@ void ArangoServer::closeDatabase () {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
   TRI_ShutdownVocBase();
-  
+
   Nonce::destroy();
-  
+
   LOGGER_INFO("ArangoDB has been shut down");
 }
 
@@ -1102,5 +1102,5 @@ void ArangoServer::closeDatabase () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

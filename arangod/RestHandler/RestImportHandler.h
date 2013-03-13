@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_HANDLER_REST_IMPORT_HANDLER_H
@@ -118,7 +118,7 @@ namespace triagens {
     protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log an error document 
+/// @brief log an error document
 ////////////////////////////////////////////////////////////////////////////////
 
       void logDocument (const TRI_json_t* const) const;
@@ -134,7 +134,7 @@ namespace triagens {
 /// @brief creates documents by JSON objects
 /// the input stream is one big JSON array containing all documents
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       bool createByDocumentsList ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,23 +152,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       TRI_json_t* parseJsonLine (const string&);
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a TRI_json_t object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
-      
-      TRI_json_t* createJsonObject (const TRI_json_t*, 
-                                    const TRI_json_t*, 
+
+      TRI_json_t* createJsonObject (const TRI_json_t*,
+                                    const TRI_json_t*,
                                     const string&);
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       bool checkKeys (TRI_json_t*);
-      
+
     };
   }
 }
@@ -181,5 +181,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
