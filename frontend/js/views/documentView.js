@@ -16,7 +16,15 @@ var documentView = Backbone.View.extend({
     "click #editFirstRow"       : "editFirst",
     "click #documentTableID tr" : "clicked",
     "click #editSecondRow"      : "editSecond",
-    "click .cancelButton"       : "checkIfEmpty"
+    "click .cancelButton"       : "checkIfEmpty",
+    "keyup .sorting_1"          : "listenKey"
+  },
+
+  listenKey: function(e) {
+    if (e.keyCode === 13) {
+      console.log('enter');
+      $('.btn-success').click();
+    }
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
@@ -260,7 +268,7 @@ var documentView = Backbone.View.extend({
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
       if (aPos[1] == 0) {
-        documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
+        documentEditTable.fnUpdate(self.escaped(value), aPos[0], aPos[1]);
         self.updateLocalDocumentStorage();
         return value;
       }
