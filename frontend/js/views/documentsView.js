@@ -276,7 +276,7 @@ var documentsView = Backbone.View.extend({
     target.pagination(options);
     $('#documentsToolbarF').prepend('<ul class="prePagi"><li><a id="documents_first"><i class="icon icon-step-backward"></i></a></li></ul>');
     $('#documentsToolbarF').append('<ul class="lasPagi"><li><a id="documents_last"><i class="icon icon-step-forward"></i></a></li></ul>');
-    $('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
+    //$('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];
