@@ -601,7 +601,7 @@ void TRI_DestroyGeoIndex (TRI_index_t* idx) {
 
 void TRI_FreeGeoIndex (TRI_index_t* idx) {
   TRI_DestroyGeoIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

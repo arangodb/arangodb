@@ -1652,7 +1652,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
     
       header = collection->_headers->request(collection->_headers);
-      // TODO: header might be NULL and must be checked
+      if (header == NULL) {
+        LOG_ERROR("out of memory");
+        return false;
+      }
 
       header->_rid       = d->_rid;
       header->_validFrom = marker->_tick;
@@ -2944,12 +2947,8 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
   size_t n;
   size_t i;
 
-  vector = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
-  if (!vector) {
-    return NULL;
-  }
-
-  TRI_InitVectorPointer(vector, TRI_UNKNOWN_MEM_ZONE);
+  vector = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+  TRI_InitVectorPointer(vector, TRI_CORE_MEM_ZONE);
 
   n = document->_allIndexes._length;
 

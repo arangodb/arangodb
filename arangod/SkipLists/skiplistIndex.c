@@ -581,7 +581,7 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
     return;
   }  
   SkiplistIndex_destroy(slIndex);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, slIndex);
+  TRI_Free(TRI_CORE_MEM_ZONE, slIndex);
 }
 
 
@@ -619,7 +619,7 @@ void SkiplistIndex_free(SkiplistIndex* slIndex) {
 SkiplistIndex* SkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex), true);
+  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
   if (skiplistIndex == NULL) {
     return NULL;
   }
@@ -627,7 +627,7 @@ SkiplistIndex* SkiplistIndex_new() {
   skiplistIndex->unique = true;
   skiplistIndex->skiplist.uniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_t), true);
   if (skiplistIndex->skiplist.uniqueSkiplist == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
   }    
     
@@ -1039,7 +1039,7 @@ int SkiplistIndex_remove (SkiplistIndex* skiplistIndex, TRI_skiplist_index_eleme
 SkiplistIndex* MultiSkiplistIndex_new() {
   SkiplistIndex* skiplistIndex;
 
-  skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkiplistIndex), true);
+  skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true);
   if (skiplistIndex == NULL) {
     return NULL;
   }
@@ -1047,7 +1047,7 @@ SkiplistIndex* MultiSkiplistIndex_new() {
   skiplistIndex->unique = false;
   skiplistIndex->skiplist.nonUniqueSkiplist = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_multi_t), true);
   if (skiplistIndex->skiplist.nonUniqueSkiplist == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
   }    
     

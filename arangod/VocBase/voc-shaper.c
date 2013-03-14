@@ -1303,7 +1303,10 @@ TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
 
   if (found == NULL) {
     found = accessor = TRI_ShapeAccessor(&shaper->base, sid, pid);
-    TRI_InsertElementAssociativePointer(&shaper->_accessors, accessor, true);
+    // TRI_ShapeAccessor can return a NULL pointer
+    if (found != NULL) {
+      TRI_InsertElementAssociativePointer(&shaper->_accessors, accessor, true);
+    }
   }
 
   TRI_UnlockMutex(&shaper->_accessorLock);
