@@ -23,6 +23,13 @@ var newCollectionView = Backbone.View.extend({
 
   events: {
     "click #save-new-collection" : "saveNewCollection",
+    "keydown"                    : "listenKey"
+  },
+
+  listenKey: function(e) {
+    if (e.keyCode == 13) {
+      this.saveNewCollection();
+    }
   },
 
   hidden: function () {

@@ -22,7 +22,13 @@ var collectionView = Backbone.View.extend({
     "hidden #change-collection"           :    "hidden",
     "click #delete-modified-collection"   :    "deleteCollection",
     "click #load-modified-collection"     :    "loadCollection",
-    "click #unload-modified-collection" :    "unloadCollection"
+    "click #unload-modified-collection"   :    "unloadCollection",
+    "keydown"                             :    "listenKey"
+  },
+  listenKey: function(e) {
+    if (e.keyCode == 13) {
+      this.saveModifiedCollection();
+    }
   },
   hidden: function () {
     window.location.hash = "#collection/";
