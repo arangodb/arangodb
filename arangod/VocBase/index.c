@@ -226,7 +226,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   // and save
-  ok = TRI_SaveJson(filename, json);
+  ok = TRI_SaveJson(filename, json, true);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

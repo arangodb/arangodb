@@ -993,7 +993,7 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
   }
 
   // save json info to file
-  ok = TRI_SaveJson(filename, json);
+  ok = TRI_SaveJson(filename, json, true);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
