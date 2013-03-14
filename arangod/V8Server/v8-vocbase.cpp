@@ -5122,7 +5122,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_SaveCollectionInfo(collection->_path, &info);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, collection->_vocbase->_forceSyncProperties);
     }
   }
 

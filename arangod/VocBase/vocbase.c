@@ -1741,7 +1741,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     if (! info._deleted) {
       info._deleted = true;
 
-      res = TRI_SaveCollectionInfo(collection->_path, &info);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1895,7 +1895,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
     TRI_CopyString(info._name, newName, sizeof(info._name));
 
-    res = TRI_SaveCollectionInfo(collection->_path, &info);
+    res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
     TRI_FreeCollectionInfoOptions(&info);
 
     if (res != TRI_ERROR_NO_ERROR) {
