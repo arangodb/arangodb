@@ -2054,7 +2054,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
 
   // then the shape collection
   shapes = TRI_Concatenate2File(collection->_directory, "SHAPES");
-  if (! shapes) {
+  if (shapes == NULL) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
     return NULL;
