@@ -471,9 +471,10 @@ ModuleCache["/internal"] = new Module("/internal");
     internal.printShell.apply(internal.printShell, arguments);
 
     // flush buffer
-    $('#shellContent').append('<p class="shellSuccess">'
-                              + internal.browserOutputBuffer
-                              + '</p>'); 
+    //$('#shellContent').append('<p class="shellSuccess">'
+    //                          + internal.browserOutputBuffer
+    //                         + '</p>');
+    jqconsole.Write('==> ' + internal.browserOutputBuffer + '\n', 'jssuccess');
     internal.browserOutputBuffer = "";
   };
 
