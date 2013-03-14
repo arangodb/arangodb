@@ -167,7 +167,7 @@ int TRI_WriteServerId (char const* filename) {
 
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
-  ok = TRI_SaveJson(filename, json);
+  ok = TRI_SaveJson(filename, json, true);
 
   if (! ok) {
     LOG_ERROR("could not save shutdown information in file '%s': %s", filename, TRI_last_error());

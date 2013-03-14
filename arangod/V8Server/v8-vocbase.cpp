@@ -3911,7 +3911,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   ReleaseCollection(collection);
 
-  if (!ok || bitarrayIndex == 0) {
+  if (! ok || bitarrayIndex == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(errorCode, errorString)));
   }
 

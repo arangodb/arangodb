@@ -90,7 +90,7 @@ function CompactionSuite () {
         maxWait = 750;
       }
       else {
-        maxWait = 75;
+        maxWait = 90;
       }
 
       waited = 0;

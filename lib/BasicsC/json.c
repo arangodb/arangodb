@@ -870,8 +870,9 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
 /// @brief saves a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
-  bool ok;
+bool TRI_SaveJson (char const* filename, 
+                   TRI_json_t const* object, 
+                   const bool syncFile) {
   char* tmp;
   int fd;
   int res;
@@ -892,9 +893,7 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
     return false;
   }
 
-  ok = TRI_PrintJson(fd, object);
-
-  if (! ok) {
+  if (! TRI_PrintJson(fd, object)) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("cannot write to json file '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
@@ -912,14 +911,14 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
     return false;
   }
 
-  ok = TRI_fsync(fd);
-
-  if (! ok) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot sync saved json '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
-    return false;
+  if (syncFile) {
+    if (! TRI_fsync(fd)) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_ERROR("cannot sync saved json '%s': '%s'", tmp, TRI_LAST_ERROR_STR);
+      TRI_UnlinkFile(tmp);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+      return false;
+    }
   }
 
   res = TRI_CLOSE(fd);
@@ -935,15 +934,17 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
   res = TRI_RenameFile(tmp, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
     LOG_ERROR("cannot rename saved file '%s' to '%s': '%s'", tmp, filename, TRI_LAST_ERROR_STR);
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
-    return res;
+    return false;
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
-  return ok;
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
