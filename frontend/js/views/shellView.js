@@ -16,6 +16,7 @@ var shellView = Backbone.View.extend({
     });
     $("#shell_workspace").trigger("resize", [ 200 ]);
     $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
+    $.gritter.removeAll();
     return this;
   },
   renderEditor: function () {
