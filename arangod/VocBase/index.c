@@ -226,7 +226,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   // and save
-  ok = TRI_SaveJson(filename, json);
+  ok = TRI_SaveJson(filename, json, true);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -2318,7 +2318,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
 
   fts = TRI_CreateFtsIndex(2048, 1, 1);
   if (fts == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, fulltextIndex);
     return NULL;
   }
 

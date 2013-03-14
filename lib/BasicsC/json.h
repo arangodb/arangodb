@@ -306,7 +306,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const*);
 /// @brief saves a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveJson (char const* filename, TRI_json_t const*);
+bool TRI_SaveJson (char const*, TRI_json_t const*, const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a json object into a given buffer
