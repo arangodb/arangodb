@@ -15,7 +15,8 @@ var documentView = Backbone.View.extend({
     "click #sourceView"         : "sourceView",
     "click #editFirstRow"       : "editFirst",
     "click #documentTableID tr" : "clicked",
-    "click #editSecondRow"      : "editSecond"
+    "click #editSecondRow"      : "editSecond",
+    "click .cancelButton"       : "checkIfEmpty"
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
@@ -162,6 +163,7 @@ var documentView = Backbone.View.extend({
     $.each(tableContent, function(key, val) {
       if ($(val).text() === "zkey"+randomKey) {
         $(val).click();
+        $('.jediTextarea textarea').val("");
         return;
       }
     });
@@ -301,12 +303,17 @@ var documentView = Backbone.View.extend({
       cssclass : 'jediTextarea',
       submitcssclass: 'btn btn-success pull-right',
       cancelcssclass: 'btn btn-danger pull-right',
-      cancel: 'Cancel',
+      cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
       submit: 'Save',
       onblur: 'cancel',
       //style: 'display: inline',
       autogrow: {lineHeight: 16, minHeight: 30}
     });
+  },
+  checkIfEmpty: function (e) {
+    console.log(e);
+    console.log("TEST");
+    var test = $('.jediTextarea button');
   },
   getTypedValue: function (value) {
     value = value.replace(/(^\s+|\s+$)/g, '');
