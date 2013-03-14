@@ -24,7 +24,14 @@ var documentsView = Backbone.View.extend({
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
     "click #documents_next"      : "nextDocuments",
-    "click #confirmDeleteBtn"    : "confirmDelete"
+    "click #confirmDeleteBtn"    : "confirmDelete",
+    "keyup .modal-body"          : "listenKey"
+  },
+
+  listenKey: function (e) {
+    if(e.keyCode === 13){
+      this.addEdge();
+    }
   },
 
   buildCollectionLink : function (collection) {
@@ -77,6 +84,14 @@ var documentsView = Backbone.View.extend({
     var collid  = window.location.hash.split("/")[1];
     var from = $('#new-document-from').val();
     var to = $('#new-document-to').val();
+    if (from === '') {
+      arangoHelper.arangoNotification('From paramater is missing');
+      return;
+    }
+    if (to === '') {
+      arangoHelper.arangoNotification('To parameter is missing');
+      return;
+    }
     var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
 
     if (result !== false) {
@@ -85,7 +100,6 @@ var documentsView = Backbone.View.extend({
     }
     //Error
     else {
-      $('#edgeCreateModal').modal('hide');
       arangoHelper.arangoError('Creating edge failed');
     }
   },
