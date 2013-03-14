@@ -161,6 +161,8 @@ var logsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
+    $('#logtestdiv').prepend('<ul class="prePagi"><li><a id="logTableID_first"><i class="icon icon-step-backward"></i></a></li></ul>');
+    $('#logtestdiv').append('<ul class="lasPagi"><li><a id="logTableID_last"><i class="icon icon-step-forward"></i></a></li></ul>');
   },
   drawTable: function () {
     var self = this;
