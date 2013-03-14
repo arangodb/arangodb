@@ -92,7 +92,9 @@ static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeSubObjectsHashIndexElement (TRI_hash_index_element_t* element) {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  if (element->_subObjects != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +250,9 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
   }
 
   res = TRI_InsertKeyHashArray(&hashIndex->_hashArray, &key, element, false);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
+  if (key._values != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
+  }
 
   if (res == TRI_RESULT_KEY_EXISTS) {
     return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
