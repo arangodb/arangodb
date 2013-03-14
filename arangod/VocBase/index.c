@@ -226,7 +226,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   // and save
-  ok = TRI_SaveJson(filename, json, true);
+  ok = TRI_SaveJson(filename, json, collection->base._vocbase->_forceSyncProperties);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
