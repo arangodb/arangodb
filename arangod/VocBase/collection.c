@@ -1229,7 +1229,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   ok = CheckCollection(collection);
 
   if (! ok) {
-    LOG_ERROR("cannot open '%s', check failed", collection->_directory);
+    LOG_DEBUG("cannot open '%s', check failed", collection->_directory);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
 
