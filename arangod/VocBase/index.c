@@ -2318,7 +2318,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
 
   fts = TRI_CreateFtsIndex(2048, 1, 1);
   if (fts == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);
+    TRI_Free(TRI_CORE_MEM_ZONE, fulltextIndex);
     return NULL;
   }
 
