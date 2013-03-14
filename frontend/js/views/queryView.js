@@ -2,6 +2,7 @@ var queryView = Backbone.View.extend({
   el: '#content',
   initialize: function () {
     localStorage.setItem("queryContent", "");
+    localStorage.setItem("queryOutput", "");
   },
   events: {
     'click #submitQueryIcon'   : 'submitQuery',
@@ -52,10 +53,11 @@ var queryView = Backbone.View.extend({
     $.gritter.removeAll();
 
     if(typeof(Storage)!=="undefined") {
-      queryContent = localStorage.getItem("queryContent");
-      if (queryContent !== '') {
-        editor.setValue(queryContent);
-      }
+      var queryContent = localStorage.getItem("queryContent");
+      var queryOutput = localStorage.getItem("queryOutput");
+      editor.setValue(queryContent);
+      console.log(queryOutput);
+      editor2.setValue(queryOutput);
     }
     return this;
   },
@@ -88,6 +90,7 @@ var queryView = Backbone.View.extend({
 
     if(typeof(Storage) !== "undefined") {
       localStorage.setItem("queryContent", editor.getValue());
+      localStorage.setItem("queryOutput", editor2.getValue());
     }
   },
   FormatJSON: function(oData, sIndent) {
