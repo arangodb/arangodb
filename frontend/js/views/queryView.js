@@ -1,6 +1,7 @@
 var queryView = Backbone.View.extend({
   el: '#content',
-  init: function () {
+  initialize: function () {
+    localStorage.setItem("queryContent", "");
   },
   events: {
     'click #submitQueryIcon'   : 'submitQuery',
@@ -14,6 +15,7 @@ var queryView = Backbone.View.extend({
   template: new EJS({url: '/_admin/html/js/templates/queryView.ejs'}),
 
   render: function() {
+
     $(this.el).html(this.template.text);
     var editor = ace.edit("aqlEditor");
     var editor2 = ace.edit("queryOutput");
@@ -48,6 +50,13 @@ var queryView = Backbone.View.extend({
 
     $('#aqlEditor .ace_text-input').focus();
     $.gritter.removeAll();
+
+    if(typeof(Storage)!=="undefined") {
+      queryContent = localStorage.getItem("queryContent");
+      if (queryContent !== '') {
+        editor.setValue(queryContent);
+      }
+    }
     return this;
   },
   submitQuery: function() {
@@ -76,6 +85,10 @@ var queryView = Backbone.View.extend({
         }
       }
     });
+
+    if(typeof(Storage) !== "undefined") {
+      localStorage.setItem("queryContent", editor.getValue());
+    }
   },
   FormatJSON: function(oData, sIndent) {
     var self = this;
