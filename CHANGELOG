@@ -1,6 +1,12 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* added server startup flag `--database.force-sync-properties` to force syncing of
+  collection properties on collection creation, deletion and on property update.
+  The default value is true to mimic the behavior of previous versions of ArangoDB.
+  If set to false, collection properties are written to disk but no call to sync()
+  is made.
+
 * added detailed output of server version and components for REST APIs
   `/_admin/version` and `/_api/version`. To retrieve this extended information,
   call the REST APIs with URL parameter `details=true`.

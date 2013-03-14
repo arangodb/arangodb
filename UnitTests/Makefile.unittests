@@ -77,6 +77,7 @@ SERVER_OPT := \
 	--configuration none \
 	--database.maximal-journal-size 1048576 \
 	--database.force-sync-shapes false \
+	--database.force-sync-properties false \
 	--javascript.action-directory @top_srcdir@/js/actions/system \
 	--javascript.gc-interval 1 \
 	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
