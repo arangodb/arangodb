@@ -675,6 +675,10 @@ static bool IsEqualKeyElementPQIndex(TRI_associative_array_t* aa, void* key, voi
   return false;  
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
