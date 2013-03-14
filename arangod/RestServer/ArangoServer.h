@@ -347,19 +347,36 @@ namespace triagens {
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force sync shapes
+/// @brief force syncing of shape data
 ///
 /// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
 ///
 /// Force syncing of shape data to disk when writing shape information.
 /// If turned off, syncing will still happen for shapes of collections that
 /// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
-/// will always happen, regards of the value of waitForSync.
+/// will always happen, regardless of the value of waitForSync.
 ///
 /// The default is @LIT{true}.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _forceSyncShapes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief force syncing of collection properties
+///
+/// @CMDOPT{\--database.force-sync-properties @CA{boolean}}
+///
+/// Force syncing of collection properties to disk after creating a collection 
+/// or updating its properties.
+///
+/// If turned off, syncing will still happen for collection that have a 
+/// waitForSync value of @LIT{true}. If turned on, syncing of properties will
+/// always happen, regardless of the value of waitForSync.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _forceSyncProperties;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

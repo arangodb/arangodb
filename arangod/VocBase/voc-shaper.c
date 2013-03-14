@@ -960,7 +960,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  res = TRI_SaveCollectionInfo(collection->base._directory, &parameter);
+  res = TRI_SaveCollectionInfo(collection->base._directory, &parameter, vocbase->_forceSyncProperties);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->base._directory, TRI_last_error());
     TRI_FreeVocShaper(&shaper->base);
