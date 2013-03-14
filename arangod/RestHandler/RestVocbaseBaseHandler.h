@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
@@ -167,14 +167,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
 ///
-/// this method will check the "createCollection" attribute of the request. if 
-/// it is set to true, it will verify that the named collection actually exists. 
+/// this method will check the "createCollection" attribute of the request. if
+/// it is set to true, it will verify that the named collection actually exists.
 /// if the collection does not yet exist, it will create it on the fly.
 /// if the "createCollection" attribute is not set or set to false, nothing will
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool checkCreateCollection (const string&, 
+        bool checkCreateCollection (const string&,
                                     const TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,8 +198,8 @@ namespace triagens {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (const TRI_voc_cid_t cid, 
-                              TRI_voc_key_t key, 
+        void generateCreated (const TRI_voc_cid_t cid,
+                              TRI_voc_key_t key,
                               TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::CREATED, _resolver.getCollectionName(cid), key, rid);
         }
@@ -209,7 +209,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateAccepted (const TRI_voc_cid_t cid,
-                               const TRI_voc_key_t key, 
+                               const TRI_voc_key_t key,
                                const TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::ACCEPTED, _resolver.getCollectionName(cid), key, rid);
         }
@@ -219,7 +219,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateDeleted (const TRI_voc_cid_t cid,
-                              const TRI_voc_key_t key, 
+                              const TRI_voc_key_t key,
                               const TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
         }
@@ -229,7 +229,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateUpdated (const TRI_voc_cid_t cid,
-                              const TRI_voc_key_t key, 
+                              const TRI_voc_key_t key,
                               const TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
         }
@@ -257,8 +257,8 @@ namespace triagens {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (const TRI_voc_cid_t, 
-                                         TRI_voc_key_t, 
+        void generatePreconditionFailed (const TRI_voc_cid_t,
+                                         TRI_voc_key_t,
                                          TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,7 +280,7 @@ namespace triagens {
 /// @brief generate an error message for a transaction error
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateTransactionError (const string&, 
+        void generateTransactionError (const string&,
                                        const int,
                                        TRI_voc_key_t = 0,
                                        TRI_voc_rid_t = 0);
@@ -351,7 +351,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief utility object to look up names for collection ids and vice versa
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         triagens::arango::CollectionNameResolver _resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,5 +398,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

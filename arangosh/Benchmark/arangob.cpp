@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
@@ -145,7 +145,7 @@ static string TestCase = "version";
 ////////////////////////////////////////////////////////////////////////////////
 
 struct VersionTest : public BenchmarkOperation {
-  VersionTest () 
+  VersionTest ()
     : BenchmarkOperation () {
   }
 
@@ -155,21 +155,21 @@ struct VersionTest : public BenchmarkOperation {
   string collectionName () {
     return "";
   }
-  
+
   const bool useCollection () const {
     return false;
   }
 
   const string& url () {
     static string url = "/_api/version";
-    
+
     return url;
   }
 
   const HttpRequest::HttpRequestType type () {
     return HttpRequest::HTTP_REQUEST_GET;
   }
-  
+
   const char* payload (size_t* length, const size_t counter, bool* mustFree) {
     static const char* payload = "";
 
@@ -177,7 +177,7 @@ struct VersionTest : public BenchmarkOperation {
     *length = 0;
     return payload;
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -198,7 +198,7 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct DocumentCreationTest : public BenchmarkOperation {
-  DocumentCreationTest () 
+  DocumentCreationTest ()
     : BenchmarkOperation (),
       _url(),
       _buffer(0) {
@@ -217,7 +217,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
         TRI_AppendCharStringBuffer(_buffer, ',');
       }
     }
-    
+
     TRI_AppendCharStringBuffer(_buffer, '}');
 
     _length = TRI_LengthStringBuffer(_buffer);
@@ -226,11 +226,11 @@ struct DocumentCreationTest : public BenchmarkOperation {
   ~DocumentCreationTest () {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
-  
+
   string collectionName () {
     return Collection;
   }
-  
+
   const bool useCollection () const {
     return true;
   }
@@ -242,13 +242,13 @@ struct DocumentCreationTest : public BenchmarkOperation {
   const HttpRequest::HttpRequestType type () {
     return HttpRequest::HTTP_REQUEST_POST;
   }
-  
+
   const char* payload (size_t* length, const size_t counter, bool* mustFree) {
     *mustFree = false;
     *length = _length;
     return (const char*) _buffer->_buffer;
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -257,7 +257,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   string _url;
 
   TRI_string_buffer_t* _buffer;
-  
+
   size_t _length;
 };
 
@@ -275,7 +275,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct CollectionCreationTest : public BenchmarkOperation {
-  CollectionCreationTest () 
+  CollectionCreationTest ()
     : BenchmarkOperation (),
       _url() {
     _url = "/_api/collection";
@@ -284,7 +284,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
   ~CollectionCreationTest () {
   }
-  
+
   BenchmarkCounter<uint64_t>* getSharedCounter () {
     if (_counter == 0) {
       _counter = new BenchmarkCounter<uint64_t>(0, 1024 * 1024);
@@ -292,11 +292,11 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
     return _counter;
   }
-  
+
   string collectionName () {
     return "";
   }
-  
+
   const bool useCollection () const {
     return false;
   }
@@ -308,7 +308,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
   const HttpRequest::HttpRequestType type () {
     return HttpRequest::HTTP_REQUEST_POST;
   }
-  
+
   const char* payload (size_t* length, const size_t counter, bool* mustFree) {
     BenchmarkCounter<uint64_t>* ctr = getSharedCounter();
     TRI_string_buffer_t* buffer;
@@ -325,15 +325,15 @@ struct CollectionCreationTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\"}");
 
     *length = TRI_LengthStringBuffer(buffer);
-   
+
     // this will free the string buffer frame, but not the string
-    data = buffer->_buffer; 
+    data = buffer->_buffer;
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     *mustFree = true;
     return (const char*) data;
   }
-  
+
   const map<string, string>& headers () {
     static const map<string, string> headers;
     return headers;
@@ -383,7 +383,7 @@ static int GetStartCounter () {
 /// @brief print a status line (if ! quiet)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Status (const string& value) {    
+static void Status (const string& value) {
   if (! BaseClient.quiet()) {
     cout << value << endl;
   }
@@ -395,7 +395,7 @@ static void Status (const string& value) {
 
 static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
-  
+
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
@@ -411,11 +411,11 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   vector<string> arguments;
   description.arguments(&arguments);
-  
+
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangob.conf");
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,7 +446,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-  
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -490,18 +490,18 @@ int main (int argc, char* argv[]) {
     BenchmarkThread* thread = new BenchmarkThread(testCase,
         &startCondition,
         &UpdateStartCounter,
-        i, 
+        i,
         (unsigned long) BatchSize,
         &operationsCounter,
         endpoint,
-        BaseClient.username(), 
+        BaseClient.username(),
         BaseClient.password());
 
     threads.push_back(thread);
     thread->setOffset(i * (Operations / Concurrency));
     thread->start();
   }
- 
+
   // give all threads a chance to start so they will not miss the broadcast
   while (GetStartCounter() < Concurrency) {
     usleep(5000);
@@ -528,7 +528,7 @@ int main (int argc, char* argv[]) {
       break;
     }
 
-    usleep(50000); 
+    usleep(50000);
   }
 
   double time = ((double) timer.time()) / 1000000.0;
@@ -585,5 +585,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

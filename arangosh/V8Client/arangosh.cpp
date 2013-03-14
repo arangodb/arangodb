@@ -4,7 +4,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <v8.h>
@@ -183,11 +183,11 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
   if (BaseClient.usePager()) {
-    BaseClient.internalPrint("Using pager already.\n");        
+    BaseClient.internalPrint("Using pager already.\n");
   }
   else {
     BaseClient.setUsePager(true);
-    BaseClient.internalPrint("Using pager '%s' for output buffering.\n", BaseClient.outputPager().c_str());    
+    BaseClient.internalPrint("Using pager '%s' for output buffering.\n", BaseClient.outputPager().c_str());
   }
 
   return v8::Undefined();
@@ -202,9 +202,9 @@ static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
     BaseClient.internalPrint("Stopping pager.\n");
   }
   else {
-    BaseClient.internalPrint("Pager not running.\n");    
+    BaseClient.internalPrint("Pager not running.\n");
   }
-  
+
   BaseClient.setUsePager(false);
 
   return v8::Undefined();
@@ -286,13 +286,13 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   }
 
   ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
-  
+
   ih.setQuote(quote);
   ih.setSeparator(separator.c_str());
 
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
- 
+
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
@@ -300,7 +300,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     result->Set(v8::String::New("errors"), v8::Integer::New(ih.getErrorLines()));
     return scope.Close(result);
   }
-  
+
   return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
 }
 
@@ -333,12 +333,12 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<collection> must be an UTF8 filename")));
   }
 
-  
+
   ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
-  
+
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
- 
+
   if (ih.importJson(collectionName, fileName)) {
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
@@ -346,7 +346,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
     result->Set(v8::String::New("errors"), v8::Integer::New(ih.getErrorLines()));
     return scope.Close(result);
   }
-  
+
   return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
 }
 
@@ -386,9 +386,9 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
 
   v8::String::Value left(argv[0]);
   v8::String::Value right(argv[1]);
-  
+
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
-  
+
   return scope.Close(v8::Integer::New(result));
 }
 
@@ -404,13 +404,13 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static V8ClientConnection* CreateConnection () {
   return new V8ClientConnection(BaseClient.endpointServer(),
                                 BaseClient.username(),
-                                BaseClient.password(), 
-                                BaseClient.requestTimeout(), 
-                                BaseClient.connectTimeout(), 
+                                BaseClient.password(),
+                                BaseClient.requestTimeout(),
+                                BaseClient.connectTimeout(),
                                 ArangoClient::DEFAULT_RETRIES,
                                 false);
 }
@@ -457,7 +457,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   if (StartupModules.empty()) {
     LOGGER_FATAL_AND_EXIT("module path not known, please use '--javascript.modules-path'");
   }
-  
+
   // turn on paging automatically if "pager" option is set
   if (options.has("pager") && ! options.has("use-pager")) {
     BaseClient.setUsePager(true);
@@ -468,7 +468,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     BaseClient.shutup();
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy v8::Object to std::map<string, string>
 ////////////////////////////////////////////////////////////////////////////////
@@ -522,24 +522,24 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
-  
+
     BaseClient.createEndpoint(definition);
 
-    if (BaseClient.endpointServer() == 0) { 
+    if (BaseClient.endpointServer() == 0) {
       string errorMessage = "error in '" + definition + "'";
-      return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));      
+      return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));
     }
   }
 
-  if (BaseClient.endpointServer() == 0) { 
+  if (BaseClient.endpointServer() == 0) {
     return v8::Undefined();
-  }   
-  
+  }
+
   V8ClientConnection* connection = CreateConnection();
-  
+
   if (connection->isConnected() && connection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() 
-         << "' Version " << connection->getVersion() << endl; 
+    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+         << "' Version " << connection->getVersion() << endl;
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
@@ -563,7 +563,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: get(<url>[, <headers>])")));
@@ -594,7 +594,7 @@ static v8::Handle<v8::Value> ClientConnection_httpHead (v8::Arguments const& arg
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: head(<url>[, <headers>])")));
@@ -625,7 +625,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<url>[, <headers>])")));
@@ -648,14 +648,14 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
 
 static v8::Handle<v8::Value> ClientConnection_httpOptions (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: options(<url>, <body>[, <headers>])")));
@@ -686,7 +686,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& arg
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: post(<url>, <body>[, <headers>])")));
@@ -717,7 +717,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: put(<url>, <body>[, <headers>])")));
@@ -748,7 +748,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& ar
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
@@ -779,7 +779,7 @@ static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode (v8::Arguments 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: lastHttpReturnCode()")));
@@ -801,7 +801,7 @@ static v8::Handle<v8::Value> ClientConnection_lastErrorMessage (v8::Arguments co
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   // check params
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: lastErrorMessage()")));
@@ -823,7 +823,7 @@ static v8::Handle<v8::Value> ClientConnection_isConnected (v8::Arguments const& 
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: isConnected()")));
   }
@@ -844,22 +844,22 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
-  
+
   string result = "[object ArangoConnection:" + BaseClient.endpointServer()->getSpecification();
-          
+
   if (connection->isConnected()) {
     result += ","
             + connection->getVersion()
             + ",connected]";
   }
   else {
-    result += ",unconnected]";    
+    result += ",unconnected]";
   }
-  
+
   return scope.Close(v8::String::New(result.c_str()));
 }
 
@@ -876,7 +876,7 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
   if (connection == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
   }
-  
+
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: getVersion()")));
   }
@@ -899,38 +899,38 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   // set up prompts
   string goodPrompt;
   string badPrompt;
-  
+
 #ifdef __APPLE__
   // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
   // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
   // we will therefore disable colorful prompts for MacOS.
   goodPrompt = badPrompt = string("arangosh> ");
-  
+
 #elif _WIN32
   // ........................................................................................
   // Windows console is not coloured by escape sequences. So the method given below will not
-  // work. For now we simply ignore the colours until we move the windows version into 
+  // work. For now we simply ignore the colours until we move the windows version into
   // a GUI Window.
   // ........................................................................................
   goodPrompt = string("arangosh> ");
   badPrompt = string("arangosh> ");
 #else
   if (BaseClient.colors()) {
-    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
-                 string("arangosh>") + 
-                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) +
+                 string("arangosh>") +
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) +
                  ' ';
 
-    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) + 
-                 string("arangosh>") + 
-                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) +
+                 string("arangosh>") +
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) +
                  ' ';
   }
   else {
     goodPrompt = badPrompt = string("arangosh> ");
   }
 #endif
-   
+
   cout << endl;
 
   while (true) {
@@ -938,7 +938,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     v8::V8::LowMemoryNotification();
     while (! v8::V8::IdleNotification()) {
     }
-  
+
     char* input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
     if (input == 0) {
@@ -948,8 +948,8 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     if (*input == '\0') {
       continue;
     }
-    
-    BaseClient.log("arangosh> %s\n", input); 
+
+    BaseClient.log("arangosh> %s\n", input);
 
     string i = triagens::basics::StringUtils::trim(input);
 
@@ -965,12 +965,12 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
         LOGGER_FATAL_AND_EXIT("out of memory");
       }
     }
-   
+
     console.addHistory(input);
-    
+
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
-    
+
     BaseClient.startPager();
 
     // assume the command succeeds
@@ -983,7 +983,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
 
       cerr << exception;
-      BaseClient.log("%s", exception.c_str()); 
+      BaseClient.log("%s", exception.c_str());
 
       // this will change the prompt for the next round
       promptError = true;
@@ -1027,7 +1027,7 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   char const* input = "require(\"jsunity\").runCommandLineTests();";
   v8::Local<v8::String> name(v8::String::New("(arangosh)"));
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-      
+
   if (tryCatch.HasCaught()) {
     cerr << TRI_StringifyV8Exception(&tryCatch);
     ok = false;
@@ -1043,8 +1043,8 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
 /// @brief executes the Javascript files
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool RunScripts (v8::Handle<v8::Context> context, 
-                        const vector<string>& scripts, 
+static bool RunScripts (v8::Handle<v8::Context> context,
+                        const vector<string>& scripts,
                         const bool execute) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
@@ -1066,12 +1066,12 @@ static bool RunScripts (v8::Handle<v8::Context> context,
     else {
       TRI_ParseJavaScriptFile(scripts[i].c_str());
     }
-  
+
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
 
       cerr << exception << endl;
-      BaseClient.log("%s\n", exception.c_str()); 
+      BaseClient.log("%s\n", exception.c_str());
       ok = false;
       break;
     }
@@ -1105,7 +1105,7 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
   char const* input = "require(\"jslint\").runCommandLineTests({ });";
   v8::Local<v8::String> name(v8::String::New("(arangosh)"));
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-      
+
   if (tryCatch.HasCaught()) {
     cerr << TRI_StringifyV8Exception(&tryCatch);
     ok = false;
@@ -1147,7 +1147,7 @@ static void arangoshExitFunction (int, void*);
 // .............................................................................
 
 void arangoshEntryFunction() {
-  int maxOpenFiles = 1024; 
+  int maxOpenFiles = 1024;
   int res = 0;
 
   // ...........................................................................
@@ -1155,7 +1155,7 @@ void arangoshEntryFunction() {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
 
@@ -1187,7 +1187,7 @@ static void arangoshExitFunction(int exitCode, void* data) {
   // ...........................................................................
 
   res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-  
+
   if (res != 0) {
     _exit(1);
   }
@@ -1217,7 +1217,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
-  
+
   TRI_InitialiseLogging(false);
 
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
@@ -1252,7 +1252,7 @@ int main (int argc, char* argv[]) {
 
     ClientConnection = CreateConnection();
   }
-  
+
   // .............................................................................
   // set-up V8 objects
   // .............................................................................
@@ -1271,7 +1271,7 @@ int main (int argc, char* argv[]) {
   }
 
   context->Enter();
-  
+
   // set pretty print default: (used in print.js)
   context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
   // add colors for print.js
@@ -1282,23 +1282,23 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("SYS_OUTPUT"),
                          v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
                          v8::ReadOnly);
-  
+
   TRI_InitV8Utils(context, StartupModules);
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)
-  bool promptError = false;  
+  bool promptError = false;
 
   // .............................................................................
   // define ArangoConnection class
-  // .............................................................................  
+  // .............................................................................
 
   if (useServer) {
     v8::Handle<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New();
     connection_templ->SetClassName(v8::String::New("ArangoConnection"));
 
     v8::Handle<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
-    
+
     connection_proto->Set("GET", v8::FunctionTemplate::New(ClientConnection_httpGet));
     connection_proto->Set("HEAD", v8::FunctionTemplate::New(ClientConnection_httpHead));
     connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
@@ -1311,20 +1311,20 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
     connection_proto->Set("toString", v8::FunctionTemplate::New(ClientConnection_toString));
     connection_proto->Set("getVersion", v8::FunctionTemplate::New(ClientConnection_getVersion));
-    connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);    
-    
+    connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
+
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
-    connection_inst->SetInternalFieldCount(2);    
-    
-    context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());    
+    connection_inst->SetInternalFieldCount(2);
+
+    context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
 
     // add the client connection to the context:
-    context->Global()->Set(v8::String::New("SYS_ARANGO"), 
+    context->Global()->Set(v8::String::New("SYS_ARANGO"),
                            wrapV8ClientConnection(ClientConnection),
                            v8::ReadOnly);
   }
-    
+
   context->Global()->Set(v8::String::New("SYS_START_PAGER"),
                          v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction(),
                          v8::ReadOnly);
@@ -1338,7 +1338,7 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("SYS_IMPORT_JSON_FILE"),
                          v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
                          v8::ReadOnly);
- 
+
   context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
                          v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
                          v8::ReadOnly);
@@ -1346,7 +1346,7 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("COMPARE_STRING"),
                          v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
                          v8::ReadOnly);
-  
+
   context->Global()->Set(v8::String::New("HAS_ICU"),
 #ifdef TRI_ICU_VERSION
                          v8::Boolean::New(true),
@@ -1357,7 +1357,7 @@ int main (int argc, char* argv[]) {
 
   // .............................................................................
   // banner
-  // .............................................................................  
+  // .............................................................................
 
   // http://www.network-science.de/ascii/   Font: ogre
 
@@ -1422,7 +1422,7 @@ int main (int argc, char* argv[]) {
       printf("\n");
 
     }
-  
+
 #else
     char const* g = TRI_SHELL_COLOR_GREEN;
     char const* r = TRI_SHELL_COLOR_RED;
@@ -1453,7 +1453,7 @@ int main (int argc, char* argv[]) {
 #else
     info << "Google V8 JavaScript engine";
 #endif
-  
+
 #ifdef TRI_READLINE_VERSION
     info << ", READLINE " << TRI_READLINE_VERSION;
 #endif
@@ -1461,7 +1461,7 @@ int main (int argc, char* argv[]) {
 #ifdef TRI_ICU_VERSION
     info << ", ICU " << TRI_ICU_VERSION;
 #endif
-    
+
     cout << "Using " << info.str() << endl << endl;
 
     BaseClient.printWelcomeInfo();
@@ -1469,7 +1469,7 @@ int main (int argc, char* argv[]) {
     if (useServer) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
         cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-             << "' version " << ClientConnection->getVersion() << endl; 
+             << "' version " << ClientConnection->getVersion() << endl;
       }
       else {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "'" << endl;
@@ -1478,7 +1478,7 @@ int main (int argc, char* argv[]) {
         }
         promptError = true;
       }
-    
+
       cout << endl;
     }
   }
@@ -1513,10 +1513,10 @@ int main (int argc, char* argv[]) {
 
   files.push_back("client/bootstrap/module-internal.js");
   files.push_back("client/client.js"); // needs internal
-  
+
   for (size_t i = 0;  i < files.size();  ++i) {
     bool ok = StartupLoader.loadScript(context, files[i]);
-    
+
     if (ok) {
       LOGGER_TRACE("loaded JavaScript file '" << files[i] << "'");
     }
@@ -1564,14 +1564,14 @@ int main (int argc, char* argv[]) {
       ret = EXIT_FAILURE;
     }
   }
-  
+
   // .............................................................................
   // cleanup
   // .............................................................................
 
   context->Exit();
   context.Dispose();
-  
+
   BaseClient.closeLog();
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
@@ -1594,5 +1594,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

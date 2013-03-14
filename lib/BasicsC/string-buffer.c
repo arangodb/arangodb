@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a string buffer for sequential string concatenation 
+/// @brief a string buffer for sequential string concatenation
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "string-buffer.h"
@@ -120,14 +120,14 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
 /// @brief create a new string buffer and initialise it with a specific size
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone, 
+TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
                                                   const size_t size) {
   TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t), false);
 
   if (self == NULL) {
     return NULL;
   }
-  
+
   TRI_InitSizedStringBuffer(self, zone, size);
 
   return self;
@@ -154,8 +154,8 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) 
 /// @warning You must call initialise before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSizedStringBuffer (TRI_string_buffer_t * self, 
-                                TRI_memory_zone_t* zone, 
+void TRI_InitSizedStringBuffer (TRI_string_buffer_t * self,
+                                TRI_memory_zone_t* zone,
                                 const size_t length) {
   self->_memoryZone = zone;
   self->_buffer = 0;
@@ -280,7 +280,7 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
-  self->_current = self->_buffer; 
+  self->_current = self->_buffer;
   memset(self->_buffer, 0, self->_len + 1);
 }
 
@@ -300,7 +300,7 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
   size_t off = (size_t) (self->_current - self->_buffer);
 
   if (off <= len) {
-    TRI_ClearStringBuffer(self); 
+    TRI_ClearStringBuffer(self);
   }
   else if (0 < len) {
     memmove(self->_buffer, self->_buffer + len, off - len);
@@ -585,7 +585,7 @@ int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
   size_t len;
 
   res = Reserve(self, 3);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -603,9 +603,9 @@ int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
 int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
   int res;
   size_t len;
-  
+
   res = Reserve(self, 6);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -623,16 +623,16 @@ int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
 int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
   int res;
   size_t len;
-  
+
   res = Reserve(self, 5);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   len = TRI_StringUInt16InPlace(attr, self->_current);
   self->_current += len;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -645,14 +645,14 @@ int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
   size_t len;
 
   res = Reserve(self, 11);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   len = TRI_StringInt32InPlace(attr, self->_current);
   self->_current += len;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -663,9 +663,9 @@ int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
 int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
   int res;
   size_t len;
-  
+
   res = Reserve(self, 10);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -683,9 +683,9 @@ int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
   int res;
   size_t len;
-  
+
   res = Reserve(self, 20);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -705,7 +705,7 @@ int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
   size_t len;
 
   res = Reserve(self, 21);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -754,7 +754,7 @@ int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr
   size_t len;
 
   res = Reserve(self, 11);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -778,7 +778,7 @@ int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   len = TRI_StringUInt32OctalInPlace(attr, self->_current);
   self->_current += len;
 
@@ -823,14 +823,14 @@ int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) 
   size_t len;
 
   res = Reserve(self, 5);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   len = TRI_StringUInt32HexInPlace(attr, self->_current);
   self->_current += len;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -847,10 +847,10 @@ int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   len = TRI_StringUInt64HexInPlace(attr, self->_current);
   self->_current += len;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1266,5 +1266,5 @@ int TRI_AppendCsvDoubleStringBuffer (TRI_string_buffer_t * self, double d) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

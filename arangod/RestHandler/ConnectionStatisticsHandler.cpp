@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConnectionStatisticsHandler.h"
@@ -48,7 +48,7 @@ using namespace triagens::rest;
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionStatisticsHandler::ConnectionStatisticsHandler (triagens::rest::HttpRequest* request) 
+ConnectionStatisticsHandler::ConnectionStatisticsHandler (triagens::rest::HttpRequest* request)
   : StatisticsBaseHandler(request) {
 }
 
@@ -88,7 +88,7 @@ void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granular
 
       for (vector<string>::iterator i = f.begin();  i != f.end();  ++i) {
         string const& fn = *i;
-        
+
         if (fn == "httpconnections") {
           showHttp = true;
         }
@@ -130,7 +130,7 @@ void ConnectionStatisticsHandler::compute (TRI_statistics_granularity_e granular
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 
 

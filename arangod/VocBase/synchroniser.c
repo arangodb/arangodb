@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "synchroniser.h"
@@ -138,7 +138,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
   bool worked;
   size_t i;
   size_t n;
-      
+
   worked = false;
   base = &doc->base.base;
 
@@ -209,7 +209,7 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* doc
   char* written;
   size_t i;
   size_t n;
-  
+
   worked = false;
   base = &doc->base.base;
 
@@ -274,7 +274,7 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
   bool worked;
   size_t i;
   size_t n;
-  
+
   worked = false;
   base = &doc->base.base;
 
@@ -311,7 +311,7 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
     if (compactor != NULL) {
       worked = true;
       LOG_DEBUG("created new compactor '%s'", compactor->_filename);
-    
+
       TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
     }
     else {
@@ -361,7 +361,7 @@ void TRI_SynchroniserVocBase (void* data) {
     bool worked;
 
     // keep initial _state value as vocbase->_state might change during sync loop
-    int state = vocbase->_state; 
+    int state = vocbase->_state;
 
     worked = false;
 
@@ -430,7 +430,7 @@ void TRI_SynchroniserVocBase (void* data) {
     if (state == 2) {
       break;
     }
-    
+
   }
 
   TRI_DestroyVectorPointer(&collections);
@@ -442,5 +442,5 @@ void TRI_SynchroniserVocBase (void* data) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

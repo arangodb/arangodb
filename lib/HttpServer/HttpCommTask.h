@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H
@@ -84,10 +84,10 @@ namespace triagens {
 /// @brief constructors
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpCommTask (S* server, 
-                      TRI_socket_t socket, 
+        HttpCommTask (S* server,
+                      TRI_socket_t socket,
                       ConnectionInfo const& info,
-                      double keepAliveTimeout) 
+                      double keepAliveTimeout)
         : Task("HttpCommTask"),
           GeneralCommTask<S, HttpHandlerFactory>(server, socket, info, keepAliveTimeout),
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
@@ -128,7 +128,7 @@ namespace triagens {
 /// this method can be called to clean up when the request handling aborts
 /// prematurely
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         void resetState () {
           if (this->_request != 0) {
             delete this->_request;
@@ -169,7 +169,7 @@ namespace triagens {
 
           bool handleRequest = false;
 
-          
+
           if (! this->_readRequestBody) {
 #ifdef TRI_ENABLE_FIGURES
 
@@ -229,7 +229,7 @@ namespace triagens {
 
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
-              
+
 
               // keep track of the original value of the "origin" request header (if any)
               // we need this value to handle CORS requests
@@ -246,7 +246,7 @@ namespace triagens {
               // store the original request's type. we need it later when responding
               // (original request objects gets deleted before responding)
               this->_requestType = this->_request->requestType();
-              
+
 
               // handle different HTTP methods
               switch (this->_requestType) {
@@ -279,7 +279,7 @@ namespace triagens {
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
                   this->handleResponse(&response);
-                
+
                   this->resetState();
 
                   return true;
@@ -321,7 +321,7 @@ namespace triagens {
               // request entity too large
               HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
               this->handleResponse(&response);
-              
+
               this->resetState();
 
               return true;
@@ -359,8 +359,8 @@ namespace triagens {
             this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
 
             if (this->_readBuffer->length() > 0) {
-              // we removed the front of the read buffer, but it still contains data. 
-              // this means that the content-length header of the request must have been wrong 
+              // we removed the front of the read buffer, but it still contains data.
+              // this means that the content-length header of the request must have been wrong
               // (value in content-length header smaller than actual body size)
 
               // check if there is invalid stuff left in the readbuffer
@@ -371,10 +371,10 @@ namespace triagens {
                 const char c = *(p++);
                 if (c != '\n' && c != '\r' && c != ' ' && c != '\t' && c != '\0') {
                   LOGGER_WARNING("read buffer is not empty. probably got a wrong Content-Length header?");
-              
+
                   HttpResponse response(HttpResponse::BAD);
                   this->handleResponse(&response);
-                
+
                   this->resetState();
 
                   return true;
@@ -421,15 +421,15 @@ namespace triagens {
             // authenticated
             // or an HTTP OPTIONS request. OPTIONS requests currently go unauthenticated
             if (auth || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
-              
+
               // handle HTTP OPTIONS requests directly
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
                 const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
-                
+
                 HttpResponse response(HttpResponse::OK);
-                
+
                 response.setHeader("allow", strlen("allow"), allowedMethods);
-              
+
                 if (this->_origin.size() > 0) {
                   LOGGER_TRACE("got CORS preflight request");
                   const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
@@ -450,11 +450,11 @@ namespace triagens {
                   response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
                 }
                 // End of CORS handling
-                
+
                 this->handleResponse(&response);
-                
+
                 this->resetState();
-                
+
                 // we're done
                 return true;
               }
@@ -468,7 +468,7 @@ namespace triagens {
                 LOGGER_TRACE("no handler is known, giving up");
                 HttpResponse response(HttpResponse::NOT_FOUND);
                 this->handleResponse(&response);
-                
+
                 this->resetState();
               }
               else {
@@ -536,7 +536,7 @@ namespace triagens {
             // keep-alive is the default
             response->setHeader("connection", strlen("connection"), "Keep-Alive");
           }
-          
+
           if (this->_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
             // clear body if this is an HTTP HEAD request
             // HEAD must not return a body
@@ -572,7 +572,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// check the content-length header of a request and fail it is broken
 ////////////////////////////////////////////////////////////////////////////////
- 
+
         bool checkContentLength (const bool expectContentLength) {
           const int64_t bodyLength = this->_request->contentLength();
 
@@ -605,8 +605,8 @@ namespace triagens {
             // we'll read the body
             this->_readRequestBody = true;
           }
-         
-          // everything's fine 
+
+          // everything's fine
           return true;
         }
 
@@ -640,7 +640,7 @@ namespace triagens {
         std::string _origin;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to allow credentialed requests 
+/// @brief whether or not to allow credentialed requests
 /// this is only used for CORS
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -662,5 +662,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

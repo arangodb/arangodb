@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FULLTEXT_FULLTEXT_WORDLIST_H
-#define TRIAGENS_FULLTEXT_FULLTEXT_WORDLIST_H 1
+#ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_WORDLIST_H
+#define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_WORDLIST_H 1
 
 #include "BasicsC/common.h"
 
@@ -73,7 +73,7 @@ TRI_fulltext_wordlist_t;
 /// TODO: make memory zone configurable
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char**, 
+TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char**,
                                                           const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,5 +119,5 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* const);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

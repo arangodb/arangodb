@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_RESULT_H
-#define TRIAGENS_DURHAM_AHUACATL_RESULT_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_RESULT_H
+#define TRIAGENS_AHUACATL_AHUACATL_RESULT_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/json.h>
+#include "BasicsC/common.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/json.h"
 
 #include "VocBase/general-cursor.h"
 
@@ -65,5 +65,5 @@ TRI_general_cursor_result_t* TRI_CreateResultAql (TRI_json_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

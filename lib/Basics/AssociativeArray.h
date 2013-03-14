@@ -16,7 +16,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_ASSOCIATIVE_ARRAY_H
@@ -132,9 +132,9 @@ namespace triagens {
             _nrProbesA(0),
             _nrProbesD(0),
             _nrProbesR(0) {
-#else              
+#else
             _table(0) {
-#endif              
+#endif
           initialise(size);
         }
 
@@ -156,9 +156,9 @@ namespace triagens {
             _nrProbesA(0),
             _nrProbesD(0),
             _nrProbesR(0) {
-#else              
+#else
             _table(0) {
-#endif            
+#endif
           initialise(size);
         }
 
@@ -313,7 +313,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesF++;
-#endif            
+#endif
           }
 
           // return whatever we found
@@ -340,7 +340,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesF++;
-#endif            
+#endif
           }
 
           // return whatever we found
@@ -356,7 +356,7 @@ namespace triagens {
 #ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrAdds++;
-#endif          
+#endif
 
           // search the table
           uint32_t hash = _desc.hashElement(element);
@@ -366,7 +366,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesA++;
-#endif            
+#endif
           }
 
           // if we found an element, return
@@ -395,7 +395,7 @@ namespace triagens {
             _nrUsed = 0;
 #ifdef TRI_INTERNAL_STATS
             _nrResizes++;
-#endif            
+#endif
 
             _table = new ELEMENT[_nrAlloc];
 
@@ -424,7 +424,7 @@ namespace triagens {
 #ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrAdds++;
-#endif          
+#endif
 
           // search the table
           uint32_t hash = _desc.hashKey(key);
@@ -434,7 +434,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesA++;
-#endif            
+#endif
           }
 
           // if we found an element, return
@@ -463,7 +463,7 @@ namespace triagens {
             _nrUsed = 0;
 #ifdef TRI_INTERNAL_STATS
             _nrResizes++;
-#endif            
+#endif
 
             _table = new ELEMENT[_nrAlloc];
 
@@ -492,7 +492,7 @@ namespace triagens {
 #ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrRems++;
-#endif          
+#endif
 
           // search the table
           uint32_t hash = _desc.hashKey(key);
@@ -502,7 +502,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesD++;
-#endif            
+#endif
           }
 
           // if we did not find such an item
@@ -545,7 +545,7 @@ namespace triagens {
 #ifdef TRI_INTERNAL_STATS
           // update statistics
           _nrRems++;
-#endif          
+#endif
 
           // search the table
           uint32_t hash = _desc.hashElement(element);
@@ -555,7 +555,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesD++;
-#endif            
+#endif
           }
 
           // if we did not find such an item return false
@@ -623,7 +623,7 @@ namespace triagens {
           _nrProbesA = 0;
           _nrProbesD = 0;
           _nrProbesR = 0;
-#endif          
+#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,7 +642,7 @@ namespace triagens {
             i = (i + 1) % _nrAlloc;
 #ifdef TRI_INTERNAL_STATS
             _nrProbesR++;
-#endif            
+#endif
           }
 
           // add a new element to the associative array
@@ -752,5 +752,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

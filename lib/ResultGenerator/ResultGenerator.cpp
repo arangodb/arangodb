@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,47 +23,47 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ResultGenerator.h"
 
-#include <Basics/StringBuffer.h>
-#include <Basics/StringUtils.h>
-#include <Variant/VariantArray.h>
-#include <Variant/VariantBlob.h>
-#include <Variant/VariantBoolean.h>
-#include <Variant/VariantDate.h>
-#include <Variant/VariantDatetime.h>
-#include <Variant/VariantDouble.h>
-#include <Variant/VariantFloat.h>
-#include <Variant/VariantInt16.h>
-#include <Variant/VariantInt32.h>
-#include <Variant/VariantInt64.h>
-#include <Variant/VariantMatrix2.h>
-#include <Variant/VariantNull.h>
-#include <Variant/VariantString.h>
-#include <Variant/VariantUInt16.h>
-#include <Variant/VariantUInt32.h>
-#include <Variant/VariantUInt64.h>
-#include <Variant/VariantVector.h>
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantBlob.h"
+#include "Variant/VariantBoolean.h"
+#include "Variant/VariantDate.h"
+#include "Variant/VariantDatetime.h"
+#include "Variant/VariantDouble.h"
+#include "Variant/VariantFloat.h"
+#include "Variant/VariantInt16.h"
+#include "Variant/VariantInt32.h"
+#include "Variant/VariantInt64.h"
+#include "Variant/VariantMatrix2.h"
+#include "Variant/VariantNull.h"
+#include "Variant/VariantString.h"
+#include "Variant/VariantUInt16.h"
+#include "Variant/VariantUInt32.h"
+#include "Variant/VariantUInt64.h"
+#include "Variant/VariantVector.h"
 
 using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // registery
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     namespace {
       vector< vector< ResultGenerator::generate_fptr > > outputRegistery;
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // static public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void ResultGenerator::registerObject (VariantObject::ObjectType oType,
                                           ResultGeneratorType rType,
@@ -103,9 +103,9 @@ namespace triagens {
       funcs[(size_t) oType] = funcs[(size_t) dType];
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void ResultGenerator::generate (StringBuffer& output, VariantObject* object) const {
       generateResultBegin(output, object);
@@ -113,9 +113,9 @@ namespace triagens {
       generateResultEnd(output, object);
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // protected methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void ResultGenerator::generateVariant (StringBuffer& output, VariantObject* object) const {
 

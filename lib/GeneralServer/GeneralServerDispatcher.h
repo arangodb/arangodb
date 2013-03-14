@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H
@@ -120,7 +120,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
-   
+
         Dispatcher* getDispatcher () const {
           return _dispatcher;
         }
@@ -148,7 +148,7 @@ namespace triagens {
 
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
-          GeneralServer<S, HF, CT>::shutdownHandlers();          
+          GeneralServer<S, HF, CT>::shutdownHandlers();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +157,7 @@ namespace triagens {
 
         void handleAsync (Task* task) {
           GENERAL_SERVER_LOCK(&this->_mappingLock);
-          
+
           handler_task_job_t element = this->_task2handler.removeKey(task);
 
           if (element._task != task) {
@@ -174,7 +174,7 @@ namespace triagens {
           GENERAL_SERVER_UNLOCK(&this->_mappingLock);
 
           typename HF::GeneralResponse * response = handler->getResponse();
-          
+
           if (response == 0) {
             basics::InternalError err("no response received from handler", __FILE__, __LINE__);
 
@@ -289,7 +289,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleConnected (TRI_socket_t s, ConnectionInfo& info) {
-                
+
           GeneralAsyncCommTask<S, HF, CT>* task = new GeneralAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, this->_keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
@@ -367,7 +367,7 @@ namespace triagens {
 /// @brief shuts down a handler for a task
 ////////////////////////////////////////////////////////////////////////////////
 
-        void shutdownHandlerByTask (Task* task) { 
+        void shutdownHandlerByTask (Task* task) {
           GENERAL_SERVER_LOCK(&this->_mappingLock);
 
           // remove the task from the map
@@ -491,5 +491,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

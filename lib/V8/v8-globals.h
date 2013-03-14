@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_V8_V8_GLOBALS_H
@@ -255,7 +255,7 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> KeyKey;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "_from" key name
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +408,7 @@ typedef struct TRI_v8_global_s {
   regex_t DocumentIdRegex;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document identifier 
+/// @brief document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
   regex_t DocumentKeyRegex;
@@ -456,34 +456,34 @@ TRI_v8_global_t;
 /// @brief add a method to a prototype object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl, 
-                                const char* const name, 
-                                v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
+                                const char* const name,
+                                v8::Handle<v8::Value>(*func)(v8::Arguments const&),
                                 const bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a method to an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl, 
-                           const char* const name, 
-                           v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
+                           const char* const name,
+                           v8::Handle<v8::Value>(*func)(v8::Arguments const&),
                            const bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
-  
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
-                                   const char* const name, 
+
+void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
+                                   const char* const name,
                                    v8::Handle<v8::Value>(*func)(v8::Arguments const&));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
-                                   const char* const name, 
+void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
+                                   const char* const name,
                                    v8::Handle<v8::Function> func);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,5 +494,5 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

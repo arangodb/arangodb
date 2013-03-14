@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminFeConfigurationHandler.h"
@@ -108,7 +108,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::execute () {
       return executeWrite();
 
     default:
-      generateError(HttpResponse::METHOD_NOT_ALLOWED, 
+      generateError(HttpResponse::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                     "expecting GET or POST");
       return HANDLER_DONE;
@@ -148,15 +148,15 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
       LOGGER_INFO("cannot read configuration '" << _filename << "'");
     }
   }
-  
+
   if (result.empty()) {
     result = "{}";
   }
-  
+
   _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(result);
-  
+
   return HANDLER_DONE;
 }
 
@@ -179,7 +179,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
       return HANDLER_DONE;
     }
   }
-  
+
   _response = createResponse(HttpResponse::OK);
   return HANDLER_DONE;
 }
@@ -190,5 +190,5 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

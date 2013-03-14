@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -113,7 +113,7 @@ function print_plain () {
 
   var c = internal.COLOR_OUTPUT;
   internal.COLOR_OUTPUT = false;
-  
+
   try {
     internal.print.apply(internal.print, arguments);
 
@@ -124,8 +124,8 @@ function print_plain () {
     internal.PRETTY_PRINT = p;
     internal.COLOR_OUTPUT = c;
 
-    throw e.message;    
-  }  
+    throw e.message;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,7 +279,7 @@ function stop_color_print () {
     module = ModuleCache[path] = new Module(path);
 
     content = "(function (module, exports, require, print) {"
-            + raw.content 
+            + raw.content
             + "\n});";
 
     f = internal.execute(content, undefined, path);
@@ -431,5 +431,5 @@ function stop_color_print () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

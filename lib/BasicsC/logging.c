@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -344,7 +344,7 @@ static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* te
   TRI_log_buffer_t* buf;
   size_t pos;
   size_t cur;
-    
+
   pos = (size_t) level;
 
   if (pos >= OUTPUT_LOG_LEVELS) {
@@ -413,7 +413,7 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
   // append the time prefix and output prefix
   // .............................................................................
-  
+
   n = 0;
   TRI_LockSpin(&OutputPrefixLock);
 
@@ -521,7 +521,7 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
   // append the message
   // .............................................................................
-  
+
   n = vsnprintf(buffer + m, size - m, fmt, ap);
 
   if (n < 0) {
@@ -743,11 +743,11 @@ static void LogThread (char const* func,
   struct tm tb;
   size_t len;
   int n;
-  
+
   // .............................................................................
   // generate time prefix
   // .............................................................................
-  
+
   tt = time(0);
   TRI_gmtime(tt, &tb);
   // write time in buffer
@@ -773,7 +773,7 @@ static void LogThread (char const* func,
   while (n < maxSize) {
     int m;
     char* p;
-    
+
     // allocate as much memory as we need
     p = TRI_Allocate(TRI_CORE_MEM_ZONE, n + len + 2, false);
 
@@ -1575,7 +1575,7 @@ static void LogAppenderSyslog_Log (TRI_log_appender_t* appender,
       case TRI_LOG_LEVEL_TRACE: priority = LOG_DEBUG; break;
     }
   }
-  
+
   self = (log_appender_syslog_t*) appender;
 
   TRI_LockMutex(&self->_mutex);
@@ -1828,5 +1828,5 @@ void TRI_ReopenLogging () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

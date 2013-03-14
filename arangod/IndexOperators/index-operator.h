@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_INDEX_OPERATORS_INDEX_OPERATOR_H
-#define TRIAGENS_DURHAM_INDEX_OPERATORS_INDEX_OPERATOR_H 1
+#ifndef TRIAGENS_INDEX_OPERATORS_INDEX_OPERATOR_H
+#define TRIAGENS_INDEX_OPERATORS_INDEX_OPERATOR_H 1
 
 #include "BasicsC/json.h"
 #include "ShapedJson/json-shaper.h"
@@ -60,7 +60,7 @@ typedef enum {
   TRI_GE_INDEX_OPERATOR,
   TRI_GT_INDEX_OPERATOR,
   TRI_IN_INDEX_OPERATOR,
-  
+
   TRI_AND_INDEX_OPERATOR,
   TRI_NOT_INDEX_OPERATOR,
   TRI_OR_INDEX_OPERATOR
@@ -76,7 +76,7 @@ TRI_index_operator_type_e;
 typedef struct TRI_index_operator_s {
   TRI_index_operator_type_e _type;
   TRI_shaper_t* _shaper;
-} 
+}
 TRI_index_operator_t;
 
 
@@ -94,16 +94,16 @@ TRI_logical_index_operator_t;
 
 
 //................................................................................
-// Storage for relation operator, e.g. <, <=, >, >=, ==, in 
+// Storage for relation operator, e.g. <, <=, >, >=, ==, in
 //................................................................................
 
 typedef struct TRI_relation_index_operator_s {
   TRI_index_operator_t _base;
-  TRI_json_t* _parameters;    // parameters with which this relation was called with 
+  TRI_json_t* _parameters;    // parameters with which this relation was called with
   TRI_shaped_json_t* _fields; // actual data from the parameters converted from
-                              // a json array to a shaped json array  
+                              // a json array to a shaped json array
   size_t _numFields;          // number of fields in the array above
-  void* _collection;          // required for the computation of the order operation  
+  void* _collection;          // required for the computation of the order operation
 }
 TRI_relation_index_operator_t;
 
@@ -111,7 +111,7 @@ TRI_relation_index_operator_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new index operator of the specified type
 ///
-/// note that the index which uses these operators  will take ownership of the 
+/// note that the index which uses these operators  will take ownership of the
 /// json parameters passed to it
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,13 +122,13 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e,
                                                TRI_shaper_t*,
                                                TRI_shaped_json_t*,
                                                size_t,
-                                               void*);     
+                                               void*);
 
-                                               
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an index  operator recursively (deep copy)
 ////////////////////////////////////////////////////////////////////////////////
-                               
+
 TRI_index_operator_t* TRI_CopyIndexOperator (TRI_index_operator_t*);
 
 
@@ -166,13 +166,13 @@ void TRI_FreeIndexOperator (TRI_index_operator_t*);
 // will be expanded. (Essentially a placeholder for now.)
 // .............................................................................
 
-typedef struct TRI_index_challenge_s {  
+typedef struct TRI_index_challenge_s {
   double _response; // 0 == NO, 1 == YES
 } TRI_index_challenge_t;
 
 // .............................................................................
 // An enumeration of possible methods which require assignment from a 'generic'
-// index structure to a concrete index structure. Added here in this file 
+// index structure to a concrete index structure. Added here in this file
 // for convenience.
 // .............................................................................
 
@@ -201,5 +201,5 @@ typedef int (*TRI_index_query_free_method_call_t) (void*, void*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

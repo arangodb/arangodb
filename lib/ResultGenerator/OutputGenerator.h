@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_OUTPUT_GENERATOR_H
-#define TRIAGENS_FYN_REST_OUTPUT_GENERATOR_H 1
+#ifndef TRIAGENS_RESULT_GENERATOR_OUTPUT_GENERATOR_H
+#define TRIAGENS_RESULT_GENERATOR_OUTPUT_GENERATOR_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
 namespace triagens {
   namespace basics {
@@ -41,24 +41,24 @@ namespace triagens {
 
     namespace OutputGenerator {
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @ingroup Utilities
-      /// @brief returns a static result generator
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @ingroup Utilities
+/// @brief returns a static result generator
+////////////////////////////////////////////////////////////////////////////////
 
       ResultGenerator* resultGenerator (string const& name);
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @ingroup Utilities
-      /// @brief generates output given a format and object
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @ingroup Utilities
+/// @brief generates output given a format and object
+////////////////////////////////////////////////////////////////////////////////
 
       bool output (string const& format, basics::StringBuffer& buffer, basics::VariantObject*, string& contentType);
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @ingroup Utilities
-      /// @brief generates output as json given an object
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @ingroup Utilities
+/// @brief generates output as json given an object
+////////////////////////////////////////////////////////////////////////////////
 
       string json (basics::VariantObject*);
     }

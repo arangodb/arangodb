@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,18 +22,18 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_COLLECTION_H
+#define TRIAGENS_VOC_BASE_COLLECTION_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/vector.h>
+#include "BasicsC/vector.h"
 
-#include <VocBase/datafile.h>
-#include <VocBase/vocbase.h>
+#include "VocBase/datafile.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,12 +85,12 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s;  
+struct TRI_json_s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -238,7 +238,7 @@ TRI_col_info_t;
 
 typedef struct TRI_collection_s {
   TRI_col_info_t _info;
-  
+
   TRI_vocbase_t* _vocbase;
 
   TRI_col_state_e _state;            // state of the collection
@@ -295,7 +295,7 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 /// @brief get the full directory name for a collection
 ///
 /// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not. 
+/// and to free it if not.
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetDirectoryCollection (char const*, const TRI_col_info_t* const);
@@ -353,7 +353,7 @@ int TRI_SaveCollectionInfo (char const*, const TRI_col_info_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
-                              TRI_collection_t*, 
+                              TRI_collection_t*,
                               TRI_col_info_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,5 +437,5 @@ bool TRI_IsSystemCollectionName (char const*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

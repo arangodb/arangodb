@@ -83,7 +83,7 @@ static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
   if (element->_subObjects == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 

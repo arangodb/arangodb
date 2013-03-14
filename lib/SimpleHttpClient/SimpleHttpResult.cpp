@@ -5,35 +5,25 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleHttpResult.h"
@@ -45,31 +35,31 @@ using namespace std;
 namespace triagens {
   namespace httpclient {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// constructor and destructor
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// constructor and destructor
+////////////////////////////////////////////////////////////////////////////////
 
     SimpleHttpResult::SimpleHttpResult () {
-      clear();    
+      clear();
     }
 
     SimpleHttpResult::~SimpleHttpResult () {
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// public methods
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// public methods
+////////////////////////////////////////////////////////////////////////////////
 
     void SimpleHttpResult::clear () {
       _returnCode = 0;
       _returnMessage = "";
       _contentLength = 0;
       _chunked = false;
-      _requestResultType = UNKNOWN;            
+      _requestResultType = UNKNOWN;
       _headerFields.clear();
-      _resultBody.clear();      
+      _resultBody.clear();
     }
-    
+
     stringstream& SimpleHttpResult::getBody () {
       return _resultBody;
     }
@@ -92,16 +82,16 @@ namespace triagens {
     void SimpleHttpResult::addHeaderField (std::string const& line) {
       string key;
       string value;
-      
+
        size_t find = line.find(": ");
-       
+
        if (find != string::npos) {
          key = line.substr(0, find);
          value = StringUtils::trim(line.substr(find + 2));
          addHeaderField(key, value);
          return;
-       }      
-      
+       }
+
        find = line.find(" ");
        if (find != string::npos) {
          key = line.substr(0, find);
@@ -109,9 +99,9 @@ namespace triagens {
            value = StringUtils::trim(line.substr(find + 1));
          }
          addHeaderField(key, value);
-       }      
+       }
     }
-    
+
     void SimpleHttpResult::addHeaderField (std::string const& key, std::string const& value) {
       string k = StringUtils::trim(StringUtils::tolower(key));
 
@@ -131,7 +121,7 @@ namespace triagens {
           _chunked = true;
         }
       }
-      
+
       _headerFields[k] = value;
     }
 
@@ -147,7 +137,7 @@ namespace triagens {
             return find->second.substr(0, semicolon);
           }
         }
-        return find->second;   
+        return find->second;
       }
 
       return "";

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative.h"
@@ -61,7 +61,7 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
-#endif    
+#endif
   }
 
   // add a new element to the associative array
@@ -84,7 +84,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
-#endif  
+#endif
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, true);
 
@@ -278,7 +278,7 @@ void* TRI_LookupByElementAssociativeArray (TRI_associative_array_t* array, void*
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
-#endif    
+#endif
   }
 
   // return whatever we found
@@ -330,7 +330,7 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   // if we found an element, return
@@ -375,7 +375,7 @@ bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
 #ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
-#endif  
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
@@ -383,7 +383,7 @@ bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif  
+#endif
   }
 
   // if we found an element, return
@@ -430,7 +430,7 @@ bool TRI_RemoveElementAssociativeArray (TRI_associative_array_t* array, void* el
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return false
@@ -492,7 +492,7 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return false
@@ -574,7 +574,7 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
-#endif    
+#endif
   }
 
   // add a new element to the associative array
@@ -597,7 +597,7 @@ static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
-#endif  
+#endif
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
@@ -668,7 +668,7 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -705,7 +705,7 @@ void TRI_FreeAssociativePointer (TRI_memory_zone_t* zone, TRI_associative_pointe
 /// @brief General hash function that can be used to hash a pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t* array, 
+uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t* array,
                                                void const* ptr) {
   return TRI_FnvHashPointer(ptr, sizeof(void const*));
 }
@@ -714,7 +714,7 @@ uint64_t TRI_HashPointerKeyAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief General hash function that can be used to hash a key
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array, 
+uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array,
                                               void const* key) {
   return TRI_FnvHashString((char const*) key);
 }
@@ -723,8 +723,8 @@ uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief General function to determine equality of two string values
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t* array, 
-                                           void const* key, 
+bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t* array,
+                                           void const* key,
                                            void const* element) {
   return TRI_EqualString((char*) key, (char*) element);
 }
@@ -752,7 +752,7 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
-#endif    
+#endif
   }
 
   // return whatever we found
@@ -820,7 +820,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   old = array->_table[i];
@@ -852,7 +852,7 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
 
 void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
                                        void const* key,
-                                       void* element, 
+                                       void* element,
                                        bool overwrite) {
   uint64_t hash;
   uint64_t i;
@@ -878,7 +878,7 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   old = array->_table[i];
@@ -928,7 +928,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return 0
@@ -964,7 +964,7 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array, 
+void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
                                        void const* key) {
   uint64_t hash;
   uint64_t i;
@@ -1071,7 +1071,7 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the array
-/// 
+///
 /// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1086,7 +1086,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
-#endif  
+#endif
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
@@ -1219,7 +1219,7 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
-#endif    
+#endif
   }
 
   result = array->_table[i];
@@ -1256,7 +1256,7 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
-#endif    
+#endif
   }
 
   result = array->_table[i];
@@ -1299,7 +1299,7 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   old = array->_table[i];
@@ -1356,7 +1356,7 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   old = array->_table[i];
@@ -1406,7 +1406,7 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return 0
@@ -1466,7 +1466,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return false
@@ -1499,7 +1499,7 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
   TRI_WriteUnlockReadWriteLock(&array->_lock);
   return old;
 }
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of elements from the array
 ////////////////////////////////////////////////////////////////////////////////
@@ -1511,7 +1511,7 @@ size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const array) {
   result = array->_nrUsed;
   TRI_ReadUnlockReadWriteLock(&array->_lock);
 
-  return (size_t) result; 
+  return (size_t) result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1520,5 +1520,5 @@ size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const array) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -90,7 +90,7 @@ static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* document,
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
       return NULL;
     }
- 
+
     for (i = 0;  i < n;  ++i) {
 
       // select datafile
@@ -141,11 +141,11 @@ static int CopyDocument (TRI_document_collection_t* collection,
   // and write marker and blob
   return TRI_WriteElementDatafile(journal,
                                   *result,
-                                  marker, 
+                                  marker,
                                   marker->_size,
-                                  NULL, 
+                                  NULL,
                                   0,
-                                  NULL, 
+                                  NULL,
                                   0,
                                   false);
 }
@@ -160,9 +160,9 @@ static int CopyDocument (TRI_document_collection_t* collection,
 
 static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_collection_t* collection;
-#ifdef TRI_ENABLE_LOGGER  
+#ifdef TRI_ENABLE_LOGGER
   char* old;
-#endif  
+#endif
   char* filename;
   char* name;
   char* number;
@@ -179,7 +179,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
 
 #ifdef TRI_ENABLE_LOGGER
   old = datafile->_filename;
-#endif  
+#endif
 
   ok = TRI_RenameDatafile(datafile, filename);
 
@@ -237,21 +237,21 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   primary = &doc->base;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     bool deleted;
-    
+
     TRI_voc_size_t markerSize = 0;
     TRI_voc_size_t keyBodySize = 0;
     TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
-    
+
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
       markerSize = sizeof(TRI_doc_document_key_marker_t);
     }
     else {
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
     }
-    
+
     keyBodySize = d->_offsetJson - d->_offsetKey;
 
     // check if the document is still active
@@ -279,7 +279,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
     deleted = found == NULL || found->_validTo != 0;
-      
+
     // update datafile
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
 
@@ -322,7 +322,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     // update datafile info
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-    
+
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
     if (found != NULL) {
       cnv.c = found;
@@ -510,7 +510,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* sim) {
 void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
-  
+
   assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
@@ -565,7 +565,7 @@ void TRI_CompactorVocBase (void* data) {
           }
           else {
             worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
-            
+
             TRI_FreeBarrier(ce);
           }
         }
@@ -601,5 +601,5 @@ void TRI_CompactorVocBase (void* data) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

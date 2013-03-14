@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
@@ -160,15 +160,15 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   vector<string> arguments;
   description.arguments(&arguments);
-  
+
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangoimp.conf");
-  
+
   if (FileName == "" && arguments.size() > 0) {
     FileName = arguments[0];
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +197,7 @@ static void arangoimpExitFunction (int, void*);
 // Call this function to do various initialistions for windows only
 // .............................................................................
 void arangoimpEntryFunction() {
-  int maxOpenFiles = 1024; 
+  int maxOpenFiles = 1024;
   int res = 0;
 
   // ...........................................................................
@@ -205,7 +205,7 @@ void arangoimpEntryFunction() {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
   if (res != 0) {
@@ -234,7 +234,7 @@ static void arangoimpExitFunction(int exitCode, void* data) {
   // ...........................................................................
 
   res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-  
+
   if (res != 0) {
     _exit(1);
   }
@@ -288,9 +288,9 @@ int main (int argc, char* argv[]) {
 
   ClientConnection = new V8ClientConnection(BaseClient.endpointServer(),
                                             BaseClient.username(),
-                                            BaseClient.password(), 
-                                            BaseClient.requestTimeout(), 
-                                            BaseClient.connectTimeout(), 
+                                            BaseClient.password(),
+                                            BaseClient.requestTimeout(),
+                                            BaseClient.connectTimeout(),
                                             ArangoClient::DEFAULT_RETRIES,
                                             false);
 
@@ -302,7 +302,7 @@ int main (int argc, char* argv[]) {
 
   // successfully connected
   cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-       << "' Version " << ClientConnection->getVersion() << endl; 
+       << "' Version " << ClientConnection->getVersion() << endl;
 
   cout << "----------------------------------------" << endl;
   cout << "collection:       " << CollectionName << endl;
@@ -334,10 +334,10 @@ int main (int argc, char* argv[]) {
     cerr << "Wrong length of quote character." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
   }
-  
+
   // separator
   if (Separator.length() == 1) {
-    ih.setSeparator(Separator);      
+    ih.setSeparator(Separator);
   }
   else {
     cerr << "Separator must be exactly one character." << endl;
@@ -373,19 +373,19 @@ int main (int argc, char* argv[]) {
     cout << "Starting CSV import..." << endl;
     ok = ih.importDelimited(CollectionName, FileName, ImportHelper::CSV);
   }
-  
+
   else if (TypeImport == "tsv") {
     cout << "Starting TSV import..." << endl;
     ih.setQuote("");
     ih.setSeparator("\\t");
     ok = ih.importDelimited(CollectionName, FileName, ImportHelper::TSV);
   }
-  
+
   else if (TypeImport == "json") {
     cout << "Starting JSON import..." << endl;
     ok = ih.importJson(CollectionName, FileName);
   }
-  
+
   else {
     cerr << "Wrong type '" << TypeImport << "'." << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE,NULL);
@@ -400,7 +400,7 @@ int main (int argc, char* argv[]) {
     cout << "total:            " << ih.getReadLines() << endl;
   }
   else {
-    cerr << "error message:    " << ih.getErrorMessage() << endl;      
+    cerr << "error message:    " << ih.getErrorMessage() << endl;
   }
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
@@ -423,5 +423,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

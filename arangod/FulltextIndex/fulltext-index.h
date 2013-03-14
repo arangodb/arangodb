@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FULLTEXT_FULLTEXT_INDEX_H
-#define TRIAGENS_FULLTEXT_FULLTEXT_INDEX_H 1
+#ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_INDEX_H
+#define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_INDEX_H 1
 
 #include "fulltext-common.h"
 
@@ -61,7 +61,7 @@ struct TRI_fulltext_wordlist_s;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default minimum word length for a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 #define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ typedef struct TRI_fulltext_stats_s {
   size_t    _memoryNodes;
   size_t    _memoryFollowers;
   size_t    _memoryDocuments;
-#endif  
+#endif
   size_t    _memoryHandles;
   uint32_t  _numNodes;
   uint32_t  _numDocuments;
@@ -146,23 +146,23 @@ void TRI_FreeFtsIndex (TRI_fts_index_t*);
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DeleteDocumentFulltextIndex (TRI_fts_index_t* const, 
+void TRI_DeleteDocumentFulltextIndex (TRI_fts_index_t* const,
                                       const TRI_fulltext_doc_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a document word/pair to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const, 
+bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const,
                                   const TRI_fulltext_doc_t,
-                                  const char* const, 
+                                  const char* const,
                                   const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a list of words to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const, 
+bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const,
                                    const TRI_fulltext_doc_t,
                                    struct TRI_fulltext_wordlist_s*);
 
@@ -183,16 +183,16 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const,
 /// @brief find all documents that contain a word (exact match)
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_fulltext_result_s* TRI_FindExactFulltextIndex (TRI_fts_index_t* const, 
-                                                          const char* const, 
+struct TRI_fulltext_result_s* TRI_FindExactFulltextIndex (TRI_fts_index_t* const,
+                                                          const char* const,
                                                           const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (prefix match)
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const, 
-                                                           const char*, 
+struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const,
+                                                           const char*,
                                                            const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +200,7 @@ struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* cons
 /// note: this will free the query
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_fulltext_result_s* TRI_QueryFulltextIndex (TRI_fts_index_t* const, 
+struct TRI_fulltext_result_s* TRI_QueryFulltextIndex (TRI_fts_index_t* const,
                                                       struct TRI_fulltext_query_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,5 +262,5 @@ bool TRI_CompactFulltextIndex (TRI_fts_index_t* const);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

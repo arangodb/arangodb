@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_H
@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <sys/file.h>
-#endif 
+#endif
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -131,7 +131,7 @@ namespace triagens {
         explicit
         GeneralServer (Scheduler* scheduler, double keepAliveTimeout)
           : EndpointServer(),
-            _scheduler(scheduler), 
+            _scheduler(scheduler),
             _listenTasks(),
             _commTasks(),
             _handlers(1024),
@@ -190,7 +190,7 @@ namespace triagens {
             LOGGER_TRACE("trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests");
 
             bool ok = openEndpoint(*i);
-              
+
             if (ok) {
               LOGGER_DEBUG("bound to endpoint '" << (*i)->getSpecification() << "'");
             }
@@ -236,7 +236,7 @@ namespace triagens {
           while (! _commTasks.empty()) {
             GeneralCommTask<S, HF>* task = *_commTasks.begin();
             _commTasks.erase(task);
-            
+
 
             GENERAL_SERVER_UNLOCK(&_commTasksLock);
             _scheduler->destroyTask(task);
@@ -251,7 +251,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void handleConnected (TRI_socket_t s, ConnectionInfo& info) {
-          
+
           GeneralCommTask<S, HF>* task = new SpecificCommTask<S, HF, CT>(dynamic_cast<S*>(this), s, info, _keepAliveTimeout);
 
           GENERAL_SERVER_LOCK(&_commTasksLock);
@@ -418,12 +418,12 @@ namespace triagens {
         bool openEndpoint (Endpoint* endpoint) {
           ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), endpoint, true);
 
-          // ...................................................................  
-          // For some reason we have failed in our endeavour to bind to the socket - 
+          // ...................................................................
+          // For some reason we have failed in our endeavour to bind to the socket -
           // this effectively terminates the server
-          // ...................................................................  
+          // ...................................................................
 
-          if (! task->isBound()) { 
+          if (! task->isBound()) {
             deleteTask(task);
             return false;
           }
@@ -636,5 +636,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

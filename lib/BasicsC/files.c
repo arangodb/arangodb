@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "files.h"
@@ -163,7 +163,7 @@ static void InitialiseLockFiles (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ListTreeRecursively (char const* full,
-                                 char const* path, 
+                                 char const* path,
                                  TRI_vector_string_t* result) {
   size_t i;
   size_t j;
@@ -262,7 +262,7 @@ bool TRI_SetCloseOnExitFile (int fileDescriptor) {
 int64_t TRI_SizeFile (char const* path) {
   struct stat stbuf;
   int res = stat(path, &stbuf);
-  
+
   if (res != 0) {
     // an error occurred
     return (int64_t) res;
@@ -550,7 +550,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
   struct _finddata_t fd;
   intptr_t handle;
   char* filter;
-  
+
   TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   filter = TRI_Concatenate2String(path, "\\*");
@@ -619,7 +619,7 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
   TRI_vector_string_t result;
 
   TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
-  
+
   TRI_PushBackVectorString(&result, TRI_DuplicateString(""));
   ListTreeRecursively(path, "", &result);
 
@@ -632,10 +632,10 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
 
 int TRI_RenameFile (char const* old, char const* filename) {
   int res;
-  
+
 #ifdef _WIN32
-  BOOL moveResult = 0; 
-  moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING); 
+  BOOL moveResult = 0;
+  moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
   if (!moveResult) {
     DWORD errorCode = GetLastError();
     res = -1;
@@ -1126,13 +1126,13 @@ int TRI_DestroyLockFile (char const* filename) {
     return false;
   }
 
-  
+
   fd = TRI_OPEN(filename, O_RDWR);
-  
+
   if (fd < 0) {
     return false;
   }
- 
+
   // ..........................................................................
   // TODO: Use windows LockFileEx to determine if file can be locked
   // ..........................................................................
@@ -1197,7 +1197,7 @@ int TRI_DestroyLockFile (char const* filename) {
 /// in contrast to realpath() this function can also be used to determine the
 /// full path for files & directories that do not exist. realpath() would fail
 /// for those cases.
-/// It is the caller's responsibility to free the string created by this 
+/// It is the caller's responsibility to free the string created by this
 /// function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1211,18 +1211,18 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // ...........................................................................
   // Check that fileName actually makes some sense
   // ...........................................................................
-  
+
   if (fileName == NULL || *fileName == '\0') {
     return NULL;
   }
 
-  
+
   // ...........................................................................
-  // Under windows we can assume that fileName is absolute if fileName starts 
-  // with a letter A-Z followed by a colon followed by either a forward or 
+  // Under windows we can assume that fileName is absolute if fileName starts
+  // with a letter A-Z followed by a colon followed by either a forward or
   // backslash.
   // ...........................................................................
-  
+
   if ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) {
     if ((fileName[1] != '\0') && (fileName[1] == ':')) {
       if ((fileName[2] != '\0') && (fileName[2] == '/' || fileName[2] == '\\')) {
@@ -1231,49 +1231,49 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
     }
   }
 
-  
+
   // ...........................................................................
   // The fileName itself was not absolute, so we attempt to amalagmate the
   // currentWorkingDirectory with the fileName
   // ...........................................................................
-  
-  
+
+
   // ...........................................................................
   // Check that the currentWorkingDirectory makes sense
   // ...........................................................................
-  
+
   if (currentWorkingDirectory == NULL || *currentWorkingDirectory == '\0') {
     return NULL;
   }
 
 
   // ...........................................................................
-  // Under windows the currentWorkingDirectory should start 
-  // with a letter A-Z followed by a colon followed by either a forward or 
+  // Under windows the currentWorkingDirectory should start
+  // with a letter A-Z followed by a colon followed by either a forward or
   // backslash.
   // ...........................................................................
-  
-  ok = false;  
+
+  ok = false;
   if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
     if ((currentWorkingDirectory[1] != '\0') && (currentWorkingDirectory[1] == ':')) {
       if ((currentWorkingDirectory[2] != '\0') && (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\')) {
-        ok = true;  
+        ok = true;
       }
     }
   }
 
   if (!ok) {
     return NULL;
-  }  
+  }
 
-    
+
   // ...........................................................................
   // Determine the total legnth of the new string
   // ...........................................................................
-  
+
   cwdLength  = strlen(currentWorkingDirectory);
   fileLength = strlen(fileName);
-  
+
   if (currentWorkingDirectory[cwdLength - 1] != '\\' && currentWorkingDirectory[cwdLength - 1] != '/') {
     // we do not require a backslash
     result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 1) * sizeof(char), false);
@@ -1289,7 +1289,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
     memcpy(result + cwdLength + 1, fileName, fileLength);
     result[cwdLength + fileLength + 1] = '\0';
   }
-  
+
 
   return result;
 }
@@ -1426,5 +1426,5 @@ char* TRI_LocateBinaryPath (char const* argv0) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

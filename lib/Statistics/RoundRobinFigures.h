@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_ROUND_ROBIN_FIGURES_H
-#define TRIAGENS_BASICS_ROUND_ROBIN_FIGURES_H 1
+#ifndef TRIAGENS_STATISTICS_ROUND_ROBIN_FIGURES_H
+#define TRIAGENS_STATISTICS_ROUND_ROBIN_FIGURES_H 1
 
 #include "Basics/Common.h"
 
@@ -369,7 +369,7 @@ namespace triagens {
 
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantDistribution (VariantArray* result,
-                                          STAT const& s, 
+                                          STAT const& s,
                                           std::string const& name,
                                           bool showMinimum,
                                           bool showMaximum,
@@ -437,7 +437,7 @@ namespace triagens {
 
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantDistribution (VariantArray* result,
-                                          typename std::vector<STAT> const& v, 
+                                          typename std::vector<STAT> const& v,
                                           std::string const& name,
                                           bool showMinimum,
                                           bool showMaximum,
@@ -539,7 +539,7 @@ namespace triagens {
 
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantCounter (VariantArray* result,
-                                     STAT const& s, 
+                                     STAT const& s,
                                      std::string const& name,
                                      double resolution) {
       VariantArray* values = new VariantArray();
@@ -558,7 +558,7 @@ namespace triagens {
 
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantCounter (VariantArray* result,
-                                     typename std::vector<STAT> const& v, 
+                                     typename std::vector<STAT> const& v,
                                      std::string const& name,
                                      double resolution) {
       VariantArray* values = new VariantArray();
@@ -590,7 +590,7 @@ namespace triagens {
 
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantContinuous (VariantArray* result,
-                                        STAT const& s, 
+                                        STAT const& s,
                                         std::string const& name) {
       VariantArray* values = new VariantArray();
       result->add(name, values);
@@ -608,7 +608,7 @@ namespace triagens {
 
     template<typename ACC, typename STAT>
     void RRF_GenerateVariantContinuous (VariantArray* result,
-                                        typename std::vector<STAT> const& v, 
+                                        typename std::vector<STAT> const& v,
                                         std::string const& name) {
       VariantArray* values = new VariantArray();
       result->add(name, values);
@@ -990,5 +990,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

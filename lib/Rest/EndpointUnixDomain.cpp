@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointUnixDomain.h"
 
-#include <Basics/Common.h>
-#include <Basics/FileUtils.h>
-#include <Basics/StringUtils.h>
-#include <Logger/Logger.h>
+#include "Basics/Common.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 #include "Rest/Endpoint.h"
 
@@ -56,9 +56,9 @@ using namespace triagens::rest;
 /// @brief creates a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointUnixDomain::EndpointUnixDomain (const Endpoint::EndpointType type, 
+EndpointUnixDomain::EndpointUnixDomain (const Endpoint::EndpointType type,
                                         const Endpoint::ProtocolType protocol,
-                                        const std::string& specification, 
+                                        const std::string& specification,
                                         int listenBacklog,
                                         const std::string& path) :
     Endpoint(type, DOMAIN_UNIX, protocol, ENCRYPTION_NONE, specification, listenBacklog),
@@ -96,7 +96,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
   TRI_socket_t listenSocket;
   listenSocket.fileDescriptor = 0;
   listenSocket.fileHandle = 0;
-  
+
   LOGGER_DEBUG("connecting to unix endpoint " << _specification);
 
   assert(_socket.fileHandle == 0);
@@ -113,7 +113,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     }
     else {
       LOGGER_ERROR("unable to delete previously existing socket file '" << _path << "'.");
-    
+
       return listenSocket;
     }
   }
@@ -124,10 +124,10 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     listenSocket.fileHandle = 0;
     return listenSocket;
   }
-  
+
   // reuse address
   int opt = 1;
-    
+
   if (setsockopt(listenSocket.fileHandle, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR("setsockopt failed with " << errno << " (" << strerror(errno) << ")");
 
@@ -137,7 +137,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
     return listenSocket;
   }
   LOGGER_TRACE("reuse address flag set");
-    
+
   struct sockaddr_un address;
 
   memset(&address, 0, sizeof(address));
@@ -153,7 +153,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
       listenSocket.fileHandle = 0;
       return listenSocket;
     }
-    
+
     // listen for new connection, executed for server endpoints only
     LOGGER_TRACE("using backlog size " << _listenBacklog);
     result = listen(listenSocket.fileHandle, _listenBacklog);
@@ -181,21 +181,21 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
       return listenSocket;
     }
   }
-    
+
   if (!setSocketFlags(listenSocket)) {
     TRI_CLOSE_SOCKET(listenSocket);
     listenSocket.fileDescriptor = 0;
     listenSocket.fileHandle = 0;
     return listenSocket;
   }
-  
+
   if (_type == ENDPOINT_CLIENT) {
     setTimeout(listenSocket, requestTimeout);
   }
-  
+
   _connected = true;
   _socket = listenSocket;
-  
+
   return _socket;
 }
 
@@ -213,8 +213,8 @@ void EndpointUnixDomain::disconnect () {
     _socket.fileHandle = 0;
     _socket.fileDescriptor = 0;
 
-    if (_type == ENDPOINT_SERVER) {   
-      int error = 0; 
+    if (_type == ENDPOINT_SERVER) {
+      int error = 0;
       FileUtils::remove(_path, &error);
     }
   }
@@ -236,5 +236,5 @@ bool EndpointUnixDomain::initIncoming (TRI_socket_t incoming) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

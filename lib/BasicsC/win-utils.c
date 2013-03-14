@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +21,13 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <io.h>
 #include "win-utils.h"
-#include <BasicsC/logging.h>
+#include "BasicsC/logging.h"
 #include <windows.h>
 #include <string.h>
 #include <malloc.h>
@@ -67,7 +67,7 @@ int getpagesize(void) {
   static int pageSize = 0; // only define it once
 
   if (!pageSize) {
-    // first time, so call the system info function 
+    // first time, so call the system info function
     SYSTEM_INFO systemInfo;
     GetSystemInfo (&systemInfo);
     pageSize = systemInfo.dwPageSize;
@@ -96,15 +96,15 @@ void TRI_usleep(unsigned long waitTime) {
   HANDLE hTimer = NULL;    // stores the handle of the timer object
   LARGE_INTEGER wTime;    // essentially a 64bit number
   wTime.QuadPart = waitTime * 10; // *10 to change to microseconds
-  wTime.QuadPart = -wTime.QuadPart;  // negative indicates relative time elapsed, 
-  
+  wTime.QuadPart = -wTime.QuadPart;  // negative indicates relative time elapsed,
+
   // Create an unnamed waitable timer.
   hTimer = CreateWaitableTimer(NULL, 1, NULL);
   if (hTimer == NULL) {
     // no much we can do at this low level
     return;
   }
- 
+
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     abort();
   }
@@ -114,16 +114,16 @@ void TRI_usleep(unsigned long waitTime) {
     return;
   }
 
-  // Wait for the timer 
+  // Wait for the timer
   result = WaitForSingleObject(hTimer, INFINITE);
   if (result != WAIT_OBJECT_0) {
     abort();
   }
-  
+
   CloseHandle(hTimer);
   // todo: go through what the result is e.g. WAIT_OBJECT_0
   return;
-}      
+}
 
 
 
@@ -146,19 +146,19 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
   }
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:EXPRESSION = NULL\n");
-  } 
+  }
   if (function != 0) {
     wprintf(L"win-utils.c:InvalidParameterHandler:FUNCTION = %s\n",function);
   }
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:FUNCTION = NULL\n");
-  } 
+  }
   if (file!= 0) {
     wprintf(L"win-utils.c:InvalidParameterHandler:FILE = %s\n",file);
   }
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
-  } 
+  }
   printf("oreste:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
   /* end oreste -debug */
   //abort();
@@ -179,7 +179,7 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
 
 int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
   int result = 0;
- 
+
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -190,7 +190,7 @@ int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
       result = WSACleanup();     // could this cause error on server termination?
       if (result != 0) {
-        // can not use LOG_ etc here since the logging may have terminated  
+        // can not use LOG_ etc here since the logging may have terminated
         printf("ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup returned error %d.",result);
         return -1;
       }
@@ -198,7 +198,7 @@ int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
     }
 
     default: {
-      // can not use LOG_ etc here since the logging may have terminated  
+      // can not use LOG_ etc here since the logging may have terminated
       printf("ERROR: Invalid windows finalisation called");
       return -1;
     }
@@ -220,15 +220,15 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
   switch (initialiseWhat) {
 
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
-      _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF)|_CRTDBG_CHECK_ALWAYS_DF);    
+      _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF)|_CRTDBG_CHECK_ALWAYS_DF);
       return 0;
     }
 
     // ...........................................................................
-    // Assign a handler for invalid handles 
+    // Assign a handler for invalid handles
     // ...........................................................................
 
-    case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: { 
+    case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
       newInvalidHandleHandler = InvalidParameterHandler;
       oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
       return 0;
@@ -240,7 +240,7 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
       if (result != *newMax) {
         return -1;
       }
-      return 0;  
+      return 0;
     }
 
     case TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL: {
@@ -256,7 +256,7 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
         LOG_ERROR("Could not find a usuable Winsock DLL. WSAStartup did not return version 2.2.");
         WSACleanup();
         return -1;
-      }   
+      }
       return 0;
     }
 
@@ -275,19 +275,19 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int    fileDescriptor;
 
-  fileHandle = CreateFileA(filename, 
-                          GENERIC_READ | GENERIC_WRITE, 
+  fileHandle = CreateFileA(filename,
+                          GENERIC_READ | GENERIC_WRITE,
                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                          NULL, 
+                          NULL,
                           CREATE_NEW,
                           0,
                           NULL);
 
-  
+
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
-  
+
   fileDescriptor = _open_osfhandle( (intptr_t)(fileHandle), O_RDWR| _O_BINARY);
   return fileDescriptor;
 
@@ -310,27 +310,27 @@ int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
 */
 }
 
-////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Creates or opens a file using the windows CreateFile method. Notice below we
 // have used the method CreateFileA to avoid unicode characters - for now anyway
-// TODO oreste: map the flags e.g. O_RDWR to the equivalents for CreateFileA 
-////////////////////////////////////////////////////////////////////////////////////
+// TODO oreste: map the flags e.g. O_RDWR to the equivalents for CreateFileA
+////////////////////////////////////////////////////////////////////////////////
 
 int TRI_openFile (const char* filename, int openFlags) {
   HANDLE fileHandle;
   int    fileDescriptor;
 
-  fileHandle = CreateFileA(filename, 
-                          GENERIC_READ | GENERIC_WRITE, 
+  fileHandle = CreateFileA(filename,
+                          GENERIC_READ | GENERIC_WRITE,
                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                          NULL, 
+                          NULL,
                           OPEN_EXISTING,
                           0,
                           NULL);
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
-  
+
   fileDescriptor = _open_osfhandle( (intptr_t)(fileHandle), O_RDWR| _O_BINARY);
   return fileDescriptor;
 
@@ -361,6 +361,6 @@ int TRI_openFile (const char* filename, int openFlags) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

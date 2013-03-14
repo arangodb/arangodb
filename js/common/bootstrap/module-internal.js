@@ -1,12 +1,12 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
+/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE,
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
-  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, 
-  SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, 
-  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT, 
-  COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE, 
-  COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE, 
-  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION, 
+  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
+  SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE,
+  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT,
+  COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
+  COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
+  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, PRETTY_PRINT, VALGRIND, HAS_ICU, VERSION,
   UPGRADE */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16,7 +16,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@
     internal.logLevel = SYS_LOG_LEVEL;
     delete SYS_LOG_LEVEL;
   }
-  
+
   if (typeof SYS_MD5 !== "undefined") {
     internal.md5 = SYS_MD5;
     delete SYS_MD5;
@@ -98,7 +98,7 @@
     internal.processStat = SYS_PROCESS_STAT;
     delete SYS_PROCESS_STAT;
   }
-  
+
   if (typeof SYS_RAND !== "undefined") {
     internal.rand = SYS_RAND;
     delete SYS_RAND;
@@ -228,7 +228,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief color constants
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   internal.COLORS = { };
 
   if (typeof COLORS !== "undefined") {
@@ -262,7 +262,7 @@
       internal.NOCOLORS[i] = '';
     }
   }
- 
+
   internal.COLOR_OUTPUT = false;
 
   if (typeof COLOR_OUTPUT !== "undefined") {
@@ -411,7 +411,7 @@
         printRecursive(arguments[i], [], "~", [], 0);
       }
     }
-    
+
     output("\n");
   };
 
@@ -716,7 +716,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start pretty printing
 ////////////////////////////////////////////////////////////////////////////////
- 
+
   internal.startPrettyPrint = function (silent) {
     if (! internal.PRETTY_PRINT && ! silent) {
       internal.print("using pretty printing");
@@ -745,7 +745,7 @@
     internal.outputBuffer = "";
     internal.output = internal.bufferOutput;
   };
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop capture mode
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,14 +758,14 @@
 
     return buffer;
   };
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start color printing
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.startColorPrint = function (silent) {
     if (! internal.COLOR_OUTPUT && ! silent) {
-      internal.print("starting color printing"); 
+      internal.print("starting color printing");
     }
 
     internal.colors = internal.COLORS;
@@ -789,24 +789,24 @@
 /// @brief debug print function
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.dump = function () { 
+  internal.dump = function () {
     var i;
-    var oldPretty = internal.PRETTY_PRINT; 
-    var oldColor = internal.COLOR_OUTPUT; 
+    var oldPretty = internal.PRETTY_PRINT;
+    var oldColor = internal.COLOR_OUTPUT;
 
-    internal.startPrettyPrint(true); 
-    internal.startColorPrint(true); 
+    internal.startPrettyPrint(true);
+    internal.startColorPrint(true);
 
     for (i = 0; i < arguments.length; ++i) {
-      internal.print(arguments[i]); 
+      internal.print(arguments[i]);
     }
 
-    if (! oldPretty) { 
-      internal.stopPrettyPrint(true); 
-    } 
-    if (! oldColor) { 
-      internal.stopColorPrint(true); 
-    } 
+    if (! oldPretty) {
+      internal.stopPrettyPrint(true);
+    }
+    if (! oldColor) {
+      internal.stopColorPrint(true);
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -876,7 +876,7 @@
 
     throw "cannot find a file named '"
         + path
-        + "' using the module path(s) '" 
+        + "' using the module path(s) '"
         + internal.MODULES_PATH + "'";
   };
 
@@ -907,8 +907,8 @@
     }
 
     throw "cannot find a file named '"
-        + path 
-        + "' using the module path(s) '" 
+        + path
+        + "' using the module path(s) '"
         + internal.MODULES_PATH + "'";
   };
 
@@ -952,5 +952,5 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

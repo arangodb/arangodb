@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_STATISTICS_REQUEST_STATISTICS_AGENT_H
-#define TRIAGENS_STATISTICS_REQUEST_STATISTICS_AGENT_H 1
+#ifndef TRIAGENS_STATISTICS_STATISTICS_AGENT_H
+#define TRIAGENS_STATISTICS_STATISTICS_AGENT_H 1
 
 #include "Basics/Common.h"
 
@@ -154,7 +154,7 @@ namespace triagens {
 
         void replace (STAT* statistics) {
 #ifdef TRI_ENABLE_FIGURES
-          
+
           if (_statistics != 0) {
             FUNC::release(_statistics);
           }
@@ -275,7 +275,7 @@ namespace triagens {
       }                                                                              \
     }                                                                                \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetReadStart(a) while (0)
@@ -295,7 +295,7 @@ namespace triagens {
       }                                                                            \
     }                                                                              \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetReadEnd(a) while (0)
@@ -315,7 +315,7 @@ namespace triagens {
       }                                                                               \
     }                                                                                 \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetWriteStart(a) while (0)
@@ -335,7 +335,7 @@ namespace triagens {
       }                                                                             \
     }                                                                               \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetWriteEnd(a) while (0)
@@ -355,7 +355,7 @@ namespace triagens {
       }                                                                                 \
     }                                                                                   \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetQueueStart(a) while (0)
@@ -375,7 +375,7 @@ namespace triagens {
       }                                                                               \
     }                                                                                 \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetQueueEnd(a) while (0)
@@ -395,7 +395,7 @@ namespace triagens {
       }                                                                                 \
     }                                                                                   \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetRequestStart(a) while (0)
@@ -415,7 +415,7 @@ namespace triagens {
       }                                                                               \
     }                                                                                 \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetRequestEnd(a) while (0)
@@ -435,7 +435,7 @@ namespace triagens {
       }                                                                  \
     }                                                                    \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentSetExecuteError(a) while (0)
@@ -455,7 +455,7 @@ namespace triagens {
       }                                                                  \
     }                                                                    \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentAddReceivedBytes(a,b) while (0)
@@ -475,7 +475,7 @@ namespace triagens {
       }                                                              \
     }                                                                \
     while (0)
-    
+
 #else
 
 #define RequestStatisticsAgentAddSentBytes(a,b) while (0)
@@ -533,7 +533,7 @@ namespace triagens {
     }                                                                   \
   }                                                                     \
   while (0)
-    
+
 #else
 
 #define ConnectionStatisticsAgentSetHttp(a) while (0)
@@ -553,7 +553,7 @@ namespace triagens {
     }                                                                                 \
   }                                                                                   \
   while (0)
-    
+
 #else
 
 #define ConnectionStatisticsAgentSetStart(a) while (0)
@@ -573,7 +573,7 @@ namespace triagens {
     }                                                                               \
   }                                                                                 \
   while (0)
-    
+
 #else
 
 #define ConnectionStatisticsAgentSetEnd(a) while (0)
@@ -592,5 +592,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

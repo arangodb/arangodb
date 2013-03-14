@@ -5,34 +5,24 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pqueueindex.h"
@@ -75,12 +65,12 @@ static bool     IsEqualKeyElementPQIndex(TRI_associative_array_t*, void*, void*)
 enum {
   PQIndex_InvalidIndexError = -1,
   PQIndex_InvalidElementError = -10,
-  
+
   PQIndex_ElementMissingAssociativeArrayError = 1,
   PQIndex_DuplicateElement = 10,
-  
+
   PQIndex_RemoveInternalError = 1001
-} PQueueIndexErrors;  
+} PQueueIndexErrors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -116,7 +106,7 @@ void PQueueIndex_free(PQIndex* idx) {
   if (idx == NULL) {
     return;
   }
-  PQueueIndex_destroy(idx); 
+  PQueueIndex_destroy(idx);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
@@ -131,11 +121,11 @@ PQIndex* PQueueIndex_new (void) {
 
   PQIndex* idx;
   bool ok;
-  
-  // ..........................................................................  
+
+  // ..........................................................................
   // Allocate the Priority Que Index
-  // ..........................................................................  
-  
+  // ..........................................................................
+
   idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndex), false);
 
   if (idx == NULL) {
@@ -144,12 +134,12 @@ PQIndex* PQueueIndex_new (void) {
     return NULL;
   }
 
-  
-  // ..........................................................................  
+
+  // ..........................................................................
   // Allocate the priority que
   // Remember to add any additional structure you need
-  // ..........................................................................  
-  
+  // ..........................................................................
+
   idx->_pq = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pqueue_t) + sizeof(void*), false);
   if (idx->_pq == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
@@ -158,11 +148,11 @@ PQIndex* PQueueIndex_new (void) {
     return NULL;
   }
 
-  
-  // ..........................................................................  
+
+  // ..........................................................................
   // Allocate the associative array
-  // ..........................................................................  
-  
+  // ..........................................................................
+
   idx->_aa = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_array_t), false);
   if (idx->_aa == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
@@ -171,52 +161,52 @@ PQIndex* PQueueIndex_new (void) {
     LOG_ERROR("out of memory when creating priority queue index");
     return NULL;
   }
-  
 
-  // ..........................................................................  
+
+  // ..........................................................................
   // Initialise the priority que
-  // ..........................................................................  
-  
+  // ..........................................................................
+
   ok = TRI_InitPQueue(idx->_pq,
                       100,
                       sizeof(TRI_pq_index_element_t),
-                      false, 
+                      false,
                       ClearStoragePQIndex,
-                      GetStoragePQIndex, 
-                      IsLessPQIndex, 
+                      GetStoragePQIndex,
+                      IsLessPQIndex,
                       UpdateStoragePQIndex);
 
   if (! ok) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_pq);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_aa);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
-    return NULL;    
+    return NULL;
   }
 
-  
-  // ..........................................................................  
+
+  // ..........................................................................
   // Initialise the associative array
-  // ..........................................................................  
+  // ..........................................................................
 
   TRI_InitAssociativeArray(idx->_aa,
-                           TRI_UNKNOWN_MEM_ZONE, 
-                           sizeof(TRI_pq_index_element_t), 
+                           TRI_UNKNOWN_MEM_ZONE,
+                           sizeof(TRI_pq_index_element_t),
                            HashKeyPQIndex,
                            HashElementPQIndex,
                            ClearElementPQIndex,
                            IsEmptyElementPQIndex,
                            IsEqualKeyElementPQIndex,
                            IsEqualElementElementPQIndex);
-                           
-                           
-  // ..........................................................................  
+
+
+  // ..........................................................................
   // Add the associative array at the end of the pq so that we can access later
   //memcpy((char*)(idx->_pq) + sizeof(TRI_pqueue_t),&(idx->_aa),sizeof(TRI_associative_array_t*));
-  // ..........................................................................  
+  // ..........................................................................
 
   *((TRI_associative_array_t**)((char*)(idx->_pq) + sizeof(TRI_pqueue_t))) = idx->_aa;
-  
-  
+
+
   return idx;
 }
 
@@ -238,7 +228,7 @@ PQIndex* PQueueIndex_new (void) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an item into a priority queue 
+/// @brief inserts an item into a priority queue
 ////////////////////////////////////////////////////////////////////////////////
 
 int PQIndex_insert (PQIndex* idx, TRI_pq_index_element_t* element) {
@@ -249,7 +239,7 @@ int PQIndex_insert (PQIndex* idx, TRI_pq_index_element_t* element) {
   if (element == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  
+
   // ...........................................................................
   // Check if item is already added to the associative array
   // ...........................................................................
@@ -258,13 +248,13 @@ int PQIndex_insert (PQIndex* idx, TRI_pq_index_element_t* element) {
     // attempt to add duplicate document to the priority queue
     return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
-  
+
   // ...........................................................................
   // Initialise the priority queue array storage pointer
   // ...........................................................................
 
   element->pqSlot = 0;
-  
+
   // ...........................................................................
   // Add item to associative array
   // ...........................................................................
@@ -273,13 +263,13 @@ int PQIndex_insert (PQIndex* idx, TRI_pq_index_element_t* element) {
     // can not add item to associative array -- give up on insert
     return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
-  
+
   if (!idx->_pq->add(idx->_pq, element)) {
     TRI_RemoveElementAssociativeArray(idx->_aa, element, NULL);
     // can not add item to priority queue array -- give up on insert
     return TRI_ERROR_ARANGO_INDEX_PQ_INSERT_FAILED;
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -288,9 +278,9 @@ int PQIndex_insert (PQIndex* idx, TRI_pq_index_element_t* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int PQIndex_remove (PQIndex* idx, TRI_doc_mptr_t const* doc) {
-  TRI_pq_index_element_t* item;  
+  TRI_pq_index_element_t* item;
   bool ok;
-  
+
   if (idx == NULL) {
     return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
@@ -304,26 +294,26 @@ int PQIndex_remove (PQIndex* idx, TRI_doc_mptr_t const* doc) {
   if (item == NULL) {
     return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_ITEM_MISSING;
   }
-  
+
   // ...........................................................................
   // Remove item from the priority queue
   // ...........................................................................
-  
+
   ok = idx->_pq->remove(idx->_pq, item->pqSlot, true);
- 
+
   // ...........................................................................
   // Remove item from associative array
   // Must come after remove above, since update storage will be called.
   // ...........................................................................
-  
+
   ok = TRI_RemoveElementAssociativeArray(idx->_aa, item, NULL) && ok;
-  
+
   if (!ok) {
     return TRI_ERROR_ARANGO_INDEX_PQ_REMOVE_FAILED;
   }
-  
-  return TRI_ERROR_NO_ERROR;  
-}  
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the top most item without removing it from the queue
@@ -333,12 +323,12 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
 
   PQIndexElements* result;
   PQIndexElements tempResult;
-  TRI_pq_index_element_t* element;  
+  TRI_pq_index_element_t* element;
   uint64_t j;
   bool ok;
   uint64_t numCopied;
-  
-  
+
+
   if (idx == NULL) {
     return NULL;
   }
@@ -347,10 +337,10 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
     return NULL;
   }
 
-  // .............................................................................  
+  // .............................................................................
   // Optimise for the common case where we remove only a single element
-  // .............................................................................  
-  
+  // .............................................................................
+
   if (numElements == 1) {
     result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(PQIndexElements), false);
 
@@ -379,12 +369,12 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
     }
 
     return result;
-  }  
-  
-  // .............................................................................  
+  }
+
+  // .............................................................................
   // Two or more elements are 'topped'
-  // .............................................................................  
-  
+  // .............................................................................
+
   tempResult._elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_pq_index_element_t) * numElements, false);
 
   if (tempResult._elements == NULL) {
@@ -400,8 +390,8 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
 
     if (element == NULL) {
       break;
-    }      
-    
+    }
+
     tempResult._elements[j] = *element;
     ok = idx->_pq->remove(idx->_pq, element->pqSlot, false);
 
@@ -428,19 +418,19 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
-  
+
   result->_numElements = numCopied;
-  
+
   for (j = 0; j < numCopied; ++j) {
     result->_elements[j] = tempResult._elements[j];
     result->_elements[j].pqSlot = 0;
-    idx->_pq->add(idx->_pq, &(result->_elements[j])); 
+    idx->_pq->add(idx->_pq, &(result->_elements[j]));
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempResult._elements);
-    
+
   return result;
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -461,7 +451,7 @@ PQIndexElements* PQIndex_top (PQIndex* idx, uint64_t numElements) {
 
 static void ClearStoragePQIndex (TRI_pqueue_t* pq, void* item) {
   TRI_pq_index_element_t* element;
-  
+
   element = (TRI_pq_index_element_t*)(item);
 
   if (element == 0) {
@@ -475,7 +465,7 @@ static void ClearStoragePQIndex (TRI_pqueue_t* pq, void* item) {
 
 static uint64_t GetStoragePQIndex(TRI_pqueue_t* pq, void* item) {
   TRI_pq_index_element_t* element;
-  
+
   element = (TRI_pq_index_element_t*)(item);
   if (element == 0) {
     return 0;
@@ -499,38 +489,38 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
 
   if (leftElement == NULL && rightElement == NULL) {
     return false;
-  }    
-  
+  }
+
   if (leftElement == NULL && rightElement != NULL) {
     return true;
-  }    
-  
+  }
+
   if (leftElement != NULL && rightElement == NULL) {
     return false;
-  }    
+  }
 
   if (leftElement == rightElement) {
     return false;
-  }    
-    
+  }
+
   // ............................................................................
   // The document could be the same -- so no further comparison is required.
   // ............................................................................
 
   if (leftElement->_document == rightElement->_document) {
     return false;
-  }    
-  
+  }
+
   if (leftElement->numFields < rightElement->numFields) {
     maxNumFields = leftElement->numFields;
   }
   else {
     maxNumFields = rightElement->numFields;
   }
-  
+
   leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
   rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
-  
+
   compareResult = 0;
 
   for (j = 0;  j < maxNumFields;  j++) {
@@ -551,7 +541,7 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
   if (compareResult  < 0) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -559,7 +549,7 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
 static void UpdateStoragePQIndex(TRI_pqueue_t* pq, void* item, uint64_t position) {
   TRI_pq_index_element_t* element;
   TRI_associative_array_t* aa;
-  
+
   element = (TRI_pq_index_element_t*)(item);
   if (element == 0) {
     LOG_ERROR("invalid priority queue element received");
@@ -598,10 +588,10 @@ static void ClearElementPQIndex(TRI_associative_array_t* aa, void* item) {
 
 static uint64_t HashKeyPQIndex(TRI_associative_array_t* aa, void* key) {
   uint64_t hash;
-  
+
   hash = TRI_FnvHashBlockInitial();
-  hash = TRI_FnvHashBlock(hash, key, sizeof(void*)); 
-  
+  hash = TRI_FnvHashBlock(hash, key, sizeof(void*));
+
   return  hash;
 }
 
@@ -609,32 +599,32 @@ static uint64_t HashKeyPQIndex(TRI_associative_array_t* aa, void* key) {
 static uint64_t HashElementPQIndex(TRI_associative_array_t* aa, void* item) {
   TRI_pq_index_element_t* element;
   uint64_t hash;
-  
+
   element = (TRI_pq_index_element_t*)(item);
   if (element == 0) {
     return 0;
   }
-  
+
   hash = TRI_FnvHashBlockInitial();
-  hash = TRI_FnvHashBlock(hash, (void*) element->_document, sizeof(void*)); 
-  
+  hash = TRI_FnvHashBlock(hash, (void*) element->_document, sizeof(void*));
+
   return  hash;
 }
 
 
 static bool IsEmptyElementPQIndex(TRI_associative_array_t* aa, void* item) {
   TRI_pq_index_element_t* element;
-  
+
   if (item == NULL) {
     // should never happen
     return false;
-  }  
-  
+  }
+
   element = (TRI_pq_index_element_t*)(item);
 
   if (element->_document == NULL) {
     return true;
-  }  
+  }
 
   return false;
 }
@@ -643,18 +633,18 @@ static bool IsEmptyElementPQIndex(TRI_associative_array_t* aa, void* item) {
 static bool IsEqualElementElementPQIndex(TRI_associative_array_t* aa, void* leftItem, void* rightItem) {
   TRI_pq_index_element_t* leftElement;
   TRI_pq_index_element_t* rightElement;
-  
+
   if (leftItem == NULL || rightItem == NULL) {
     // should never happen
     return false;
-  }  
-  
+  }
+
   leftElement  = (TRI_pq_index_element_t*)(leftItem);
   rightElement = (TRI_pq_index_element_t*)(rightItem);
 
   if (leftElement->_document == rightElement->_document) {
     return true;
-  }  
+  }
 
   return false;
 }
@@ -662,17 +652,17 @@ static bool IsEqualElementElementPQIndex(TRI_associative_array_t* aa, void* left
 
 static bool IsEqualKeyElementPQIndex(TRI_associative_array_t* aa, void* key, void* item) {
   TRI_pq_index_element_t* element;
-  
+
   if (item == NULL) {
     return false; // should never happen
   }
-  element = (TRI_pq_index_element_t*)(item);  
+  element = (TRI_pq_index_element_t*)(item);
 
   if (element->_document == key) {
     return true;
   }
 
-  return false;  
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -681,7 +671,7 @@ static bool IsEqualKeyElementPQIndex(TRI_associative_array_t* aa, void* key, voi
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 
 

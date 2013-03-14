@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document utility functions 
+/// @brief document utility functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H
-#define TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H 1
+#ifndef TRIAGENS_UTILS_DOCUMENT_HELPER_H
+#define TRIAGENS_UTILS_DOCUMENT_HELPER_H 1
 
 namespace triagens {
   namespace arango {
@@ -45,7 +45,7 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-  
+
       private:
 
         DocumentHelper ();
@@ -64,11 +64,11 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-  
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a string 
+/// @brief assemble a document id from a string and a string
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline string assembleDocumentId (const string& collectionName,
@@ -77,7 +77,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a char* key 
+/// @brief assemble a document id from a string and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline string assembleDocumentId (const string& collectionName,
@@ -101,5 +101,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

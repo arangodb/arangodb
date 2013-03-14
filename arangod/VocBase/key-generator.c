@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "key-generator.h" 
+#include "key-generator.h"
 
 #include <regex.h>
 
@@ -37,7 +37,7 @@
 
 #include "VocBase/primary-collection.h"
 #include "VocBase/vocbase.h"
- 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        SPECIALIZED KEY GENERATORS
 // -----------------------------------------------------------------------------
@@ -84,9 +84,9 @@ revision_keygen_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the revision key generator
 ////////////////////////////////////////////////////////////////////////////////
-    
-static int RevisionInit (TRI_key_generator_t* const generator, 
-                         const TRI_json_t* const options) { 
+
+static int RevisionInit (TRI_key_generator_t* const generator,
+                         const TRI_json_t* const options) {
   revision_keygen_t* data;
 
   data = (revision_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(revision_keygen_t), false);
@@ -106,10 +106,10 @@ static int RevisionInit (TRI_key_generator_t* const generator,
     LOG_ERROR("cannot compile regular expression");
     return TRI_ERROR_INTERNAL;
   }
-  
+
   if (options != NULL) {
     TRI_json_t* option;
-    
+
     option = TRI_LookupArrayJson(options, "prefix");
     if (option != NULL && option->_type == TRI_JSON_STRING) {
       data->_prefix = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, option->_value._string.data);
@@ -127,7 +127,7 @@ static int RevisionInit (TRI_key_generator_t* const generator,
     if (option != NULL && option->_type == TRI_JSON_NUMBER) {
       data->_padLength = (size_t) option->_value._number;
     }
-    
+
     option = TRI_LookupArrayJson(options, "allowUserKeys");
     if (option != NULL && option->_type == TRI_JSON_BOOLEAN) {
       data->_allowUserKeys = option->_value._boolean;
@@ -155,18 +155,18 @@ static void RevisionFree (TRI_key_generator_t* const generator) {
     if (data->_prefix != NULL) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, data->_prefix);
     }
-  
+
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a new key
-/// the caller must make sure that the outBuffer is big enough to hold at least 
+/// the caller must make sure that the outBuffer is big enough to hold at least
 /// maxLength + 1 bytes
 ////////////////////////////////////////////////////////////////////////////////
-  
-static int RevisionKey (TRI_key_generator_t* const generator, 
+
+static int RevisionKey (TRI_key_generator_t* const generator,
                         const size_t maxLength,
                         const TRI_doc_document_key_marker_t* const marker,
                         const char* const userKey,
@@ -177,7 +177,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
 
   data = (revision_keygen_t*) generator->_data;
   assert(data != NULL);
-  
+
   current = outBuffer;
 
   if (userKey != NULL) {
@@ -195,7 +195,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 
-    // validate user-supplied key    
+    // validate user-supplied key
     if (regexec(&data->_regex, userKey, 0, NULL, 0)  != 0) {
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
@@ -217,7 +217,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
       current += TRI_StringUInt64InPlace(revision, current);
     }
     else {
-      char numBuffer[22]; // a uint64 cannot be longer than this 
+      char numBuffer[22]; // a uint64 cannot be longer than this
       size_t length;
 
       length = TRI_StringUInt64InPlace(revision, (char*) &numBuffer);
@@ -242,7 +242,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
   if (current - outBuffer > (int) maxLength) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
- 
+
   *outLength = (current - outBuffer);
 
   return TRI_ERROR_NO_ERROR;
@@ -287,7 +287,7 @@ static const char* Traditional = "traditional";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the generaror type name is valid
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static bool ValidType (const char* const name) {
   if (TRI_EqualString(name, Traditional)) {
     return true;
@@ -299,7 +299,7 @@ static bool ValidType (const char* const name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the generator type from JSON
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static const char* GeneratorType (const TRI_json_t* const parameters) {
   TRI_json_t* type;
 
@@ -319,21 +319,21 @@ static const char* GeneratorType (const TRI_json_t* const parameters) {
 /// @brief create a new generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters, 
+static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters,
                                              TRI_primary_collection_t* const collection) {
   TRI_key_generator_t* generator;
   const char* type;
-  
+
   type = GeneratorType(parameters);
   if (! ValidType(type)) {
     return NULL;
   }
-  
+
   generator = (TRI_key_generator_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_key_generator_t), false);
   if (generator == NULL) {
     return NULL;
   }
-    
+
   generator->_data         = NULL;
   generator->_collection   = collection;
 
@@ -411,5 +411,5 @@ void TRI_FreeKeyGenerator (TRI_key_generator_t* generator) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

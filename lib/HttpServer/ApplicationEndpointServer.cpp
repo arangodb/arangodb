@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationEndpointServer.h"
@@ -88,7 +88,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
-    _handlerFactory(0), 
+    _handlerFactory(0),
     _servers(),
     _endpointList(),
     _httpPort(),
@@ -113,8 +113,8 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
 ApplicationEndpointServer::~ApplicationEndpointServer () {
 
   // ..........................................................................
-  // Where ever possible we should EXPLICITLY write down the type used in 
-  // a templated class/method etc. This makes it a lot easier to debug the 
+  // Where ever possible we should EXPLICITLY write down the type used in
+  // a templated class/method etc. This makes it a lot easier to debug the
   // code. Granted however, that explicitly writing down the type for an
   // overloaded class operator is a little unwieldy.
   // ..........................................................................
@@ -146,7 +146,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 bool ApplicationEndpointServer::buildServers () {
   assert(_handlerFactory != 0);
   assert(_applicationScheduler->scheduler() != 0);
-  
+
   EndpointServer* server;
 
   // turn off authentication
@@ -155,19 +155,19 @@ bool ApplicationEndpointServer::buildServers () {
     LOGGER_INFO("Authentication is turned off");
   }
 
-  
+
   // unencrypted endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_NONE) > 0) {
-    // http endpoints 
-    server = new HttpServer(_applicationScheduler->scheduler(), 
-                            _applicationDispatcher->dispatcher(), 
+    // http endpoints
+    server = new HttpServer(_applicationScheduler->scheduler(),
+                            _applicationDispatcher->dispatcher(),
                             _keepAliveTimeout,
-                            _handlerFactory); 
- 
+                            _handlerFactory);
+
     server->setEndpointList(&_endpointList);
     _servers.push_back(server);
   }
-  
+
   // ssl endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
     // check the ssl context
@@ -176,7 +176,7 @@ bool ApplicationEndpointServer::buildServers () {
       LOGGER_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
     }
 
-    // https 
+    // https
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
                              _keepAliveTimeout,
@@ -216,7 +216,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   options[ApplicationServer::OPTIONS_SERVER]
     ("server.endpoint", &_endpoints, "endpoint for client requests")
   ;
-  
+
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
@@ -260,11 +260,11 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     LOGGER_INFO("please use the '--server.endpoint' option");
     LOGGER_FATAL_AND_EXIT("no endpoint has been specified, giving up");
   }
-  
+
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
     Endpoint* endpoint = Endpoint::serverFactory(*i, _backlogSize);
-  
+
     if (endpoint == 0) {
       LOGGER_FATAL_AND_EXIT("invalid endpoint '" << *i << "'");
     }
@@ -283,7 +283,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   // and return
   return true;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +301,7 @@ bool ApplicationEndpointServer::prepare () {
 bool ApplicationEndpointServer::prepare2 () {
   // scheduler might be created after prepare(), so we need to use prepare2()!!
   Scheduler* scheduler = _applicationScheduler->scheduler();
- 
+
   if (scheduler == 0) {
     LOGGER_FATAL_AND_EXIT("no scheduler is known, cannot create http server");
 
@@ -388,9 +388,9 @@ bool ApplicationEndpointServer::createSslContext () {
     LOGGER_INFO("please use a valid value for --server.ssl-protocol.");
     return false;
   }
-    
+
   LOGGER_INFO("using SSL protocol version '" << HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol) << "'");
-  
+
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
@@ -402,7 +402,7 @@ bool ApplicationEndpointServer::createSslContext () {
   // set cache mode
   SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   if (_sslCache) {
-    LOGGER_INFO("using SSL session caching"); 
+    LOGGER_INFO("using SSL session caching");
   }
 
   // set options
@@ -462,7 +462,7 @@ bool ApplicationEndpointServer::createSslContext () {
           long len = BIO_get_mem_data(bout._bio, &r);
 
           LOGGER_TRACE("name: " << string(r, len));
-#endif          
+#endif
         }
       }
     }
@@ -483,5 +483,5 @@ bool ApplicationEndpointServer::createSslContext () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

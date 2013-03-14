@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -76,7 +76,7 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
 
   // init lock
   SCHEDULER_INIT(&_queueLock);
-  
+
   // allow cancelation
   allowAsynchronousCancelation();
 }
@@ -125,7 +125,7 @@ bool SchedulerThread::open () {
 
 void SchedulerThread::beginShutdown () {
   LOGGER_TRACE("beginning shutdown sequence of scheduler thread (" << threadId() << ")");
-      
+
   _stopping = 1;
   _scheduler->wakeupLoop(_loop);
 }
@@ -222,16 +222,16 @@ void SchedulerThread::destroyTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
-    
+
     // put the unregister request unto the queue
     SCHEDULER_LOCK(&_queueLock);
-    
+
     Work w(DESTROY, 0, task);
     _queue.push_back(w);
     _hasWork = 1;
-    
+
     _scheduler->wakeupLoop(_loop);
-    
+
     SCHEDULER_UNLOCK(&_queueLock);
   }
 }
@@ -259,7 +259,7 @@ void SchedulerThread::run () {
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
     sigset_t all;
-    sigemptyset(&all);    
+    sigemptyset(&all);
     pthread_sigmask(SIG_SETMASK, &all, 0);
 #endif
   }
@@ -289,20 +289,20 @@ void SchedulerThread::run () {
 
     if (_hasWork != 0) {
       SCHEDULER_LOCK(&_queueLock);
-      
+
       while (! _queue.empty()) {
         Work w = _queue.front();
         _queue.pop_front();
-        
+
         SCHEDULER_UNLOCK(&_queueLock);
-        
+
         switch (w.work) {
-        
+
           case CLEANUP: {
             cleanupTask(w.task);
             break;
           }
-          
+
           case SETUP: {
             bool ok = setupTask(w.task, w.scheduler, _loop);
             if (!ok) {
@@ -311,19 +311,19 @@ void SchedulerThread::run () {
             }
             break;
           }
-          
+
           case DESTROY: {
             cleanupTask(w.task);
             deleteTask(w.task);
             break;
-          }  
+          }
         }
 
         SCHEDULER_LOCK(&_queueLock);
       }
-      
+
       _hasWork = 0;
-      
+
       SCHEDULER_UNLOCK(&_queueLock);
     }
   }
@@ -333,20 +333,20 @@ void SchedulerThread::run () {
   _stopped = 1;
 
   SCHEDULER_LOCK(&_queueLock);
-      
+
   while (! _queue.empty()) {
     Work w = _queue.front();
     _queue.pop_front();
-        
+
     SCHEDULER_UNLOCK(&_queueLock);
-        
+
     switch (w.work) {
       case CLEANUP:
         break;
-            
+
       case SETUP:
         break;
-            
+
       case DESTROY:
         deleteTask(w.task);
         break;
@@ -354,7 +354,7 @@ void SchedulerThread::run () {
 
     SCHEDULER_LOCK(&_queueLock);
   }
-      
+
   SCHEDULER_UNLOCK(&_queueLock);
 }
 
@@ -368,5 +368,5 @@ void SchedulerThread::run () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

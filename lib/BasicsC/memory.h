@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_MEMORY_H
@@ -103,10 +103,10 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
 ///
-/// This will not add the memory zone information even when compiled with 
+/// This will not add the memory zone information even when compiled with
 /// --enable-zone-debug.
-/// Internally, this will call just malloc, and probably memset. 
-/// Using this function instead of malloc/memset allows us to track all memory 
+/// Internally, this will call just malloc, and probably memset.
+/// Using this function instead of malloc/memset allows us to track all memory
 /// allocations easier.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,7 +149,7 @@ void TRI_Free (TRI_memory_zone_t*, void*);
 /// @brief free memory allocated by low-level system functions
 ///
 /// this can be used to free memory that was not allocated by TRI_Allocate, but
-/// by system functions as malloc et al. This memory must not be passed to 
+/// by system functions as malloc et al. This memory must not be passed to
 /// TRI_Free because TRI_Free might subtract the memory zone from the original
 /// pointer if compiled with --enable-zone-debug.
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +167,7 @@ void TRI_SystemFree (void*);
 /// this wrapper is used together with libev, as the builtin libev allocator
 /// causes problems with Valgrind:
 /// - http://lists.schmorp.de/pipermail/libev/2012q2/001917.html
-/// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html 
+/// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_WrappedReallocate (void*, long);
@@ -196,5 +196,5 @@ void TRI_ShutdownMemory (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

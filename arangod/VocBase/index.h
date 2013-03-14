@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_INDEX_H
-#define TRIAGENS_DURHAM_VOC_BASE_INDEX_H 1
+#ifndef TRIAGENS_VOC_BASE_INDEX_H
+#define TRIAGENS_VOC_BASE_INDEX_H 1
 
 #include "VocBase/vocbase.h"
 
@@ -117,7 +117,7 @@ typedef struct TRI_index_s {
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
 
   // .........................................................................................
-  // the following functions are called for document/collection administration 
+  // the following functions are called for document/collection administration
   // .........................................................................................
 
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
@@ -138,28 +138,28 @@ typedef struct TRI_index_s {
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.
   // .........................................................................................
-  
+
   // stores the usefulness of this index for the indicated query in the struct TRI_index_challenge_s
   // returns integer which maps to set of errors.
   // the actual type is:
   // int (*indexQuery) (void*, struct TRI_index_operator_s*, struct TRI_index_challenge_s*, void*);
   // first parameter is the specific index structure, e.g. HashIndex, SkiplistIndex etc
   // fourth parameter is any internal storage which is/will be allocated as a consequence of this call
-  TRI_index_query_method_call_t indexQuery; 
-  
-  // returns the result set in an iterator  
+  TRI_index_query_method_call_t indexQuery;
+
+  // returns the result set in an iterator
   // the actual type is:
   // TRI_index_iterator_t* (*indexQueryResult) (void*, struct TRI_index_operator_s*, void*, bool (*filter) (TRI_index_iterator_t*) );
   // first parameter is the specific index structure, e.g. HashIndex, SkiplistIndex etc
   // third parameter is any internal storage might have been allocated as a consequence of this or the indexQuery call above
   // fourth parameter a filter which the index iterator should apply
   TRI_index_query_result_method_call_t indexQueryResult;
-  
-  // during the query or result function call, the index may have created and used 
+
+  // during the query or result function call, the index may have created and used
   // additional storage, this method attempts to free this if required.
   // the actual type is:
   // void (*indexQueryFree) (struct TRI_index_s*, void*);
-  // second parameter is any internal storage might have been allocated as a consequence of the indexQuery 
+  // second parameter is any internal storage might have been allocated as a consequence of the indexQuery
   // or indexQueryResult calls above
   TRI_index_query_free_method_call_t indexQueryFree;
 }
@@ -191,7 +191,7 @@ TRI_geo_index_t;
 typedef struct TRI_edge_index_s {
   TRI_index_t base;
 
-  TRI_multi_pointer_t _edges; 
+  TRI_multi_pointer_t _edges;
 }
 TRI_edge_index_t;
 
@@ -201,7 +201,7 @@ TRI_edge_index_t;
 
 typedef struct TRI_priorityqueue_index_s {
   TRI_index_t base;
-  PQIndex* _pqIndex; 
+  PQIndex* _pqIndex;
   TRI_vector_t _paths; // a list of shape pid which identifies the fields of the index
 }
 TRI_priorityqueue_index_t;
@@ -224,7 +224,7 @@ TRI_skiplist_index_t;
 
 typedef struct TRI_fulltext_index_s {
   TRI_index_t base;
-  
+
   TRI_fts_index_t* _fulltextIndex;
   TRI_shape_pid_t _attribute;
   int _minWordLength;
@@ -251,8 +251,8 @@ TRI_cap_constraint_t;
 
 typedef struct TRI_bitarray_index_s {
   TRI_index_t base;
-  
-  BitarrayIndex* _bitarrayIndex;  
+
+  BitarrayIndex* _bitarrayIndex;
   TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
   TRI_vector_t _values;           // a list of json objects which match the list of attributes used by the index
   bool _supportUndef;             // allows documents which do not match the attribute list to be indexed
@@ -266,8 +266,8 @@ TRI_bitarray_index_t;
 typedef struct TRI_index_result_s {
   size_t _length;
   struct TRI_doc_mptr_s** _documents;     // simple list of elements
-} 
-TRI_index_result_t;  
+}
+TRI_index_result_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index query parameter
@@ -300,8 +300,8 @@ TRI_index_search_value_t;
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitIndex (TRI_index_t* idx, 
-                    const TRI_idx_type_e type, 
+void TRI_InitIndex (TRI_index_t* idx,
+                    const TRI_idx_type_e type,
                     struct TRI_primary_collection_s* collection,
                     bool unique);
 
@@ -379,7 +379,7 @@ void TRI_CopyFieldsVector (TRI_vector_string_t* dst, TRI_vector_pointer_t* src);
 /// belong to the shaper.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const** TRI_FieldListByPathList (TRI_shaper_t* shaper, 
+char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
                                       TRI_vector_t* paths);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,7 +484,7 @@ void TRI_DestroyPriorityQueueIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreePriorityQueueIndex (TRI_index_t*);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,7 +524,7 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIndex (TRI_index_t* idx);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,7 +550,7 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
                                       const char*,
-                                      const bool, 
+                                      const bool,
                                       int);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,7 +564,7 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFulltextIndex (TRI_index_t* idx);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -612,7 +612,7 @@ void TRI_DestroyBitarrayIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBitarrayIndex (TRI_index_t* idx);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,5 +625,5 @@ void TRI_FreeBitarrayIndex (TRI_index_t* idx);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -1,11 +1,11 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief error handling
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicsC/common.h"
@@ -121,11 +121,11 @@ static void CleanupError (void* ptr) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Hash function used to hash error codes (no real hash, uses the error 
+/// @brief Hash function used to hash error codes (no real hash, uses the error
 /// code only)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashErrorCode (TRI_associative_pointer_t* array, 
+static uint64_t HashErrorCode (TRI_associative_pointer_t* array,
                                void const* key) {
   return (uint64_t) *((int*) key);
 }
@@ -134,7 +134,7 @@ static uint64_t HashErrorCode (TRI_associative_pointer_t* array,
 /// @brief Hash function used to hash errors messages (not used)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashError (TRI_associative_pointer_t* array, 
+static uint64_t HashError (TRI_associative_pointer_t* array,
                            void const* element) {
 
   TRI_error_t* entry = (TRI_error_t*) element;
@@ -145,8 +145,8 @@ static uint64_t HashError (TRI_associative_pointer_t* array,
 /// @brief Comparison function used to determine error equality
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualError (TRI_associative_pointer_t* array, 
-                        void const* key, 
+static bool EqualError (TRI_associative_pointer_t* array,
+                        void const* key,
                         void const* element) {
   TRI_error_t* entry = (TRI_error_t*) element;
 
@@ -232,8 +232,8 @@ char const* TRI_last_error () {
     return strerror(sys);
   }
 
-  entry = (TRI_error_t*) 
-    TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &err); 
+  entry = (TRI_error_t*)
+    TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &err);
 
   if (!entry) {
     return "general error";
@@ -292,11 +292,11 @@ int TRI_set_errno (int error) {
 
 void TRI_set_errno_string (int error, char const* msg) {
   TRI_error_t* entry;
-  
+
   if (TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error)) {
 
     // logic error, error number is redeclared
-    printf("Error: duplicate declaration of error code %i in %s:%i\n", 
+    printf("Error: duplicate declaration of error code %i in %s:%i\n",
            error, __FILE__, __LINE__);
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
@@ -307,8 +307,8 @@ void TRI_set_errno_string (int error, char const* msg) {
   entry->_message = TRI_DuplicateString(msg);
 
   TRI_InsertKeyAssociativePointer(&ErrorMessages,
-                                  &error, 
-                                  entry, 
+                                  &error,
+                                  entry,
                                   false);
 }
 
@@ -318,7 +318,7 @@ void TRI_set_errno_string (int error, char const* msg) {
 
 char const* TRI_errno_string (int error) {
   TRI_error_t* entry;
-  
+
   entry = (TRI_error_t*) TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error);
 
   if (entry == NULL) {
@@ -412,5 +412,5 @@ void TRI_ShutdownError () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

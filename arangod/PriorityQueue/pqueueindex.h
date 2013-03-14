@@ -5,40 +5,30 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_PRIORITY_QUEUE_INDEX_H
-#define TRIAGENS_DURHAM_VOC_BASE_PRIORITY_QUEUE_INDEX_H 1
+#ifndef TRIAGENS_PRIORITY_QUEUE_PQUEUEINDEX_H
+#define TRIAGENS_PRIORITY_QUEUE_PQUEUEINDEX_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 #include "PriorityQueue/priorityqueue.h"
 #include "ShapedJson/shaped-json.h"
 
@@ -132,7 +122,7 @@ PQIndex* PQueueIndex_new (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an item into a priority queue 
+/// @brief inserts an item into a priority queue
 ////////////////////////////////////////////////////////////////////////////////
 
 int PQIndex_insert (PQIndex*, TRI_pq_index_element_t*);
@@ -141,13 +131,13 @@ int PQIndex_insert (PQIndex*, TRI_pq_index_element_t*);
 /// @brief removes an item from the priority queue (not necessarily the top most)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PQIndex_remove (PQIndex*, struct TRI_doc_mptr_s const*); 
+int PQIndex_remove (PQIndex*, struct TRI_doc_mptr_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the top most item without removing it from the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-PQIndexElements* PQIndex_top (PQIndex*, uint64_t); 
+PQIndexElements* PQIndex_top (PQIndex*, uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -161,6 +151,6 @@ PQIndexElements* PQIndex_top (PQIndex*, uint64_t);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

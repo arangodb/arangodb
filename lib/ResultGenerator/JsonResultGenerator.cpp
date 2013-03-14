@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,42 +23,42 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "JsonResultGenerator.h"
 
 #include <math.h>
 
-#include <Logger/Logger.h>
-#include <Basics/StringBuffer.h>
-#include <Basics/StringUtils.h>
-#include <Variant/VariantArray.h>
-#include <Variant/VariantBlob.h>
-#include <Variant/VariantBoolean.h>
-#include <Variant/VariantDate.h>
-#include <Variant/VariantDatetime.h>
-#include <Variant/VariantDouble.h>
-#include <Variant/VariantFloat.h>
-#include <Variant/VariantInt16.h>
-#include <Variant/VariantInt32.h>
-#include <Variant/VariantInt64.h>
-#include <Variant/VariantMatrix2.h>
-#include <Variant/VariantNull.h>
-#include <Variant/VariantString.h>
-#include <Variant/VariantUInt16.h>
-#include <Variant/VariantUInt32.h>
-#include <Variant/VariantUInt64.h>
-#include <Variant/VariantVector.h>
+#include "Logger/Logger.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Variant/VariantArray.h"
+#include "Variant/VariantBlob.h"
+#include "Variant/VariantBoolean.h"
+#include "Variant/VariantDate.h"
+#include "Variant/VariantDatetime.h"
+#include "Variant/VariantDouble.h"
+#include "Variant/VariantFloat.h"
+#include "Variant/VariantInt16.h"
+#include "Variant/VariantInt32.h"
+#include "Variant/VariantInt64.h"
+#include "Variant/VariantMatrix2.h"
+#include "Variant/VariantNull.h"
+#include "Variant/VariantString.h"
+#include "Variant/VariantUInt16.h"
+#include "Variant/VariantUInt32.h"
+#include "Variant/VariantUInt64.h"
+#include "Variant/VariantVector.h"
 
 using namespace triagens::basics;
 
 namespace triagens {
   namespace rest {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // output methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     namespace {
       void generateVariantArray (ResultGenerator const* generator, StringBuffer& output, VariantObject* object) {
@@ -265,9 +265,9 @@ namespace triagens {
       }
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // static public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void JsonResultGenerator::initialise (ResultGeneratorType type) {
       registerObject(VariantObject::VARIANT_ARRAY, type, generateVariantArray);
@@ -289,9 +289,9 @@ namespace triagens {
       registerObject(VariantObject::VARIANT_VECTOR, type, generateVariantVector);
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // ResultGenerator methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void JsonResultGenerator::generateAtom (StringBuffer& output, string const& value) const {
       output.appendChar('\"');

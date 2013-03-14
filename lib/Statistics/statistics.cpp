@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -566,7 +566,7 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
       case TRI_STATISTICS_HOURS:
         resolution = Statistics._hour.getResolution();
         total = Statistics._hour.getLength();
-        
+
         if (limit == (size_t) -1) {
           blocks = Statistics._hour.values(t);
         }
@@ -582,7 +582,7 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
       case TRI_STATISTICS_DAYS:
         resolution = Statistics._day.getResolution();
         total = Statistics._day.getLength();
-        
+
         if (limit == (size_t) -1) {
           blocks = Statistics._day.values(t);
         }
@@ -592,7 +592,7 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
         else {
           blocks = Statistics._day.values(t, limit);
         }
-        
+
         break;
     }
   }
@@ -704,9 +704,9 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
 
 #ifdef TRI_ENABLE_HIRES_FIGURES
 
-double TRI_StatisticsTime () { 
+double TRI_StatisticsTime () {
   struct timespec tp;
-  
+
   clock_gettime(CLOCK_REALTIME, &tp);
 
   return tp.tv_sec + (tp.tv_nsec / 1000000000.0);
@@ -727,7 +727,7 @@ double TRI_StatisticsTime () {
 
 #else
 
-double TRI_StatisticsTime () { 
+double TRI_StatisticsTime () {
   return (double)(time(0));
 }
 
@@ -816,5 +816,5 @@ void TRI_InitialiseStatistics () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

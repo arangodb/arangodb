@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CONTEXT_H
-#define TRIAGENS_DURHAM_AHUACATL_CONTEXT_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_CONTEXT_H
+#define TRIAGENS_AHUACATL_AHUACATL_CONTEXT_H 1
 
 #include "BasicsC/common.h"
 #include "BasicsC/vector.h"
@@ -67,18 +67,18 @@ typedef struct TRI_aql_context_s {
     TRI_vector_pointer_t _nodes;
     TRI_vector_pointer_t _strings;
     TRI_vector_pointer_t _scopes;
-  } 
+  }
   _memory;
   TRI_vector_pointer_t _currentScopes;
   struct {
     TRI_associative_pointer_t _values;
     TRI_associative_pointer_t _names;
-  } 
+  }
   _parameters;
 
   const char* _query;
 
-  size_t _variableIndex; 
+  size_t _variableIndex;
   size_t _scopeIndex;
 }
 TRI_aql_context_t;
@@ -101,7 +101,7 @@ TRI_aql_context_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_context_t* TRI_CreateContextAql (struct TRI_vocbase_s*,
-                                         const char* const); 
+                                         const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a context
@@ -112,14 +112,14 @@ void TRI_FreeContextAql (TRI_aql_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse & validate the query string
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add bind parameters to the query context
 ////////////////////////////////////////////////////////////////////////////////
- 
-bool TRI_BindQueryContextAql (TRI_aql_context_t* const, 
+
+bool TRI_BindQueryContextAql (TRI_aql_context_t* const,
                               const struct TRI_json_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,9 +138,9 @@ bool TRI_SetupCollectionsContextAql (TRI_aql_context_t* const);
 /// @brief register a string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_RegisterStringAql (TRI_aql_context_t* const, 
+char* TRI_RegisterStringAql (TRI_aql_context_t* const,
                              const char* const,
-                             const size_t, 
+                             const size_t,
                              const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,8 +154,8 @@ bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetErrorContextAql (TRI_aql_context_t* const, 
-                             const int, 
+void TRI_SetErrorContextAql (TRI_aql_context_t* const,
+                             const int,
                              const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,5 +170,5 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

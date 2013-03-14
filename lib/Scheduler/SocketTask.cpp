@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SocketTask.h"
@@ -59,14 +59,14 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     writeWatcher(0),
     watcher(0),
     _commSocket(socket),
-    _keepAliveTimeout(keepAliveTimeout), 
+    _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(0),
 #ifdef TRI_ENABLE_FIGURES
     _writeBufferStatistics(0),
 #endif
     ownBuffer(true),
     writeLength(0) {
-    
+
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
   tmpReadBuffer = new char[READ_BLOCK_SIZE];
 
@@ -168,7 +168,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
     return false;
   }
   else {
-  
+
     if (errno == EINTR) {
       return fillReadBuffer(closed);
     }
@@ -473,7 +473,7 @@ void SocketTask::cleanup () {
 
   scheduler->uninstallEvent(watcher);
   watcher = 0;
-  
+
   scheduler->uninstallEvent(keepAliveWatcher);
   keepAliveWatcher = 0;
 
@@ -550,5 +550,5 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +21,13 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef TRIAGENS_DURHAM_BITINDEXES_BITARRAY_H
-#define TRIAGENS_DURHAM_BITINDEXES_BITARRAY_H 1
+#ifndef TRIAGENS_BIT_INDEXES_BITARRAY_H
+#define TRIAGENS_BIT_INDEXES_BITARRAY_H 1
 
 #include "BasicsC/common.h"
 #include "BasicsC/locks.h"
@@ -61,14 +61,14 @@ extern "C" {
 //   (i)   the block within the master table array
 //   (ii)  within the block the offset indicating the position within this block
 //   (iii) if we store multiple document handles as a vector list, the offset
-//         within the vector list 
+//         within the vector list
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_master_table_position_s {
   size_t _blockNum;   // the block within the Master Table
   uint8_t _bitNum;    // with the given block, an integer from 0..255 which indicates where within the block the document pointer resides
   size_t _vectorNum;  // vector list offset
-  void* _docPointer;  // the document pointer stored in that position 
+  void* _docPointer;  // the document pointer stored in that position
 } TRI_master_table_position_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ typedef struct TRI_bitarray_s {
   size_t  _numBlocksInColumn;  // the number of blocks (allocated not necessarily used) within a column
   //uint8_t _usedBitLength;      // the number of bits which have been used in the last block used.
   size_t  _lastBlockUsed;      // the number of the last block which contains active columns
-  TRI_memory_zone_t* _memoryZone; 
+  TRI_memory_zone_t* _memoryZone;
   void* _masterTable;
 } TRI_bitarray_t;
 
@@ -100,12 +100,12 @@ typedef struct TRI_bitarray_mask_s {
 typedef struct TRI_bitarray_mask_set_s {
   TRI_bitarray_mask_t* _maskArray;
   size_t               _arraySize;
-  size_t               _setSize;  
+  size_t               _setSize;
 } TRI_bitarray_mask_set_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // A set of options (parameters) which are required when defining a group
-// of bit array columns. Note, these options can be independent of any bit 
+// of bit array columns. Note, these options can be independent of any bit
 // array index.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +117,7 @@ typedef struct TRI_bitarray_params_s {
   /*
          other parameters to be definedfor optimization
          at a later time
-  */         
+  */
 } TRI_bitarray_index_params_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,11 +132,11 @@ int TRI_FreeBitarray (TRI_bitarray_t*);
 
 int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*,
                                       TRI_bitarray_mask_t*,
-                                      struct TRI_doc_mptr_s*);  
+                                      struct TRI_doc_mptr_s*);
 
-int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*, 
+int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*,
                                   TRI_bitarray_mask_set_t*,
-                                  struct TRI_index_iterator_s*); 
+                                  struct TRI_index_iterator_s*);
 
 int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_s*);
 
@@ -148,5 +148,5 @@ int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_s*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

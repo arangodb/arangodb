@@ -1,11 +1,11 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief primary collection with global read-write lock
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_PRIMARY_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_PRIMARY_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_PRIMARY_COLLECTION_H
+#define TRIAGENS_VOC_BASE_PRIMARY_COLLECTION_H 1
 
 #include "VocBase/collection.h"
 
@@ -172,7 +172,7 @@ typedef struct TRI_doc_collection_info_s {
   TRI_voc_ssize_t _numberDeletion;
   TRI_voc_ssize_t _datafileSize;
   TRI_voc_ssize_t _journalfileSize;
-  
+
   TRI_voc_ssize_t _numberShapes;
 }
 TRI_doc_collection_info_t;
@@ -292,7 +292,7 @@ TRI_doc_collection_info_t;
 
 typedef struct TRI_primary_collection_s {
   TRI_collection_t base;
-  
+
   // .............................................................................
   // this lock protects the _primaryIndex plus the _allIndexes
   // and _headers attributes in derived types
@@ -303,7 +303,7 @@ typedef struct TRI_primary_collection_s {
   TRI_shaper_t* _shaper;
   TRI_barrier_list_t _barrierList;
   TRI_associative_pointer_t _datafileInfo;
-  
+
   TRI_associative_pointer_t _primaryIndex;
   struct TRI_key_generator_s* _keyGenerator;
 
@@ -330,7 +330,7 @@ typedef struct TRI_primary_collection_s {
 TRI_primary_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile marker with key 
+/// @brief document datafile marker with key
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_document_key_marker_s {
@@ -339,10 +339,10 @@ typedef struct TRI_doc_document_key_marker_s {
   TRI_voc_rid_t   _rid;        // this is the tick for a create and update
   TRI_voc_eid_t   _sid;
 
-  TRI_shape_sid_t _shape; 
- 
-  uint16_t        _offsetKey; 
-  uint16_t        _offsetJson; 
+  TRI_shape_sid_t _shape;
+
+  uint16_t        _offsetKey;
+  uint16_t        _offsetJson;
 
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
@@ -357,8 +357,8 @@ TRI_doc_document_key_marker_t;
 typedef struct TRI_doc_edge_key_marker_s {
   TRI_doc_document_key_marker_t base;
 
-  TRI_voc_cid_t  _toCid;  
-  TRI_voc_cid_t  _fromCid; 
+  TRI_voc_cid_t  _toCid;
+  TRI_voc_cid_t  _fromCid;
 
   uint16_t       _offsetToKey;
   uint16_t       _offsetFromKey;
@@ -375,7 +375,7 @@ TRI_doc_edge_key_marker_t;
 
 typedef struct TRI_doc_deletion_key_marker_s {
   TRI_df_marker_t base;
-  
+
   TRI_voc_rid_t  _rid;        // this is the tick for an create and update
   TRI_voc_eid_t  _sid;
 
@@ -491,7 +491,7 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
 /// @brief initialise a new operation context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const, 
+void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
                                        TRI_primary_collection_t* const,
                                        TRI_doc_update_policy_e,
                                        bool);
@@ -500,7 +500,7 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
 /// @brief initialise a new operation context for reads
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const, 
+void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const,
                                            TRI_primary_collection_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,5 +524,5 @@ int TRI_RevisionCheck (const TRI_doc_operation_context_t*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

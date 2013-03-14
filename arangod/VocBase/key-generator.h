@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_KEY_GENERATOR_H
-#define TRIAGENS_DURHAM_VOC_BASE_KEY_GENERATOR_H 1
+#ifndef TRIAGENS_VOC_BASE_KEY_GENERATOR_H
+#define TRIAGENS_VOC_BASE_KEY_GENERATOR_H 1
 
 #include "BasicsC/common.h"
 
@@ -57,7 +57,7 @@ struct TRI_primary_collection_s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief key validation regex
-/// 
+///
 /// this regex alone is not sufficient as we additionally need to perform a
 /// UTF-8 validation. this is done in TRI_IsAllowedKey()
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,7 @@ TRI_key_generator_t;
 /// @brief create a key generator and attach it to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateKeyGenerator (const struct TRI_json_s* const, 
+int TRI_CreateKeyGenerator (const struct TRI_json_s* const,
                             struct TRI_primary_collection_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,4 +136,4 @@ void TRI_FreeKeyGenerator (TRI_key_generator_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"

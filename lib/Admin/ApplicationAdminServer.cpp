@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationAdminServer.h"
@@ -214,7 +214,7 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   // add a web-admin directory
   // .............................................................................
-  
+
   if (_allowAdminDirectory) {
     LOGGER_INFO("using JavaScript front-end files stored at '" << _adminDirectory << "'");
 
@@ -222,16 +222,16 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
     reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
-      
+
     factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
   }
-  
+
   // .............................................................................
   // add a front-end configuration
   // .............................................................................
-  
+
   if (_allowFeConfiguration) {
-    factory->addHandler(prefix + "/fe-configuration", 
+    factory->addHandler(prefix + "/fe-configuration",
                         RestHandlerCreator<RestAdminFeConfigurationHandler>::createData<char const*>,
                         (void*) _feConfiguration.c_str());
   }
@@ -286,5 +286,5 @@ bool ApplicationAdminServer::prepare () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

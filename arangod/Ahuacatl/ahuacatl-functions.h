@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, query language functions 
+/// @brief Ahuacatl, query language functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_QUERY_FUNCTIONS_H
-#define TRIAGENS_DURHAM_AHUACATL_QUERY_FUNCTIONS_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_FUNCTIONS_H
+#define TRIAGENS_AHUACATL_AHUACATL_FUNCTIONS_H 1
 
 #include "BasicsC/common.h"
 
@@ -62,13 +62,13 @@ typedef struct TRI_aql_function_s {
 TRI_aql_function_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the array with the function declarations 
+/// @brief initialise the array with the function declarations
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_associative_pointer_s* TRI_InitialiseFunctionsAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the array with the function declarations 
+/// @brief free the array with the function declarations
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFunctionsAql (struct TRI_associative_pointer_s*);
@@ -91,8 +91,8 @@ const char* TRI_GetInternalNameFunctionAql (const TRI_aql_function_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RegisterFunctionAql (struct TRI_associative_pointer_s*,
-                              const char* const, 
-                              const char* const, 
+                              const char* const,
+                              const char* const,
                               const bool,
                               const bool,
                               const char* const,
@@ -125,5 +125,5 @@ bool TRI_ValidateArgsFunctionAql (struct TRI_aql_context_s* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

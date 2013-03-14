@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "json.h"
@@ -49,7 +49,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static int StringifyJson (TRI_memory_zone_t* zone,
-                          TRI_string_buffer_t* buffer, 
+                          TRI_string_buffer_t* buffer,
                           TRI_json_t const* object,
                           bool braces) {
   size_t n;
@@ -101,9 +101,9 @@ static int StringifyJson (TRI_memory_zone_t* zone,
         return res;
       }
 
-      ptr = TRI_EscapeUtf8StringZ(zone, 
+      ptr = TRI_EscapeUtf8StringZ(zone,
                                   object->_value._string.data,
-                                  object->_value._string.length - 1, 
+                                  object->_value._string.length - 1,
                                   false,
                                   &outLength);
 
@@ -456,8 +456,8 @@ void TRI_InitArrayJson (TRI_memory_zone_t* zone, TRI_json_t* result) {
 /// @brief initialises an array, using a specific initial size
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Init2ArrayJson (TRI_memory_zone_t* zone, 
-                         TRI_json_t* result, 
+void TRI_Init2ArrayJson (TRI_memory_zone_t* zone,
+                         TRI_json_t* result,
                          size_t initialSize) {
   result->_type = TRI_JSON_ARRAY;
   TRI_InitVector2(&result->_value._objects, zone, sizeof(TRI_json_t), initialSize);
@@ -580,7 +580,7 @@ TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
-                          TRI_json_t* object, 
+                          TRI_json_t* object,
                           char const* name,
                           TRI_json_t* subobject) {
   TRI_json_t copy;
@@ -610,7 +610,7 @@ void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
 
 void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
                            TRI_json_t* object,
-                           char const* name, 
+                           char const* name,
                            TRI_json_t* subobject) {
   TRI_json_t copy;
   size_t length;
@@ -710,15 +710,15 @@ bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char cons
 
     if (TRI_EqualString(key->_value._string.data, name)) {
       TRI_json_t* old;
-      
+
       // remove key
       old = TRI_AtVector(&object->_value._objects, i);
       if (old != NULL) {
         TRI_DestroyJson(zone, old);
       }
       TRI_RemoveVector(&object->_value._objects, i);
-     
-      // remove value 
+
+      // remove value
       old = TRI_AtVector(&object->_value._objects, i);
       if (old != NULL) {
         TRI_DestroyJson(zone, old);
@@ -762,7 +762,7 @@ bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
       if (old != NULL) {
         TRI_DestroyJson(zone, old);
       }
-     
+
       TRI_CopyToJson(zone, &copy, replacement);
       TRI_SetVector(&object->_value._objects, i + 1, &copy);
       return true;
@@ -770,7 +770,7 @@ bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
   }
 
   // object not found in array, now simply add it
-  TRI_Insert2ArrayJson(zone, object, name, replacement); 
+  TRI_Insert2ArrayJson(zone, object, name, replacement);
 
   return false;
 }
@@ -906,8 +906,8 @@ bool TRI_SaveJson (char const* filename, TRI_json_t const* object) {
 /// @brief copies a json object into a given buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToJson (TRI_memory_zone_t* zone, 
-                    TRI_json_t* dst, 
+int TRI_CopyToJson (TRI_memory_zone_t* zone,
+                    TRI_json_t* dst,
                     TRI_json_t const* src) {
   int res;
   size_t n;
@@ -1005,30 +1005,30 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
     case TRI_JSON_UNUSED: {
       return true;
     }
-    
+
     case TRI_JSON_NULL: {
       return true;
     }
-    
+
     case TRI_JSON_BOOLEAN: {
       return (left->_value._boolean == right->_value._boolean);
-    }    
-    
+    }
+
     case TRI_JSON_NUMBER: {
       return (left->_value._number == right->_value._number);
-    }    
-    
+    }
+
     case TRI_JSON_STRING: {
       return (strcmp(left->_value._string.data, right->_value._string.data) == 0);
-    }    
-    
+    }
+
     case TRI_JSON_ARRAY: {
       size_t j;
-      
+
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;
       }
-      
+
       for (j = 0;  j < (left->_value._objects._length / 2);  ++j) {
         TRI_json_t* leftName;
         TRI_json_t* leftValue;
@@ -1038,26 +1038,26 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
         if (leftName == NULL) {
           return false;
         }
-        
+
         leftValue  = (TRI_json_t*)(TRI_AtVector(&(left->_value._objects),(2*j) + 1));
-        rightValue = TRI_LookupArrayJson(right, leftName->_value._string.data);        
+        rightValue = TRI_LookupArrayJson(right, leftName->_value._string.data);
 
         if (TRI_EqualJsonJson(leftValue, rightValue)) {
           continue;
         }
         return false;
       }
-      
+
       return true;
-    }    
-    
+    }
+
     case TRI_JSON_LIST: {
       size_t j;
-      
+
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;
       }
-      
+
       for (j = 0; j < left->_value._objects._length; ++j) {
         TRI_json_t* subLeft;
         TRI_json_t* subRight;
@@ -1068,13 +1068,13 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
         }
         return false;
       }
-      
+
       return true;
-    }   
-    
+    }
+
     default: {
       assert(false);
-    }  
+    }
   }
   return false; // stops the vc++ compiler from complaining
 }
@@ -1086,5 +1086,5 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
