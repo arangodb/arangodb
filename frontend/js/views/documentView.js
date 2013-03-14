@@ -306,8 +306,8 @@ var documentView = Backbone.View.extend({
       cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
       submit: 'Save',
       onblur: 'cancel',
-      //style: 'display: inline',
       autogrow: {lineHeight: 16, minHeight: 30}
+      //style: 'display: inline',
     });
   },
   checkIfEmpty: function (e) {
