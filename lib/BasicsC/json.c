@@ -101,23 +101,26 @@ static int StringifyJson (TRI_memory_zone_t* zone,
         return res;
       }
 
-      ptr = TRI_EscapeUtf8StringZ(zone,
-                                  object->_value._string.data,
-                                  object->_value._string.length - 1,
-                                  false,
-                                  &outLength);
+      if (object->_value._string.length > 0) {
+        // optimisation for the empty string
+        ptr = TRI_EscapeUtf8StringZ(zone,
+                                    object->_value._string.data,
+                                    object->_value._string.length - 1,
+                                    false,
+                                    &outLength);
 
-      if (ptr == NULL) {
-        return TRI_ERROR_OUT_OF_MEMORY;
+        if (ptr == NULL) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        res = TRI_AppendString2StringBuffer(buffer, ptr, outLength);
+  
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        TRI_Free(zone, ptr);
       }
-
-      res = TRI_AppendString2StringBuffer(buffer, ptr, outLength);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-
-      TRI_Free(zone, ptr);
 
       res = TRI_AppendCharStringBuffer(buffer, '\"');
 
