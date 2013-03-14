@@ -196,7 +196,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
 void Thread::stop () {
   if (_running != 0) {
-    LOGGER_TRACE("trying to cancel (aka stop) the thread " << _name);
+    LOGGER_TRACE("trying to cancel (aka stop) the thread '" << _name << "'");
     TRI_StopThread(&_thread);
   }
 }
@@ -226,7 +226,7 @@ void Thread::shutdown () {
   }
 
   if (_running != 0) {
-    LOGGER_TRACE("trying to cancel (aka stop) the thread " << _name);
+    LOGGER_TRACE("trying to cancel (aka stop) the thread '" << _name << "'");
     TRI_StopThread(&_thread);
   }
 
@@ -264,7 +264,7 @@ void Thread::allowAsynchronousCancelation () {
   if (_started) {
     if (_running) {
       if (TRI_IsSelfThread(&_thread)) {
-        LOGGER_DEBUG("set asynchronous cancelation for " << _name);
+        LOGGER_DEBUG("set asynchronous cancelation for thread '" << _name << "'");
         TRI_AllowCancelation();
       }
       else {
@@ -295,7 +295,7 @@ void Thread::allowAsynchronousCancelation () {
 
 void Thread::runMe () {
   if (_asynchronousCancelation) {
-    LOGGER_DEBUG("set asynchronous cancelation for " << _name);
+    LOGGER_DEBUG("set asynchronous cancelation for thread '" << _name << "'");
     TRI_AllowCancelation();
   }
 
@@ -306,6 +306,7 @@ void Thread::runMe () {
   }
   catch (...) {
     _running = 0;
+    LOGGER_WARNING("exception caught in thread '" << _name << "'");
     throw;
   }
 
