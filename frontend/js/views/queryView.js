@@ -47,6 +47,7 @@ var queryView = Backbone.View.extend({
     });
 
     $('#aqlEditor .ace_text-input').focus();
+    $.gritter.removeAll();
     return this;
   },
   submitQuery: function() {

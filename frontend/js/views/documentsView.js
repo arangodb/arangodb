@@ -255,6 +255,7 @@ var documentsView = Backbone.View.extend({
     if (this.collectionContext.next === null) {
       $('#collectionNext').parent().addClass('disabledPag');
     }
+    $.gritter.removeAll();
 
     return this;
   },
