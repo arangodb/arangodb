@@ -17,7 +17,6 @@ var documentView = Backbone.View.extend({
     "click #editFirstRow"       : "editFirst",
     "click #documentTableID tr" : "clicked",
     "click #editSecondRow"      : "editSecond",
-    "click .cancelButton"       : "checkIfEmpty",
     "keydown .sorting_1"        : "listenKey",
     "keydown"                   : "listenGlobalKey",
     "focusout textarea"         : "checkFocus"
@@ -317,7 +316,6 @@ var documentView = Backbone.View.extend({
         if (aPos[1] == 0) {
         //check if this row was newly created
         if (value === self.currentKey) {
-          console.log("ist alt"); 
           return value;
         }
           return value;
@@ -345,11 +343,6 @@ var documentView = Backbone.View.extend({
       autogrow: {lineHeight: 16, minHeight: 30}
       //style: 'display: inline',
     });
-  },
-  checkIfEmpty: function (e) {
-    console.log(e);
-    console.log("TEST");
-    var test = $('.jediTextarea button');
   },
   getTypedValue: function (value) {
     value = value.replace(/(^\s+|\s+$)/g, '');
