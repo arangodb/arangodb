@@ -172,6 +172,50 @@
         expect(reshapedNodes[0]).toEqual(root);
       });
       
+      describe('setup process', function() {
+                
+        it('should throw an error if edges are not given', function() {          
+          expect(
+            function() {
+              eventLib.Expand();
+            }
+          ).toThrow("Edges have to be defined");
+        });
+        
+        it('should throw an error if nodes are not given', function() {
+          expect(
+            function() {
+              eventLib.Expand([]);
+            }
+          ).toThrow("Nodes have to be defined");
+        });
+        
+        it('should throw an error if start callback is not given', function() {
+          expect(
+            function() {
+              eventLib.Expand([], []);
+            }
+          ).toThrow("A callback to the Start-method has to be defined");
+        });
+        
+        it('should throw an error if load node callback is not given', function() {
+          expect(
+            function() {
+              eventLib.Expand([], [], function(){});
+            }
+          ).toThrow("A callback to load a node has to be defined");
+        });
+        
+        it('should throw an error if reshape node callback is not given', function() {
+          expect(
+            function() {
+              eventLib.Expand([], [], function(){}, function(){});
+            }
+          ).toThrow("A callback to reshape a node has to be defined");
+        });
+        
+      });
+      
     });
       
   });
