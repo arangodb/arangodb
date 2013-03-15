@@ -1226,8 +1226,8 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 
       d = *ptr;
 
-      printf("fid %lu, key %s, rid %llu, validFrom: %llu validTo %llu\n",
-             (unsigned long) d->_fid,
+      printf("fid %llu, key %s, rid %llu, validFrom: %llu validTo %llu\n",
+             (unsigned long long) d->_fid,
              (char*) d->_key,
              (unsigned long long) d->_rid,
              (unsigned long long) d->_validFrom,
@@ -1574,8 +1574,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
 
-      LOG_TRACE("document: fid %lu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
-                (unsigned long) datafile->_fid,
+      LOG_TRACE("document: fid %llu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
+                (unsigned long long) datafile->_fid,
                 ((char*) d + d->_offsetKey),
                 (unsigned long long) d->_rid,
                 (unsigned long) d->_offsetJson,
@@ -1589,8 +1589,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 #ifdef TRI_ENABLE_LOGGER
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
-      LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
-                (unsigned long) datafile->_fid,
+      LOG_TRACE("edge: fid %llu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
+                (unsigned long long) datafile->_fid,
                 ((char*) d + d->_offsetKey),
                 ((char*) e + e->_offsetFromKey),
                 ((char*) e + e->_offsetToKey),
@@ -1747,11 +1747,11 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     d = (TRI_doc_deletion_key_marker_t const*) marker;
     key = ((char*) d) + d->_offsetKey;
 
-    LOG_TRACE("deletion: fid %lu, key %s, rid %llu, deletion %lu",
-              (unsigned long) datafile->_fid,
+    LOG_TRACE("deletion: fid %llu, key %s, rid %llu, deletion %llu",
+              (unsigned long long) datafile->_fid,
               (char*) key,
               (unsigned long long) d->_rid,
-              (unsigned long) marker->_tick);
+              (unsigned long long) marker->_tick);
 
     if (keyGenerator->track != NULL) {
       keyGenerator->track(keyGenerator, key);
@@ -1845,7 +1845,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
   }
   else {
-    LOG_TRACE("skipping marker %lu", (unsigned long) marker->_type);
+    LOG_TRACE("skipping marker type %lu", (unsigned long) marker->_type);
   }
 
   return true;
@@ -1991,9 +1991,9 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   // .........................................................................
 
   else {
-    LOG_ERROR("ignoring unknown index type '%s' for index %lu",
+    LOG_ERROR("ignoring unknown index type '%s' for index %llu",
               typeStr,
-              (unsigned long) iid);
+              (unsigned long long) iid);
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return false;
@@ -2446,7 +2446,7 @@ static TRI_json_t* ExtractFields (TRI_json_t* json, size_t* fieldCount, TRI_idx_
   fld = TRI_LookupArrayJson(json, "fields");
 
   if (fld == NULL || fld->_type != TRI_JSON_LIST) {
-    LOG_ERROR("ignoring index %lu, 'fields' must be a list", (unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, 'fields' must be a list", (unsigned long long) iid);
 
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     return NULL;
@@ -2458,7 +2458,7 @@ static TRI_json_t* ExtractFields (TRI_json_t* json, size_t* fieldCount, TRI_idx_
     TRI_json_t* sub = TRI_AtVector(&fld->_value._objects, j);
 
     if (sub->_type != TRI_JSON_STRING) {
-      LOG_ERROR("ignoring index %lu, 'fields' must be a list of attribute paths", (unsigned long) iid);
+      LOG_ERROR("ignoring index %llu, 'fields' must be a list of attribute paths", (unsigned long long) iid);
 
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       return NULL;
@@ -2484,7 +2484,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
   keyValues = TRI_LookupArrayJson(jsonIndex, "fields");
 
   if (keyValues == NULL || keyValues->_type != TRI_JSON_LIST) {
-    LOG_ERROR("ignoring index %lu, 'fields' must be a list", (unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, 'fields' must be a list", (unsigned long long) iid);
 
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     return NULL;
@@ -2516,7 +2516,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
     // .........................................................................
 
     if (keyValue == NULL  || keyValue->_value._objects._length != 2) {
-      LOG_ERROR("ignoring index %lu, 'fields' must be a list of key value pairs", (unsigned long) iid);
+      LOG_ERROR("ignoring index %llu, 'fields' must be a list of key value pairs", (unsigned long long) iid);
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       return NULL;
     }
@@ -2529,7 +2529,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
     key = TRI_AtVector(&keyValue->_value._objects, 0);
 
     if (key == NULL || key->_type != TRI_JSON_STRING) {
-      LOG_ERROR("ignoring index %lu, key in 'fields' pair must be an attribute (string)", (unsigned long) iid);
+      LOG_ERROR("ignoring index %llu, key in 'fields' pair must be an attribute (string)", (unsigned long long) iid);
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       return NULL;
     }
@@ -2542,7 +2542,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
     value = TRI_AtVector(&keyValue->_value._objects, 1);
 
     if (value == NULL || value->_type != TRI_JSON_LIST) {
-      LOG_ERROR("ignoring index %lu, value in 'fields' pair must be a list ([...])", (unsigned long) iid);
+      LOG_ERROR("ignoring index %llu, value in 'fields' pair must be a list ([...])", (unsigned long long) iid);
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       return NULL;
     }
@@ -2698,7 +2698,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   TRI_primary_collection_t* primary;
   TRI_doc_operation_context_t context;
-  size_t inserted;
+  uint64_t inserted;
   void** end;
   void** ptr;
   int res;
@@ -2731,7 +2731,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       ++inserted;
 
       if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %lu documents of collection %llu", (unsigned long) inserted, (unsigned long long) primary->base._info._cid);
+        LOG_DEBUG("indexed %llu documents of collection %llu", (unsigned long long) inserted, (unsigned long long) primary->base._info._cid);
       }
     }
   }
@@ -2899,7 +2899,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // ...........................................................................
 
   if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %lu, need at least one attribute path and one list of values",(unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, need at least one attribute path and one list of values",(unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -2913,7 +2913,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // unique = false;
   uniqueIndex = TRI_LookupArrayJson(definition, "unique");
   if (uniqueIndex == NULL || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
-    LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
   // unique = uniqueIndex->_value._boolean;
@@ -2927,7 +2927,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   supportUndef = false;
   supportUndefIndex = TRI_LookupArrayJson(definition, "undefined");
   if (supportUndefIndex == NULL || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
-    LOG_ERROR("ignoring index %lu, could not determine if index supports undefined values", (unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, could not determine if index supports undefined values", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
   supportUndef = supportUndefIndex->_value._boolean;
@@ -2979,7 +2979,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // ...........................................................................
 
   if (idx == NULL) {
-    LOG_ERROR("cannot create bitarray index %lu", (unsigned long) iid);
+    LOG_ERROR("cannot create bitarray index %llu", (unsigned long long) iid);
     if (errorStr != NULL) {
       LOG_TRACE("%s", errorStr);
       TRI_Free(TRI_CORE_MEM_ZONE, errorStr);
@@ -3021,7 +3021,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   // extract the list of fields
   if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %lu, need at least one attribute path",(unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, need at least one attribute path",(unsigned long long) iid);
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3034,7 +3034,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
     unique = bv->_value._boolean;
   }
   else {
-    LOG_ERROR("ignoring index %lu, could not determine if unique or non-unique", (unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -3056,7 +3056,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   TRI_DestroyVectorPointer(&attributes);
 
   if (idx == NULL) {
-    LOG_ERROR("cannot create hash index %lu", (unsigned long) iid);
+    LOG_ERROR("cannot create hash index %llu", (unsigned long long) iid);
     return TRI_errno();
   }
 
@@ -3360,12 +3360,12 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
   num = TRI_LookupArrayJson(definition, "size");
 
   if (num == NULL || num->_type != TRI_JSON_NUMBER) {
-    LOG_ERROR("ignoring cap constraint %lu, 'size' missing", (unsigned long) iid);
+    LOG_ERROR("ignoring cap constraint %llu, 'size' missing", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
   if (num->_value._number < 1.0) {
-    LOG_ERROR("ignoring cap constraint %lu, 'size' %f must be at least 1", (unsigned long) iid, num->_value._number);
+    LOG_ERROR("ignoring cap constraint %llu, 'size' %f must be at least 1", (unsigned long long) iid, num->_value._number);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -3636,8 +3636,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
       return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
     }
     else {
-      LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list with 1 entries",
-                typeStr, (unsigned long) iid);
+      LOG_ERROR("ignoring %s-index %llu, 'fields' must be a list with 1 entries",
+                typeStr, (unsigned long long) iid);
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -3665,8 +3665,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
       return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
     }
     else {
-      LOG_ERROR("ignoring %s-index %lu, 'fields' must be a list with 2 entries",
-                typeStr, (unsigned long) iid);
+      LOG_ERROR("ignoring %s-index %llu, 'fields' must be a list with 2 entries",
+                typeStr, (unsigned long long) iid);
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4406,7 +4406,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
   // extract the list of fields
   if (fieldCount != 1) {
-    LOG_ERROR("ignoring index %lu, has an invalid number of attributes",(unsigned long) iid);
+    LOG_ERROR("ignoring index %llu, has an invalid number of attributes", (unsigned long long) iid);
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -4437,7 +4437,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   }
 
   if (idx == NULL) {
-    LOG_ERROR("cannot create fulltext index %lu", (unsigned long) iid);
+    LOG_ERROR("cannot create fulltext index %llu", (unsigned long long) iid);
     return TRI_errno();
   }
 
