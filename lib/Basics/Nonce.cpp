@@ -223,8 +223,8 @@ namespace triagens {
           for (size_t i = 1;  i < N + 1;  ++i) {
             T = T + StatisticsNonces[l2age][i];
             coeff = coeff * (N - i + 1) / i;
-            S0 = S0 * pow(StatisticsNonces[l2age][i] / coeff, (4 * N + 2 - 6 * i) / (N * N - N));
-            x = x * pow(StatisticsNonces[l2age][i] / coeff, (12 * i - 6 * N - 6) / (N * N * N - N));
+            S0 = S0 * pow((double)(StatisticsNonces[l2age][i] / coeff), (double)((4 * N + 2 - 6 * i) / (N * N - N)));
+            x = x * pow((double)(StatisticsNonces[l2age][i] / coeff), (double)((12 * i - 6 * N - 6) / (N * N * N - N)));
           }
 
           Statistics current;

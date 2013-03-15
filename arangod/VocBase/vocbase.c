@@ -395,8 +395,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 #else
       regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
 #endif
-
-    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0);
+    
+    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
 
     if (regExpResult == 0) {
       char const* first = collection->_path + matches[1].rm_so;
@@ -756,7 +756,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
                                                  char const* name,
                                                  TRI_col_type_e type) {
-  union { void const* v; TRI_vocbase_col_t* c; } found;
+  TRI_vocbase_col_t* found;
   TRI_vocbase_col_t* collection;
 
   // check that the name does not contain any strange characters
@@ -771,11 +771,11 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
   // check if we have an existing name
   // .............................................................................
 
-  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
 
-  if (found.v != NULL) {
+  if (found != NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-    return found.c;
+    return found;
   }
 
   // .............................................................................
@@ -883,14 +883,14 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase,
                                                        char const* name,
                                                        TRI_col_type_e type) {
-  union { void const* v; TRI_vocbase_col_t* c; } found;
+  TRI_vocbase_col_t* found;
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  if (found.v != NULL) {
-    return found.c;
+  if (found != NULL) {
+    return found;
   }
 
   return BearCollectionVocBase(vocbase, name, type);
@@ -1452,18 +1452,18 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 
 char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
                                         const TRI_voc_cid_t id) {
-  union { void const* v; TRI_vocbase_col_t* c; } found;
+  TRI_vocbase_col_t* found;
   char* name;
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 
-  if (found.v == NULL) {
+  if (found == NULL) {
     name = NULL;
   }
   else {
-    name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found.c->_name);
+    name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
   }
 
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1476,7 +1476,7 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
-  union { void const* v; TRI_vocbase_col_t* c; } found;
+  TRI_vocbase_col_t* found;
   const char c = *name;
 
   // if collection name is passed as a stringified id, we'll use the lookupbyid function
@@ -1487,10 +1487,10 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, ch
 
   // otherwise we'll look up the collection by name
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  return found.c;
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1498,13 +1498,13 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, ch
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_voc_cid_t id) {
-  union { void const* v; TRI_vocbase_col_t* c; } found;
+  TRI_vocbase_col_t* found;
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  found = CONST_CAST(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  return found.c;
+  return found;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1811,7 +1811,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection, char const* newName) {
-  union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
   TRI_col_info_t info;
   void const* found;
   char const* oldName;
@@ -1939,8 +1938,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
   TRI_CopyString(collection->_name, newName, sizeof(collection->_name));
 
-  cnv.c = collection;
-  TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, cnv.v, false);
+  TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1961,7 +1959,6 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collect
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const TRI_voc_cid_t cid) {
-  union { TRI_vocbase_col_t const* c; TRI_vocbase_col_t* v; } cnv;
   TRI_vocbase_col_t const* collection;
   int res;
 
@@ -1982,10 +1979,9 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const T
   // try to load the collection
   // .............................................................................
 
-  cnv.c = collection;
-  res = LoadCollectionVocBase(vocbase, cnv.v);
+  res = LoadCollectionVocBase(vocbase, CONST_CAST(collection));
 
-  return res == TRI_ERROR_NO_ERROR ? cnv.v : NULL;
+  return res == TRI_ERROR_NO_ERROR ? CONST_CAST(collection) : NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1993,7 +1989,6 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const T
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name) {
-  union { TRI_vocbase_col_t const* c; TRI_vocbase_col_t* v; } cnv;
   TRI_vocbase_col_t const* collection;
   int res;
 
@@ -2016,10 +2011,9 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
   // try to load the collection
   // .............................................................................
 
-  cnv.c = collection;
-  res = LoadCollectionVocBase(vocbase, cnv.v);
+  res = LoadCollectionVocBase(vocbase, CONST_CAST(collection));
 
-  return res == TRI_ERROR_NO_ERROR ? cnv.v : NULL;
+  return res == TRI_ERROR_NO_ERROR ? CONST_CAST(collection) : NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

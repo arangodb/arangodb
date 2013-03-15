@@ -47,18 +47,15 @@
 /// @brief fills the index search from hash index element
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
-                                                   TRI_index_search_value_t* key,
-                                                   TRI_hash_index_element_t* element) {
+static void FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
+                                                    TRI_index_search_value_t* key,
+                                                    TRI_hash_index_element_t* element) {
   char const* ptr;
   size_t n;
   size_t i;
 
   n = idx->_paths._length;
-  key->_values = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
-  if (key->_values == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  key->_values = TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
 
   ptr = (char const*) element->_document->_data;
 
@@ -67,24 +64,17 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
     key->_values[i]._data.length = element->_subObjects[i]._length;
     key->_values[i]._data.data = CONST_CAST(ptr + element->_subObjects[i]._offset);
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates space for sub-objects in the hash index element
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
-                                               TRI_hash_index_element_t* element) {
-  element->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
+static void AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
+                                                TRI_hash_index_element_t* element) {
+  element->_subObjects = TRI_Allocate(TRI_CORE_MEM_ZONE,
                                       idx->_paths._length * sizeof(TRI_shaped_sub_t),
                                       false);
-  if (element->_subObjects == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,9 +82,7 @@ static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeSubObjectsHashIndexElement (TRI_hash_index_element_t* element) {
-  if (element->_subObjects != NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
-  }
+  TRI_Free(TRI_CORE_MEM_ZONE, element->_subObjects);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,11 +177,7 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
   // .............................................................................
 
   if (allocate) {
-    res = AllocateSubObjectsHashIndexElement(hashIndex, hashElement);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // out of memory
-      return res;
-    }
+    AllocateSubObjectsHashIndexElement(hashIndex, hashElement);
   }
 
   res = HashIndexHelper(hashIndex, hashElement, document);
@@ -244,15 +228,9 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
   TRI_index_search_value_t key;
   int res;
 
-  res = FillIndexSearchValueByHashIndexElement(hashIndex, &key, element);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
+  FillIndexSearchValueByHashIndexElement(hashIndex, &key, element);
   res = TRI_InsertKeyHashArray(&hashIndex->_hashArray, &key, element, false);
-  if (key._values != NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-  }
+  TRI_Free(TRI_CORE_MEM_ZONE, key._values);
 
   if (res == TRI_RESULT_KEY_EXISTS) {
     return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -271,7 +249,7 @@ static int HashIndex_remove (TRI_hash_index_t* hashIndex,
 
   res = TRI_RemoveElementHashArray(&hashIndex->_hashArray, element);
 
-  // these might happen when rolling back
+  // this might happen when rolling back
   if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -638,7 +616,7 @@ void TRI_DestroyHashIndex (TRI_index_t* idx) {
 
 void TRI_FreeHashIndex (TRI_index_t* idx) {
   TRI_DestroyHashIndex(idx);
-  TRI_Free(TRI_CORE_MEM_ZONE, idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
