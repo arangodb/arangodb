@@ -27,10 +27,12 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function JSONAdapter(jsonPath, nodes, edges) {
+function JSONAdapter(jsonPath, nodes, edges, width, height) {
   "use strict";
   
   var self = this,
+  initialX = {},
+  initialY = {},
   findNode = function(n) {
     var res = $.grep(nodes, function(e){
       return e.id === n.id;
@@ -42,6 +44,32 @@ function JSONAdapter(jsonPath, nodes, edges) {
       return res[0];
     }
     throw "Too many nodes with the same ID, should never happen";
+  },
+  insertNode = function(node) {
+    initialY.getStart();
+    node.x = initialX.getStart();
+    node.y = initialY.getStart();
+    nodes.push(node);
+    node._outboundCounter = 0;
+    node._inboundCounter = 0;
+  },
+  
+  insertEdge = function(source, target) {
+    edges.push({source: source, target: target});
+    source._outboundCounter++;
+    target._inboundCounter++;
+  };
+  
+  initialX.range = width / 2;
+  initialX.start = width / 4;
+  initialX.getStart = function () {
+    return this.start + Math.random() * this.range;
+  };
+  
+  initialY.range = height / 2;
+  initialY.start = height / 4;
+  initialY.getStart = function () {
+    return this.start + Math.random() * this.range;
   };
   
   
@@ -53,7 +81,7 @@ function JSONAdapter(jsonPath, nodes, edges) {
       }
       var n = findNode(node);
       if (!n) {
-        nodes.insertNode(node);
+        insertNode(node);
         n = node;
       } else {
         n.children = node.children;
@@ -64,13 +92,13 @@ function JSONAdapter(jsonPath, nodes, edges) {
       _.each(n.children, function(c) {
         var check = findNode(c);
         if (check) {
-          edges.insertEdge(n, check);
+          insertEdge(n, check);
           self.requestCentralityChildren(check.id, function(c) {
             n._centrality = c;
           });
         } else {
-          nodes.insertNode(c);
-          edges.insertEdge(n, c);
+          insertNode(c);
+          insertEdge(n, c);
           self.requestCentralityChildren(c.id, function(c) {
             n._centrality = c;
           });

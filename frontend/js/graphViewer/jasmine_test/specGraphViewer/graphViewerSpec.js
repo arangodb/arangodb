@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect */
-/*global waitsFor, runs */
+/*global waitsFor, runs, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global GraphViewer*/
@@ -39,85 +39,11 @@ describe("Graph Viewer", function() {
   var viewer,
   svg,
   docSVG,
-  /*
-  nodeWithID = function(id) {
-    return $.grep(expander.nodes, function(e){
-      return e.id === id;
-    })[0];
-  },
-  
-  allEdgesWithTargetID = function(id) {
-    return $.grep(expander.edges, function(e){
-      return e.target.id === id;
-    });
-  },
-  
-  allEdgesWithSourceID = function(id) {
-    return $.grep(expander.edges, function(e){
-      return e.source.id === id;
-    });
-  },
-  
-  edgeWithTargetID = function(id) {
-    return allEdgesWithTargetID(id)[0];
-  },
-  
-  edgeWithSourceID = function(id) {
-    return allEdgesWithSourceID(id)[0];
-  },
-  
-  existNode = function(id) {
-    var node = nodeWithID(id);
-    expect(node).toBeDefined();
-    expect(node.id).toEqual(id);
-  },
-  
-  notExistNode = function(id) {
-    var node = nodeWithID(id);
-    expect(node).toBeUndefined();
-  },
-  
-  existNodes = function(ids) {
-    _.each(ids, existNode);
-  },
-  
-  notExistNodes = function(ids) {
-    _.each(ids, notExistNode);
-  },
-  */
-  displayNode = function(id) {
-    expect($("svg #" + id)[0]).toBeDefined();
-  },
-  
-  displayNodes = function(ids) {
-    _.each(ids, displayNode);
-  },
-  
-  notDisplayNode = function(id) {
-    expect($("svg #" + id)[0]).toBeUndefined();
-  },
-  
-  notDisplayNodes = function(ids) {
-    _.each(ids, notDisplayNode);
-  },
   
   clickOnNode = function(id) {
     var raw = $("#"+id).get(0);
     raw.__onclick();
   };
-
-  /*
-  var existEdge = function(source, target) {
-    
-  };
-  
-  var existEdges = function(stpairs) {
-    _.each(stpairs, function(st) {
-      existsEdge(st[0],st[1]);
-    });
-  };
-  */
-  
   
   beforeEach(function() {
     docSVG = document.createElement("svg");
@@ -130,13 +56,13 @@ describe("Graph Viewer", function() {
     document.body.removeChild(docSVG);
   });
   
-  describe('setup process', function() {
+  describe('set up process', function() {
     
     var adapterConfig,
     layouterConfig;
     
     beforeEach(function() {
-      adapterConfig = {type: "json", path: "../test_data"};
+      adapterConfig = {type: "json", path: "../test_data/"};
       layouterConfig = {type: "force"};
     });
     
@@ -229,669 +155,298 @@ describe("Graph Viewer", function() {
     
   });
   
-
-  
-/*  
-  it("should be able to load a root node", function() {
+  describe('set up with jsonAdapter, forceLayout, click Expand and default shapers', function() {
     
-    runs (function() {
-      expander.loadGraph(477);
-    });
+    var viewer;
     
-    waitsFor(function() {
-      return expander.nodes.length >= 5;
-    }, "Some nodes should be added to the list", 1000);
-    
-    runs (function() {
-      // Load 5 Nodes: Root + 4 Childs
-      expect(expander.nodes.length).toBe(5);
-      // Connect Root to all 4 Childs
-      expect(expander.edges.length).toBe(4);
-      // Pointer to correct Node Objects (d3 adds internal values => test creation not possible)
-      
-      existNodes([477, 29, 159, 213, 339]);
-      
-      // Pointer to correct Edge Objects (d3 adds internal values => test creation not possible)
-      var e1 = edgeWithTargetID(29),
-      e2 = edgeWithTargetID(159),
-      e3 = edgeWithTargetID(213),
-      e4 = edgeWithTargetID(339);
-      // Check if the Edges have been added correctly
-      expect(e1).toBeDefined();
-      expect(e1.source.id).toEqual(477);
-      expect(e2).toBeDefined();
-      expect(e2.source.id).toEqual(477);
-      expect(e3).toBeDefined();
-      expect(e3.source.id).toEqual(477);
-      expect(e4).toBeDefined();
-      expect(e4.source.id).toEqual(477);
-    });
-
-  });
-  
-  it("and should append nodes to the SVG", function() {
-  
-    runs (function() {
-      expander.loadGraph(477);
-    });
-    
-    waitsFor(function() {
-      return expander.nodes.length >= 5;
-    }, "Some nodes should be added to the list", 1000);
-    
-    runs (function() {
-      displayNodes([477, 339, 29, 159, 213]);
-    });
-  
-  });
-  
-  describe("when graph has been loaded", function() {
     beforeEach(function() {
+      var aconf = {type: "json", path: "../test_data/"},
+      lconf = {type: "force"},
+      evconf = { expander: true };
+      viewer = new GraphViewer(svg, 10, 10, aconf, {}, {}, lconf, evconf);
       
-      runs (function() {
-        expander.loadGraph(477);
-      });
-    
-      waitsFor(function() {
-        return expander.nodes.length > 0;
-      }, "Some nodes should be added to the list", 1000);
-      
-    });
-    
-    it("should still be correct", function() {
-      // Load 5 Nodes: Root + 4 Childs
-      expect(expander.nodes.length).toBe(5);
-      // Connect Root to all 4 Childs
-      expect(expander.edges.length).toBe(4);
-      
-      existNodes([477, 29, 159, 213, 339]);
-            
-      // Pointer to correct Edge Objects (d3 adds internal values => test creation not possible)
-      var e1 = edgeWithTargetID(29),
-      e2 = edgeWithTargetID(159),
-      e3 = edgeWithTargetID(213),
-      e4 = edgeWithTargetID(339);
-      // Check if the Edges have been added correctly
-      expect(e1).toBeDefined();
-      expect(e1.source.id).toEqual(477);
-      expect(e2).toBeDefined();
-      expect(e2.source.id).toEqual(477);
-      expect(e3).toBeDefined();
-      expect(e3.source.id).toEqual(477);
-      expect(e4).toBeDefined();
-      expect(e4.source.id).toEqual(477);
-      
-    });
-    
-    it("should be able to expand a node", function() {
-    
-      runs (function() {
-        clickOnNode(29);
-      });
-    
-      waitsFor(function() {
-        return expander.nodes.length > 5;
-      }, "More nodes should be added to the list", 1000);
-    
-      runs (function() {
-        // Load 7 Nodes: Root + 4 Childs + 2 ChildChilds
-        expect(expander.nodes.length).toBe(7);
-        // Connect Root to all 4 Childs + Connect Child 29 to its Childs
-        expect(expander.edges.length).toBe(6);
-        
-        existNodes([3, 7]);
-      
-        // Pointer to correct Edge Objects (d3 adds internal values => test creation not possible)
-        var e1 = edgeWithTargetID(3),
-        e2 = edgeWithTargetID(7);
-      
-        // Check if the Edges have been added correctly
-        expect(e1).toBeDefined();
-        expect(e1.source.id).toEqual(29);
-        expect(e2).toBeDefined();
-        expect(e2.source.id).toEqual(29);
-      });
-
-    });
-    
-    it("and should append all nodes to the SVG", function() {
-    
-      runs (function() {
-        clickOnNode(29);
-      });
-    
-      waitsFor(function() {
-        return expander.nodes.length > 5;
-      }, "More nodes should be added to the list", 1000);
-    
-      runs (function() {
-        displayNodes([3, 7]);  
-      });
-
-    });
-    
-    it("should be able to collapse the root", function() {
-    
-      runs (function() {
-        clickOnNode(477);
-      });
-    
-      waitsFor(function() {
-        return expander.nodes.length < 5;
-      }, "Some nodes should be removed from the list", 1000);
-    
-      runs (function() {
-        // Load 1 Nodes: Root
-        expect(expander.nodes.length).toBe(1);
-        // No edges expected
-        expect(expander.edges.length).toBe(0);
-        // Pointer to correct Node Objects (d3 adds internal values => test creation not possible)
-        existNodes([477]);
-      });
-
-    });
-    
-    it("should be able to load a different graph", function() {
-      runs (function() {
-        expander.loadGraph(300);
-      });
-    
-      waitsFor(function() {
-        return expander.nodes.length !== 5
-          && expander.nodes.length !== 0;
-      }, "The list of nodes should be changed but not empty", 1000);
-    
-      runs (function() {
-        // Load 3 Nodes: Root + 2 childs
-        expect(expander.nodes.length).toBe(3);
-        // No edges expected
-        expect(expander.edges.length).toBe(2);
-        
-        // Pointer to correct Node Objects (d3 adds internal values => test creation not possible)
-        existNodes([300, 29, 83]);
-        
-        // Pointer to correct Edge Objects (d3 adds internal values => test creation not possible)
-        
-        var e1 = edgeWithTargetID(29),
-        e2 = edgeWithTargetID(83);
-      
-        // Check if the Edges have been added correctly
-        expect(e1).toBeDefined();
-        expect(e1.source.id).toBe(300);
-        expect(e2).toBeDefined();
-        expect(e2.source.id).toBe(300);
-      });
-      
-    });
-    
-    it("and should replace all nodes in the SVG", function() {
-      runs (function() {
-        expander.loadGraph(300);
-      });
-    
-      waitsFor(function() {
-        return expander.nodes.length !== 5
-          && expander.nodes.length !== 0;
-      }, "The list of nodes should be changed but not empty", 1000);
-    
-      runs (function() {
-        displayNodes([300, 29, 83]);       
-      });
-      
-    });
-    
-    describe("when a user rapidly expand nodes", function() {
-      
-      beforeEach(function() {
-        runs (function() {
-          clickOnNode(29);
-          clickOnNode(159);
-          clickOnNode(213);
-          clickOnNode(339);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length === 14;
-        }, "More nodes should be added to the list", 1000);
-      });
-      
-      it("the graph should still be correct", function() {
-        
-        // Load 14 Nodes: Root + 4 Childs + 9 ChildChilds
-        expect(expander.nodes.length).toBe(14);
-        // Connect Root to all 4 Childs + Connect Child 29 to its Childs
-        expect(expander.edges.length).toBe(13);
-
-        existNodes([477, 213, 29, 3, 7, 4, 123, 80, 310, 339, 159, 84, 13, 20]);
-      
-      });
-      
-      it("and all expanded nodes should be displayed in the svg", function() {
-        displayNodes([477, 213, 29, 3, 7, 4, 123, 80, 310, 339, 159, 84, 13, 20]);
-      });
-    });
-    
-    describe("when a user rapidly expand and collapses nodes", function() {
-      
-      beforeEach(function() {
-        runs (function() {
-          clickOnNode(29);
-          clickOnNode(213);
-          clickOnNode(339);
-          clickOnNode(159);
-        });
-        
-        // Wait a gentle second for all nodes to expand properly
-        waitsFor(function() {
-          return expander.nodes.length === 14;
-        }, "More nodes should be added to the list", 1000);
-        
-        runs(function() {
-          clickOnNode(29);
-          clickOnNode(213);
-        });
-        
-        waitsFor(function() {
-          return expander.nodes.length === 10;
-        }, "More nodes should be added to the list", 1000);
-        
-      });
-      
-      it("the graph should still be correct", function() {
-        expect(expander.nodes.length).toBe(10);
-        expect(expander.edges.length).toBe(9);
-
-        existNodes([477, 213, 29, 339, 123, 310, 159, 84, 13, 20]);
-      });
-      
-      it("and all expanded nodes should be displayed in the svg", function() {
-        displayNodes([477, 213, 29, 339, 123, 310, 159, 84, 13, 20]);
-      });
-    });
-    
-    describe("when an undirected circle has been loaded", function() {
-      beforeEach(function() {
-
-        runs (function() {
-          clickOnNode(29);
-        });
-        
-        waitsFor(function() {
-          return expander.nodes.length > 5;
-        }, "Some nodes should be added to the list", 1000);
-        
-        runs (function() {
-          clickOnNode(3);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length > 7;
-        }, "Some nodes should be added to the list", 1000);
-      
-        runs (function() {
-          clickOnNode(213);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length > 8;
-        }, "Some nodes should be added to the list", 1000);
-      
-      });
-      
-      it("should still be correct", function() {
-        // Load 5 Nodes: Root + 4 Childs
-        expect(expander.nodes.length).toBe(9);
-        // Connect Root to all 4 Childs
-        expect(expander.edges.length).toBe(9);
-        // Pointer to correct Node Objects (d3 adds internal values => test creation not possible)
-        existNodes([477, 29, 159, 213, 339, 3, 7, 4, 80]);
-        
-      });
-      
-      it("and display all nodes in the SVG", function() {
-        displayNodes([477, 29, 159, 213, 339, 3, 7, 4, 80]);
-      });
-      
-      it("should contain an undirected circle", function() {
-      
-        var e1 = edgeWithTargetID(213),
-        e2 = edgeWithTargetID(29),
-        e3 = edgeWithTargetID(3),
-        edgesTo4 = allEdgesWithTargetID(4);
-        // Check if the Edges have been added correctly
-        expect(e1.source.id).toBe(477);
-        expect(e2.source.id).toBe(477);
-        expect(e3.source.id).toBe(29);
-        if (edgesTo4[0].source.id === 3) {
-          expect(edgesTo4[1].source.id).toBe(213);
-        } else {
-          expect(edgesTo4[0].source.id).toBe(213);
-          expect(edgesTo4[1].source.id).toBe(3);
+      this.addMatchers({
+        toBeDisplayed: function() {
+          var nodes = this.actual,
+          nonDisplayed = [];
+          this.message = function(){
+            var msg = "Nodes: [";
+            _.each(nonDisplayed, function(n) {
+              msg += n + " ";
+            });
+            msg += "] are not displayed.";
+            return msg;
+          };
+          _.each(nodes, function(n) {
+            if ($("svg #" + n)[0] === undefined) {
+              nonDisplayed.push(n);
+            }
+          });
+          return nonDisplayed.length === 0;
+        },
+        toNotBeDisplayed: function() {
+          var nodes = this.actual,
+          displayed = [];
+          this.message = function() {
+            var msg = "Nodes: [";
+            _.each(displayed, function(n) {
+              msg += n + " ";
+            });
+            msg += "] are still displayed.";
+            return msg;
+          };
+          _.each(nodes, function(n) {
+            if ($("svg #" + n)[0] !== undefined) {
+              displayed.push(n);
+            }
+          });
+          return displayed.length === 0;
+        },
+        toBeConnectedTo: function(target) {
+          var source = this.actual;
+          this.message = function() {
+            return source + " -> " + target + " edge, does not exist";
+          };
+          return $("svg #" + source + "-" + target)[0] !== undefined;
+        },
+        toNotBeConnectedTo: function(target) {
+          var source = this.actual;
+          this.message = function() {
+            return source + " -> " + target + " edge, does still exist";
+          };
+          return $("svg #" + source + "-" + target)[0] === undefined;
         }
+      });
+      
+    });
+    
+    
+    it("should be able to load a root node", function() {
+      runs (function() {
+        viewer.loadGraph(0);
+      });
+    
+      // Give it a second to load
+      // Unfortunately there is no handle to check for changes
+      waits(1000);
+    
+      runs (function() {
+        expect([0, 1, 2, 3, 4]).toBeDisplayed();
+      });
+    });
+    
+    describe('when a graph has been loaded', function() {
+      beforeEach(function() {
+      
+        runs (function() {
+          viewer.loadGraph(0);
+        });
+    
+        waits(1000);
+      });
+      
+      it("should be able to expand a node", function() {
+    
+        runs (function() {
+          clickOnNode(1);
+        });
+    
+        waits(1000);
+        
+        runs (function() {
+          expect([0, 1, 2, 3, 4, 5, 6, 7]).toBeDisplayed();
+        });
 
       });
+      
+      it("should be able to collapse the root", function() {
     
-      it("should be able to collapse one node "
-       + "without removing the double referenced one", function() {
-      
         runs (function() {
-          clickOnNode(3);
+          clickOnNode(0);
         });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 9;
-        }, "Edges should be changed", 1000);
-      
+    
+        waits(1000);
+    
         runs (function() {
-          // There should be an edge from 213 -> 4, but none from 3
-          var edgesFrom3 = allEdgesWithSourceID(3),
-          edgesTo4 = allEdgesWithTargetID(4);
-          expect(edgesFrom3.length).toEqual(0);
-          expect(edgesTo4.length).toEqual(1);
-          expect(edgesTo4[0].source.id).toEqual(213);
+          // Load 1 Nodes: Root
+          expect([0]).toBeDisplayed();
+          expect([1, 2, 3, 4]).toNotBeDisplayed();
+        });
+
+      });
+      
+      it("should be able to load a different graph", function() {
+        runs (function() {
+          viewer.loadGraph(42);
+        });
+    
+        waits(1000);
+    
+        runs (function() {
+          expect([42, 43, 44, 45]).toBeDisplayed();
+          expect([0, 1, 2, 3, 4]).toNotBeDisplayed();
         });
       
       });
       
-      it("and should display the nodes in the SVG", function() {
-      
-        runs (function() {
-          clickOnNode(3);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 9;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          displayNodes([477, 29, 159, 213, 339, 3, 7, 4, 80]);
-        });
-      
-      });
-    
-      it("should be able to collapse the other node "
-       + "without removing the double referenced one", function() {
-      
-        runs (function() {
-          clickOnNode(213);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 9;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          // There should be an edge from 3 -> 4, but none from 213
-          var edgesFrom213 = allEdgesWithSourceID(213),
-          edgesTo4 = allEdgesWithTargetID(4);
-          expect(edgesFrom213.length).toEqual(0);
-          expect(edgesTo4.length).toEqual(1);
-          expect(edgesTo4[0].source.id).toEqual(3);
+      describe("when a user rapidly expand nodes", function() {
         
-          // The orphan node should be removed
-          notExistNode(80);
-        });
-      
-      });
-      
-      it("and should display the nodes in the SVG", function() {
-      
-        runs (function() {
-          clickOnNode(213);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 9;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          displayNodes([477, 29, 159, 213, 339, 3, 7, 4]);
-          // The orphan should be removed
-          notDisplayNode(80);
-        });
-      
-      });
+        beforeEach(function() {
+          runs (function() {
+            clickOnNode(1);
+            clickOnNode(2);
+            clickOnNode(3);
+            clickOnNode(4);
+          });
     
-      it("should remove the double referenced node if both pointers are collapsed", function() {
-      
-        runs (function() {
-          clickOnNode(3);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 9;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          clickOnNode(213);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 8;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          // There should be no edges from 3 or 213
-          var edgesFrom213 = allEdgesWithSourceID(213),
-          edgesFrom3 = allEdgesWithSourceID(3);
-          expect(edgesFrom213.length).toEqual(0);
-          expect(edgesFrom3.length).toEqual(0);
-        
-          // The orphan node should now be removed
-          notExistNode(4);
-        });
-      
-      });
-      
-      it("and should display the nodes in the SVG", function() {
-      
-        runs (function() {
-          clickOnNode(3);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 9;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          clickOnNode(213);
-        });
-      
-        waitsFor(function() {
-          return expander.edges.length !== 8;
-        }, "Edges should be changed", 1000);
-      
-        runs (function() {
-          displayNodes([477, 29, 159, 213, 339, 3, 7]);
+          waits(1000);
           
-          // The orphans should be remove
-          notDisplayNodes([4, 80]);
+          it("the graph should still be correct", function() {
+            expect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12]).toBeDisplayed();
+          });
         });
-      
       });
       
-    });
-    
-    describe("when a subgraph has been loaded", function() {
-      beforeEach(function() {
+      describe("when a user rapidly expand and collapses nodes", function() {
       
-        runs(function() {
-          clickOnNode(213);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length > 5;
-        }, "Some nodes should be added to the list", 1000);
-      
-        runs(function() {
-          clickOnNode(80);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length > 7;
-        }, "Some nodes should be added to the list", 1000);
-      
-      });
-      
-      it("should contain the subgraph", function() {
-        existNodes([213, 80, 54, 18, 76]);
-                
-        var r2sr = edgeWithTargetID(80),
-        sr2sc1 = edgeWithTargetID(54),
-        sr2sc2 = edgeWithTargetID(18),
-        sr2sc3 = edgeWithTargetID(76);
+        beforeEach(function() {
+          runs (function() {
+            clickOnNode(1);
+            clickOnNode(2);
+            clickOnNode(3);
+            clickOnNode(4);
+          });
         
-        expect(r2sr.source.id).toEqual(213);
-        expect(sr2sc1.source.id).toEqual(80);
-        expect(sr2sc2.source.id).toEqual(80);
-        expect(sr2sc3.source.id).toEqual(80);
-      });
-      
-      it("and display the subgraph nodes in the SVG", function() {
-        displayNodes([213, 80, 54, 18, 76]);
-      });
-      
-      it("should be able to collapse the root and remove the subgraph", function() {
+          // Wait a gentle second for all nodes to expand properly
+          waits(1000);
         
-        runs(function() {
-          clickOnNode(213);
+          runs(function() {
+            clickOnNode(1);
+            clickOnNode(4);
+          });
+        
+          waits(1000);
         });
         
-        waitsFor(function() {
-          return expander.nodes.length !== 10;
-        }, "The nodes should be changed", 1000);
+        it("the graph should still be correct", function() {
+          expect([0, 1, 2, 3, 4, 8, 9]).toBeDisplayed();
+          expect([5, 6, 7, 12]).toNotBeDisplayed();
+        });
+      });
+      
+      describe("when an undirected circle has been loaded", function() {
         
-        runs(function() {
-          expect(expander.nodes.length).toEqual(5);
+        beforeEach(function() {
+
+          runs (function() {
+            clickOnNode(2);
+            clickOnNode(3);
+          });
           
-          existNode(213);
-          notExistNodes([80, 54, 18, 76]);
-                  
-          var r2sr = edgeWithTargetID(80),
-          sr2sc1 = edgeWithTargetID(54),
-          sr2sc2 = edgeWithTargetID(18),
-          sr2sc3 = edgeWithTargetID(76);
+          waits(1000);
           
-          expect(r2sr).not.toBeDefined();
-          expect(sr2sc1).not.toBeDefined();
-          expect(sr2sc2).not.toBeDefined();
-          expect(sr2sc3).not.toBeDefined();
         });
+        
+        it("the basis should be correct", function() {
+          expect([0, 1, 2, 3, 4, 8, 9]).toBeDisplayed();
+        });
+        
+        it("should be able to collapse one node "
+         + "without removing the double referenced one", function() {
+      
+          runs (function() {
+            clickOnNode(2);
+          });
+      
+          waits(1000);
+      
+          runs (function() {
+            expect([2, 3, 8]).toBeDisplayed();
+            expect(2).toNotBeConnectedTo(8);
+            expect(3).toBeConnectedTo(8);
+          });
+        });
+        
+        
+        it("should be able to collapse the other node "
+         + "without removing the double referenced one", function() {
+      
+          runs (function() {
+            clickOnNode(3);
+          });
+      
+          waits(1000);
+      
+          runs (function() {
+            expect([2, 3, 8]).toBeDisplayed();
+            expect(3).toNotBeConnectedTo(8);
+            expect(2).toBeConnectedTo(8);
+          });
+        });
+        
+        it("should be able to collapse the both nodes "
+         + "and remove the double referenced one", function() {
+      
+          runs (function() {
+            clickOnNode(3);
+            clickOnNode(2);
+          });
+      
+          waits(1000);
+      
+          runs (function() {
+            expect([2, 3]).toBeDisplayed();
+            expect([8]).toNotBeDisplayed();
+            expect(3).toNotBeConnectedTo(8);
+            expect(2).toNotBeConnectedTo(8);
+          });
+        });
+        
       });
       
-      it("and collapse the subgraph in the SVG", function() {
+      describe("when a complex graph has been loaded", function() {
         
-        runs(function() {
-          clickOnNode(213);
+        beforeEach(function() {
+          runs(function() {
+            clickOnNode(1);
+            clickOnNode(4);
+            clickOnNode(2);
+            clickOnNode(3);
+          });
+          waits(1000);
         });
         
-        waitsFor(function() {
-          return expander.nodes.length !== 10;
-        }, "The nodes should be changed", 1000);
-        
-        runs(function() {
-          displayNode(213);
-          notDisplayNodes([80, 54, 18, 76]);
-        });
-      });
-      
-    });
-    
-    describe("when a complex graph has been loaded", function() {
-      beforeEach(function() {
-        runs(function() {
-          clickOnNode(29);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length !== 5;
-        }, "Some nodes should be added to the list", 1000);
-      
-        runs(function() {
-          clickOnNode(3);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length !== 7;
-        }, "Some nodes should be added to the list", 1000);
-        
-        
-        runs(function() {
-          clickOnNode(213);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length !== 8;
-        }, "Some nodes should be added to the list", 1000);
-        
-        runs(function() {
-          clickOnNode(80);
-        });
-    
-        waitsFor(function() {
-          return expander.nodes.length !== 9;
-        }, "Some nodes should be added to the list", 1000);
-      
-      });
-    
-      it("should be able to collapse a node "
-      + "referencing a node connected to a subgraph", function() {
+        it("should be able to collapse a node "
+        + "referencing a node connected to a subgraph", function() {
           
-        runs(function() {          
-          clickOnNode(29);
-        });
+          runs(function() {         
+            clickOnNode(1);
+          });
           
-        waitsFor(function() {
-          return expander.nodes.length !== 12;
-        }, "The nodes should be changed", 1000);
+          waits(1000);
           
-        runs(function() {
-          expect(expander.nodes.length).toEqual(10);
-          expect(expander.edges.length).toEqual(9);
+          runs(function() {
             
-          // The nodes should be correct
-          existNodes([477, 29, 4, 213, 339, 159, 80, 76, 18, 54]);
+            expect([0, 1, 2, 3, 4, 5, 8, 9, 12]).toBeDisplayed();
+            expect([6, 7, 10, 11]).toNotBeDisplayed();
             
-          // Subgraph Nodes should be removed
-          notExistNodes([3, 7]);
+            expect(0).toBeConnectedTo(1);
+            expect(0).toBeConnectedTo(2);
+            expect(0).toBeConnectedTo(3);
+            expect(0).toBeConnectedTo(4); 
+            expect(1).toNotBeConnectedTo(5);
             
-          // The edges should be correct
-          expect(edgeWithTargetID(54).source.id).toEqual(80);
-          expect(edgeWithTargetID(18).source.id).toEqual(80);
-          expect(edgeWithTargetID(76).source.id).toEqual(80);
-          expect(edgeWithTargetID(80).source.id).toEqual(213);
-          expect(edgeWithTargetID(4).source.id).toEqual(213);
-          expect(edgeWithTargetID(159).source.id).toEqual(477);
-          expect(edgeWithTargetID(339).source.id).toEqual(477);
-          expect(edgeWithTargetID(29).source.id).toEqual(477);
+            expect(2).toBeConnectedTo(8);
             
-          // Subgraph Edges should be removed
-          expect(allEdgesWithTargetID(7).length).toEqual(0);
-          expect(allEdgesWithTargetID(3).length).toEqual(0);
-          expect(allEdgesWithSourceID(29).length).toEqual(0);
-          var edgesTo4 = allEdgesWithTargetID(4);
-          expect(edgesTo4.length).toEqual(1);
-          expect(edgesTo4[0].source.id).toEqual(213);
+            expect(3).toBeConnectedTo(8);
+            expect(3).toBeConnectedTo(9);
             
+            expect(4).toBeConnectedTo(5);
+            expect(4).toBeConnectedTo(12);
+          });
         });
       });
       
-      it("and display everything in the SVG", function() {
-          
-        runs(function() {
-          clickOnNode(29);
-        });
-          
-        waitsFor(function() {
-          return expander.nodes.length !== 12;
-        }, "The nodes should be changed", 1000);
-          
-        runs(function() {
-          displayNodes([477, 29, 4, 213, 339, 159, 80, 76, 18, 54]);
-          notDisplayNodes([3, 7]);
-        });
-      });      
     });
   });
-  */
 });

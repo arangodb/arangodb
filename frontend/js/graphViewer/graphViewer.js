@@ -71,18 +71,18 @@ function GraphViewer(svg, width, height,
   
   
   var self = this,
-  adapter,
-  nodeShaper,
-  edgeShaper,
-  nodeContainer,
-  edgeContainer,
-  layouter,
-  fixedSize,
-  eventlib = new EventLibrary(),
-  edges = [],
-  nodes = [],
-  // Function after handleing events, will update the drawers and the layouter.
-  start;
+    adapter,
+    nodeShaper,
+    edgeShaper,
+    nodeContainer,
+    edgeContainer,
+    layouter,
+    fixedSize,
+    eventlib = new EventLibrary(),
+    edges = [],
+    nodes = [],
+    // Function after handling events, will update the drawers and the layouter.
+    start;
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
@@ -91,11 +91,19 @@ function GraphViewer(svg, width, height,
         nodes,
         edges,
         adapterConfig.nodeCollection,
-        adapterConfig.edgeCollection
+        adapterConfig.edgeCollection,
+        width,
+        height
       );
       break;
     case "json":
-      adapter = new JSONAdapter(adapterConfig.path, nodes, edges);
+      adapter = new JSONAdapter(
+        adapterConfig.path,
+        nodes,
+        edges,
+        width,
+        height
+      );
       break;
     default:
       throw "Sorry unknown adapter type.";
