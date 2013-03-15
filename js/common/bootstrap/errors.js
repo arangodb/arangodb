@@ -29,6 +29,7 @@
     "ERROR_FORBIDDEN"              : { "code" : 11, "message" : "forbidden" }, 
     "ERROR_OUT_OF_MEMORY_MMAP"     : { "code" : 12, "message" : "out of memory in mmap" }, 
     "ERROR_CORRUPTED_CSV"          : { "code" : 13, "message" : "csv is corrupt" }, 
+    "ERROR_FILE_NOT_FOUND"         : { "code" : 14, "message" : "file not found" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 
     "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" }, 
@@ -78,6 +79,7 @@
     "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" }, 
     "ERROR_ARANGO_INDEX_NEEDS_RESIZE" : { "code" : 1223, "message" : "index needs resizing" }, 
     "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "database directory not writable" }, 
+    "ERROR_ARANGO_OUT_OF_KEYS"     : { "code" : 1225, "message" : "out of keys" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
@@ -130,6 +132,12 @@
     "ERROR_GRAPH_INVALID_EDGE"     : { "code" : 1906, "message" : "invalid edge" }, 
     "ERROR_GRAPH_COULD_NOT_CREATE_EDGE" : { "code" : 1907, "message" : "could not create edge" }, 
     "ERROR_GRAPH_COULD_NOT_CHANGE_EDGE" : { "code" : 1908, "message" : "could not change edge" }, 
+    "ERROR_SESSION_INVALID_SESSION" : { "code" : 1951, "message" : "invalid session" }, 
+    "ERROR_SESSION_COULD_NOT_CREATE_SESSION" : { "code" : 1952, "message" : "could not create session" }, 
+    "ERROR_SESSION_COULD_NOT_CHANGE_SESSION" : { "code" : 1953, "message" : "could not change session" }, 
+    "ERROR_SESSION_INVALID_FORM"   : { "code" : 1961, "message" : "invalid form" }, 
+    "ERROR_SESSION_COULD_NOT_CREATE_FORM" : { "code" : 1962, "message" : "could not create form" }, 
+    "ERROR_SESSION_COULD_NOT_CHANGE_FORM" : { "code" : 1963, "message" : "could not change form" }, 
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 
     "SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" }, 
     "SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" }, 
@@ -150,7 +158,11 @@
     "WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING" : { "code" : 3411, "message" : "bitarray index remove failure - item missing in index" }, 
     "ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE" : { "code" : 3413, "message" : "bitarray index insert failure - document attribute value unsupported in index" }, 
     "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES" : { "code" : 3415, "message" : "bitarray index creation failure - one or more index attributes are duplicated." }, 
-    "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES" : { "code" : 3417, "message" : "bitarray index creation failure - one or more index attribute values are duplicated." }
+    "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES" : { "code" : 3417, "message" : "bitarray index creation failure - one or more index attribute values are duplicated." }, 
+    "RESULT_KEY_EXISTS"            : { "code" : 10000, "message" : "element not inserted into structure, because key already exists" }, 
+    "RESULT_ELEMENT_EXISTS"        : { "code" : 10001, "message" : "element not inserted into structure, because it already exists" }, 
+    "RESULT_KEY_NOT_FOUND"         : { "code" : 10002, "message" : "key not found in structure" }, 
+    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }
   };
 }());
 

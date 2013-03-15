@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_CONVERSIONS_H
@@ -126,8 +126,8 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length);
 /// @brief convert to string from int8, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,8 +137,8 @@ size_t TRI_StringInt8InPlace (int8_t, char*);
 /// @brief convert to string from uint8, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,8 +148,8 @@ size_t TRI_StringUInt8InPlace (uint8_t, char*);
 /// @brief convert to string from int16, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,8 +159,8 @@ size_t TRI_StringInt16InPlace (int16_t, char*);
 /// @brief convert to string from uint16, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,8 +170,8 @@ size_t TRI_StringUInt16InPlace (uint16_t, char*);
 /// @brief convert to string from int32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,8 +181,8 @@ size_t TRI_StringInt32InPlace (int32_t, char*);
 /// @brief convert to string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -192,8 +192,8 @@ size_t TRI_StringUInt32InPlace (uint32_t, char*);
 /// @brief convert to string from int64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -203,8 +203,8 @@ size_t TRI_StringInt64InPlace (int64_t, char*);
 /// @brief convert to string from uint64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -268,8 +268,8 @@ char* TRI_StringDouble (double);
 /// @brief convert to a hex string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -279,8 +279,8 @@ size_t TRI_StringUInt32HexInPlace (uint32_t, char*);
 /// @brief convert to a hex string from uint64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -302,8 +302,8 @@ char* TRI_StringUInt64Hex (uint64_t);
 /// @brief convert to an octal string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -313,8 +313,8 @@ size_t TRI_StringUInt32OctalInPlace (uint32_t, char*);
 /// @brief convert to an octal string from uint64, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte. 
-/// The length of the string number in characters without the NUL byte is 
+/// contain the result string and the NUL byte.
+/// The length of the string number in characters without the NUL byte is
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -344,5 +344,5 @@ char* TRI_StringUInt64Octal (uint64_t);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

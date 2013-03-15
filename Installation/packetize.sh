@@ -50,15 +50,15 @@ systemddir=/lib/systemd/system
 ########################################################
 install_message="
 
-ArangoDB (http://www.arangodb.org)
+ArangoDB (https://www.arangodb.org)
   A universal open-source database with a flexible data model for documents, 
   graphs, and key-values.
 
 First Steps with ArangoDB:
-  http:/www.arangodb.org/quickstart
+  https:/www.arangodb.org/quickstart
 
 Upgrading ArangoDB:
-  http://www.arangodb.org/manuals/1.1/Upgrading.html
+  https://www.arangodb.org/manuals/current/Upgrading.html
 
 Configuration file:
   /etc/arangodb/arangod.conf

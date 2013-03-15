@@ -24,7 +24,14 @@ var documentsView = Backbone.View.extend({
     "click #documents_last"      : "lastDocuments",
     "click #documents_prev"      : "prevDocuments",
     "click #documents_next"      : "nextDocuments",
-    "click #confirmDeleteBtn"    : "confirmDelete"
+    "click #confirmDeleteBtn"    : "confirmDelete",
+    "keyup .modal-body"          : "listenKey"
+  },
+
+  listenKey: function (e) {
+    if(e.keyCode === 13){
+      this.addEdge();
+    }
   },
 
   buildCollectionLink : function (collection) {
@@ -77,6 +84,14 @@ var documentsView = Backbone.View.extend({
     var collid  = window.location.hash.split("/")[1];
     var from = $('#new-document-from').val();
     var to = $('#new-document-to').val();
+    if (from === '') {
+      arangoHelper.arangoNotification('From paramater is missing');
+      return;
+    }
+    if (to === '') {
+      arangoHelper.arangoNotification('To parameter is missing');
+      return;
+    }
     var result = window.arangoDocumentStore.createTypeEdge(collid, from, to);
 
     if (result !== false) {
@@ -85,7 +100,6 @@ var documentsView = Backbone.View.extend({
     }
     //Error
     else {
-      $('#edgeCreateModal').modal('hide');
       arangoHelper.arangoError('Creating edge failed');
     }
   },
@@ -241,6 +255,7 @@ var documentsView = Backbone.View.extend({
     if (this.collectionContext.next === null) {
       $('#collectionNext').parent().addClass('disabledPag');
     }
+    $.gritter.removeAll();
 
     return this;
   },
@@ -249,8 +264,8 @@ var documentsView = Backbone.View.extend({
     var self = this;
     var target = $('#documentsToolbarF'),
     options = {
-      left: 1,
-      right: 1,
+      left: 2,
+      right: 2,
       page: currentPage,
       lastPage: totalPages,
       click: function(i) {
@@ -259,7 +274,9 @@ var documentsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
-    $('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
+    $('#documentsToolbarF').prepend('<ul class="prePagi"><li><a id="documents_first"><i class="icon icon-step-backward"></i></a></li></ul>');
+    $('#documentsToolbarF').append('<ul class="lasPagi"><li><a id="documents_last"><i class="icon icon-step-forward"></i></a></li></ul>');
+    //$('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];

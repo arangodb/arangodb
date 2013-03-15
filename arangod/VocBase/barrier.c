@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "barrier.h"
@@ -47,7 +47,7 @@
 /// @brief inserts the barrier element into the linked list of barrier elemnents
 /// of the collection
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static void LinkBarrierElement (TRI_barrier_t* element, TRI_barrier_list_t* container) {
   element->_container = container;
 
@@ -70,7 +70,7 @@ static void LinkBarrierElement (TRI_barrier_t* element, TRI_barrier_list_t* cont
     container->_end->_next = element;
     container->_end = element;
   }
-  
+
   TRI_UnlockSpin(&container->_lock);
 }
 
@@ -116,12 +116,17 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 
     if (ptr->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK ||
         ptr->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK ||
-        ptr->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
+        ptr->_type == TRI_BARRIER_DATAFILE_CALLBACK ||
+        ptr->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
+
       // free data still allocated in barrier elements
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
     }
     else if (ptr->_type == TRI_BARRIER_ELEMENT) {
       LOG_ERROR("logic error. shouldn't have barrier elements in barrierlist on unload");
+    }
+    else {
+      LOG_ERROR("unknown barrier type");
     }
 
     ptr = next;
@@ -180,6 +185,26 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new compaction barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container) {
+  TRI_barrier_compaction_t* element;
+
+  element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_compaction_t), false);
+
+  if (element == NULL) {
+    return NULL;
+  }
+
+  element->base._type = TRI_BARRIER_COLLECTION_COMPACTION;
+
+  LinkBarrierElement(&element->base, container);
+
+  return &element->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile deletion barrier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -216,7 +241,7 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
                                                   bool (*callback) (struct TRI_collection_s*, void*),
                                                   void* data) {
   TRI_barrier_collection_cb_t* element;
-  
+
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
 
@@ -224,7 +249,7 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
     return NULL;
   }
 
-  
+
   element->base._type = TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK;
 
   element->_collection = collection;
@@ -233,7 +258,7 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
   element->callback = callback;
 
   LinkBarrierElement(&element->base, container);
-  
+
 
   return &element->base;
 }
@@ -250,7 +275,7 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 
   element = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_barrier_collection_cb_t), false);
 
-  if (!element) {
+  if (element == NULL) {
     return NULL;
   }
 
@@ -305,5 +330,5 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

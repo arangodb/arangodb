@@ -22,6 +22,49 @@ AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
 
+
+dnl ----------------------------------------------------------------------------
+dnl grab the configure command, options and flags and store them in m4 variables
+dnl ----------------------------------------------------------------------------
+
+if test `expr -- [$]0 : "'.*"` = 0; then
+  TRI_CONFIGURE_COMMAND="$TRI_CONFIGURE_COMMAND '[$]0'"
+else 
+  TRI_CONFIGURE_COMMAND="$TRI_CONFIGURE_COMMAND [$]0"
+fi
+
+TRI_CONFIGURE_OPTIONS="$ac_configure_args"
+
+for var in CFLAGS CXXFLAGS CPPFLAGS LDFLAGS EXTRA_LDFLAGS_PROGRAM LIBS CC CXX; do
+  eval val=\$$var
+  if test -n "$val"; then
+    TRI_CONFIGURE_FLAGS="$TRI_CONFIGURE_FLAGS $var='$val'"
+  fi
+done
+
+AC_SUBST(TRI_CONFIGURE_COMMAND)
+AC_SUBST(TRI_CONFIGURE_OPTIONS)
+AC_SUBST(TRI_CONFIGURE_FLAGS)
+
+AC_DEFINE_UNQUOTED(TRI_CONFIGURE_COMMAND, "$TRI_CONFIGURE_COMMAND", "" , [configure command])
+AC_DEFINE_UNQUOTED(TRI_CONFIGURE_OPTIONS, "$TRI_CONFIGURE_OPTIONS", "" , [configure options])
+AC_DEFINE_UNQUOTED(TRI_CONFIGURE_FLAGS, "$TRI_CONFIGURE_FLAGS", "" , [configure flags])
+
+
+dnl ----------------------------------------------------------------------------
+dnl grab the git version number if available
+dnl ----------------------------------------------------------------------------
+
+if test -d ".git"; then
+  TRI_REPOSITORY_VERSION=`git describe --all --tags --long --abbrev=40 --dirty="-dirty" 2> /dev/null`
+else
+  TRI_REPOSITORY_VERSION=""
+fi
+
+AC_SUBST(TRI_REPOSITORY_VERSION)
+AC_DEFINE_UNQUOTED(TRI_REPOSITORY_VERSION, "$TRI_REPOSITORY_VERSION", "" , [repository version])
+
+
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================

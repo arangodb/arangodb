@@ -145,15 +145,15 @@ actions.defineHttp({
 /// @brief reloads the server authentication information
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/auth/reload",
-    context : "admin",
-    prefix : false,
-    callback : function (req, res) {
-      internal.reloadAuth();
-      actions.resultOk(req, res, actions.HTTP_OK);
-    }
-  });
+actions.defineHttp({
+  url : "_admin/auth/reload",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.reloadAuth();
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_routing_reloads
@@ -299,6 +299,7 @@ actions.defineHttp({
 actions.defineHttp({
   url : "_admin/statistics",
   context : "admin",
+  prefix : false,
 
   callback : function (req, res) {
     var result;
@@ -363,6 +364,7 @@ actions.defineHttp({
 actions.defineHttp({
   url : "_admin/statistics-description",
   context : "admin",
+  prefix : false,
 
   callback : function (req, res) {
     var result;
@@ -393,7 +395,8 @@ actions.defineHttp({
             group: "system",
             identifier: "userTime",
             name: "User Time",
-            description: "Amount of time that this process has been scheduled in user mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+            description: "Amount of time that this process has been scheduled in user mode, " + 
+                         "measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
             type: "accumulated",
             units: "seconds"
           },
@@ -402,7 +405,8 @@ actions.defineHttp({
             group: "system",
             identifier: "systemTime",
             name: "System Time",
-            description: "Amount of time that this process has been scheduled in kernel mode, measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
+            description: "Amount of time that this process has been scheduled in kernel mode, " +
+                         "measured in clock ticks divided by sysconf(_SC_CLK_TCK) aka seconds.",
             type: "accumulated",
             units: "seconds"
           },
@@ -420,7 +424,10 @@ actions.defineHttp({
             group: "system",
             identifier: "residentSize",
             name: "Resident Set Size",
-            description: "The number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out.",
+            description: "The number of pages the process has in real memory. " + 
+                         "This is just the pages which count toward text, data, or stack space. " +
+                         "This does not include pages which have not been demand-loaded in, " +
+                         "or which are swapped out.",
             type: "current",
             units: "bytes"
           },
@@ -438,7 +445,8 @@ actions.defineHttp({
             group: "system",
             identifier: "minorPageFaults",
             name: "Minor Page Faults",
-            description: "The number of minor faults the process has made which have not required loading a memory page from disk.",
+            description: "The number of minor faults the process has made which have " +
+                         "not required loading a memory page from disk.",
             type: "accumulated",
             units: "number"
           },
@@ -447,7 +455,8 @@ actions.defineHttp({
             group: "system",
             identifier: "majorPageFaults",
             name: "Major Page Faults",
-            description: "The number of major faults the process has made which have required loading a memory page from disk.",
+            description: "The number of major faults the process has made which have required " +
+                         "loading a memory page from disk.",
             type: "accumulated",
             units: "number"
           },

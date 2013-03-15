@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -47,6 +47,7 @@
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
 #include "VocBase/primary-collection.h"
+#include "VocBase/server-id.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/synchroniser.h"
@@ -87,7 +88,7 @@ static TRI_spin_t TickLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             COLLECTION DICTIONARY
+// --SECTION--                                             DICTIONARY FUNCTOIONS
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -192,12 +193,38 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 
   return TRI_EqualString(k, e->_name);
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a collection name from the global list of collections
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           VOCBASE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the memory associated with a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  TRI_DestroyReadWriteLock(&collection->_lock);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a collection name from the global list of collections
 ///
-/// this is called when a collection is dropped. it is necessary that the 
-/// caller also holds a write-lock using TRI_WRITE_LOCK_STATUS_VOCBASE_COL().
+/// This function is called when a collection is dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
@@ -284,7 +311,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   regex_t re;
   int res;
   size_t i;
-  
+
   collection = data;
   cid = 0;
 
@@ -346,18 +373,18 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       break;
     }
   }
- 
+
   // we need to clean up the pointers later so we insert it into this vector
   TRI_PushBackVectorPointer(&vocbase->_deadCollections, collection);
-  
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
+  // we are now done with the vocbase structure
+  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // .............................................................................
   // rename collection directory
   // .............................................................................
 
-  if (collection->_path != NULL) {
+  if (*collection->_path != '\0') {
     int regExpResult;
 
 #ifdef _WIN32
@@ -369,35 +396,34 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
 #endif
 
-    
-    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
+    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0);
 
     if (regExpResult == 0) {
       char const* first = collection->_path + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
-      
+
       char const* second = collection->_path + matches[2].rm_so;
       size_t secondLen = matches[2].rm_eo - matches[2].rm_so;
-      
+
       char* tmp1;
       char* tmp2;
       char* tmp3;
-   
+
       char* newFilename;
-      
+
       tmp1 = TRI_DuplicateString2(first, firstLen);
       tmp2 = TRI_DuplicateString2(second, secondLen);
       tmp3 = TRI_Concatenate2String("deleted-", tmp2);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-      
+
       newFilename = TRI_Concatenate2File(tmp1, tmp3);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp3);
-      
+
       res = TRI_RenameFile(collection->_path, newFilename);
-      
+
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s'",
                   collection->_name,
@@ -461,30 +487,49 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the path buffer allocated for a collection
+/// @brief get the server id filename
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void FreeCollectionPath (TRI_vocbase_col_t* const collection) {
-  if (collection->_path) {
-    TRI_Free(TRI_CORE_MEM_ZONE, (char*) collection->_path);
-  }
-  collection->_path = NULL;
+static char* GetServerIdFilename (TRI_vocbase_t* vocbase) {
+  char* filename = TRI_Concatenate2File(vocbase->_path, "SERVER");
+
+  return filename;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the memory associated with a collection
+/// @brief read / create the server id on startup
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
-  FreeCollectionPath(collection);
+static int ReadServerId (TRI_vocbase_t* vocbase) {
+  char* filename;
+  int res;
 
-  TRI_DestroyReadWriteLock(&collection->_lock);
+  filename = GetServerIdFilename(vocbase);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+  if (filename == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = TRI_ReadServerId(filename);
+  if (res == TRI_ERROR_FILE_NOT_FOUND) {
+    // id file does not yet exist. now create it
+    res = TRI_GenerateServerId();
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      // id was generated. now save it
+      res = TRI_WriteServerId(filename);
+    }
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
+///
+/// Caller must hold TRI_WRITE_LOCK_COLLECTIONS_VOCBASE.
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
@@ -495,44 +540,43 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   void const* found;
   TRI_vocbase_col_t* collection;
 
+  // create the init object
+  TRI_vocbase_col_t init = {
+    vocbase,
+    (TRI_col_type_t) type,
+    cid
+  };
+
+  init._status = TRI_VOC_COL_STATUS_CORRUPTED;
+  init._collection = NULL;
+
+  TRI_CopyString(init._name, name, sizeof(init._name));
+
+  if (path == NULL) {
+    init._path[0] = '\0';
+  }
+  else {
+    TRI_CopyString(init._path, path, sizeof(collection->_path));
+  }
+
   // create a new proxy
   collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
+
   if (collection == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
     return NULL;
   }
 
-  collection->_vocbase = vocbase;
-  collection->_type = (TRI_col_type_t) type;
-  TRI_CopyString(collection->_name, name, sizeof(collection->_name));
-  if (path == NULL) {
-    collection->_path = NULL;
-  }
-  else {
-    collection->_path = TRI_DuplicateString(path);
-    if (! collection->_path) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-  }
-
-  collection->_collection = NULL;
-  collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
-  collection->_cid = cid;
+  memcpy(collection, &init, sizeof(TRI_vocbase_col_t));
 
   // check name
-  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, name, collection, false);
+  found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name, collection, false);
 
   if (found != NULL) {
-    FreeCollectionPath(collection);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    LOG_ERROR("duplicate entry for collection name '%s'", collection->_name);
 
-    LOG_ERROR("duplicate entry for collection name '%s'", name);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     return NULL;
   }
 
@@ -540,18 +584,19 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsById, &cid, collection, false);
 
   if (found != NULL) {
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
-    FreeCollectionPath(collection);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
 
-    LOG_ERROR("duplicate collection identifier %llu for name '%s'", (unsigned long long) cid, name);
+    LOG_ERROR("duplicate collection identifier %llu for name '%s'",
+              (unsigned long long) collection->_cid, collection->_name);
+
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     return NULL;
   }
 
   TRI_InitReadWriteLock(&collection->_lock);
 
+  // this needs TRI_WRITE_LOCK_COLLECTIONS_VOCBASE
   TRI_PushBackVectorPointer(&vocbase->_collections, collection);
   return collection;
 }
@@ -581,10 +626,12 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     assert(name);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+
       // do not issue a notice about the "lock" file
       if (! TRI_EqualString(name, "lock")) {
         LOG_DEBUG("ignoring file/directory '%s'", name);
       }
+
       continue;
     }
 
@@ -596,10 +643,10 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
     if (TRI_IsDirectory(file)) {
       TRI_col_info_t info;
-  
+
       if (! TRI_IsWritable(file)) {
         // the collection directory we found is not writable for the current user
-        // this can cause serious trouble so we will abort the server start if we 
+        // this can cause serious trouble so we will abort the server start if we
         // encounter this situation
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
 
@@ -607,7 +654,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
       }
 
       // no need to lock as we are scanning
-      res = TRI_LoadCollectionInfo(file, &info);
+      res = TRI_LoadCollectionInfo(file, &info, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         TRI_UpdateTickVocBase(info._cid);
@@ -617,8 +664,12 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_COL_PARAMETER_FILE);
       }
       else if (info._deleted) {
+        // we found a collection that is marked as deleted.
+        // it depends on the configuration what will happen with these collections
+
         if (vocbase->_removeOnDrop) {
-          LOG_WARNING("collection '%s' was deleted, wiping it", name);
+          // deleted collections should be removed on startup. this is the default
+          LOG_DEBUG("collection '%s' was deleted, wiping it", name);
 
           res = TRI_RemoveDirectory(file);
 
@@ -627,6 +678,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           }
         }
         else {
+          // deleted collections shout not be removed on startup
           char* newFile;
           char* tmp1;
           char* tmp2;
@@ -655,6 +707,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         }
       }
       else {
+        // we found a collection that is still active
         TRI_col_type_e type = info._type;
 
         if (TRI_IS_DOCUMENT_COLLECTION(type)) {
@@ -669,7 +722,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
             regfree(&re);
             TRI_DestroyVectorString(&files);
             TRI_FreeCollectionInfoOptions(&info);
-            
+
             return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
           }
 
@@ -686,7 +739,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     else {
       LOG_DEBUG("ignoring non-directory '%s'", file);
     }
-    
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
   }
 
@@ -700,16 +753,15 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 /// @brief bears a new collection or returns an existing one by name
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase, 
+static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
                                                  char const* name,
                                                  TRI_col_type_e type) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
   TRI_vocbase_col_t* collection;
-  
+
   // check that the name does not contain any strange characters
   if (! TRI_IsAllowedCollectionName(false, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-
     return NULL;
   }
 
@@ -809,8 +861,7 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
     collection->_collection = &document->base;
-    FreeCollectionPath(collection);
-    collection->_path = TRI_DuplicateString(document->base.base._directory);
+    TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path));
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
@@ -829,8 +880,8 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 /// @brief finds a collection by name or creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
-                                                       char const* name, 
+static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase,
+                                                       char const* name,
                                                        TRI_col_type_e type) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
 
@@ -909,7 +960,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    
+
     return LoadCollectionVocBase(vocbase, collection);
   }
 
@@ -958,12 +1009,11 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
       collection->_collection = &document->base;
       collection->_status = TRI_VOC_COL_STATUS_LOADED;
-      FreeCollectionPath(collection);
-      collection->_path = TRI_DuplicateString(document->base.base._directory);
+      TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path));
 
       // release the WRITE lock and try again
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-    
+
       return LoadCollectionVocBase(vocbase, collection);
     }
     else {
@@ -1023,6 +1073,7 @@ bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
   char const* ptr;
   size_t length = 0;
 
+  // check allow characters: must start with letter or underscore if system is allowed
   for (ptr = name;  *ptr;  ++ptr) {
     if (length == 0) {
       if (allowSystem) {
@@ -1043,10 +1094,10 @@ bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
     ++length;
   }
 
-  if (length == 0 || length > 64) {
-    // invalid name length
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
     return false;
-  } 
+  }
 
   return true;
 }
@@ -1093,16 +1144,16 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
   uintptr_t g = (intptr_t) PageSize;
 
   char* b = (char*)( (p / g) * g );
-  char* e = (char*)( ((q + g - 1) / g) * g ); 
+  char* e = (char*)( ((q + g - 1) / g) * g );
   int result;
-  
+
   result = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
 
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(result);
     return false;
   }
-  return true;  
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1173,25 +1224,31 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
+  vocbase->_authInfoLoaded = false;
+
   vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
+  if (vocbase->_cursors == NULL) {
+    LOG_FATAL_AND_EXIT("cannot create cursors");
+  }
+
+  vocbase->_lockFile = lockFile;
+  vocbase->_path = TRI_DuplicateString(path);
 
   // init AQL functions
   vocbase->_functions = TRI_InitialiseFunctionsAql();
-  vocbase->_lockFile = lockFile;
-  vocbase->_path = TRI_DuplicateString(path);
 
   TRI_InitVectorPointer(&vocbase->_collections, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&vocbase->_deadCollections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitAssociativePointer(&vocbase->_collectionsById,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              HashKeyCid,
                              HashElementCid,
                              EqualKeyCid,
                              NULL);
 
   TRI_InitAssociativePointer(&vocbase->_collectionsByName,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              HashKeyCollectionName,
                              HashElementCollectionName,
                              EqualKeyCollectionName,
@@ -1200,7 +1257,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase, 1);
 
   TRI_InitAssociativePointer(&vocbase->_authInfo,
-                             TRI_CORE_MEM_ZONE, 
+                             TRI_CORE_MEM_ZONE,
                              HashKeyAuthInfo,
                              HashElementAuthInfo,
                              EqualKeyAuthInfo,
@@ -1211,7 +1268,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
-  
+
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
@@ -1219,11 +1276,15 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // .............................................................................
 
   // defaults
-  vocbase->_removeOnDrop = true;
-  vocbase->_removeOnCompacted = true;
-  vocbase->_defaultWaitForSync = false;    // default sync behavior for new collections
   vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
-  vocbase->_forceSyncShapes = true; // force sync of shape data to disk
+  vocbase->_defaultWaitForSync = false; // default sync behavior for new collections
+  vocbase->_forceSyncShapes    = true;  // force sync of shape data to disk
+  vocbase->_removeOnCompacted  = true;
+  vocbase->_removeOnDrop       = true;
+
+  if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
+    LOG_FATAL_AND_EXIT("reading/creating server id failed");
+  }
 
   // scan the database path for collections
   res = ScanPath(vocbase, vocbase->_path);
@@ -1242,7 +1303,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
     return NULL;
   }
-  
+
 
   // .............................................................................
   // vocbase is now active
@@ -1261,17 +1322,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
   TRI_StartThread(&vocbase->_compactor, "[compactor]", TRI_CompactorVocBase, vocbase);
-  
+
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, "[cleanup]", TRI_CleanupVocBase, vocbase);
-
-  // .............................................................................
-  // load auth information
-  // .............................................................................
-
-  TRI_LoadAuthInfo(vocbase);
-  TRI_DefaultAuthInfo(vocbase);
 
   // we are done
   return vocbase;
@@ -1283,7 +1337,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   size_t i;
-  
+
   // starts unloading of collections
   for (i = 0;  i < vocbase->_collections._length;  ++i) {
     TRI_vocbase_col_t* collection;
@@ -1291,14 +1345,14 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
     TRI_UnloadCollectionVocBase(vocbase, collection);
   }
-  
+
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = 2;
 
   // wait until synchroniser and compactor are finished
   TRI_JoinThread(&vocbase->_synchroniser);
   TRI_JoinThread(&vocbase->_compactor);
-  
+
   // this will signal the cleanup thread to do one last iteration
   vocbase->_state = 3;
   TRI_JoinThread(&vocbase->_cleanup);
@@ -1310,7 +1364,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     collection = (TRI_vocbase_col_t*) vocbase->_deadCollections._buffer[i];
     FreeCollection(vocbase, collection);
   }
-  
+
   // free collections
   for (i = 0;  i < vocbase->_collections._length;  ++i) {
     TRI_vocbase_col_t* collection;
@@ -1318,7 +1372,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
     FreeCollection(vocbase, collection);
   }
-  
+
   // free the auth info
   TRI_DestroyAuthInfo(vocbase);
 
@@ -1332,14 +1386,14 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // free AQL functions
   TRI_FreeFunctionsAql(vocbase->_functions);
-  
+
   // free the cursors
   TRI_FreeShadowStore(vocbase->_cursors);
 
   // release lock on database
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
- 
+
   TRI_FreeTransactionContext(vocbase->_transactionContext);
 
   // destroy locks
@@ -1350,7 +1404,16 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // free the filename path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load authentication information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LoadAuthInfoVocBase (TRI_vocbase_t* vocbase) {
+  vocbase->_authInfoLoaded = TRI_LoadAuthInfo(vocbase);
+
+  TRI_DefaultAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1380,26 +1443,29 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a collection name by a collection id
+/// @brief gets a collection name by a collection id
 ///
-/// the name is fetched under a lock to make this thread-safe. returns NULL if
-/// the collection does not exist
-/// it is the caller's responsibility to free the name returned
+/// The name is fetched under a lock to make this thread-safe. Returns NULL if
+/// the collection does not exist. It is the caller's responsibility to free the
+/// name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase, 
+char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
                                         const TRI_voc_cid_t id) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
   char* name;
 
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
   found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+
   if (found.v == NULL) {
     name = NULL;
   }
   else {
     name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found.c->_name);
   }
+
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   return name;
@@ -1413,7 +1479,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase, ch
   union { void const* v; TRI_vocbase_col_t* c; } found;
   const char c = *name;
 
-  // if collection name is passed as a stringified id, we'll use the lookupbyid function  
+  // if collection name is passed as a stringified id, we'll use the lookupbyid function
   // this is safe because collection names must not start with a digit
   if (c >= '0' && c <= '9') {
     return TRI_LookupCollectionByIdVocBase(vocbase, TRI_UInt64String(name));
@@ -1445,8 +1511,8 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_
 /// @brief finds a collection by name, optionally creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t* vocbase, 
-                                                          char const* name, 
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t* vocbase,
+                                                          char const* name,
                                                           const TRI_col_type_t type) {
   return FindCollectionByNameVocBase(vocbase, name, (TRI_col_type_e) type);
 }
@@ -1460,7 +1526,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t* vocbase
 /// but the functionality is not advertised
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, 
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_col_info_t* parameter,
                                                 TRI_voc_cid_t cid) {
   TRI_vocbase_col_t* collection;
@@ -1470,7 +1536,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_col_type_e type;
   char const* name;
   void const* found;
-  
+
   assert(parameter);
   name = parameter->_name;
 
@@ -1480,7 +1546,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
     return NULL;
   }
-  
+
   type = (TRI_col_type_e) parameter->_type;
 
   if (! TRI_IS_DOCUMENT_COLLECTION(type)) {
@@ -1544,9 +1610,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = primary;
-  FreeCollectionPath(collection);
-  collection->_path = TRI_DuplicateString(primary->base._directory);
-
+  TRI_CopyString(collection->_path, primary->base._directory, sizeof(collection->_path));
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
   return collection;
@@ -1606,7 +1670,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
   // release locks
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-  
+
   // wake up the cleanup thread
   TRI_LockCondition(&vocbase->_cleanupCondition);
   TRI_SignalCondition(&vocbase->_cleanupCondition);
@@ -1657,7 +1721,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     TRI_col_info_t info;
     char* tmpFile;
 
-    res = TRI_LoadCollectionInfo(collection->_path, &info);
+    res = TRI_LoadCollectionInfo(collection->_path, &info, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1669,7 +1733,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     if (tmpFile != NULL) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);
-        LOG_WARNING("removing dangling temporary file '%s'", tmpFile); 
+        LOG_WARNING("removing dangling temporary file '%s'", tmpFile);
       }
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmpFile);
     }
@@ -1677,9 +1741,9 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     if (! info._deleted) {
       info._deleted = true;
 
-      res = TRI_SaveCollectionInfo(collection->_path, &info);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
       TRI_FreeCollectionInfoOptions(&info);
-      
+
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
         return TRI_set_errno(res);
@@ -1687,7 +1751,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    
+
     UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1778,7 +1842,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // lock collection because we are going to change the name
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  // the must be done after the collection lock
+  // this must be done after the collection lock
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // cannot rename a corrupted collection
@@ -1820,7 +1884,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    res = TRI_LoadCollectionInfo(collection->_path, &info);
+    res = TRI_LoadCollectionInfo(collection->_path, &info, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1831,9 +1895,9 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
     TRI_CopyString(info._name, newName, sizeof(info._name));
 
-    res = TRI_SaveCollectionInfo(collection->_path, &info);
+    res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_forceSyncProperties);
     TRI_FreeCollectionInfoOptions(&info);
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1867,7 +1931,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
-  
+
   // .............................................................................
   // rename and release locks
   // .............................................................................
@@ -1913,7 +1977,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase, const T
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return NULL;
   }
-  
+
   // .............................................................................
   // try to load the collection
   // .............................................................................
@@ -2004,7 +2068,7 @@ void TRI_InitialiseVocBase () {
 #ifdef TRI_V8_VERSION
   LOG_TRACE("%s", "$Revision: V8 " TRI_V8_VERSION " $");
 #endif
-  
+
 #ifdef TRI_ICU_VERSION
   LOG_TRACE("%s", "$Revision: ICU " TRI_ICU_VERSION " $");
 #endif
@@ -2031,5 +2095,5 @@ void TRI_ShutdownVocBase () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

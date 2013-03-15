@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_APPLICATION_HTTP_SERVER_H
-#define TRIAGENS_HTTP_SERVER_APPLICATION_HTTP_SERVER_H 1
+#ifndef TRIAGENS_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H
+#define TRIAGENS_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
 
@@ -121,6 +121,14 @@ namespace triagens {
 
         HttpHandlerFactory* getHandlerFactory () const {
           return _handlerFactory;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether authentication is disabled
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAuthenticationDisabled () const {
+          return _disableAuthentication;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +249,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authentication callback function
 ////////////////////////////////////////////////////////////////////////////////
-                                              
+
         HttpHandlerFactory::auth_fptr _checkAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +273,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deprecated hidden option for downwards compatibility
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         string _httpPort;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +289,7 @@ namespace triagens {
 /// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 /// - unix:///path/to/socket - Unix domain socket endpoint
 ///
-/// If a TCP/IP endpoint is specified without a port number, then the default 
+/// If a TCP/IP endpoint is specified without a port number, then the default
 /// port (8529) will be used.
 /// If multiple endpoints need to be used, the option can be repeated multiple
 /// times.
@@ -309,7 +317,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableAuthentication;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeout for HTTP keep-alive
 ///
@@ -321,7 +329,7 @@ namespace triagens {
 /// the timeout is reached. A keep-alive-timeout value 0 will disable the keep
 /// alive feature entirely.
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         double _keepAliveTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +340,7 @@ namespace triagens {
 /// Allows to specify the size of the backlog for the listen system call
 /// The default value is 10. The maximum value is platform-dependent.
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         int _backlogSize;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,7 +349,7 @@ namespace triagens {
 /// @CMDOPT{\--server.keyfile @CA{filename}}
 ///
 /// If SSL encryption is used, this option must be used to specify the filename
-/// of the server private key. The file must be PEM formatted and contain both 
+/// of the server private key. The file must be PEM formatted and contain both
 /// the certificate and the server's private key.
 ///
 /// The file specified by @CA{filename} should have the following structure:
@@ -349,16 +357,16 @@ namespace triagens {
 /// @verbinclude server-keyfile
 ///
 /// You may use certificates issued by a Certificate Authority or self-signed
-/// certificates. Self-signed certificates can be created by a tool of your 
-/// choice. When using OpenSSL for creating the self-signed certificate, the 
+/// certificates. Self-signed certificates can be created by a tool of your
+/// choice. When using OpenSSL for creating the self-signed certificate, the
 /// following commands should create a valid keyfile:
-/// 
+///
 /// @verbinclude server-keyfile-openssl
 ///
 /// For further information please check the manuals of the tools you use to
 /// create the certificate.
 ///
-/// Note: the \-\-server.keyfile option must be set if the server is started with 
+/// Note: the \-\-server.keyfile option must be set if the server is started with
 /// at least one SSL endpoint.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -371,7 +379,7 @@ namespace triagens {
 ///
 /// This option can be used to specify a file with CA certificates that are sent
 /// to the client whenever the server requests a client certificate. If the
-/// file is specified, The server will only accept client requests with 
+/// file is specified, The server will only accept client requests with
 /// certificates issued by these CAs. Do not specify this option if you want
 /// clients to be able to connect without specific certificates.
 ///
@@ -387,7 +395,7 @@ namespace triagens {
 ///
 /// @CMDOPT{\--server.ssl-protocol @CA{value}}
 ///
-/// Use this option to specify the default encryption protocol to be used. 
+/// Use this option to specify the default encryption protocol to be used.
 /// The following variants are available:
 /// - 1: SSLv2
 /// - 2: SSLv23
@@ -421,7 +429,7 @@ namespace triagens {
 ///
 /// @CMDOPT{\--server.ssl-options @CA{value}}
 ///
-/// This option can be used to set various SSL-related options. Individual 
+/// This option can be used to set various SSL-related options. Individual
 /// option values must be combined using bitwise OR.
 ///
 /// Which options are available on your platform is determined by the OpenSSL
@@ -430,9 +438,9 @@ namespace triagens {
 ///
 /// @verbinclude openssl-options
 ///
-/// A description of the options can be found online in the OpenSSL documentation 
+/// A description of the options can be found online in the OpenSSL documentation
 /// at: http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html
-/// 
+///
 /// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -440,21 +448,21 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl cipher list to use
-/// 
+///
 /// @CMDOPT{\--server.ssl-cipher-list @CA{cipher-list}}
 ///
 /// This option can be used to restrict the server to certain SSL ciphers only,
 /// and to define the relative usage preference of SSL ciphers.
 ///
 /// The format of @CA{cipher-list} is documented in the OpenSSL documentation.
-///  
-/// To check which ciphers are available on your platform, you may use the 
+///
+/// To check which ciphers are available on your platform, you may use the
 /// following shell command:
-/// 
+///
 /// @verbinclude openssl-ciphers
 ///
 /// The default value for @CA{cipher-list} is "ALL".
-/// 
+///
 /// Note: this option is only relevant if at least one SSL endpoint is used.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -489,5 +497,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

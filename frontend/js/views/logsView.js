@@ -134,14 +134,15 @@ var logsView = Backbone.View.extend({
   },
   render: function() {
     $(this.el).html(this.template.text);
+    $.gritter.removeAll();
     return this;
   },
   renderPagination: function (totalPages, currentPage) {
     var self = this;
     var target = $('#logtestdiv'),
     options = {
-      left: 1,
-      right: 1,
+      left: 2,
+      right: 2,
       page: currentPage,
       lastPage: totalPages,
       click: function(i) {
@@ -160,6 +161,8 @@ var logsView = Backbone.View.extend({
       }
     };
     target.pagination(options);
+    $('#logtestdiv').prepend('<ul class="prePagi"><li><a id="logTableID_first"><i class="icon icon-step-backward"></i></a></li></ul>');
+    $('#logtestdiv').append('<ul class="lasPagi"><li><a id="logTableID_last"><i class="icon icon-step-forward"></i></a></li></ul>');
   },
   drawTable: function () {
     var self = this;

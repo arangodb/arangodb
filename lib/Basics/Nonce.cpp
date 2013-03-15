@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Nonce.h"
@@ -32,6 +32,8 @@
 
 #include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RandomGenerator.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::basics;
 
@@ -62,9 +64,9 @@ namespace triagens {
   namespace basics {
     namespace Nonce {
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // static functions
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       void create (size_t size) {
         if (SizeNonces < 64) {
@@ -89,15 +91,60 @@ namespace triagens {
 
 
       void destroy () {
-        delete[] TimestampNonces;
+        if (TimestampNonces != 0) {
+          delete[] TimestampNonces;
+        }
       }
 
 
+      string createNonce () {
+        uint32_t timestamp = time(0);
+        uint32_t rand1 = Random::interval(0U, UINT32_MAX);
+        uint32_t rand2 = Random::interval(0U, UINT32_MAX);
+
+        uint8_t buffer[12];
+
+        buffer[0] = (timestamp >> 24) & 0xFF;
+        buffer[1] = (timestamp >> 16) & 0xFF;
+        buffer[2] = (timestamp >>  8) & 0xFF;
+        buffer[3] = (timestamp      ) & 0xFF;
+
+        memcpy(buffer + 4, &rand1, 4);
+        memcpy(buffer + 8, &rand2, 4);
+
+        return StringUtils::encodeBase64U(string((char*) buffer, 12));
+      }
+
+      bool checkAndMark (string const& nonce) {
+
+        if (nonce.length() != 12) {
+          return false;
+        }
+
+        uint8_t const* buffer = (uint8_t const*) nonce.c_str();
+
+        uint32_t timestamp = (uint32_t(buffer[0]) << 24)
+                         | (uint32_t(buffer[1]) << 16)
+                         | (uint32_t(buffer[2]) <<  8)
+                         |  uint32_t(buffer[3]);
+
+        uint64_t random = (uint64_t(buffer[ 4]) << 56)
+                      | (uint64_t(buffer[ 5]) << 48)
+                      | (uint64_t(buffer[ 6]) << 40)
+                      | (uint64_t(buffer[ 7]) << 32)
+                      | (uint64_t(buffer[ 8]) << 24)
+                      | (uint64_t(buffer[ 9]) << 16)
+                      | (uint64_t(buffer[10]) << 8)
+                      |  uint64_t(buffer[11]);
+
+        return checkAndMark(timestamp, random);
+      }
 
       bool checkAndMark (uint32_t timestamp, uint64_t random) {
         MUTEX_LOCKER(MutexNonce);
 
         if (TimestampNonces == 0) {
+          LOGGER_INFO("setting nonce hash size to '" << SizeNonces << "'" );
           create(SizeNonces);
         }
 

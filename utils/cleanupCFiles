@@ -1,0 +1,331 @@
+#!/usr/bin/perl
+################################################################################
+### @brief updates preamble of C/C++ files
+###
+### @file
+###
+### DISCLAIMER
+###
+### Copyright holder is triAGENS GmbH, Cologne, Germany
+###
+### @author Dr. Frank Celler
+### @author Copyright 2009-2010, triAGENS GmbH, Cologne, Germany
+################################################################################
+
+eval 'exec /usr/bin/perl -S $0 ${1+"$@"}'
+    if $running_under_some_shell;
+                        # this emulates #! processing on NIH machines.
+                        # (remove #! line above if indigestible)
+
+use File::Spec;
+
+use strict;
+use File::Slurp;
+
+my $year = `date +%Y`;
+chomp $year;
+
+################################################################################
+### @brief loop over all files
+################################################################################
+
+my $dryRun = 0;
+my $disclaimer =
+    "/// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+  . "/// you may not use this file except in compliance with the License.\n"
+  . "/// You may obtain a copy of the License at\n"
+  . "///\n"
+  . "///     http://www.apache.org/licenses/LICENSE-2.0\n"
+  . "///\n"
+  . "/// Unless required by applicable law or agreed to in writing, software\n"
+  . "/// distributed under the License is distributed on an \"AS IS\" BASIS,\n"
+  . "/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"
+  . "/// See the License for the specific language governing permissions and\n"
+  . "/// limitations under the License.\n";
+
+while (@ARGV) {
+  my $file = shift @ARGV;
+
+  if ($file eq '-n' || $file eq '--dry-run') {
+    $dryRun = 1;
+    next;
+  }
+  elsif ($file eq '-d' || $file eq '--disclaimer') {
+    my $path = shift @ARGV;
+
+    $disclaimer = read_file($path);
+    next;
+  }
+
+  formatFile($file, $disclaimer, $dryRun);
+}
+
+################################################################################
+### @brief formats the preamble
+################################################################################
+
+sub formatFile ($$$) {
+  my ($file, $disclaimerText, $dryRun) = @_;
+
+  # -----------------------------------------------------------------------------
+  # state definition
+  # -----------------------------------------------------------------------------
+
+  # set to true, if we see a @file, @auther, DISCLAIMER
+  my $headerSeen = 0;
+
+  # set to true, if we see a @file
+  my $fileSeen = 0;
+
+  # set to true, if we see a @author
+  my $authorSeen = 0;
+
+  # set to true, if we see a DISCLAIMER
+  my $disclaimerSeen = 0;
+
+  # set to true, if we handled the DISCLAIMER
+  my $disclaimerDone = 0;
+
+  # set to true, if we see a "@author Copyright"
+  my $copyrightSeen = 0;
+
+  # set to true, if we see a "Copyright holder"
+  my $holderSeen = 0;
+
+  # set to true, if we processing a header file
+  my $isHeaderFile = 0;
+
+  # set to true, if we processing a JavaScript file
+  my $isJavaScript = 0;
+
+  # set to true, if we have seen the preamble
+  my $preambleDone = 0;
+
+  # set to true, if we are at a break line (80 times /)
+  my $breakLine = 0;
+
+  # 0 = before guard, 1 = after seen a break line, 2 = after seen guard define
+  my $guard = 0;
+
+  # -----------------------------------------------------------------------------
+  # guard
+  # -----------------------------------------------------------------------------
+
+  # name of the "ifdef" guard
+  my $guardName = "";
+
+  # -----------------------------------------------------------------------------
+  # examine the filename and path
+  # -----------------------------------------------------------------------------
+
+  my $absPath = File::Spec->rel2abs($file);
+  $absPath =~ s:\.|-|\+:_:g;
+  $absPath =~ s/([a-z])([A-Z])/\1_\2/g;
+  $absPath = uc($absPath);
+
+  my @absParts = split(/\//, $absPath);
+  my $filename = $absParts[@absParts - 1];
+
+  if ($filename =~ /\_H$/) {
+    $isHeaderFile = 1;
+
+    my $u = $filename;
+    my $m = "";
+    my $c = "";
+
+    if (@absParts > 1) {
+      $m = $absParts[@absParts - 2];
+    }
+
+    if (@absParts > 2) {
+      $c = $absParts[@absParts - 3];
+    }
+
+    $guardName = "TRIAGENS_" . $m . "_" . $u;
+
+    print STDERR "INFO guard name is $guardName\n";
+  }
+
+  if ($filename =~ /\_JS$/) {
+    $isJavaScript = 1;
+  }
+
+  print STDERR "INFO processing $file ($absPath)\n";
+
+  # -----------------------------------------------------------------------------
+  # load and process file
+  # -----------------------------------------------------------------------------
+
+  open(IN, "< $file") 
+    || die "cannot open input file '$file'";
+
+  my $out = *STDOUT;
+
+  if (! $dryRun) {
+    open($out, "> $file.new")
+      || die "cannot open output file '$file.new'";
+  }
+
+  while (<IN>) {
+    chomp;
+
+    $_ =~ s/\r$//;
+    $_ =~ s/[ \t]*$//;
+
+    my $line = $_;
+    $breakLine = 0;
+
+    if ($line eq '/// @author Dr. O') {
+      $line = '/// @author Dr. Oreste Costa-Panaia';
+    }
+
+    if ($line =~ /\/\/ outline-regexp:/) {
+      if ($isJavaScript == 1) {
+	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
+      }
+      else {
+	$line = '// outline-regexp: "/// @brief\\\\|/// {@inheritDoc}\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}"';
+      }
+    }
+
+    if ($line =~ /^[ \t]*(\/\/\/.*)$/) {
+      $line = "$1";
+    }
+
+    if ($line =~ /^[ \t]*(\/\/ --.*)$/) {
+      $line = "$1";
+    }
+
+    if ($isJavaScript == 0) {
+      if ($line =~ /^#include <((Admin|ApplicationServer|Basics|BasicsC|Dipatcher|GeneralServer|GeoIndex|Handler|Hpdf|HttpServer|JsonParserX|LineClient|LineServer|Logger|Rest|ResultGenerator|Scheduler|Server|Session|SessionVoc|Snapshot|Variant|VocBase)\/.*)>/) {
+	$line = "#include \"$1\"";
+      }
+    }
+
+    if (! $preambleDone) {
+      if ($line =~ /^\/\/\/ \@file/) {
+	$headerSeen = 1;
+	$fileSeen = 1;
+      }
+      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)/) {
+        my $y = $1;
+	$headerSeen = 1;
+	$copyrightSeen = 1;
+
+	if ($y != $year) {
+	  $line = "/// \@author Copyright $y-$year, triAGENS GmbH, Cologne, Germany";
+        }
+      }
+      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)-(\d\d\d\d)/) {
+        my $y1 = $1;
+        my $y2 = $2;
+	$headerSeen = 1;
+	$copyrightSeen = 1;
+
+	if ($y2 != $year) {
+	  $line = "/// \@author Copyright $y1-$year, triAGENS GmbH, Cologne, Germany";
+        }
+      }
+      elsif ($line =~ /^\/\/\/ \@author Copyright/) {
+	die "cannot parse copyright line '$line'";
+      }
+      elsif ($line =~ /^\/\/\/ \@author/) {
+	$headerSeen = 1;
+	$authorSeen = 1;
+
+	if ($line =~ /^\/\/\/ \@author ([^,]*),.*/) {
+	  $line = "/// \@author $1";
+	}
+      }
+      elsif ($line =~ /^\/\/\/ DISCLAIMER/) {
+	$headerSeen = 1;
+	$disclaimerSeen = 1;
+      }
+      elsif ($line =~ /^\/\/\/ Copyright holder is /) {
+	$headerSeen = 1;
+	$holderSeen = 1;
+	next;
+      }
+      elsif ($line =~ /^\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/*$/) {
+	$line = "////////////////////////////////////////////////////////////////////////////////";
+	$breakLine = 1;
+	$guard = 1;
+      }
+    }
+
+    if ($authorSeen && ! $copyrightSeen && $breakLine) {
+      print $out "/// \@author Copyright $year, triAGENS GmbH, Cologne, Germany\n";
+      $copyrightSeen = 1;
+    }
+
+    if ($disclaimerSeen && ! $holderSeen) {
+      next;
+    }
+
+    if (! $disclaimerDone && $disclaimerSeen && $holderSeen && ! $authorSeen && $line =~ /^\/\/\/ *$/) {
+      next;
+    }
+
+    if (! $disclaimerDone) {
+      if (($authorSeen && ! $disclaimerSeen) || $holderSeen) {
+	print $out "/// DISCLAIMER\n";
+	print $out "///\n";
+	print $out "/// Copyright 2004-$year triAGENS GmbH, Cologne, Germany\n";
+	print $out "///\n";
+	print $out "$disclaimerText";
+	print $out "///\n";
+	print $out "/// Copyright holder is triAGENS GmbH, Cologne, Germany\n";
+	print $out "///\n";
+
+	$disclaimerDone = 1;
+      }
+    }
+
+    if ($isHeaderFile) {
+      if ($guard == 1 && $line =~ /^#ifndef/) {
+        $line = "#ifndef $guardName";
+        $guard = 2;
+      }
+
+      if ($guard == 2 && $line =~ /^#define/) {
+        $line = "#define $guardName 1";
+        $guard = 0;
+	$preambleDone = 1;
+      }
+    }
+
+    if (! $dryRun || ! $preambleDone) {
+      print $out "$line\n";
+    }
+  }
+
+  if (! $dryRun) {
+    close($out)
+      || die "cannot close output file '$file.new'";
+
+    system("cmp", "-s", "$file", "$file.new");
+
+    if ($? == -1) {
+      die "failed to execute cmp command";
+    }
+
+    my $r = $? >> 8;
+
+    if ($r == 0) {
+      print STDERR "INFO no change in file '$file'\n";
+      unlink("$file.new");
+    }
+    elsif ($r == 1) {
+      print STDERR "INFO updating file '$file'\n";
+
+      rename("$file", "$file.old")
+	|| die "cannot rename input file '$file' to '$file.old'";
+
+      rename("$file.new", "$file")
+	|| die "cannot rename formatted file '$file.new' to '$file'";
+    }
+    else {
+      die "cmp returned $r";
+    }
+  }
+}

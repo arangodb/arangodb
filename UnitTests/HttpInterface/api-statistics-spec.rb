@@ -10,23 +10,23 @@ describe ArangoDB do
 
 
 ################################################################################
-## check requests-statistics availability
+## check statistics-description availability
 ###############################################################################
   
-    it "testing requests-statistics correct cmd" do 
-      cmd = "/_admin/request-statistics"
-      doc = ArangoDB.log_post("#{prefix}", cmd) 
+    it "testing statistics-description correct cmd" do 
+      cmd = "/_admin/statistics-description"
+      doc = ArangoDB.log_get("#{prefix}", cmd) 
   
       doc.code.should eq(200)
     end
 
 ################################################################################
-## check requests-statistics for wrong user interaction
+## check statistics-description for wrong user interaction
 ###############################################################################
 
-    it "testing requests-statistics wrong cmd" do 
-      cmd = "/_admin/request-statistics/asd123"
-      doc = ArangoDB.log_post("#{prefix}", cmd) 
+    it "testing statistics-description wrong cmd" do 
+      cmd = "/_admin/statistics-description/asd123"
+      doc = ArangoDB.log_get("#{prefix}", cmd) 
    
       doc.code.should eq(501)
       doc.parsed_response['error'].should eq(true)
@@ -34,23 +34,23 @@ describe ArangoDB do
     end
 
 ################################################################################
-## check requests-statistics availability
+## check statistics availability
 ###############################################################################
 
-    it "testing connection-statistics correct cmd" do 
-      cmd = "/_admin/connection-statistics"
-      doc = ArangoDB.log_post("#{prefix}", cmd) 
+    it "testing statistics correct cmd" do 
+      cmd = "/_admin/statistics"
+      doc = ArangoDB.log_get("#{prefix}", cmd) 
   
       doc.code.should eq(200)
     end
 
 ################################################################################
-## check requests-connection for wrong user interaction
+## check statistics for wrong user interaction
 ###############################################################################
 
-    it "testing connection-statistics wrong cmd" do 
-      cmd = "/_admin/connection-statistics/asd123"
-      doc = ArangoDB.log_post("#{prefix}", cmd) 
+    it "testing statistics wrong cmd" do 
+      cmd = "/_admin/statistics/asd123"
+      doc = ArangoDB.log_get("#{prefix}", cmd) 
    
       doc.code.should eq(501)
       doc.parsed_response['error'].should eq(true)

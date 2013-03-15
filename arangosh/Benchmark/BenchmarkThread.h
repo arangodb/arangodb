@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BENCHMARK_BENCHMARK_THREAD_H
@@ -49,7 +49,7 @@ using namespace triagens::rest;
 
 namespace triagens {
   namespace arangob {
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class BenchmarkThread
 // -----------------------------------------------------------------------------
@@ -74,40 +74,45 @@ namespace triagens {
         BenchmarkThread (BenchmarkOperation* operation,
                          ConditionVariable* condition,
                          void (*callback) (),
-                         int threadNumber, 
+                         int threadNumber,
                          const unsigned long batchSize,
                          BenchmarkCounter<unsigned long>* operationsCounter,
-                         Endpoint* endpoint, 
-                         const string& username, 
-                         const string& password) 
-          : Thread("arangob"), 
+                         Endpoint* endpoint,
+                         const string& username,
+                         const string& password,
+                         double requestTimeout,
+                         double connectTimeout)
+          : Thread("arangob"),
             _operation(operation),
             _startCondition(condition),
             _callback(callback),
             _threadNumber(threadNumber),
             _batchSize(batchSize),
+            _warningCount(0),
             _operationsCounter(operationsCounter),
             _endpoint(endpoint),
             _username(username),
             _password(password),
+            _requestTimeout(requestTimeout),
+            _connectTimeout(connectTimeout),
             _client(0),
             _connection(0),
             _offset(0),
             _counter(0),
             _time(0.0) {
-            
+
           _errorHeader = StringUtils::tolower(HttpResponse::getBatchErrorHeader());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the benchmark thread
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         ~BenchmarkThread () {
           if (_client != 0) {
             delete _client;
           }
-          
+
           if (_connection != 0) {
             delete _connection;
           }
@@ -135,10 +140,9 @@ namespace triagens {
         virtual void run () {
           allowAsynchronousCancelation();
 
-          _connection = GeneralClientConnection::factory(_endpoint, 10.0, 10.0, 3);
+          _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3);
           if (_connection == 0) {
-            cerr << "out of memory" << endl;
-            exit(EXIT_FAILURE);
+            LOGGER_FATAL_AND_EXIT("out of memory");
           }
 
           _client = new SimpleHttpClient(_connection, 10.0, true);
@@ -146,59 +150,33 @@ namespace triagens {
 
           // test the connection
           map<string, string> headerFields;
-          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, 
-                                                      "/_api/version", 
-                                                      0, 
-                                                      0, 
+          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET,
+                                                      "/_api/version",
+                                                      0,
+                                                      0,
                                                       headerFields);
-  
+
           if (! result || ! result->isComplete()) {
             if (result) {
               delete result;
             }
-            cerr << "could not connect to server" << endl;
-            exit(EXIT_FAILURE);
+
+            LOGGER_FATAL_AND_EXIT("could not connect to server");
           }
 
           delete result;
 
 
-          // if we're the first thread, wipe the existing collection
-          if (_threadNumber == 0 && _operation->useCollection()) {
-            result = _client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                      "/_api/collection/" + _operation->collectionName(),
-                                      "",
-                                      0, 
-                                      headerFields); 
-
-            if (result == 0 || (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 404)) {
-              cerr << "could not wipe existing collection " << _operation->collectionName() << endl;
-              exit(EXIT_FAILURE);
-            }
-            else {
-              delete result;
-            }
-            
-            // now create the collection
-            string payload = "{\"name\":\"" + _operation->collectionName() + "\"}";
-            result = _client->request(HttpRequest::HTTP_REQUEST_POST,
-                                      "/_api/collection",
-                                      payload.c_str(),
-                                      payload.size(), 
-                                      headerFields); 
-
-            if (result == 0 || (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 201)) {
-              cerr << "could not create collection " << _operation->collectionName() << endl;
-              exit(EXIT_FAILURE);
-            }
-            else {
-              delete result;
+          // if we're the first thread, set up the test
+          if (_threadNumber == 0) {
+            if (! _operation->setUp(_client)) {
+              LOGGER_FATAL_AND_EXIT("could not set up the test");
             }
           }
 
           _callback();
- 
-          // wait for start condition to be broadcasted 
+
+          // wait for start condition to be broadcasted
           {
             ConditionLocker guard(_startCondition);
             guard.wait();
@@ -213,7 +191,7 @@ namespace triagens {
 
             if (_batchSize < 1) {
               executeSingleRequest();
-            } 
+            }
             else {
               executeBatchRequest(numOps);
             }
@@ -229,7 +207,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Client
+/// @addtogroup Benchmark
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -251,7 +229,7 @@ namespace triagens {
             batchPayload.appendText("Content-Type: ", 14);
             batchPayload.appendText(HttpRequest::getPartContentType());
             batchPayload.appendText("\r\n\r\n", 4);
-            
+
             // everything else (i.e. part request header & body) will get into the body
             const size_t threadCounter = _counter++;
             const size_t globalCounter = _offset + threadCounter;
@@ -261,7 +239,7 @@ namespace triagens {
             const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
             const map<string, string>& headers = _operation->headers();
             const HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
-          
+
             // headline, e.g. POST /... HTTP/1.1
             HttpRequest::appendMethod(type, &batchPayload);
             batchPayload.appendText(url + " HTTP/1.1\r\n");
@@ -270,7 +248,7 @@ namespace triagens {
               batchPayload.appendText((*it).first + ": " + (*it).second + "\r\n");
             }
             batchPayload.appendText("\r\n", 2);
-            
+
             // body
             batchPayload.appendText(payload, payloadLength);
             batchPayload.appendText("\r\n", 2);
@@ -282,9 +260,9 @@ namespace triagens {
 
           // end of MIME
           batchPayload.appendText("--" + boundary + "--\r\n");
-          
+
           map<string, string> batchHeaders;
-          batchHeaders["Content-Type"] = HttpRequest::getMultipartContentType() + 
+          batchHeaders["Content-Type"] = HttpRequest::getMultipartContentType() +
                                          "; boundary=" + boundary;
 
           Timing timer(Timing::TI_WALLCLOCK);
@@ -295,13 +273,21 @@ namespace triagens {
                                                       batchHeaders);
           _time += ((double) timer.time()) / 1000000.0;
 
-          if (result == 0) {
+          if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(numOperations);
             return;
           }
 
-          if (result->getHttpReturnCode() >= 400) { 
+          if (result->getHttpReturnCode() >= 400) {
             _operationsCounter->incFailures(numOperations);
+
+            _warningCount++;
+            if (_warningCount < MaxWarnings) {
+              LOGGER_WARNING("batch operation failed with HTTP code " << result->getHttpReturnCode());
+            }
+            else if (_warningCount == MaxWarnings) {
+              LOGGER_WARNING("...more warnings...");
+            }
           }
           else {
             const std::map<string, string>& headers = result->getHeaderFields();
@@ -326,6 +312,8 @@ namespace triagens {
           const string url = _operation->url(_threadNumber, threadCounter, globalCounter);
           size_t payloadLength = 0;
           bool mustFree = false;
+
+          // std::cout << "thread number #" << _threadNumber << ", threadCounter " << threadCounter << ", globalCounter " << globalCounter << "\n";
           const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
           const map<string, string>& headers = _operation->headers();
 
@@ -336,18 +324,26 @@ namespace triagens {
                                                       payloadLength,
                                                       headers);
           _time += ((double) timer.time()) / 1000000.0;
-            
+
           if (mustFree) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
           }
 
-          if (result == 0) {
+          if (result == 0 || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
             return;
           }
 
           if (result->getHttpReturnCode() >= 400) {
             _operationsCounter->incFailures(1);
+
+            _warningCount++;
+            if (_warningCount < MaxWarnings) {
+              LOGGER_WARNING("request for URL " << url << " failed with HTTP code " << result->getHttpReturnCode());
+            }
+            else if (_warningCount == MaxWarnings) {
+              LOGGER_WARNING("...more warnings...");
+            }
           }
           delete result;
         }
@@ -361,7 +357,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Client
+/// @addtogroup Benchmark
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -392,7 +388,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Client
+/// @addtogroup Benchmark
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -429,6 +425,12 @@ namespace triagens {
         const unsigned long _batchSize;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief warning counter
+////////////////////////////////////////////////////////////////////////////////
+
+        int _warningCount;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief benchmark counter
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -451,6 +453,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const string _password;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the request timeout (in s)
+////////////////////////////////////////////////////////////////////////////////
+
+        double _requestTimeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the connection timeout (in s)
+////////////////////////////////////////////////////////////////////////////////
+
+        double _connectTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief underlying client
@@ -488,6 +502,12 @@ namespace triagens {
 
         string _errorHeader;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of warnings to be displayed per thread
+////////////////////////////////////////////////////////////////////////////////
+
+        static const int MaxWarnings = 5;
+
     };
   }
 }
@@ -504,5 +524,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

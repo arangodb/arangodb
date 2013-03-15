@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ListenTask.h"
@@ -37,7 +37,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#endif 
+#endif
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -68,7 +68,7 @@ ListenTask::ListenTask (Endpoint* endpoint, bool reuseAddress)
     _endpoint(endpoint),
     acceptFailures(0) {
   _listenSocket.fileHandle = 0;
-  _listenSocket.fileDescriptor = 0;  
+  _listenSocket.fileDescriptor = 0;
   bindSocket();
 }
 
@@ -85,7 +85,7 @@ ListenTask::~ListenTask () {
 
 bool ListenTask::isBound () const {
   MUTEX_LOCKER(changeLock);
-  
+
   return _endpoint != 0 && _endpoint->isConnected();
 }
 
@@ -102,7 +102,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
     return true;
   }
 
-  
+
 #ifdef _WIN32
   // ..........................................................................
   // The problem we have here is that this opening of the fs handle may fail.
@@ -135,7 +135,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _listenSocket);
-  
+
   if (readWatcher == -1) {
     return false;
   }
@@ -161,34 +161,34 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
     }
-    
+
     sockaddr_in addr;
     socklen_t len = sizeof(addr);
-    
+
     memset(&addr, 0, sizeof(addr));
-    
+
     // accept connection
     TRI_socket_t connectionSocket;
     connectionSocket.fileDescriptor = 0;
     connectionSocket.fileHandle = accept(_listenSocket.fileHandle, (sockaddr*) &addr, &len);
-    
+
     if (connectionSocket.fileHandle == INVALID_SOCKET) {
       ++acceptFailures;
-      
+
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
         LOGGER_WARNING("accept failed with " << errno << " (" << strerror(errno) << ")");
       }
       else if (acceptFailures == MAX_ACCEPT_ERRORS) {
         LOGGER_ERROR("too many accept failures, stopping logging");
       }
-      
+
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
+
       return true;
     }
-    
+
     acceptFailures = 0;
-    
+
     struct sockaddr_in addr_out;
     socklen_t len_out = sizeof(addr_out);
 
@@ -196,16 +196,16 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 
     if (res != 0) {
       TRI_CLOSE_SOCKET(connectionSocket);
-      
+
       LOGGER_WARNING("getsockname failed with " << errno << " (" << strerror(errno) << ")");
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
+
       return true;
     }
- 
-    // disable nagle's algorithm, set to non-blocking and close-on-exec  
-    bool result = _endpoint->initIncoming(connectionSocket); 
+
+    // disable nagle's algorithm, set to non-blocking and close-on-exec
+    bool result = _endpoint->initIncoming(connectionSocket);
     if (!result) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
@@ -221,7 +221,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     if (getnameinfo((sockaddr*) &addr, len,
                     host, sizeof(host),
                     serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-      
+
       info.clientAddress = string(host);
       info.clientPort = addr.sin_port;
     }
@@ -229,13 +229,13 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       info.clientAddress = inet_ntoa(addr.sin_addr);
       info.clientPort = addr.sin_port;
     }
-    
+
     info.serverAddress = _endpoint->getHost();
     info.serverPort = _endpoint->getPort();
-    
+
     return handleConnected(connectionSocket, info);
   }
-  
+
   return true;
 }
 
@@ -248,6 +248,6 @@ bool ListenTask::bindSocket () {
   if (_listenSocket.fileHandle == 0) {
     return false;
   }
-  
+
   return true;
 }

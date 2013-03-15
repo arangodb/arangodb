@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2007-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LoggerInfo.h"
@@ -216,11 +216,11 @@ Info::Info (const Info& originalInfo) {
   _position._function      = originalInfo._position._function;
   _position._line          = originalInfo._position._line;
   _measure._unit           = originalInfo._measure._unit;
-  _measure._value          = originalInfo._measure._value;   
+  _measure._value          = originalInfo._measure._value;
   _extras.clear();
   for (vector<Extra>::const_iterator i = originalInfo._extras.begin(); i != originalInfo._extras.end(); ++i) {
-    _extras.push_back(Extra((*i)._position, (*i)._name));  
-  } 
+    _extras.push_back(Extra((*i)._position, (*i)._name));
+  }
   _userIdentifier._user    = originalInfo._userIdentifier._user;
   _prefix                  = originalInfo._prefix;
 }
@@ -231,5 +231,5 @@ Info::Info (const Info& originalInfo) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

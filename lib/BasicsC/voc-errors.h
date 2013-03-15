@@ -39,6 +39,8 @@ extern "C" {
 ///   Will be raised when there is a memory shortage.
 /// - 13: @LIT{csv is corrupt}
 ///   Will be raised when encountering a corrupt csv line.
+/// - 14: @LIT{file not found}
+///   Will be raised when a file is not found.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -152,6 +154,8 @@ extern "C" {
 /// - 1224: @LIT{database directory not writable}
 ///   Will be raised when the database directory is not writable for the
 ///   current user.
+/// - 1225: @LIT{out of keys}
+///   Will be raised when a key generator runs out of keys.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -276,6 +280,18 @@ extern "C" {
 ///   Will be raised when the edge could not be created
 /// - 1908: @LIT{could not change edge}
 ///   Will be raised when the edge could not be changed
+/// - 1951: @LIT{invalid session}
+///   Will be raised when an invalid session id is passed to the server
+/// - 1952: @LIT{could not create session}
+///   Will be raised when the session could not be created
+/// - 1953: @LIT{could not change session}
+///   Will be raised when session data could not be changed
+/// - 1961: @LIT{invalid form}
+///   Will be raised when an invalid form id is passed to the server
+/// - 1962: @LIT{could not create form}
+///   Will be raised when the form could not be created
+/// - 1963: @LIT{could not change form}
+///   Will be raised when form data could not be changed
 /// - 2000: @LIT{unknown client error}
 ///   This error should not happen.
 /// - 2001: @LIT{could not connect to server}
@@ -344,6 +360,15 @@ extern "C" {
 /// - 3417: @LIT{bitarray index creation failure - one or more index attribute values are duplicated.}
 ///   Will be raised when an attempt to create an index with two or more index
 ///   attribute values repeated.
+/// - 10000: @LIT{element not inserted into structure, because key already exists}
+///   Will be returned if the element was not insert because the key already
+///   exists.
+/// - 10001: @LIT{element not inserted into structure, because it already exists}
+///   Will be returned if the element was not insert because it already exists.
+/// - 10002: @LIT{key not found in structure}
+///   Will be returned if the key was not found in the structure.
+/// - 10003: @LIT{element not found in structure}
+///   Will be returned if the element was not found in the structure.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -502,6 +527,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CORRUPTED_CSV                                           (13)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 14: ERROR_FILE_NOT_FOUND
+///
+/// file not found
+///
+/// Will be raised when a file is not found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FILE_NOT_FOUND                                          (14)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1004,6 +1039,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE                             (1224)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1225: ERROR_ARANGO_OUT_OF_KEYS
+///
+/// out of keys
+///
+/// Will be raised when a key generator runs out of keys.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_OUT_OF_KEYS                                      (1225)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -1542,6 +1587,66 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             (1908)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1951: ERROR_SESSION_INVALID_SESSION
+///
+/// invalid session
+///
+/// Will be raised when an invalid session id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_INVALID_SESSION                                 (1951)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1952: ERROR_SESSION_COULD_NOT_CREATE_SESSION
+///
+/// could not create session
+///
+/// Will be raised when the session could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CREATE_SESSION                        (1952)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1953: ERROR_SESSION_COULD_NOT_CHANGE_SESSION
+///
+/// could not change session
+///
+/// Will be raised when session data could not be changed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CHANGE_SESSION                        (1953)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1961: ERROR_SESSION_INVALID_FORM
+///
+/// invalid form
+///
+/// Will be raised when an invalid form id is passed to the server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_INVALID_FORM                                    (1961)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1962: ERROR_SESSION_COULD_NOT_CREATE_FORM
+///
+/// could not create form
+///
+/// Will be raised when the form could not be created
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CREATE_FORM                           (1962)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1963: ERROR_SESSION_COULD_NOT_CHANGE_FORM
+///
+/// could not change form
+///
+/// Will be raised when form data could not be changed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SESSION_COULD_NOT_CHANGE_FORM                           (1963)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
 ///
 /// unknown client error
@@ -1778,6 +1883,47 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES (3417)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10000: RESULT_KEY_EXISTS
+///
+/// element not inserted into structure, because key already exists
+///
+/// Will be returned if the element was not insert because the key already
+/// exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_KEY_EXISTS                                             (10000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10001: RESULT_ELEMENT_EXISTS
+///
+/// element not inserted into structure, because it already exists
+///
+/// Will be returned if the element was not insert because it already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_ELEMENT_EXISTS                                         (10001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10002: RESULT_KEY_NOT_FOUND
+///
+/// key not found in structure
+///
+/// Will be returned if the key was not found in the structure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_KEY_NOT_FOUND                                          (10002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 10003: RESULT_ELEMENT_NOT_FOUND
+///
+/// element not found in structure
+///
+/// Will be returned if the element was not found in the structure.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10003)
 
 
 ////////////////////////////////////////////////////////////////////////////////

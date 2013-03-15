@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,17 +22,18 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-query.h"
 
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
+#include "GeoIndex/geo-index.h"
+#include "HashIndex/hash-index.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
-#include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utilities/ResourceHolder.h"
 #include "Utils/CollectionNameResolver.h"
@@ -191,7 +192,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
   pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
   if (pids == 0) {
     // out of memory
-    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY); 
+    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -199,10 +200,10 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
   values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
   if (values == 0) {
     // out of memory
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
     pids = 0;
     *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -300,9 +301,9 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         goto MEM_ERROR;
       }
 
-      TRI_json_t* json = TRI_JsonObject(value);
+      TRI_json_t* json = TRI_ObjectToJson(value);
 
-      if (!json) {
+      if (! json) {
         goto MEM_ERROR;
       }
 
@@ -434,57 +435,59 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
   // ........................................................................
   // No memory, no problem
   // ........................................................................
-  
+
   if (parameters == 0) {
     return 0;
   }
-  
-    
+
+
   // ........................................................................
   // Client mucked something up?
   // ........................................................................
-  
+
   if (!attributeValues->IsObject()) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     return 0;
-  }  
-  
-  
+  }
+
+
   // ........................................................................
   // Observe that the client can have sent any number of parameters which
   // do not match the list of attributes defined in the index.
   // These parameters are IGNORED -- no error is reported.
   // ........................................................................
-  
+
   for (size_t i = 0; i < idx->_fields._length; ++i) {
     v8::Handle<v8::String> key = v8::String::New(idx->_fields._buffer[i]);
     TRI_json_t* json;
 
     // ......................................................................
-    // The client may have sent values for all of the Attributes or for 
+    // The client may have sent values for all of the Attributes or for
     // a subset of them. If the value for an Attribute is missing, then we
     // assume that the client wishes to IGNORE the value of that Attribute.
-    // In the later case, we add the json object 'TRI_JSON_UNUSED' to 
+    // In the later case, we add the json object 'TRI_JSON_UNUSED' to
     // indicate that this attribute is to be ignored. Notice that it is
     // possible to ignore all the attributes defined as part of the index.
     // ......................................................................
-    
+
 
     if (attributeValues->HasOwnProperty(key)) {
-    
+
       // ....................................................................
-      // for this index attribute, there is such an attribute given as a 
+      // for this index attribute, there is such an attribute given as a
       // as a parameter by the client -- determine the value (or values)
-      // of this attribute parameter and store it for later use in the 
+      // of this attribute parameter and store it for later use in the
       // lookup
       // ....................................................................
-      
-      v8::Handle<v8::Value> value = attributeValues->Get(key);
-      json = TRI_JsonObject(value);
 
-      
+      v8::Handle<v8::Value> value = attributeValues->Get(key);
+      json = TRI_ObjectToJson(value);
+
+      // TODO: check return value!
+
+
       // ....................................................................
-      // special case: if client sent {"x":[],...}, then we wrap this up 
+      // special case: if client sent {"x":[],...}, then we wrap this up
       // as {"x":[ [] ],...}.
       // ....................................................................
 
@@ -492,12 +495,12 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
         if (json->_value._objects._length == 0) {
           TRI_json_t emptyList;
           emptyList._type = TRI_JSON_LIST;
-          TRI_InitVector(&(emptyList._value._objects), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t));          
+          TRI_InitVector(&(emptyList._value._objects), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t));
           TRI_PushBack2ListJson(json, &emptyList);
         }
-      }      
+      }
     }
-    
+
     else {
       // ....................................................................
       // for this index attribute we can not locate it in the list of parameters
@@ -508,22 +511,22 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
       json->_type = TRI_JSON_UNUSED;
     }
 
-    
+
     // ......................................................................
     // Check and ensure we have a json object defined before we store it.
     // ......................................................................
-    
+
     if (json == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
       return 0;
     }
 
-    
+
     // ......................................................................
     // store it in an list json object -- eventually wil be stored as part
     // of the index operator.
     // ......................................................................
-    
+
     TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
   }
 
@@ -535,129 +538,129 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
 static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
                                                       TRI_shaper_t* shaper,
                                                       v8::Handle<v8::Object> condition) {
-                                                      
+
   v8::Handle<v8::Value> value;
   TRI_index_operator_type_e operatorType;
   TRI_index_operator_t* indexOperator = 0;
 
-  
+
   // ........................................................................
   // Check the various operator conditions
   // ........................................................................
 
-  
+
   // ........................................................................
   // Check for an 'AND' condition. The following are acceptable: '&', '&&' 'and'
   // ........................................................................
-  if (condition->HasOwnProperty(v8::String::New("&"))) {  
+  if (condition->HasOwnProperty(v8::String::New("&"))) {
     operatorType = TRI_AND_INDEX_OPERATOR;
     value = condition->Get(v8::String::New("&"));
   }
-  else if (condition->HasOwnProperty(v8::String::New("&&"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("&&"))) {
     operatorType = TRI_AND_INDEX_OPERATOR;
     value = condition->Get(v8::String::New("&&"));
-  }  
-  else if (condition->HasOwnProperty(v8::String::New("and"))) {  
+  }
+  else if (condition->HasOwnProperty(v8::String::New("and"))) {
     operatorType = TRI_AND_INDEX_OPERATOR;
     value = condition->Get(v8::String::New("and"));
-  }  
+  }
   // ........................................................................
   // Check for an 'OR' condition. The following are acceptable: '|', '||' 'or'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New("|"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("|"))) {
     value = condition->Get(v8::String::New("|"));
     operatorType = TRI_OR_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("||"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("||"))) {
     value = condition->Get(v8::String::New("||"));
     operatorType = TRI_OR_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("or"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("or"))) {
     value = condition->Get(v8::String::New("or"));
     operatorType = TRI_OR_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'NOT' condition. The following are acceptable: '!', 'not'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New("!"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("!"))) {
     value = condition->Get(v8::String::New("!"));
     operatorType = TRI_NOT_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("not"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("not"))) {
     value = condition->Get(v8::String::New("not"));
     operatorType = TRI_NOT_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'EQUAL' condition. The following are acceptable: '=', '==', 'eq'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New("=="))) {  
+  else if (condition->HasOwnProperty(v8::String::New("=="))) {
     value = condition->Get(v8::String::New("=="));
     operatorType = TRI_EQ_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("="))) {  
+  else if (condition->HasOwnProperty(v8::String::New("="))) {
     value = condition->Get(v8::String::New("="));
     operatorType = TRI_EQ_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("eq"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("eq"))) {
     value = condition->Get(v8::String::New("eq"));
     operatorType = TRI_EQ_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'NOT EQUAL' condition. The following are acceptable: '!=', '<>, 'ne'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New("!="))) {  
+  else if (condition->HasOwnProperty(v8::String::New("!="))) {
     value = condition->Get(v8::String::New("!="));
     operatorType = TRI_NE_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("<>"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("<>"))) {
     value = condition->Get(v8::String::New("<>"));
     operatorType = TRI_NE_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("ne"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("ne"))) {
     value = condition->Get(v8::String::New("ne"));
     operatorType = TRI_NE_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'LESS THAN OR EQUAL' condition. The following are acceptable: '<=', 'le'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New("<="))) {  
+  else if (condition->HasOwnProperty(v8::String::New("<="))) {
     value = condition->Get(v8::String::New("<="));
     operatorType = TRI_LE_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("le"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("le"))) {
     value = condition->Get(v8::String::New("le"));
     operatorType = TRI_LE_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'LESS THAN ' condition. The following are acceptable: '<', 'lt'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New("<"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("<"))) {
     value = condition->Get(v8::String::New("<"));
     operatorType = TRI_LT_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("lt"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("lt"))) {
     value = condition->Get(v8::String::New("lt"));
     operatorType = TRI_LT_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'GREATER THAN OR EQUAL' condition. The following are acceptable: '>=', 'ge'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New(">="))) {  
+  else if (condition->HasOwnProperty(v8::String::New(">="))) {
     value = condition->Get(v8::String::New(">="));
     operatorType = TRI_GE_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("ge"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("ge"))) {
     value = condition->Get(v8::String::New("ge"));
     operatorType = TRI_GE_INDEX_OPERATOR;
   }
   // ........................................................................
   // Check for an 'GREATER THAN ' condition. The following are acceptable: '>', 'gt'
   // ........................................................................
-  else if (condition->HasOwnProperty(v8::String::New(">"))) {  
+  else if (condition->HasOwnProperty(v8::String::New(">"))) {
     value = condition->Get(v8::String::New(">"));
     operatorType = TRI_GT_INDEX_OPERATOR;
   }
-  else if (condition->HasOwnProperty(v8::String::New("gt"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("gt"))) {
     value = condition->Get(v8::String::New("gt"));
     operatorType = TRI_GT_INDEX_OPERATOR;
   }
@@ -666,26 +669,26 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
   // a condition {"x":1} which should be BY_EXAMPLE rather than BY_CONDITION
   // ........................................................................
   else { // invalid operator index condition
-    return 0;                                                      
-  }  
-  
+    return 0;
+  }
+
   // ........................................................................
   // Since we have a valid condition, act upon it
   // may require recursion
   // ........................................................................
-  
+
   switch (operatorType) {
-  
-    case TRI_AND_INDEX_OPERATOR: 
+
+    case TRI_AND_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-    
+
       // ....................................................................
       // For both the 'AND' and 'OR' index operators, we require an array
-      // with 2 elements for the value of the condition object. E.g. we 
+      // with 2 elements for the value of the condition object. E.g. we
       // expect: {"&": [{"x":0},{"x":1}]} <-- this is a special "and" call
       //                                      see the ensureBitarray doc for
       //                                      more information.
-      // More common is 
+      // More common is
       // expect: {"or": [{"x":0},{"x":1}]} <-- which means return all docs
       //                                       where attribute "x" has the
       //                                       value of 0 or 1.
@@ -693,105 +696,105 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
       // {"or":[{"x":0},{"or":[{"x":1},{"x":2}]}]} or any valid iteration
       // of this. TODO: shortcut this with the "list" index operator
       // ....................................................................
-      
+
       // ....................................................................
       // wrong data type for this condition -- we require [leftOperation,rightOperation]
       // ....................................................................
 
-      if (!value->IsArray()) {  
-        return 0;    
-      }    
-      
+      if (!value->IsArray()) {
+        return 0;
+      }
+
       v8::Handle<v8::Array> andValues  = v8::Handle<v8::Array>::Cast(value);
 
-      
+
       // ....................................................................
       // Check the length of the array to ensure that it is exactly 2
       // ....................................................................
-      
+
       if (andValues->Length() != 2) {
-        return 0;    
+        return 0;
       }
-      
+
       v8::Handle<v8::Value> leftValue  = andValues->Get(0);
       v8::Handle<v8::Value> rightValue = andValues->Get(1);
-      
+
       if (!leftValue->IsObject() || !rightValue->IsObject()) {
         return 0;
-      }  
-      
+      }
+
       v8::Handle<v8::Object> leftObject  = v8::Handle<v8::Object>::Cast(leftValue);
       v8::Handle<v8::Object> rightObject = v8::Handle<v8::Object>::Cast(rightValue);
-      
-      
+
+
       // ....................................................................
       // recurse the left and right operators
       // ....................................................................
-      
+
       TRI_index_operator_t* leftOp  = SetupConditionsBitarrayHelper(idx, shaper, leftObject);
       TRI_index_operator_t* rightOp = SetupConditionsBitarrayHelper(idx, shaper, rightObject);
-      
+
       if (leftOp == 0 || rightOp == 0) {
         TRI_FreeIndexOperator(leftOp);
         TRI_FreeIndexOperator(rightOp);
         return 0;
       }
-          
+
       indexOperator = TRI_CreateIndexOperator(operatorType, leftOp, rightOp, NULL, shaper, NULL, 0, NULL);
-      break; 
+      break;
     }
-  
+
     case TRI_NOT_INDEX_OPERATOR: {
-    
+
       // ....................................................................
       // wrong data type for this condition -- we require {...} which becomes
       // the left object for not operator.
       // ....................................................................
 
-      if (!value->IsObject()) { 
-        return 0;    
-      }    
-    
+      if (!value->IsObject()) {
+        return 0;
+      }
+
       v8::Handle<v8::Object> leftObject  = v8::Handle<v8::Object>::Cast(value);
 
-      
+
       // ....................................................................
       // recurse the left and only operator
       // ....................................................................
       TRI_index_operator_t* leftOp  = SetupConditionsBitarrayHelper(idx, shaper, leftObject);
-      
+
       if (leftOp == 0) {
         return 0;
       }
-          
+
       indexOperator = TRI_CreateIndexOperator(operatorType, leftOp, NULL, NULL, shaper, NULL, 0, NULL);
       break;
     }
-    
-    case TRI_EQ_INDEX_OPERATOR: 
-    case TRI_NE_INDEX_OPERATOR: 
-    case TRI_LE_INDEX_OPERATOR: 
-    case TRI_LT_INDEX_OPERATOR: 
-    case TRI_GE_INDEX_OPERATOR: 
+
+    case TRI_EQ_INDEX_OPERATOR:
+    case TRI_NE_INDEX_OPERATOR:
+    case TRI_LE_INDEX_OPERATOR:
+    case TRI_LT_INDEX_OPERATOR:
+    case TRI_GE_INDEX_OPERATOR:
     case TRI_GT_INDEX_OPERATOR: {
-    
+
       v8::Handle<v8::Object> leftObject  = v8::Handle<v8::Object>::Cast(value);
-      TRI_json_t* parameters = SetupBitarrayAttributeValuesHelper(idx, leftObject); 
-      
+      TRI_json_t* parameters = SetupBitarrayAttributeValuesHelper(idx, leftObject);
+
       if (parameters == 0) {
         return 0;
-      }  
+      }
       indexOperator = TRI_CreateIndexOperator(operatorType, NULL, NULL, parameters, shaper, NULL, parameters->_value._objects._length, NULL);
-      break; 
+      break;
     }
 
-    
+
     default: {
       return 0;
-    }  
-    
+    }
+
   } // end of switch (operatorType)
-    
+
   return indexOperator;
 }
 
@@ -799,7 +802,7 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
 static TRI_index_operator_t* SetupConditionsBitarray (TRI_index_t* idx,
                                                       TRI_shaper_t* shaper,
                                                       v8::Handle<v8::Object> condition) {
-  TRI_index_operator_t* indexOperator = SetupConditionsBitarrayHelper(idx, shaper, condition); 
+  TRI_index_operator_t* indexOperator = SetupConditionsBitarrayHelper(idx, shaper, condition);
   return indexOperator;
 }
 
@@ -828,9 +831,9 @@ static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
 
     v8::Handle<v8::Value> value = example->Get(key);
 
-    TRI_json_t* json = TRI_JsonObject(value);
+    TRI_json_t* json = TRI_ObjectToJson(value);
 
-    if (!json) {
+    if (json == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
       return 0;
@@ -858,7 +861,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (TRI_index_t* idx,
 
 static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_t* shaper, v8::Handle<v8::Object> example) {
   TRI_json_t* parameters = SetupBitarrayAttributeValuesHelper(idx, example);
-  
+
   if (parameters == 0) {
     return 0;
   }
@@ -868,56 +871,69 @@ static TRI_index_operator_t* SetupExampleBitarray (TRI_index_t* idx, TRI_shaper_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up the example object for hash index
+/// @brief destroys the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
-                                    v8::Handle<v8::Object> example,
-                                    TRI_shaper_t* shaper,
-                                    size_t& n,
-                                    TRI_shaped_json_t**& values,
-                                    v8::Handle<v8::Object>* err) {
+static void DestroySearchValue (TRI_shaper_t* shaper,
+                                TRI_index_search_value_t& value) {
+  size_t n;
+
+  n = value._length;
+
+  for (size_t j = 0;  j < n;  ++j) {
+    TRI_DestroyShapedJson(shaper, &value._values[j]);
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, value._values);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the example object for a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static int SetupSearchValue (TRI_vector_t const* paths,
+                             v8::Handle<v8::Object> example,
+                             TRI_shaper_t* shaper,
+                             TRI_index_search_value_t& result,
+                             v8::Handle<v8::Object>* err) {
+  size_t n;
 
   // extract attribute paths
-  n = hashIndex->_paths._length;
+  n = paths->_length;
 
   // setup storage
-  values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
-  if (values == 0) {
-    // out of memory
-    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  result._length = n;
+  result._values = (TRI_shaped_json_t*) TRI_Allocate(TRI_CORE_MEM_ZONE,
+                                                     n * sizeof(TRI_shaped_json_t),
+                                                     true);
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(&hashIndex->_paths, i);
+    TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
-      CleanupExampleObject(shaper, i, 0, values);
+      DestroySearchValue(shaper, result);
       *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "shaper failed");
       return TRI_ERROR_BAD_PARAMETER;
     }
 
     v8::Handle<v8::String> key = v8::String::New(name);
+    int res;
 
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
 
-      values[i] = TRI_ShapedJsonV8Object(val, shaper);
+      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper);
     }
     else {
-      values[i] = TRI_ShapedJsonV8Object(v8::Null(), shaper);
+      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper);
     }
 
-    if (values[i] == 0) {
-      CleanupExampleObject(shaper, i, 0, values);
-
-      *err = TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                   "cannot convert value to JSON");
-      return TRI_ERROR_BAD_PARAMETER;
+    if (res != TRI_ERROR_NO_ERROR) {
+      DestroySearchValue(shaper, result);
+      *err = TRI_CreateErrorObject(res, "cannot convert value to JSON");
+      return res;
     }
   }
 
@@ -928,11 +944,11 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
 /// @brief execute a skiplist query (by condition or by example)
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, 
-                                                   std::string const& signature, 
-                                                   const query_t type) { 
+static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
+                                                   std::string const& signature,
+                                                   const query_t type) {
   v8::HandleScope scope;
-  
+
   // expecting index, example, skip, and limit
   if (argv.Length() < 2) {
     std::string usage("Usage: ");
@@ -961,7 +977,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -985,7 +1001,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
-  
+
   // .............................................................................
   // inside a read transaction
   // .............................................................................
@@ -1024,7 +1040,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
 
   while (true) {
-    SkiplistIndexElement* indexElement = (SkiplistIndexElement*) skiplistIterator->_next(skiplistIterator);
+    TRI_skiplist_index_element_t* indexElement = (TRI_skiplist_index_element_t*) skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
       break;
@@ -1040,8 +1056,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
           break;
         }
       }
-      
-      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) indexElement->data, barrier);
+
+      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) indexElement->_document, barrier);
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1051,7 +1067,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
         documents->Set(count, doc);
         ++count;
       }
-    
+
     }
   }
 
@@ -1070,7 +1086,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   if (error) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
-  
+
   return scope.Close(result);
 }
 
@@ -1085,7 +1101,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   BitarrayIndexElement* indexElement;
   TRI_bitarray_index_t* baIndex;
-    
+
   indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
 
   if (indexElement == NULL) {
@@ -1093,26 +1109,26 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   }
 
   baIndex = (TRI_bitarray_index_t*) indexIterator->_index;
-    
-  if (baIndex == NULL) {     
+
+  if (baIndex == NULL) {
     return false;
   }
-    
+
   /* doc = (TRI_doc_mptr_t*) indexElement->data; */
-    
+
   // ..........................................................................
   // Now perform any additional filter operations you require on the doc
   // using baIndex which you now have access to.
   // ..........................................................................
-    
+
   return true;
 }
 
-static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, 
-                                                   std::string const& signature, 
-                                                   const query_t type) { 
+static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
+                                                   std::string const& signature,
+                                                   const query_t type) {
   v8::HandleScope scope;
-  
+
   // ...........................................................................
   // Check the parameters, expecting index, example, skip, and limit
   // e.g. ("110597/962565", {"x":1}, null, null)
@@ -1123,12 +1139,12 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     usage += signature;
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,usage)));
   }
-  
+
 
   // ...........................................................................
   // Check that the second parameter is an associative array (json object)
   // ...........................................................................
-  
+
   if (! argv[1]->IsObject()) {
     std::string msg;
 
@@ -1140,23 +1156,23 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     }
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg)));
   }
-  
-  
+
+
   // .............................................................................
   // extract skip and limit
   // .............................................................................
 
   TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit; 
+  TRI_voc_size_t limit;
   ExtractSkipAndLimit(argv, 2, skip, limit);
-  
- 
+
+
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
@@ -1164,24 +1180,24 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
   }
-  
+
   TRI_primary_collection_t* primary = trx.primaryCollection();
   TRI_shaper_t* shaper = primary->_shaper;
 
   // .............................................................................
   // Create the json object result which stores documents located
   // .............................................................................
-  
+
   v8::Handle<v8::Object> result = v8::Object::New();
-  
+
   // .............................................................................
   // Create the array to store documents located
   // .............................................................................
-  
+
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  
+
   // .............................................................................
   // inside a read transaction
   // .............................................................................
@@ -1191,19 +1207,19 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // .............................................................................
   // extract the index
   // .............................................................................
-  
+
   v8::Handle<v8::Object> err;
   TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-  
+
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
   }
 
-  
+
   TRI_index_operator_t* indexOperator;
   v8::Handle<v8::Object> values = argv[1]->ToObject();
   if (type == QUERY_EXAMPLE) {
@@ -1213,24 +1229,24 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     indexOperator = SetupConditionsBitarray(idx, shaper, values);
   }
 
-  
+
   if (indexOperator == 0) { // something wrong
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up bitarray index operator failed")));
   }
 
-  
+
   // .............................................................................
-  // attempt to locate the documents 
+  // attempt to locate the documents
   // .............................................................................
-  
+
   TRI_index_iterator_t* indexIterator = TRI_LookupBitarrayIndex(idx, indexOperator, BitarrayFilterExample);
 
-  
+
   // .............................................................................
   // Take care of the case where the index iterator is returned as NULL -- may
   // occur when some catastrophic error occurs.
   // .............................................................................
-  
+
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
   bool error = false;
@@ -1238,7 +1254,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (indexIterator != NULL) {
     TRI_barrier_t* barrier = 0;
 
-  
+
     while (true) {
       TRI_doc_mptr_t* data = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
 
@@ -1246,7 +1262,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
         break;
       }
 
-      
+
       ++total;
 
       if (total > skip && count < limit) {
@@ -1267,22 +1283,22 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
         else {
           documents->Set(count, doc);
           ++count;
-        }        
+        }
       }
     }
-  
-  
+
+
     // free data allocated by index result
     TRI_FreeIndexIterator(indexIterator);
-        
+
   }
-  
+
   else {
     LOG_WARNING("index iterator returned with a NULL value in ExecuteBitarrayQuery");
     // return an empty list
   }
 
-  trx.finish(res); 
+  trx.finish(res);
 
   // .............................................................................
   // outside a write transaction
@@ -1295,7 +1311,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (error) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
-  
+
   return scope.Close(result);
 }
 
@@ -1392,7 +1408,7 @@ static int StoreGeoResult (TRI_vocbase_col_t const* collection,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   CollectionNameResolver resolver(collection->_vocbase);
 
   // copy the documents
@@ -1429,19 +1445,19 @@ static int StoreGeoResult (TRI_vocbase_col_t const* collection,
 
 static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   if (col->_type != TRI_COL_TYPE_EDGE) {
     return scope.Close(v8::ThrowException(
                        TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                              "invalid collection type for edge query")));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
@@ -1486,7 +1502,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   TRI_barrier_t* barrier = 0;
   uint32_t count = 0;
   bool error = false;
-  
+
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
@@ -1506,7 +1522,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
           TRI_FreeString(TRI_CORE_MEM_ZONE, key);
           key = 0;
         }
-        
+
         continue;
       }
 
@@ -1519,7 +1535,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       if (key) {
        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       }
-      
+
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&primary->_barrierList);
@@ -1528,7 +1544,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
             break;
           }
         }
-        
+
         v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, col, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
         if (doc.IsEmpty()) {
@@ -1540,7 +1556,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
           documents->Set(count, doc);
           ++count;
         }
-        
+
       }
 
       TRI_DestroyVectorPointer(&edges);
@@ -1567,7 +1583,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       }
       return scope.Close(v8::ThrowException(errMsg));
     }
-    
+
     assert(vertexCollection != 0);
 
     cid = vertexCollection->_cid;
@@ -1577,7 +1593,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     if (key) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
-    
+
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
         barrier = TRI_CreateBarrierElement(&primary->_barrierList);
@@ -1611,7 +1627,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   if (error) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
-  
+
   return scope.Close(documents);
 }
 
@@ -1634,25 +1650,25 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
 static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   // expecting two arguments
   if (argv.Length() != 2) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: ALL(<skip>, <limit>)")));
   }
-  
+
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   // extract skip and limit
   TRI_voc_ssize_t skip;
   TRI_voc_size_t limit;
   ExtractSkipAndLimit(argv, 0, skip, limit);
-  
+
   TRI_barrier_t* barrier = 0;
   uint32_t total = 0;
   vector<TRI_doc_mptr_t> docs;
@@ -1667,14 +1683,14 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   res = trx.read(docs, &barrier, skip, limit, &total);
   res = trx.finish(res);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
   }
 
   const size_t n = docs.size();
   uint32_t count = 0;
-  
+
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
   v8::Handle<v8::Array> documents = v8::Array::New(n);
@@ -1695,7 +1711,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   result->Set(v8::String::New("total"), v8::Number::New(total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
-  
+
   return scope.Close(result);
 }
 
@@ -1717,13 +1733,13 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
   document._data = 0;
@@ -1735,7 +1751,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
-  
+
   res = trx.read(&document, &barrier);
   res = trx.finish(res);
 
@@ -1756,7 +1772,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   // expecting example, skip, limit
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(
@@ -1777,7 +1793,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
@@ -1785,7 +1801,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot query by example", true)));
   }
-  
+
   TRI_primary_collection_t* primary = trx.primaryCollection();
   TRI_shaper_t* shaper = primary->_shaper;
 
@@ -1922,7 +1938,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
 
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
-  
+
   // extract the index
   CollectionNameResolver resolver(collection->_vocbase);
   TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, collection, argv[0], false, err);
@@ -1938,21 +1954,21 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
   // convert the example (index is locked by lockRead)
-  size_t n;
-  TRI_shaped_json_t** values;
+  TRI_index_search_value_t searchValue;
 
   TRI_shaper_t* shaper = document->base._shaper;
-  int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, err);
+  int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(*err));
   }
-  
+
   // find the matches
-  TRI_hash_index_elements_t* list = TRI_LookupShapedJsonHashIndex(idx, values);
+  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+  DestroySearchValue(shaper, searchValue);
 
   // convert result
-  size_t total = list->_numElements;
+  size_t total = list._length;
   size_t count = 0;
   bool error = false;
 
@@ -1969,7 +1985,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
       }
       else {
         for (size_t i = s;  i < e;  ++i) {
-          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
+          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(resolver, collection, list._documents[i], barrier);
 
           if (doc.IsEmpty()) {
             error = true;
@@ -1986,17 +2002,15 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   }
 
   // free data allocated by hash index result
-  TRI_FreeResultHashIndex(idx, list);
+  TRI_DestroyIndexResult(&list);
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
-  CleanupExampleObject(shaper, n, 0, values);
-
   if (error) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
-  
+
   return scope.Close(result);
 }
 
@@ -2009,13 +2023,15 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot query by example", true)));
   }
@@ -2045,7 +2061,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
   std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
-  
+
   return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
 }
 
@@ -2118,7 +2134,7 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
 ///
@@ -2149,7 +2165,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   if (idx->_type != TRI_IDX_TYPE_FULLTEXT_INDEX) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a fulltext index")));
   }
-  
+
   const string queryString = TRI_ObjectToString(argv[1]);
   bool isSubstringQuery = false;
 
@@ -2164,19 +2180,19 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "invalid value for <query>")));
   }
 
-  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx; 
+  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
   if (isSubstringQuery && ! fulltextIndex->_indexSubstrings) {
     TRI_FreeQueryFulltextIndex(query);
 
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index does not support substring matching")));
   }
 
-  TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->_fulltextIndex, query);  
+  TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->_fulltextIndex, query);
 
   if (! queryResult) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "internal error in fulltext index query")));
   }
-  
+
   TRI_barrier_t* barrier = 0;
   if (queryResult->_numDocuments > 0) {
     barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
@@ -2202,14 +2218,14 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
 ///
 /// @FUN{@FA{collection}.FULLTEXT(@FA{index-handle}, @FA{query})}
 ///
-/// The @FN{FULLTEXT} operator performs a fulltext search using the specified 
+/// The @FN{FULLTEXT} operator performs a fulltext search using the specified
 /// index and the specified @FA{query}.
 ///
 /// @FA{query} must contain a comma-separated list of words to look for.
 /// Each word can optionally be prefixed with one of the following command
 /// literals:
 /// - @LIT{prefix}: perform a prefix-search for the word following
-/// - @LIT{substring}: perform substring-matching for the word following. This 
+/// - @LIT{substring}: perform substring-matching for the word following. This
 ///   option is only supported for fulltext indexes that have been created with
 ///   the @LIT{indexSubstrings} option
 /// - @LIT{complete}: only match the complete following word (this is the default)
@@ -2227,7 +2243,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2236,7 +2252,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> err;
-  
+
   // .............................................................................
   // inside a read transaction
   // .............................................................................
@@ -2305,9 +2321,9 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
 
   if (cors != 0) {
     int res = StoreGeoResult(collection, cors, documents, distances);
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res))); 
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
     }
   }
 
@@ -2320,13 +2336,13 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
 
 static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2335,7 +2351,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> err;
-  
+
   // .............................................................................
   // inside a read transaction
   // .............................................................................
@@ -2426,9 +2442,9 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
 
   if (cors != 0) {
     int res = StoreGeoResult(collection, cors, documents, distances);
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res))); 
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
     }
   }
 
@@ -2447,7 +2463,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
-  
+
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2456,11 +2472,11 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> err;
-  
+
   // .............................................................................
   // inside a read transaction
   // .............................................................................
-  
+
   trx.lockRead();
 
   v8::Handle<v8::Value> result = WithinQuery((TRI_document_collection_t*) trx.primaryCollection(), col, &err, argv);
@@ -2504,13 +2520,13 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   assert(v8g != 0);
-  
+
   // .............................................................................
   // generate the TRI_vocbase_col_t template
   // .............................................................................
 
   rt = v8g->VocbaseColTempl;
-  
+
   TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
   TRI_AddMethodVocbase(rt, "any", JS_AnyQuery);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
@@ -2533,5 +2549,5 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

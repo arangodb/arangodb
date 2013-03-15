@@ -346,6 +346,7 @@
           result = task.code();
         }
         catch (e) {
+          console.error("caught exception: %s", e);
         }
 
         if (result) {

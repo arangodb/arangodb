@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_MEMORY_MAP_POSIX_H
@@ -32,7 +32,7 @@
 
 #ifdef TRI_HAVE_POSIX_MMAP
 
-#include <sys/mman.h> 
+#include <sys/mman.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +45,7 @@ extern "C" {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wrapper for MAP_ANONYMOUS / MAP_ANON
-/// 
+///
 /// On MacOS, MAP_ANON is available but not MAP_ANONYMOUS, on Linux it seems to
 /// be vice versa
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,5 +70,5 @@ extern "C" {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

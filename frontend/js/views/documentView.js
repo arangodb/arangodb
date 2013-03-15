@@ -3,6 +3,7 @@ var documentView = Backbone.View.extend({
   table: '#documentTableID',
   colid: 0,
   docid: 0,
+  currentKey: 0,
 
   init: function () {
     this.initTable();
@@ -15,7 +16,35 @@ var documentView = Backbone.View.extend({
     "click #sourceView"         : "sourceView",
     "click #editFirstRow"       : "editFirst",
     "click #documentTableID tr" : "clicked",
-    "click #editSecondRow"      : "editSecond"
+    "click #editSecondRow"      : "editSecond",
+    "keydown .sorting_1"        : "listenKey",
+    "keydown"                   : "listenGlobalKey",
+    "focusout textarea"         : "checkFocus"
+  },
+
+  checkFocus: function(e) {
+    //check if new row has to be saved
+    var self = this;
+    var data = $(this.table).dataTable().fnGetData();
+    $.each(data, function(key, val) {
+      if (val[0] === self.currentKey) {
+        $(self.table).dataTable().fnDeleteRow( key );
+      }
+    });
+
+  },
+
+  listenGlobalKey: function(e) {
+    if (e.keyCode === 27) {
+      this.checkFocus();
+    }
+  },
+
+  listenKey: function(e) {
+    if (e.keyCode === 13) {
+      console.log('enter');
+      $('.btn-success').click();
+    }
   },
 
   template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
@@ -147,9 +176,11 @@ var documentView = Backbone.View.extend({
 
   addLine: function () {
     var randomKey = arangoHelper.getRandomToken();
+    var self = this;
+    self.currentKey = "zkey"+randomKey;
     $(this.table).dataTable().fnAddData(
       [
-        "zkey"+randomKey,
+        self.currentKey,
         '<i class="icon-edit" id="editFirstRow"></i>',
         this.value2html("editme"),
         JSON.stringify("editme"),
@@ -160,8 +191,9 @@ var documentView = Backbone.View.extend({
     this.makeEditable();
     var tableContent = $('table').find('td');
     $.each(tableContent, function(key, val) {
-      if ($(val).text() === "zkey"+randomKey) {
+      if ($(val).text() === self.currentKey) {
         $(val).click();
+        $('.jediTextarea textarea').val("");
         return;
       }
     });
@@ -258,9 +290,9 @@ var documentView = Backbone.View.extend({
     $('.writeable', documentEditTable.fnGetNodes()).editable(function(value, settings) {
       var aPos = documentEditTable.fnGetPosition(this);
       if (aPos[1] == 0) {
-        documentEditTable.fnUpdate(value, aPos[0], aPos[1]);
-        self.updateLocalDocumentStorage();
-        return value;
+          documentEditTable.fnUpdate(self.escaped(value), aPos[0], aPos[1]);
+          self.updateLocalDocumentStorage();
+          return value;
       }
       if (aPos[1] == 2) {
         var oldContent = JSON.parse(documentEditTable.fnGetData(aPos[0], aPos[1] + 1));
@@ -282,6 +314,10 @@ var documentView = Backbone.View.extend({
         var aPos = documentEditTable.fnGetPosition(this);
         var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
         if (aPos[1] == 0) {
+        //check if this row was newly created
+        if (value === self.currentKey) {
+          return value;
+        }
           return value;
         }
         if (aPos[1] == 2) {
@@ -301,11 +337,11 @@ var documentView = Backbone.View.extend({
       cssclass : 'jediTextarea',
       submitcssclass: 'btn btn-success pull-right',
       cancelcssclass: 'btn btn-danger pull-right',
-      cancel: 'Cancel',
+      cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
       submit: 'Save',
       onblur: 'cancel',
-      //style: 'display: inline',
       autogrow: {lineHeight: 16, minHeight: 30}
+      //style: 'display: inline',
     });
   },
   getTypedValue: function (value) {

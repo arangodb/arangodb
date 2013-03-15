@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_JSON_H
@@ -162,10 +162,22 @@ TRI_json_t* TRI_CreateString2CopyJson (TRI_memory_zone_t*, char const* value, si
 TRI_json_t* TRI_CreateListJson (TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a list object, with the specified initial size
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateList2Json (TRI_memory_zone_t*, const size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an array
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_CreateArrayJson (TRI_memory_zone_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an array
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_CreateArray2Json (TRI_memory_zone_t*, const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -248,7 +260,7 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t*, TRI_json_t* object, char const* n
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute, not copying it but freeing the pointer
-/// 
+///
 /// the JSON struct created takes ownership of the name* passed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,7 +306,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const*);
 /// @brief saves a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveJson (char const* filename, TRI_json_t const*);
+bool TRI_SaveJson (char const*, TRI_json_t const*, const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a json object into a given buffer
@@ -345,5 +357,5 @@ bool TRI_EqualJsonJson (TRI_json_t*, TRI_json_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

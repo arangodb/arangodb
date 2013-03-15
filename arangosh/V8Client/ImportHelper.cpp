@@ -5,35 +5,25 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
@@ -56,16 +46,16 @@ using namespace std;
 
 namespace triagens {
   namespace v8client {
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// initialise step value for progress reports
-    ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// initialise step value for progress reports
+////////////////////////////////////////////////////////////////////////////////
 
     const double ImportHelper::ProgressStep = 2.0;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// constructor and destructor
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// constructor and destructor
+////////////////////////////////////////////////////////////////////////////////
 
     ImportHelper::ImportHelper (httpclient::SimpleHttpClient* _client, uint64_t maxUploadSize)
     : _client(_client),
@@ -86,15 +76,15 @@ namespace triagens {
       regfree(&_intRegex);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// public functions
-    ////////////////////////////////////////////////////////////////////////////////
-      
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief imports a delmiited file
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    bool ImportHelper::importDelimited (const string& collectionName, 
+////////////////////////////////////////////////////////////////////////////////
+/// public functions
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief imports a delmiited file
+////////////////////////////////////////////////////////////////////////////////
+
+    bool ImportHelper::importDelimited (const string& collectionName,
                                         const string& fileName,
                                         const DelimitedImportType typeImport) {
       _collectionName = collectionName;
@@ -110,7 +100,7 @@ namespace triagens {
       // read and convert
       int fd;
       int64_t totalLength;
-      
+
       if (fileName == "-") {
         // we don't have a filesize
         totalLength = 0;
@@ -119,25 +109,25 @@ namespace triagens {
       else {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
-        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);        
-      }      
+        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
+      }
 
       if (fd < 0) {
         _errorMessage = TRI_LAST_ERROR_STR;
         return false;
       }
-      
+
       // progress display control variables
       int64_t totalRead = 0;
       double nextProgress = ProgressStep;
-     
+
       size_t separatorLength;
       char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
       if (separator == NULL) {
         _errorMessage = "out of memory";
         return false;
       }
-      
+
       TRI_csv_parser_t parser;
 
       TRI_InitCsvParser(&parser,
@@ -174,10 +164,10 @@ namespace triagens {
         else if (n == 0) {
           break;
         }
-        
+
         totalRead += (int64_t) n;
-        reportProgress(totalLength, totalRead, nextProgress); 
-       
+        reportProgress(totalLength, totalRead, nextProgress);
+
         TRI_ParseCsvString2(&parser, buffer, n);
       }
 
@@ -190,7 +180,7 @@ namespace triagens {
 
       if (fileName != "-") {
         TRI_CLOSE(fd);
-      }      
+      }
 
       _outputBuffer.clear();
       return !_hasError;
@@ -209,7 +199,7 @@ namespace triagens {
       // read and convert
       int fd;
       int64_t totalLength;
-      
+
       if (fileName == "-") {
         // we don't have a filesize
         totalLength = 0;
@@ -219,7 +209,7 @@ namespace triagens {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
         fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
-      }      
+      }
 
       if (fd < 0) {
         _errorMessage = TRI_LAST_ERROR_STR;
@@ -245,7 +235,7 @@ namespace triagens {
           // we're done
           break;
         }
-          
+
         if (! checkedFront) {
           // detect the import file format (single lines with individual JSON objects
           // or a JSON array with all documents)
@@ -255,9 +245,9 @@ namespace triagens {
         }
 
         _outputBuffer.appendText(buffer, n);
-           
+
         totalRead += (int64_t) n;
-        reportProgress(totalLength, totalRead, nextProgress); 
+        reportProgress(totalLength, totalRead, nextProgress);
 
         if (_outputBuffer.length() > _maxUploadSize) {
           if (isArray) {
@@ -282,23 +272,23 @@ namespace triagens {
       }
 
       _numberLines = _numberError + _numberOk;
-      
+
       if (fileName != "-") {
         TRI_CLOSE(fd);
-      }      
+      }
 
       _outputBuffer.clear();
       return ! _hasError;
     }
 
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// private functions
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// private functions
+////////////////////////////////////////////////////////////////////////////////
 
-    void ImportHelper::reportProgress (const int64_t totalLength, 
-                                       const int64_t totalRead, 
-                                       double& nextProgress) { 
+    void ImportHelper::reportProgress (const int64_t totalLength,
+                                       const int64_t totalRead,
+                                       double& nextProgress) {
       if (! _progress || totalLength == 0) {
         return;
       }
@@ -309,24 +299,24 @@ namespace triagens {
         nextProgress = pct + ProgressStep;
       }
     }
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief return the collection-related URL part
-    ////////////////////////////////////////////////////////////////////////////////
-    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection-related URL part
+////////////////////////////////////////////////////////////////////////////////
+
     string ImportHelper::getCollectionUrlPart () {
       string part("collection=" + StringUtils::urlEncode(_collectionName));
 
       if (_createCollection) {
         part += "&createCollection=yes";
       }
-      
+
       return part;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief start a new csv line
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start a new csv line
+////////////////////////////////////////////////////////////////////////////////
 
     void ImportHelper::ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
@@ -340,20 +330,20 @@ namespace triagens {
       if (_lineBuffer.length() > 0) {
         // error
         ++_numberError;
-        _lineBuffer.clear();        
+        _lineBuffer.clear();
       }
-      
+
       ++_numberLines;
-      
+
       if (row > 0) {
         _lineBuffer.appendChar('\n');
       }
-      _lineBuffer.appendChar('[');      
+      _lineBuffer.appendChar('[');
     }
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief adds a new CSV field
-    ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new CSV field
+////////////////////////////////////////////////////////////////////////////////
 
     void ImportHelper::ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
@@ -369,7 +359,7 @@ namespace triagens {
       }
 
       if (row == 0) {
-        // head line    
+        // head line
         _lineBuffer.appendChar('"');
         _lineBuffer.appendText(StringUtils::escapeUnicode(field));
         _lineBuffer.appendChar('"');
@@ -408,9 +398,9 @@ namespace triagens {
       }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief ends a CSV line
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ends a CSV line
+////////////////////////////////////////////////////////////////////////////////
 
     void ImportHelper::ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
       ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
@@ -429,8 +419,8 @@ namespace triagens {
       }
 
       addField(field, row, column, escaped);
-            
-      _lineBuffer.appendChar(']');      
+
+      _lineBuffer.appendChar(']');
 
       if (row == 0) {
         // save the first line
@@ -442,17 +432,17 @@ namespace triagens {
         _lineBuffer.clear();
         return;
       }
-      
+
       // read a complete line
-      
+
       if (_lineBuffer.length() > 0) {
         _outputBuffer.appendText(_lineBuffer);
-        _lineBuffer.clear();        
+        _lineBuffer.clear();
       }
       else {
         ++_numberError;
       }
-      
+
       if (_outputBuffer.length() > _maxUploadSize) {
         sendCsvBuffer();
         _outputBuffer.appendText(_firstLine);
@@ -480,7 +470,7 @@ namespace triagens {
       if (_hasError) {
         return;
       }
-      
+
       map<string, string> headerFields;
       SimpleHttpResult* result;
       if (isArray) {
@@ -499,7 +489,7 @@ namespace triagens {
       }
 
       stringstream& r = result->getBody();
-      
+
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, r.str().c_str());
 
       if (json) {
@@ -521,7 +511,7 @@ namespace triagens {
         }
 
         TRI_json_t* importResult;
-        
+
         // look up the "created" flag. This returns a pointer, not a copy
         importResult= TRI_LookupArrayJson(json, "created");
         if (importResult) {
@@ -529,7 +519,7 @@ namespace triagens {
             _numberOk += (size_t) importResult->_value._number;
           }
         }
-        
+
         // look up the "errors" flag. This returns a pointer, not a copy
         importResult= TRI_LookupArrayJson(json, "errors");
         if (importResult) {
@@ -537,8 +527,8 @@ namespace triagens {
             _numberError += (size_t) importResult->_value._number;
           }
         }
-     
-        // this will free the json struct will a sub-elements 
+
+        // this will free the json struct will a sub-elements
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
 
@@ -547,4 +537,4 @@ namespace triagens {
 
   }
 }
-      
+

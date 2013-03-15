@@ -46,7 +46,11 @@ ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 ### @brief additional files to remove
 ################################################################################
 
-CLEANUP += @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
+CLEANUP_3RD += clean-icu
+
+clean-icu:
+	rm -f @srcdir@/.icu-build-@TRI_BITS@
+	rm -rf $(ICUDIR)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

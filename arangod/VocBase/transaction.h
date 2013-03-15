@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_TRANSACTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_TRANSACTION_H 1
+#ifndef TRIAGENS_VOC_BASE_TRANSACTION_H
+#define TRIAGENS_VOC_BASE_TRANSACTION_H 1
 
 #include "BasicsC/common.h"
 
@@ -48,7 +48,7 @@ struct TRI_vocbase_s;
 struct TRI_vocbase_col_s;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 TRANSACTION TYPES 
+// --SECTION--                                                 TRANSACTION TYPES
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -117,7 +117,7 @@ typedef enum {
   TRI_TRANSACTION_ABORTED      = 4,
   TRI_TRANSACTION_FINISHED     = 5,
   TRI_TRANSACTION_FAILED       = 6
-} 
+}
 TRI_transaction_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  TRANSACTION LIST 
+// --SECTION--                                                  TRANSACTION LIST
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -258,7 +258,7 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t* const);
 /// this function must be called for all collections that are dropped
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const, 
+void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const,
                                              const TRI_transaction_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,7 +291,7 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_collection_s {
-  TRI_transaction_cid_t                _cid;                // collection id 
+  TRI_transaction_cid_t                _cid;                // collection id
   TRI_transaction_type_e               _type;               // access type (read|write)
 #if 0
   TRI_transaction_list_t               _writeTransactions;  // private copy of other write transactions at transaction start
@@ -415,7 +415,7 @@ struct TRI_vocbase_col_s* TRI_CheckCollectionTransaction (TRI_transaction_t* con
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddCollectionTransaction (TRI_transaction_t* const,
-                                  const TRI_transaction_cid_t, 
+                                  const TRI_transaction_cid_t,
                                   const TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,4 +477,4 @@ int TRI_FinishTransaction (TRI_transaction_t* const);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"

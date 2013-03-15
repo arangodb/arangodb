@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_COMMON_H
@@ -106,23 +106,22 @@
 #include <sys/time.h>
 #endif
 
-
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-// .................................................................................................
-// The problem we have for visual studio is that if we include WinSock2.h here it may conflict later
-// in some other source file. The conflict arises when windows.h is included BEFORE WinSock2.h -- 
-// this is a visual studio issue. For now be VERY careful to ensure that if you need windows.h, then 
-// you include this file AFTER common.h.
-// .................................................................................................
+// .............................................................................
+// The problem we have for visual studio is that if we include WinSock2.h here
+// it may conflict later in some other source file. The conflict arises when
+// windows.h is included BEFORE WinSock2.h -- this is a visual studio issue. For
+// now be VERY careful to ensure that if you need windows.h, then you include
+// this file AFTER common.h.
+// .............................................................................
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 typedef long suseconds_t;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -166,9 +165,33 @@ typedef long suseconds_t;
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 low level helpers
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Configuration
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief const cast for C
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void* CONST_CAST (void const* ptr) {
+  union { void* p; void const* c; } cnv;
+
+  cnv.c = ptr;
+  return cnv.p;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

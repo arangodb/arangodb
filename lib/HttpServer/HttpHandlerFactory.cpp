@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpHandlerFactory.h"
@@ -145,7 +145,7 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   }
 
   bool result = authenticate(request);
-  
+
   return (result || ! _requireAuthentication);
 }
 
@@ -172,7 +172,7 @@ bool HttpHandlerFactory::authenticate (HttpRequest* request) {
       READ_LOCKER(_authLock);
 
       map<string,string>::iterator i = _authCache.find(auth);
-      
+
       if (i != _authCache.end()) {
         request->setUser(i->second);
         return true;
@@ -181,20 +181,20 @@ bool HttpHandlerFactory::authenticate (HttpRequest* request) {
 
     string up = StringUtils::decodeBase64(auth);
     vector<string> split = StringUtils::split(up, ":");
-    
+
     if (split.size() != 2) {
       return false;
     }
-    
+
     bool res = _checkAuthentication(split[0].c_str(), split[1].c_str());
-    
+
     if (res) {
       WRITE_LOCKER(_authLock);
-      
+
       _authCache[auth] = split[0];
       request->setUser(split[0]);
     }
-    
+
     return res;
   }
 
@@ -440,5 +440,5 @@ void HttpHandlerFactory::addNotFoundHandler (create_fptr func) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

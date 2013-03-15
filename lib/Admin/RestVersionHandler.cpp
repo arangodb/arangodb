@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
@@ -31,6 +31,7 @@
 #include "BasicsC/strings.h"
 #include "BasicsC/conversions.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -104,6 +105,18 @@ HttpHandler::status_e RestVersionHandler::execute () {
   TRI_InitStringJson(TRI_CORE_MEM_ZONE, &version, TRI_DuplicateString(_version.c_str()));
   TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
+  bool found;
+  char const* detailsStr = _request->value("details", found);
+
+  if (found && StringUtils::boolean(detailsStr)) {
+    TRI_json_t details;
+
+    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &details);
+
+    Version::getJson(TRI_CORE_MEM_ZONE, &details);
+    TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "details", &details);
+  }
+
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 
@@ -116,5 +129,5 @@ HttpHandler::status_e RestVersionHandler::execute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

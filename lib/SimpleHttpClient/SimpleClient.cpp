@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2009, triagens GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SimpleClient.h"
@@ -45,9 +45,9 @@ using namespace std;
 namespace triagens {
   namespace httpclient {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     SimpleClient::SimpleClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
       _connection(connection),
@@ -59,7 +59,7 @@ namespace triagens {
       _errorMessage = "";
       _written = 0;
       _state = IN_CONNECT;
-      
+
       reset();
     }
 
@@ -67,9 +67,9 @@ namespace triagens {
       _connection->disconnect();
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // protected methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     void SimpleClient::handleConnect () {
       if (! _connection->connect()) {
@@ -82,7 +82,7 @@ namespace triagens {
         _written = 0;
       }
     }
-    
+
     bool SimpleClient::close () {
       _connection->disconnect();
       _state = IN_CONNECT;
