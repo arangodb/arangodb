@@ -38,12 +38,6 @@
     <Filter Include="ShapedJsonHeader">
       <UniqueIdentifier>{4e9d39ca-3c05-4cf6-9056-d8ab6f13ee64}</UniqueIdentifier>
     </Filter>
-    <Filter Include="VariantSource">
-      <UniqueIdentifier>{cd23e437-74f3-4572-a4e1-f7111b3a456b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="VariantHeader">
-      <UniqueIdentifier>{5aab80fd-8826-4649-a868-aee3bc2a0adf}</UniqueIdentifier>
-    </Filter>
     <Filter Include="StatisticsSource">
       <UniqueIdentifier>{bbf414b5-5c1e-4a33-bd44-31038a405c1c}</UniqueIdentifier>
     </Filter>
@@ -262,69 +256,6 @@
     <ClInclude Include="..\..\lib\ShapedJson\shaped-json.h">
       <Filter>ShapedJsonHeader</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantArray.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantBlob.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantBoolean.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantDate.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantDatetime.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantDouble.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantFloat.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantInt8.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantInt16.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantInt32.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantInt64.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantMatrix2.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantNull.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantObject.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantObjectTemplate.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantString.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantUInt8.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantUInt16.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantUInt32.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantUInt64.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Variant\VariantVector.h">
-      <Filter>VariantHeader</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Statistics\RoundRobinFigures.h">
       <Filter>StatisticsHeader</Filter>
     </ClInclude>
@@ -423,6 +354,9 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\Rest\EndpointIp.h">
       <Filter>RestHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Basics\Nonce.h">
+      <Filter>BasicsHeader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -591,66 +525,6 @@
     <ClCompile Include="..\..\lib\ShapedJson\shaped-json.c">
       <Filter>ShapedJsonSource</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantArray.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantBlob.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantBoolean.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantDate.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantDatetime.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantDouble.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantFloat.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantInt8.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantInt16.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantInt32.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantInt64.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantMatrix2.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantNull.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantObject.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantString.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantUInt8.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantUInt16.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantUInt32.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantUInt64.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Variant\VariantVector.cpp">
-      <Filter>VariantSource</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\Statistics\statistics.cpp">
       <Filter>StatisticsSource</Filter>
     </ClCompile>
@@ -719,6 +593,9 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\application-exit.c">
       <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Basics\Nonce.cpp">
+      <Filter>BasicsSource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

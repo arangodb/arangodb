@@ -186,6 +186,9 @@ TRI_transaction_list_t;
 
 typedef struct TRI_transaction_context_s {
   TRI_transaction_id_t      _id;                // last transaction id assigned
+  
+  TRI_read_write_lock_t     _rwLock;            // lock used to either simulatensously read this structure, 
+                                                // or uniquely modify this structure
 #if 0  
   TRI_mutex_t               _lock;              // lock used to serialize starting/stopping transactions
   TRI_mutex_t               _collectionLock;    // lock used when accessing _collections
@@ -193,7 +196,7 @@ typedef struct TRI_transaction_context_s {
   TRI_transaction_list_t    _writeTransactions; // global list of currently ongoing write transactions
   TRI_associative_pointer_t _collections;       // list of collections (TRI_transaction_collection_global_t)
 #endif
-  struct TRI_vocbase_s*     _vocbase;           // pointer to vocbase
+  struct TRI_vocbase_s*     _vocbase;           // pointer to vocbase  
 }
 TRI_transaction_context_t;
 

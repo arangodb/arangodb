@@ -27,12 +27,6 @@
     <Filter Include="Http Server Header">
       <UniqueIdentifier>{77913628-8193-462a-9f10-d49158efad9c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Result Generator Source">
-      <UniqueIdentifier>{91fa95ce-57ae-40d8-b6e4-7be1cedc3b1e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Result Generator Header">
-      <UniqueIdentifier>{b27618f6-c3a8-45b7-9f53-4a4826d1c643}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Scheduler Source">
       <UniqueIdentifier>{4735afb3-3596-4d17-b779-d0a524afecbd}</UniqueIdentifier>
     </Filter>
@@ -125,27 +119,6 @@
     <ClInclude Include="..\..\lib\HttpServer\ServiceUnavailableHandler.h">
       <Filter>Http Server Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\HtmlResultGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\JsonResultGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\JsonXResultGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\OutputGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\PhpResultGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\ResultGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\XmlResultGenerator.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Scheduler\ApplicationScheduler.h">
       <Filter>Scheduler Header</Filter>
     </ClInclude>
@@ -187,9 +160,6 @@
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\VisualStudio\libev-4.01\ev_wrap.h">
       <Filter>Libev header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\InitialiseGenerator.h">
-      <Filter>Result Generator Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\GeneralServer\EndpointServer.h">
       <Filter>Http Server Header</Filter>
@@ -280,27 +250,6 @@
     <ClCompile Include="..\..\lib\HttpServer\ServiceUnavailableHandler.cpp">
       <Filter>Http Server Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\HtmlResultGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\JsonResultGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\JsonXResultGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\OutputGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\PhpResultGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\ResultGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\XmlResultGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\Scheduler\ApplicationScheduler.cpp">
       <Filter>Scheduler Source</Filter>
     </ClCompile>
@@ -333,9 +282,6 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\Scheduler\TimerTask.cpp">
       <Filter>Scheduler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\InitialiseGenerator.cpp">
-      <Filter>Result Generator Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Scheduler\Task.cpp">
       <Filter>Scheduler Source</Filter>
