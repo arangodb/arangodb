@@ -105,7 +105,7 @@ static void ClearSimpleHeaders (TRI_doc_mptr_t* header, size_t headerSize) {
 static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
   simple_headers_t* headers = (simple_headers_t*) h;
   char const* header;
-  union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* h; } c;
+  TRI_doc_mptr_t* result;
 
   if (headers->_freelist == NULL) {
     char* begin;
@@ -140,11 +140,11 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
   
   TRI_ASSERT_DEBUG(headers->_freelist != NULL);
 
-  c.c = headers->_freelist;
-  headers->_freelist = c.c->_data;
+  result = CONST_CAST(headers->_freelist);
+  headers->_freelist = result->_data;
+  result->_data = NULL;
 
-  c.h->_data = NULL;
-  return c.h;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

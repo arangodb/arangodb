@@ -1188,10 +1188,7 @@ void TRI_RawLog (TRI_log_level_e level,
                  TRI_log_severity_e severity,
                  char const* text,
                  size_t length) {
-  union { char* v; char const* c; } cnv;
-  cnv.c = text;
-
-  OutputMessage(level, severity, cnv.v, length, 0, true);
+  OutputMessage(level, severity, CONST_CAST(text), length, 0, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

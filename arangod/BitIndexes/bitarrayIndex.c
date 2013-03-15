@@ -26,13 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitarrayIndex.h"
+
+#include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
+#include "BitIndexes/bitarray.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/index.h"
 #include "VocBase/primary-collection.h"
-#include "BasicsC/logging.h"
-
-
 
 // .............................................................................
 // forward declaration of static functions used for iterator callbacks
@@ -58,7 +59,7 @@ static int   BitarrayIndex_findHelper                 (BitarrayIndex*, TRI_vecto
 #if 0
 static void  BitarrayIndex_freeMaskSet                (TRI_bitarray_mask_set_t*);
 #endif
-static int   BitarrayIndex_generateInsertBitMask      (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
+static int   BitarrayIndex_generateInsertBitMask      (BitarrayIndex*, const TRI_bitarray_index_key_t*, TRI_bitarray_mask_t*);
 static int   BitarrayIndex_generateEqualBitMask       (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
 static int   BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t*, TRI_json_t*, uint64_t*);
 static void  BitarrayIndex_insertMaskSet              (TRI_bitarray_mask_set_t*, TRI_bitarray_mask_t*, bool);
@@ -274,7 +275,7 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
 /// @brief adds (inserts) a data element into one or more bit arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
+int BitarrayIndex_insert (BitarrayIndex* baIndex, TRI_bitarray_index_key_t* element) {
   int result;
   TRI_bitarray_mask_t mask;
 
@@ -291,9 +292,8 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   mask._ignoreMask = 0;
 
   result = BitarrayIndex_generateInsertBitMask(baIndex, element, &mask);
-  //debugPrintMask(baIndex, mask._mask);
-
-
+  //debugPrintMask(baIndex, mask._mask); 
+ 
   // ..........................................................................
   // It may happen that the values for one or more attributes are unsupported
   // in this an error will be returned.
@@ -301,9 +301,8 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
 
   if (result != TRI_ERROR_NO_ERROR) {
     return result;
-  }
-
-
+  }  
+  
   // ..........................................................................
   // insert the bit mask into the bit array
   // ..........................................................................
@@ -312,18 +311,15 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   return result;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate one or more documents which match an index operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
-                                         TRI_index_operator_t* indexOperator,
-                                         TRI_vector_t* shapeList,
-                                         void* collectionIndex,
-                                         bool (*filter) (TRI_index_iterator_t*) ) {
-
+TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex* baIndex, 
+                                          TRI_index_operator_t* indexOperator,
+                                          TRI_vector_t* shapeList,
+                                          TRI_bitarray_index_t* collectionIndex,
+                                          bool (*filter) (TRI_index_iterator_t*) ) {
   TRI_index_iterator_t* iterator;
   TRI_bitarray_mask_set_t maskSet;
   int result;
@@ -388,45 +384,15 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   return iterator;
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief alias for add Index item
-////////////////////////////////////////////////////////////////////////////////
-
-int BitarrayIndex_insert(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
-  return BitarrayIndex_add(baIndex,element);
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from the bit arrays and master table
 ////////////////////////////////////////////////////////////////////////////////
 
-int BitarrayIndex_remove(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
+int BitarrayIndex_remove(BitarrayIndex* baIndex, TRI_bitarray_index_key_t* element) {
   int result;
   result = TRI_RemoveElementBitarray(baIndex->_bitarray, element->data);
   return result;
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a bit array index  entry
-////////////////////////////////////////////////////////////////////////////////
-
-int BitarrayIndex_update(BitarrayIndex* baIndex,
-                          const BitarrayIndexElement* oldElement,
-                          const BitarrayIndexElement* newElement) {
-
-  assert(false);
-  return TRI_ERROR_INTERNAL;
-}
-
-
-
-
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -1014,13 +980,12 @@ static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_j
   // ...........................................................................
 
   return TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE;
-
-
 }
 
 
-int BitarrayIndex_generateInsertBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
-
+int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
+                                         const TRI_bitarray_index_key_t* element,
+                                         TRI_bitarray_mask_t* mask) {
   TRI_shaper_t* shaper;
   int j;
   int shiftLeft;

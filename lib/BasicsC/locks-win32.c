@@ -899,6 +899,40 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   }
 }
 
+
+
+// -----------------------------------------------------------------------------
+// COMPARE & SWAP operations below for windows
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically compares and swaps 32bit integers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapInteger32 (volatile long* theValue, int32_t oldValue, int32_t newValue) {
+  return ( InterlockedCompareExchange(theValue, newValue, oldValue) == oldValue );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically compares and swaps 64bit integers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapInteger64 (volatile long* theValue, int64_t oldValue, int64_t newValue) {
+  return ( InterlockedCompareExchange64(theValue, newValue, oldValue) == oldValue );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically compares and swaps pointers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue) {
+  return ( InterlcokedCompareExchangEPointer(theValue, newValue, oldValue) == oldValue );
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
