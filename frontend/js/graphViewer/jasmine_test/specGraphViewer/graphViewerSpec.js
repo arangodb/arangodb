@@ -117,15 +117,12 @@ describe("Graph Viewer", function() {
     });
   };
   */
-
+  
+  
   beforeEach(function() {
     docSVG = document.createElement("svg");
     document.body.appendChild(docSVG);
     svg = d3.select("svg");
-    
-    
-    
-    expander = new ClickExpander("../generated_1000/", svg, 980, 640, 1);
   });
   
   
@@ -133,7 +130,108 @@ describe("Graph Viewer", function() {
     document.body.removeChild(docSVG);
   });
   
+  describe('setup process', function() {
+    
+    var adapterConfig,
+    layouterConfig;
+    
+    beforeEach(function() {
+      adapterConfig = {type: "json", path: "../test_data"};
+      layouterConfig = {type: "force"};
+    });
+    
+    it('should throw an error if the svg is not given or incorrect', function() {
+      expect(
+        function() {
+          var t = new GraphViewer();
+        }
+      ).toThrow("SVG has to be given and has to be selected using d3.select");
+      expect(
+        function() {
+          var t = new GraphViewer(docSVG);
+        }
+      ).toThrow("SVG has to be given and has to be selected using d3.select");
+    });
+    
+    it('should throw an error if the width is not given or incorrect', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg);
+        }
+      ).toThrow("A width greater 0 has to be given");
+      expect(
+        function() {
+          var t = new GraphViewer(svg, -10);
+        }
+      ).toThrow("A width greater 0 has to be given");
+    });
+    
+    it('should throw an error if the height is not given or incorrect', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10);
+        }
+      ).toThrow("A height greater 0 has to be given");
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, -10);
+        }
+      ).toThrow("A height greater 0 has to be given");
+    });
+    
+    it('should throw an error if the adapter config is not given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10);
+        }
+      ).toThrow("Adapter config has to be given");
+    });
+    
+    it('should throw an error if the node shaper config is not given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig);
+        }
+      ).toThrow("Node Shaper config has to be given");
+    });
+    
+    it('should throw an error if the edge shaper config is not given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig, {});
+        }
+      ).toThrow("Edge Shaper config has to be given");
+    });
+    
+    it('should throw an error if the layouter config is not given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig, {}, {});
+        }
+      ).toThrow("Layouter config has to be given");
+    });
+    
+    it('should throw an error if the events config is not given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig, {}, {}, layouterConfig);
+        }
+      ).toThrow("Events config has to be given");
+    });
+    
+    it('should not throw an error if everything is given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig, {}, {}, layouterConfig, {});
+        }
+      ).not.toThrow();
+    });
+    
+  });
   
+
+  
+/*  
   it("should be able to load a root node", function() {
     
     runs (function() {
@@ -795,4 +893,5 @@ describe("Graph Viewer", function() {
       });      
     });
   });
+  */
 });

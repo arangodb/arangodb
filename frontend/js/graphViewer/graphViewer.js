@@ -1,5 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
+/*global EventLibrary, ArangoAdapter, JSONAdapter */
+/*global ForceLayouter, EdgeShaper, NodeShaper */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -28,7 +30,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-function GraphViewer(svg, width, height, adapterConfig, nodeShaperConfig, edgeShaperConfig, layouterConfig, eventsConfig) {
+function GraphViewer(svg, width, height,
+  adapterConfig, nodeShaperConfig, edgeShaperConfig,
+  layouterConfig, eventsConfig) {
+  
   "use strict";
   // Check if all required inputs are given
   if (svg === undefined || svg.append === undefined) {
@@ -72,26 +77,41 @@ function GraphViewer(svg, width, height, adapterConfig, nodeShaperConfig, edgeSh
   nodeContainer,
   edgeContainer,
   layouter,
+  fixedSize,
   eventlib = new EventLibrary(),
   edges = [],
   nodes = [],
   // Function after handleing events, will update the drawers and the layouter.
   start;
   
-  if (adapterConfig.type === "arango") {    
-    adapter = new ArangoAdapter(adapterConfig.host, nodes, edges, adapterConfig.nodeCollection, adapterConfig.edgeCollection);
-  } else {
-    throw "Sorry unknown adapter type."
-  }
+  switch (adapterConfig.type.toLowerCase()) {
+    case "arango":
+      adapter = new ArangoAdapter(
+        adapterConfig.host,
+        nodes,
+        edges,
+        adapterConfig.nodeCollection,
+        adapterConfig.edgeCollection
+      );
+      break;
+    case "json":
+      adapter = new JSONAdapter(adapterConfig.path, nodes, edges);
+      break;
+    default:
+      throw "Sorry unknown adapter type.";
+  }    
   
-  if (layouterConfig.type === "force") {
-    layouterConfig.nodes = nodes;
-    layouterConfig.links = edges;
-    layouterConfig.width = width;
-    layouterConfig.height = height;
-    layouter = new ForceLayouter(layouterConfig);
-  } else {
-    throw "Sorry unknown layout type."
+  
+  switch (layouterConfig.type.toLowerCase()) {
+    case "force":
+      layouterConfig.nodes = nodes;
+      layouterConfig.links = edges;
+      layouterConfig.width = width;
+      layouterConfig.height = height;
+      layouter = new ForceLayouter(layouterConfig);
+      break;
+    default:
+      throw "Sorry unknown layout type.";
   } 
   
   edgeContainer = svg.append("svg:g");
@@ -101,20 +121,20 @@ function GraphViewer(svg, width, height, adapterConfig, nodeShaperConfig, edgeSh
   nodeContainer = svg.append("svg:g");
   
   if (nodeShaperConfig.childrenCentrality) {
-    var fixedSize = nodeShaperConfig.size || 12;
+    fixedSize = nodeShaperConfig.size || 12;
     nodeShaperConfig.size = function(node) {
-        if (node._expanded) {
-          return fixedSize;
-        }
-        if (node._centrality) {
-          return fixedSize + 3 * node._centrality;
-        }
-        adapter.requestCentralityChildren(node.id, function(c) {
-          node._centrality = c;
-          nodeShaper.reshapeNode(node);
-        });
+      if (node._expanded) {
         return fixedSize;
       }
+      if (node._centrality) {
+        return fixedSize + 3 * node._centrality;
+      }
+      adapter.requestCentralityChildren(node.id, function(c) {
+        node._centrality = c;
+        nodeShaper.reshapeNode(node);
+      });
+      return fixedSize;
+    };
   }
   if (nodeShaperConfig.dragable) {
     nodeShaperConfig.ondrag = layouter.drag;
