@@ -246,8 +246,7 @@
 
       beforeEach(function () {
         shaper = new NodeShaper(d3.select("svg"), {
-          "label": "label",
-          "shape": NodeShaper.shapes.CIRCLE
+          "label": "label"
         });
       });
 
@@ -304,8 +303,7 @@
 
       beforeEach(function () {
         shaper = new NodeShaper(d3.select("svg"), {
-          "label": labelFunction,
-          "shape": NodeShaper.shapes.CIRCLE
+          "label": labelFunction
         });
       });
 
