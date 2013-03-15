@@ -1,4 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global _*/
 /* global eventLibrary */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +29,9 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// Example onclick = new eventLibrary.Expand(edges, nodes, start, adapter.loadNode, nodeShaper.reshapeNode)
+// Example onclick = new eventLibrary.Expand(
+// edges, nodes, start,
+// adapter.loadNode, nodeShaper.reshapeNode)
 function EventLibrary() {
   this.Expand = function (edges, nodes, startCallback, loadNode, reshapeNode) {
     if (edges === undefined) {
@@ -64,8 +67,8 @@ function EventLibrary() {
     // Helper function to easily remove all outbound edges for one node
     removeOutboundEdgesFromNode = function ( node ) {
       if (node._outboundCounter > 0) {
-        var subNodes = [];
-        var i;
+        var subNodes = [],
+        i;
         for ( i = 0; i < edges.length; i++ ) {
           if ( edges[i].source === node ) {
             subNodes.push(edges[i].target);
