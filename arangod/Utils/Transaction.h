@@ -646,7 +646,7 @@ namespace triagens {
                                            const bool lock) {
 
           // TODO: set transaction lock here
-          return primary->insert(primary, markerType, key, mptr, shaped, data, forceSync, lock);
+          return primary->insert(primary, markerType, key, mptr, shaped, data, lock, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

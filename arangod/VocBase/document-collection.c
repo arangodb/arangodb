@@ -1269,8 +1269,8 @@ static int InsertShapedJson (TRI_primary_collection_t* primary,
                              TRI_doc_mptr_t* mptr,
                              TRI_shaped_json_t const* shaped,
                              void const* data,
-                             const bool forceSync,
-                             const bool lock) {
+                             const bool lock,
+                             const bool forceSync) {
 
   TRI_document_collection_t* document;
   TRI_doc_document_key_marker_t* marker;
@@ -1325,7 +1325,6 @@ static int InsertShapedJson (TRI_primary_collection_t* primary,
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1352,7 +1351,7 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
 
   return TRI_ERROR_NO_ERROR;
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
