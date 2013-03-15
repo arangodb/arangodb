@@ -1098,11 +1098,11 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 // Example of a filter associated with an interator
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
-  BitarrayIndexElement* indexElement;
+static bool BitarrayFilterExample (TRI_index_iterator_t* indexIterator) {
+  TRI_doc_mptr_t* indexElement;
   TRI_bitarray_index_t* baIndex;
-
-  indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
+    
+  indexElement = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
 
   if (indexElement == NULL) {
     return false;
@@ -1113,14 +1113,7 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   if (baIndex == NULL) {
     return false;
   }
-
-  /* doc = (TRI_doc_mptr_t*) indexElement->data; */
-
-  // ..........................................................................
-  // Now perform any additional filter operations you require on the doc
-  // using baIndex which you now have access to.
-  // ..........................................................................
-
+    
   return true;
 }
 
@@ -2085,6 +2078,10 @@ static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
   return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by condition using a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) {
   std::string signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
 
@@ -2392,6 +2389,66 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects the top most element using a priority queue
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    std::string usage("Usage: TOP(<index>)");
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,usage)));
+  }
+  
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+  }
+  
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute within query", true)));
+  }
+
+  v8::Handle<v8::Object> err;
+  TRI_index_t* idx = TRI_LookupIndexByHandle(resolver, col, argv[0], false, &err);
+
+  if (idx->_type != TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX) {
+    trx.finish(res);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a priority queue index")));
+  }
+
+  PQIndexElements* elms = TRI_LookupPriorityQueueIndex(idx, 1);
+
+  if (elms == NULL ) {
+    trx.finish(res);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot execute query")));
+  }
+
+  if (elms->_numElements == 0) {
+    trx.finish(res);
+    return scope.Close(v8::Undefined());
+  }
+
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) col->_collection)->_barrierList);
+  v8::Handle<v8::Value> result = TRI_WrapShapedJson(resolver,
+                                                    col,
+                                                    (TRI_doc_mptr_t const*) elms->_elements[0]._document,
+                                                    barrier);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, elms->_elements);
+
+  trx.finish(res);
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects points within a given radius
 ///
 /// the caller must ensure all relevant locks are acquired and freed
@@ -2540,6 +2597,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
   TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
+  TRI_AddMethodVocbase(rt, "TOP", JS_TopQuery);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
 }
 
