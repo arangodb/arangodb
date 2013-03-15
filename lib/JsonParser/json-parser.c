@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicsC/common.h"
@@ -76,7 +76,7 @@ int fileno(FILE *stream);
 #if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 /* C99 says to define __STDC_LIMIT_MACROS before including stdint.h,
- * if you want the limit (max/min) macros for int types.
+ * if you want the limit (max/min) macros for int types. 
  */
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
@@ -94,7 +94,7 @@ typedef uint64_t flex_uint64_t;
 typedef signed char flex_int8_t;
 typedef short int flex_int16_t;
 typedef int flex_int32_t;
-typedef unsigned char flex_uint8_t;
+typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
 #endif /* ! C99 */
@@ -223,7 +223,7 @@ typedef size_t yy_size_t;
 #define EOB_ACT_LAST_MATCH 2
 
     #define YY_LESS_LINENO(n)
-
+    
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
 	do \
@@ -280,7 +280,7 @@ struct yy_buffer_state
 
     int yy_bs_lineno; /**< The line count. */
     int yy_bs_column; /**< The column count. */
-
+    
 	/* Whether to try to fill the input buffer when we reach the
 	 * end of it.
 	 */
@@ -862,7 +862,7 @@ case 4:
 YY_RULE_SETUP
 {
   // performance optimisation for all-ASCII strings without escape characters
-  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f),
+  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
   return STRING_CONSTANT_ASCII;
 }
@@ -1422,7 +1422,7 @@ static void tri_jsp__load_buffer_state  (yyscan_t yyscanner)
     YY_BUFFER_STATE tri_jsp__create_buffer  (FILE * file, int  size , yyscan_t yyscanner)
 {
 	YY_BUFFER_STATE b;
-
+    
 	b = (YY_BUFFER_STATE) tri_jsp_alloc(sizeof( struct yy_buffer_state ) ,yyscanner );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in tri_jsp__create_buffer()" );
@@ -1468,7 +1468,7 @@ static void tri_jsp__load_buffer_state  (yyscan_t yyscanner)
 extern int isatty (int );
 #endif
 #endif /* __cplusplus */
-
+    
 /* Initializes or reinitializes a buffer.
  * This function is sometimes called more than once on the same buffer,
  * such as during a tri_jsp_restart() or at EOF.
@@ -1494,7 +1494,7 @@ extern int isatty (int );
     }
 
         b->yy_is_interactive = file ? (isatty( fileno(file) ) > 0) : 0;
-
+    
 	errno = oerrno;
 }
 
@@ -1600,9 +1600,9 @@ static void tri_jsp_ensure_buffer_stack (yyscan_t yyscanner)
 								, yyscanner);
 		if ( ! yyg->yy_buffer_stack )
 			YY_FATAL_ERROR( "out of dynamic memory in tri_jsp_ensure_buffer_stack()" );
-
+								  
 		memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
-
+				
 		yyg->yy_buffer_stack_max = num_to_alloc;
 		yyg->yy_buffer_stack_top = 0;
 		return;
@@ -1631,12 +1631,12 @@ static void tri_jsp_ensure_buffer_stack (yyscan_t yyscanner)
  * @param base the character buffer
  * @param size the size in bytes of the character buffer
  * @param yyscanner The scanner object.
- * @return the newly allocated buffer state object.
+ * @return the newly allocated buffer state object. 
  */
 YY_BUFFER_STATE tri_jsp__scan_buffer  (char * base, yy_size_t  size , yyscan_t yyscanner)
 {
 	YY_BUFFER_STATE b;
-
+    
 	if ( size < 2 ||
 	     base[size-2] != YY_END_OF_BUFFER_CHAR ||
 	     base[size-1] != YY_END_OF_BUFFER_CHAR )
@@ -1672,7 +1672,7 @@ YY_BUFFER_STATE tri_jsp__scan_buffer  (char * base, yy_size_t  size , yyscan_t y
  */
 YY_BUFFER_STATE tri_jsp__scan_string (yyconst char * yystr , yyscan_t yyscanner)
 {
-
+    
 	return tri_jsp__scan_bytes(yystr,strlen(yystr) ,yyscanner);
 }
 
@@ -1688,7 +1688,7 @@ YY_BUFFER_STATE tri_jsp__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybyte
 	YY_BUFFER_STATE b;
 	char *buf;
 	yy_size_t n, i;
-
+    
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
 	buf = (char *) tri_jsp_alloc(n ,yyscanner );
@@ -1756,10 +1756,10 @@ YY_EXTRA_TYPE tri_jsp_get_extra  (yyscan_t yyscanner)
 int tri_jsp_get_lineno  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-
+    
         if (! YY_CURRENT_BUFFER)
             return 0;
-
+    
     return yylineno;
 }
 
@@ -1769,10 +1769,10 @@ int tri_jsp_get_lineno  (yyscan_t yyscanner)
 int tri_jsp_get_column  (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
-
+    
         if (! YY_CURRENT_BUFFER)
             return 0;
-
+    
     return yycolumn;
 }
 
@@ -1833,8 +1833,8 @@ void tri_jsp_set_lineno (int  line_number , yyscan_t yyscanner)
 
         /* lineno is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
-           yy_fatal_error( "tri_jsp_set_lineno called with no buffer" , yyscanner);
-
+           yy_fatal_error( "tri_jsp_set_lineno called with no buffer" , yyscanner); 
+    
     yylineno = line_number;
 }
 
@@ -1848,8 +1848,8 @@ void tri_jsp_set_column (int  column_no , yyscan_t yyscanner)
 
         /* column is only valid if an input buffer exists. */
         if (! YY_CURRENT_BUFFER )
-           yy_fatal_error( "tri_jsp_set_column called with no buffer" , yyscanner);
-
+           yy_fatal_error( "tri_jsp_set_column called with no buffer" , yyscanner); 
+    
     yycolumn = column_no;
 }
 
@@ -1932,20 +1932,20 @@ int tri_jsp_lex_init_extra(YY_EXTRA_TYPE yy_user_defined,yyscan_t* ptr_yy_global
         errno = EINVAL;
         return 1;
     }
-
+	
     *ptr_yy_globals = (yyscan_t) tri_jsp_alloc ( sizeof( struct yyguts_t ), &dummy_yyguts );
-
+	
     if (*ptr_yy_globals == NULL){
         errno = ENOMEM;
         return 1;
     }
-
+    
     /* By setting to 0xAA, we expose bugs in
     yy_init_globals. Leave at 0x00 for releases. */
     memset(*ptr_yy_globals,0x00,sizeof(struct yyguts_t));
-
+    
     tri_jsp_set_extra (yy_user_defined, *ptr_yy_globals);
-
+    
     return yy_init_globals ( *ptr_yy_globals );
 }
 
@@ -2199,7 +2199,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
       yyextra._message = "expecting attribute name";
       return NULL;
     }
-
+      
     if (name == NULL) {
       TRI_FreeJson(yyextra._memoryZone, array);
       yyextra._message = "out-of-memory";
@@ -2312,12 +2312,20 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
     case STRING_CONSTANT: {
       char* ptr;
       size_t outLength;
+        
+      if (yyleng <= 2) {
+        // string is empty, use original pointer
+        ptr = yytext + 1;
+        outLength = 0;
+      }
+      else {
+        // string is not empty, process it
+        ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-      ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-
-      if (ptr == NULL) {
-        yyextra._message = "out-of-memory";
-        return NULL;
+        if (ptr == NULL) {
+          yyextra._message = "out-of-memory";
+          return NULL;
+        }
       }
 
       result = TRI_CreateString2Json(yyextra._memoryZone, ptr, outLength);
@@ -2328,7 +2336,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 
       return result;
     }
-
+    
     case STRING_CONSTANT_ASCII: {
       result = TRI_CreateString2CopyJson(yyextra._memoryZone, yytext + 1, yyleng - 2);
 
@@ -2344,7 +2352,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
 
     case OPEN_BRACKET:
       return ParseList(scanner);
-
+    
     case CLOSE_BRACE:
       yyextra._message = "expected object, got '}'";
       return NULL;
@@ -2364,7 +2372,7 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
     case UNQUOTED_STRING:
       yyextra._message = "expected object, got unquoted string";
       return NULL;
-
+    
     case END_OF_FILE:
       yyextra._message = "expecting atom, got end-of-file";
       return NULL;
@@ -2510,6 +2518,6 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
 // Local Variables:
 // mode: C
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
 
