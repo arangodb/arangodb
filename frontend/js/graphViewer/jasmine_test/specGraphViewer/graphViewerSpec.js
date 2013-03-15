@@ -4,7 +4,7 @@
 /*global waitsFor, runs */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global ClickExpander*/
+/*global GraphViewer*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -34,12 +34,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-describe("click Expander", function() {
+describe("Graph Viewer", function() {
   "use strict";
-  var expander,
+  var viewer,
   svg,
   docSVG,
-  
+  /*
   nodeWithID = function(id) {
     return $.grep(expander.nodes, function(e){
       return e.id === id;
@@ -84,7 +84,7 @@ describe("click Expander", function() {
   notExistNodes = function(ids) {
     _.each(ids, notExistNode);
   },
-  
+  */
   displayNode = function(id) {
     expect($("svg #" + id)[0]).toBeDefined();
   },
@@ -122,6 +122,9 @@ describe("click Expander", function() {
     docSVG = document.createElement("svg");
     document.body.appendChild(docSVG);
     svg = d3.select("svg");
+    
+    
+    
     expander = new ClickExpander("../generated_1000/", svg, 980, 640, 1);
   });
   

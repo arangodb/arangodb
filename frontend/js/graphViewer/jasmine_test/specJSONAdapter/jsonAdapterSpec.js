@@ -75,7 +75,7 @@
       edges.insertEdge = function(source, target) {
         this.push({source: source, target: target});
       };
-      startNode = 477;
+      startNode = 0;
       adapter = new JSONAdapter(jsonPath, nodes, edges);
     });
     
@@ -94,7 +94,7 @@
       });
       
       runs(function() {
-        existNodes([477, 29, 159, 213, 339]);
+        existNodes([0, 1, 2, 3, 4]);
         expect(nodes.length).toEqual(5);
       });
     });
