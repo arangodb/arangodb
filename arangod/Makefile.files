@@ -69,6 +69,8 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
+	arangod/SkipListsEx/skiplistEx.c \
+	arangod/SkipListsEx/skiplistExIndex.c \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-query.cpp \
