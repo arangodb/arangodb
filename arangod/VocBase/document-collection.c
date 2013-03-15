@@ -2127,7 +2127,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  assert(keyGenerator != NULL);
+  TRI_ASSERT_DEBUG(keyGenerator != NULL);
 
 
   // first create the document collection
@@ -2332,11 +2332,10 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
     return NULL;
   }
 
-  assert(keyGenerator != NULL);
+  TRI_ASSERT_DEBUG(keyGenerator != NULL);
   document->base._keyGenerator = keyGenerator;
 
 
-  assert(shaper);
   shapeCollection = TRI_CollectionVocShaper(shaper);
   if (shapeCollection != NULL) {
     shapeCollection->base._info._waitForSync = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
