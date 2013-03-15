@@ -43,21 +43,37 @@
       nodes,
       edges,
       arangodb,
-      startNode,
       nodesCollection,
       nodesCollId,
       edgesCollection,
       edgesCollId,
+      c0,
+      c1,
+      c2,
+      c3,
+      c4,
+      c5,
+      c6,
+      c7,
+      c8,
+      c9,
+      c10,
+      c11,
+      c12,
+      c42,
+      c43,
+      c44,
+      c45,
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
-          return e.id === id;
+          return e._id === id;
         })[0];
       },
       
       existNode = function(id) {
         var node = nodeWithID(id);
         expect(node).toBeDefined();
-        expect(node.id).toEqual(id);
+        expect(node._id).toEqual(id);
       },
       
       existNodes = function(ids) {
@@ -154,26 +170,49 @@
         
         createCollection(nodesCollection, "Document", function(id) {nodesCollId = id;});
         createCollection(edgesCollection, "Edge", function(id) {edgesCollId = id;});
+        c0 = insertNode(nodesCollection, 0);
+        c1 = insertNode(nodesCollection, 1);
+        c2 = insertNode(nodesCollection, 2);
+        c3 = insertNode(nodesCollection, 3);
+        c4 = insertNode(nodesCollection, 4);
+        c5 = insertNode(nodesCollection, 5);
+        c6 = insertNode(nodesCollection, 6);
+        c7 = insertNode(nodesCollection, 7);
+        c8 = insertNode(nodesCollection, 8);
+        c9 = insertNode(nodesCollection, 9);
+        c10 = insertNode(nodesCollection, 10);
+        c11 = insertNode(nodesCollection, 11);
+        c12 = insertNode(nodesCollection, 12);
         
-        var c1 = insertNode(nodesCollection, 477),
-        c2 = insertNode(nodesCollection, 29),
-        c3 = insertNode(nodesCollection, 159),
-        c4 = insertNode(nodesCollection, 213),
-        c5 = insertNode(nodesCollection, 339),
-        c6 = insertNode(nodesCollection, 3),
-        c7 = insertNode(nodesCollection, 7),
-        c8 = insertNode(nodesCollection, 4),
-        c9 = insertNode(nodesCollection, 80);
+        c42 = insertNode(nodesCollection, 42);
+        c43 = insertNode(nodesCollection, 43);
+        c44 = insertNode(nodesCollection, 44);
+        c45 = insertNode(nodesCollection, 45);
         
-        insertEdge(edgesCollection, c1, c2);
-        insertEdge(edgesCollection, c1, c3);
-        insertEdge(edgesCollection, c1, c4);
+        
+        insertEdge(edgesCollection, c0, c1);
+        insertEdge(edgesCollection, c0, c2);
+        insertEdge(edgesCollection, c0, c3);
+        insertEdge(edgesCollection, c0, c4);
+        
         insertEdge(edgesCollection, c1, c5);
-        insertEdge(edgesCollection, c2, c6);
-        insertEdge(edgesCollection, c2, c7);
-        insertEdge(edgesCollection, c6, c8);
-        insertEdge(edgesCollection, c4, c8);
-        insertEdge(edgesCollection, c4, c9);
+        insertEdge(edgesCollection, c1, c6);
+        insertEdge(edgesCollection, c1, c7);
+        
+        insertEdge(edgesCollection, c2, c8);
+        
+        insertEdge(edgesCollection, c3, c8);
+        insertEdge(edgesCollection, c3, c9);
+        
+        insertEdge(edgesCollection, c5, c10);
+        insertEdge(edgesCollection, c5, c11);
+        
+        insertEdge(edgesCollection, c4, c5);
+        insertEdge(edgesCollection, c4, c12);
+        
+        insertEdge(edgesCollection, c42, c43);
+        insertEdge(edgesCollection, c42, c44);
+        insertEdge(edgesCollection, c42, c45);
       };
     
     beforeEach(function() {
@@ -182,20 +221,26 @@
       setupArangoContent();
       nodes = [];
       edges = [];
-      startNode = 477;
-      adapter = new ArangoAdapter(arangodb, nodes, edges, nodesCollection, edgesCollection, 100, 40);
+      adapter = new ArangoAdapter(
+        arangodb,
+        nodes,
+        edges,
+        nodesCollection,
+        edgesCollection,
+        100,
+        40);
     });
     
     afterEach(function() {
       
     });
     
-    it('should be able to load a tree node from ArangoDB', function() {
+    it('should be able to load a tree node from ArangoDB by internal _id attribute', function() {
       var callbackCheck;
       
       runs(function() {
         callbackCheck = false;
-        adapter.loadNodeFromTree(startNode, function(res) {
+        adapter.loadNodeFromTreeById(c0, function(res) {
           callbackCheck = true;
         });
       });
@@ -205,7 +250,7 @@
       });
       
       runs(function() {
-        existNodes([477, 29, 159, 213, 339]);
+        existNodes([c0, c1, c2, c3, c4]);
         expect(nodes.length).toEqual(5);
       });
     });
@@ -216,7 +261,7 @@
       
       runs(function() {
         callbackCheck = false;
-        adapter.requestCentralityChildren(startNode, function(count) {
+        adapter.requestCentralityChildren(c0, function(count) {
           callbackCheck = true;
           children = count;
         });
@@ -238,7 +283,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(startNode, function() {
+          adapter.loadNodeFromTreeById(c0, function() {
             callbackCheck = true;
           });
         });
@@ -253,7 +298,7 @@
         
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(29, function() {
+          adapter.loadNodeFromTreeById(c1, function() {
             callbackCheck = true;
           });
         });
@@ -263,12 +308,13 @@
         });
       
         runs(function() {
-          existNodes([477, 29, 159, 213, 339, 3, 7]);
-          expect(nodes.length).toEqual(7);
+          existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
+          expect(nodes.length).toEqual(8);
         });
       });
       
       it('should be able to change a value of one node permanently', function() {
+        
         throw "Not Implemented";
       });
       
@@ -299,7 +345,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(startNode, function() {
+          adapter.loadNodeFromTreeById(c0, function() {
             callbackCheck = true;
           });
         });
@@ -310,7 +356,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(29, function() {
+          adapter.loadNodeFromTreeById(c2, function() {
             callbackCheck = true;
           });
         });
@@ -318,38 +364,29 @@
         waitsFor(function() {
           return callbackCheck;
         });
+      
+      });
+      
+      it('should not add a node to the list twice', function() {
+        var callbackCheck;
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(3, function() {
+          adapter.loadNodeFromTreeById(c3, function() {
             callbackCheck = true;
           });
         });
       
         waitsFor(function() {
           return callbackCheck;
-        });
+        });  
         
-        it('should not add a node to the list twice', function() {
-          var callbackCheck;
-      
-          runs(function() {
-            callbackCheck = false;
-            adapter.loadNodeFromTree(213, function() {
-              callbackCheck = true;
-            });
-          });
-      
-          waitsFor(function() {
-            return callbackCheck;
-          });  
-          
-          runs(function() {
-            existNodes([477, 29, 159, 213, 339, 3, 7, 4, 80]);
-            expect(nodes.length).toEqual(9);
-          });
+        runs(function() {
+          existNodes([c0, c1, c2, c3, c4, c8, c9]);
+          expect(nodes.length).toEqual(7);
         });
       });
+      
     });
     
   });

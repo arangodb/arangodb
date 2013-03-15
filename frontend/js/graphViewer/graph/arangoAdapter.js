@@ -33,9 +33,9 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   var self = this,
   initialX = {},
   initialY = {},
-  findNode = function(n) {
+  findNode = function(id) {
     var res = $.grep(nodes, function(e){
-      return e.id === n.id;
+      return e._id === id;
     });
     if (res.length === 0) {
       return false;
@@ -78,7 +78,8 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       error: function(data) {
         try {
           console.log(data.statusText);
-          var temp = JSON.parse(data.responseText);
+          var temp = JSON.parse(data);
+          console.log(temp);
           throw "[" + temp.errorNum + "] " + temp.errorMessage;
         }
         catch (e) {
@@ -92,28 +93,30 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   
   parseResultOfQuery = function (result, callback) {
     _.each(result, function (node) {
-      var n = findNode(node);
+      var n = findNode(node._id);
       if (!n) {
         insertNode(node);
         n = node;
       } else {
         n.children = node.children;
       }
-      self.requestCentralityChildren(node.id, function(c) {
+      self.requestCentralityChildren(node._id, function(c) {
         n._centrality = c;
       });
-      _.each(n.children, function(c) {
-        var check = findNode(c);
+      _.each(n.children, function(id) {
+        var check = findNode(id),
+        newnode;
         if (check) {
           insertEdge(n, check);
-          self.requestCentralityChildren(check.id, function(c) {
+          self.requestCentralityChildren(id, function(c) {
             n._centrality = c;
           });
         } else {
-          insertNode(c);
-          insertEdge(n, c);
-          self.requestCentralityChildren(c.id, function(c) {
-            n._centrality = c;
+          newnode = {_id: id};
+          insertNode(newnode);
+          insertEdge(n, newnode);
+          self.requestCentralityChildren(id, function(c) {
+            newnode._centrality = c;
           });
         }
       });
@@ -137,27 +140,36 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   
   
   
-  self.loadNodeFromTree = function(nodeId, callback) {
-    
-    var loadNodeQuery = "FOR n IN " + nodeCollection
-        +  " FILTER n.id == " + nodeId
-        +  " LET links = ("
-        +  " FOR l IN " + edgeCollection
-        +  " FILTER n._id == l._from"
-        +  " for t in " + nodeCollection
-        +  " filter t._id == l._to"
-        +  " RETURN { "
-        +  "  \"id\" : t.id,"
-        +  " \"name\": t.name," // TODO Remove
-        +  " \"type\": t.type" // TODO Remove
-        +  " }"
-        +  " )"
-        +  " RETURN {"
-        +  " \"id\" : n.id,"
-        +  " \"name\": n.name," // TODO Remove
-        +  " \"type\": n.type," // TODO Remove
-        +  " \"children\" : links"
-        +  " }";
+  self.loadNodeFromTreeById = function(nodeId, callback) {
+    var loadNodeQuery =
+        "FOR n IN " + nodeCollection
+      + " FILTER n._id == " + JSON.stringify(nodeId)
+      + " LET links = ("
+      + "  FOR l IN " + edgeCollection
+      + "  FILTER n._id == l._from"
+      + "   FOR t IN " + nodeCollection
+      + "   FILTER t._id == l._to"
+      + "   RETURN t._id"
+      + " )"
+      + " RETURN MERGE(n, {\"children\" : links})";
+    sendQuery(loadNodeQuery, function(res) {
+      parseResultOfQuery(res, callback);
+    });
+  };
+  
+  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+    var loadNodeQuery =
+        "FOR n IN " + nodeCollection
+      + "FILTER n." + attribute + " == \"" + value + "\""
+      + "LET links = ("
+      + "  FOR l IN " + edgeCollection
+      + "  FILTER n._id == l._from"
+      + "   FOR t IN " + nodeCollection
+      + "   FILTER t._id == l._to"
+      + "   RETURN t._id"
+      + ")"
+      + "RETURN MERGE(n, {\"children\" : links})";
+
     sendQuery(loadNodeQuery, function(res) {
       parseResultOfQuery(res, callback);
     });
@@ -165,7 +177,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   
   self.requestCentralityChildren = function(nodeId, callback) {
     var requestChildren = "for u in " + nodeCollection
-      + " filter u.id == " + nodeId
+      + " filter u._id == " + JSON.stringify(nodeId)
       + " let g = ("
       + " for l in " + edgeCollection
       + " filter l._from == u._id"
