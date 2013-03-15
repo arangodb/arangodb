@@ -524,10 +524,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
   found = TRI_LookupByKeyAssociativePointer(&primary->_datafileInfo, &fid);
 
   if (found != NULL) {
-    union { TRI_doc_datafile_info_t const* c; TRI_doc_datafile_info_t* v; } cnv;
-
-    cnv.c = found;
-    return cnv.v;
+    return CONST_CAST(found);
   }
 
   dfi = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true);
