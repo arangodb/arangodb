@@ -395,8 +395,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 #else
       regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
 #endif
-
-    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0);
+    
+    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
 
     if (regExpResult == 0) {
       char const* first = collection->_path + matches[1].rm_so;
