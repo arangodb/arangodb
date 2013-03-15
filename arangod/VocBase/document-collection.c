@@ -1464,13 +1464,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // it is an update, but only if found has a smaller revision identifier
     else if (found->_rid < d->_rid || (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
       TRI_doc_mptr_t* newHeader;
-      TRI_doc_mptr_t oldData;
+      //TRI_doc_mptr_t oldData;
 
       // delete old entries
       DeleteSecondaryIndexes(collection, found);
 
       // save the old data
-      oldData = *found;
+      // oldData = *found;
 
       // TODO: this will be identical for non-transactional collections only
       newHeader = CONST_CAST(found);
@@ -1943,7 +1943,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   document->base._keyGenerator = keyGenerator;
 
   // save the parameter block (within create, no need to lock)
-  res = TRI_SaveCollectionInfo(collection->_directory, parameter);
+  res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_forceSyncProperties);
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", collection->_directory, TRI_last_error());
@@ -2054,7 +2054,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
 
   // then the shape collection
   shapes = TRI_Concatenate2File(collection->_directory, "SHAPES");
-  if (! shapes) {
+  if (shapes == NULL) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
     return NULL;

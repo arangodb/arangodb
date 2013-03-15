@@ -234,10 +234,14 @@ table.dataTable thead th {
    color:#666666;
 }
 
-.icon-backward, .icon-forward {
+.icon-backward, .icon-forward, .icon-step-backward, .icon-step-forward {
     position: absolute;
     top: 3px;
 	left:10px;
+}
+
+.prePagi {
+  margin-right: -5px !important;
 }
 
 .badge {
