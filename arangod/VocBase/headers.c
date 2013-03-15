@@ -94,7 +94,8 @@ static size_t GetBlockSize (const size_t blockNumber) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClearSimpleHeaders (TRI_doc_mptr_t* header, size_t headerSize) {
-  assert(header);
+  TRI_ASSERT_DEBUG(header);
+
   memset(header, 0, headerSize);
 }
 

@@ -253,9 +253,8 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
         TRI_aql_node_t* member;
 
         subJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
-        assert(subJson);
-
         member = TRI_JsonNodeAql(context, subJson);
+
         if (member) {
           TRI_PushBackVectorPointer(&node->_members, (void*) member);
         }
