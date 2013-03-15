@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminLogHandler.h"
@@ -120,7 +120,7 @@ bool RestAdminLogHandler::isDirect () {
 ///
 /// The returned object contains the attributes:
 ///
-/// - @LIT{lid}: a list of log-entry identifiers. Each log message is uniquely 
+/// - @LIT{lid}: a list of log-entry identifiers. Each log message is uniquely
 ///   identified by its @LIT{lid} and the identifiers are in ascending
 ///   order.
 ///
@@ -138,11 +138,11 @@ bool RestAdminLogHandler::isDirect () {
 /// Returns all log entries upto @FA{log-level}. Note that @FA{log-level} must
 /// be:
 ///
-/// - @LIT{fatal} / @LIT{0} 
-/// - @LIT{error} / @LIT{1} 
-/// - @LIT{warning} / @LIT{2} 
-/// - @LIT{info} / @LIT{3} 
-/// - @LIT{debug} / @LIT{4} 
+/// - @LIT{fatal} / @LIT{0}
+/// - @LIT{error} / @LIT{1}
+/// - @LIT{warning} / @LIT{2}
+/// - @LIT{info} / @LIT{3}
+/// - @LIT{debug} / @LIT{4}
 ///
 /// @REST{GET /_admin/log?level=@FA{log-level}}
 ///
@@ -164,7 +164,7 @@ bool RestAdminLogHandler::isDirect () {
 /// Sort the log-entries either ascending if @FA{direction} is @LIT{asc}, or
 /// descending if it is @LIT{desc} according to their @LIT{lid}. Note
 /// that the @LIT{lid} imposes a chronological order.
-/// 
+///
 /// @REST{GET /_admin/log?search=@FA{text}}
 ///
 /// Only return the log-entries containing the @FA{text} string.
@@ -185,7 +185,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   TRI_log_level_e ul = TRI_LOG_LEVEL_INFO;
   bool useUpto = true;
   string logLevel;
-  
+
   // prefer level over upto
   if (found2) {
     logLevel = lvl;
@@ -216,94 +216,94 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
       ul = TRI_LOG_LEVEL_TRACE;
     }
     else {
-      generateError(HttpResponse::BAD, 
+      generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     string("unknown '") + (found2 ? "level" : "upto") + "' log level: '" + logLevel + "'");
       return HANDLER_DONE;
     }
   }
-  
+
   // .............................................................................
   // check the starting position
   // .............................................................................
-  
+
   uint64_t start = 0;
-  
+
   bool found;
   string s = _request->value("start", found);
-  
+
   if (found) {
     start = StringUtils::uint64(s);
   }
-  
+
   // .............................................................................
   // check the offset
   // .............................................................................
-  
+
   uint64_t offset = 0;
-  
+
   s = _request->value("offset", found);
-  
+
   if (found) {
     offset = StringUtils::uint64(s);
   }
-  
+
   // .............................................................................
   // check the size
   // .............................................................................
-  
+
   uint64_t size = (uint64_t) -1;
-  
+
   s = _request->value("size", found);
-  
+
   if (found) {
     size = StringUtils::uint64(s);
   }
-  
+
   // .............................................................................
   // check the sort direction
   // .............................................................................
-  
+
   bool sortAscending = true;
-  
+
   string sortdir = StringUtils::tolower(_request->value("sort", found));
- 
+
   if (found) {
     if (sortdir == "desc") {
       sortAscending = false;
     }
   }
-  
+
   // .............................................................................
   // check the search criteria
   // .............................................................................
-  
+
   bool search = false;
   string searchString = StringUtils::tolower(_request->value("search", search));
-  
+
   // .............................................................................
   // generate result
   // .............................................................................
-  
+
   TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
   TRI_vector_t clean;
-  
+
   TRI_InitVector(&clean, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_log_buffer_t));
-  
+
   for (size_t i = 0;  i < logs->_length;  ++i) {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, i);
-    
+
     if (search) {
       string text = StringUtils::tolower(buf->_text);
-     
+
       if (text.find(searchString) == string::npos) {
         continue;
       }
     }
-    
+
     TRI_PushBackVector(&clean, buf);
   }
-  
+
 
   TRI_json_t result;
   TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &result);
@@ -315,9 +315,9 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   TRI_json_t* text      = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "totalAmount", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) clean._length));
-  
+
   size_t length = clean._length;
-  
+
   if (offset >= length) {
     length = 0;
     offset = 0;
@@ -335,11 +335,11 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
         length,
         sizeof(TRI_log_buffer_t),
         (sortAscending ? LidCompareAsc : LidCompareDesc));
-  
+
   for (size_t i = 0;  i < length;  ++i) {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(&clean, offset + i);
     uint32_t l = 0;
-    
+
     switch (buf->_level) {
       case TRI_LOG_LEVEL_FATAL:    l = 0; break;
       case TRI_LOG_LEVEL_ERROR:    l = 1; break;
@@ -366,11 +366,11 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
       TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, text, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buf->_text));
     }
   }
-  
+
   TRI_FreeBufferLogging(logs);
   TRI_DestroyVector(&clean);
- 
-  // now put the 4 vectors into the result 
+
+  // now put the 4 vectors into the result
   if (lid != 0) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "lid", lid);
   }
@@ -383,7 +383,7 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
   if (text != 0) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &result, "text", text);
   }
-  
+
   generateResult(&result);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
@@ -397,5 +397,5 @@ HttpHandler::status_e RestAdminLogHandler::execute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

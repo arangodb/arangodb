@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_ADMIN_REST_VERSION_HANDLER_H
@@ -131,8 +131,24 @@ namespace triagens {
 ///
 /// @REST{GET /_admin/version}
 ///
-/// Returns an object containing the current server version in the @LIT{version}
-/// attribute.
+/// Returns an object containing the server name in the @LIT{server} attribute,
+/// and the current server version in the @LIT{version} attribute.
+///
+/// @EXAMPLES
+///
+/// @verbinclude rest-version
+///
+/// @REST{GET /_admin/version?details=true}
+///
+/// If the optional URL parameter @LIT{details} is set to @LIT{true}, then more
+/// server version details are returned in the @LIT{details} attribute. The
+/// details are returned as pairs of attribute name and value, which are all
+/// strings. The number of attributes may vary, depending on the server built
+/// and configuration.
+///
+/// @EXAMPLES
+///
+/// @verbinclude rest-version-details
 ////////////////////////////////////////////////////////////////////////////////
 
         status_e execute ();
@@ -188,5 +204,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "cleanup.h"
@@ -78,26 +78,46 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
+static void CleanupDocumentCollection (TRI_document_collection_t* document) {
   // loop until done
   while (true) {
     TRI_barrier_list_t* container;
     TRI_barrier_t* element;
     bool hasUnloaded = false;
 
-    container = &sim->base._barrierList;
+    container = &document->base._barrierList;
     element = NULL;
 
     // check and remove all callback elements at the beginning of the list
     TRI_LockSpin(&container->_lock);
 
-    if (container->_begin == NULL || container->_begin->_type == TRI_BARRIER_ELEMENT) {
-      // did not find anything on top of the barrier list or found an element marker
-      // this means we must exit
+    // check the element on top of the barrier list
+    // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
+    // to document data in a datafile. We must then not unload or remove a file
+
+    if (container->_begin == NULL ||
+        container->_begin->_type == TRI_BARRIER_ELEMENT ||
+        container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION) {
+      // did not find anything at the head of the barrier list or found an element marker
+      // this means we must exit and cannot throw away datafiles and can unload collections
       TRI_UnlockSpin(&container->_lock);
       return;
     }
-    
+
+    // no TRI_BARRIER_ELEMENT at the head of the barrier list. This means that there is
+    // some other action we can perform (i.e. unloading a datafile or a collection)
+
+    // note that there is no need to check the entire list for a TRI_BARRIER_ELEMENT as
+    // the list is filled up in chronological order. New barriers are always added to the
+    // tail of the list, and if we have the following list
+    // HEAD -> TRI_BARRIER_DATAFILE_CALLBACK -> TRI_BARRIER_ELEMENT
+    // then it is still safe to execute the datafile callback operation, even if there
+    // is a TRI_BARRIER_ELEMENT after it.
+    // This is the case because the TRI_BARRIER_DATAFILE_CALLBACK is only put into the
+    // barrier list after changing the pointers in all headers. After the pointers are
+    // changed, it is safe to unload/remove an old datafile (that noone points to). And
+    // any newer TRI_BARRIER_ELEMENTS will always reference data inside other datafiles.
+
     element = container->_begin;
     assert(element);
 
@@ -111,7 +131,11 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
       element->_next->_prev = NULL;
     }
 
+    // yes, we can release the lock here
     TRI_UnlockSpin(&container->_lock);
+
+    // someone else might now insert a new TRI_BARRIER_ELEMENT here, but it will
+    // always refer to a different datafile than the one that we will now unload
 
     // execute callback, sone of the callbacks might delete or free our collection
     if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
@@ -130,7 +154,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
       ce = (TRI_barrier_collection_cb_t*) element;
       hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-      
+
       if (hasUnloaded) {
         // this has unloaded and freed the collection
         return;
@@ -188,7 +212,7 @@ void TRI_CleanupVocBase (void* data) {
   TRI_vocbase_t* vocbase;
   TRI_vector_pointer_t collections;
   uint64_t iterations = 0;
-  
+
   vocbase = data;
   assert(vocbase);
   assert(vocbase->_state == 1);
@@ -200,14 +224,14 @@ void TRI_CleanupVocBase (void* data) {
     size_t i;
     TRI_col_type_e type;
     // keep initial _state value as vocbase->_state might change during compaction loop
-    int state = vocbase->_state; 
+    int state = vocbase->_state;
 
-    
+
     ++iterations;
 
     if (state == 2) {
       // shadows must be cleaned before collections are handled
-      // otherwise the shadows might still hold barriers on collections 
+      // otherwise the shadows might still hold barriers on collections
       // and collections cannot be closed properly
       CleanupShadows(vocbase, true);
     }
@@ -271,10 +295,12 @@ void TRI_CleanupVocBase (void* data) {
       // server shutdown
       break;
     }
-    
+
   }
 
   TRI_DestroyVectorPointer(&collections);
+
+  LOG_TRACE("shutting down cleanup thread");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,6 +309,6 @@ void TRI_CleanupVocBase (void* data) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

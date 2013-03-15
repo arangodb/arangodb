@@ -5,35 +5,25 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright by triAGENS GmbH - All rights reserved.
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation)
-/// contain proprietary information of triAGENS GmbH; they are
-/// provided under a license agreement containing restrictions on use and
-/// disclosure and are also protected by copyright, patent and other
-/// intellectual and industrial property laws. Reverse engineering,
-/// disassembly or decompilation of the Programs, except to the extent
-/// required to obtain interoperability with other independently created
-/// software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// The Programs are not intended for use in any nuclear, aviation, mass
-/// transit, medical, or other inherently dangerous applications. It shall
-/// be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of such
-/// applications if the Programs are used for such purposes, and triAGENS
-/// GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of
-/// triAGENS GmbH. You shall not disclose such confidential and
-/// proprietary information and shall use it only in accordance with the
-/// terms of the license agreement you entered into with triAGENS GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8ClientConnection.h"
@@ -80,7 +70,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
-  
+
 
   _connection = GeneralClientConnection::factory(endpoint, requestTimeout, connectTimeout, numRetries);
 
@@ -148,9 +138,9 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       }
     }
   }
- 
-  if (result) { 
-    delete result; 
+
+  if (result) {
+    delete result;
   }
 }
 
@@ -166,7 +156,7 @@ V8ClientConnection::~V8ClientConnection () {
   if (_client) {
     delete _client;
   }
-  
+
   if (_connection) {
     delete _connection;
   }
@@ -220,7 +210,7 @@ const std::string& V8ClientConnection::getErrorMessage () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
-            
+
 triagens::httpclient::SimpleHttpClient* V8ClientConnection::getHttpClient() {
   return _client;
 }
@@ -239,7 +229,7 @@ v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
     return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "DELETE" request
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +244,7 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& locatio
     return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "HEAD" request
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,13 +291,13 @@ v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
     return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "PUT" request
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
-                                                   std::string const& body, 
+                                                   std::string const& body,
                                                    map<string, string> const& headerFields,
                                                    bool raw) {
   if (raw) {
@@ -323,7 +313,7 @@ v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location,
-                                                     std::string const& body, 
+                                                     std::string const& body,
                                                      map<string, string> const& headerFields,
                                                      bool raw) {
   if (raw) {
@@ -357,11 +347,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
                                                        map<string, string> const& headerFields) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-      
+
   if (_httpResult) {
     delete _httpResult;
   }
-      
+
   if (body.empty()) {
     _httpResult = _client->request(method, location, 0, 0, headerFields);
   }
@@ -372,24 +362,24 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
   if (!_httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
-        
+
     if (_lastErrorMessage.empty()) {
       _lastErrorMessage = "Unknown error";
     }
-        
+
     _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
-        
+
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8::String::New("error"), v8::Boolean::New(true));        
+    result->Set(v8::String::New("error"), v8::Boolean::New(true));
     result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
-                
+
     int errorNumber = 0;
 
     switch (_httpResult->getResultType()) {
       case (SimpleHttpResult::COULD_NOT_CONNECT) :
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
         break;
-            
+
       case (SimpleHttpResult::READ_ERROR) :
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
         break;
@@ -401,17 +391,17 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
       default:
         errorNumber = TRI_SIMPLE_CLIENT_UNKNOWN_ERROR;
         break;
-    }        
-        
+    }
+
     result->Set(v8::String::New("errorNum"), v8::Integer::New(errorNumber));
-    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));        
+    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));
 
     return result;
   }
   else {
-    // complete        
+    // complete
     _lastHttpReturnCode = _httpResult->getHttpReturnCode();
-        
+
     // got a body
     if (_httpResult->getBody().str().length() > 0) {
       string contentType = _httpResult->getContentType(true);
@@ -434,11 +424,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
       return result;
     }
     else {
-      // no body 
+      // no body
       v8::HandleScope scope;
 
-      v8::Handle<v8::Object> result = v8::Object::New();        
-      
+      v8::Handle<v8::Object> result = v8::Object::New();
+
       result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
 
       if (_lastHttpReturnCode >= 400) {
@@ -453,8 +443,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
       }
 
       return scope.Close(result);
-    }        
-  }      
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -469,11 +459,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-      
+
   if (_httpResult) {
     delete _httpResult;
   }
-      
+
   if (body.empty()) {
     _httpResult = _client->request(method, location, 0, 0, headerFields);
   }
@@ -484,23 +474,23 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
   if (!_httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
-        
+
     if (_lastErrorMessage.empty()) {
       _lastErrorMessage = "Unknown error";
     }
-        
+
     _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
-        
+
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("code"), v8::Integer::New(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
-                
+
     int errorNumber = 0;
 
     switch (_httpResult->getResultType()) {
       case (SimpleHttpResult::COULD_NOT_CONNECT) :
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
         break;
-            
+
       case (SimpleHttpResult::READ_ERROR) :
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
         break;
@@ -512,19 +502,19 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
       default:
         errorNumber = TRI_SIMPLE_CLIENT_UNKNOWN_ERROR;
         break;
-    }        
-        
+    }
+
     result->Set(v8::String::New("errorNum"), v8::Integer::New(errorNumber));
-    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));        
+    result->Set(v8::String::New("errorMessage"), v8::String::New(_lastErrorMessage.c_str(), _lastErrorMessage.length()));
 
     return scope.Close(result);
   }
   else {
-    // complete        
+    // complete
     _lastHttpReturnCode = _httpResult->getHttpReturnCode();
-        
+
     // create raw response
-    v8::Handle<v8::Object> result = v8::Object::New();        
+    v8::Handle<v8::Object> result = v8::Object::New();
 
     result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
 
@@ -561,7 +551,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
     // and returns
     return scope.Close(result);
-  }      
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,5 +560,5 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

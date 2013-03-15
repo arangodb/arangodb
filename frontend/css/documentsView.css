@@ -198,7 +198,7 @@ table.dataTable thead th {
 
 .pagination ul > li > a, .pagination ul > li > span {
 	cursor:pointer;
-
+	border-width:0 0 0 1px;
 }
 
 .pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
@@ -215,7 +215,10 @@ table.dataTable thead th {
 	background: #8f8d8c;
 	border: none;
 	color:#FFFFFF;
-	font-size:1.8em;
+	/*font-size:1.8em;*/
+	position:relative;
+	width:14px;
+	height:20px;
 }
 
 .pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
@@ -229,6 +232,16 @@ table.dataTable thead th {
    cursor: default;
    background-color: ##777;
    color:#666666;
+}
+
+.icon-backward, .icon-forward, .icon-step-backward, .icon-step-forward {
+    position: absolute;
+    top: 3px;
+	left:10px;
+}
+
+.prePagi {
+  margin-right: -5px !important;
 }
 
 .badge {

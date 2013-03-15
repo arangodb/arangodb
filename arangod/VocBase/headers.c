@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "headers.h"
 
-#include <VocBase/primary-collection.h>
+#include "VocBase/primary-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
@@ -74,7 +74,7 @@ simple_headers_t;
 /// @brief get the size (number of entries) for a block, based on a function
 ///
 /// this adaptively increases the number of entries per block until a certain
-/// threshold. the benefit of this is that small collections (with few 
+/// threshold. the benefit of this is that small collections (with few
 /// documents) only use little memory whereas bigger collections allocate new
 /// blocks in bigger chunks.
 /// the lowest value for the number of entries in a block is BLOCK_SIZE_UNIT,
@@ -145,22 +145,12 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief verifies if header is still valid, possible returning a new one
-///
-/// this function currently does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t* VerifySimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
-  return header;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a header, putting it back onto the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  
+
   ClearSimpleHeaders(header, headers->_headerSize);
 
   header->_data = headers->_freelist;
@@ -193,7 +183,6 @@ TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   }
 
   headers->base.request = RequestSimpleHeaders;
-  headers->base.verify  = VerifySimpleHeaders;
   headers->base.release = ReleaseSimpleHeaders;
 
   headers->_freelist = NULL;
@@ -259,5 +248,5 @@ void TRI_IterateSimpleHeaders (TRI_headers_t* headers,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

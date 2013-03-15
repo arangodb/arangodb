@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
@@ -39,6 +39,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
+#include "3rdParty/V8/include/v8.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -323,15 +324,15 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   else {
     req->Set(v8g->UserKey, v8::String::New(user.c_str(), user.size()));
   }
- 
-  string const& fullUrl = request->fullUrl(); 
+
+  string const& fullUrl = request->fullUrl();
   req->Set(v8g->UrlKey, v8::String::New(fullUrl.c_str(), fullUrl.size()));
 
   // copy prefix
   string path = request->prefix();
 
   req->Set(v8g->PrefixKey, v8::String::New(path.c_str()));
-  
+
   // copy suffix
   v8::Handle<v8::Array> suffixArray = v8::Array::New();
   vector<string> const& suffix = request->suffix();
@@ -350,7 +351,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   // copy full path
   req->Set(v8g->PathKey, v8::String::New(path.c_str()));
-  
+
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
 
@@ -379,11 +380,11 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
-    
+
     case HttpRequest::HTTP_REQUEST_OPTIONS:
       req->Set(v8g->RequestTypeKey, v8g->OptionsConstant);
       break;
-    
+
     case HttpRequest::HTTP_REQUEST_DELETE:
       req->Set(v8g->RequestTypeKey, v8g->DeleteConstant);
       break;
@@ -469,6 +470,22 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     }
   }
 
+  // copy request array parameter (a[]=1&a[]=2&...)
+  map<string, vector<char const*>* > arrayValues = request->arrayValues();
+
+  for (map<string, vector<char const*>* >::iterator i = arrayValues.begin();  i != arrayValues.end();  ++i) {
+    string const& k = i->first;
+    vector<char const*>* v = i->second;
+
+    v8::Handle<v8::Array> list = v8::Array::New();
+
+    for (size_t i = 0; i < v->size(); ++i) {
+      list->Set(i, v8::String::New(v->at(i)));
+    }
+
+    valuesObject->Set(v8::String::New(k.c_str()), list);
+  }
+
   req->Set(v8g->ParametersKey, valuesObject);
 
   // execute the callback
@@ -503,7 +520,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     if (res->Has(v8g->BodyKey)) {
       // check if we should apply result transformations
       // transformations turn the result from one type into another
-      // a Javascript action can request transformations by 
+      // a Javascript action can request transformations by
       // putting a list of transformations into the res.transformations
       // array, e.g. res.transformations = [ "base64encode" ]
       v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
@@ -514,8 +531,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         for (uint32_t i = 0; i < transformations->Length(); i++) {
           v8::Handle<v8::Value> transformator = transformations->Get(v8::Integer::New(i));
           string name = TRI_ObjectToString(transformator);
-      
-          // check available transformations  
+
+          // check available transformations
           if (name == "base64encode") {
             // base64-encode the result
             out = StringUtils::encodeBase64(out);
@@ -529,7 +546,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
             response->setHeader("content-encoding", "binary");
           }
         }
-        
+
         response->body().appendText(out);
       }
       else {
@@ -626,7 +643,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 
   for (uint32_t j = 0; j < n; ++j) {
     v8::Handle<v8::Value> item = array->Get(j);
-    
+
     contexts.insert(TRI_ObjectToString(item));
   }
 
@@ -715,7 +732,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction); 
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DEFINE_ACTION", JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
 
   // .............................................................................
@@ -751,5 +768,5 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

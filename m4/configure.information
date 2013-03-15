@@ -36,6 +36,7 @@ fi
 
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
+AC_MSG_NOTICE([REPOSITORY VERSION: ${TRI_REPOSITORY_VERSION}])
 AC_MSG_NOTICE([BITS: ${TRI_BITS}])
 AC_MSG_NOTICE([CPPFLAGS: ${CPPFLAGS}])
 AC_MSG_NOTICE([CFLAGS: ${CFLAGS}])

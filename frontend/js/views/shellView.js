@@ -16,6 +16,7 @@ var shellView = Backbone.View.extend({
     });
     $("#shell_workspace").trigger("resize", [ 200 ]);
     $('.vsplitbar').append('<div id="editor-run"><img src="img/right_icon.png"></img></div>');
+    $.gritter.removeAll();
     return this;
   },
   renderEditor: function () {
@@ -95,13 +96,14 @@ var shellView = Backbone.View.extend({
     },
     evaloutput: function (data) {
       try {
-        var result = eval(data); 
+        var result = eval(data);
         if (result !== undefined) {
           print(result);
         }
       }
       catch(e) {
-        $('#shellContent').append('<p class="shellError">Error:' + e + '</p>');
+        //$('#shellContent').append('<p class="shellError">Error:' + e + '</p>');
+        jqconsole.Write('ReferenceError: ' + e + '\n', 'jserror'); 
       }
     }
 

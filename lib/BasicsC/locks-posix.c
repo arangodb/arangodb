@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "locks.h"
@@ -111,7 +111,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("mutex deadlock detected"); 
+      LOG_ERROR("mutex deadlock detected");
     }
     LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
   }
@@ -190,7 +190,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
 
  if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("spinlock deadlock detected"); 
+      LOG_ERROR("spinlock deadlock detected");
     }
     LOG_FATAL_AND_EXIT("could not lock the spin-lock: %s", strerror(rc));
   }
@@ -257,7 +257,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +301,7 @@ again:
     }
 
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected"); 
+      LOG_ERROR("rw-lock deadlock detected");
     }
 
     LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s", strerror(rc));
@@ -345,7 +345,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected"); 
+      LOG_ERROR("rw-lock deadlock detected");
     }
     LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s", strerror(rc));
   }
@@ -617,5 +617,5 @@ bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* n
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

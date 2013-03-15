@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FileUtils.h"
@@ -94,7 +94,7 @@ namespace triagens {
 
           if (n < 0) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("read failed for '" << filename 
+            LOGGER_TRACE("read failed for '" << filename
                          << "' with " << strerror(errno) << " and result " << n
                          << " on fd " << fd);
             THROW_FILE_FUNC_ERROR("read", "", errno);
@@ -130,7 +130,7 @@ namespace triagens {
 
           if (n < 0) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("read failed for '" << filename 
+            LOGGER_TRACE("read failed for '" << filename
                          << "' with " << strerror(errno) << " and result " << n
                          << " on fd " << fd);
             THROW_FILE_FUNC_ERROR("read", "", errno);
@@ -160,7 +160,7 @@ namespace triagens {
 
           if (n < 1) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("write failed for '" << filename 
+            LOGGER_TRACE("write failed for '" << filename
                          << "' with " << strerror(errno) << " and result " << n
                          << " on fd " << fd);
             THROW_FILE_FUNC_ERROR("write", "", errno);
@@ -192,7 +192,7 @@ namespace triagens {
 
           if (n < 1) {
             TRI_CLOSE(fd);
-            LOGGER_TRACE("write failed for '" << filename 
+            LOGGER_TRACE("write failed for '" << filename
                          << "' with " << strerror(errno) << " and result " << n
                          << " on fd " << fd);
             THROW_FILE_FUNC_ERROR("write", "", errno);
@@ -332,13 +332,13 @@ namespace triagens {
       bool isSymbolicLink (string const& path) {
 
 #ifdef TRI_HAVE_WIN32_SYMBOLIC_LINK
-        
-        // .........................................................................  
-        // TODO: On the NTFS file system, there are the following file links: 
-        // hard links - 
-        // junctions - 
-        // symbolic links - 
-        // .........................................................................  
+
+        // .........................................................................
+        // TODO: On the NTFS file system, there are the following file links:
+        // hard links -
+        // junctions -
+        // symbolic links -
+        // .........................................................................
         return false;
 
 #else
@@ -368,11 +368,11 @@ namespace triagens {
 
         return res == 0;
       }
-      
-      
+
+
       off_t size (string const& path) {
         int64_t result = TRI_SizeFile(path.c_str());
-        
+
         if (result < 0) {
           return (off_t) 0;
         }

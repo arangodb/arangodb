@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "collection.h"
@@ -48,6 +48,91 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-XXX\.ending$/, where XXX is
+/// a number, and type and ending are arbitrary letters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  char* pos1;
+  char* pos2;
+
+  pos1 = strrchr(filename, '.');
+
+  if (pos1 == NULL) {
+    return 0;
+  }
+
+  pos2 = strrchr(filename, '-');
+
+  if (pos2 == NULL || pos2 > pos1) {
+    return 0;
+  }
+
+  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename
+////////////////////////////////////////////////////////////////////////////////
+
+static int FilenameComparator (const void* lhs, const void* rhs) {
+  const char* l = *((char**) lhs);
+  const char* r = *((char**) rhs);
+
+  const uint64_t numLeft  = GetNumericFilenamePart(l);
+  const uint64_t numRight = GetNumericFilenamePart(r);
+
+  if (numLeft != numRight) {
+    return numLeft < numRight ? -1 : 1;
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two datafiles, based on the numeric part contained in
+/// the filename
+////////////////////////////////////////////////////////////////////////////////
+
+static int DatafileComparator (const void* lhs, const void* rhs) {
+  TRI_datafile_t* l = *((TRI_datafile_t**) lhs);
+  TRI_datafile_t* r = *((TRI_datafile_t**) rhs);
+
+  const uint64_t numLeft  = (l->_filename != NULL ? GetNumericFilenamePart(l->_filename) : 0);
+  const uint64_t numRight = (r->_filename != NULL ? GetNumericFilenamePart(r->_filename) : 0);
+
+  if (numLeft != numRight) {
+    return numLeft < numRight ? -1 : 1;
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort a vector of filenames, using the numeric parts contained
+////////////////////////////////////////////////////////////////////////////////
+
+static void SortFilenames (TRI_vector_string_t* files) {
+  if (files->_length < 1) {
+    return;
+  }
+
+  qsort(files->_buffer, files->_length, sizeof(char*), &FilenameComparator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort a vector of datafiles, using the numeric parts contained
+////////////////////////////////////////////////////////////////////////////////
+
+static void SortDatafiles (TRI_vector_pointer_t* files) {
+  if (files->_length < 1) {
+    return;
+  }
+
+  qsort(files->_buffer, files->_length, sizeof(TRI_datafile_t*), &DatafileComparator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -60,7 +145,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   memset(collection, 0, sizeof(TRI_collection_t));
 
   TRI_CopyCollectionInfo(&collection->_info, info);
-  
+
   collection->_vocbase = vocbase;
 
   collection->_state = TRI_COL_STATE_WRITE;
@@ -91,7 +176,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   files = TRI_FilesDirectory(path);
   n = files._length;
 
-  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
+  regcomp(&re, "^(temp|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
@@ -103,9 +188,11 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
     regmatch_t matches[4];
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      // file type: (journal|datafile|index|compactor)
       char const* first = file + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
 
+      // extension
       char const* third = file + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
 
@@ -144,14 +231,21 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           TRI_PushBackVectorString(&structure._datafiles, filename);
         }
 
+        // temporary file, we can delete it!
+        else if (TRI_EqualString2("temp", first, firstLen)) {
+          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
+          TRI_UnlinkFile(filename);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+        }
+
         // ups, what kind of file is that
         else {
-          LOG_ERROR("unknown datafile '%s'", file);
+          LOG_ERROR("unknown datafile type '%s'", file);
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
         }
       }
       else {
-        LOG_ERROR("unknown datafile '%s'", file);
+        LOG_ERROR("unknown datafile type '%s'", file);
       }
     }
   }
@@ -159,6 +253,13 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_DestroyVectorString(&files);
 
   regfree(&re);
+
+  // now sort the files in the structures that we created.
+  // the sorting allows us to iterate the files in the correct order
+  SortFilenames(&structure._journals);
+  SortFilenames(&structure._compactors);
+  SortFilenames(&structure._datafiles);
+  SortFilenames(&structure._indexes);
 
   return structure;
 }
@@ -188,7 +289,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   files = TRI_FilesDirectory(collection->_directory);
   n = files._length;
 
-  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
+  regcomp(&re, "^(temp|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
@@ -243,6 +344,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
         // check the document header
         ptr  = datafile->_data;
+        // skip the datafile header
         ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
         cm   = (TRI_col_header_marker_t*) ptr;
 
@@ -257,9 +359,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         }
 
         if (cm->_cid != collection->_info._cid) {
-          LOG_ERROR("collection identifier mismatch, expected %lu, found %lu",
-                    (unsigned long) collection->_info._cid,
-                    (unsigned long) cm->_cid);
+          LOG_ERROR("collection identifier mismatch, expected %llu, found %llu",
+                    (unsigned long long) collection->_info._cid,
+                    (unsigned long long) cm->_cid);
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
@@ -304,6 +406,13 @@ static bool CheckCollection (TRI_collection_t* collection) {
             TRI_PushBackVectorPointer(&datafiles, datafile);
           }
         }
+
+        // temporary file, we can delete it!
+        else if (TRI_EqualString2("temp", first, firstLen)) {
+          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
+          TRI_UnlinkFile(filename);
+        }
+
         else {
           LOG_ERROR("unknown datafile '%s'", file);
         }
@@ -332,7 +441,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
       datafile = sealed._buffer[i];
 
-      number = TRI_StringUInt32(datafile->_fid);
+      number = TRI_StringUInt64(datafile->_fid);
       dname = TRI_Concatenate3String("datafile-", number, ".db");
       filename = TRI_Concatenate2File(collection->_directory, dname);
 
@@ -379,9 +488,15 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
   TRI_DestroyVectorPointer(&all);
 
+  // sort the datafiles.
+  // this allows us to iterate them in the correct order
+  SortDatafiles(&datafiles);
+  SortDatafiles(&journals);
+  SortDatafiles(&compactors);
+
   // add the datafiles and journals
-  collection->_datafiles = datafiles;
-  collection->_journals = journals;
+  collection->_datafiles  = datafiles;
+  collection->_journals   = journals;
   collection->_compactors = compactors;
 
   return true;
@@ -400,7 +515,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
   n = vector->_length;
   for (i = 0; i < n ; ++i) {
     TRI_datafile_t* datafile = (TRI_datafile_t*) vector->_buffer[i];
-    
+
     LOG_TRACE("freeing collection datafile");
 
     assert(datafile);
@@ -444,7 +559,7 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
   size_t n = files->_length;
   size_t i;
   bool result = true;
-  
+
   for (i = 0;  i < n;  ++i) {
     datafile = files->_buffer[i];
 
@@ -471,7 +586,7 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a collection parameter block
-/// (options are added to the TRI_col_info_t* and have to be freed by the 
+/// (options are added to the TRI_col_info_t* and have to be freed by the
 ///  TRI_FreeCollectionInfoOptions() function)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -480,32 +595,26 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
                              char const* name,
                              TRI_col_type_e type,
                              TRI_voc_size_t maximalSize,
-                             TRI_json_t* options) {
+                             TRI_json_t* keyOptions) {
   assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_info_t));
 
-  parameter->_version      = TRI_COL_VERSION;
-  parameter->_type         = type;
-  parameter->_cid          = 0;
-  parameter->_rid          = 0;
+  parameter->_version       = TRI_COL_VERSION;
+  parameter->_type          = type;
+  parameter->_cid           = 0;
+  parameter->_rid           = 0;
 
-  parameter->_deleted      = false;  
-  parameter->_isVolatile   = false;
-  parameter->_isSystem     = false;
-  parameter->_maximalSize  = (maximalSize / PageSize) * PageSize;
+  parameter->_deleted       = false;
+  parameter->_isVolatile    = false;
+  parameter->_isSystem      = false;
+  parameter->_maximalSize   = (maximalSize / PageSize) * PageSize;
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
   }
-  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
+  parameter->_waitForSync   = vocbase->_defaultWaitForSync;
+  parameter->_keyOptions    = keyOptions;
 
-  parameter->_waitForSync = vocbase->_defaultWaitForSync;
-  if (options) {
-    // parameter->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, options);
-    parameter->_options = options;
-  }
-  else {
-    parameter->_options = NULL;
-  }
+  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -516,24 +625,25 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   assert(dst);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
-  dst->_version     = src->_version;
-  dst->_type        = src->_type;
-  dst->_cid         = src->_cid;
-  dst->_rid         = src->_rid;
+  dst->_version       = src->_version;
+  dst->_type          = src->_type;
+  dst->_cid           = src->_cid;
+  dst->_rid           = src->_rid;
 
-  dst->_deleted     = src->_deleted;  
-  dst->_isSystem    = src->_isSystem;
-  dst->_isVolatile  = src->_isVolatile;
-  dst->_maximalSize = src->_maximalSize;
-  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
-  dst->_waitForSync = src->_waitForSync;
+  dst->_deleted       = src->_deleted;
+  dst->_isSystem      = src->_isSystem;
+  dst->_isVolatile    = src->_isVolatile;
+  dst->_maximalSize   = src->_maximalSize;
+  dst->_waitForSync   = src->_waitForSync;
 
-  if (src->_options) {
-    dst->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_options);
+  if (src->_keyOptions) {
+    dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
   }
   else {
-    dst->_options = NULL;
-  }  
+    dst->_keyOptions  = NULL;
+  }
+
+  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,9 +651,9 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
-  if (parameter->_options) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_options);
-    parameter->_options = NULL;
+  if (parameter->_keyOptions != NULL) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_keyOptions);
+    parameter->_keyOptions = NULL;
   }
 }
 
@@ -551,7 +661,7 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
 /// @brief get the full directory name for a collection
 ///
 /// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not. 
+/// and to free it if not.
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetDirectoryCollection (char const* path,
@@ -560,7 +670,7 @@ char* TRI_GetDirectoryCollection (char const* path,
 
   assert(path);
   assert(parameter);
-  
+
   // shape collections use just the name, e.g. path/SHAPES
   if (parameter->_type == TRI_COL_TYPE_SHAPE) {
     filename = TRI_Concatenate2File(path, parameter->_name);
@@ -647,7 +757,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
     LOG_ERROR("cannot create collection '%s' in '%s', directory already exists",
               parameter->_name, filename);
-    
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return NULL;
@@ -657,7 +767,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   if (! TRI_CreateDirectory(filename)) {
     LOG_ERROR("cannot create collection '%s' in '%s' as '%s': %s",
               parameter->_name,
-              path, 
+              path,
               filename,
               TRI_last_error());
 
@@ -681,9 +791,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // we are passing filename to this struct, so we must not free it if you use the struct later
   InitCollection(vocbase, collection, filename, parameter);
   /* PANAIA: 1) the parameter file if it exists must be removed
-             2) if collection 
+             2) if collection
   */
-  
+
   return collection;
 }
 
@@ -695,9 +805,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
 void TRI_DestroyCollection (TRI_collection_t* collection) {
   assert(collection);
-  
+
   TRI_FreeCollectionInfoOptions(&collection->_info);
-          
+
   FreeDatafilesVector(&collection->_datafiles);
   FreeDatafilesVector(&collection->_journals);
   FreeDatafilesVector(&collection->_compactors);
@@ -736,7 +846,9 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
+int TRI_LoadCollectionInfo (char const* path,
+                            TRI_col_info_t* parameter,
+                            const bool versionWarning) {
   TRI_json_t* json;
   char* filename;
   char* error = NULL;
@@ -773,12 +885,14 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
   if (json->_type != TRI_JSON_ARRAY) {
     LOG_ERROR("cannot open '%s', file does not contain a json array", filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // convert json
   n = json->_value._objects._length;
@@ -790,7 +904,11 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
     key = TRI_AtVector(&json->_value._objects, i);
     value = TRI_AtVector(&json->_value._objects, i + 1);
 
-    if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_NUMBER) {
+    if (key->_type != TRI_JSON_STRING) {
+      continue;
+    }
+
+    if (value->_type == TRI_JSON_NUMBER) {
       if (TRI_EqualString(key->_value._string.data, "version")) {
         parameter->_version = value->_value._number;
       }
@@ -804,14 +922,14 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
         parameter->_maximalSize = value->_value._number;
       }
     }
-    else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_STRING) {
+    else if (value->_type == TRI_JSON_STRING) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
 
         parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
       }
     }
-    else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_BOOLEAN) {
+    else if (value->_type == TRI_JSON_BOOLEAN) {
       if (TRI_EqualString(key->_value._string.data, "deleted")) {
         parameter->_deleted = value->_value._boolean;
       }
@@ -822,14 +940,25 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
         parameter->_waitForSync = value->_value._boolean;
       }
     }
-    else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_ARRAY) {
-      if (TRI_EqualString(key->_value._string.data, "options")) {
-        parameter->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+    else if (value->_type == TRI_JSON_ARRAY) {
+      if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
+        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
       }
     }
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  // warn about wrong version of the collection
+  if (versionWarning &&
+      parameter->_type != TRI_COL_TYPE_SHAPE &&
+      parameter->_version < TRI_COL_VERSION) {
+    if (parameter->_name != NULL) {
+      // only warn if the collection version is older than expected, and if it's not a shape collection
+      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.", parameter->_name);
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -840,40 +969,34 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) {
+int TRI_SaveCollectionInfo (char const* path, 
+                            const TRI_col_info_t* const info, 
+                            const bool forceSync) {
   TRI_json_t* json;
   char* filename;
   bool ok;
-  
+
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
 
   // create a json info object
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (json == NULL) {
-    // out of memory
-    LOG_ERROR("cannot save info block '%s': out of memory", filename);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_cid));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
 
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "cid",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_cid));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_deleted));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_isVolatile));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
-  
-  if (info->_options) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",     TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, info->_options));
+  if (info->_keyOptions) {
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
   }
 
   // save json info to file
-  ok = TRI_SaveJson(filename, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  ok = TRI_SaveJson(filename, json, forceSync);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
     LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());
@@ -894,9 +1017,9 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
 /// Note: the parameter pointer might be 0 when a collection gets unloaded!!!!
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase, 
-                                       TRI_collection_t* collection, 
-                                       TRI_col_info_t const* parameter) {
+int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
+                              TRI_collection_t* collection,
+                              TRI_col_info_t const* parameter) {
 
   if (TRI_IS_DOCUMENT_COLLECTION(collection->_info._type)) {
     TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
@@ -909,7 +1032,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     if (collection->_info._maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
       collection->_info._maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
     }
-  
+
     // the following collection properties are intentionally not updated as updating
     // them would be very complicated:
     // - _cid
@@ -934,7 +1057,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_forceSyncProperties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -951,7 +1074,7 @@ int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
   TRI_CopyCollectionInfo(&new, &collection->_info);
   TRI_CopyString(new._name, name, sizeof(new._name));
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &new);
+  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_forceSyncProperties);
 
   TRI_FreeCollectionInfoOptions(&new);
 
@@ -1026,7 +1149,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
 
   return result;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over all index files of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1078,7 +1201,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   }
 
   // read parameter block, no need to lock as we are opening the collection
-  res = TRI_LoadCollectionInfo(path, &info);
+  res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot load collection parameter '%s': '%s'", path, TRI_last_error());
@@ -1099,14 +1222,14 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   }
 
   InitCollection(vocbase, collection, TRI_DuplicateString(path), &info);
-  
+
   TRI_FreeCollectionInfoOptions(&info);
 
   // check for journals and datafiles
   ok = CheckCollection(collection);
 
   if (! ok) {
-    LOG_ERROR("cannot open '%s', check failed", collection->_directory);
+    LOG_DEBUG("cannot open '%s', check failed", collection->_directory);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
 
@@ -1158,6 +1281,41 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over the markers incollection journals journal
+///
+/// we do this on startup to find the most recent tick values
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IterateJournalsCollection (const char* const path,
+                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+  TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
+  TRI_vector_string_t* vector = &structure._journals;
+  size_t n = vector->_length;
+
+  if (n > 0) {
+    size_t i;
+
+    for (i = 0; i < n ; ++i) {
+      TRI_datafile_t* datafile;
+      char* filename;
+
+      filename = TRI_AtVectorString(vector, i);
+      LOG_DEBUG("iterating over collection journal file '%s'", filename);
+      datafile = TRI_OpenDatafile(filename);
+      if (datafile != NULL) {
+        TRI_IterateDatafile(datafile, iterator, NULL, true);
+        TRI_CloseDatafile(datafile);
+        TRI_FreeDatafile(datafile);
+      }
+    }
+  }
+
+  TRI_DestroyFileStructureCollection(&structure);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1170,10 +1328,27 @@ bool TRI_IsSystemCollectionName (char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_TypeNameCollection (const TRI_col_type_e type) {
+  switch (type) {
+    case TRI_COL_TYPE_DOCUMENT:
+      return "document";
+    case TRI_COL_TYPE_EDGE:
+      return "edge";
+    case TRI_COL_TYPE_SHAPE:
+      return "shape";
+  }
+
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

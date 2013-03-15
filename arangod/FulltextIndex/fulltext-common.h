@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FULLTEXT_FULLTEXT_COMMON_H
-#define TRIAGENS_FULLTEXT_FULLTEXT_COMMON_H 1
+#ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_COMMON_H
+#define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_COMMON_H 1
 
 #include "BasicsC/common.h"
 
@@ -47,7 +47,7 @@ extern "C" {
 /// @brief enable debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-#undef TRI_FULLTEXT_DEBUG  
+#undef TRI_FULLTEXT_DEBUG
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -91,5 +91,5 @@ typedef uint64_t TRI_fulltext_doc_t;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

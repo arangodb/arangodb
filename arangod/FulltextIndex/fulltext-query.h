@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fulltext query functionality 
+/// @brief fulltext query functionality
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012 triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FULLTEXT_FULLTEXT_QUERY_H
-#define TRIAGENS_FULLTEXT_FULLTEXT_QUERY_H 1
+#ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_QUERY_H
+#define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_QUERY_H 1
 
 #include "BasicsC/common.h"
 
@@ -148,10 +148,10 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const,
 /// the caller must not free the word itself
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const, 
-                                const size_t, 
+bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const,
+                                const size_t,
                                 const char* const,
-                                const size_t, 
+                                const size_t,
                                 TRI_fulltext_query_match_e,
                                 TRI_fulltext_query_operation_e);
 
@@ -167,5 +167,5 @@ bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_SHAPED_JSON_SHAPED_JSON_H
@@ -878,6 +878,17 @@ typedef struct TRI_shaped_json_s {
 TRI_shaped_json_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shaped json sub-object
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_shaped_sub_s {
+  TRI_shape_sid_t _sid;
+  size_t _offset;
+  size_t _length;
+}
+TRI_shaped_sub_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1069,7 +1080,7 @@ void TRI_PrintShape (struct TRI_shaper_s* shaper, TRI_shape_t const* shape, int 
 bool TRI_StringValueShapedJson (const TRI_shape_t* const,
                                 const TRI_shaped_json_t* const,
                                 char**,
-                                size_t*); 
+                                size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1083,5 +1094,5 @@ bool TRI_StringValueShapedJson (const TRI_shape_t* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

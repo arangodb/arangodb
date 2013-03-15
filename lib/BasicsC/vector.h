@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_VECTOR_H
@@ -83,10 +83,10 @@ void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t elementSize);
 /// @brief initialises a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVector2 (TRI_vector_t*, 
-                     TRI_memory_zone_t*, 
+int TRI_InitVector2 (TRI_vector_t*,
+                     TRI_memory_zone_t*,
                      size_t elementSize,
-                     size_t initialCapacity); 
+                     size_t initialCapacity);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer
@@ -165,7 +165,7 @@ void* TRI_AtVector (TRI_vector_t const*, size_t);
 /// @brief inserts an element at a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position); 
+void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an element at a given position
@@ -237,7 +237,7 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t*, TRI_memory_zone_t*);
 /// @brief initialises a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVectorPointer2 (TRI_vector_pointer_t*, 
+int TRI_InitVectorPointer2 (TRI_vector_pointer_t*,
                             TRI_memory_zone_t*,
                             size_t);
 
@@ -382,8 +382,8 @@ void TRI_InitVectorString (TRI_vector_string_t*, TRI_memory_zone_t*);
 /// @brief initialises a string vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitVectorString2 (TRI_vector_string_t*, 
-                           TRI_memory_zone_t*, 
+int TRI_InitVectorString2 (TRI_vector_string_t*,
+                           TRI_memory_zone_t*,
                            size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,7 +415,24 @@ void TRI_FreeVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 /// @brief copies a vector and all its strings
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
+TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t*,
+                                           TRI_vector_string_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVectorString (TRI_memory_zone_t*,
+                              TRI_vector_string_t* dst,
+                              TRI_vector_string_t* src);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVectorStringFromVectorPointer (TRI_memory_zone_t*,
+                                               TRI_vector_string_t* dst,
+                                               TRI_vector_pointer_t* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
@@ -458,6 +475,12 @@ int TRI_InsertVectorString (TRI_vector_string_t*, char* element, size_t n);
 void TRI_RemoveVectorString (TRI_vector_string_t*, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the element at a given position
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_AtVectorString (TRI_vector_string_t const*, size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -469,5 +492,5 @@ void TRI_RemoveVectorString (TRI_vector_string_t*, size_t n);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

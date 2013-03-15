@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statement-walker.h"
@@ -83,7 +83,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* member;
     TRI_aql_node_t* modified;
-   
+
     member = (TRI_aql_node_t*) TRI_AtVectorPointer(&node->_members, i);
 
     if (! member) {
@@ -91,7 +91,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
     }
 
     VisitMembers(walker, member);
-  
+
     modified = walker->visitMember(walker, member);
     if (walker->_canModify && modified != member) {
       if (modified == NULL) {
@@ -104,7 +104,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief actually walk the statements in the list 
+/// @brief actually walk the statements in the list
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RunWalk (TRI_aql_statement_walker_t* const walker) {
@@ -116,7 +116,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* node;
     TRI_aql_node_type_e nodeType;
-   
+
     node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, i);
 
     if (! node) {
@@ -124,7 +124,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     }
 
     nodeType = node->_type;
-    
+
     // handle scopes
     if (nodeType == TRI_AQL_NODE_SCOPE_START) {
       TRI_PushBackVectorPointer(&walker->_currentScopes, TRI_AQL_NODE_DATA(node));
@@ -138,7 +138,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     }
 
 
-    // process node's members 
+    // process node's members
     if (walker->visitMember != NULL) {
       VisitMembers(walker, node);
     }
@@ -147,7 +147,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     if (walker->postVisitStatement != NULL) {
       VisitStatement(walker, i, walker->postVisitStatement);
     }
-    
+
     if (nodeType == TRI_AQL_NODE_SCOPE_END) {
       size_t len = walker->_currentScopes._length;
 
@@ -158,7 +158,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -189,7 +189,7 @@ void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restrict a offset/limit combination for the top scope to not apply
-/// a limit optimisation on collection access, but to apply it on for loop 
+/// a limit optimisation on collection access, but to apply it on for loop
 /// traversal
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -209,7 +209,7 @@ void TRI_RestrictCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* con
 
 void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker,
                                             const int64_t offset,
-                                            const int64_t limit) { 
+                                            const int64_t limit) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
   assert(scope);
@@ -238,10 +238,10 @@ TRI_vector_pointer_t* TRI_GetCurrentRangesStatementWalkerAql (TRI_aql_statement_
 /// @brief set current ranges in top scope of statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const walker, 
+void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const walker,
                                              TRI_vector_pointer_t* ranges) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  
+
   assert(scope);
 
   if (ranges != NULL) { // ranges may be NULL
@@ -276,13 +276,13 @@ TRI_aql_scope_t* TRI_GetCurrentScopeStatementWalkerAql (TRI_aql_statement_walker
 /// @brief return a pointer to a variable, identified by its name
 ///
 /// The variable will be searched in the current and the surrounding scopes.
-/// If the variable is not found and the reference to it is coming from a 
+/// If the variable is not found and the reference to it is coming from a
 /// subquery scope, we'll mark the subquery as not self-contained. This prevents
 /// moving of the subquery to some other position (which would break the query
 /// in this case)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const walker, 
+TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const walker,
                                                        const char* const name,
                                                        size_t* scopeCount) {
   size_t n;
@@ -296,7 +296,7 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
   while (n > 0) {
     TRI_aql_scope_t* scope;
     TRI_aql_variable_t* variable;
-    
+
     scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&walker->_currentScopes, --n);
     assert(scope);
 
@@ -330,7 +330,7 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
-                                                          const bool canModify, 
+                                                          const bool canModify,
                                                           TRI_aql_visit_f visitMember,
                                                           TRI_aql_visit_f preVisitStatement,
                                                           TRI_aql_visit_f postVisitStatement) {
@@ -368,12 +368,12 @@ void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
 /// @brief run the statement list walk
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker, 
+void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker,
                             TRI_aql_statement_list_t* list) {
   assert(walker);
   assert(list);
 
-  walker->_statements = list; 
+  walker->_statements = list;
 
   RunWalk(walker);
 }
@@ -384,5 +384,5 @@ void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

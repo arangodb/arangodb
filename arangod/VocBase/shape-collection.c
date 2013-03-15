@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shape-collection.h"
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/files.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -60,11 +60,11 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     char* jname;
     char* number;
 
-    number = TRI_StringUInt32(TRI_NewTickVocBase());
+    number = TRI_StringUInt64(TRI_NewTickVocBase());
     if (! number) {
       return false;
     }
-  
+
     jname = TRI_Concatenate3String("journal-", number, ".db");
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
@@ -73,7 +73,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   }
 
   journal = TRI_CreateDatafile(filename, collection->base._info._maximalSize);
-  
+
   if (filename != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
@@ -101,7 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     bool ok;
 
     // and use the correct name
-    number = TRI_StringUInt32(journal->_fid);
+    number = TRI_StringUInt64(journal->_fid);
     jname = TRI_Concatenate3String("journal-", number, ".db");
     filename = TRI_Concatenate2File(collection->base._directory, jname);
 
@@ -129,7 +129,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     LOG_ERROR("cannot create document header in journal '%s': %s",
               journal->getName(journal),
               TRI_last_error());
-    
+
     TRI_FreeDatafile(journal);
 
     return false;
@@ -153,7 +153,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     LOG_ERROR("cannot create document header in journal '%s': %s",
               journal->getName(journal),
               TRI_last_error());
-    
+
     TRI_FreeDatafile(journal);
 
     return false;
@@ -206,7 +206,7 @@ static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* jo
     char* number;
     bool ok;
 
-    number = TRI_StringUInt32(journal->_fid);
+    number = TRI_StringUInt64(journal->_fid);
     dname = TRI_Concatenate3String("datafile-", number, ".db");
     filename = TRI_Concatenate2File(collection->base._directory, dname);
 
@@ -309,7 +309,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
     waitForSync = collection->base._info._waitForSync;
   }
   else {
-    // this is an attribute. we will not sync the data now, but when the shape information 
+    // this is an attribute. we will not sync the data now, but when the shape information
     // containing the attribute is written (that means we defer the sync until the TRI_DF_MARKER_SHAPE
     // marker is written)
     waitForSync = false;
@@ -444,7 +444,7 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
 
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
-  
+
   // generate crc
   TRI_FillCrcMarkerDatafile(journal, marker, markerSize, 0, 0, body, bodySize);
 
@@ -500,5 +500,5 @@ bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

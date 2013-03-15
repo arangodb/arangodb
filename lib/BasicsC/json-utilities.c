@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/string-buffer.h>
+#include "BasicsC/json-utilities.h"
+#include "BasicsC/string-buffer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -37,12 +37,12 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone, 
-                                   const TRI_json_t* const lhs, 
+static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
+                                   const TRI_json_t* const lhs,
                                    const TRI_json_t* const rhs,
                                    const bool nullMeansRemove) {
   size_t i, n;
-  
+
   TRI_json_t* result = TRI_CopyJson(zone, lhs);
 
   if (result == NULL) {
@@ -143,7 +143,7 @@ static int TypeWeight (const TRI_json_t* const value) {
       return 5;
     case TRI_JSON_NULL:
     case TRI_JSON_UNUSED:
-    default: 
+    default:
       return 0;
   }
 }
@@ -160,7 +160,7 @@ static int CompareJson (TRI_json_t* lhs, TRI_json_t* rhs, size_t size) {
 /// @brief merge two list of array keys, sort them and return a combined list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs, 
+static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
                                      const TRI_json_t* const rhs) {
   TRI_json_t* keys;
   TRI_json_t* unique;
@@ -176,19 +176,19 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
 
   n = lhs->_value._objects._length;
   for (i = 0 ; i < n; i += 2) {
-    TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i); 
+    TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i);
 
     assert(key->_type == TRI_JSON_STRING);
-    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key); 
-  } 
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
+  }
 
   n = rhs->_value._objects._length;
   for (i = 0 ; i < n; i += 2) {
-    TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i); 
+    TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i);
 
     assert(key->_type == TRI_JSON_STRING);
-    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key); 
-  } 
+    TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
+  }
 
   // sort the key list in place
   TRI_SortListJson(keys);
@@ -218,12 +218,12 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
 /// @brief compare two json values
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CompareValuesJson (const TRI_json_t* const lhs, 
+int TRI_CompareValuesJson (const TRI_json_t* const lhs,
                            const TRI_json_t* const rhs) {
   // note: both lhs and rhs may be NULL!
   int lWeight = TypeWeight(lhs);
   int rWeight = TypeWeight(rhs);
-  
+
   if (lWeight < rWeight) {
     return -1;
   }
@@ -299,7 +299,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 
     case TRI_JSON_ARRAY: {
       TRI_json_t* keys;
-          
+
       assert(lhs->_type == TRI_JSON_ARRAY);
       assert(rhs->_type == TRI_JSON_ARRAY);
 
@@ -320,7 +320,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 
           lhsValue = TRI_LookupArrayJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
           rhsValue = TRI_LookupArrayJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
-        
+
           result = TRI_CompareValuesJson(lhsValue, rhsValue);
           if (result != 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
@@ -343,7 +343,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 /// @brief check if two json values are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckSameValueJson (const TRI_json_t* const lhs, 
+bool TRI_CheckSameValueJson (const TRI_json_t* const lhs,
                              const TRI_json_t* const rhs) {
   return (TRI_CompareValuesJson(lhs, rhs) == 0);
 }
@@ -352,7 +352,7 @@ bool TRI_CheckSameValueJson (const TRI_json_t* const lhs,
 /// @brief checks if a json value is contained in a json list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckInListJson (const TRI_json_t* const search, 
+bool TRI_CheckInListJson (const TRI_json_t* const search,
                           const TRI_json_t* const list) {
   size_t n;
   size_t i;
@@ -360,7 +360,7 @@ bool TRI_CheckInListJson (const TRI_json_t* const search,
   assert(search);
   assert(list);
   assert(list->_type == TRI_JSON_LIST);
- 
+
   // iterate over list
   n = list->_value._objects._length;
   for (i = 0; i < n; ++i) {
@@ -391,7 +391,7 @@ TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const list,
   assert(list);
   assert(list->_type == TRI_JSON_LIST);
   assert(lower || upper);
-  
+
   // create result list
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!result) {
@@ -439,7 +439,7 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const list) {
 
   assert(list);
   assert(list->_type == TRI_JSON_LIST);
-  
+
   // create result list
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!result) {
@@ -449,7 +449,7 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const list) {
   n = list->_value._objects._length;
   for (i = 0; i < n; ++i) {
     TRI_json_t* p = TRI_AtVector(&list->_value._objects, i);
- 
+
     // don't push value if it is the same as the last value
     if (!last || TRI_CompareValuesJson(p, last) > 0) {
       TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p);
@@ -465,7 +465,7 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const list) {
 /// @brief create the union of two sorted json lists into a new list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1, 
+TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
                                    const TRI_json_t* const list2,
                                    const bool unique) {
   TRI_json_t* last = NULL;
@@ -477,7 +477,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
   assert(list1->_type == TRI_JSON_LIST);
   assert(list2);
   assert(list2->_type == TRI_JSON_LIST);
-  
+
   n1 = list1->_value._objects._length;
   n2 = list2->_value._objects._length;
 
@@ -521,7 +521,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
           last = p1;
         }
         ++i1;
-      } 
+      }
       else if (compareResult > 0) {
         // right element is smaller
         if (!unique || !last || TRI_CompareValuesJson(p2, last) > 0) {
@@ -576,7 +576,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
 /// @brief create the intersection of two sorted json lists into a new list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1, 
+TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
                                     const TRI_json_t* const list2,
                                     const bool unique) {
   TRI_json_t* last = NULL;
@@ -588,19 +588,19 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
   assert(list1->_type == TRI_JSON_LIST);
   assert(list2);
   assert(list2->_type == TRI_JSON_LIST);
-  
+
   // create result list
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
   if (!result) {
     return NULL;
   }
-  
+
   n1 = list1->_value._objects._length;
   n2 = list2->_value._objects._length;
 
   // special case for empty lists
   if (n1 == 0 || n2 == 0) {
-    return result; 
+    return result;
   }
 
   // reset positions
@@ -653,7 +653,7 @@ TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
   n = list->_value._objects._length;
   if (n > 1) {
     // only sort if more than one value in list
-    SortListJson((TRI_json_t*) TRI_BeginVector(&list->_value._objects), 
+    SortListJson((TRI_json_t*) TRI_BeginVector(&list->_value._objects),
                  (TRI_json_t*) TRI_EndVector(&list->_value._objects));
   }
 
@@ -670,16 +670,16 @@ bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
     const bool hasMultipleElements = (n > 2);
 
     // if we don't have attributes, we do not need to check for duplicates
-    // if we only have one attribute, we don't need to check for duplicates in 
-    // the array, but we need to recursively validate the array values (if 
+    // if we only have one attribute, we don't need to check for duplicates in
+    // the array, but we need to recursively validate the array values (if
     // array value itself is an array)
     if (n > 0) {
       TRI_associative_pointer_t hash;
       size_t i;
 
       if (hasMultipleElements) {
-        TRI_InitAssociativePointer(&hash, 
-          TRI_UNKNOWN_MEM_ZONE, 
+        TRI_InitAssociativePointer(&hash,
+          TRI_UNKNOWN_MEM_ZONE,
           &TRI_HashStringKeyAssociativePointer,
           &TRI_HashStringKeyAssociativePointer,
           &TRI_EqualStringKeyAssociativePointer,
@@ -733,8 +733,8 @@ bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
 /// @brief merge two JSON documents into one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone, 
-                           const TRI_json_t* const lhs, 
+TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
+                           const TRI_json_t* const lhs,
                            const TRI_json_t* const rhs,
                            const bool nullMeansRemove) {
   TRI_json_t* result;
@@ -753,5 +753,5 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

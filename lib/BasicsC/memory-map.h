@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_MEMORY_MAP_H
@@ -32,7 +32,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping
-/// 
+///
 /// it might or might not be defined by one of the following includes
 /// if still empty after the includes, no anonymous memory mapping is available
 /// on the platform
@@ -77,47 +77,47 @@ extern "C" {
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (int fileDescriptor, 
+int TRI_FlushMMFile (int fileDescriptor,
                      void** mmHandle,
-                     void* startingAddress, 
-                     size_t numOfBytesToFlush, 
+                     void* startingAddress,
+                     size_t numOfBytesToFlush,
                      int flags);
 
-                     
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
-                     
-int TRI_MMFile (void* memoryAddress, 
-                size_t numOfBytesToInitialise, 
-                int memoryProtection, 
+
+int TRI_MMFile (void* memoryAddress,
+                size_t numOfBytesToInitialise,
+                int memoryProtection,
                 int flags,
-                int fileDescriptor, 
+                int fileDescriptor,
                 void** mmHandle,
                 int64_t offset,
-                void** result); 
+                void** result);
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
-                
-int TRI_UNMMFile (void* memoryAddress, 
-                  size_t numOfBytesToUnMap, 
-                  int fileDescriptor,
-                  void** mmHandle); 
 
-                  
+int TRI_UNMMFile (void* memoryAddress,
+                  size_t numOfBytesToUnMap,
+                  int fileDescriptor,
+                  void** mmHandle);
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets various protection levels with the memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
-                  
+
 int TRI_ProtectMMFile (void* memoryAddress,
-                       size_t numOfBytesToProtect, 
+                       size_t numOfBytesToProtect,
                        int flags,
                        int fileDescriptor,
-                       void** mmHandle);                       
-                  
+                       void** mmHandle);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,5 +132,5 @@ int TRI_ProtectMMFile (void* memoryAddress,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

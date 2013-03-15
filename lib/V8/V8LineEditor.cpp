@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8LineEditor.h"
@@ -257,9 +257,9 @@ bool V8LineEditor::open (const bool autoComplete) {
 
     // works only in Readline 4.2+
 #if RL_READLINE_VERSION >= 0x0500
-    // enable this to turn on the visual bell - evil! 
+    // enable this to turn on the visual bell - evil!
     // rl_variable_bind("prefer-visible-bell", "1");
-    
+
     // use this for single-line editing as in mongodb shell
     // rl_variable_bind("horizontal-scroll-mode", "1");
 
@@ -270,7 +270,7 @@ bool V8LineEditor::open (const bool autoComplete) {
     // show selection list when completion is ambiguous. not setting this
     // variable will turn the selection list of at least on Ubuntu
     rl_variable_bind("show-all-if-ambiguous", "1");
-    
+
     // use readlines built-in page-wise completer
     rl_variable_bind("page-completions", "1");
 #endif
@@ -280,7 +280,7 @@ bool V8LineEditor::open (const bool autoComplete) {
 
     rl_bind_key('\t', rl_complete);
   }
-  
+
   return LineEditor::open(autoComplete);
 }
 
@@ -448,5 +448,5 @@ bool V8LineEditor::isComplete (string const& source, size_t, size_t) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

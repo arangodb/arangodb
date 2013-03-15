@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_UTF8_HELPER_H
-#define TRIAGENS_BASICS_UTF8_HELPER_H 1
+#ifndef TRIAGENS_BASICS_UTF8HELPER_H
+#define TRIAGENS_BASICS_UTF8HELPER_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/vector.h"
@@ -49,7 +49,7 @@ namespace triagens {
     class Utf8Helper {
         Utf8Helper (Utf8Helper const&);
         Utf8Helper& operator= (Utf8Helper const&);
-    
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,31 +57,31 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static Utf8Helper DefaultUtf8Helper;
-        
+
       public:
-        
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor 
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         Utf8Helper();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor 
+/// @brief constructor
 /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
 ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         Utf8Helper(const string& lang);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         ~Utf8Helper();
 
       public:
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 ///  public functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,13 +111,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void setCollatorLanguage (const string& lang);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get collator language
 ////////////////////////////////////////////////////////////////////////////////
 
         string getCollatorLanguage ();
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get collator country
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,39 +125,39 @@ namespace triagens {
         string getCollatorCountry ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Lowercase the characters in a UTF-8 string. 
+/// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
         string toLowerCase (const string& src);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Lowercase the characters in a UTF-8 string. 
+/// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
         char* tolower (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Uppercase the characters in a UTF-8 string. 
+/// @brief Uppercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
         string toUpperCase (const string& src);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Uppercase the characters in a UTF-8 string. 
+/// @brief Uppercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
         char* toupper (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the words of a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vector_string_t* getWords (const char* const text, 
+        TRI_vector_string_t* getWords (const char* const text,
                                                    const size_t textLength,
                                                    const size_t minimalWordLength,
                                                    const size_t maximalWordLength,
                                                    bool lowerCase);
-        
+
       private:
         Collator* _coll;
     };
@@ -173,5 +173,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

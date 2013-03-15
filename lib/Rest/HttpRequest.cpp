@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
@@ -65,6 +65,7 @@ HttpRequest::HttpRequest (char const* header, size_t length)
   : _requestPath(EMPTY_STR),
     _headers(5),
     _values(10),
+    _arrayValues(10),
     _contentLength(0),
     _body(0),
     _bodySize(0),
@@ -75,7 +76,7 @@ HttpRequest::HttpRequest (char const* header, size_t length)
     _suffix(),
     _version(HTTP_1_0),
     _user() {
-  
+
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
 
@@ -93,6 +94,7 @@ HttpRequest::HttpRequest ()
   : _requestPath(EMPTY_STR),
     _headers(1),
     _values(1),
+    _arrayValues(1),
     _contentLength(0),
     _body(0),
     _bodySize(0),
@@ -110,6 +112,19 @@ HttpRequest::HttpRequest ()
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpRequest::~HttpRequest () {
+  basics::Dictionary< vector<char const*>* >::KeyValue const* begin;
+  basics::Dictionary< vector<char const*>* >::KeyValue const* end;
+  for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
+    char const* key = begin->_key;
+
+    if (key == 0) {
+      continue;
+    }
+
+    vector<char const*>* v = begin->_value;
+    delete v;
+  }
+
   for (vector<char*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
@@ -171,7 +186,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     case HTTP_REQUEST_OPTIONS:
       TRI_AppendString2StringBuffer(buffer, "OPTIONS ", 8);
       break;
-    
+
     case HTTP_REQUEST_PATCH:
       TRI_AppendString2StringBuffer(buffer, "PATCH ", 6);
       break;
@@ -225,11 +240,11 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     }
 
     const size_t keyLength = strlen(key);
-    
+
     if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
-    
+
     TRI_AppendString2StringBuffer(buffer, key, keyLength);
     TRI_AppendString2StringBuffer(buffer, ": ", 2);
 
@@ -371,6 +386,61 @@ map<string, string> HttpRequest::values () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+vector<char const*> const* HttpRequest::arrayValue (char const* key) const {
+  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+
+  if (kv == 0) {
+    return 0;
+  }
+  else {
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+vector<char const*> const* HttpRequest::arrayValue (char const* key, bool& found) const {
+  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+
+  if (kv == 0) {
+    found = false;
+    return 0;
+  }
+  else {
+    found = true;
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+map<string, vector<char const*>* > HttpRequest::arrayValues () const {
+  basics::Dictionary< vector<char const*>* >::KeyValue const* begin;
+  basics::Dictionary< vector<char const*>* >::KeyValue const* end;
+
+  map<string, vector<char const*>* > result;
+
+  for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
+    char const* key = begin->_key;
+
+    if (key == 0) {
+      continue;
+    }
+
+    result[key] = begin->_value;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 char const* HttpRequest::body () const {
   return _body == 0 ? EMPTY_STR : _body;
 }
@@ -481,41 +551,41 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr, const
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
         return HTTP_REQUEST_GET;
       }
-      if (ptr[0] == 'p' && ptr[1] == 'u' && ptr[2] == 't') { 
+      if (ptr[0] == 'p' && ptr[1] == 'u' && ptr[2] == 't') {
         return HTTP_REQUEST_PUT;
       }
       break;
 
     case 4:
-      if (ptr[0] == 'p' && ptr[1] == 'o' && ptr[2] == 's' && ptr[3] == 't') { 
+      if (ptr[0] == 'p' && ptr[1] == 'o' && ptr[2] == 's' && ptr[3] == 't') {
         return HTTP_REQUEST_POST;
       }
-      if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') { 
+      if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') {
         return HTTP_REQUEST_HEAD;
       }
       break;
-    
+
     case 5:
-      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') { 
+      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') {
         return HTTP_REQUEST_PATCH;
       }
       break;
 
     case 6:
-      if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' && ptr[4] == 't' && ptr[5] == 'e') { 
+      if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' && ptr[4] == 't' && ptr[5] == 'e') {
         return HTTP_REQUEST_DELETE;
       }
       break;
 
     case 7:
-      if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' && ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') { 
+      if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' && ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
         return HTTP_REQUEST_OPTIONS;
       }
       break;
   }
 
   return HTTP_REQUEST_ILLEGAL;
-}       
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the http header
@@ -669,7 +739,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
             ++f;
           }
-            
+
           pathEnd = f;
 
           // no space, question mark or end-of-line
@@ -685,7 +755,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
             *pathEnd = '\0';
 
             paramEnd = paramBegin = pathEnd;
-            
+
             // set full url = complete path
             setFullUrl(pathBegin, pathEnd);
           }
@@ -698,7 +768,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
             while (paramEnd < valueEnd && *paramEnd != ' ' && *paramEnd != '\n') {
               ++paramEnd;
             }
-            
+
             // set full url = complete path + url parameters
             setFullUrl(pathBegin, paramEnd);
 
@@ -855,7 +925,7 @@ void HttpRequest::setFullUrl (char const* begin, char const* end) {
   assert(begin != 0);
   assert(end != 0);
   assert(begin <= end);
-  
+
   _fullUrl = string(begin, end - begin);
 }
 
@@ -911,7 +981,14 @@ void HttpRequest::setValues (char* buffer, char* end) {
         *value = '\0';
       }
 
-      _values.insert(keyBegin, key - keyBegin, valueBegin);
+      if (key - keyBegin > 2 && (*(key - 2)) == '[' &&  (*(key - 1)) == ']') {
+        // found parameter xxx[]
+        *(key - 2) = '\0';
+        setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
+      }
+      else {
+        _values.insert(keyBegin, key - keyBegin, valueBegin);
+      }
 
       keyBegin = key = buffer + 1;
       valueBegin = value = 0;
@@ -971,7 +1048,15 @@ void HttpRequest::setValues (char* buffer, char* end) {
       *value = '\0';
     }
 
-    _values.insert(keyBegin, key - keyBegin, valueBegin);
+    if (key - keyBegin > 2 && (*(key - 2)) == '[' &&  (*(key - 1)) == ']') {
+      // found parameter xxx[]
+      *(key - 2) = '\0';
+      setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
+    }
+    else {
+      _values.insert(keyBegin, key - keyBegin, valueBegin);
+    }
+
   }
 }
 
@@ -1023,20 +1108,16 @@ vector<string> const& HttpRequest::suffix () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::addSuffix (char const* part) {
-#ifdef TRI_HAVE_ICU  
-  string decoded = StringUtils::urlDecode(part);  
+  string decoded = StringUtils::urlDecode(part);
   size_t tmpLength = 0;
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
   if (utf8_nfc) {
     _suffix.push_back(utf8_nfc);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
-  }  
+  }
   else {
     _suffix.push_back(decoded);
   }
-#else
-  _suffix.push_back(StringUtils::urlDecode(part));
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1107,6 +1188,25 @@ const string& HttpRequest::getMultipartContentType () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set array value
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setArrayValue (char* key, size_t length, char const* value) {
+  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+  vector<char const*>* v = 0;
+
+  if (kv == 0) {
+    v = new vector<char const*>;
+    _arrayValues.insert(key, length, v);
+  }
+  else {
+    v = kv->_value;
+  }
+
+  v->push_back(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1116,5 +1216,5 @@ const string& HttpRequest::getMultipartContentType () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

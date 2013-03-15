@@ -2,7 +2,7 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 #include "./lib/BasicsC/voc-errors.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -25,6 +25,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_OUT_OF_MEMORY_MMAP, "out of memory in mmap");
   REG_ERROR(ERROR_CORRUPTED_CSV, "csv is corrupt");
+  REG_ERROR(ERROR_FILE_NOT_FOUND, "file not found");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
@@ -74,6 +75,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED, "unexpected document key");
   REG_ERROR(ERROR_ARANGO_INDEX_NEEDS_RESIZE, "index needs resizing");
   REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "database directory not writable");
+  REG_ERROR(ERROR_ARANGO_OUT_OF_KEYS, "out of keys");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
@@ -126,6 +128,12 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
+  REG_ERROR(ERROR_SESSION_INVALID_SESSION, "invalid session");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CREATE_SESSION, "could not create session");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CHANGE_SESSION, "could not change session");
+  REG_ERROR(ERROR_SESSION_INVALID_FORM, "invalid form");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CREATE_FORM, "could not create form");
+  REG_ERROR(ERROR_SESSION_COULD_NOT_CHANGE_FORM, "could not change form");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
@@ -147,6 +155,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE, "bitarray index insert failure - document attribute value unsupported in index");
   REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES, "bitarray index creation failure - one or more index attributes are duplicated.");
   REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES, "bitarray index creation failure - one or more index attribute values are duplicated.");
+  REG_ERROR(RESULT_KEY_EXISTS, "element not inserted into structure, because key already exists");
+  REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
+  REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
+  REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FULLTEXT_FULLTEXT_HANDLES_H
-#define TRIAGENS_FULLTEXT_FULLTEXT_HANDLES_H 1
+#ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_HANDLES_H
+#define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_HANDLES_H 1
 
 #include "fulltext-common.h"
 
@@ -50,7 +50,7 @@ extern "C" {
 typedef uint32_t TRI_fulltext_handle_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a slot containing _numUsed handles and has some statistics about 
+/// @brief a slot containing _numUsed handles and has some statistics about
 /// itself
 ///
 /// the fulltext index will not store document ids in its nodes, because that
@@ -70,19 +70,19 @@ typedef uint32_t TRI_fulltext_handle_t;
 /// the new one is put in place.
 ///
 /// Inserting a new document will simply allocate a new handle, and the handle
-/// will be stored for the node. We simply assign the next handle number for 
-/// the document. After that, we can quickly look up the document id for a 
+/// will be stored for the node. We simply assign the next handle number for
+/// the document. After that, we can quickly look up the document id for a
 /// handle value. It's more tricky the other way around, because there is no
-/// simple mapping from document ids to handles. To find the handle for a 
+/// simple mapping from document ids to handles. To find the handle for a
 /// document id, we have to check all handles already used.
 /// As this would mean traversing over all handles used and comparing their
 /// document values with the sought document id, there is some optimisation:
 /// handles are stored in slots of fixed sizes. Each slot has some statistics
-/// about the number of used and deleted documents/handles in it, as well as 
+/// about the number of used and deleted documents/handles in it, as well as
 /// its min and max document values.
-/// When looking for a specific document id in all handles in the case of 
+/// When looking for a specific document id in all handles in the case of
 /// deletion, the slot statistics are used to early prune non-relevant slots from
-/// the further search. The simple min/max document id check implemented is 
+/// the further search. The simple min/max document id check implemented is
 /// sufficient because normally document memory is contiguous so the pointers
 /// to documents are just adjacent (second pointer is higher than first pointer).
 /// This is only true for documents that are created on the same memory page
@@ -107,7 +107,7 @@ typedef struct TRI_fulltext_handles_s {
   TRI_fulltext_handle_t        _next;        // next handle to use
   uint32_t                     _numSlots;    // current number of slots
   TRI_fulltext_handle_slot_t** _slots;       // pointers to slots
-  uint32_t                     _slotSize;    // the size of each slot 
+  uint32_t                     _slotSize;    // the size of each slot
   uint32_t                     _numDeleted;  // total number of deleted documents
   TRI_fulltext_handle_t*       _map;         // a temporary map for remapping existing
                                              // handles to new handles during compaction
@@ -229,5 +229,5 @@ size_t TRI_MemoryHandleFulltextIndex (const TRI_fulltext_handles_t* const);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

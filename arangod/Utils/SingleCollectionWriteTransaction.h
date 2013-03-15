@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H
@@ -61,7 +61,7 @@ namespace triagens {
 ///
 /// A single collection write transaction executes write operations on the
 /// underlying collection. It can be limited to at most one write operation.
-/// If so, whenever it tries to execute more than one write operation, an error 
+/// If so, whenever it tries to execute more than one write operation, an error
 /// can be raised automatically. Executing only one write operation is
 /// sufficient for the basic CRUD operations and allows using the transaction
 /// API even efficiently for single CRUD operations. This optimisation will
@@ -72,7 +72,7 @@ namespace triagens {
                                           const triagens::arango::CollectionNameResolver& resolver,
                                           const TRI_transaction_cid_t cid) :
           SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_WRITE),
-          _numWrites(0), 
+          _numWrites(0),
           _synchronous(false) {
 
           if (N == 1) {
@@ -88,14 +88,14 @@ namespace triagens {
                                           const triagens::arango::CollectionNameResolver& resolver,
                                           const string& name) :
           SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_WRITE),
-          _numWrites(0), 
+          _numWrites(0),
           _synchronous(false) {
 
           if (N == 1) {
             this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
           }
         }
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +141,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createDocument (TRI_doc_mptr_t* mptr,
-                            TRI_json_t const* json, 
+                            TRI_json_t const* json,
                             const bool forceSync,
                             const bool lock) {
           if (_numWrites++ > N) {
@@ -159,8 +159,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createEdge (TRI_doc_mptr_t* mptr,
-                        TRI_json_t const* json, 
-                        bool forceSync, 
+                        TRI_json_t const* json,
+                        bool forceSync,
                         void const* data,
                         const bool lock) {
           if (_numWrites++ > N) {
@@ -169,7 +169,7 @@ namespace triagens {
 
           TRI_primary_collection_t* primary = this->primaryCollection();
           _synchronous = forceSync || primary->base._info._waitForSync;
-          
+
           return this->createCollectionDocument(primary, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync, lock);
         }
 
@@ -179,7 +179,7 @@ namespace triagens {
 
         int createDocument (TRI_voc_key_t key,
                             TRI_doc_mptr_t* mptr,
-                            TRI_shaped_json_t const* shaped, 
+                            TRI_shaped_json_t const* shaped,
                             bool forceSync,
                             const bool lock) {
           if (_numWrites++ > N) {
@@ -188,7 +188,7 @@ namespace triagens {
 
           TRI_primary_collection_t* primary = this->primaryCollection();
           _synchronous = forceSync || primary->base._info._waitForSync;
-          
+
           return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync, lock);
         }
 
@@ -198,8 +198,8 @@ namespace triagens {
 
         int createEdge (TRI_voc_key_t key,
                         TRI_doc_mptr_t* mptr,
-                        TRI_shaped_json_t const* shaped, 
-                        bool forceSync, 
+                        TRI_shaped_json_t const* shaped,
+                        bool forceSync,
                         void const* data,
                         const bool lock) {
           if (_numWrites++ > N) {
@@ -208,21 +208,21 @@ namespace triagens {
 
           TRI_primary_collection_t* primary = this->primaryCollection();
           _synchronous = forceSync || primary->base._info._waitForSync;
-          
+
           return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update (replace!) a single document within a transaction, 
+/// @brief update (replace!) a single document within a transaction,
 /// using json
 ////////////////////////////////////////////////////////////////////////////////
 
         int updateDocument (const string& key,
-                            TRI_doc_mptr_t* mptr, 
-                            TRI_json_t* const json, 
-                            const TRI_doc_update_policy_e policy, 
-                            bool forceSync, 
-                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_doc_mptr_t* mptr,
+                            TRI_json_t* const json,
+                            const TRI_doc_update_policy_e policy,
+                            bool forceSync,
+                            const TRI_voc_rid_t expectedRevision,
                             TRI_voc_rid_t* actualRevision,
                             const bool lock) {
           if (_numWrites++ > N) {
@@ -236,16 +236,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update (replace!) a single document within a transaction, 
+/// @brief update (replace!) a single document within a transaction,
 /// using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
         int updateDocument (const string& key,
-                            TRI_doc_mptr_t* mptr, 
-                            TRI_shaped_json_t* const shaped, 
-                            const TRI_doc_update_policy_e policy, 
-                            bool forceSync, 
-                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_doc_mptr_t* mptr,
+                            TRI_shaped_json_t* const shaped,
+                            const TRI_doc_update_policy_e policy,
+                            bool forceSync,
+                            const TRI_voc_rid_t expectedRevision,
                             TRI_voc_rid_t* actualRevision,
                             const bool lock) {
           if (_numWrites++ > N) {
@@ -262,10 +262,10 @@ namespace triagens {
 /// @brief delete a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int deleteDocument (const string& key, 
-                            const TRI_doc_update_policy_e policy, 
-                            bool forceSync, 
-                            const TRI_voc_rid_t expectedRevision, 
+        int deleteDocument (const string& key,
+                            const TRI_doc_update_policy_e policy,
+                            bool forceSync,
+                            const TRI_voc_rid_t expectedRevision,
                             TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -334,5 +334,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

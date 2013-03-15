@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "auth.h"
@@ -140,7 +140,7 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
   if (found != NULL) {
     *found = true;
   }
-  
+
   result = json->_value._boolean;
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -262,7 +262,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     TRI_ReleaseCollectionVocBase(vocbase, collection);
     LOG_FATAL_AND_EXIT("collection '_users' has an unknown collection type");
   }
-  
+
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
   // .............................................................................
@@ -270,7 +270,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
-  
+
   beg = primary->_primaryIndex._table;
   end = beg + primary->_primaryIndex._nrAlloc;
   ptr = beg;
@@ -307,7 +307,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   // .............................................................................
   // outside a read transaction
   // .............................................................................
-  
+
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
@@ -359,7 +359,7 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
   vocbase->_authInfo._nrUsed = 0;
-  
+
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 }
 
@@ -455,5 +455,5 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_CONVERSIONS_H
-#define TRIAGENS_DURHAM_AHUACATL_CONVERSIONS_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_CONVERSIONS_H
+#define TRIAGENS_AHUACATL_AHUACATL_CONVERSIONS_H 1
 
 #include "BasicsC/common.h"
 
@@ -66,7 +66,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (struct TRI_aql_context_s* const,
 /// @brief convert a value node to its Javascript representation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValueJavascriptAql (struct TRI_string_buffer_s* const, 
+bool TRI_ValueJavascriptAql (struct TRI_string_buffer_s* const,
                              const TRI_aql_value_t* const,
                              const TRI_aql_value_type_e);
 
@@ -74,14 +74,14 @@ bool TRI_ValueJavascriptAql (struct TRI_string_buffer_s* const,
 /// @brief convert a node to its Javascript representation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_NodeJavascriptAql (struct TRI_string_buffer_s* const, 
+bool TRI_NodeJavascriptAql (struct TRI_string_buffer_s* const,
                             const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a value node to a string representation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValueStringAql (struct TRI_string_buffer_s* const, 
+bool TRI_ValueStringAql (struct TRI_string_buffer_s* const,
                          const TRI_aql_value_t* const,
                          const TRI_aql_value_type_e);
 
@@ -89,7 +89,7 @@ bool TRI_ValueStringAql (struct TRI_string_buffer_s* const,
 /// @brief convert a node to its string representation, used for printing it
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_NodeStringAql (struct TRI_string_buffer_s* const, 
+bool TRI_NodeStringAql (struct TRI_string_buffer_s* const,
                         const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,5 +104,5 @@ bool TRI_NodeStringAql (struct TRI_string_buffer_s* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

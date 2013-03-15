@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +21,13 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
+/// @author Dr. Oreste Costa-Panaia
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ENDPOINT_IP_H
-#define TRIAGENS_FYN_REST_ENDPOINT_IP_H 1
+#ifndef TRIAGENS_REST_ENDPOINT_IP_H
+#define TRIAGENS_REST_ENDPOINT_IP_H 1
 
 #include "Rest/Endpoint.h"
 
@@ -56,13 +56,13 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIp (const EndpointType, 
-                    const DomainType, 
+        EndpointIp (const EndpointType,
+                    const DomainType,
                     const ProtocolType,
                     const EncryptionType,
-                    const std::string&, 
+                    const std::string&,
                     int,
-                    const std::string&, 
+                    const std::string&,
                     const uint16_t);
 
       public:
@@ -70,7 +70,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         ~EndpointIp ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,13 +113,13 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect the socket
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         TRI_socket_t connectSocket (const struct addrinfo*, double, double);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-    
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +146,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         virtual void disconnect ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +164,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get host 
+/// @brief get host
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string getHost () const {
@@ -183,7 +183,7 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-    
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,5 +211,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

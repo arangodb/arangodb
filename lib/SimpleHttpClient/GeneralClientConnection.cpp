@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralClientConnection.h"
@@ -83,17 +83,17 @@ GeneralClientConnection::~GeneralClientConnection () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new connection from an endpoint
-////////////////////////////////////////////////////////////////////////////////      
+////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint, 
-                                                           double requestTimeout, 
+GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
+                                                           double requestTimeout,
                                                            double connectTimeout,
                                                            size_t numRetries) {
   if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries); 
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   }
   else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries); 
+    return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   }
   else {
     return 0;
@@ -102,11 +102,11 @@ GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
-////////////////////////////////////////////////////////////////////////////////      
+////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::connect () {
   disconnect();
-  
+
   if (_numConnectRetries < _connectRetries + 1) {
     _numConnectRetries++;
   }
@@ -124,10 +124,10 @@ bool GeneralClientConnection::connect () {
 
   return true;
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect
-////////////////////////////////////////////////////////////////////////////////      
+////////////////////////////////////////////////////////////////////////////////
 
 void GeneralClientConnection::disconnect () {
   if (isConnected()) {
@@ -138,7 +138,7 @@ void GeneralClientConnection::disconnect () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send data to the endpoint
-////////////////////////////////////////////////////////////////////////////////      
+////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, size_t length, size_t* bytesWritten) {
   *bytesWritten = 0;
@@ -152,8 +152,8 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from endpoint
-////////////////////////////////////////////////////////////////////////////////      
-    
+////////////////////////////////////////////////////////////////////////////////
+
 bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer) {
   if (prepare(timeout, false)) {
     return this->readClientConnection(buffer);

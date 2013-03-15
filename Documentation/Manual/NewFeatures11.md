@@ -224,8 +224,10 @@ trends.
 The ArangoDB web interface is using these APIs to provide charts with the
 server connection statistics figures. It has a new tab "Statistics" for this purpose.
 
-For more information on the APIs, please refer to @ref HttpSystemConnectionStatistics
-and @ref HttpSystemRequestStatistics.
+For more information on the APIs, please refer to 
+@S_EXTREF_S{http://www.arangodb.org/manuals/1.1/HttpSystem.html#HttpSystemConnectionStatistics,HttpSystemConnectionStatistics}
+and 
+@S_EXTREF{http://www.arangodb.org/manuals/1.1/HttpSystem.html#HttpSystemRequestStatistics,HttpSystemRequestStatistics}.
 
 Endpoints and SSL support {#NewFeatures11Endpoints}
 ---------------------------------------------------

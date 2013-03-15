@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialiseRest.h"
@@ -43,6 +43,7 @@
 #include "Basics/InitialiseBasics.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/Version.h"
 #include "Rest/Url.h"
 #include "Statistics/statistics.h"
 
@@ -134,11 +135,13 @@ namespace triagens {
 #ifdef TRI_LIBEV_VERSION
       revision = "$Revision: LIBEV " TRI_LIBEV_VERSION " $";
       LOGGER_TRACE(revision);
-#endif      
+#endif
 
 #ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();
 #endif
+
+      Version::initialise();
     }
 
 

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H
-#define TRIAGENS_DURHAM_VOC_BASE_VOCBASE_H 1
+#ifndef TRIAGENS_VOC_BASE_VOCBASE_H
+#define TRIAGENS_VOC_BASE_VOCBASE_H 1
 
 #include "BasicsC/common.h"
 
@@ -125,35 +125,35 @@ struct TRI_shadow_store_s;
 /// @brief locks the synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(a) \
+#define TRI_LOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
   TRI_LockCondition(&(a)->_syncWaitersCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOC_BASE(a) \
+#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
   TRI_UnlockCondition(&(a)->_syncWaitersCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(a, b) \
+#define TRI_WAIT_SYNCHRONISER_WAITER_VOCBASE(a, b) \
   TRI_TimedWaitCondition(&(a)->_syncWaitersCondition, (b))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signals the synchroniser waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_BROADCAST_SYNCHRONISER_WAITER_VOC_BASE(a) \
+#define TRI_BROADCAST_SYNCHRONISER_WAITER_VOCBASE(a) \
   TRI_BroadcastCondition(&(a)->_syncWaitersCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reduces the number of sync waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(a)         \
+#define TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(a)          \
   TRI_LockCondition(&(a)->_syncWaitersCondition);       \
   --((a)->_syncWaiters);                                \
   TRI_UnlockCondition(&(a)->_syncWaitersCondition)
@@ -162,7 +162,7 @@ struct TRI_shadow_store_s;
 /// @brief reduces the number of sync waiters
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(a)         \
+#define TRI_INC_SYNCHRONISER_WAITER_VOCBASE(a)          \
   TRI_LockCondition(&(a)->_syncWaitersCondition);       \
   ++((a)->_syncWaiters);                                \
   TRI_BroadcastCondition(&(a)->_syncWaitersCondition);  \
@@ -197,7 +197,13 @@ extern size_t PageSize;
 /// @brief maximal path length
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_PATH_LENGTH     (4096)
+#define TRI_COL_PATH_LENGTH     (512)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximal name length
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COL_NAME_LENGTH     (64)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default maximal collection journal size
@@ -206,10 +212,19 @@ extern size_t PageSize;
 #define TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 32)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimal collection journal size
+/// @brief minimal collection journal size (for testing, we allow very small
+/// file sizes in maintainer mode)
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+
+#define TRI_JOURNAL_MINIMAL_SIZE (16 * 1024)
+
+#else
+
 #define TRI_JOURNAL_MINIMAL_SIZE (1024 * 1024)
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief journal overhead
@@ -347,40 +362,30 @@ typedef uint32_t TRI_col_type_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database
 ///
-/// There are the following locks:
-///
-/// @LIT{TRI_vocbase_t._lock}: This lock protects the access to _collections,
-/// _collectionsByName, and _collectionsById.
-///
-/// @LIT{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
-/// unloaded) of the collection. If you want to use a collection, you must call
-/// @ref TRI_UseCollectionVocBase, this will either load or manifest the
-/// collection and a read-lock is held when the functions returns.  You must
-/// call @ref TRI_ReleaseCollectionVocBase, when you finished using the
-/// collection. The functions that modify the status of collection (load,
-/// unload, manifest) will grab a write-lock.
+/// For the lock handling, see the document "LOCKS.md".
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_s {
   char* _path;
-  char* _lockFile;
 
-  bool _removeOnDrop; // wipe collection from disk after dropping
-  bool _removeOnCompacted; // wipe datafile from disk after compaction
+  bool _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
+  bool _removeOnDrop;       // wipe collection from disk after dropping
+  bool _removeOnCompacted;  // wipe datafile from disk after compaction
   bool _defaultWaitForSync;
-  bool _forceSyncShapes; // force synching of shape data to disk
+  bool _forceSyncShapes;    // force syncing of shape data to disk
+  bool _forceSyncProperties; // force syncing of shape data to disk
+
   TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;
-
-  TRI_vector_pointer_t _collections;
-  TRI_vector_pointer_t _deadCollections; // pointers to collections dropped that can be removed later
+  TRI_vector_pointer_t  _collections;
+  TRI_vector_pointer_t  _deadCollections; // pointers to collections dropped that can be removed later
 
   TRI_associative_pointer_t _collectionsByName;
   TRI_associative_pointer_t _collectionsById;
 
   TRI_associative_pointer_t _authInfo;
-  TRI_read_write_lock_t _authInfoLock;
+  TRI_read_write_lock_t     _authInfoLock;
 
   TRI_transaction_context_t* _transactionContext;
 
@@ -389,18 +394,20 @@ typedef struct TRI_vocbase_s {
   // 1 = normal operation/running
   // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
   // 3 = shutdown in progress/waiting for cleanup thread to finish
-  sig_atomic_t _state; 
+  sig_atomic_t _state;
 
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
   TRI_thread_t _cleanup;
 
   struct TRI_shadow_store_s* _cursors;
-  TRI_associative_pointer_t* _functions; 
+  TRI_associative_pointer_t* _functions;
 
   TRI_condition_t _cleanupCondition;
   TRI_condition_t _syncWaitersCondition;
-  int64_t _syncWaiters;  
+  int64_t _syncWaiters;
+  
+  char* _lockFile;
 }
 TRI_vocbase_t;
 
@@ -420,20 +427,22 @@ TRI_vocbase_col_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection container
+///
+/// For the lock, handling see the document "LOCKS.md".
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t* const _vocbase;
 
-  TRI_col_type_t _type;              // collection type
-  TRI_voc_cid_t _cid;                // collecttion identifier
-  char _name[TRI_COL_PATH_LENGTH];   // name of the collection
+  TRI_col_type_t const _type;                    // collection type
+  TRI_voc_cid_t const _cid;                      // collecttion identifier
 
-  char const* _path;                 // path to the collection files
+  TRI_read_write_lock_t _lock;                   // lock protecting the status and name
 
-  TRI_read_write_lock_t _lock;               // lock protecting the status
-  TRI_vocbase_col_status_e _status;          // status of the collection
+  TRI_vocbase_col_status_e _status;              // status of the collection
   struct TRI_primary_collection_s* _collection;  // NULL or pointer to loaded collection
+  char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
+  char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
 }
 TRI_vocbase_col_t;
 
@@ -500,6 +509,12 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path);
 void TRI_DestroyVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief load authentication information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -531,15 +546,15 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_
 /// @brief finds a collection by name or creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t*, 
-                                                          char const*, 
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t*,
+                                                          char const*,
                                                           const TRI_col_type_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, 
+TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
                                                 struct TRI_col_info_s*,
                                                 TRI_voc_cid_t cid);
 
@@ -641,5 +656,5 @@ void TRI_ShutdownVocBase (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
