@@ -113,8 +113,9 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     size_t blockSize;
 
     blockSize = GetBlockSize(headers->_blocks._length);
+    TRI_ASSERT_DEBUG(blockSize > 0);
 
-    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * headers->_headerSize, false);
+    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * headers->_headerSize, true);
 
     // out of memory
     if (begin == NULL) {
@@ -127,15 +128,17 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     header = NULL;
 
     for (;  begin <= ptr;  ptr -= headers->_headerSize) {
-      ClearSimpleHeaders((TRI_doc_mptr_t*) ptr, headers->_headerSize);
       ((TRI_doc_mptr_t*) ptr)->_data = header;
       header = ptr;
     }
 
+    TRI_ASSERT_DEBUG(headers != NULL);
     headers->_freelist = (TRI_doc_mptr_t*) header;
 
     TRI_PushBackVectorPointer(&headers->_blocks, begin);
   }
+  
+  TRI_ASSERT_DEBUG(headers->_freelist != NULL);
 
   c.c = headers->_freelist;
   headers->_freelist = c.c->_data;
