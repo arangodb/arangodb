@@ -870,7 +870,6 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
                                      PQIndexElement* pqElement,
                                      const TRI_doc_mptr_t* document,
                                      const TRI_shaped_json_t* shapedDoc) {
-  union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
   TRI_shape_access_t const* acc;
   size_t j;
@@ -942,8 +941,7 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
     // be retreived.
     // ..........................................................................
 
-    cnv.c = document;
-    pqElement->data = cnv.p;
+    pqElement->data = CONST_CAST(document);
 
     for (j = 0; j < pqIndex->_paths._length; ++j) {
       TRI_shaped_json_t shapedJson;
@@ -2522,7 +2520,6 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
                                const TRI_doc_mptr_t* document,
                                const TRI_shaped_json_t* shapedDoc) {
 
-  union { void* p; void const* c; } cnv;
   TRI_shaped_json_t shapedObject;
   TRI_shape_access_t const* acc;
   size_t j;
@@ -2583,9 +2580,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
     // be retreived later.
     // ..........................................................................
 
-    cnv.c = document;
-    element->data = cnv.p;
-
+    element->data = CONST_CAST(document);
 
     for (j = 0; j < baIndex->_paths._length; ++j) {
       TRI_shaped_json_t shapedJson;

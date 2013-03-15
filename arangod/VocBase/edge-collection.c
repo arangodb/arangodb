@@ -93,7 +93,6 @@ static bool FindEdges (const TRI_edge_direction_e direction,
                        TRI_vector_pointer_t* result,
                        TRI_edge_header_t* entry,
                        const int matchType) {
-  union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
   TRI_vector_pointer_t found;
   TRI_edge_header_t* edge;
 
@@ -120,7 +119,6 @@ static bool FindEdges (const TRI_edge_direction_e direction,
     // add all results found
     for (i = 0;  i < found._length;  ++i) {
       edge = (TRI_edge_header_t*) found._buffer[i];
-      cnv.c = edge->_mptr;
 
       // the following queries will use the following sequences of matchTypes:
       // inEdges(): 1, 2,  outEdges(): 1, 2,  edges(): 1, 3
@@ -142,7 +140,7 @@ static bool FindEdges (const TRI_edge_direction_e direction,
         }
       }
 
-      TRI_PushBackVectorPointer(result, cnv.v);
+      TRI_PushBackVectorPointer(result, CONST_CAST(edge->_mptr));
     }
   }
 

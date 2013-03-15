@@ -223,10 +223,10 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
-  union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } cnv;
   TRI_df_marker_t* result;
   TRI_doc_datafile_info_t* dfi;
   TRI_doc_mptr_t const* found;
+  TRI_doc_mptr_t* found2;
   TRI_document_collection_t* doc;
   TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
@@ -292,14 +292,14 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
       return true;
     }
 
-    cnv.c = found;
-    cnv.v->_fid = fid;
+    found2 = CONST_CAST(found);
+    found2->_fid = fid;
 
     // let marker point to the new position
-    cnv.v->_data = result;
+    found2->_data = result;
 
     // let _key point to the new key position
-    cnv.v->_key = ((char*) result) + (((TRI_doc_document_key_marker_t*) result)->_offsetKey);
+    found2->_key = ((char*) result) + (((TRI_doc_document_key_marker_t*) result)->_offsetKey);
 
     // update datafile info
     dfi->_numberAlive += 1;
@@ -323,12 +323,14 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
+
     if (found != NULL) {
-      cnv.c = found;
-      cnv.v->_fid = fid;
-      cnv.v->_data = result;
+      found2 = CONST_CAST(found);
+      found2->_fid = fid;
+      found2->_data = result;
+
       // let _key point to the new key position
-      cnv.v->_key = ((char*) result) + (((TRI_doc_deletion_key_marker_t*) result)->_offsetKey);
+      found2->_key = ((char*) result) + (((TRI_doc_deletion_key_marker_t*) result)->_offsetKey);
     }
 
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
