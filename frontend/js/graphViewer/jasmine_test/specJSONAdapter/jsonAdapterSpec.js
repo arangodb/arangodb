@@ -64,7 +64,7 @@
       
     
     beforeEach(function() {
-      jsonPath = "../generated_1000/";
+      jsonPath = "../test_data/";
       nodes = [];
       edges = [];
       // Helper function to easily insert a node into the list
@@ -142,7 +142,7 @@
         
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(29, function() {
+          adapter.loadNodeFromTree(1, function() {
             callbackCheck = true;
           });
         });
@@ -152,8 +152,8 @@
         });
       
         runs(function() {
-          existNodes([477, 29, 159, 213, 339, 3, 7]);
-          expect(nodes.length).toEqual(7);
+          existNodes([0, 1, 2, 3, 4, 5, 6, 7]);
+          expect(nodes.length).toEqual(8);
         });
       });
       
@@ -176,7 +176,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(29, function() {
+          adapter.loadNodeFromTree(1, function() {
             callbackCheck = true;
           });
         });
@@ -187,7 +187,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(3, function() {
+          adapter.loadNodeFromTree(2, function() {
             callbackCheck = true;
           });
         });
@@ -201,7 +201,7 @@
       
           runs(function() {
             callbackCheck = false;
-            adapter.loadNodeFromTree(213, function() {
+            adapter.loadNodeFromTree(3, function() {
               callbackCheck = true;
             });
           });
@@ -211,8 +211,8 @@
           });  
           
           runs(function() {
-            existNodes([477, 29, 159, 213, 339, 3, 7, 4, 80]);
-            expect(nodes.length).toEqual(9);
+            existNodes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            expect(nodes.length).toEqual(10);
           });
         });
       });
