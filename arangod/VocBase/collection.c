@@ -969,7 +969,9 @@ int TRI_LoadCollectionInfo (char const* path,
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) {
+int TRI_SaveCollectionInfo (char const* path, 
+                            const TRI_col_info_t* const info, 
+                            const bool forceSync) {
   TRI_json_t* json;
   char* filename;
   bool ok;
@@ -993,7 +995,7 @@ int TRI_SaveCollectionInfo (char const* path, const TRI_col_info_t* const info) 
   }
 
   // save json info to file
-  ok = TRI_SaveJson(filename, json);
+  ok = TRI_SaveJson(filename, json, forceSync);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
@@ -1055,7 +1057,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_forceSyncProperties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,7 +1074,7 @@ int TRI_RenameCollection (TRI_collection_t* collection, char const* name) {
   TRI_CopyCollectionInfo(&new, &collection->_info);
   TRI_CopyString(new._name, name, sizeof(new._name));
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &new);
+  res = TRI_SaveCollectionInfo(collection->_directory, &new, collection->_vocbase->_forceSyncProperties);
 
   TRI_FreeCollectionInfoOptions(&new);
 
@@ -1227,7 +1229,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   ok = CheckCollection(collection);
 
   if (! ok) {
-    LOG_ERROR("cannot open '%s', check failed", collection->_directory);
+    LOG_DEBUG("cannot open '%s', check failed", collection->_directory);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
 

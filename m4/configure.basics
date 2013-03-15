@@ -41,6 +41,9 @@ esac
 TRI_BITS="$tr_BITS"
 AC_SUBST(TRI_BITS)
 
+CFLAGS="${CFLAGS} -DTRI_BITS=${TRI_BITS}"
+CXXFLAGS="${CXXFLAGS} -DTRI_BITS=${TRI_BITS}"
+
 dnl ----------------------------------------------------------------------------
 dnl use automake to generate Makfile.in
 dnl ----------------------------------------------------------------------------

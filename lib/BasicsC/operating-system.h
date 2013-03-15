@@ -126,6 +126,10 @@
 #define TRI_HAVE_GETLINE                    1
 #endif
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#define TRI_HAVE_GETLINE                    1
+#endif
+
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
 #define TRI_ALIGNOF_VOIDP                   8
