@@ -109,6 +109,8 @@ function NodeShaper(parent, flags, idfunc) {
                 .attr("height", height); // Set height
             });
           break;
+        case undefined:
+          break;
         default:
           throw "Sorry given Shape not known!";
       }
