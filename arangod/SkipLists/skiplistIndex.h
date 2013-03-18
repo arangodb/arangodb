@@ -46,7 +46,6 @@ struct TRI_skiplist_s;
 struct TRI_skiplist_multi_s;
 struct TRI_skiplist_node_s;
 struct TRI_doc_mptr_s;
-struct TRI_shaped_sub_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        skiplistIndex public types
@@ -70,22 +69,21 @@ typedef struct {
   size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
   void* collection;          // pointer to the collection;
-}
+} 
 TRI_skiplist_index_key_t;
 
 typedef struct {
-  size_t numFields;                     // the number of fields
-  struct TRI_shaped_sub_s* _subObjects; // list of shaped json objects which the collection should know about
-  struct TRI_doc_mptr_s* _document;     // master document pointer
-  void* collection;                     // pointer to the collection;
-}
+  size_t numFields;                 // the number of fields
+  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the collection should know about
+  struct TRI_doc_mptr_s* _document; // master document pointer
+  void* collection;                 // pointer to the collection;
+} 
 TRI_skiplist_index_element_t;
 
 typedef struct {
   size_t _numElements;
   TRI_skiplist_index_element_t* _elements; // simple list of elements
 } SkiplistIndexElements;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -114,8 +112,6 @@ typedef struct TRI_skiplist_iterator_s {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                     skiplistIndex  public methods
 // -----------------------------------------------------------------------------
@@ -137,14 +133,11 @@ void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const);
 
 void SkiplistIndex_destroy (SkiplistIndex*);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a skip list index and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void SkiplistIndex_free (SkiplistIndex*);
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -160,11 +153,11 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 SkiplistIndex* SkiplistIndex_new (void);
 
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*);
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
 int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
-int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*);
+int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
 
 bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*, const TRI_skiplist_index_element_t*);
 
@@ -178,14 +171,13 @@ bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*, 
 
 SkiplistIndex* MultiSkiplistIndex_new (void);
 
-TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*);
+TRI_skiplist_iterator_t* MultiSkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, TRI_index_operator_t*); 
 
 int MultiSkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
-int MultiSkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*);
+int MultiSkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
 
 bool MultiSkiplistIndex_update (SkiplistIndex*, TRI_skiplist_index_element_t*, TRI_skiplist_index_element_t*);
-
 
 #ifdef __cplusplus
 }

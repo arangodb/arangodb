@@ -389,6 +389,13 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs an atomic compare and swap operation on a 32bit integer.
+///
+/// The position of 'theValue' must be aligned on a 32 bit boundary. The function
+/// performs the following atomically: compares the value stored in the position 
+/// pointed to by <theValue> with the value of <oldValue>. if the value stored
+/// in position <theValue> is EQUAL to the value of <oldValue>, then the
+/// <newValue> is stored in the position pointed to by <theValue> (true is 
+/// returned), otherwise no operation is performed (false is returned).
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
@@ -407,6 +414,9 @@ bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldV
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs an atomic compare and swap operation on a 64bit integer.
+///
+/// The position of 'theValue' must be aligned on a 64 bit boundary. This function is
+/// simply the 64bit equivalent of the function above.
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
@@ -421,17 +431,15 @@ bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldV
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs an atomic compare and swap operation on a pointer.
+///
+/// On a 32bit machine, the position of 'theValue' must be aligned on a 32 bit 
+/// boundary. On a 64bit machine the alignment must be on a 64bit boundary.
+/// The function performs the following atomically: compares the value stored in 
+/// the position pointed to by <theValue> with the value of <oldValue>. if the 
+/// value stored in position <theValue> is EQUAL to the value of <oldValue>, 
+/// then the <newValue> is stored in the position pointed to by <theValue> 
+/// (true is returned), otherwise no operation is performed (false is returned).
 ////////////////////////////////////////////////////////////////////////////////
-
-// .............................................................................
-// On a 32bit machine, the position of 'theValue' must be aligned on a 32 bit 
-// boundary. On a 64bit machine the alignment must be on a 64bit boundary.
-// The function performs the following atomically: compares the value stored in 
-// the position pointed to by <theValue> with the value of <oldValue>. if the 
-// value stored in position <theValue> is EQUAL to the value of <oldValue>, 
-// then the <newValue> is stored in the position pointed to by <theValue> 
-// (true is returned), otherwise no operation is performed (false is returned).
-// .............................................................................
 
 bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue);
 

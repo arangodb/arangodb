@@ -48,7 +48,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* accessor) {
-  union { void const* c;  void* v; } cv;
   TRI_shape_aid_t const* paids;
   TRI_shape_path_t const* path;
   TRI_shape_t const* shape;
@@ -87,9 +86,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     return false;
   }
 
-  cv.c = shape;
-
-  res = TRI_PushBackVectorPointer(&ops, cv.v);
+  res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("out of memory");
@@ -189,9 +186,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
             return false;
           }
 
-          cv.c = shape;
-
-          res = TRI_PushBackVectorPointer(&ops, cv.v);
+          res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_ERROR("out of memory");
@@ -252,9 +247,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
             return false;
           }
 
-          cv.c = shape;
-
-          res = TRI_PushBackVectorPointer(&ops, cv.v);
+          res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_ERROR("out of memory");
@@ -298,7 +291,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   }
 
   accessor->_shape = shape;
-  cv.c = accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false);
+  accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false);
 
   if (accessor->_code == NULL) {
     LOG_ERROR("out of memory");
@@ -306,7 +299,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     return false;
   }
 
-  memcpy(cv.v, ops._buffer, ops._length * sizeof(void*));
+  memcpy(CONST_CAST(accessor->_code), ops._buffer, ops._length * sizeof(void*));
 
   TRI_DestroyVectorPointer(&ops);
   return true;
