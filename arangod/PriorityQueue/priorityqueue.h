@@ -41,13 +41,6 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// Currently only double values are supported.
-// -----------------------------------------------------------------------------
-
-
-
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                             skiplist public types
 // -----------------------------------------------------------------------------
 
@@ -66,31 +59,37 @@ typedef struct TRI_pqueue_base_s {
   // The current storage allocated to the pq. This is NOT the number of items
   // in the queue.
   // ...........................................................................
+
   size_t _capacity;
 
   // ...........................................................................
   // The storage of the items as an array of element size
   // ...........................................................................
+
   char* _items;
 
   // ...........................................................................
   // Size of each item (element)
   // ...........................................................................
+
   uint32_t _itemSize;
 
   // ...........................................................................
   // The number of actual elements in the pq
   // ...........................................................................
+
   size_t _count;
 
   // ...........................................................................
   // A counter which indicates the number of removals which are invalid.
   // ...........................................................................
+
   size_t _nrFalseRemoves;
 
   // ...........................................................................
   // A counter which indicates the number of inserts which are invalid.
   // ...........................................................................
+
   size_t _nrFalseAdds;
 
   // ...........................................................................
@@ -99,9 +98,9 @@ typedef struct TRI_pqueue_base_s {
   // When this is set to true, the ... reverse is true ...eh? This can also
   // be achieved by the call back comparision function
   // ...........................................................................
-  bool _reverse;
 
-
+  bool _reverse;  
+  
   // ...........................................................................
   // Additional hidden extenral structure used outside this priority queue
   // This hidden structure is not available within this priority queue
@@ -115,7 +114,8 @@ TRI_pqueue_base_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The structure of a priority queue (pq)
 ////////////////////////////////////////////////////////////////////////////////
-typedef struct TRI_pqueue_s {
+
+typedef struct TRI_pqueue_s {  
   TRI_pqueue_base_t _base;
   void (*clearStoragePQ) (struct TRI_pqueue_s*, void*);
   uint64_t (*getStoragePQ) (struct TRI_pqueue_s*, void*);
@@ -137,9 +137,6 @@ TRI_pqueue_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                 Priority Queue       constructors and destructors
@@ -174,13 +171,9 @@ void TRI_DestroyPQueue (TRI_pqueue_t*);
 
 void TRI_FreePQueue (TRI_pqueue_t*);
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 #ifdef __cplusplus
 }

@@ -36,6 +36,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/shape-collection.h"
 #include "VocBase/datafile.h"
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -160,6 +161,22 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
                                      TRI_shape_t const** shape);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper method for recursion for comparison
+///
+/// You must either supply (leftDocument, leftObject) or leftShaped.
+/// You must either supply (rightDocument, rightObject) or rightShaped.
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
+                           TRI_shaped_sub_t* leftObject,
+                           TRI_shaped_json_t const* leftShaped,
+                           TRI_doc_mptr_t* rightDocument,
+                           TRI_shaped_sub_t* rightObject,
+                           TRI_shaped_json_t const* rightShaped,
+                           TRI_shaper_t* leftShaper,
+                           TRI_shaper_t* rightShaper);
+  
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -168,6 +185,10 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
 #endif
 
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

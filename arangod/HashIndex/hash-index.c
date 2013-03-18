@@ -56,6 +56,7 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* idx,
 
   n = idx->_paths._length;
   key->_values = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), false);
+
   if (key->_values == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -80,10 +81,11 @@ static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
   element->_subObjects = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                                       idx->_paths._length * sizeof(TRI_shaped_sub_t),
                                       false);
+
   if (element->_subObjects == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -190,6 +192,7 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
 
   if (allocate) {
     res = AllocateSubObjectsHashIndexElement(hashIndex, hashElement);
+
     if (res != TRI_ERROR_NO_ERROR) {
       // out of memory
       return res;
@@ -245,7 +248,9 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
   int res;
 
   res = FillIndexSearchValueByHashIndexElement(hashIndex, &key, element);
+  
   if (res != TRI_ERROR_NO_ERROR) {
+    // out of memory
     return res;
   }
 
@@ -271,7 +276,7 @@ static int HashIndex_remove (TRI_hash_index_t* hashIndex,
 
   res = TRI_RemoveElementHashArray(&hashIndex->_hashArray, element);
 
-  // these might happen when rolling back
+  // this might happen when rolling back
   if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -479,7 +484,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
 
 static void RemoveIndexHashIndex (TRI_index_t* idx,
                                   TRI_primary_collection_t* collection) {
-  // the index will later by destroyed, so do nothing here
+  // the index will later be destroyed, so do nothing here
 }
 
 ////////////////////////////////////////////////////////////////////////////////
