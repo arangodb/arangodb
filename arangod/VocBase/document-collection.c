@@ -1262,7 +1262,7 @@ static void InitDocumentMarker (TRI_doc_document_key_marker_t* marker,
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertShapedJson (TRI_primary_collection_t* primary,
+static int InsertShapedJson (TRI_doc_operation_context_t* context,
                              TRI_df_marker_type_e markerType,
                              const TRI_voc_key_t key,
                              TRI_doc_mptr_t* mptr,
@@ -1271,12 +1271,15 @@ static int InsertShapedJson (TRI_primary_collection_t* primary,
                              const bool lock,
                              const bool forceSync) {
 
+  TRI_primary_collection_t* primary;
   TRI_document_collection_t* document;
   TRI_doc_document_key_marker_t* marker;
   TRI_doc_mptr_t* header;
   char* keyBody;
   TRI_voc_size_t totalSize;
   int res;
+
+  primary = context->_collection;
 
   TRI_ASSERT_DEBUG(primary != NULL);
   TRI_ASSERT_DEBUG(shaped != NULL);
@@ -1398,7 +1401,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
     keyBodyLength = o->_offsetJson - o->_offsetKey;
 
     marker._offsetJson = o->_offsetJson;
-    marker._offsetKey = o->_offsetKey;
+    marker._offsetKey  = o->_offsetKey;
 
     marker.base._size = sizeof(marker) + keyBodyLength + json->_data.length;
 
