@@ -84,9 +84,6 @@ TRI_skiplistEx_compare_e;
 typedef struct TRI_skiplistEx_nb_s {
   void* _prev;     // points to the previous nearest neighbour of this node (the left node)
   void* _next;     // points to the successor of this node (right node)
-  uint64_t _flag;  // the _flag field operates as follows:
-                   // if (_flag & 1) == 1, then the Tower Node (the node which uses this structure) is a Glass Tower Node.
-                   //  
 } TRI_skiplistEx_nb_t; // nearest neighbour;
 
 
@@ -95,13 +92,22 @@ typedef struct TRI_skiplistEx_nb_s {
 /// @brief structure of a skip list node (unique and non-unique)
 ////////////////////////////////////////////////////////////////////////////////
 
+// .............................................................................
+// Alignment required on 32/64 bit boundaries
+// Use volatile to stop compiler doing fancy optimisations
+// .............................................................................
+
 typedef struct TRI_skiplistEx_node_s {
-  TRI_skiplistEx_nb_t* _column; // these represent the levels and the links within these, an array of these
-  uint32_t _colLength;          // the height of the column  
+  uint64_t _flag;  // the _flag field operates as follows:
+                   // if (_flag & 1) == 1, then the Tower Node (the node which uses this structure) is a Glass Tower Node.
+                   // if (_flag & 2) == 2, then busy extending Tower Node
+                   // if (_flag & 4) == 4, then busy joing nearest neighbours in this Tower Node
+  volatile TRI_skiplistEx_nb_t* _column; // these represent the levels and the links within these, an array of these
   void* _extraData;
   void* _element;  
   uint64_t _delTransID;         // the transaction id which removed (deleted) this node
   uint64_t _insTransID;         // the transaction id which inserted this node
+  uint32_t _colLength;          // the height of the column  
 } 
 TRI_skiplistEx_node_t;
 
@@ -111,6 +117,11 @@ TRI_skiplistEx_node_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplistEx_base_s {
+  // ...........................................................................
+  // 64 bit integer for CAS flags
+  // ...........................................................................
+  uint64_t _flags;
+  
   // ...........................................................................
   // The maximum height of this skip list. Thus 2^(_maxHeight) elements can be
   // stored in the skip list. 
@@ -139,6 +150,8 @@ typedef struct TRI_skiplistEx_base_s {
   TRI_skiplistEx_node_t _startNode;
   TRI_skiplistEx_node_t _endNode;
   
+  TRI_mutex_t _startEndNodeExclusiveLock; // Exclusive lock in prepartion for simultaneous inserts which
+                                          // affect the -\infty and \infty nodes 
 }
 TRI_skiplistEx_base_t;
 
