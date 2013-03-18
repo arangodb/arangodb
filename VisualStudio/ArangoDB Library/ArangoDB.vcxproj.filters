@@ -358,6 +358,9 @@
     <ClInclude Include="..\..\lib\Basics\Nonce.h">
       <Filter>BasicsHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\Rest\Version.h">
+      <Filter>RestHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">
@@ -596,6 +599,9 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\Basics\Nonce.cpp">
       <Filter>BasicsSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Rest\Version.cpp">
+      <Filter>RestSource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

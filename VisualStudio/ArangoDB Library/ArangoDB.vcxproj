@@ -242,6 +242,7 @@
     <ClInclude Include="..\..\lib\Rest\OperationMode.h" />
     <ClInclude Include="..\..\lib\Rest\SslInterface.h" />
     <ClInclude Include="..\..\lib\Rest\Url.h" />
+    <ClInclude Include="..\..\lib\Rest\Version.h" />
     <ClInclude Include="..\..\lib\ShapedJson\json-shaper.h" />
     <ClInclude Include="..\..\lib\ShapedJson\shape-accessor.h" />
     <ClInclude Include="..\..\lib\ShapedJson\shaped-json.h" />
@@ -325,6 +326,7 @@
     <ClCompile Include="..\..\lib\Rest\InitialiseRest.cpp" />
     <ClCompile Include="..\..\lib\Rest\SslInterface.cpp" />
     <ClCompile Include="..\..\lib\Rest\Url.cpp" />
+    <ClCompile Include="..\..\lib\Rest\Version.cpp" />
     <ClCompile Include="..\..\lib\ShapedJson\json-shaper.c" />
     <ClCompile Include="..\..\lib\ShapedJson\shape-accessor.c" />
     <ClCompile Include="..\..\lib\ShapedJson\shaped-json.c" />

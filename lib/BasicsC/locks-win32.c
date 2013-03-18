@@ -910,8 +910,12 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 /// @brief atomically compares and swaps 32bit integers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CompareAndSwapInteger32 (volatile long* theValue, int32_t oldValue, int32_t newValue) {
-  return ( InterlockedCompareExchange(theValue, newValue, oldValue) == oldValue );
+bool TRI_CompareAndSwapIntegerInt32 (volatile int32_t* theValue, int32_t oldValue, int32_t newValue) {
+  return ( (int32_t)( InterlockedCompareExchange((volatile LONG*)(theValue), (LONG)(newValue), (LONG)(oldValue) ) ) == oldValue );
+}
+
+bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue) {
+  return ( (uint32_t)(InterlockedCompareExchange((volatile LONG*)(theValue), (LONG)(newValue), (LONG)(oldValue) ) ) == oldValue );
 }
 
 
@@ -919,8 +923,12 @@ bool TRI_CompareAndSwapInteger32 (volatile long* theValue, int32_t oldValue, int
 /// @brief atomically compares and swaps 64bit integers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CompareAndSwapInteger64 (volatile long* theValue, int64_t oldValue, int64_t newValue) {
-  return ( InterlockedCompareExchange64(theValue, newValue, oldValue) == oldValue );
+bool TRI_CompareAndSwapIntegerInt64 (volatile int64_t* theValue, int64_t oldValue, int64_t newValue) {
+  return ( (int64_t)(InterlockedCompareExchange64((volatile LONGLONG*)(theValue), (LONGLONG)(newValue), (LONGLONG)(oldValue) ) ) == oldValue );
+}
+
+bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue) {
+  return ( (uint64_t)(InterlockedCompareExchange64((volatile LONGLONG*)(theValue), (LONGLONG)(newValue), (LONGLONG)(oldValue) ) ) == oldValue );
 }
 
 
@@ -929,7 +937,7 @@ bool TRI_CompareAndSwapInteger64 (volatile long* theValue, int64_t oldValue, int
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue) {
-  return ( InterlcokedCompareExchangEPointer(theValue, newValue, oldValue) == oldValue );
+  return ( InterlockedCompareExchangePointer(theValue, newValue, oldValue) == oldValue );
 }
 
 
