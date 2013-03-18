@@ -96,6 +96,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/transaction.c \
+	arangod/VocBase/update-policy.c \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
 

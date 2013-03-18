@@ -31,6 +31,7 @@
 #include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
+#include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
 
 #include "BasicsC/random.h"
@@ -452,7 +453,7 @@ namespace triagens {
                                     const string& key,
                                     const bool lock) {
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
+          TRI_InitContextPrimaryCollection(&context, primary);
 
           if (lock) {
             // READ-LOCK START
@@ -476,7 +477,7 @@ namespace triagens {
         int readCollectionDocuments (TRI_primary_collection_t* const primary,
                                      vector<string>& ids) {
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
+          TRI_InitContextPrimaryCollection(&context, primary);
 
           // READ-LOCK START
           this->lockExplicit(primary, TRI_TRANSACTION_READ);
@@ -513,7 +514,7 @@ namespace triagens {
                                     TRI_voc_size_t limit,
                                     uint32_t* total) {
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
+          TRI_InitContextPrimaryCollection(&context, primary);
 
           if (limit == 0) {
             // nothing to do
@@ -646,7 +647,7 @@ namespace triagens {
                                            const bool lock) {
           
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
+          TRI_InitContextPrimaryCollection(&context, primary);
 
           // TODO: set transaction lock here
           return primary->insert(&context, key, mptr, markerType, shaped, data, lock, forceSync);
@@ -693,12 +694,13 @@ namespace triagens {
                                            const bool lock) {
 
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, policy);
-          context._expectedRid = expectedRevision;
-          context._previousRid = actualRevision;
+          TRI_InitContextPrimaryCollection(&context, primary);
+
+          TRI_doc_update_policy_t updatePolicy;
+          TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
           // TODO: set transaction lock here
-          int res = primary->update(&context, (TRI_voc_key_t) key.c_str(), mptr, shaped, lock, forceSync);
+          int res = primary->update(&context, (TRI_voc_key_t) key.c_str(), mptr, shaped, &updatePolicy, lock, forceSync);
           
           return res;
         }
@@ -714,15 +716,16 @@ namespace triagens {
                                       TRI_voc_rid_t* actualRevision,
                                       const bool forceSync) {
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, policy);
-          context._expectedRid = expectedRevision;
-          context._previousRid = actualRevision;
+          TRI_InitContextPrimaryCollection(&context, primary);
+          
+          TRI_doc_update_policy_t updatePolicy;
+          TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
 
           // WRITE-LOCK START
           this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
           // TODO: fix locks
 
-          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str(), false, forceSync);
+          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str(), &updatePolicy, false, forceSync);
 
           this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
           // WRITE-LOCK END
@@ -745,7 +748,11 @@ namespace triagens {
           }
 
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
+          TRI_InitContextPrimaryCollection(&context, primary);
+          
+          TRI_doc_update_policy_t updatePolicy;
+          TRI_InitUpdatePolicy(&updatePolicy, TRI_DOC_UPDATE_LAST_WRITE, 0, NULL);
+
           size_t n = ids.size();
 
           res = TRI_ERROR_NO_ERROR;
@@ -757,7 +764,7 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
           
-            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str(), false, forceSync);
+            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str(), &updatePolicy, false, forceSync);
 
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error

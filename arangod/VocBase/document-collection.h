@@ -629,8 +629,9 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t* context,
-                                          TRI_doc_mptr_t* doc);
+int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t*,
+                                          struct TRI_doc_update_policy_s const*,
+                                          TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

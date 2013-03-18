@@ -362,12 +362,14 @@ static void fullSetAttributeWeight (voc_shaper_t* shaper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name) {
-  TRI_df_attribute_marker_t marker;
+  TRI_df_attribute_marker_t* marker;
   TRI_df_marker_t* result;
   TRI_df_attribute_marker_t* markerResult;
   int res;
   size_t n;
   voc_shaper_t* s;
+  TRI_shape_aid_t aid;
+  TRI_voc_size_t totalSize;
   void const* p;
   void* f;
   int64_t searchResult;
@@ -381,8 +383,25 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
   }
 
+
   // create a new attribute name
   n = strlen(name) + 1;
+  
+  totalSize = sizeof(TRI_df_attribute_marker_t) + n;
+  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
+
+  if (marker == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return 0;
+  }
+
+  // init attribute marker
+  TRI_InitMarker(&marker->base, TRI_DF_MARKER_ATTRIBUTE, totalSize, TRI_NewTickVocBase());
+  
+  // copy attribute name into marker
+  memcpy(((char*) marker) + sizeof(TRI_df_attribute_marker_t), name, n);
+  marker->_size = n;
 
   // lock the index and check that the element is still missing
   TRI_LockMutex(&s->_attributeLock);
@@ -392,20 +411,19 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   // if the element appeared, return the aid
   if (p != NULL) {
     TRI_UnlockMutex(&s->_attributeLock);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
+
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
   }
 
-  // create new attribute identifier
-  memset(&marker, 0, sizeof(TRI_df_attribute_marker_t));
-
-  marker.base._type = TRI_DF_MARKER_ATTRIBUTE;
-  marker.base._size = sizeof(TRI_df_attribute_marker_t) + n;
-
-  marker._aid = s->_nextAid++;
-  marker._size = n;
+  // get next attribute id and write into marker
+  aid = s->_nextAid++;
+  marker->_aid = aid;
  
   // write into the shape collection
-  res = TRI_WriteShapeCollection(s->_collection, &marker.base, sizeof(TRI_df_attribute_marker_t), name, n, &result);
+  res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_attributeLock);
@@ -416,7 +434,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result);
   assert(f == NULL);
 
-  f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &marker._aid, result);
+  f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, result);
   assert(f == NULL);
 
   // ...........................................................................
@@ -466,7 +484,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
 
   TRI_UnlockMutex(&s->_attributeLock);
 
-  return marker._aid;
+  return aid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,13 +605,13 @@ static bool EqualElementShape (TRI_associative_synced_t* array, void const* left
 
 static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   TRI_df_marker_t* result;
-  TRI_df_shape_marker_t marker;
+  TRI_df_shape_marker_t* marker;
+  TRI_voc_size_t totalSize;
   TRI_shape_t const* found;
   TRI_shape_t* l;
   int res;
   voc_shaper_t* s;
   void* f;
-
 
   s = (voc_shaper_t*) shaper;
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
@@ -604,6 +622,23 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
     return found;
   }
 
+  // initialise a new shape marker
+  totalSize = sizeof(TRI_df_shape_marker_t) + shape->_size;
+  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize * sizeof(char), false);
+
+  if (marker == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
+
+  TRI_InitMarker(&marker->base, TRI_DF_MARKER_SHAPE, totalSize, TRI_NewTickVocBase());
+  
+  // copy shape into the marker
+  memcpy(((char*) marker) + sizeof(TRI_df_shape_marker_t), shape, shape->_size);
+
+
   // lock the index and check the element is still missing
   TRI_LockMutex(&s->_shapeLock);
 
@@ -611,28 +646,25 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
 
   if (found != 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
     TRI_UnlockMutex(&s->_shapeLock);
     return found;
   }
 
-  // create a new shape marker
-  memset(&marker, 0, sizeof(TRI_df_shape_marker_t));
-
-  marker.base._type = TRI_DF_MARKER_SHAPE;
-  marker.base._size = sizeof(TRI_df_shape_marker_t) + shape->_size;
-
-  shape->_sid = s->_nextSid++;
+  // get next shape number and write into marker
+  ((TRI_shape_t*) (((char*) marker) + sizeof(TRI_df_shape_marker_t)))->_sid = s->_nextSid++;
 
   // write into the shape collection
-  res = TRI_WriteShapeCollection(s->_collection, &marker.base, sizeof(TRI_df_shape_marker_t), shape, shape->_size, &result);
+  res = TRI_WriteShapeCollection(s->_collection, &marker->base, totalSize, &result);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
     return NULL;
   }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
 
   // enter into the dictionaries
   l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
@@ -655,8 +687,12 @@ static int attributeWeightCompareFunction (const void* leftItem, const void* rig
   const weighted_attribute_t* l = (const weighted_attribute_t*)(leftItem);
   const weighted_attribute_t* r = (const weighted_attribute_t*)(rightItem);
 
-  if (l->_weight < r->_weight) { return -1; }
-  if (l->_weight > r->_weight) { return  1; }
+  if (l->_weight < r->_weight) { 
+    return -1; 
+  }
+  if (l->_weight > r->_weight) { 
+    return  1; 
+  }
   return 0;
 }
 
