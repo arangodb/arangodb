@@ -191,6 +191,7 @@ var documentsView = Backbone.View.extend({
       "aaSorting": [[ 1, "asc" ]],
       "bFilter": false,
       "bPaginate":false,
+      "bRetrieve": true,
       "bSortable": false,
       "bSort": false,
       "bLengthChange": false,
@@ -198,9 +199,9 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
-        { "sClass":"read_only arangoTooltip","bSortable": false},
-        { "bSortable": false, "sClass": "cuttedContent rightCell"}
+        { "sClass":"", "bSortable": false, "sWidth":"30px"},
+        { "sClass":"","bSortable": false},
+        { "bSortable": false, "sClass": ""}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
@@ -283,7 +284,7 @@ var documentsView = Backbone.View.extend({
     target.pagination(options);
     $('#documentsToolbarF').prepend('<ul class="prePagi"><li><a id="documents_first"><i class="icon icon-step-backward"></i></a></li></ul>');
     $('#documentsToolbarF').append('<ul class="lasPagi"><li><a id="documents_last"><i class="icon icon-step-forward"></i></a></li></ul>');
-    //$('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
+    $('#documentsToolbarFL').append('<a id="totalDocuments">Total: ' + this.documentsCount + ' documents </a>');
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];

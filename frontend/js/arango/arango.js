@@ -17,7 +17,8 @@ arangoHelper = {
   arangoNotification: function (message) {
     $.gritter.add({
       title: "Notification:",
-      text: message
+      text: message,
+      time: 800
     });
   },
   arangoError: function (message) {

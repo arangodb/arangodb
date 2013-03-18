@@ -28,6 +28,13 @@ table.dataTable td {
   padding-bottom: 15px;
 }
 
+#totalDocuments{
+  float: left;
+  color: black;
+  padding-left: 20px;
+  margin-top: -65px !important;
+}
+
 #documentsStatus {
   padding-top: 10px;
   float:left;
