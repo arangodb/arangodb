@@ -218,6 +218,7 @@ var documentsView = Backbone.View.extend({
                                           '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
+      console.log(value.attributes.key);
     });
     $(self.table).dataTable().fnAddData([
                                         '',

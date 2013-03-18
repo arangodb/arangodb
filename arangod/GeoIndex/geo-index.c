@@ -338,7 +338,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveIndexGeoIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
-  // the index will later by destroyed, so do nothing here
+  // the index will later be destroyed, so do nothing here
 }
 
 ////////////////////////////////////////////////////////////////////////////////
