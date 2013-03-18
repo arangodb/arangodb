@@ -25,6 +25,7 @@
 /// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <BasicsC/locks.h>
 #include <BasicsC/logging.h>
 #include <BasicsC/random.h>
 
@@ -72,7 +73,7 @@ static int32_t RandLevel              (TRI_skiplistEx_base_t*);
 
 static void DestroyNodeCAS (TRI_skiplistEx_node_t*, uint64_t);
 static void InsertNodeCAS  (TRI_skiplistEx_node_t*, uint64_t);
-static void JoinNodesCAS   (TRI_skiplistEx_node_t*, TRI_skiplistEx_node_t*, uint32_t, uint32_t, uint64_t);
+static bool JoinNodesCAS    (TRI_skiplistEx_node_t*, TRI_skiplistEx_node_t*, uint32_t, uint32_t);
 static void RemoveNodeCAS  (TRI_skiplistEx_node_t*, uint64_t);
 
 // ..............................................................................
@@ -91,8 +92,8 @@ static void RemoveNodeCAS  (TRI_skiplistEx_node_t*, uint64_t);
 
 static void DestroyNodeNoCAS (TRI_skiplistEx_node_t*, uint64_t);
 static void InsertNodeNoCAS  (TRI_skiplistEx_node_t*, uint64_t);
-static void JoinNodesNoCAS   (TRI_skiplistEx_node_t*, TRI_skiplistEx_node_t*, uint32_t, uint32_t, uint64_t);
-static void RemoveNodesNoCAS (TRI_skiplistEx_node_t*, uint64_t);
+static void JoinNodesNoCAS   (TRI_skiplistEx_node_t*, TRI_skiplistEx_node_t*, uint32_t, uint32_t);
+static void RemoveNodeNoCAS  (TRI_skiplistEx_node_t*, uint64_t);
 
 
 
@@ -227,7 +228,7 @@ int TRI_InitSkipListEx (TRI_skiplistEx_t* skiplist, size_t elementSize,
   // [N]<----------------------------------->[N]
   // [N]<----------------------------------->[N]
   // ..........................................................................    
-  JoinNodesNoCAS(&(skiplist->_base._startNode), &(skiplist->_base._endNode), 0, 1, lastKnownTransID); // list 0 & 1    
+  JoinNodesNoCAS(&(skiplist->_base._startNode), &(skiplist->_base._endNode), 0, 1); // joins list 0 & 1    
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -308,7 +309,11 @@ int TRI_InsertElementSkipListEx(TRI_skiplistEx_t* skiplist, void* element, bool 
 /// @brief adds an element to the skip list
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeySkipListEx (TRI_skiplistEx_t* skiplist, void* key, void* element, bool overwrite, uint64_t thisTransID) {
+int TRI_InsertKeySkipListEx (TRI_skiplistEx_t* skiplist, 
+                             void* key, 
+                             void* element, 
+                             bool overwrite, 
+                             uint64_t thisTransID) {
   //This uses the compareKeyElement callback  
   int32_t newHeight;
   int32_t currentLevel;
@@ -363,7 +368,18 @@ int TRI_InsertKeySkipListEx (TRI_skiplistEx_t* skiplist, void* key, void* elemen
       // todo: undo growth by cutting down the node height
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    JoinNodesCAS(&(skiplist->_base._startNode),&(skiplist->_base._endNode), oldColLength , newHeight - 1, thisTransID); 
+    
+    // .........................................................................
+    // We use CAS since we want other readers to be able to traverse the 
+    // skiplist while we are busy making modifications to the start & end nodes    
+    // .........................................................................
+    
+    growResult = JoinNodesCAS(&(skiplist->_base._startNode),&(skiplist->_base._endNode), oldColLength , newHeight - 1); 
+    if (!growResult) {
+      // todo: yeh exactly what to do if the CAS join nodes failed?
+      LOG_ERROR("TRI_InsertKeySkipListEx:CAS Failure:10");
+      abort();
+    }
   }
   
 
@@ -603,8 +619,8 @@ int TRI_InsertKeySkipListEx (TRI_skiplistEx_t* skiplist, void* key, void* elemen
   for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
-    JoinNodesCAS(tempLeftNode, newNode, j, j, thisTransID);
-    JoinNodesCAS(newNode, tempRightNode, j, j, thisTransID);
+    JoinNodesCAS(tempLeftNode, newNode, j, j);
+    JoinNodesCAS(newNode, tempRightNode, j, j);
   }  
 
   return TRI_ERROR_NO_ERROR;
@@ -1059,7 +1075,7 @@ int TRI_RemoveElementSkipListEx (TRI_skiplistEx_t* skiplist, void* element, void
   for (j = 0; j < currentNode->_colLength; ++j) {
     tempLeftNode  = currentNode->_column[j]._prev;
     tempRightNode = currentNode->_column[j]._next;
-    JoinNodesCAS(tempLeftNode, tempRightNode, j, j, thisTransID);
+    JoinNodesCAS(tempLeftNode, tempRightNode, j, j);
   }  
   
   FreeSkipListExNode(&(skiplist->_base), currentNode);
@@ -1369,7 +1385,7 @@ int TRI_InitSkipListExMulti (TRI_skiplistEx_multi_t* skiplist,
   // [N]<----------------------------------->[N]
   // [N]<----------------------------------->[N]
   // ..........................................................................  
-  JoinNodesNoCAS(&(skiplist->_base._startNode),&(skiplist->_base._endNode),0,1, lastKnownTransID); // list 0 & 1  
+  JoinNodesNoCAS(&(skiplist->_base._startNode),&(skiplist->_base._endNode),0,1); // joins list 0 & 1  
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -1643,7 +1659,7 @@ int TRI_InsertElementSkipListExMulti(TRI_skiplistEx_multi_t* skiplist, void* ele
       // todo: truncate the nodes and return;
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    JoinNodesCAS(&(skiplist->_base._startNode),&(skiplist->_base._endNode), oldColLength , newHeight - 1, thisTransID); 
+    JoinNodesCAS(&(skiplist->_base._startNode),&(skiplist->_base._endNode), oldColLength , newHeight - 1); 
   }
   
 
@@ -1812,8 +1828,8 @@ int TRI_InsertElementSkipListExMulti(TRI_skiplistEx_multi_t* skiplist, void* ele
   for (j = 0; j < newHeight; ++j) {
     tempLeftNode  = newNode->_column[j]._prev;
     tempRightNode = tempLeftNode->_column[j]._next;
-    JoinNodesCAS(tempLeftNode, newNode, j, j, thisTransID);
-    JoinNodesCAS(newNode, tempRightNode, j, j, thisTransID);
+    JoinNodesCAS(tempLeftNode, newNode, j, j);
+    JoinNodesCAS(newNode, tempRightNode, j, j);
   }  
 
   
@@ -2041,7 +2057,7 @@ int TRI_RemoveElementSkipListExMulti (TRI_skiplistEx_multi_t* skiplist, void* el
   for (j = 0; j < currentNode->_colLength; ++j) {
     tempLeftNode  = currentNode->_column[j]._prev;
     tempRightNode = currentNode->_column[j]._next;
-    JoinNodesCAS(tempLeftNode, tempRightNode, j, j, thisTransID);
+    JoinNodesCAS(tempLeftNode, tempRightNode, j, j);
   }  
 
   FreeSkipListExNode(&(skiplist->_base), currentNode);
@@ -2232,7 +2248,7 @@ static void DestroyBaseSkipListEx(TRI_skiplistEx_base_t* baseSkiplist) {
   nextNode = &(baseSkiplist->_startNode);
   while (nextNode != NULL) {
     oldNextNode = nextNode->_column[0]._next;
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, nextNode->_column);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)(nextNode->_column));
     if ((nextNode != &(baseSkiplist->_startNode)) && (nextNode != &(baseSkiplist->_endNode))) {
       IndexStaticDestroyElement(baseSkiplist, &(nextNode->_element));
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, nextNode);
@@ -2252,7 +2268,7 @@ static void DestroySkipListExNode (TRI_skiplistEx_base_t* skiplist, TRI_skiplist
   if (node == NULL) {
     return;
   }  
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, node->_column);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)(node->_column));
   IndexStaticDestroyElement(skiplist, &(node->_element));
 }
 
@@ -2276,38 +2292,134 @@ static void FreeSkipListExNode (TRI_skiplistEx_base_t* skiplist, TRI_skiplistEx_
 /// @brief Grow the node at the height specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool GrowNodeHeight (TRI_skiplistEx_node_t* node, uint32_t newHeight) {                           
-  TRI_skiplistEx_nb_t* oldColumn = node->_column;
-  uint32_t j;
+// .............................................................................
+// WARNING: This function is NOT SAFE to use when we have multiple writers.
+// Tweek required to make it safe.
+// .............................................................................
 
+static bool GrowNodeHeight (TRI_skiplistEx_node_t* node, uint32_t newHeight) {                           
+  volatile TRI_skiplistEx_nb_t* newColumn = NULL;
+  volatile TRI_skiplistEx_nb_t* oldColumn = node->_column;
+  uint32_t j;
+  bool result;
+  
   if (node->_colLength >= newHeight) {
     return true;
   }
   
-  node->_column = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplistEx_nb_t) * newHeight, false);
   
-  if (node->_column == NULL) {
-    // out of memory?
+  // ............................................................................
+  // PROBLEM: extending the start & end nodes in particular.
+  // We are moving memory around while other readers are reading the start & end
+  // nodes! This is what we do.
+  // ............................................................................
+  
+  newColumn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplistEx_nb_t) * newHeight, false);
+  
+  if (newColumn == NULL) { // out of memory?
     return false;
   }
-  
-  if (oldColumn != NULL) {
-    memcpy(node->_column, oldColumn, node->_colLength * sizeof(TRI_skiplistEx_nb_t) );
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldColumn);
+
+  if (oldColumn != NULL) { 
+    memcpy( (void*)(newColumn), (void*)(oldColumn), (node->_colLength * sizeof(TRI_skiplistEx_nb_t)) );
   }
+  
   
   // ...........................................................................
   // Initialise the storage
   // ...........................................................................
   
   for (j = node->_colLength; j < newHeight; ++j) {
-    (node->_column)[j]._prev = NULL; 
-    (node->_column)[j]._next = NULL; 
+    newColumn[j]._prev = NULL; 
+    newColumn[j]._next = NULL; 
   }
   
-  node->_colLength = newHeight;
+  // ...........................................................................
+  // Unfortunately, this assignment must be done with a CAS statement.
+  // ...........................................................................
+  
+  result = TRI_CompareAndSwapPointer((void* volatile*)(&(node->_column)), (void*)(oldColumn), (void*)(newColumn)); 
+  if (!result) {
+    // .........................................................................
+    // If we have failed here remove the allocated memory and return false,
+    // it is up to the calling function to either try again or give up
+    // .........................................................................
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)(newColumn));    
+    return false;
+  }
+  
+  // ...........................................................................
+  // Unfortunately, this assignment must be done with a CAS statement.
+  // ...........................................................................
+  
+  result = TRI_CompareAndSwapIntegerUInt32 (&(node->_colLength), node->_colLength, newHeight);
+  
+  if (!result) {
+    // .........................................................................
+    // What to do? The CAS statement has failed. Of course since we only allow
+    // one insert at a time, the question arises why this failed. 
+    // For now we abort. Note that, where we would allow simultaneous inserts,
+    // then we must lock the two special nodes (start & end). Also note, that these 
+    // are the only two nodes we want to lock! Also note, that the locks DO NOT
+    // belong in the node structure but are currently defined in the skiplist
+    // structure.
+    // .........................................................................
+    abort();
+  }
   
   return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a Deep copy of a column
+////////////////////////////////////////////////////////////////////////////////
+
+static void* CopyDeepColumn(TRI_skiplistEx_nb_t* oldColumn, uint32_t colLength) {
+  TRI_skiplistEx_nb_t* newColumn;
+  
+  newColumn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplistEx_nb_t) * colLength, false);
+  if (newColumn == NULL) { // out of memory?
+    return NULL;
+  }
+  return newColumn;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a Quasi Deep copy of a node
+////////////////////////////////////////////////////////////////////////////////
+
+static void* CopyQuasiDeepNode(TRI_skiplistEx_node_t* oldNode)  {
+  TRI_skiplistEx_node_t* newNode;
+  TRI_skiplistEx_nb_t* newColumn;
+  
+  newNode = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplistEx_node_t), false);
+  if (newNode == NULL) { // out of memory
+    return NULL;
+  }
+  
+  newColumn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplistEx_nb_t) * oldNode->_colLength, false);
+  if (newColumn == NULL) { // out of memory?
+    return NULL;
+  }
+
+  
+  // ...........................................................................
+  // All memory related to the skip list has been deeply assigned. Now do the assignments.
+  // Observe that we do not (necessarily) require to deep copy the _element and _extraData
+  // fields.
+  // ...........................................................................
+  memcpy(newColumn, (void*)(oldNode->_column), oldNode->_colLength * sizeof(TRI_skiplistEx_nb_t) );
+  
+  newNode->_flag       = oldNode->_flag;
+  newNode->_column     = oldNode->_column;
+  newNode->_extraData  = oldNode->_extraData;  
+  newNode->_element    = oldNode->_element;  
+  newNode->_delTransID = oldNode->_delTransID;  
+  newNode->_insTransID = oldNode->_insTransID;  
+  newNode->_colLength  = oldNode->_colLength;  
+  
+  return newNode;
 }
 
 
@@ -2315,37 +2427,80 @@ static bool GrowNodeHeight (TRI_skiplistEx_node_t* node, uint32_t newHeight) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys node
 ////////////////////////////////////////////////////////////////////////////////
-
 static void DestroyNodeCAS (TRI_skiplistEx_node_t* theNode, 
                              uint64_t thisTransID) {
-  assert(false);                             
+  assert(false);  
+  return;  
 }                             
+
 
 static void InsertNodeCAS (TRI_skiplistEx_node_t* theNode, 
                            uint64_t thisTransID) {
   assert(false);                             
 }
 
-static void JoinNodesCAS(TRI_skiplistEx_node_t* leftNode, 
-                           TRI_skiplistEx_node_t* rightNode, 
-                           uint32_t startLevel, 
-                           uint32_t endLevel, 
-                           uint64_t thisTransID) {
-  assert(false);                           
+static bool JoinNodesCAS(TRI_skiplistEx_node_t* leftNode, 
+                         TRI_skiplistEx_node_t* rightNode, 
+                         uint32_t startLevel, 
+                         uint32_t endLevel) {
+  uint32_t j;
+  
+  if (startLevel > endLevel) { // something terribly wrong
+    assert(false); // internal logic error of some sort
+    return false;
+  }  
+
+  // change level to height
+  endLevel += 1;
+    
+  if (leftNode->_colLength < endLevel) {
+    assert(false); // internal logic error of some sort
+    return false;
+  }
+
+  if (rightNode->_colLength < endLevel) {
+    assert(false); // internal logic error of some sort
+    return false;
+  }
+  
+  
+  // ...........................................................................
+  // Join these two nodes from the bottom up. We may have a reader which is 
+  // reading these nodes while we are trying to modifiy them! Notes that, since 
+  // we do not allow multiple writers, if the CAS fails then something seriously
+  // is wrong.
+  // ...........................................................................
+  
+  for (j = startLevel; j < endLevel; ++j) {
+    bool ok;
+    ok = TRI_CompareAndSwapPointer(&((leftNode->_column)[j]._next), (leftNode->_column)[j]._next, rightNode);
+    // what to do if not ok? for now abort
+    if (!ok) { 
+      LOG_ERROR("JoinNodesCAS:CAS Failure:10");
+      abort(); 
+    }       
+    ok = TRI_CompareAndSwapPointer(&((rightNode->_column)[j]._prev), (rightNode->_column)[j]._prev, leftNode);
+    // what to do if not ok?
+    if (!ok) { 
+      LOG_ERROR("JoinNodesCAS:CAS Failure:20");
+      abort(); 
+    }       
+  }  
+  
+  return true;
+  
 }
 
-static void RemoveNodeCAS (TRI_skiplistEx_node_t* theNode, 
-                           uint64_t thisTransID) {
+static void RemoveNodeCAS (TRI_skiplistEx_node_t* theNode, uint64_t thisTransID) {
   assert(false);                             
 }                             
 
-static void DestroyNodeNoCAS (TRI_skiplistEx_node_t* theNode, 
-                              uint64_t thisTransID) {
+
+static void DestroyNodeNoCAS (TRI_skiplistEx_node_t* theNode, uint64_t thisTransID) {
   assert(false);                             
 }                             
 
-static void InsertNodeNoCAS (TRI_skiplistEx_node_t* theNode, 
-                             uint64_t thisTransID) {
+static void InsertNodeNoCAS (TRI_skiplistEx_node_t* theNode, uint64_t thisTransID) {
   assert(false);                             
 }
 
@@ -2359,8 +2514,7 @@ static void InsertNodeNoCAS (TRI_skiplistEx_node_t* theNode,
 static void JoinNodesNoCAS(TRI_skiplistEx_node_t* leftNode, 
                            TRI_skiplistEx_node_t* rightNode, 
                            uint32_t startLevel, 
-                           uint32_t endLevel, 
-                           uint64_t thisTransID) {
+                           uint32_t endLevel) {
   uint32_t j;
   
   if (startLevel > endLevel) { // something wrong
@@ -2388,8 +2542,7 @@ static void JoinNodesNoCAS(TRI_skiplistEx_node_t* leftNode,
 }
 
 
-static void RemoveNodeNoCAS (TRI_skiplistEx_node_t* theNode, 
-                             uint64_t thisTransID) {
+static void RemoveNodeNoCAS (TRI_skiplistEx_node_t* theNode, uint64_t thisTransID) {
   assert(false);                             
 }                             
 
