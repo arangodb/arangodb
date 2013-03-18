@@ -459,7 +459,7 @@ namespace triagens {
             this->lockExplicit(primary, TRI_TRANSACTION_READ);
           }
 
-          int res = primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
+          int res = primary->read(&context, (TRI_voc_key_t) key.c_str(), mptr);
 
           if (lock) {
             this->unlockExplicit(primary, TRI_TRANSACTION_READ);
@@ -644,9 +644,12 @@ namespace triagens {
                                            void const* data,
                                            const bool forceSync,
                                            const bool lock) {
+          
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, forceSync);
 
           // TODO: set transaction lock here
-          return primary->insert(primary, markerType, key, mptr, shaped, data, lock, forceSync);
+          return primary->insert(&context, key, mptr, markerType, shaped, data, lock, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -668,22 +671,7 @@ namespace triagens {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
-          context._expectedRid = expectedRevision;
-          context._previousRid = actualRevision;
-
-          if (lock) {
-            // WRITE-LOCK START
-            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
-          }
-
-          int res = primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
-
-          if (lock) {
-            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-            // WRITE-LOCK END
-          }
+          int res = this->updateCollectionShaped(primary, key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync, lock);
 
           TRI_FreeShapedJson(primary->_shaper, shaped);
 
@@ -694,32 +682,24 @@ namespace triagens {
 /// @brief update a single document, using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-        int updateCollectionShaped (TRI_primary_collection_t* const primary,
-                                    const string& key,
-                                    TRI_doc_mptr_t* mptr,
-                                    TRI_shaped_json_t* const shaped,
-                                    const TRI_doc_update_policy_e policy,
-                                    const TRI_voc_rid_t expectedRevision,
-                                    TRI_voc_rid_t* actualRevision,
-                                    const bool forceSync,
-                                    const bool lock) {
+        inline int updateCollectionShaped (TRI_primary_collection_t* const primary,
+                                           const string& key,
+                                           TRI_doc_mptr_t* mptr,
+                                           TRI_shaped_json_t* const shaped,
+                                           const TRI_doc_update_policy_e policy,
+                                           const TRI_voc_rid_t expectedRevision,
+                                           TRI_voc_rid_t* actualRevision,
+                                           const bool forceSync,
+                                           const bool lock) {
+
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
-
-          if (lock) {
-            // WRITE-LOCK START
-            this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
-          }
-
-          int res = primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
-
-          if (lock) {
-            this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-            // WRITE-LOCK END
-          }
-
+          
+          // TODO: set transaction lock here
+          int res = primary->update(&context, (TRI_voc_key_t) key.c_str(), mptr, shaped, lock, forceSync);
+          
           return res;
         }
 
@@ -742,7 +722,7 @@ namespace triagens {
           this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
           // TODO: fix locks
 
-          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str(), (TRI_voc_size_t) key.size(), false, forceSync);
+          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str(), false, forceSync);
 
           this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
           // WRITE-LOCK END
@@ -777,7 +757,7 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
           
-            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str(), (TRI_voc_size_t) id.size(), false, forceSync);
+            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str(), false, forceSync);
 
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error

@@ -398,7 +398,19 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 /// returned), otherwise no operation is performed (false is returned).
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CompareAndSwapInteger32 (volatile int32_t* theValue, int32_t oldValue, int32_t newValue);
+// .............................................................................
+// The position of 'theValue' must be aligned on a 32 bit boundary. The function
+// performs the following atomically: compares the value stored in the position 
+// pointed to by <theValue> with the value of <oldValue>. if the value stored
+// in position <theValue> is EQUAL to the value of <oldValue>, then the
+// <newValue> is stored in the position pointed to by <theValue> (true is 
+// returned), otherwise no operation is performed (false is returned).
+// .............................................................................
+
+bool TRI_CompareAndSwapIntegerInt32  (volatile int32_t* theValue, int32_t oldValue, int32_t newValue);
+
+bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs an atomic compare and swap operation on a 64bit integer.
@@ -407,7 +419,15 @@ bool TRI_CompareAndSwapInteger32 (volatile int32_t* theValue, int32_t oldValue, 
 /// simply the 64bit equivalent of the function above.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CompareAndSwapInteger64 (volatile int64_t* theValue, int64_t oldValue, int64_t newValue);
+// .............................................................................
+// The position of 'theValue' must be aligned on a 64 bit boundary. This function is
+// simply the 64bit equivalent of the function above.
+// .............................................................................
+
+bool TRI_CompareAndSwapIntegerInt64  (volatile int64_t* theValue, int64_t oldValue, int64_t newValue);
+
+bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs an atomic compare and swap operation on a pointer.

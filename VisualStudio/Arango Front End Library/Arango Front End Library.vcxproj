@@ -168,7 +168,6 @@
     <ClInclude Include="..\..\3rdParty\VisualStudio\libev-4.01\ev_wrap.h" />
     <ClInclude Include="..\..\lib\Admin\ApplicationAdminServer.h" />
     <ClInclude Include="..\..\lib\Admin\RestAdminBaseHandler.h" />
-    <ClInclude Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestAdminLogHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestBaseHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestHandlerCreator.h" />
@@ -219,7 +218,6 @@
     <ClCompile Include="..\..\3rdParty\VisualStudio\libev\evwrap.c" />
     <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminBaseHandler.cpp" />
-    <ClCompile Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminLogHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestBaseHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestVersionHandler.cpp" />
