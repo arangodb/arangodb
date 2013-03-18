@@ -400,7 +400,9 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 // returned), otherwise no operation is performed (false is returned).
 // .............................................................................
 
-bool TRI_CompareAndSwapInteger32 (volatile long* theValue, int32_t oldValue, int32_t newValue);
+bool TRI_CompareAndSwapIntegerInt32  (volatile int32_t* theValue, int32_t oldValue, int32_t newValue);
+
+bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,7 +414,9 @@ bool TRI_CompareAndSwapInteger32 (volatile long* theValue, int32_t oldValue, int
 // simply the 64bit equivalent of the function above.
 // .............................................................................
 
-bool TRI_CompareAndSwapInteger64 (volatile long* theValue, int64_t oldValue, int64_t newValue);
+bool TRI_CompareAndSwapIntegerInt64  (volatile int64_t* theValue, int64_t oldValue, int64_t newValue);
+
+bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue);
 
 
 ////////////////////////////////////////////////////////////////////////////////
