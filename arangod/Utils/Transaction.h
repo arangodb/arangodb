@@ -644,9 +644,12 @@ namespace triagens {
                                            void const* data,
                                            const bool forceSync,
                                            const bool lock) {
+          
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, forceSync);
 
           // TODO: set transaction lock here
-          return primary->insert(primary, markerType, key, mptr, shaped, data, lock, forceSync);
+          return primary->insert(&context, markerType, key, mptr, shaped, data, lock, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
