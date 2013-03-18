@@ -1,4 +1,10 @@
+.arango-nav li {
+  margin-left: 1px !important;
+}
 
+#transparentHeader .btn-group {
+  margin-top: 6px !important;
+}
 
 #newCollection {
   margin-left: 22px;

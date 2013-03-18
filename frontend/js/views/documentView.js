@@ -42,7 +42,6 @@ var documentView = Backbone.View.extend({
 
   listenKey: function(e) {
     if (e.keyCode === 13) {
-      console.log('enter');
       $('.btn-success').click();
     }
   },
