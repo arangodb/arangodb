@@ -312,8 +312,8 @@
           
           this.addMatchers({
             toBeStoredPermanently: function() {
-              var id = this.actual;
-              var res = false;
+              var id = this.actual,
+              res = false;
               $.ajax({
                 type: "GET",
                 url: arangodb + "/_api/document/" + id,
@@ -331,6 +331,48 @@
                   catch (e) {
                     throw "Undefined ERROR";
                   }
+                }
+              });
+              return res;
+            },
+            
+            toNotBeStoredPermanently: function() {
+              var id = this.actual,
+              res = false;
+              $.ajax({
+                type: "GET",
+                url: arangodb + "/_api/document/" + id,
+                contentType: "application/json",
+                processData: false,
+                async: false,
+                success: function(data) {
+
+                },
+                error: function(data) {
+                  if (data.status === 404) {
+                    res = true;
+                  }
+                  
+                }
+              });
+              return res;
+            },
+            
+            toHavePermanentAttributeWithValue: function(attribute, value) {
+              var id = this.actual,
+              res = false;
+              $.ajax({
+                type: "GET",
+                url: arangodb + "/_api/document/" + id,
+                contentType: "application/json",
+                processData: false,
+                async: false,
+                success: function(data) {
+                  if (data[attribute] === value) {
+                    res = true;
+                  }
+                },
+                error: function(data) {                  
                 }
               });
               return res;
@@ -364,12 +406,40 @@
       });
       
       it('should be able to change a value of one node permanently', function() {
+        var toPatch;
         
-        throw "Not Implemented";
+        runs(function() {
+          toPatch = nodeWithID(c0);
+          adapter.patchNode(toPatch, {hello: "world"}, checkCallbackFunction);
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          expect(toPatch.hello).toEqual("world");
+          expect(toPatch._id).toHavePermanentAttributeWithValue("hello", "world");
+        });
+        
       });
       
       it('should be able to change a value of one edge permanently', function() {
-        throw "Not Implemented";
+        var toPatch;
+        
+        runs(function() {
+          toPatch = edgeWithSourceAndTargetId(c0, c1);
+          adapter.patchEdge(toPatch, {hello: "world"}, checkCallbackFunction);
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          expect(toPatch.hello).toEqual("world");
+          expect(toPatch._id).toHavePermanentAttributeWithValue("hello", "world");
+        });
       });
       
       it('should be able to remove an edge permanently', function() {
@@ -378,8 +448,6 @@
         
         runs(function() {
           toDelete = edgeWithSourceAndTargetId(c0, c4);
-          console.log(edges);
-          console.log(toDelete);
           adapter.deleteEdge(toDelete, checkCallbackFunction);
         });
         
@@ -388,7 +456,7 @@
         });
         
         runs(function() {
-          expect(toDelete).not.toBeStoredPermanently();
+          expect(toDelete._id).toNotBeStoredPermanently();
           notExistEdge(c1, c5);
         });
         
@@ -467,7 +535,6 @@
         runs(function() {
           source = nodeWithID(c0);
           target = nodeWithID(c8);
-          console.log(nodes);
           adapter.createEdge({source: source, target: target}, function(edge) {
             insertedId = edge._id;
             callbackCheck = true;
@@ -497,9 +564,9 @@
         });
         
         runs(function() {
-          expect(c2).not.toBeStoredPermanently();
+          expect(toDelete._id).toNotBeStoredPermanently();
           notExistNode(c2);
-          expect(e2_8._id).not.toBeStoredPermanently();
+          expect(e2_8).toNotBeStoredPermanently();
           notExistEdge(c2, c8);
         });
       });
