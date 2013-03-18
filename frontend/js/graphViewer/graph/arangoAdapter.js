@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console*/
+/*global $, d3, _, console, jQuery*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -77,12 +77,10 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   insertEdge = function(edge) {
     var source,
     target,
-    e;
-    var e = findEdge(edge._id);
+    e = findEdge(edge._id);
     if (e) {
       return e;
     }
-    console.log(edge);
     source = findNode(edge._from);
     target = findNode(edge._to);
     if (!source) {
@@ -111,11 +109,11 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   // Helper function to easily remove all outbound edges for one node
   removeOutboundEdgesFromNode = function ( node ) {
     if (node._outboundCounter > 0) {
-      var subNodes = [],
+      var removed = [],
       i;
       for ( i = 0; i < edges.length; i++ ) {
         if ( edges[i].source === node ) {
-          subNodes.push(edges[i].target);
+          removed.push(edges[i]);
           node._outboundCounter--;
           edges[i].target._inboundCounter--;
           edges.splice( i, 1 );
@@ -125,7 +123,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
           i--;
         }
       }
-      return subNodes;
+      return removed;
     }
   },
   
@@ -319,7 +317,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     $.ajax({
       cache: false,
       type: "DELETE",
-      url: api.edge + "&document=" + edgeToRemove._id,
+      url: api.document + edgeToRemove._id,
       contentType: "application/json",
       processData: false,
       success: function() {
@@ -330,6 +328,24 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       }
     });
     
+  };
+  
+  self.patchEdge = function (edgeToPatch, patchData, callback) {
+    $.ajax({
+      cache: false,
+      type: "PUT",
+      url: api.document + edgeToPatch._id,
+      data: JSON.stringify(patchData),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        edgeToPatch = jQuery.extend(edgeToPatch, patchData);
+        callback();
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
   };
   
   self.createNode = function (nodeToAdd, callback) {
@@ -351,18 +367,46 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   };
   
   self.deleteNode = function (nodeToRemove, callback) {
+    var semaphore = 1,
+    semaphoreCallback = function() {
+      semaphore--;
+      if (semaphore === 0) {
+        if (callback) {
+          callback();
+        }
+      }
+    };
     $.ajax({
       cache: false,
       type: "DELETE",
-      url: api.node + "&document=" + nodeToRemove._id,
+      url: api.document + nodeToRemove._id,
       contentType: "application/json",
       processData: false,
       success: function() {
-        var subNodes = removeOutboundEdgesFromNode(node);    
-        _.each(subNodes, function (n) {
-          deleteEdge(nodeToRemove, {_id: n});
+        var edges = removeOutboundEdgesFromNode(nodeToRemove);    
+        _.each(edges, function (e) {
+          semaphore++;
+          self.deleteEdge(e, semaphoreCallback);
         });
         removeNode(nodeToRemove);
+        semaphoreCallback();
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  };
+  
+  self.patchNode = function (nodeToPatch, patchData, callback) {
+    $.ajax({
+      cache: false,
+      type: "PUT",
+      url: api.document + nodeToPatch._id,
+      data: JSON.stringify(patchData),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        nodeToPatch = jQuery.extend(nodeToPatch, patchData);
         callback();
       },
       error: function(data) {
