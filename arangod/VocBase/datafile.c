@@ -1223,7 +1223,10 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  TRI_voc_size_t markerSize,
                                  bool forceSync) {
   if (datafile->isPhysical(datafile)) {
-    TRI_CrcMarker(marker, markerSize);
+    TRI_voc_crc_t crc = TRI_InitialCrc32();
+  
+    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+    marker->_crc = TRI_FinalCrc32(crc);
   }
 
   return TRI_WriteElementDatafile(datafile, position, marker, markerSize, forceSync);
