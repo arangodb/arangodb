@@ -64,16 +64,44 @@
       c43,
       c44,
       c45,
+      e1_5,
+      e2_8,
+      callbackCheck,
+      checkCallbackFunction = function() {
+        callbackCheck = true;
+      },
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
           return e._id === id;
         })[0];
       },
-      
+      edgeWithSourceAndTargetId = function(sourceId, targetId) {
+        return $.grep(edges, function(e){
+          return e.source._id === sourceId
+            && e.target._id === targetId;
+        })[0];
+      },
       existNode = function(id) {
         var node = nodeWithID(id);
         expect(node).toBeDefined();
         expect(node._id).toEqual(id);
+      },
+      
+      notExistNode = function(id) {
+        var node = nodeWithID(id);
+        expect(node).toBeUndefined();
+      },
+      
+      existEdge = function(source, target) {
+        var edge = edgeWithSourceAndTargetId(source, target);
+        expect(edge).toBeDefined();
+        expect(edge.source._id).toEqual(source);
+        expect(edge.target._id).toEqual(target);
+      },
+      
+      notExistEdge = function(source, target) {
+        var edge = edgeWithSourceAndTargetId(source, target);
+        expect(edge).toBeUndefined();
       },
       
       existNodes = function(ids) {
@@ -121,6 +149,7 @@
         });
       },
       insertEdge = function (collectionID, from, to) {
+        var id;
         $.ajax({
           cache: false,
           type: "POST",
@@ -130,12 +159,13 @@
           contentType: "application/json",
           processData: false,
           success: function(data) {
-            return data._id;
+            id = data._id;
           },
           error: function(data) {
             throw data.statusText;
           }
         });
+        return id;
       },
       insertNode = function (collectionID, nodeId) {
         var id;
@@ -195,11 +225,11 @@
         insertEdge(edgesCollection, c0, c3);
         insertEdge(edgesCollection, c0, c4);
         
-        insertEdge(edgesCollection, c1, c5);
+        e1_5 = insertEdge(edgesCollection, c1, c5);
         insertEdge(edgesCollection, c1, c6);
         insertEdge(edgesCollection, c1, c7);
         
-        insertEdge(edgesCollection, c2, c8);
+        e2_8 = insertEdge(edgesCollection, c2, c8);
         
         insertEdge(edgesCollection, c3, c8);
         insertEdge(edgesCollection, c3, c9);
@@ -236,13 +266,10 @@
     });
     
     it('should be able to load a tree node from ArangoDB by internal _id attribute', function() {
-      var callbackCheck;
       
       runs(function() {
         callbackCheck = false;
-        adapter.loadNodeFromTreeById(c0, function(res) {
-          callbackCheck = true;
-        });
+        adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
       });
       
       waitsFor(function() {
@@ -256,8 +283,7 @@
     });
     
     it('should be able to request the number of children centrality', function() {
-      var callbackCheck,
-      children;
+      var children;
       
       runs(function() {
         callbackCheck = false;
@@ -279,28 +305,52 @@
     describe('that has already loaded one graph', function() {
       
       beforeEach(function() {
-        var callbackCheck;
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(c0, function() {
-            callbackCheck = true;
+          adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+          
+          this.addMatchers({
+            toBeStoredPermanently: function() {
+              var id = this.actual;
+              var res = false;
+              $.ajax({
+                type: "GET",
+                url: arangodb + "/_api/document/" + id,
+                contentType: "application/json",
+                processData: false,
+                async: false,
+                success: function(data) {
+                  res = true;
+                },
+                error: function(data) {
+                  try {
+                    var temp = JSON.parse(data);
+                    throw "[" + temp.errorNum + "] " + temp.errorMessage;
+                  }
+                  catch (e) {
+                    throw "Undefined ERROR";
+                  }
+                }
+              });
+              return res;
+            }
           });
         });
       
         waitsFor(function() {
           return callbackCheck;
-        });        
-      });
-      
-      it('should be able to add nodes from another query', function() {
-        var callbackCheck;
+        });
         
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(c1, function() {
-            callbackCheck = true;
-          });
+        });     
+      });
+      
+      it('should be able to add nodes from another query', function() {
+        
+        runs(function() {
+          adapter.loadNodeFromTreeById(c1, checkCallbackFunction);
         });
       
         waitsFor(function() {
@@ -322,32 +372,55 @@
         throw "Not Implemented";
       });
       
-      it('should be able to remove a node permanently', function() {
-        throw "Not Implemented";
-      });
-      
       it('should be able to remove an edge permanently', function() {
-        throw "Not Implemented";
+        
+        var toDelete;
+        
+        runs(function() {
+          toDelete = edgeWithSourceAndTargetId(c0, c4);
+          console.log(edges);
+          console.log(toDelete);
+          adapter.deleteEdge(toDelete, checkCallbackFunction);
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          expect(toDelete).not.toBeStoredPermanently();
+          notExistEdge(c1, c5);
+        });
+        
       });
       
       it('should be able to add a node permanently', function() {
-        throw "Not Implemented";  
+        
+        var insertedId;
+        
+        runs(function() {
+          adapter.createNode({}, function(node) {
+            insertedId = node._id;
+            callbackCheck = true;
+          });
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          expect(insertedId).toBeStoredPermanently();
+          existNode(insertedId);
+        });
       });
-      
-      it('should be able to add an edge permanently', function() {
-        throw "Not Implemented";
-      });
-    });
     
     describe('that has loaded several queries', function() {
       beforeEach(function() {
-        var callbackCheck;
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(c0, function() {
-            callbackCheck = true;
-          });
+          adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
         });
       
         waitsFor(function() {
@@ -356,25 +429,23 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTreeById(c2, function() {
-            callbackCheck = true;
-          });
+          adapter.loadNodeFromTreeById(c2, checkCallbackFunction);
         });
       
         waitsFor(function() {
           return callbackCheck;
+        });
+      
+        runs(function() {
+          callbackCheck = false;
         });
       
       });
       
       it('should not add a node to the list twice', function() {
-        var callbackCheck;
       
         runs(function() {
-          callbackCheck = false;
-          adapter.loadNodeFromTreeById(c3, function() {
-            callbackCheck = true;
-          });
+          adapter.loadNodeFromTreeById(c3, checkCallbackFunction);
         });
       
         waitsFor(function() {
@@ -386,6 +457,54 @@
           expect(nodes.length).toEqual(7);
         });
       });
+      
+      it('should be able to add an edge permanently', function() {
+        var insertedId,
+        source,
+        target;
+        
+        
+        runs(function() {
+          source = nodeWithID(c0);
+          target = nodeWithID(c8);
+          console.log(nodes);
+          adapter.createEdge({source: source, target: target}, function(edge) {
+            insertedId = edge._id;
+            callbackCheck = true;
+          });
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          expect(insertedId).toBeStoredPermanently();
+          existEdge(source._id, target._id);
+        });
+        
+      });
+      
+      it('should be able to remove a node permanently', function() {
+        var toDelete;
+        runs(function() {
+          toDelete = nodeWithID(c2);
+          adapter.deleteNode(toDelete, checkCallbackFunction);
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          expect(c2).not.toBeStoredPermanently();
+          notExistNode(c2);
+          expect(e2_8._id).not.toBeStoredPermanently();
+          notExistEdge(c2, c8);
+        });
+      });
+      
+    });
       
     });
     
