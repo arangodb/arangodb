@@ -452,7 +452,7 @@ namespace triagens {
                                     const string& key,
                                     const bool lock) {
           TRI_doc_operation_context_t context;
-          TRI_InitReadContextPrimaryCollection(&context, primary);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
 
           if (lock) {
             // READ-LOCK START
@@ -476,7 +476,7 @@ namespace triagens {
         int readCollectionDocuments (TRI_primary_collection_t* const primary,
                                      vector<string>& ids) {
           TRI_doc_operation_context_t context;
-          TRI_InitReadContextPrimaryCollection(&context, primary);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
 
           // READ-LOCK START
           this->lockExplicit(primary, TRI_TRANSACTION_READ);
@@ -513,7 +513,7 @@ namespace triagens {
                                     TRI_voc_size_t limit,
                                     uint32_t* total) {
           TRI_doc_operation_context_t context;
-          TRI_InitReadContextPrimaryCollection(&context, primary);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
 
           if (limit == 0) {
             // nothing to do
@@ -646,7 +646,7 @@ namespace triagens {
                                            const bool lock) {
           
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, forceSync);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
 
           // TODO: set transaction lock here
           return primary->insert(&context, key, mptr, markerType, shaped, data, lock, forceSync);
@@ -693,7 +693,7 @@ namespace triagens {
                                            const bool lock) {
 
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          TRI_InitContextPrimaryCollection(&context, primary, policy);
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
           
@@ -714,7 +714,7 @@ namespace triagens {
                                       TRI_voc_rid_t* actualRevision,
                                       const bool forceSync) {
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          TRI_InitContextPrimaryCollection(&context, primary, policy);
           context._expectedRid = expectedRevision;
           context._previousRid = actualRevision;
 
@@ -745,7 +745,7 @@ namespace triagens {
           }
 
           TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, forceSync);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
           size_t n = ids.size();
 
           res = TRI_ERROR_NO_ERROR;
