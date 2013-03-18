@@ -18,8 +18,8 @@ var documentView = Backbone.View.extend({
     "click #documentTableID tr" : "clicked",
     "click #editSecondRow"      : "editSecond",
     "keydown .sorting_1"        : "listenKey",
-    "keydown"                   : "listenGlobalKey",
-    "focusout textarea"         : "checkFocus"
+    "keydown"                   : "listenGlobalKey"
+    //"focusout textarea"         : "checkFocus"
   },
 
   checkFocus: function(e) {
