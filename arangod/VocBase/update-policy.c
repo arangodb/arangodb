@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief markers
+/// @brief document update / delete policies
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "marker.h"
+#include "update-policy.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -37,37 +37,57 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a marker with the most basic information
+/// @brief initialise a policy object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMarker (TRI_df_marker_t* const marker,
-                     TRI_df_marker_type_e type,
-                     TRI_voc_size_t size,
-                     TRI_voc_tick_t tick) {
-  TRI_ASSERT_DEBUG(marker != NULL);
-  TRI_ASSERT_DEBUG(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
-  TRI_ASSERT_DEBUG(size > 0);
-  TRI_ASSERT_DEBUG(tick > 0);
-
-  marker->_type = type;
-  marker->_size = size;
-  marker->_tick = tick;
-  marker->_crc  = 0;
+void TRI_InitUpdatePolicy (TRI_doc_update_policy_t* const policy,
+                           TRI_doc_update_policy_e type,
+                           TRI_voc_rid_t expectedRid,
+                           TRI_voc_rid_t* previousRid) {
+  policy->_policy = type;
+  policy->_expectedRid = expectedRid;
+  policy->_previousRid = previousRid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief calculate the CRC value for a marker
+/// @brief compare revision of found document with revision specified in policy
+/// this will also store the actual revision id found in the database in the
+/// context variable _previousRid, but only if this is not NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CrcMarker (TRI_df_marker_t* marker,
-                    size_t length) {
-  TRI_voc_crc_t crc;
+int TRI_CheckUpdatePolicy (const TRI_doc_update_policy_t* const policy,
+                           const TRI_voc_rid_t actualRid) {
 
-  crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, (char const*) marker, length);
+  if (policy == NULL) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
-  marker->_crc = TRI_FinalCrc32(crc);
+  // store previous revision
+  if (policy->_previousRid != NULL) {
+    *(policy->_previousRid) = actualRid;
+  }
+
+  // check policy
+  switch (policy->_policy) {
+    case TRI_DOC_UPDATE_ERROR:
+      if (policy->_expectedRid != 0 && policy->_expectedRid != actualRid) {
+        return TRI_ERROR_ARANGO_CONFLICT;
+      }
+      break;
+
+    case TRI_DOC_UPDATE_CONFLICT:
+      return TRI_ERROR_NOT_IMPLEMENTED;
+
+    case TRI_DOC_UPDATE_ILLEGAL:
+      return TRI_ERROR_INTERNAL;
+
+    case TRI_DOC_UPDATE_LAST_WRITE:
+      return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

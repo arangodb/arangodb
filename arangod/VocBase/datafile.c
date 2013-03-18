@@ -37,6 +37,8 @@
 #include "BasicsC/strings.h"
 #include "BasicsC/files.h"
 
+#include "VocBase/marker.h"
+
 
 // #define DEBUG_DATAFILE 1
 
@@ -794,23 +796,17 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
   // create the header
   memset(&header, 0, sizeof(TRI_df_header_marker_t));
-
-  header.base._size   = sizeof(TRI_df_header_marker_t);
-  header.base._tick   = TRI_NewTickVocBase();
-  header.base._type   = TRI_DF_MARKER_HEADER;
+  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
 
   header._version     = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
   header._fid         = TRI_NewTickVocBase();
 
-  // create CRC
-  TRI_FillCrcMarkerDatafile(datafile, &header.base, sizeof(TRI_df_header_marker_t), 0, 0, 0, 0);
-
   // reserve space and write header to file
   result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
 
   if (result == TRI_ERROR_NO_ERROR) {
-    result = TRI_WriteElementDatafile(datafile, position, &header.base, header.base._size, 0, 0, 0, 0, true);
+    result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, true);
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
@@ -1066,8 +1062,6 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
 void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
                                 TRI_df_marker_t* marker,
                                 TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
                                 void const* body,
                                 TRI_voc_size_t bodySize) {
   marker->_crc = 0;
@@ -1079,10 +1073,6 @@ void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
     crc = TRI_InitialCrc32();
     crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
 
-    if (keyBody != NULL && 0 < keyBodySize) {
-      crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
-    }
-
     if (body != NULL && 0 < bodySize) {
       crc = TRI_BlockCrc32(crc, body, bodySize);
     }
@@ -1093,6 +1083,7 @@ void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
+/// @deprecated this function is deprecated. do not use for new code
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
@@ -1167,26 +1158,19 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker and body to the datafile
+/// @brief writes a marker to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
-                              void const* keyBody,
-                              TRI_voc_size_t keyBodySize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               bool forceSync) {
-  TRI_voc_size_t size;
 
-  size = markerSize + keyBodySize + bodySize;
-
-  if (size != marker->_size) {
+  if (markerSize != marker->_size) {
     LOG_ERROR("marker size is %lu, but size is %lu",
               (unsigned long) marker->_size,
-              (unsigned long) size);
+              (unsigned long) markerSize);
   }
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
@@ -1201,18 +1185,11 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   memcpy(position, marker, markerSize);
 
-  if (keyBody != NULL && 0 < keyBodySize) {
-    memcpy(((char*) position) + markerSize, keyBody, keyBodySize);
-  }
-
-  if (body != NULL && 0 < bodySize) {
-    memcpy(((char*) position) + markerSize + keyBodySize, body, bodySize);
-  }
 
   if (forceSync) {
     bool ok;
 
-    ok = datafile->sync(datafile, position, ((char*) position) + size);
+    ok = datafile->sync(datafile, position, ((char*) position) + markerSize);
 
     if (! ok) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
@@ -1229,11 +1206,27 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       return datafile->_lastError;
     }
     else {
-      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) size);
+      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) markerSize);
     }
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checksums and writes a marker to the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
+                                 void* position,
+                                 TRI_df_marker_t* marker,
+                                 TRI_voc_size_t markerSize,
+                                 bool forceSync) {
+  if (datafile->isPhysical(datafile)) {
+    TRI_CrcMarker(marker, markerSize);
+  }
+
+  return TRI_WriteElementDatafile(datafile, position, marker, markerSize, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1448,15 +1441,10 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_SEALED);
   }
 
+
   // create the footer
   memset(&footer, 0, sizeof(TRI_df_footer_marker_t));
-
-  footer.base._size = sizeof(TRI_df_footer_marker_t);
-  footer.base._tick = TRI_NewTickVocBase();
-  footer.base._type = TRI_DF_MARKER_FOOTER;
-
-  // create CRC
-  TRI_FillCrcMarkerDatafile(datafile, &footer.base, sizeof(TRI_df_footer_marker_t), 0, 0, 0, 0);
+  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;
@@ -1464,7 +1452,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteElementDatafile(datafile, position, &footer.base, footer.base._size, 0, 0, 0, 0, true);
+    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, footer.base._size, true);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

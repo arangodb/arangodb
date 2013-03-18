@@ -124,11 +124,9 @@ static int CopyDocument (TRI_document_collection_t* collection,
                          TRI_df_marker_t** result,
                          TRI_voc_fid_t* fid) {
   TRI_datafile_t* journal;
-  TRI_voc_size_t total;
 
   // find and select a journal
-  total = marker->_size;
-  journal = SelectCompactor(collection, total, result);
+  journal = SelectCompactor(collection, marker->_size, result);
 
   if (journal == NULL) {
     collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
@@ -138,15 +136,7 @@ static int CopyDocument (TRI_document_collection_t* collection,
   *fid = journal->_fid;
 
   // and write marker and blob
-  return TRI_WriteElementDatafile(journal,
-                                  *result,
-                                  marker,
-                                  marker->_size,
-                                  NULL,
-                                  0,
-                                  NULL,
-                                  0,
-                                  false);
+  return TRI_WriteElementDatafile(journal, *result, marker, marker->_size, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
