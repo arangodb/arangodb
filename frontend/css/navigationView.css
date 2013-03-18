@@ -1,6 +1,4 @@
-.arango-nav .active {
-  border-left: 1px solid black;
-  border-right: 1px solid black;
+.arango-nav {
 }
 
 .dropdown-menu li > a:hover, .dropdown-menu li > a:focus, .dropdown-submenu:hover > a {

@@ -125,3 +125,7 @@
 .jqconsole-blurred .jqconsole-prompt, .jqconsole-blurred .jqconsole-old-prompt{
   opacity: 0.7;
 }
+
+#queryOutput .ace_gutter-cell {
+  background-color: #F0F0F0 !important;
+}

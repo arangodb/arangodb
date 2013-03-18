@@ -200,3 +200,10 @@ table .sorting {
   margin-bottom: 10px;
 }
 
+.disabledHover {
+  cursor: default !important;
+}
+
+.disabledHover:hover {
+  background-color: #8F8D8C !important;
+}

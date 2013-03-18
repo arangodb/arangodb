@@ -210,7 +210,18 @@ var documentsView = Backbone.View.extend({
   },
   drawTable: function() {
     var self = this;
+    var toCheck = true;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
+
+      if (toCheck === true) {
+    $(self.table).dataTable().fnAddData([
+                                        '',
+                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+                                        '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
+    ]);
+        toCheck = false;
+      }
+
       $(self.table).dataTable().fnAddData([
                                           //value.attributes.id,
                                           value.attributes.key,
@@ -218,13 +229,7 @@ var documentsView = Backbone.View.extend({
                                           '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
-      console.log(value.attributes.key);
     });
-    $(self.table).dataTable().fnAddData([
-                                        '',
-                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-                                        '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
-    ]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
 /*    $(".prettify").tooltip({
       html: true,
@@ -249,6 +254,7 @@ var documentsView = Backbone.View.extend({
     this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
     $(this.el).html(this.template.text);
+    this.initTable();
     this.breadcrumb();
     if (this.collectionContext.prev === null) {
       $('#collectionPrev').parent().addClass('disabledPag');
