@@ -94,6 +94,12 @@
     <Filter Include="SkiplistsEx Source">
       <UniqueIdentifier>{85835a0d-c3d2-4442-b52c-48379bf40a35}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CapConstraint Header">
+      <UniqueIdentifier>{d2ec0280-a1a3-4d91-b1af-f3466b44ca47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CapConstraint Source">
+      <UniqueIdentifier>{73321ff7-c3c0-411c-9380-0e6382bfe7a3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -185,15 +191,6 @@
     </ClCompile>
     <ClCompile Include="..\..\arangod\BitIndexes\bitarrayIndex.c">
       <Filter>BitIndexes Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c">
-      <Filter>GeoIndex Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\HashIndex\hasharray.c">
-      <Filter>HashIndex Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\HashIndex\hashindex.c">
-      <Filter>HashIndex Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\IndexIterators\index-iterator.c">
       <Filter>IndexIterators Source</Filter>
@@ -321,6 +318,24 @@
     <ClCompile Include="..\..\arangod\SkipListsEx\skiplistExIndex.c">
       <Filter>SkiplistsEx Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\arangod\CapConstraint\cap-constraint.c">
+      <Filter>CapConstraint Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\HashIndex\hash-array.c">
+      <Filter>HashIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\HashIndex\hash-index.c">
+      <Filter>HashIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\GeoIndex\geo-index.c">
+      <Filter>GeoIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\server-id.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c">
+      <Filter>GeoIndex Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h">
@@ -406,18 +421,6 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\BitIndexes\masterblocktable.h">
       <Filter>BitIndexes Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h">
-      <Filter>GeoIndex Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\HashIndex\compare.h">
-      <Filter>HashIndex Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\HashIndex\hasharray.h">
-      <Filter>HashIndex Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\HashIndex\hashindex.h">
-      <Filter>HashIndex Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\IndexIterators\index-iterator.h">
       <Filter>IndexIterators Header</Filter>
@@ -589,6 +592,24 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\SkipListsEx\skiplistExIndex.h">
       <Filter>SkiplistsEx Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\CapConstraint\cap-constraint.h">
+      <Filter>CapConstraint Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\HashIndex\hash-array.h">
+      <Filter>HashIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\HashIndex\hash-index.h">
+      <Filter>HashIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\GeoIndex\geo-index.h">
+      <Filter>GeoIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\server-id.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h">
+      <Filter>GeoIndex Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

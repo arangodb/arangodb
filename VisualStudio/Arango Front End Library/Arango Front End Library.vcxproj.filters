@@ -50,9 +50,6 @@
     <ClInclude Include="..\..\lib\Admin\RestAdminBaseHandler.h">
       <Filter>Admin Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.h">
-      <Filter>Admin Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Admin\RestAdminLogHandler.h">
       <Filter>Admin Header</Filter>
     </ClInclude>
@@ -197,9 +194,6 @@
       <Filter>Admin Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Admin\RestAdminBaseHandler.cpp">
-      <Filter>Admin Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.cpp">
       <Filter>Admin Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Admin\RestAdminLogHandler.cpp">
