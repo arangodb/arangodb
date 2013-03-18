@@ -153,7 +153,6 @@ var logsView = Backbone.View.extend({
           self.lastTable();
         }
         else {
-          console.log("Number: " + i);
           self.jumpToTable(i);
         }
         options.page = i;

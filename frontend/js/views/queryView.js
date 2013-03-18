@@ -56,7 +56,6 @@ var queryView = Backbone.View.extend({
       var queryContent = localStorage.getItem("queryContent");
       var queryOutput = localStorage.getItem("queryOutput");
       editor.setValue(queryContent);
-      console.log(queryOutput);
       editor2.setValue(queryOutput);
     }
     return this;
