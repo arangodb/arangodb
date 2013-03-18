@@ -232,15 +232,17 @@
     <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-variable.c" />
     <ClCompile Include="..\..\arangod\BitIndexes\bitarray.c" />
     <ClCompile Include="..\..\arangod\BitIndexes\bitarrayIndex.c" />
+    <ClCompile Include="..\..\arangod\CapConstraint\cap-constraint.c" />
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-handles.c" />
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-index.c" />
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-list.c" />
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-query.c" />
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-result.c" />
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-wordlist.c" />
+    <ClCompile Include="..\..\arangod\GeoIndex\geo-index.c" />
     <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c" />
-    <ClCompile Include="..\..\arangod\HashIndex\hasharray.c" />
-    <ClCompile Include="..\..\arangod\HashIndex\hashindex.c" />
+    <ClCompile Include="..\..\arangod\HashIndex\hash-array.c" />
+    <ClCompile Include="..\..\arangod\HashIndex\hash-index.c" />
     <ClCompile Include="..\..\arangod\IndexIterators\index-iterator.c" />
     <ClCompile Include="..\..\arangod\IndexOperators\index-operator.c" />
     <ClCompile Include="..\..\arangod\PriorityQueue\pqueueindex.c" />
@@ -273,6 +275,7 @@
     <ClCompile Include="..\..\arangod\VocBase\index.c" />
     <ClCompile Include="..\..\arangod\VocBase\key-generator.c" />
     <ClCompile Include="..\..\arangod\VocBase\primary-collection.c" />
+    <ClCompile Include="..\..\arangod\VocBase\server-id.c" />
     <ClCompile Include="..\..\arangod\VocBase\shadow-data.c" />
     <ClCompile Include="..\..\arangod\VocBase\shape-collection.c" />
     <ClCompile Include="..\..\arangod\VocBase\synchroniser.c" />
@@ -308,6 +311,7 @@
     <ClInclude Include="..\..\arangod\BitIndexes\bitarray.h" />
     <ClInclude Include="..\..\arangod\BitIndexes\bitarrayIndex.h" />
     <ClInclude Include="..\..\arangod\BitIndexes\masterblocktable.h" />
+    <ClInclude Include="..\..\arangod\CapConstraint\cap-constraint.h" />
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-common.h" />
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-handles.h" />
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-index.h" />
@@ -315,10 +319,10 @@
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-query.h" />
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-result.h" />
     <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-wordlist.h" />
+    <ClInclude Include="..\..\arangod\GeoIndex\geo-index.h" />
     <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h" />
-    <ClInclude Include="..\..\arangod\HashIndex\compare.h" />
-    <ClInclude Include="..\..\arangod\HashIndex\hasharray.h" />
-    <ClInclude Include="..\..\arangod\HashIndex\hashindex.h" />
+    <ClInclude Include="..\..\arangod\HashIndex\hash-array.h" />
+    <ClInclude Include="..\..\arangod\HashIndex\hash-index.h" />
     <ClInclude Include="..\..\arangod\IndexIterators\index-iterator.h" />
     <ClInclude Include="..\..\arangod\IndexOperators\index-operator.h" />
     <ClInclude Include="..\..\arangod\PriorityQueue\pqueueindex.h" />
@@ -364,6 +368,7 @@
     <ClInclude Include="..\..\arangod\VocBase\index.h" />
     <ClInclude Include="..\..\arangod\VocBase\key-generator.h" />
     <ClInclude Include="..\..\arangod\VocBase\primary-collection.h" />
+    <ClInclude Include="..\..\arangod\VocBase\server-id.h" />
     <ClInclude Include="..\..\arangod\VocBase\shadow-data.h" />
     <ClInclude Include="..\..\arangod\VocBase\shape-collection.h" />
     <ClInclude Include="..\..\arangod\VocBase\synchroniser.h" />
