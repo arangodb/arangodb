@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console*/
+/*global $, d3, _, console, jQuery*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -33,9 +33,24 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   var self = this,
   initialX = {},
   initialY = {},
-  findNode = function(n) {
+  api = {},
+  
+  findNode = function(id) {
     var res = $.grep(nodes, function(e){
-      return e.id === n.id;
+      return e._id === id;
+    });
+    if (res.length === 0) {
+      return false;
+    } 
+    if (res.length === 1) {
+      return res[0];
+    }
+    throw "Too many nodes with the same ID, should never happen";
+  },
+  
+  findEdge = function(id) {
+    var res = $.grep(edges, function(e){
+      return e._id === id;
     });
     if (res.length === 0) {
       return false;
@@ -47,6 +62,10 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   },
   
   insertNode = function(node) {
+    var n = findNode(node._id);
+    if (n) {
+      return n;
+    }
     initialY.getStart();
     node.x = initialX.getStart();
     node.y = initialY.getStart();
@@ -55,20 +74,65 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     node._inboundCounter = 0;
   },
   
-  insertEdge = function(source, target) {
-    edges.push({source: source, target: target});
+  insertEdge = function(edge) {
+    var source,
+    target,
+    e = findEdge(edge._id);
+    if (e) {
+      return e;
+    }
+    source = findNode(edge._from);
+    target = findNode(edge._to);
+    if (!source) {
+      throw "Unable to insert Edge, source node not existing " + edge._from;
+    }
+    if (!target) {
+      throw "Unable to insert Edge, target node not existing " + edge._to;
+    }
+    edge.source = source;
+    edge.target = target;
+    edges.push(edge);
     source._outboundCounter++;
     target._inboundCounter++;
   },
-  api = arangodb.lastIndexOf("http://", 0) === 0
-    ? arangodb + "/_api/cursor"
-    : "http://" + arangodb + "/_api/cursor",
+  
+  removeNode = function (node) {
+    var i;
+    for ( i = 0; i < nodes.length; i++ ) {
+      if ( nodes[i] === node ) {
+        nodes.splice( i, 1 );
+        return;
+      }
+    }
+  },
+  
+  // Helper function to easily remove all outbound edges for one node
+  removeOutboundEdgesFromNode = function ( node ) {
+    if (node._outboundCounter > 0) {
+      var removed = [],
+      i;
+      for ( i = 0; i < edges.length; i++ ) {
+        if ( edges[i].source === node ) {
+          removed.push(edges[i]);
+          node._outboundCounter--;
+          edges[i].target._inboundCounter--;
+          edges.splice( i, 1 );
+          if (node._outboundCounter === 0) {
+            break;
+          }
+          i--;
+        }
+      }
+      return removed;
+    }
+  },
+  
   
   sendQuery = function(query, onSuccess) {
     var data = {query: query};
     $.ajax({
       type: "POST",
-      url: api,
+      url: api.cursor,
       data: JSON.stringify(data),
       contentType: "application/json",
       processData: false,
@@ -78,7 +142,8 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       error: function(data) {
         try {
           console.log(data.statusText);
-          var temp = JSON.parse(data.responseText);
+          var temp = JSON.parse(data);
+          console.log(temp);
           throw "[" + temp.errorNum + "] " + temp.errorMessage;
         }
         catch (e) {
@@ -89,31 +154,49 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     });
   },
   
+  parseResultOfTraversal = function (result, callback) {
+    result = result[0];
+    _.each(result, function(visited) {
+      var node = insertNode(visited.vertex),
+      path = visited.path;
+      _.each(path.vertices, function(connectedNode) {
+        insertNode(connectedNode);
+      });
+      _.each(path.edges, function(edge) {
+        insertEdge(edge);
+      });
+    });
+    if (callback) {
+      callback(result[0].vertex);
+    }
+  },
   
   parseResultOfQuery = function (result, callback) {
     _.each(result, function (node) {
-      var n = findNode(node);
+      var n = findNode(node._id);
       if (!n) {
         insertNode(node);
         n = node;
       } else {
         n.children = node.children;
       }
-      self.requestCentralityChildren(node.id, function(c) {
+      self.requestCentralityChildren(node._id, function(c) {
         n._centrality = c;
       });
-      _.each(n.children, function(c) {
-        var check = findNode(c);
+      _.each(n.children, function(id) {
+        var check = findNode(id),
+        newnode;
         if (check) {
           insertEdge(n, check);
-          self.requestCentralityChildren(check.id, function(c) {
+          self.requestCentralityChildren(id, function(c) {
             n._centrality = c;
           });
         } else {
-          insertNode(c);
-          insertEdge(n, c);
-          self.requestCentralityChildren(c.id, function(c) {
-            n._centrality = c;
+          newnode = {_id: id};
+          insertNode(newnode);
+          insertEdge(n, newnode);
+          self.requestCentralityChildren(id, function(c) {
+            newnode._centrality = c;
           });
         }
       });
@@ -122,6 +205,17 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       }
     });
   };
+  
+  api.base = arangodb.lastIndexOf("http://", 0) === 0
+    ? arangodb + "/_api/"
+    : "http://" + arangodb + "/_api/";
+  api.cursor = api.base + "cursor";
+  api.collection = api.base + "collection/";
+  api.document = api.base + "document/";
+  api.node = api.base + "document?collection=" + nodeCollection; 
+  api.edge = api.base + "edge?collection=" + edgeCollection; 
+  
+  
   
   initialX.range = width / 2;
   initialX.start = width / 4;
@@ -135,29 +229,51 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     return this.start + Math.random() * this.range;
   };
   
+  self.oldLoadNodeFromTreeById = function(nodeId, callback) {
+    var loadNodeQuery =
+        "FOR n IN " + nodeCollection
+      + " FILTER n._id == " + JSON.stringify(nodeId)
+      + " LET links = ("
+      + "  FOR l IN " + edgeCollection
+      + "  FILTER n._id == l._from"
+      + "   FOR t IN " + nodeCollection
+      + "   FILTER t._id == l._to"
+      + "   RETURN t._id"
+      + " )"
+      + " RETURN MERGE(n, {\"children\" : links})";
+    sendQuery(loadNodeQuery, function(res) {
+      parseResultOfQuery(res, callback);
+    });
+  };
   
+  self.loadNodeFromTreeById = function(nodeId, callback) {
+    var traversal = "RETURN TRAVERSAL("
+    + nodeCollection + ", "
+    + edgeCollection + ", "
+    + "\"" + nodeId + "\", "
+    + "\"outbound\", {"
+    + "startegy: \"depthfirst\","
+    + "maxDepth: 1,"
+    + "paths: true"
+    + "})";
+    sendQuery(traversal, function(res) {
+      parseResultOfTraversal(res, callback);
+    });
+  };
   
-  self.loadNodeFromTree = function(nodeId, callback) {
-    
-    var loadNodeQuery = "FOR n IN " + nodeCollection
-        +  " FILTER n.id == " + nodeId
-        +  " LET links = ("
-        +  " FOR l IN " + edgeCollection
-        +  " FILTER n._id == l._from"
-        +  " for t in " + nodeCollection
-        +  " filter t._id == l._to"
-        +  " RETURN { "
-        +  "  \"id\" : t.id,"
-        +  " \"name\": t.name," // TODO Remove
-        +  " \"type\": t.type" // TODO Remove
-        +  " }"
-        +  " )"
-        +  " RETURN {"
-        +  " \"id\" : n.id,"
-        +  " \"name\": n.name," // TODO Remove
-        +  " \"type\": n.type," // TODO Remove
-        +  " \"children\" : links"
-        +  " }";
+  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+    var loadNodeQuery =
+        "FOR n IN " + nodeCollection
+      + "FILTER n." + attribute + " == \"" + value + "\""
+      + "LET links = ("
+      + "  FOR l IN " + edgeCollection
+      + "  FILTER n._id == l._from"
+      + "   FOR t IN " + nodeCollection
+      + "   FILTER t._id == l._to"
+      + "   RETURN t._id"
+      + ")"
+      + "RETURN MERGE(n, {\"children\" : links})";
+
     sendQuery(loadNodeQuery, function(res) {
       parseResultOfQuery(res, callback);
     });
@@ -165,7 +281,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   
   self.requestCentralityChildren = function(nodeId, callback) {
     var requestChildren = "for u in " + nodeCollection
-      + " filter u.id == " + nodeId
+      + " filter u._id == " + JSON.stringify(nodeId)
       + " let g = ("
       + " for l in " + edgeCollection
       + " filter l._from == u._id"
@@ -176,4 +292,128 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       callback(res[0]);
     });
   };
+  
+  self.createEdge = function (edgeToAdd, callback) { 
+    $.ajax({
+      cache: false,
+      type: "POST",
+      url: api.edge + "&from=" + edgeToAdd.source._id + "&to=" + edgeToAdd.target._id,
+      data: JSON.stringify({}),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        data._from = edgeToAdd.source._id;
+        data._to = edgeToAdd.target._id;
+        insertEdge(data);
+        callback(data);
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  };
+  
+  self.deleteEdge = function (edgeToRemove, callback) {
+    $.ajax({
+      cache: false,
+      type: "DELETE",
+      url: api.document + edgeToRemove._id,
+      contentType: "application/json",
+      processData: false,
+      success: function() {
+        callback();
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+    
+  };
+  
+  self.patchEdge = function (edgeToPatch, patchData, callback) {
+    $.ajax({
+      cache: false,
+      type: "PUT",
+      url: api.document + edgeToPatch._id,
+      data: JSON.stringify(patchData),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        edgeToPatch = jQuery.extend(edgeToPatch, patchData);
+        callback();
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  };
+  
+  self.createNode = function (nodeToAdd, callback) {
+    $.ajax({
+      cache: false,
+      type: "POST",
+      url: api.node,
+      data: JSON.stringify(nodeToAdd),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        insertNode(data);
+        callback(data);
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  };
+  
+  self.deleteNode = function (nodeToRemove, callback) {
+    var semaphore = 1,
+    semaphoreCallback = function() {
+      semaphore--;
+      if (semaphore === 0) {
+        if (callback) {
+          callback();
+        }
+      }
+    };
+    $.ajax({
+      cache: false,
+      type: "DELETE",
+      url: api.document + nodeToRemove._id,
+      contentType: "application/json",
+      processData: false,
+      success: function() {
+        var edges = removeOutboundEdgesFromNode(nodeToRemove);    
+        _.each(edges, function (e) {
+          semaphore++;
+          self.deleteEdge(e, semaphoreCallback);
+        });
+        removeNode(nodeToRemove);
+        semaphoreCallback();
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  };
+  
+  self.patchNode = function (nodeToPatch, patchData, callback) {
+    $.ajax({
+      cache: false,
+      type: "PUT",
+      url: api.document + nodeToPatch._id,
+      data: JSON.stringify(patchData),
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        nodeToPatch = jQuery.extend(nodeToPatch, patchData);
+        callback();
+      },
+      error: function(data) {
+        throw data.statusText;
+      }
+    });
+  };
+  
+  
 }

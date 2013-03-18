@@ -2706,7 +2706,9 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       ++inserted;
 
       if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %llu documents of collection %llu", (unsigned long long) inserted, (unsigned long long) primary->base._info._cid);
+        LOG_DEBUG("indexed %llu documents of collection %llu", 
+                  (unsigned long long) inserted, 
+                  (unsigned long long) primary->base._info._cid);
       }
     }
   }
