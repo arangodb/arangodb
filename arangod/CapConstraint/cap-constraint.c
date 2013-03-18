@@ -115,7 +115,7 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
 
     LOG_DEBUG("removing document '%s' because of cap constraint", (char*) oldest->_key);
 
-    TRI_InitContextPrimaryCollection(&rollbackContext, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
+    TRI_InitContextPrimaryCollection(&rollbackContext, primary, TRI_DOC_UPDATE_LAST_WRITE);
     res = TRI_DeleteDocumentDocumentCollection(&rollbackContext, oldest);
 
     if (res != TRI_ERROR_NO_ERROR) {

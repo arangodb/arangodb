@@ -850,7 +850,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   // wait for sync
   // .............................................................................
 
-  if (context->_sync) {
+  if (forceSync) {
     WaitSync(document, journal, ((char const*) result) + totalSize);
   }
 
@@ -2680,7 +2680,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
 
   primary = &document->base;
 
-  TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
+  TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE);
 
   // update index
   ptr = primary->_primaryIndex._table;

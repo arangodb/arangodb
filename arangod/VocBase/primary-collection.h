@@ -121,11 +121,9 @@ TRI_doc_update_policy_e;
 
 typedef struct TRI_doc_operation_context_s {
   struct TRI_primary_collection_s* _collection;        // collection to be used
-  struct TRI_transaction_s*        _transaction;       // transaction context
   TRI_voc_rid_t                    _expectedRid;       // the expected revision id of a document. only used if set and for update/delete
   TRI_voc_rid_t*                   _previousRid;       // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
   TRI_doc_update_policy_e          _policy;            // the update policy
-  bool                             _sync : 1;          // force syncing to disk after successful operation
 }
 TRI_doc_operation_context_t;
 
@@ -441,7 +439,7 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t*, TRI_shaper_t*);
 /// @brief destroys a primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection);
+void TRI_DestroyPrimaryCollection (TRI_primary_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -460,34 +458,34 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection);
 /// @brief finds a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t* collection,
-                                                                TRI_voc_fid_t fid);
+TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t*,
+                                                                TRI_voc_fid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* collection);
+TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
-                                        size_t position);
+bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t*,
+                                        size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new compactor file
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* collection);
+TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing compactor file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
-                                          size_t position);
+bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t*,
+                                          size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a new operation context
@@ -495,15 +493,7 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
 
 void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
                                        TRI_primary_collection_t* const,
-                                       TRI_doc_update_policy_e,
-                                       bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context for reads
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const,
-                                           TRI_primary_collection_t* const);
+                                       TRI_doc_update_policy_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare revision of found document with revision specified in policy

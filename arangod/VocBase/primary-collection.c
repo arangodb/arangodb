@@ -590,26 +590,11 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
 
 void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context,
                                        TRI_primary_collection_t* const primary,
-                                       TRI_doc_update_policy_e policy,
-                                       bool forceSync) {
+                                       TRI_doc_update_policy_e policy) {
   context->_collection = primary;
   context->_policy = policy;
   context->_expectedRid = 0;
   context->_previousRid = NULL;
-  context->_sync = forceSync || primary->base._info._waitForSync;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context for reads
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const context,
-                                           TRI_primary_collection_t* const primary) {
-  context->_collection = primary;
-  context->_policy = TRI_DOC_UPDATE_LAST_WRITE;
-  context->_expectedRid = 0;
-  context->_previousRid = NULL;
-  context->_sync = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
