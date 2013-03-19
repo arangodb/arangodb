@@ -1,10 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global beforeEach, afterEach */
-/*global describe, it, expect */
-/*global runs, spyOn, waitsFor */
-/*global window, eb, loadFixtures, document */
-/*global $, _, d3*/
-/*global ArangoAdapter*/
+/*global it, expect */
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -36,10 +32,8 @@
 
 var describeInterface = function (testee) {
   "use strict";
-  
-  describe('Adapter Interface', function() {
     
-    beforeEach(function() {
+    it('should comply to the Adapter Interface', function() {
       this.addMatchers({
         toHaveFunction: function(func, argCounter) {
           var obj = this.actual;
@@ -60,9 +54,8 @@ var describeInterface = function (testee) {
           return true;
         }
       });
-    });
-    
-    it('should comply to the Adapter Interface', function() {
+      
+      // Add functions to load here:
       expect(testee).toHaveFunction("loadNodeFromTreeById", 2);
       expect(testee).toHaveFunction("requestCentralityChildren", 2);
       expect(testee).toHaveFunction("loadNodeFromTreeByAttributeValue", 3);
@@ -74,5 +67,4 @@ var describeInterface = function (testee) {
       expect(testee).toHaveFunction("patchNode", 3);
     });
     
-  });
 };

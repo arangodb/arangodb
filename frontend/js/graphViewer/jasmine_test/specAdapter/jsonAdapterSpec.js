@@ -38,9 +38,11 @@
 (function () {
   "use strict";
 
-  describeInterface(new JSONAdapter("", [], []));
+  
   
   describe('JSON Adapter', function () {
+    
+    describeInterface(new JSONAdapter("", [], []));
     
     var adapter,
       nodes,
