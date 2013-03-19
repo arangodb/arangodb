@@ -225,6 +225,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.html" -print) \
 	$(shell find @srcdir@/html -name "*.ico" -print) \
 	$(shell find @srcdir@/html -name "*.js" -print) \
+	$(shell find @srcdir@/html -name "*.ejs" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print)
 
 if ENABLE_MRUBY
