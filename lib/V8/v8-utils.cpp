@@ -222,15 +222,16 @@ static v8::Handle<v8::Array> PathList (string const& modules) {
   v8::HandleScope scope;
 
 #ifdef _WIN32
-  vector<string> paths = StringUtils::split(modules, ";",'\0');
+  vector<string> paths = StringUtils::split(modules, ";", '\0');
 #else
   vector<string> paths = StringUtils::split(modules, ";:");
 #endif
 
-  v8::Handle<v8::Array> result = v8::Array::New();
+  const uint32_t n = (uint32_t) paths.size();
+  v8::Handle<v8::Array> result = v8::Array::New(n);
 
-  for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {
-    result->Set(i, v8::String::New(paths[i].c_str()));
+  for (uint32_t i = 0;  i < n;  ++i) {
+    result->Set(i, v8::String::New(paths[i].c_str(), paths[i].size()));
   }
 
   return scope.Close(result);
