@@ -37,7 +37,7 @@ var newCollectionView = Backbone.View.extend({
   },
 
   hidden: function () {
-    window.location.hash = "#collection/";
+    window.App.navigate("#"); 
   },
 
   saveNewCollection: function() {
