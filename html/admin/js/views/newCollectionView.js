@@ -12,6 +12,10 @@ var newCollectionView = Backbone.View.extend({
     $('#add-collection').on('hidden', function () {
       self.hidden();
     });
+    $('#add-collection').on('shown', function () {
+      $('#new-collection-name').focus();
+    });
+
     $('#edgeFrom').hide();
     $('#edgeTo').hide();
     $('.modalTooltips').tooltip({
