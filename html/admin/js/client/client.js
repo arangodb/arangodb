@@ -79,10 +79,12 @@ function help () {
 function clear () {
   var internal = require("internal");
   var i;
+  var result = '';
 
   for (i = 0; i < 100; ++i) {
-    internal.print('\n');
+    result += '\n';
   }
+  internal.print(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

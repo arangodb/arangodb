@@ -211,18 +211,14 @@ var documentsView = Backbone.View.extend({
   },
   drawTable: function() {
     var self = this;
-    var toCheck = true;
-    $.each(window.arangoDocumentsStore.models, function(key, value) {
-
-      if (toCheck === true) {
+      
     $(self.table).dataTable().fnAddData([
                                         '',
                                         '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
                                         '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
     ]);
-        toCheck = false;
-      }
-
+    
+    $.each(window.arangoDocumentsStore.models, function(key, value) {
       $(self.table).dataTable().fnAddData([
                                           //value.attributes.id,
                                           value.attributes.key,
