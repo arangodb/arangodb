@@ -35,7 +35,7 @@ var collectionView = Backbone.View.extend({
     }
   },
   hidden: function () {
-    window.location.hash = "#collection/";
+    window.App.navigate("#");
   },
   fillModal: function() {
     try {
@@ -77,23 +77,34 @@ var collectionView = Backbone.View.extend({
     $('#change-collection').modal('show')
   },
   saveModifiedCollection: function() {
+    var newname = $('#change-collection-name').val();
+    if (newname == '') {
+      arangoHelper.arangoError('No collection name entered!');
+      return 0;
+    }
+
     var collid = this.getCollectionId();
     var status = this.getCollectionStatus();
 
     if (status === 'loaded') {
-      var newname = $('#change-collection-name').val();
-      if (newname !== '' && this.myCollection.name !== newname) {
+      if (this.myCollection.name !== newname) {
         window.arangoCollectionsStore.renameCollection(collid, newname );
       }
 
       var wfs = $('#change-collection-sync').val();
-      var journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
+      var journalSize;
+      try {
+        journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
+      }
+      catch (e) {
+        arangoHelper.arangoError('Please enter a valid number');
+        return 0;
+      }
       window.arangoCollectionsStore.changeCollection(collid, wfs, journalSize);
       this.hideModal();
     }
     else if (status === 'unloaded') {
-      var newname = $('#change-collection-name').val();
-      if (newname !== '' && this.myCollection.name !== newname) {
+      if (this.myCollection.name !== newname) {
         window.arangoCollectionsStore.renameCollection(collid, newname );
         this.hideModal();
       }
