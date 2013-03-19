@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console*/
+/*global $, d3, _, console, alert*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -73,7 +73,7 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   };
   
   
-  self.loadNodeFromTree = function(nodeId, callback) {
+  self.loadNodeFromTreeById = function(nodeId, callback) {
     var json = jsonPath + nodeId + ".json";
     d3.json(json, function(error, node) {
       if (error !== undefined && error !== null) {
@@ -121,4 +121,34 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       }
     });
   };
+  
+  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  self.createEdge = function(edgeToCreate, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  self.deleteEdge = function(edgeToDelete, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  self.patchEdge = function(edgeToPatch, patchData, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  self.createNode = function(nodeToCreate, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  self.deleteNode = function(nodeToDelete, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  self.patchNode = function(nodeToPatch, patchData, callback){
+      alert("Sorry this adapter is read-only");
+  };
+  
+  
 }

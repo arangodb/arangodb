@@ -4,6 +4,7 @@
 /*global runs, spyOn, waitsFor */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
+/*global describeInterface*/
 /*global JSONAdapter*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +38,11 @@
 (function () {
   "use strict";
 
+  
+  
   describe('JSON Adapter', function () {
+    
+    describeInterface(new JSONAdapter("", [], []));
     
     var adapter,
       nodes,
@@ -84,7 +89,7 @@
       
       runs(function() {
         callbackCheck = false;
-        adapter.loadNodeFromTree(startNode, function() {
+        adapter.loadNodeFromTreeById(startNode, function() {
           callbackCheck = true;
         });
       });
@@ -127,7 +132,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(startNode, function() {
+          adapter.loadNodeFromTreeById(startNode, function() {
             callbackCheck = true;
           });
         });
@@ -142,7 +147,7 @@
         
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(1, function() {
+          adapter.loadNodeFromTreeById(1, function() {
             callbackCheck = true;
           });
         });
@@ -165,7 +170,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(startNode, function() {
+          adapter.loadNodeFromTreeById(startNode, function() {
             callbackCheck = true;
           });
         });
@@ -176,7 +181,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(1, function() {
+          adapter.loadNodeFromTreeById(1, function() {
             callbackCheck = true;
           });
         });
@@ -187,7 +192,7 @@
       
         runs(function() {
           callbackCheck = false;
-          adapter.loadNodeFromTree(2, function() {
+          adapter.loadNodeFromTreeById(2, function() {
             callbackCheck = true;
           });
         });
@@ -201,7 +206,7 @@
       
           runs(function() {
             callbackCheck = false;
-            adapter.loadNodeFromTree(3, function() {
+            adapter.loadNodeFromTreeById(3, function() {
               callbackCheck = true;
             });
           });
