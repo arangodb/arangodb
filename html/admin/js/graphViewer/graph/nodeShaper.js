@@ -176,7 +176,7 @@ function NodeShaper(parent, flags, idfunc) {
   self.reshapeNode = function (node) {
     var nodes  = d3.selectAll(".node").filter(
       function(d) {
-        return d.id === node.id;
+        return d._id === node._id;
       });
     reshaping(nodes);
   };
