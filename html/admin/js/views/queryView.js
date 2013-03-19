@@ -75,11 +75,20 @@ var queryView = Backbone.View.extend({
       processData: false,
       success: function(data) {
         editor2.setValue(self.FormatJSON(data.result));
+        if(typeof(Storage) !== "undefined") {
+          localStorage.setItem("queryContent", editor.getValue());
+          localStorage.setItem("queryOutput", editor2.getValue());
+        }
       },
       error: function(data) {
         try {
           var temp = JSON.parse(data.responseText);
           editor2.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+        
+          if(typeof(Storage) !== "undefined") {
+            localStorage.setItem("queryContent", editor.getValue());
+            localStorage.setItem("queryOutput", editor2.getValue());
+          }
         }
         catch (e) {
           editor2.setValue('ERROR');
@@ -87,10 +96,6 @@ var queryView = Backbone.View.extend({
       }
     });
 
-    if(typeof(Storage) !== "undefined") {
-      localStorage.setItem("queryContent", editor.getValue());
-      localStorage.setItem("queryOutput", editor2.getValue());
-    }
   },
   FormatJSON: function(oData, sIndent) {
     var self = this;
