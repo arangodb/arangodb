@@ -38,9 +38,9 @@
 (function () {
   "use strict";
 
-  describeInterface(new ArangoAdapter("", [], [], "", "", 1, 1));
-
   describe('Arango Adapter', function () {
+    
+    describeInterface(new ArangoAdapter("", [], [], "", "", 1, 1));
     
     var adapter,
       nodes,
