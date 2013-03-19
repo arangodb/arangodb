@@ -31,7 +31,6 @@ var collectionsView = Backbone.View.extend({
   },
   events: {
     "click .icon-info-sign" : "details",
-    //"blur #searchInput" : "restrictToSearchPhrase",
     "keypress #searchInput" : "restrictToSearchPhraseKey",
     "change #searchInput"   : "restrictToSearchPhrase",
     "click #searchSubmit"   : "restrictToSearchPhrase",
@@ -100,6 +99,7 @@ var collectionsView = Backbone.View.extend({
     $('#checkEdge').attr('checked', searchOptions.includeEdge);
     $('#checkDocument').attr('checked', searchOptions.includeDocument);
   },
+
   search: function () {
     var searchOptions = this.collection.searchOptions;
     var searchPhrase = $('#searchInput').val().replace(/(^\s+|\s+$)/g, '');
@@ -112,13 +112,22 @@ var collectionsView = Backbone.View.extend({
     this.render();
   },
 
+  resetSearch: function () {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
+    
+    var searchOptions = this.collection.searchOptions;
+    searchOptions.searchPhrase = null;
+  },
+
   restrictToSearchPhraseKey: function (e) {
     // key pressed in search box
     var self = this;
-    if (self.searchTimeout) {
-      clearTimeout(self.searchTimeout);
-      self.searchTimeout = null;
-    }
+    
+    // force a new a search
+    this.resetSearch();
 
     self.searchTimeout = setTimeout(function (){
       self.search();
@@ -126,6 +135,9 @@ var collectionsView = Backbone.View.extend({
   },
 
   restrictToSearchPhrase: function () {
+    // force a new a search
+    this.resetSearch();
+
     // search executed
     this.search();
   },
