@@ -1,0 +1,189 @@
+/*#logContent {
+  margin-top: 0;
+  border: 20px solid rgba(0, 0, 0, 0.00);
+  background-color: rgba(0, 0, 0, 0.05);
+  min-height: 330px !important;
+  padding-bottom: 25px;
+}
+*/
+#logPages {
+  float:left;
+  margin-top: -6px !important;
+  padding-left: 10px;
+}
+
+#logButtons button {
+  margin-top: -10px !important;
+}
+
+.tab-content {
+  min-height: 390px;
+}
+
+
+
+.dataTables_info {
+  display:none !important;
+}
+
+.logContent {
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+
+
+#logContent .sorting_1 {
+  background-color: #FBFBFB !important;
+}
+
+/*.odd .sorting_1 {
+background-color: none !important;
+}
+
+  .even .sorting_1 {
+  background-color: #F1F0EE !important;
+}*/
+
+  #logToolbar {
+    padding-top: 10px;
+    padding-bottom: 15px;
+    border: 1px solid #C1BDBA;
+    background-color: #F7F6F6 !important;
+    background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
+    background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: linear-gradient(top, #f3efec, #ebe7e3);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
+}
+
+#logToolbar button {
+  float:right;
+  border: medium none;
+  padding-left: 10px;
+  background-color: transparent;
+}
+
+
+#logTableID thead, #infoTableID thead, #debugTableID thead, #critTableID thead, #warnTableID thead {
+  border-bottom: 1px solid #C1BDBA;
+}
+
+#logTableID thead tr th, #infoTableID thead tr th, #debugTableID thead tr th, #critTableID thead tr th, #warnTableID thead tr th {
+  border-bottom: 1px solid #C1BDBA;
+  background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3) !important;
+  background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3) !important;
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3)) !important;
+  background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3) !important;
+  background-image: -o-linear-gradient(top, #f3efec, #ebe7e3) !important;
+  background-image: linear-gradient(top, #f3efec, #ebe7e3) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
+
+}
+
+.nav-tabs > li > a, .nav-tabs > li > a:hover {
+  border-radius: 0 0 0 0;
+}
+/*
+#logNav li {
+  margin-left: 2px !important;
+  border-radius: 0 0 0 0 !important;
+  background: none;
+  border: 0 !important;
+}
+
+#logNav .active a{
+  background-color: #8AA051;
+  border: 0;
+}
+
+#logNav a:hover {
+  background-color: #8AA051;
+}
+
+#logNav li a {
+  border: 0;
+}
+
+#logNav a {
+  color: white;
+}
+
+#lognav .active {
+}
+
+#logNav {
+  padding-left: 20px;
+  margin-left: -20px;
+  width: 920px;
+  padding-bottom: -10px;
+  margin-bottom: 0;
+  background-color: #686766;
+  border-bottom: 1px solid #A0A0A0;
+  border-top: 1px solid #A0A0A0;
+  margin-top: 0px;
+  margin-bottom: 20px;
+  height: 36px;
+}*/
+
+#logTableID .firstcol, #infoTableID .firstcol, #debugTableID .firstcol, #critTableID .firstcol, #warnTableID .firstcol {
+  background-color: #F4F4F4 !important;
+/*  background-image: -moz-linear-gradient(center top , #F4F4F4, #E4E4E4);
+  border-top:1px solid #c1bdba;
+  border-bottom:1px solid #c1bdba;
+  border-left:1px solid #c1bdba;*/
+  width: 80px !important;
+  max-width: 80px !important;
+  cursor: default !important;
+}
+
+.thirdcol {
+/*  border-top:1px solid #c1bdba;
+  border-bottom:1px solid #c1bdba;
+  border-right:1px solid #c1bdba;
+  background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
+  background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: linear-gradient(top, #ffffff, #f5f5f5);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);*/
+  max-width: 500px !important;
+  cursor: default !important;
+
+}
+
+.seccol, .dataTables_empty{
+  margin-bottom: 5px;
+/*  background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
+  background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
+  background-image: linear-gradient(top, #ffffff, #f5f5f5);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+  border-top:1px solid #c1bdba;
+  border-bottom:1px solid #c1bdba;*/
+  width: 140px !important;
+  cursor: default !important;
+}
+
+#logTableID, #infoTableID, #debugTableID, #critTableID, #warnTableID {
+  border-collapse: separate;
+  border-spacing: 0 5px;
+  margin-top: -5px !important;
+}
+
+
+#logTableID td, #infoTableID td, #debugTableID td, #critTableID td, #warnTableID td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+
+#logTableID_wrapper, #infoTableID_wrapper, #debugTableID_wrapper, #critTableID_wrapper, #warnTableID_wrapper{
+  border-radius: 2px 2px 2px 2px;
+}
+
