@@ -217,7 +217,68 @@
       });
       
     });
+    
+    describe('Insert Node', function() {
       
+      it('should bind an event to add a node', function() {
+        var adapterDummy = {},
+        created = null;
+        
+        adapterDummy.createNode = function(nodeToCreate, callback) {
+          created = nodeToCreate;
+          callback();
+        };
+        
+        testee = eventLib.InsertNode(adapterDummy);
+        testee();
+        
+        expect(created).toBeDefined();
+        expect(created._inboundCounter).toEqual(0);
+        expect(created._outboundCounter).toEqual(0);
+        
+      });
+      
+    });
+    
+    describe('Patch Node', function() {
+      
+      it('should bind an event to patch a node', function() {
+        throw "Not yet implemented";
+      });
+      
+    });
+    
+    describe('Delete Node', function() {
+      
+      it('should bind an event to delete a node', function() {
+        throw "Not yet implemented";
+      });
+      
+    });
+    
+    describe('Insert Edge', function() {
+      
+      it('should bind an event to add an edge', function() {
+        throw "Not yet implemented";
+      });
+      
+    });
+    
+    describe('Patch Edge', function() {
+      
+      it('should bind an event to patch an edge', function() {
+        throw "Not yet implemented";
+      });
+      
+    });
+    
+    describe('Delete Edge', function() {
+      
+      it('should bind an event to delete an edge', function() {
+        throw "Not yet implemented";
+      });
+      
+    });
   });
 
 }());
