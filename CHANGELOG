@@ -1,3 +1,10 @@
+v1.2.2 (XXXX-XX-XX)
+-------------------
+
+* fixed usage of invalid pointer in error message output when index description could
+  not be opened
+
+
 v1.2.1 (2013-03-14)
 -------------------
 

@@ -1730,12 +1730,20 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   char* error;
   int res;
 
+  error = NULL;
+
   // load json description of the index
   json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
 
   // json must be a index description
   if (json == NULL) {
-    LOG_ERROR("cannot read index definition from '%s': %s", filename, error);
+    if (error != NULL) {
+      LOG_ERROR("cannot read index definition from '%s': %s", filename, error);
+      TRI_Free(TRI_CORE_MEM_ZONE, error);
+    }
+    else {
+      LOG_ERROR("cannot read index definition from '%s'", filename);
+    }
     return false;
   }
 
