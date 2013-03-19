@@ -123,7 +123,6 @@ var collectionsView = Backbone.View.extend({
   },
 
   restrictToSearchPhraseKey: function (e) {
-    console.log("wuhu");
     // key pressed in search box
     var self = this;
     
