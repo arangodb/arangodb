@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief markers
+/// @brief document update / delete policies
 ///
 /// @file
 ///
@@ -25,16 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_MARKER_H
-#define TRIAGENS_VOC_BASE_MARKER_H 1
-
-#include "BasicsC/common.h"
-#include "VocBase/datafile.h"
-#include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "update-policy.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -46,23 +37,61 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a marker with the most basic information
+/// @brief initialise a policy object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMarker (TRI_df_marker_t* const,
-                     TRI_df_marker_type_e,
-                     TRI_voc_size_t,
-                     TRI_voc_tick_t);
+void TRI_InitUpdatePolicy (TRI_doc_update_policy_t* const policy,
+                           TRI_doc_update_policy_e type,
+                           TRI_voc_rid_t expectedRid,
+                           TRI_voc_rid_t* previousRid) {
+  policy->_policy = type;
+  policy->_expectedRid = expectedRid;
+  policy->_previousRid = previousRid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare revision of found document with revision specified in policy
+/// this will also store the actual revision id found in the database in the
+/// context variable _previousRid, but only if this is not NULL
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CheckUpdatePolicy (const TRI_doc_update_policy_t* const policy,
+                           const TRI_voc_rid_t actualRid) {
+
+  if (policy == NULL) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // store previous revision
+  if (policy->_previousRid != NULL) {
+    *(policy->_previousRid) = actualRid;
+  }
+
+  // check policy
+  switch (policy->_policy) {
+    case TRI_DOC_UPDATE_ERROR:
+      if (policy->_expectedRid != 0 && policy->_expectedRid != actualRid) {
+        return TRI_ERROR_ARANGO_CONFLICT;
+      }
+      break;
+
+    case TRI_DOC_UPDATE_CONFLICT:
+      return TRI_ERROR_NOT_IMPLEMENTED;
+
+    case TRI_DOC_UPDATE_ILLEGAL:
+      return TRI_ERROR_INTERNAL;
+
+    case TRI_DOC_UPDATE_LAST_WRITE:
+      return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

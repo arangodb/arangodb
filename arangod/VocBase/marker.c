@@ -43,30 +43,16 @@
 void TRI_InitMarker (TRI_df_marker_t* const marker,
                      TRI_df_marker_type_e type,
                      TRI_voc_size_t size,
-                     TRI_voc_tick_t id) {
+                     TRI_voc_tick_t tick) {
   TRI_ASSERT_DEBUG(marker != NULL);
   TRI_ASSERT_DEBUG(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
   TRI_ASSERT_DEBUG(size > 0);
-  TRI_ASSERT_DEBUG(id > 0);
+  TRI_ASSERT_DEBUG(tick > 0);
 
   marker->_type = type;
   marker->_size = size;
-  marker->_tick = id;
+  marker->_tick = tick;
   marker->_crc  = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief calculate the CRC value for a marker
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CrcMarker (TRI_df_marker_t* const marker,
-                    size_t length) {
-  TRI_voc_crc_t crc;
-
-  crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, (char const*) marker, length);
-
-  marker->_crc = TRI_FinalCrc32(crc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

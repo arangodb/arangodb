@@ -41,6 +41,7 @@
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
+#include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -144,8 +145,7 @@ static void CollectionRevisionUpdate (TRI_document_collection_t* document,
 static int CreateDeletionMarker (TRI_doc_deletion_key_marker_t** result,
                                  TRI_voc_size_t* totalSize,
                                  char* keyBody,
-                                 TRI_voc_size_t keyBodySize,
-                                 const bool calcCrc) {
+                                 TRI_voc_size_t keyBodySize) {
   TRI_doc_deletion_key_marker_t* marker;
 
   *result = NULL;
@@ -164,10 +164,6 @@ static int CreateDeletionMarker (TRI_doc_deletion_key_marker_t** result,
   // copy the key into the marker
   memcpy(((char*) marker) + marker->_offsetKey, keyBody, keyBodySize + 1);
   
-  if (calcCrc) {
-    TRI_CrcMarker(&marker->base, *totalSize);
-  }
-  
   *result = marker;
 
   return TRI_ERROR_NO_ERROR;
@@ -182,8 +178,7 @@ static int CloneDocumentMarker (TRI_df_marker_t const* original,
                                 TRI_doc_document_key_marker_t** result,
                                 TRI_voc_size_t* totalSize,
                                 const TRI_df_marker_type_e markerType,
-                                TRI_shaped_json_t const* shaped,
-                                const bool calcCrc) {
+                                TRI_shaped_json_t const* shaped) {
 
   TRI_doc_document_key_marker_t* marker;
   TRI_voc_tick_t tick;
@@ -256,11 +251,6 @@ static int CloneDocumentMarker (TRI_df_marker_t const* original,
   }
 #endif
   
-  if (calcCrc) {
-    // calculate crc checksum
-    TRI_CrcMarker(&marker->base, *totalSize);
-  }
-
   *result = marker;
 
   return TRI_ERROR_NO_ERROR;
@@ -277,8 +267,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
                                  const TRI_df_marker_type_e markerType,
                                  TRI_voc_key_t key,
                                  TRI_shaped_json_t const* shaped, 
-                                 void const* data,
-                                 const bool calcCrc) {
+                                 void const* data) {
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
   char* position;
@@ -382,11 +371,6 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   marker->_offsetKey  = markerSize;
   marker->_offsetJson = markerSize + keyBodySize;
   
-  if (calcCrc) {
-    // calculate crc checksum
-    TRI_CrcMarker(&marker->base, *totalSize);
-  }
-
   *result = marker;
 
   return TRI_ERROR_NO_ERROR;
@@ -414,7 +398,6 @@ static int CreateHeader (TRI_document_collection_t* document,
 
   header->_rid       = tick;
   header->_fid       = fid;
-  header->_validFrom = tick;     // document creation time
   header->_validTo   = 0;        // document deletion time, 0 means "infinitely valid"
   header->_data      = marker;
   header->_key       = ((char*) marker) + marker->_offsetKey;
@@ -548,29 +531,17 @@ static void WaitSync (TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes data to the journal and updates the barriers
+/// @brief writes data to the journal
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteElement (TRI_document_collection_t* document,
                          TRI_datafile_t* journal,
-                         TRI_df_marker_t const* marker,
+                         TRI_df_marker_t* marker,
                          TRI_voc_size_t markerSize,
-                         void const* keyBody,
-                         TRI_voc_size_t keyBodySize,
-                         void const* body,
-                         TRI_voc_size_t bodySize,
                          TRI_df_marker_t* result) {
   int res;
 
-  res = TRI_WriteElementDatafile(journal,
-                                 result,
-                                 marker,
-                                 markerSize,
-                                 keyBody,
-                                 keyBodySize,
-                                 body,
-                                 bodySize,
-                                 false);
+  res = TRI_WriteCrcElementDatafile(journal, result, marker, markerSize, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -662,7 +633,7 @@ static int InsertDocument (TRI_document_collection_t* document,
 
   if (res == TRI_ERROR_NO_ERROR) {
     // now write marker and blob
-    res = WriteElement(document, journal, &marker->base, totalSize, NULL, 0, NULL, 0, result);
+    res = WriteElement(document, journal, &marker->base, totalSize, result);
 
     if (res == TRI_ERROR_NO_ERROR) {
       // writing the element into the datafile has succeeded
@@ -731,6 +702,7 @@ static int InsertDocument (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DeleteDocument (TRI_doc_operation_context_t* context,
+                           TRI_doc_update_policy_t const* policy,
                            TRI_doc_deletion_key_marker_t* marker,
                            const TRI_voc_size_t totalSize,
                            const bool forceSync) {
@@ -757,7 +729,8 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   // check the revision
   // .............................................................................
 
-  res = TRI_RevisionCheck(context, header->_rid);
+  res = TRI_CheckUpdatePolicy(policy, header->_rid);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -773,7 +746,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   TRI_ASSERT_DEBUG(result != NULL);
 
   // and write marker and blob
-  res = WriteElement(document, journal, &marker->base, totalSize, NULL, 0, NULL, 0, result);
+  res = WriteElement(document, journal, &marker->base, totalSize, result);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot delete element");
@@ -850,7 +823,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   // wait for sync
   // .............................................................................
 
-  if (context->_sync) {
+  if (forceSync) {
     WaitSync(document, journal, ((char const*) result) + totalSize);
   }
 
@@ -874,7 +847,6 @@ static void UpdateHeader (TRI_voc_fid_t fid,
   newHeader->_data = marker;
   newHeader->_key  = ((char*) marker) + marker->_offsetKey;
 
-  newHeader->_validFrom = oldHeader->_validFrom;
   newHeader->_validTo   = oldHeader->_validTo; // TODO: fix for trx
 }
 
@@ -884,7 +856,7 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 
 static int UpdateDocument (TRI_document_collection_t* document,
                            TRI_doc_mptr_t* oldHeader,
-                           TRI_doc_document_key_marker_t const* marker,
+                           TRI_doc_document_key_marker_t* marker,
                            const TRI_voc_size_t totalSize,
                            const bool forceSync,
                            TRI_doc_mptr_t* mptr) {
@@ -972,7 +944,7 @@ static int UpdateDocument (TRI_document_collection_t* document,
 
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = WriteElement(document, journal, &marker->base, totalSize, NULL, 0, NULL, 0, result);
+    res = WriteElement(document, journal, &marker->base, totalSize, result);
 
     if (res == TRI_ERROR_NO_ERROR) {
       TRI_doc_datafile_info_t* dfi;
@@ -1250,11 +1222,10 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 
       d = *ptr;
 
-      printf("fid %llu, key %s, rid %llu, validFrom: %llu validTo %llu\n",
+      printf("fid %llu, key %s, rid %llu, validTo %llu\n",
              (unsigned long long) d->_fid,
              (char*) d->_key,
              (unsigned long long) d->_rid,
-             (unsigned long long) d->_validFrom,
              (unsigned long long) d->_validTo);
     }
   }
@@ -1290,8 +1261,7 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
   // first create a new marker in memory
   // this does not require any locks
 
-  // TODO: make calcCrc flag (last parameter) dynamic, based on the collection properties
-  res = CreateDocumentMarker(primary, &marker, &totalSize, &keyBody, markerType, key, shaped, data, true);
+  res = CreateDocumentMarker(primary, &marker, &totalSize, &keyBody, markerType, key, shaped, data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1327,6 +1297,15 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
         
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT_DEBUG(mptr->_key != NULL);
+    TRI_ASSERT_DEBUG(mptr->_data != NULL);
+    TRI_ASSERT_DEBUG(mptr->_rid > 0);
+    TRI_ASSERT_DEBUG(mptr->_fid > 0);
+  }
+#endif
+
   return res;
 }
 
@@ -1354,6 +1333,13 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
   // we found a document, now copy it over
   *mptr = *((TRI_doc_mptr_t*) header);
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT_DEBUG(mptr->_key != NULL);
+  TRI_ASSERT_DEBUG(mptr->_data != NULL);
+  TRI_ASSERT_DEBUG(mptr->_rid > 0);
+  TRI_ASSERT_DEBUG(mptr->_fid > 0);
+#endif
+
   return TRI_ERROR_NO_ERROR;
 }
   
@@ -1365,6 +1351,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
                              const TRI_voc_key_t key,
                              TRI_doc_mptr_t* mptr,
                              TRI_shaped_json_t const* shaped,
+                             TRI_doc_update_policy_t const* policy,
                              const bool lock,
                              const bool forceSync) {
   TRI_primary_collection_t* primary;
@@ -1394,7 +1381,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
 
   if (IsVisible(header, context)) {
     // document found, now check revision
-    res = TRI_RevisionCheck(context, header->_rid);
+    res = TRI_CheckUpdatePolicy(policy, header->_rid);
   }
   else {
     // document not found
@@ -1407,8 +1394,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
 
     original = header->_data;
 
-    // TODO: make calcCrc flag (last parameter) dynamic, based on the collection properties
-    res = CloneDocumentMarker(original, &marker, &totalSize, original->_type, shaped, true);
+    res = CloneDocumentMarker(original, &marker, &totalSize, original->_type, shaped);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = UpdateDocument((TRI_document_collection_t*) primary, header, marker, totalSize, forceSync, mptr);
@@ -1423,6 +1409,15 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, marker);
   }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT_DEBUG(mptr->_key != NULL);
+    TRI_ASSERT_DEBUG(mptr->_data != NULL);
+    TRI_ASSERT_DEBUG(mptr->_rid > 0);
+    TRI_ASSERT_DEBUG(mptr->_fid > 0);
+  }
+#endif
+
   return res;
 }
 
@@ -1432,6 +1427,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
 
 static int DeleteShapedJson (TRI_doc_operation_context_t* context,
                              const TRI_voc_key_t key,
+                             TRI_doc_update_policy_t const* policy,
                              const bool lock,
                              const bool forceSync) {
   TRI_primary_collection_t* primary;
@@ -1441,9 +1437,8 @@ static int DeleteShapedJson (TRI_doc_operation_context_t* context,
   
   TRI_ASSERT_DEBUG(key != NULL);
 
-  // TODO: make calcCrc dynamic
   marker = NULL;
-  res = CreateDeletionMarker(&marker, &totalSize, key, strlen(key), true);
+  res = CreateDeletionMarker(&marker, &totalSize, key, strlen(key));
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1457,7 +1452,7 @@ static int DeleteShapedJson (TRI_doc_operation_context_t* context,
     primary->beginWrite(primary);
   }
 
-  res = DeleteDocument(context, marker, totalSize, forceSync);
+  res = DeleteDocument(context, policy, marker, totalSize, forceSync);
 
   if (lock) {
     primary->endWrite(primary);
@@ -1540,13 +1535,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   primary = &collection->base;
   keyGenerator = primary->_keyGenerator;
 
-  CollectionRevisionUpdate(collection, marker);
-
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
       marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
     size_t markerSize;
+  
+    CollectionRevisionUpdate(collection, marker);
 
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
 
@@ -1747,7 +1742,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       }
 
       header->_rid       = d->_rid;
-      header->_validFrom = marker->_tick;
       header->_validTo   = marker->_tick; // TODO: fix for trx
       header->_data      = marker;
       header->_key       = key;
@@ -1790,7 +1784,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       newHeader = CONST_CAST(found);
 
       // mark element as deleted
-      newHeader->_validFrom = marker->_tick;
       newHeader->_validTo   = marker->_tick; // TODO: fix for trx
       newHeader->_data      = marker;
       newHeader->_key       = key;
@@ -2680,7 +2673,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
 
   primary = &document->base;
 
-  TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
+  TRI_InitContextPrimaryCollection(&context, primary);
 
   // update index
   ptr = primary->_primaryIndex._table;
@@ -2706,7 +2699,9 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       ++inserted;
 
       if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %llu documents of collection %llu", (unsigned long long) inserted, (unsigned long long) primary->base._info._cid);
+        LOG_DEBUG("indexed %llu documents of collection %llu", 
+                  (unsigned long long) inserted, 
+                  (unsigned long long) primary->base._info._cid);
       }
     }
   }
@@ -5168,9 +5163,10 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t* context,
+                                          TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return DeleteShapedJson(context, doc->_key, false, false);
+  return DeleteShapedJson(context, doc->_key, policy, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

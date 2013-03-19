@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief (binary) shape collection
+/// @brief document update / delete policies
 ///
 /// @file
 ///
@@ -21,17 +21,15 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_SHAPE_COLLECTION_H
-#define TRIAGENS_VOC_BASE_SHAPE_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_DOCUMENT_POLICY_H
+#define TRIAGENS_VOC_BASE_DOCUMENT_POLICY_H 1
 
 #include "BasicsC/common.h"
-
 #include "VocBase/vocbase.h"
-#include "VocBase/collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,59 +45,27 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shape collection
-///
-/// A shape collection is a collection of binary shapes. There is no versioning
-/// or relationship between the shapes. The data is directly synced to disks.
-/// Therefore no special management thread is needed. It is not possible to
-/// delete entries, once they are created. The only query supported is a
-/// full scan.
-///
-/// Calls to @ref TRI_WriteShapeCollection are synchronised using the _lock
-/// of a shape collection.
+/// @brief update and delete policy
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_shape_collection_s {
-  TRI_collection_t base;
-
-  TRI_mutex_t _lock;
+typedef enum {
+  TRI_DOC_UPDATE_ERROR,
+  TRI_DOC_UPDATE_LAST_WRITE,
+  TRI_DOC_UPDATE_CONFLICT,
+  TRI_DOC_UPDATE_ILLEGAL
 }
-TRI_shape_collection_t;
+TRI_doc_update_policy_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief policy container
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t*,
-                                                   char const* path,
-                                                   TRI_col_info_t* parameter);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-///
-/// Note that the collection must be closed first.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyShapeCollection (TRI_shape_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeShapeCollection (TRI_shape_collection_t* collection);
+typedef struct TRI_doc_update_policy_s {
+  TRI_voc_rid_t                    _expectedRid;  // the expected revision id of a document. only used if set and for update/delete
+  TRI_voc_rid_t*                   _previousRid;  // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
+  TRI_doc_update_policy_e          _policy;       // the update policy
+}
+TRI_doc_update_policy_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -115,26 +81,23 @@ void TRI_FreeShapeCollection (TRI_shape_collection_t* collection);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes an element splitted into marker and body to file
+/// @brief initialise a policy object
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
-                              TRI_df_marker_t* marker,
-                              TRI_voc_size_t markerSize,
-                              TRI_df_marker_t** result);
+void TRI_InitUpdatePolicy (TRI_doc_update_policy_t* const,
+                           TRI_doc_update_policy_e,
+                           TRI_voc_rid_t,
+                           TRI_voc_rid_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing collection
+/// @brief compare revision of found document with revision specified in policy
+/// this will also store the actual revision id found in the database in the
+/// context variable _previousRid, but only if this is not NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_collection_t* TRI_OpenShapeCollection (TRI_vocbase_t*,
-                                                 char const* path);
+int TRI_CheckUpdatePolicy (const TRI_doc_update_policy_t* const,
+                           const TRI_voc_rid_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a collection
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -150,4 +113,3 @@ bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection);
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
