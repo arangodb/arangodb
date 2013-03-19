@@ -109,7 +109,14 @@ v1.3 (XXXX-XX-XX)
   arangob is now always included in the build
 
 
-v1.2.1 (XXXX-XX-XX)
+v1.2.2 (XXXX-XX-XX)
+-------------------
+
+* fixed usage of invalid pointer in error message output when index description could
+  not be opened
+
+
+v1.2.1 (2013-03-14)
 -------------------
 
 * issue #444: please darken light color in arangosh
@@ -133,8 +140,11 @@ v1.2.1 (XXXX-XX-XX)
 * fixed value truncation for numeric filename parts when renaming datafiles/journals
 
 
-v1.2.beta4 (XXXX-XX-XX)
------------------------
+v1.2.0 (2013-03-01)
+-------------------
+
+* by default statistics are now switch off; in order to enable comment out
+  the "disable-statistics = yes" line in "arangod.conf"
 
 * fixed issue #435: csv parser skips data at buffer border
 
@@ -156,7 +166,7 @@ v1.2.beta4 (XXXX-XX-XX)
   of the value `-2`, and not interpreted as the binary arithmetic operator
 
 
-v1.2.beta3 (XXXX-XX-XX)
+v1.2.beta3 (2013-02-22)
 -----------------------
 
 * issue #427: ArangoDB Importer Manual has no navigation links (previous|home|next)
