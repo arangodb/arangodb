@@ -99,16 +99,7 @@ var shellView = Backbone.View.extend({
       handler();
     },
     evaloutput: function (data) {
-      try {
-        var result = eval(data);
-        if (result !== undefined) {
-          print(result);
-        }
-      }
-      catch(e) {
-        //$('#shellContent').append('<p class="shellError">Error:' + e + '</p>');
-        jqconsole.Write('ReferenceError: ' + e + '\n', 'jserror'); 
-      }
+      this.executeJs(data);
     }
 
   });
