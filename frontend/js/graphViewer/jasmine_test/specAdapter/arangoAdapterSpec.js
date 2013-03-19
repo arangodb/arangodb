@@ -4,6 +4,7 @@
 /*global runs, spyOn, waitsFor */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
+/*global describeInterface*/
 /*global ArangoAdapter*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +39,8 @@
   "use strict";
 
   describe('Arango Adapter', function () {
+    
+    describeInterface(new ArangoAdapter("", [], [], "", "", 1, 1));
     
     var adapter,
       nodes,
