@@ -79,7 +79,7 @@
       
       it('should expand a collapsed node', function() {
         var node = {
-          id: 0,
+          _id: 0,
           _outboundCounter: 0,
           _inboundCounter: 0
         };
@@ -100,7 +100,7 @@
         expect(reshapedNodes.length).toEqual(1);
         expect(reshapedNodes[0]).toEqual(node);
         expect(loadedNodes.length).toEqual(1);
-        expect(loadedNodes[0]).toEqual(node.id);
+        expect(loadedNodes[0]).toEqual(node._id);
         
       });
       
@@ -220,45 +220,104 @@
     
     describe('Insert Node', function() {
       
-      it('should bind an event to add a node', function() {
+      it('should create an event to add a node', function() {
         var adapterDummy = {},
-        created = null;
+        nodeShaperDummy = {},
+        nodes = [],
+        created = null,
+        reshaped = null,
+        called = false,
+        callbackCheck = function() {
+          called = true;
+        },
+        testee;
         
         adapterDummy.createNode = function(nodeToCreate, callback) {
           created = nodeToCreate;
+          nodes.push(created);
           callback();
         };
         
-        testee = eventLib.InsertNode(adapterDummy);
-        testee();
+        nodeShaperDummy.drawNodes = function(nodes) {
+          reshaped = nodes;
+        };
+        
+        testee = eventLib.InsertNode(nodes, adapterDummy, nodeShaperDummy);
+        testee(callbackCheck);
         
         expect(created).toBeDefined();
         expect(created._inboundCounter).toEqual(0);
         expect(created._outboundCounter).toEqual(0);
-        
+        expect(reshaped[0]).toEqual(created);
       });
       
     });
     
     describe('Patch Node', function() {
       
-      it('should bind an event to patch a node', function() {
-        throw "Not yet implemented";
+      it('should create an event to patch a node', function() {
+        var adapterDummy = {},
+        nodeShaperDummy = {},
+        patched = {id: "1"},
+        data = {hello: "world"},
+        reshaped = null,
+        testee;
+        
+        adapterDummy.patchNode = function(nodeToPatch, patchData, callback) {
+          patched = nodeToPatch;
+          jQuery.extend(patched, patchData);
+          callback();
+        };
+        
+        nodeShaperDummy.drawNodes = function(nodes) {
+          reshaped = nodes;
+        };
+        
+        testee = eventLib.PatchNode(adapterDummy, nodeShaperDummy);
+        testee(patched, data);
+        
+        expect(patched).toBeDefined();
+        expect(reshaped[0]).toEqual(patched);
+        expect(patched.id).toEqual("1");
+        expect(patched.hello).toEqual("world");
+        
       });
       
     });
     
     describe('Delete Node', function() {
       
-      it('should bind an event to delete a node', function() {
-        throw "Not yet implemented";
+      it('should create an event to delete a node', function() {
+        var adapterDummy = {},
+        nodeShaperDummy = {},
+        toDel = {id: "2"},
+        reshaped = null,
+        testee;
+        
+        adapterDummy.deleteNode = function(nodeToDelete, callback) {
+          patched = nodeToPatch;
+          jQuery.extend(patched, patchData);
+          callback();
+        };
+        
+        nodeShaperDummy.drawNodes = function(nodes) {
+          reshaped = nodes;
+        };
+        
+        testee = eventLib.PatchNode(adapterDummy, nodeShaperDummy);
+        testee(patched, data);
+        
+        expect(patched).toBeDefined();
+        expect(reshaped[0]).toEqual(patched);
+        expect(patched.id).toEqual("1");
+        expect(patched.hello).toEqual("world");
       });
       
     });
     
     describe('Insert Edge', function() {
       
-      it('should bind an event to add an edge', function() {
+      it('should create an event to add an edge', function() {
         throw "Not yet implemented";
       });
       
@@ -266,7 +325,7 @@
     
     describe('Patch Edge', function() {
       
-      it('should bind an event to patch an edge', function() {
+      it('should create an event to patch an edge', function() {
         throw "Not yet implemented";
       });
       
@@ -274,7 +333,7 @@
     
     describe('Delete Edge', function() {
       
-      it('should bind an event to delete an edge', function() {
+      it('should create an event to delete an edge', function() {
         throw "Not yet implemented";
       });
       

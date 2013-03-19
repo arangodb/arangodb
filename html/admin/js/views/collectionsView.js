@@ -31,7 +31,7 @@ var collectionsView = Backbone.View.extend({
   },
   events: {
     "click .icon-info-sign" : "details",
-    "keypress #searchInput" : "restrictToSearchPhraseKey",
+    "keydown #searchInput" : "restrictToSearchPhraseKey",
     "change #searchInput"   : "restrictToSearchPhrase",
     "click #searchSubmit"   : "restrictToSearchPhrase",
     "click #checkSystem"    : "checkSystem",

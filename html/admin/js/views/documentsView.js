@@ -173,9 +173,13 @@ var documentsView = Backbone.View.extend({
     }
     var self = a.currentTarget;
     var aPos = $(this.table).dataTable().fnGetPosition(self);
+    if (aPos === null) {
+      // headline
+      return;
+    }
 
     var checkData = $(this.table).dataTable().fnGetData(self);
-    if (checkData[0] === '') {
+    if (checkData && checkData[0] === '') {
       this.addDocument();
       return;
     }
