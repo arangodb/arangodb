@@ -178,16 +178,12 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     return NULL;
   }
 
-  memset(&cm, 0, sizeof(cm));
-  cm.base._size = sizeof(TRI_col_header_marker_t);
-  cm.base._type = TRI_COL_MARKER_HEADER;
-  cm.base._tick = TRI_NewTickVocBase();
 
-  cm._cid = collection->_info._cid;
+  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
+  cm._cid  = collection->_info._cid;
+  cm._type = (TRI_col_type_t) collection->_info._type;
 
-  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
-
-  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
@@ -589,64 +585,8 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context,
-                                       TRI_primary_collection_t* const primary,
-                                       TRI_doc_update_policy_e policy,
-                                       bool forceSync) {
+                                       TRI_primary_collection_t* const primary) {
   context->_collection = primary;
-  context->_policy = policy;
-  context->_expectedRid = 0;
-  context->_previousRid = NULL;
-  context->_sync = forceSync || primary->base._info._waitForSync;
-  context->_allowRollback = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context for reads
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const context,
-                                           TRI_primary_collection_t* const primary) {
-  context->_collection = primary;
-  context->_policy = TRI_DOC_UPDATE_LAST_WRITE;
-  context->_expectedRid = 0;
-  context->_previousRid = NULL;
-  context->_sync = false;
-  context->_allowRollback = false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare revision of found document with revision specified in policy
-/// this will also store the actual revision id found in the database in the
-/// context variable _previousRid, but only if this is not NULL
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RevisionCheck (const TRI_doc_operation_context_t* const context,
-                       const TRI_voc_rid_t actualRid) {
-
-  // store previous revision
-  if (context->_previousRid != NULL) {
-    *(context->_previousRid) = actualRid;
-  }
-
-  // check policy
-  switch (context->_policy) {
-    case TRI_DOC_UPDATE_ERROR:
-      if (context->_expectedRid != 0 && context->_expectedRid != actualRid) {
-        return TRI_ERROR_ARANGO_CONFLICT;
-      }
-      break;
-
-    case TRI_DOC_UPDATE_CONFLICT:
-      return TRI_ERROR_NOT_IMPLEMENTED;
-
-    case TRI_DOC_UPDATE_ILLEGAL:
-      return TRI_ERROR_INTERNAL;
-
-    case TRI_DOC_UPDATE_LAST_WRITE:
-      return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

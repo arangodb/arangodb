@@ -1829,7 +1829,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   TRI_doc_operation_context_t context;
 
-  TRI_InitReadContextPrimaryCollection(&context, primary);
+  TRI_InitContextPrimaryCollection(&context, primary);
 
   trx.lockRead();
 

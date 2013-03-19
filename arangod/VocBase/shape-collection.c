@@ -32,6 +32,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 
+#include "VocBase/marker.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -51,8 +53,11 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   TRI_df_marker_t* position;
   char* filename;
   int res;
+  bool isVolatile;
 
-  if (collection->base._info._isVolatile) {
+  isVolatile = collection->base._info._isVolatile;
+
+  if (isVolatile) {
     // in memory collection
     filename = NULL;
   }
@@ -111,12 +116,13 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     ok = TRI_RenameDatafile(journal, filename);
 
     if (! ok) {
-      // TODO: remove disastrous call to exit() here
       LOG_FATAL_AND_EXIT("failed to rename the journal to '%s': %s", filename, TRI_last_error());
+      TRI_FreeDatafile(journal);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      return false;
     }
-    else {
-      LOG_TRACE("renamed journal to '%s'", filename);
-    }
+    LOG_TRACE("renamed journal to '%s'", filename);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
@@ -135,19 +141,14 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     return false;
   }
 
-  // create a header
-  memset(&cm, 0, sizeof(cm));
+  // create the header marker
+  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
 
-  cm.base._size = sizeof(TRI_col_header_marker_t);
-  cm.base._type = TRI_COL_MARKER_HEADER;
-  cm.base._tick = TRI_NewTickVocBase();
-
-  cm._cid = collection->base._info._cid;
-
-  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
+  cm._cid  = collection->base._info._cid;
+  cm._type = TRI_COL_TYPE_SHAPE;
 
   // on journal creation, always use waitForSync = true
-  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create document header in journal '%s': %s",
@@ -159,8 +160,8 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     return false;
   }
 
-  // that's it
   TRI_PushBackVectorPointer(&collection->base._journals, journal);
+
   return true;
 }
 
@@ -296,9 +297,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
                          TRI_datafile_t* journal,
                          TRI_df_marker_t* position,
                          TRI_df_marker_t* marker,
-                         TRI_voc_size_t markerSize,
-                         void const* body,
-                         size_t bodySize) {
+                         TRI_voc_size_t markerSize) {
   int res;
   bool waitForSync;
 
@@ -315,7 +314,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
     waitForSync = false;
   }
 
-  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, 0, 0, body, bodySize, waitForSync);
+  res = TRI_WriteCrcElementDatafile(journal, position, marker, markerSize, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
@@ -413,14 +412,9 @@ void TRI_FreeShapeCollection (TRI_shape_collection_t* collection) {
 int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
                               TRI_df_marker_t* marker,
                               TRI_voc_size_t markerSize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               TRI_df_marker_t** result) {
   TRI_datafile_t* journal;
   int res;
-
-  // generate a new tick
-  marker->_tick = TRI_NewTickVocBase();
 
   // lock the collection
   TRI_LockMutex(&collection->_lock);
@@ -437,7 +431,7 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   }
 
   // find and select a journal
-  journal = SelectJournal(collection, markerSize + bodySize, result);
+  journal = SelectJournal(collection, markerSize, result);
 
   if (journal == NULL) {
     TRI_UnlockMutex(&collection->_lock);
@@ -445,11 +439,8 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  // generate crc
-  TRI_FillCrcMarkerDatafile(journal, marker, markerSize, 0, 0, body, bodySize);
-
-  // and write marker and shape
-  res = WriteElement(collection, journal, *result, marker, markerSize, body, bodySize);
+  // write marker and shape
+  res = WriteElement(collection, journal, *result, marker, markerSize);
 
   // release lock on collection
   TRI_UnlockMutex(&collection->_lock);

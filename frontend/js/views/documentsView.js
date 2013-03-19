@@ -191,6 +191,7 @@ var documentsView = Backbone.View.extend({
       "aaSorting": [[ 1, "asc" ]],
       "bFilter": false,
       "bPaginate":false,
+      "bRetrieve": true,
       "bSortable": false,
       "bSort": false,
       "bLengthChange": false,
@@ -198,9 +199,9 @@ var documentsView = Backbone.View.extend({
       "iDisplayLength": -1,
       "bJQueryUI": false,
       "aoColumns": [
-        { "sClass":"read_only leftCell docleftico", "bSortable": false, "sWidth":"30px"},
-        { "sClass":"read_only arangoTooltip","bSortable": false},
-        { "bSortable": false, "sClass": "cuttedContent rightCell"}
+        { "sClass":"", "bSortable": false, "sWidth":"30px"},
+        { "sClass":"","bSortable": false},
+        { "bSortable": false, "sClass": ""}
       ],
       "oLanguage": { "sEmptyTable": "No documents"}
     });
@@ -210,7 +211,18 @@ var documentsView = Backbone.View.extend({
   },
   drawTable: function() {
     var self = this;
+    var toCheck = true;
     $.each(window.arangoDocumentsStore.models, function(key, value) {
+
+      if (toCheck === true) {
+    $(self.table).dataTable().fnAddData([
+                                        '',
+                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
+                                        '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
+    ]);
+        toCheck = false;
+      }
+
       $(self.table).dataTable().fnAddData([
                                           //value.attributes.id,
                                           value.attributes.key,
@@ -218,13 +230,7 @@ var documentsView = Backbone.View.extend({
                                           '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
-      console.log(value.attributes.key);
     });
-    $(self.table).dataTable().fnAddData([
-                                        '',
-                                        '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-                                        '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
-    ]);
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
 /*    $(".prettify").tooltip({
       html: true,
@@ -249,6 +255,7 @@ var documentsView = Backbone.View.extend({
     this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);
 
     $(this.el).html(this.template.text);
+    this.initTable();
     this.breadcrumb();
     if (this.collectionContext.prev === null) {
       $('#collectionPrev').parent().addClass('disabledPag');
@@ -277,7 +284,7 @@ var documentsView = Backbone.View.extend({
     target.pagination(options);
     $('#documentsToolbarF').prepend('<ul class="prePagi"><li><a id="documents_first"><i class="icon icon-step-backward"></i></a></li></ul>');
     $('#documentsToolbarF').append('<ul class="lasPagi"><li><a id="documents_last"><i class="icon icon-step-forward"></i></a></li></ul>');
-    //$('#documentsToolbarF2').append('<a>Total: ' + this.documentsCount + ' documents</a>');
+    $('#documentsToolbarFL').append('<a id="totalDocuments">Total: ' + this.documentsCount + ' documents </a>');
   },
   breadcrumb: function () {
     var name = window.location.hash.split("/")[1];

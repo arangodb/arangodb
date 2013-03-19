@@ -42,7 +42,6 @@ var documentView = Backbone.View.extend({
 
   listenKey: function(e) {
     if (e.keyCode === 13) {
-      console.log('enter');
       $('.btn-success').click();
     }
   },
@@ -339,7 +338,8 @@ var documentView = Backbone.View.extend({
       cancelcssclass: 'btn btn-danger pull-right',
       cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
       submit: 'Save',
-      onblur: 'cancel',
+      onblur: 'ignore',
+      //onblur: 'cancel',
       autogrow: {lineHeight: 16, minHeight: 30}
       //style: 'display: inline',
     });

@@ -512,18 +512,7 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
-                                TRI_df_marker_t* marker,
-                                TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
-                                void const* body,
-                                TRI_voc_size_t bodySize);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a CRC and writes that into the header
+/// @deprecated this function is deprecated. do not use for new code.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
@@ -543,18 +532,24 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_df_marker_t** position);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker and body to the datafile
+/// @brief writes a marker to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
-                              void const* keyBody,
-                              TRI_voc_size_t keyBodySize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               bool sync);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checksums and writes a marker to the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
+                                 void* position,
+                                 TRI_df_marker_t* marker,
+                                 TRI_voc_size_t markerSize,
+                                 bool sync);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
