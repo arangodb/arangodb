@@ -10,6 +10,9 @@ var collectionView = Backbone.View.extend({
     $('#change-collection').modal('show');
     $('#change-collection').on('hidden', function () {
     });
+    $('#change-collection').on('shown', function () {
+      $('#change-collection-name').focus();
+    });
     this.fillModal();
     $('.modalTooltips').tooltip({
       placement: "left"
@@ -23,7 +26,8 @@ var collectionView = Backbone.View.extend({
     "click #delete-modified-collection"   :    "deleteCollection",
     "click #load-modified-collection"     :    "loadCollection",
     "click #unload-modified-collection"   :    "unloadCollection",
-    "keydown"                             :    "listenKey"
+    "keydown #change-collection-name"     :    "listenKey",
+    "keydown #change-collection-size"     :    "listenKey"
   },
   listenKey: function(e) {
     if (e.keyCode == 13) {
@@ -34,7 +38,15 @@ var collectionView = Backbone.View.extend({
     window.location.hash = "#collection/";
   },
   fillModal: function() {
-    this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
+    try {
+      this.myCollection = window.arangoCollectionsStore.get(this.options.colId).attributes;
+    }
+    catch (e) {
+      // in case the collection cannot be found or something is not present (e.g. after a reload)
+      window.App.navigate("#");
+      return;
+    }
+
     $('#change-collection-name').val(this.myCollection.name);
     $('#change-collection-id').text(this.myCollection.id);
     $('#change-collection-type').text(this.myCollection.type);
@@ -67,9 +79,10 @@ var collectionView = Backbone.View.extend({
   saveModifiedCollection: function() {
     var collid = this.getCollectionId();
     var status = this.getCollectionStatus();
+
     if (status === 'loaded') {
       var newname = $('#change-collection-name').val();
-      if (this.myCollection.name !== newname) {
+      if (newname !== '' && this.myCollection.name !== newname) {
         window.arangoCollectionsStore.renameCollection(collid, newname );
       }
 
@@ -80,7 +93,7 @@ var collectionView = Backbone.View.extend({
     }
     else if (status === 'unloaded') {
       var newname = $('#change-collection-name').val();
-      if (this.myCollection.name !== newname) {
+      if (newname !== '' && this.myCollection.name !== newname) {
         window.arangoCollectionsStore.renameCollection(collid, newname );
         this.hideModal();
       }
