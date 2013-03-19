@@ -98,7 +98,7 @@ function EventLibrary() {
   
     expandNode = function(n) {
       n._expanded = true;
-      loadNode(n.id, startCallback);
+      loadNode(n._id, startCallback);
     };
   
     // @ before layouter.stop()
@@ -113,6 +113,15 @@ function EventLibrary() {
       startCallback();
     };
   };
+  
+  this.InsertNode = function (nodes, adapter, nodeShaper) {
+    return function(callback) {
+      var newNode = {};
+      adapter.createNode(newNode);
+      newNode._outboundCounter = 0;
+      newNode._inboundCounter = 0;
+      nodeShaper.drawNodes(nodes);
+    }
+    
+  };
 }
-
-

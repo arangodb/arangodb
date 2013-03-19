@@ -27,7 +27,8 @@ var newCollectionView = Backbone.View.extend({
 
   events: {
     "click #save-new-collection" : "saveNewCollection",
-    "keydown"                    : "listenKey"
+    "keydown #new-collection-name": "listenKey",
+    "keydown #new-collection-size": "listenKey"
   },
 
   listenKey: function(e) {

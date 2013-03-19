@@ -19,7 +19,6 @@ var documentView = Backbone.View.extend({
     "click #editSecondRow"      : "editSecond",
     "keydown .sorting_1"        : "listenKey",
     "keydown"                   : "listenGlobalKey"
-    //"focusout textarea"         : "checkFocus"
   },
 
   checkFocus: function(e) {
@@ -176,7 +175,7 @@ var documentView = Backbone.View.extend({
   addLine: function () {
     var randomKey = arangoHelper.getRandomToken();
     var self = this;
-    self.currentKey = "zkey"+randomKey;
+    self.currentKey = "zkey" + randomKey;
     $(this.table).dataTable().fnAddData(
       [
         self.currentKey,
@@ -261,7 +260,10 @@ var documentView = Backbone.View.extend({
       //Exclude "add-collection" row
       if (row !== '0') {
         var row_data = data[row];
-        result[row_data[0]] = JSON.parse(row_data[3]);
+        var key = row_data[0];
+        var value = row_data[3];
+
+        result[key] = JSON.parse(value);
       }
     }
     window.arangoDocumentStore.updateLocalDocument(result);
@@ -313,10 +315,10 @@ var documentView = Backbone.View.extend({
         var aPos = documentEditTable.fnGetPosition(this);
         var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
         if (aPos[1] == 0) {
-        //check if this row was newly created
-        if (value === self.currentKey) {
-          return value;
-        }
+          //check if this row was newly created
+          if (value === self.currentKey) {
+            return value;
+          }
           return value;
         }
         if (aPos[1] == 2) {
@@ -330,7 +332,7 @@ var documentView = Backbone.View.extend({
           }
         }
       },
-      //type: 'textarea',
+      width: "none", // if not set, each row will get bigger & bigger (Safari & Firefox)
       type: "autogrow",
       tooltip: 'click to edit',
       cssclass : 'jediTextarea',
@@ -338,10 +340,7 @@ var documentView = Backbone.View.extend({
       cancelcssclass: 'btn btn-danger pull-right',
       cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
       submit: 'Save',
-      onblur: 'ignore',
-      //onblur: 'cancel',
-      autogrow: {lineHeight: 16, minHeight: 30}
-      //style: 'display: inline',
+      onblur: 'ignore'
     });
   },
   getTypedValue: function (value) {
