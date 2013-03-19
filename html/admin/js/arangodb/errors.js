@@ -1,1 +1,0 @@
-../../../../js/common/bootstrap/errors.js
