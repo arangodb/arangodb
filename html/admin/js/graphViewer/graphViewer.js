@@ -134,10 +134,10 @@ function GraphViewer(svg, width, height,
       if (node._expanded) {
         return fixedSize;
       }
-      if (node._centrality) {
+      if (node._centrality !== undefined) {
         return fixedSize + 3 * node._centrality;
       }
-      adapter.requestCentralityChildren(node.id, function(c) {
+      adapter.requestCentralityChildren(node._id, function(c) {
         node._centrality = c;
         nodeShaper.reshapeNode(node);
       });
