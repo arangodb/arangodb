@@ -19,15 +19,12 @@ $(document).ready(function() {
       window.arangoCollectionsStore = new window.arangoCollections();
       window.arangoDocumentsStore = new window.arangoDocuments();
       window.arangoDocumentStore = new window.arangoDocument();
-
-      window.arangoCollectionsStore.fetch({
-        success: function () {
-          window.collectionsView = new window.collectionsView({
-            collection: window.arangoCollectionsStore
-          });
-        }
+      
+      window.collectionsView = new window.collectionsView({
+        collection: window.arangoCollectionsStore
       });
-
+      window.arangoCollectionsStore.fetch();
+      
       window.collectionView = new window.collectionView({
         model: arangoCollection
       });
@@ -65,24 +62,12 @@ $(document).ready(function() {
       var naviView = this.naviView;
       window.arangoCollectionsStore.fetch({
         success: function () {
-          if (!window.collectionsView) {
-            window.collectionsView = new window.collectionsView({
-              collection: window.arangoCollectionsStore
-            });
-          }
-          else {
-            window.collectionsView.render();
-            naviView.selectMenuItem('collections-menu');
-          }
+          window.collectionsView.render();
+          naviView.selectMenuItem('collections-menu');
         }
       });
     },
     collection: function(colid) {
-      //TODO: if-statement for every view !
-      if (!window.collectionView) {
-      }
-      else {
-      }
       window.collectionView.options.colId = colid;
       window.collectionView.render();
     },
