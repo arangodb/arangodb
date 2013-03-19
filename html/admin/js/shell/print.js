@@ -80,11 +80,6 @@
       }
     }
 
-    if (internal.COLOR_OUTPUT) {
-      internal.output(internal.COLOR_OUTPUT_DEFAULT);
-      internal.output(internal.COLOR_OUTPUT_RESET);
-    }
-
     internal.output("\n");
   };
 
@@ -146,7 +141,8 @@
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printRecursive = function (value, seen, path, names, level) {
+  printRecursive = function (value, seen, path, names, level) {
+    var output = internal.output;
     var p;
 
     if (seen === undefined) {
@@ -157,7 +153,7 @@
     p = seen.indexOf(value);
 
     if (0 <= p) {
-      internal.output(names[p]);
+      output(names[p]);
     }
     else {
       if (value instanceof Object) {
@@ -166,35 +162,161 @@
       }
 
       if (value instanceof Object) {
-        if ('_PRINT' in value) {
+        if (typeof value._PRINT === "function") {
           value._PRINT(seen, path, names, level);
         }
         else if (value instanceof Array) {
-          internal.printArray(value, seen, path, names, level);
+          printArray(value, seen, path, names, level);
         }
         else if (value.__proto__ === Object.prototype) {
-          internal.printObject(value, seen, path, names, level);
+          printObject(value, seen, path, names, level);
         }
-        else if ('toString' in value) {
-          internal.output(value.toString());
+        else if (typeof value.toString === "function") {
+          // it's possible that toString() throws, and this looks quite ugly
+          try {
+            output(value.toString());
+          }
+          catch (e) {
+          }
         }
         else {
-          internal.printObject(value, seen, path, names, level);
+          printObject(value, seen, path, names, level);
         }
       }
       else if (value === undefined) {
-        internal.output("undefined");
+        output(internal.colors.COLOR_UNDEFINED);
+        output("undefined");
+        output(internal.colors.COLOR_RESET);
       }
       else {
         if (typeof(value) === "string") {
-          internal.output(internal.quoteJsonString(value));
+          output(internal.colors.COLOR_STRING);
+          output(quoteJsonString(value));
+          output(internal.colors.COLOR_RESET);
+        }
+        else if (typeof(value) === "boolean") {
+          output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
+        }
+        else if (typeof(value) === "number") {
+          output(internal.colors.COLOR_NUMBER);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
+        }
+        else if (value === null) {
+          output(internal.colors.COLOR_NULL);
+          output(String(value));
+          output(internal.colors.COLOR_RESET);
         }
         else {
-          internal.output(String(value));
+          output(String(value));
         }
       }
     }
   };
+  
+  internal.printRecursive = printRecursive;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON representation of an array
+////////////////////////////////////////////////////////////////////////////////
+
+  printArray = function (object, seen, path, names, level) {
+    var output = internal.output;
+
+    if (object.length === 0) {
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("[ ]");
+      output(internal.colors.COLOR_RESET);
+    }
+    else {
+      var i;
+      var sep = " ";
+
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("[");
+      output(internal.colors.COLOR_RESET);
+
+      var newLevel = level + 1;
+
+      for (i = 0;  i < object.length;  i++) {
+        output(internal.colors.COLOR_PUNCTUATION);
+        output(sep);
+        output(internal.colors.COLOR_RESET);
+
+        printIndent(newLevel);
+
+        printRecursive(object[i],
+                       seen,
+                       path + "[" + i + "]",
+                       names,
+                       newLevel);
+        sep = ", ";
+      }
+
+      output(" ");
+
+      printIndent(level);
+
+      output(internal.colors.COLOR_PUNCTUATION);
+      output("]");
+      output(internal.colors.COLOR_RESET);
+    }
+  };
+  
+  internal.printArray = printArray;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an object
+////////////////////////////////////////////////////////////////////////////////
+
+  printObject = function (object, seen, path, names, level) {
+    var output = internal.output;
+    var colors = internal.colors;
+    var sep = " ";
+    var k;
+
+    output(colors.COLOR_PUNCTUATION);
+    output("{");
+    output(colors.COLOR_RESET);
+
+    var newLevel = level + 1;
+
+    for (k in object) {
+      if (object.hasOwnProperty(k)) {
+        var val = object[k];
+
+        output(colors.COLOR_PUNCTUATION);
+        output(sep);
+        output(colors.COLOR_RESET);
+
+        printIndent(newLevel);
+
+        output(colors.COLOR_INDEX);
+        output(quoteJsonString(k));
+        output(colors.COLOR_RESET);
+        output(" : ");
+
+        printRecursive(val,
+                       seen,
+                       path + "[" + k + "]",
+                       names,
+                       newLevel);
+        sep = ", ";
+      }
+    }
+
+    output(" ");
+
+    printIndent(level);
+
+    output(colors.COLOR_PUNCTUATION);
+    output("}");
+    output(colors.COLOR_RESET);
+  };
+  
+  internal.printObject = printObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the ident for pretty printing
@@ -204,96 +326,20 @@
 /// Only available in shell mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printIndent = function (level) {
+  printIndent = function (level) {
+    var output = internal.output;
     var j;
 
     if (internal.PRETTY_PRINT) {
-      internal.output("\n");
+      output("\n");
 
       for (j = 0; j < level; ++j) {
-        internal.output("  ");
+        output("  ");
       }
     }
   };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON representation of an array
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.printArray = function (object, seen, path, names, level) {
-    if (object.length === 0) {
-      internal.output("[ ]");
-    }
-    else {
-      var i;
-      var sep = "";
-
-      internal.output("[");
-
-      var newLevel = level + 1;
-
-      for (i = 0;  i < object.length;  i++) {
-        internal.output(sep);
-
-        internal.printIndent(newLevel);
-
-        internal.printRecursive(object[i],
-                                seen,
-                                path + "[" + i + "]",
-                                names,
-                                newLevel);
-        sep = ", ";
-      }
-
-      internal.printIndent(level);
-
-      internal.output("]");
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an object
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.printObject = function (object, seen, path, names, level) {
-    var sep = " ";
-    var k;
-
-    internal.output("{");
-
-    var newLevel = level + 1;
-
-    for (k in object) {
-      if (object.hasOwnProperty(k)) {
-        var val = object[k];
-
-        internal.output(sep);
-
-        internal.printIndent(newLevel);
-
-        if (internal.COLOR_OUTPUT) {
-          internal.output(internal.COLOR_OUTPUT_DEFAULT,
-                          k,
-                          internal.COLOR_OUTPUT_RESET, 
-                          " : ");
-        }
-        else {
-          internal.output(internal.quoteJsonString(k), " : ");
-        }
-
-        internal.printRecursive(val,
-                                seen,
-                                path + "[" + k + "]",
-                                names,
-                                newLevel);
-        sep = ", ";
-      }
-    }
-
-    internal.printIndent(level);
-
-    internal.output("}");
-  };
+  
+  internal.printIndent = printIndent;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
