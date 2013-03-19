@@ -164,7 +164,7 @@ function GraphViewer(svg, width, height,
       edges,
       nodes,
       start,
-      adapter.loadNodeFromTree,
+      adapter.loadNodeFromTreeById,
       nodeShaper.reshapeNode
     ));
     nodeShaper.on("update", function(node) {
@@ -179,7 +179,7 @@ function GraphViewer(svg, width, height,
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
     edges.length = 0;
-    adapter.loadNodeFromTree(nodeId, function (node) {
+    adapter.loadNodeFromTreeById(nodeId, function (node) {
       node._expanded = true;
       node.x = width / 2;
       node.y = height / 2;
