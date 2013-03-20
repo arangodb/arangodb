@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* issue #457: invalid string value in web interface
+
 * make datafile id (datafile->_fid) identical to the numeric part of the filename.
   E.g. the datafile `journal-123456.db` will now have a datafile marker with the same
   fid (i.e. `123456`) instead of a different value. This change will only affect
