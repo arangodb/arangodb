@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100 */
-/*global _, require, db, exports */
+/*global require, exports */
 
 // `Codename Frank` is a classy way to create APIs and simple web applications
 // from within **ArangoDB**.
