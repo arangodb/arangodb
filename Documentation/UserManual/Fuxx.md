@@ -50,7 +50,7 @@ You find this somewhere completely different. Sorry.
 
 When you start arangod with the `--app` option, ArangoDB scans the
 given directory on every request for files called `manifest.json`.
-There can be multiple files in different subfolders if you want that.
+There can be multiple files in the root directory and all direct subdirectories if you want that.
 The content is a JSON object with two keys: `apps` and `libs`.
 (*we will also add a third one called `vendor` for NPM packages, but
 this does not exist yet*).
