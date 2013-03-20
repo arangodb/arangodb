@@ -120,18 +120,22 @@ static char* FileTypeName (const bool compactor) {
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool compactor) {
+static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, 
+                                      bool compactor) {
   TRI_col_header_marker_t cm;
   TRI_collection_t* collection;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
+  TRI_voc_fid_t fid;
   int res;
 
   collection = &primary->base;
 
+  fid = TRI_NewTickVocBase();
+
   if (collection->_info._isVolatile) {
     // in-memory collection
-    journal = TRI_CreateDatafile(NULL, collection->_info._maximalSize);
+    journal = TRI_CreateDatafile(NULL, fid, collection->_info._maximalSize);
   }
   else {
     char* jname;
@@ -139,14 +143,14 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     char* filename;
 
     // construct a suitable filename (which is temporary at the beginning)
-    number   = TRI_StringUInt64(TRI_NewTickVocBase());
+    number   = TRI_StringUInt64(fid);
     jname    = TRI_Concatenate3String("temp-", number, ".db");
     filename = TRI_Concatenate2File(collection->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
-    journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
+    journal = TRI_CreateDatafile(filename, fid, collection->_info._maximalSize);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 
@@ -193,6 +197,8 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
 
     return NULL;
   }
+
+  TRI_ASSERT_DEBUG(fid == journal->_fid);
 
 
   // if a physical file, we can rename it from the temporary name to the correct name
