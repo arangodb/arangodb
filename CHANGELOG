@@ -133,6 +133,11 @@ v1.3 (XXXX-XX-XX)
 v1.2.2 (XXXX-XX-XX)
 -------------------
 
+* fixed `ArangoStatement.explain()` method with bind variables
+
+* fixed misleading "cursor not found" error message in arangosh that occurred when
+  `count()` was called for client-side cursors
+
 * fixed handling of empty attribute names, which may have crashed the server under
   certain circumstances before
 
