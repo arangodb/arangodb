@@ -56,7 +56,7 @@ function NodeShaper(parent, flags, idfunc) {
     parseLabelFlag,
     userDefinedUpdate = function(){},
     idFunction = function(d) {
-      return d.id;
+      return d._id;
     },
     additionalShaping = function(node) {
       return;
