@@ -128,7 +128,7 @@ function GraphViewer(svg, width, height,
 
   nodeContainer = svg.append("svg:g");
   
-  if (nodeShaperConfig.childrenCentrality) {
+  if (nodeShaperConfig.childrenCentrality !== undefined) {
     fixedSize = nodeShaperConfig.size || 12;
     nodeShaperConfig.size = function(node) {
       if (node._expanded) {
@@ -144,11 +144,15 @@ function GraphViewer(svg, width, height,
       return fixedSize;
     };
   }
-  if (nodeShaperConfig.dragable) {
+  if (nodeShaperConfig.dragable !== undefined) {
     nodeShaperConfig.ondrag = layouter.drag;
   }
   
-  nodeShaper = new NodeShaper(nodeContainer, nodeShaperConfig);
+  if (nodeShaperConfig.idfunc !== undefined) {
+    nodeShaper = new NodeShaper(nodeContainer, nodeShaperConfig, nodeShaperConfig.idfunc);
+  } else {
+    nodeShaper = new NodeShaper(nodeContainer, nodeShaperConfig);
+  }
   
   layouter.setCombinedUpdateFunction(nodeShaper, edgeShaper);
   
