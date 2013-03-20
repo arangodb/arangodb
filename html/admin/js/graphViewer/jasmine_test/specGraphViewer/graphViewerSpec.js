@@ -161,9 +161,7 @@ describe("Graph Viewer", function() {
     
     beforeEach(function() {
       var aconf = {type: "json", path: "../test_data/"},
-      nsconf = {idfunc: function(node) {
-        return node.id;
-      }},
+      nsconf = {},
       esconf = {},
       lconf = {type: "force"},
       evconf = { expander: true };

@@ -52,14 +52,14 @@
       
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
-          return e.id === id;
+          return e._id === id;
         })[0];
       },
       
       existNode = function(id) {
         var node = nodeWithID(id);
         expect(node).toBeDefined();
-        expect(node.id).toEqual(id);
+        expect(node._id).toEqual(id);
       },
       
       existNodes = function(ids) {

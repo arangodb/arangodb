@@ -51,10 +51,10 @@
     
     it('should be able to draw an edge', function () {
       var source = {
-        "id": 1
+        "_id": 1
       },
       target = {
-        "id": 2
+        "_id": 2
       },
       edges = [
         {
@@ -71,16 +71,16 @@
 
     it('should be able to draw many edges', function () {
       var one = {
-        "id": 1
+        "_id": 1
       },
       two = {
-        "id": 2
+        "_id": 2
       },
       three = {
-        "id": 3
+        "_id": 3
       },
       four = {
-        "id": 4
+        "_id": 4
       },
       edges = [
         {
@@ -114,7 +114,7 @@
       });
       
       it('should display the correct label', function() {
-        var nodes = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}],
+        var nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}],
         edges = [
           {
             "source": nodes[0],
@@ -147,7 +147,7 @@
       });
       
       it('should ignore other attributes', function() {
-        var nodes = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}],
+        var nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}],
         edges = [
           {
             "source": nodes[0],
@@ -185,10 +185,10 @@
       
       var shaper,
       labelFunction = function (edge) {
-        if (edge.source.id === 1) {
+        if (edge.source._id === 1) {
           return "from first";
         }
-        if (edge.target.id === 3) {
+        if (edge.target._id === 3) {
           return "to third";
         }
         return "default";
@@ -199,7 +199,7 @@
       });
       
       it('should display the correct label', function() {
-        var nodes = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}],
+        var nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}],
         edges = [
           {
             "source": nodes[0],
@@ -235,7 +235,7 @@
 
       beforeEach(function () {
         shaper = new EdgeShaper(d3.select("svg"));
-        nodes = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}];
+        nodes = [{"_id": 1}, {"_id": 2}, {"_id": 3}, {"_id": 4}];
         edges = [
           {
             "source": nodes[0],
@@ -326,10 +326,10 @@
           .append("g"),
         shaper = new EdgeShaper(internalObject),
         source = {
-          "id": 1
+          "_id": 1
         },
         target = {
-          "id": 2
+          "_id": 2
         },
         edges = [
           {
