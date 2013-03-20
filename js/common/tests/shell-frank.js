@@ -274,6 +274,13 @@ function AddMidlewareFrankSpec () {
       assertTrue(a);
       assertTrue(b);
     },
+
+    testAddTheFormatMiddlewareUsingTheShortform: function () {
+      // I wish I could mock like in Ruby :( This test is not really a test.
+      app.accepts(["json"], "json");
+      assertEqual(app.routingInfo.middleware.length, 2);
+      assertEqual(app.routingInfo.middleware[1].url.match, '/*');
+    }
   };
 }
 
@@ -602,4 +609,4 @@ jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);
 jsunity.run(FormatMiddlewareSpec);
 
-return jsunity.done();
+return isunity.done();
