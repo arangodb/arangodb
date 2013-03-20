@@ -1,6 +1,8 @@
 v1.2.2 (XXXX-XX-XX)
 -------------------
 
+* issue #457: invalid string value in web interface
+
 * fixed `ArangoStatement.explain()` method with bind variables
 
 * fixed misleading "cursor not found" error message in arangosh that occurred when
