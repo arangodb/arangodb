@@ -1,6 +1,17 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* consistently discard document attributes with reserved names (system attributes)
+  but without any known meaning, for example `_test`, `_foo`, ...
+
+  Previously, these attributes were saved with the document regularly in some cases,
+  but were discarded in other cases. 
+  Now these attributes are discarded consistently. "Real" system attributes such as
+  `_key`, `_from`, `_to` are not affected and will work as before.
+
+  Additionally, attributes with an empty name (``) are discarded when documents are
+  saved.
+
 * added server startup flag `--database.force-sync-properties` to force syncing of
   collection properties on collection creation, deletion and on property update.
   The default value is true to mimic the behavior of previous versions of ArangoDB.
