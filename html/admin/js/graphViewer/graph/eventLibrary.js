@@ -101,8 +101,6 @@ function EventLibrary() {
       loadNode(n._id, startCallback);
     };
   
-    // @ before layouter.stop()
-    // nodeClicked = function(n)
     return function(n) {
       if (!n._expanded) {
         expandNode(n);
@@ -125,7 +123,6 @@ function EventLibrary() {
     };
   };
   
-  
   this.PatchNode = function (nodes, adapter, nodeShaper) {
     return function(nodeToPatch, patchData, callback) {
       adapter.patchNode(nodeToPatch, patchData, function(patchedNode) {
@@ -133,7 +130,6 @@ function EventLibrary() {
         callback(patchedNode);
       });
     };
-    
   };
   
   this.DeleteNode = function (nodes, adapter, nodeShaper) {
@@ -151,7 +147,6 @@ function EventLibrary() {
     };
   };
   
-  
   this.PatchEdge = function (edges, adapter, edgeShaper) {
     return function(edgeToPatch, patchData, callback) {
       adapter.patchEdge(edgeToPatch, patchData, function(patchedEdge) {
@@ -159,7 +154,6 @@ function EventLibrary() {
         callback(patchedEdge);
       });
     };
-    
   };
   
   this.DeleteEdge = function (edges, adapter, edgeShaper) {
