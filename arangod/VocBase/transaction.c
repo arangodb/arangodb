@@ -1016,11 +1016,11 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
 /// @brief create a new transaction container
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
-                                          const TRI_transaction_isolation_level_e isolationLevel) {
+TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context) {
   TRI_transaction_t* trx;
 
   trx = (TRI_transaction_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false);
+
   if (trx == NULL) {
     // out of memory
     return NULL;
@@ -1031,8 +1031,8 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
   trx->_id._localId       = 0;
   trx->_status            = TRI_TRANSACTION_CREATED;
   trx->_type              = TRI_TRANSACTION_READ;
-  trx->_isolationLevel    = isolationLevel;
   trx->_hints             = 0;
+  trx->_nestingLevel      = 0;
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
@@ -1117,6 +1117,7 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
 
   n = trx->_collections._length;
 
+// shouldn't this be in reverse order?
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
 
@@ -1132,6 +1133,7 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
   return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
 }
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the transaction consists only of a single operation
 ////////////////////////////////////////////////////////////////////////////////
@@ -1139,7 +1141,9 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
 bool TRI_IsSingleOperationTransaction (const TRI_transaction_t* const trx) {
   return (trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0;
 }
+*/
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the transaction spans multiple write collections
 ////////////////////////////////////////////////////////////////////////////////
@@ -1171,6 +1175,7 @@ bool TRI_IsMultiCollectionWriteTransaction (const TRI_transaction_t* const trx) 
 
   return false;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the local id of a transaction

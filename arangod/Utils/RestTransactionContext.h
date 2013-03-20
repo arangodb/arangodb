@@ -80,19 +80,10 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embedded
+/// @brief return the parent transaction (none in our case)
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isEmbedded () const {
-          return false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the parent transaction if any
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_t* getParent () const {
-          assert(false);
+        inline TRI_transaction_t* getParentTransaction () const {
           return 0;
         }
 
