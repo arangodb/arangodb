@@ -279,6 +279,21 @@ _.extend(Frank.prototype, {
   helper: function (name, func) {
     'use strict';
     this.helperCollection[name] = func;
+  },
+
+  // ## Shortform for using the FormatMiddleware
+  //
+  // More information about the FormatMiddleware in the corresponding section.
+  // This is a shortcut to add the middleware to your application:
+  //
+  //     app.accepts(["json"], "json");
+  accepts: function (allowedFormats, defaultFormat) {
+    'use strict';
+
+    this.routingInfo.middleware.push({
+      url:    { match: "/*" },
+      action: { callback: new FormatMiddleware(allowedFormats, defaultFormat) }
+    });
   }
 });
 
