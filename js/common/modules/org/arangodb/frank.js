@@ -18,6 +18,7 @@
 // Frank uses Underscore internally. This library is wonderful.
 var Frank,
   BaseMiddleware,
+  FormatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
   internal = {};
@@ -423,9 +424,105 @@ BaseMiddleware = function (templateCollection, helperCollection) {
   return middleware;
 };
 
-// We finish off with exporting Frank and the BaseMiddleware.
+// ## The Format Middleware
+// Unlike the `BaseMiddleware` this Middleware is only loaded if you
+// want it. This Middleware gives you Rails-like format handling via
+// the `extension` of the URL. Say you request an URL like `/people.json`.
+// The `FormatMiddleware` will set the format of the request to JSON
+// and then delete the `.json` from the request. You can therefore write
+// handlers that do not take an `extension` into consideration and instead
+// handle the format via a simple String.
+// It is planned to adjust the request according to the request type,
+// but this is not implemented yet.
+// It will never touch the response body however, because
+// you could use templates for example.
+// If you want to return an object as JSON, I refer
+// you to the `response.json` function provided
+// by BaseMiddleware.
+// To determine the format of the request it checks the URL and then
+// the `accept` header. If one of them gives a format or both give
+// the same, the format is set. If the formats are not the same
+// or both do not have a format or accept all it depends on wether
+// you have provided an default: If no default was provided, the request
+// will be rejected.
+//
+// Use it by calling:
+//
+//     FormatMiddleware = require('frank').FormatMiddleware;
+//     app.use(FormatMiddleware.new(['json']));
+//
+// or the shortcut:
+//
+//     app.accepts(['json']);
+FormatMiddleware = function (allowedFormats) {
+  'use strict';
+  var middleware, urlFormatToMime, mimeToUrlFormat, determinePathAndFormat;
+
+  urlFormatToMime = {
+    json: "application/json",
+    html: "text/html",
+    txt: "text/plain"
+  };
+
+  mimeToUrlFormat = {
+    "application/json": "json",
+    "text/html": "html",
+    "text/plain": "txt"
+  };
+
+  determinePathAndFormat = function(path, headers) {
+    var parsed = {
+      contentType: headers.accept,
+    };
+    path = path.split('.');
+
+    if (path.length === 1) {
+      parsed.path = path.join();
+    } else {
+      parsed.format = path.pop();
+      parsed.path = path.join('.');
+    }
+
+    if (parsed.contentType === undefined) {
+      parsed.contentType = urlFormatToMime[parsed.format];
+    }
+
+    if (parsed.format === undefined) {
+      parsed.format = mimeToUrlFormat[parsed.contentType];
+    }
+
+    if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
+      parsed.error = "Contradiction between Accept Header and URL."
+    }
+
+    if (allowedFormats.indexOf(parsed.format) < 0) {
+      parsed.error = "Format '" + parsed.format + "' is not allowed.";
+    }
+
+    return parsed;
+  };
+
+  middleware = function (request, response, options, next) {
+    var parsed = determinePathAndFormat(request.path, request.headers);
+
+    if (parsed.error === undefined) {
+      request.path = parsed.path;
+      request.format = parsed.format;
+      response.contentType = parsed.contentType;
+      next();
+    } else {
+      response.responseCode = 406;
+      response.body = parsed.error;
+    }
+  };
+
+  return middleware;
+};
+
+// We finish off with exporting Frank and the middlewares.
 // Everything else will remain our secret.
 //
 // Fin.
 exports.Frank = Frank;
 exports.BaseMiddleware = BaseMiddleware;
+exports.FormatMiddleware = FormatMiddleware;
