@@ -116,12 +116,56 @@ function EventLibrary() {
   
   this.InsertNode = function (nodes, adapter, nodeShaper) {
     return function(callback) {
-      var newNode = {};
-      adapter.createNode(newNode);
-      newNode._outboundCounter = 0;
-      newNode._inboundCounter = 0;
-      nodeShaper.drawNodes(nodes);
-    }
+      adapter.createNode({}, function(newNode) {
+        newNode._outboundCounter = 0;
+        newNode._inboundCounter = 0;
+        nodeShaper.drawNodes(nodes);
+        callback(newNode);
+      });
+    };
+  };
+  
+  
+  this.PatchNode = function (nodes, adapter, nodeShaper) {
+    return function(nodeToPatch, patchData, callback) {
+      adapter.patchNode(nodeToPatch, patchData, function(patchedNode) {
+        nodeShaper.drawNodes(nodes);
+        callback(patchedNode);
+      });
+    };
     
   };
+  
+  this.DeleteNode = function (nodes, adapter, nodeShaper) {
+    return function(nodeToDelete, callback) {
+      adapter.deleteNode(nodeToDelete, callback);
+    };
+  };
+  
+  this.InsertEdge = function (edges, adapter, edgeShaper) {
+    return function(source, target, callback) {
+      adapter.createEdge({source: source, target: target}, function(newEdge) {
+        edgeShaper.drawEdges(edges);
+        callback(newEdge);
+      });
+    };
+  };
+  
+  
+  this.PatchEdge = function (edges, adapter, edgeShaper) {
+    return function(edgeToPatch, patchData, callback) {
+      adapter.patchEdge(edgeToPatch, patchData, function(patchedEdge) {
+        edgeShaper.drawEdges(edges);
+        callback(patchedEdge);
+      });
+    };
+    
+  };
+  
+  this.DeleteEdge = function (edges, adapter, edgeShaper) {
+    return function(edgeToDelete, callback) {
+      adapter.deleteEdge(edgeToDelete, callback);
+    };
+  };
+  
 }
