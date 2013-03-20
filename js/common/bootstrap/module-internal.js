@@ -420,7 +420,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   var quoteSingleJsonCharacter = function (c) {
-    if (characterQuoteCache.hasOwnProperty[c]) {
+    if (characterQuoteCache.hasOwnProperty(c)) {
       return characterQuoteCache[c];
     }
 

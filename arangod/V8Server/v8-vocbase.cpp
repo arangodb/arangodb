@@ -5941,7 +5941,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   if (TRI_IsSystemCollectionName(key.c_str())) {
@@ -5951,9 +5951,6 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
-
-  // TRI_shape_sid_t sid;
-  // TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
@@ -5972,7 +5969,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     }
   }
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 }
 
