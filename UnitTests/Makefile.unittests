@@ -210,6 +210,7 @@ endif
 ################################################################################
 
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-attributes.js \
                @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
                @top_srcdir@/js/common/tests/shell-database.js \

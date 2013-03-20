@@ -310,6 +310,8 @@ static int WeightShapeType (TRI_shape_type_t type) {
     case TRI_SHAPE_HOMOGENEOUS_LIST:       return 900;
   }
 
+  LOG_ERROR("invalid shape type: %d\n", (int) type);
+  
   assert(false);
   return 0;
 }
@@ -780,8 +782,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   char* ptr;
 
   // sanity checks
-  assert(json->_type == TRI_JSON_ARRAY);
-  assert(json->_value._objects._length % 2 == 0);
+  TRI_ASSERT_DEBUG(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT_DEBUG(json->_value._objects._length % 2 == 0);
 
   // number of attributes
   n = json->_value._objects._length / 2;
@@ -804,6 +806,17 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
     key = TRI_AtVector(&json->_value._objects, 2 * i);
     val = TRI_AtVector(&json->_value._objects, 2 * i + 1);
+
+    TRI_ASSERT_DEBUG(key != NULL);
+    TRI_ASSERT_DEBUG(val != NULL);
+
+    if (key->_value._string.data == NULL ||
+        key->_value._string.length == 1 ||
+        key->_value._string.data[0] == '_') {
+      // empty or reserved attribute name
+      p--;
+      continue;
+    }
 
     // first find an identifier for the name
     p->_aid = shaper->findAttributeName(shaper, key->_value._string.data);
@@ -840,6 +853,9 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
   // add variable offset table size
   total += (v + 1) * sizeof(TRI_shape_size_t);
+
+  // now adjust n because we might have excluded empty attributes
+  n = f + v;
 
   // now sort the shape entries
   TRI_SortShapeValues(values, n);
