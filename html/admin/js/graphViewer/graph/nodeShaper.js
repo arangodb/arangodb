@@ -151,18 +151,26 @@ function NodeShaper(parent, flags, idfunc) {
   }
   
   self.drawNodes = function (nodes) {
-    var data = self.parent
+    var data, node;
+    if (nodes !== undefined) {
+      data = self.parent
+        .selectAll(".node")
+        .data(nodes, idFunction);
+      node = data
+        .enter()
+        .append("g")
+        .attr("class", "node") // node is CSS class that might be edited
+        .attr("id",idFunction);
+      additionalShaping(node);
+      data.exit().remove();
+      return node;
+    }
+    node = 
+    self.parent
       .selectAll(".node")
-      .data(nodes, idFunction),
-    node = data
-      .enter()
-      .append("g")
       .attr("class", "node") // node is CSS class that might be edited
       .attr("id",idFunction);
     additionalShaping(node);
-    
-    data.exit().remove();
-    return node;
   };
   
   self.updateNodes = function () {
@@ -188,6 +196,7 @@ function NodeShaper(parent, flags, idfunc) {
     decorateShape(function (node) {
       node.on(identifier, callback);
     });
+    self.drawNodes();
   };
 }
 
