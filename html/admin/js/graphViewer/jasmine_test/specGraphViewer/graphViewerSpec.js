@@ -161,9 +161,13 @@ describe("Graph Viewer", function() {
     
     beforeEach(function() {
       var aconf = {type: "json", path: "../test_data/"},
+      nsconf = {idfunc: function(node) {
+        return node.id;
+      }},
+      esconf = {},
       lconf = {type: "force"},
       evconf = { expander: true };
-      viewer = new GraphViewer(svg, 10, 10, aconf, {}, {}, lconf, evconf);
+      viewer = new GraphViewer(svg, 10, 10, aconf, nsconf, esconf, lconf, evconf);
       
       this.addMatchers({
         toBeDisplayed: function() {
