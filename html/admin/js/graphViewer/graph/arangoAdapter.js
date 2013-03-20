@@ -135,6 +135,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       url: api.cursor,
       data: JSON.stringify(data),
       contentType: "application/json",
+      dataType: "json",
       processData: false,
       success: function(data) {
         onSuccess(data.result);
@@ -142,9 +143,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       error: function(data) {
         try {
           console.log(data.statusText);
-          var temp = JSON.parse(data);
-          console.log(temp);
-          throw "[" + temp.errorNum + "] " + temp.errorMessage;
+          throw "[" + data.errorNum + "] " + data.errorMessage;
         }
         catch (e) {
           console.log(e);
@@ -299,6 +298,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       type: "POST",
       url: api.edge + "&from=" + edgeToAdd.source._id + "&to=" + edgeToAdd.target._id,
       data: JSON.stringify({}),
+      dataType: "json",
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -319,6 +319,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       type: "DELETE",
       url: api.document + edgeToRemove._id,
       contentType: "application/json",
+      dataType: "json",
       processData: false,
       success: function() {
         callback();
@@ -336,6 +337,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       type: "PUT",
       url: api.document + edgeToPatch._id,
       data: JSON.stringify(patchData),
+      dataType: "json",
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -354,6 +356,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       type: "POST",
       url: api.node,
       data: JSON.stringify(nodeToAdd),
+      dataType: "json",
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -380,6 +383,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       cache: false,
       type: "DELETE",
       url: api.document + nodeToRemove._id,
+      dataType: "json",
       contentType: "application/json",
       processData: false,
       success: function() {
@@ -403,6 +407,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       type: "PUT",
       url: api.document + nodeToPatch._id,
       data: JSON.stringify(patchData),
+      dataType: "json",
       contentType: "application/json",
       processData: false,
       success: function(data) {
