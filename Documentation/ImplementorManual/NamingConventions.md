@@ -31,7 +31,9 @@ Users can define their own keys for documents they save. The document key will
 be saved along with a document in the `_key` attribute. Users can pick key
 values as required, provided that the values conform to the following
 restrictions:
-* the key must be at least 1 byte and at most 254 bytes long
+* the key must be at least 1 byte and at most 254 bytes long. empty keys are 
+  disallowed when specified (though it may be valid to completely omit the
+  `_key` attribute from a document)
 * it must consist of the letters a-z (lower or upper case), the digits 0-9,
   the underscore (_), dash (-), or colon (:) characters only
  * any other characters, especially multi-byte sequences, whitespace or
