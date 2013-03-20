@@ -1,6 +1,12 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* make datafile id (datafile->_fid) identical to the numeric part of the filename.
+  E.g. the datafile `journal-123456.db` will now have a datafile marker with the same
+  fid (i.e. `123456`) instead of a different value. This change will only affect
+  datafiles that are created with 1.3 and not any older files.
+  The intention behind this change is to make datafile debugging easier.
+
 * consistently discard document attributes with reserved names (system attributes)
   but without any known meaning, for example `_test`, `_foo`, ...
 
