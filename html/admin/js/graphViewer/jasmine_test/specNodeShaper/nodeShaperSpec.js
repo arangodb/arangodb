@@ -49,7 +49,7 @@
     });
 
     it('should be able to draw a node', function () {
-      var node = [{"id": 1}],
+      var node = [{_id: 1}],
         shaper = new NodeShaper(d3.select("svg"));
       shaper.drawNodes(node);
       expect($("svg .node").length).toEqual(1);
@@ -57,17 +57,17 @@
     });
 
     it('should be able to draw many nodes', function () {
-      var nodes = [{"id": 1}, {"id": 2}, {"id": 3}],
+      var nodes = [{_id: 1}, {_id: 2}, {_id: 3}],
         shaper = new NodeShaper(d3.select("svg"));
       shaper.drawNodes(nodes);
       expect($("svg .node").length).toEqual(3);
     });
 
     it('should be able to add a click event', function () {
-      var nodes = [{"id": 1}, {"id": 2}, {"id": 3}],
+      var nodes = [{_id: 1}, {_id: 2}, {_id: 3}],
       clicked = [false, false, false],
       click = function (node) {
-        clicked[node.id-1] = !clicked[node.id-1];
+        clicked[node._id-1] = !clicked[node._id-1];
       },
       shaper = new NodeShaper(d3.select("svg")),
       first,
@@ -94,7 +94,7 @@
       });
 
       it('should draw circle elements', function () {
-        var node = [{"id": 1}];
+        var node = [{_id: 1}];
         shaper.drawNodes(node);
         expect($("svg .node")[0]).toBeDefined();
         expect($("svg .node").length).toEqual(1);
@@ -112,11 +112,11 @@
           "size": 15
         });
         var nodes = [
-          {"id": 1},
-          {"id": 2},
-          {"id": 3},
-          {"id": 4},
-          {"id": 5}
+          {_id: 1},
+          {_id: 2},
+          {_id: 3},
+          {_id: 4},
+          {_id: 5}
         ];
         shaper.drawNodes(nodes);
         expect($("svg #1 circle")[0].attributes.r.value).toEqual("15");
@@ -128,14 +128,14 @@
       
       it('should be able to use a function to determine the radius', function() {
         var radiusFunction = function (node) {
-          return 10 + node.id;
+          return 10 + node._id;
         },
         nodes = [
-          {"id": 1},
-          {"id": 2},
-          {"id": 3},
-          {"id": 4},
-          {"id": 5}
+          {_id: 1},
+          {_id: 2},
+          {_id: 3},
+          {_id: 4},
+          {_id: 5}
         ];
         shaper = new NodeShaper(d3.select("svg"),
         {
@@ -161,7 +161,7 @@
       });
 
       it('should draw rect elements', function () {
-        var node = [{"id": 1}];
+        var node = [{_id: 1}];
         shaper.drawNodes(node);
         expect($("svg .node")[0]).toBeDefined();
         expect($("svg .node").length).toEqual(1);
@@ -180,11 +180,11 @@
           "height": 10
         });
         var nodes = [
-          {"id": 1},
-          {"id": 2},
-          {"id": 3},
-          {"id": 4},
-          {"id": 5}
+          {_id: 1},
+          {_id: 2},
+          {_id: 3},
+          {_id: 4},
+          {_id: 5}
         ];
         shaper.drawNodes(nodes);
         expect($("svg #1 rect")[0].attributes.width.value).toEqual("15");
@@ -203,17 +203,17 @@
       
       it('should be able to use a function to determine the size', function() {
         var widthFunction = function (node) {
-          return 10 + node.id;
+          return 10 + node._id;
         },
         heightFunction = function (node) {
-          return 10 - node.id;
+          return 10 - node._id;
         },
         nodes = [
-          {"id": 1},
-          {"id": 2},
-          {"id": 3},
-          {"id": 4},
-          {"id": 5}
+          {_id: 1},
+          {_id: 2},
+          {_id: 3},
+          {_id: 4},
+          {_id: 5}
         ];
         shaper = new NodeShaper(d3.select("svg"),
         {
@@ -251,7 +251,7 @@
       });
 
       it('should add a text element', function () {
-        var node = [{"id": 1, "label": "MyLabel"}];
+        var node = [{_id: 1, "label": "MyLabel"}];
         shaper.drawNodes(node);
         expect($("svg .node")[0]).toBeDefined();
         expect($("svg .node").length).toEqual(1);
@@ -265,10 +265,10 @@
 
       it('should ignore other attributes', function () {
         var nodes = [
-          {"id": 1, "label": "correct"},
-          {"id": 2, "alt": "incorrect"},
-          {"id": 3, "alt": "incorrect"},
-          {"id": 4, "label": "correct", "alt": "incorrect"}];
+          {_id: 1, "label": "correct"},
+          {_id: 2, "alt": "incorrect"},
+          {_id: 3, "alt": "incorrect"},
+          {_id: 4, "label": "correct", "alt": "incorrect"}];
         shaper.drawNodes(nodes);
         expect($("svg #1 text")[0].textContent).toEqual("correct");
         expect($("svg #2 text")[0].textContent).toEqual("");
@@ -277,7 +277,7 @@
       });
 
       it('should also print "0" as a label', function() {
-        var node = [{"id": 1, "label": 0}];
+        var node = [{_id: 1, "label": 0}];
         shaper.drawNodes(node);
         expect($("svg .node text")[0]).toBeDefined();
         expect($("svg .node text").length).toEqual(1);
@@ -289,7 +289,7 @@
     describe('using a function for labels', function () {
       var shaper,
       labelFunction = function (node) {
-        if (node.id === 4) {
+        if (node._id === 4) {
           return "correct";
         }
         if (node.label) {
@@ -309,11 +309,11 @@
 
       it('should display the correct labels according to the function', function () {
         var nodes = [
-          {"id": 1, "label": "correct"},
-          {"id": 2, "alt": "correct"},
-          {"id": 3, "label": "correct", "alt": "incorrect"},
-          {"id": 4, "label": "incorrect", "alt": "incorrect"},
-          {"id": 5}
+          {_id: 1, "label": "correct"},
+          {_id: 2, "alt": "correct"},
+          {_id: 3, "label": "correct", "alt": "incorrect"},
+          {_id: 4, "label": "incorrect", "alt": "incorrect"},
+          {_id: 5}
         ];
         shaper.drawNodes(nodes);
         expect($("text").length).toEqual(5);
@@ -332,14 +332,14 @@
 
       beforeEach(function () {
         shaper = new NodeShaper(d3.select("svg"));
-        nodes = [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}];
+        nodes = [{_id: 1}, {_id: 2}, {_id: 3}, {_id: 4}, {_id: 5}];
         shaper.drawNodes(nodes);
       });
 
       it('should be able to draw more nodes', function () {
-        nodes.push({"id": 6});
-        nodes.push({"id": 7});
-        nodes.push({"id": 8});
+        nodes.push({_id: 6});
+        nodes.push({_id: 7});
+        nodes.push({_id: 8});
 
         shaper.drawNodes(nodes);
         expect($("svg .node").length).toEqual(8);
@@ -361,9 +361,9 @@
       it('should be able to add some nodes and remove other nodes', function () {
         nodes.splice(1, 1);
         nodes.splice(3, 1);
-        nodes.push({"id": 6});
-        nodes.push({"id": 7});
-        nodes.push({"id": 8});
+        nodes.push({_id: 6});
+        nodes.push({_id: 7});
+        nodes.push({_id: 8});
         shaper.drawNodes(nodes);
         expect($("svg .node").length).toEqual(6);
         expect($("svg #1")[0]).toBeDefined();
@@ -386,7 +386,7 @@
           .append("g")
           .append("svg")
           .append("g"),
-          node = [{"id": 1}],
+          node = [{_id: 1}],
           shaper = new NodeShaper(internalObject);
 
         shaper.drawNodes(node);
@@ -409,7 +409,7 @@
 
       it('should draw circle elements', function () {
         var node = [{
-          "id": 1,
+          _id: 1,
           "label": "correct"
         }];
         shaper.drawNodes(node);
