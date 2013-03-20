@@ -533,6 +533,14 @@ function FormatMiddlewareSpec () {
       assertFalse(nextCalled);
     },
 
+    testFallBackToDefaultWhenMissingBothURLAndResponseType: function () {
+      request = { path: "test/1", headers: {} };
+      middleware = new Middleware(["json"], "json");
+      middleware(request, response, options, next);
+      assertEqual(request.format, "json");
+      assertEqual(response.contentType, "application/json");
+    },
+
     // JSON
     testSettingTheFormatAttributeAndResponseTypeForJsonViaURL: function () {
       request = { path: "test/1.json", headers: {} };
