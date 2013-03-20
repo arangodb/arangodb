@@ -407,7 +407,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       processData: false,
       success: function(data) {
         nodeToPatch = jQuery.extend(nodeToPatch, patchData);
-        callback();
+        callback(nodeToPatch);
       },
       error: function(data) {
         throw data.statusText;

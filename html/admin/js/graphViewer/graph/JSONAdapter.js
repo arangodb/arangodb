@@ -33,9 +33,9 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
   var self = this,
   initialX = {},
   initialY = {},
-  findNode = function(n) {
+  findNode = function(n) {    
     var res = $.grep(nodes, function(e){
-      return e.id === n.id;
+      return e._id === n._id;
     });
     if (res.length === 0) {
       return false;
@@ -93,13 +93,13 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
         var check = findNode(c);
         if (check) {
           insertEdge(n, check);
-          self.requestCentralityChildren(check.id, function(c) {
+          self.requestCentralityChildren(check._id, function(c) {
             n._centrality = c;
           });
         } else {
           insertNode(c);
           insertEdge(n, c);
-          self.requestCentralityChildren(c.id, function(c) {
+          self.requestCentralityChildren(c._id, function(c) {
             n._centrality = c;
           });
         }
@@ -116,8 +116,12 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       if (error !== undefined && error !== null) {
         console.log(error);
       }
-      if (callback) {
-        callback(node.children.length);
+      if (callback !== undefined) {
+        if (node.children !== undefined) {
+          callback(node.children.length);
+        } else {
+          callback(0);
+        }
       }
     });
   };

@@ -2,7 +2,7 @@
 /*global beforeEach, afterEach */
 /*global describe, it, expect */
 /*global runs, spyOn, waitsFor */
-/*global window, eb, loadFixtures, document */
+/*global window, eb, loadFixtures, document, jQuery */
 /*global EventLibrary*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,20 +235,29 @@
         adapterDummy.createNode = function(nodeToCreate, callback) {
           created = nodeToCreate;
           nodes.push(created);
-          callback();
+          callback(created);
         };
         
         nodeShaperDummy.drawNodes = function(nodes) {
           reshaped = nodes;
         };
         
-        testee = eventLib.InsertNode(nodes, adapterDummy, nodeShaperDummy);
-        testee(callbackCheck);
+        runs(function() {
+          testee = eventLib.InsertNode(nodes, adapterDummy, nodeShaperDummy);
+          testee(callbackCheck);
+        });
         
-        expect(created).toBeDefined();
-        expect(created._inboundCounter).toEqual(0);
-        expect(created._outboundCounter).toEqual(0);
-        expect(reshaped[0]).toEqual(created);
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(created).toBeDefined();
+          expect(created._inboundCounter).toEqual(0);
+          expect(created._outboundCounter).toEqual(0);
+          expect(reshaped[0]).toEqual(created);
+        });
+        
       });
       
     });
@@ -260,7 +269,12 @@
         nodeShaperDummy = {},
         patched = {id: "1"},
         data = {hello: "world"},
+        nodes = [patched],
         reshaped = null,
+        called = false,
+        callbackCheck = function() {
+          called = true;
+        },
         testee;
         
         adapterDummy.patchNode = function(nodeToPatch, patchData, callback) {
@@ -273,14 +287,21 @@
           reshaped = nodes;
         };
         
-        testee = eventLib.PatchNode(adapterDummy, nodeShaperDummy);
-        testee(patched, data);
+        runs(function() {
+          testee = eventLib.PatchNode(nodes, adapterDummy, nodeShaperDummy);
+          testee(patched, data, callbackCheck);
+        });
         
-        expect(patched).toBeDefined();
-        expect(reshaped[0]).toEqual(patched);
-        expect(patched.id).toEqual("1");
-        expect(patched.hello).toEqual("world");
+        waitsFor(function() {
+          return called;
+        });
         
+        runs(function() {
+          expect(patched).toBeDefined();
+          expect(reshaped[0]).toEqual(patched);
+          expect(patched.id).toEqual("1");
+          expect(patched.hello).toEqual("world");
+        });
       });
       
     });
@@ -291,12 +312,18 @@
         var adapterDummy = {},
         nodeShaperDummy = {},
         toDel = {id: "2"},
+        nodes = [toDel],
+        deleted = null,
         reshaped = null,
+        called = false,
+        callbackCheck = function() {
+          called = true;
+        },
         testee;
         
         adapterDummy.deleteNode = function(nodeToDelete, callback) {
-          patched = nodeToPatch;
-          jQuery.extend(patched, patchData);
+          deleted = nodeToDelete;
+          nodes.pop();
           callback();
         };
         
@@ -304,21 +331,66 @@
           reshaped = nodes;
         };
         
-        testee = eventLib.PatchNode(adapterDummy, nodeShaperDummy);
-        testee(patched, data);
+        runs(function() {
+          testee = eventLib.DeleteNode(nodes, adapterDummy, nodeShaperDummy);
+          testee(toDel, callbackCheck);
+        });
         
-        expect(patched).toBeDefined();
-        expect(reshaped[0]).toEqual(patched);
-        expect(patched.id).toEqual("1");
-        expect(patched.hello).toEqual("world");
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(deleted).toEqual(toDel);
+        });
+        
       });
-      
+    
     });
+    
     
     describe('Insert Edge', function() {
       
       it('should create an event to add an edge', function() {
-        throw "Not yet implemented";
+        var adapterDummy = {},
+        edgeShaperDummy = {},
+        edges = [],
+        reshaped = null,
+        called = false,
+        created = null,
+        source = {_id: 1},
+        target = {_id: 2},
+        callbackCheck = function() {
+          called = true;
+        },
+        testee;
+        
+        adapterDummy.createEdge = function(edgeToCreate, callback) {
+          created = edgeToCreate;
+          edges.push(created);
+          callback(created);
+        };
+        
+        edgeShaperDummy.drawEdges = function(edges) {
+          reshaped = edges;
+        };
+        
+        runs(function() {
+          testee = eventLib.InsertEdge(edges, adapterDummy, edgeShaperDummy);
+          testee(source, target, callbackCheck);
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(created).toBeDefined();
+          expect(reshaped[0]).toEqual(created);
+          expect(created.source).toEqual(source);
+          expect(created.target).toEqual(target);
+        });
+        
       });
       
     });
@@ -326,7 +398,47 @@
     describe('Patch Edge', function() {
       
       it('should create an event to patch an edge', function() {
-        throw "Not yet implemented";
+        var adapterDummy = {},
+        edgeShaperDummy = {},
+        source = {_id: 1},
+        target = {_id: 2},
+        patched = {source: source, target: target},
+        data = {hello: "world"},
+        edges = [patched],
+        reshaped = null,
+        called = false,
+        callbackCheck = function() {
+          called = true;
+        },
+        testee;
+        
+        adapterDummy.patchEdge = function(edgeToPatch, patchData, callback) {
+          patched = edgeToPatch;
+          jQuery.extend(patched, patchData);
+          callback();
+        };
+        
+        edgeShaperDummy.drawEdges = function(edges) {
+          reshaped = edges;
+        };
+        
+        runs(function() {
+          testee = eventLib.PatchEdge(edges, adapterDummy, edgeShaperDummy);
+          testee(patched, data, callbackCheck);
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(patched).toBeDefined();
+          expect(reshaped[0]).toEqual(patched);
+          expect(patched.source).toEqual(source);
+          expect(patched.target).toEqual(target);
+          expect(patched.hello).toEqual("world");
+        });
+        
       });
       
     });
@@ -334,7 +446,43 @@
     describe('Delete Edge', function() {
       
       it('should create an event to delete an edge', function() {
-        throw "Not yet implemented";
+        var adapterDummy = {},
+        edgeShaperDummy = {},
+        source = {_id: 1},
+        target = {_id: 2},
+        toDel = {source: source, target: target},
+        edges = [toDel],
+        deleted = null,
+        reshaped = null,
+        called = false,
+        callbackCheck = function() {
+          called = true;
+        },
+        testee;
+        
+        adapterDummy.deleteEdge = function(edgeToDelete, callback) {
+          deleted = edgeToDelete;
+          edges.pop();
+          callback();
+        };
+        
+        edgeShaperDummy.drawEdges = function(edges) {
+          reshaped = edges;
+        };
+        
+        runs(function() {
+          testee = eventLib.DeleteEdge(edges, adapterDummy, edgeShaperDummy);
+          testee(toDel, callbackCheck);
+        });
+        
+        waitsFor(function() {
+          return called;
+        });
+        
+        runs(function() {
+          expect(deleted).toEqual(toDel);
+        });
+        
       });
       
     });

@@ -41,7 +41,7 @@ function EdgeShaper(parent, flags, idfunc) {
   
   var self = this,
     idFunction = function(d) {
-      return d.source.id + "-" + d.target.id;
+      return d.source._id + "-" + d.target._id;
     },
     additionalShaping = function(node) {
       return;
