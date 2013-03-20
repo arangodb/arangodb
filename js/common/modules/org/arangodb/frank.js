@@ -449,12 +449,16 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 // Use it by calling:
 //
 //     FormatMiddleware = require('frank').FormatMiddleware;
-//     app.use(FormatMiddleware.new(['json']));
+//     app.before("/*", FormatMiddleware.new(['json']));
 //
 // or the shortcut:
 //
 //     app.accepts(['json']);
-FormatMiddleware = function (allowedFormats) {
+//
+// In both forms you can give a default format as a second parameter,
+// if no format could be determined. If you give no defaultFormat this
+// case will be handled as an error.
+FormatMiddleware = function (allowedFormats, defaultFormat) {
   'use strict';
   var middleware, urlFormatToMime, mimeToUrlFormat, determinePathAndFormat;
 
@@ -470,9 +474,9 @@ FormatMiddleware = function (allowedFormats) {
     "text/plain": "txt"
   };
 
-  determinePathAndFormat = function(path, headers) {
+  determinePathAndFormat = function (path, headers) {
     var parsed = {
-      contentType: headers.accept,
+      contentType: headers.accept
     };
     path = path.split('.');
 
@@ -483,16 +487,17 @@ FormatMiddleware = function (allowedFormats) {
       parsed.path = path.join('.');
     }
 
-    if (parsed.contentType === undefined) {
+    if (parsed.contentType === undefined && parsed.format === undefined) {
+      parsed.format = defaultFormat;
+      parsed.contentType = urlFormatToMime[defaultFormat];
+    } else if (parsed.contentType === undefined) {
       parsed.contentType = urlFormatToMime[parsed.format];
-    }
-
-    if (parsed.format === undefined) {
+    } else if (parsed.format === undefined) {
       parsed.format = mimeToUrlFormat[parsed.contentType];
     }
 
     if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
-      parsed.error = "Contradiction between Accept Header and URL."
+      parsed.error = "Contradiction between Accept Header and URL.";
     }
 
     if (allowedFormats.indexOf(parsed.format) < 0) {
