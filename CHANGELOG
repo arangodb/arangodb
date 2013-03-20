@@ -8,9 +8,13 @@ v1.3 (XXXX-XX-XX)
   but were discarded in other cases. 
   Now these attributes are discarded consistently. "Real" system attributes such as
   `_key`, `_from`, `_to` are not affected and will work as before.
-
+  
   Additionally, attributes with an empty name (``) are discarded when documents are
   saved.
+
+  Though using reserved or empty attribute names in documents was not really and 
+  consistently supported in previous versions of ArangoDB, this change might cause 
+  an incompatibility for clients that rely on this feature.
 
 * added server startup flag `--database.force-sync-properties` to force syncing of
   collection properties on collection creation, deletion and on property update.
