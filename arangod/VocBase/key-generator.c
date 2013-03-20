@@ -193,6 +193,10 @@ static int TraditionalGenerate (TRI_key_generator_t* const generator,
       // user key is too long
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
+    else if (userKeyLength == 0) {
+      // user key is empty
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    }
 
     // validate user-supplied key
     if (regexec(&data->_regex, userKey, 0, NULL, 0)  != 0) {

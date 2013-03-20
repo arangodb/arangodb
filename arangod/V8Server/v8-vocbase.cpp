@@ -1000,6 +1000,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   TRI_primary_collection_t* primary = trx->primaryCollection();
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
@@ -1999,7 +2000,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
                          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
                                                "<list> must be a list")));
   }
-
+    
   // extract objects
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[0]);
   TRI_json_t* json = TRI_ObjectToJson(array);
@@ -6006,10 +6007,11 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   TRI_primary_collection_t* collection = barrier->_container->_collection;
 
   // convert the JavaScript string to a string
-  string key = TRI_ObjectToString(name);
+  const string key = TRI_ObjectToString(name);
 
-  if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+  if (key.size() == 0) {
+    // we must not throw a v8 exception here because this will cause follow up errors
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   if (TRI_IsSystemCollectionName(key.c_str())) {
@@ -6019,9 +6021,6 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
-
-  // TRI_shape_sid_t sid;
-  // TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
@@ -6040,7 +6039,8 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     }
   }
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+    // we must not throw a v8 exception here because this will cause follow up errors
+    return scope.Close(v8::Handle<v8::Value>());
   }
 }
 
