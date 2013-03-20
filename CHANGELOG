@@ -112,6 +112,9 @@ v1.3 (XXXX-XX-XX)
 v1.2.2 (XXXX-XX-XX)
 -------------------
 
+* fixed handling of empty attribute names, which may have crashed the server under
+  certain circumstances before
+
 * fixed usage of invalid pointer in error message output when index description could
   not be opened
 
