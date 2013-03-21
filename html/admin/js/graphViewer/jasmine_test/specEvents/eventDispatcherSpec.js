@@ -59,7 +59,7 @@
     
     beforeEach(function() {
       svg = document.createElement("svg");
-      
+      svg.id = "svg";
       document.body.appendChild(svg);
       adapter = null;
       
@@ -175,7 +175,7 @@
         runs(function() {
           var target = $("svg");
           dispatcher.bind(target, "click", callback);
-          target.click();
+          simulateMouseEvent("click", "svg");
         });
         
         waitsFor(function() {
@@ -200,8 +200,8 @@
           called = 0;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", callback);
-          $("#1").click();
-          $("#2").click();
+          simulateMouseEvent("click", "1");
+          simulateMouseEvent("click", "2");
         });
         
         waitsFor(function() {
@@ -233,8 +233,8 @@
           called = 0;
           edgeShaper.drawEdges(edges);
           dispatcher.bind("edges", "click", callback);
-          $("#1-2").click();
-          $("#2-3").click();
+          simulateMouseEvent("click", "1-2");
+          simulateMouseEvent("click", "2-3");
         });
         
         waitsFor(function() {
@@ -263,7 +263,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", callback);
-          $("#1").trigger("click");
+          simulateMouseEvent("click", "1");
         });
         
         waitsFor(function() {
@@ -384,6 +384,101 @@
       
     });
     */
+    
+    describe('checking overwriting of events', function() {
+      
+      it('should be able to overwrite the event of any DOM-element', function() {
+        var falseCalled = false,
+        called = false,
+        falseCallback = function() { 
+          falseCalled = true;
+        },
+        callback = function() {
+          called = true;
+        };
+        
+        runs(function() {
+          var target = $("svg");
+          dispatcher.bind(target, "click", falseCallback);
+          dispatcher.bind(target, "click", callback);
+          simulateMouseEvent("click", "svg");
+        });
+        
+        waitsFor(function() {
+          return called;
+        }, 1000, "The click event should have been triggered.");
+        
+        runs(function() {
+          // Just display that everything had worked
+          expect(falseCalled).toBeFalsy();
+          expect(called).toBeTruthy();
+        });
+      });
+      
+      it('should be able to overwrite the event of all nodes', function() {
+        var nodes = [{_id: 1}],
+        falseCalled = false,
+        called = false,
+        falseCallback = function() {
+          falseCalled = true;
+        },
+        callback = function() {
+          called = true;
+        };
+        
+        runs(function() {
+          nodeShaper.drawNodes(nodes);
+          dispatcher.bind("nodes", "click", falseCallback);
+          dispatcher.bind("nodes", "click", callback);
+          simulateMouseEvent("click", "1");
+        });
+        
+        waitsFor(function() {
+          return called;
+        }, 1000, "The click event should have been triggered.");
+        
+        runs(function() {
+          // Just display that everything had worked
+          expect(falseCalled).toBeFalsy();
+          expect(called).toBeTruthy();
+        });
+      });
+      
+      it('should be able to overwrite the event of all edges', function() {
+        
+        var n1 = {_id: 1},
+        n2 = {_id: 2},
+        edges = [
+          {source: n1, target: n2}
+        ],
+        falseCalled = false,
+        called = false,
+        falseCallback = function() { 
+          falseCalled = true;
+        },
+        callback = function() {
+          called = true;
+        };
+        
+        runs(function() {
+          edgeShaper.drawEdges(edges);
+          dispatcher.bind("edges", "click", falseCallback);
+          dispatcher.bind("edges", "click", callback);
+          simulateMouseEvent("click", "1-2");
+        });
+        
+        waitsFor(function() {
+          return called;
+        }, 1000, "The click event should have been triggered.");
+        
+        runs(function() {
+          // Just display that everything had worked
+          expect(falseCalled).toBeFalsy();
+          expect(called).toBeTruthy();
+        });
+      });
+      
+    });
   });
 
 }());

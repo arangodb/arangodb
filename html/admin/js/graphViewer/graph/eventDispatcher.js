@@ -91,6 +91,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         break;
       default:
         if (object.bind !== undefined) {
+          object.unbind(event);
           object.bind(event, func);
         } else {
           throw "Sorry cannot bind to object. Please give either "
