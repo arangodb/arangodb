@@ -227,7 +227,7 @@ var documentsView = Backbone.View.extend({
                                           //value.attributes.id,
                                           value.attributes.key,
                                           //value.attributes.rev,
-                                          '<pre class=prettify title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
+                                          '<pre class="prettify" title="'+self.escaped(JSON.stringify(value.attributes.content)) +'">' + self.cutByResolution(JSON.stringify(value.attributes.content)) + '</pre>',
                                           '<button class="enabled" id="deleteDoc"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
@@ -303,7 +303,7 @@ var documentsView = Backbone.View.extend({
     return this.escaped(string);
   },
   escaped: function (value) {
-    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#38;");
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
 });

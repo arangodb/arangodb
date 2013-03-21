@@ -109,7 +109,7 @@ namespace triagens {
         inline TRI_primary_collection_t* primaryCollection () {
           assert(this->_cid > 0);
 
-          TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->_trx, this->_cid, TRI_TRANSACTION_READ);
+          TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->getTrx(), this->_cid, TRI_TRANSACTION_READ);
 
           assert(collection != 0);
           assert(collection->_collection != 0);

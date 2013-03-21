@@ -565,7 +565,7 @@ static TRI_transaction_collection_t* CreateCollection (const TRI_transaction_cid
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeCollection (TRI_transaction_collection_t* collection) {
-  assert(collection);
+  TRI_ASSERT_DEBUG(collection != NULL);
 
 #if 0
   DestroyTransactionList(&collection->_writeTransactions);
@@ -582,10 +582,10 @@ static int LockCollection (TRI_transaction_collection_t* collection,
                           const TRI_transaction_type_e type) {
   TRI_primary_collection_t* primary;
 
-  assert(collection != NULL);
-  assert(collection->_collection != NULL);
-  assert(collection->_collection->_collection != NULL);
-  assert(collection->_locked == false);
+  TRI_ASSERT_DEBUG(collection != NULL);
+  TRI_ASSERT_DEBUG(collection->_collection != NULL);
+  TRI_ASSERT_DEBUG(collection->_collection->_collection != NULL);
+  TRI_ASSERT_DEBUG(collection->_locked == false);
 
   primary = collection->_collection->_collection;
 
@@ -609,10 +609,10 @@ static int UnlockCollection (TRI_transaction_collection_t* collection,
                           const TRI_transaction_type_e type) {
   TRI_primary_collection_t* primary;
 
-  assert(collection != NULL);
-  assert(collection->_collection != NULL);
-  assert(collection->_collection->_collection != NULL);
-  assert(collection->_locked == true);
+  TRI_ASSERT_DEBUG(collection != NULL);
+  TRI_ASSERT_DEBUG(collection->_collection != NULL);
+  TRI_ASSERT_DEBUG(collection->_collection->_collection != NULL);
+  TRI_ASSERT_DEBUG(collection->_locked == true);
 
   primary = collection->_collection->_collection;
 
@@ -904,10 +904,10 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
 #endif
   int res;
 
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
-  assert(status == TRI_TRANSACTION_COMMITTED ||
-         status == TRI_TRANSACTION_ABORTED ||
-         status == TRI_TRANSACTION_FINISHED);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT_DEBUG(status == TRI_TRANSACTION_COMMITTED ||
+                   status == TRI_TRANSACTION_ABORTED ||
+                   status == TRI_TRANSACTION_FINISHED);
 #if 0
   context = trx->_context;
 
@@ -964,7 +964,7 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
 #endif
   int res;
 
-  assert(trx->_status == TRI_TRANSACTION_CREATED);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED);
 #if 0
   context = trx->_context;
 
@@ -1016,11 +1016,11 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
 /// @brief create a new transaction container
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
-                                          const TRI_transaction_isolation_level_e isolationLevel) {
+TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context) {
   TRI_transaction_t* trx;
 
   trx = (TRI_transaction_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false);
+
   if (trx == NULL) {
     // out of memory
     return NULL;
@@ -1031,8 +1031,8 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
   trx->_id._localId       = 0;
   trx->_status            = TRI_TRANSACTION_CREATED;
   trx->_type              = TRI_TRANSACTION_READ;
-  trx->_isolationLevel    = isolationLevel;
   trx->_hints             = 0;
+  trx->_nestingLevel      = 0;
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
@@ -1046,7 +1046,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
 void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   size_t i;
 
-  assert(trx);
+  TRI_ASSERT_DEBUG(trx != NULL);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_AbortTransaction(trx);
@@ -1117,6 +1117,7 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
 
   n = trx->_collections._length;
 
+// shouldn't this be in reverse order?
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
 
@@ -1132,6 +1133,7 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
   return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
 }
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the transaction consists only of a single operation
 ////////////////////////////////////////////////////////////////////////////////
@@ -1139,7 +1141,9 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const trx,
 bool TRI_IsSingleOperationTransaction (const TRI_transaction_t* const trx) {
   return (trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0;
 }
+*/
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the transaction spans multiple write collections
 ////////////////////////////////////////////////////////////////////////////////
@@ -1171,6 +1175,7 @@ bool TRI_IsMultiCollectionWriteTransaction (const TRI_transaction_t* const trx) 
 
   return false;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the local id of a transaction
@@ -1225,8 +1230,8 @@ TRI_vocbase_col_t* TRI_CheckCollectionTransaction (TRI_transaction_t* const trx,
   TRI_transaction_collection_t* collection;
   size_t i, n;
 
-  assert(trx->_status == TRI_TRANSACTION_CREATED ||
-         trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED ||
+                   trx->_status == TRI_TRANSACTION_RUNNING);
 
   // check if we already have got this collection in the _collections vector
   // the vector is sorted by collection names
@@ -1263,7 +1268,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
   TRI_transaction_collection_t* collection;
   size_t i, n;
 
-  assert(trx->_status == TRI_TRANSACTION_CREATED);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED);
 
   // upgrade transaction type if required
   if (type == TRI_TRANSACTION_WRITE && trx->_type == TRI_TRANSACTION_READ) {
@@ -1362,7 +1367,7 @@ int TRI_AddDelayedReadCollectionTransaction (TRI_transaction_t* const trx,
 int TRI_StartTransaction (TRI_transaction_t* const trx, TRI_transaction_hint_t hints) {
   int res;
 
-  assert(trx->_status == TRI_TRANSACTION_CREATED);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED);
 
   trx->_hints = hints;
 
@@ -1396,7 +1401,7 @@ int TRI_StartTransaction (TRI_transaction_t* const trx, TRI_transaction_hint_t h
 int TRI_CommitTransaction (TRI_transaction_t* const trx) {
   int res;
 
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
 
   res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
   ReleaseCollections(trx);
@@ -1411,7 +1416,7 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx) {
 int TRI_AbortTransaction (TRI_transaction_t* const trx) {
   int res;
 
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
 
   res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
   ReleaseCollections(trx);
@@ -1424,10 +1429,10 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FinishTransaction (TRI_transaction_t* const trx) {
-  int res;
   TRI_transaction_status_e status;
+  int res;
 
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_type == TRI_TRANSACTION_READ) {
     // read transactions

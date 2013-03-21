@@ -51,10 +51,12 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
+  TRI_voc_fid_t fid;
   char* filename;
   int res;
   bool isVolatile;
 
+  fid = TRI_NewTickVocBase();
   isVolatile = collection->base._info._isVolatile;
 
   if (isVolatile) {
@@ -65,19 +67,19 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     char* jname;
     char* number;
 
-    number = TRI_StringUInt64(TRI_NewTickVocBase());
-    if (! number) {
+    number = TRI_StringUInt64(fid);
+    if (number == NULL) {
       return false;
     }
 
-    jname = TRI_Concatenate3String("journal-", number, ".db");
+    jname = TRI_Concatenate3String("temp-", number, ".db");
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
     filename = TRI_Concatenate2File(collection->base._directory, jname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
   }
 
-  journal = TRI_CreateDatafile(filename, collection->base._info._maximalSize);
+  journal = TRI_CreateDatafile(filename, fid, collection->base._info._maximalSize);
 
   if (filename != NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -99,6 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   LOG_TRACE("created a new shape journal '%s'", journal->getName(journal));
 
+  TRI_ASSERT_DEBUG(fid == journal->_fid);
 
   if (journal->isPhysical(journal)) {
     char* jname;
@@ -106,7 +109,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     bool ok;
 
     // and use the correct name
-    number = TRI_StringUInt64(journal->_fid);
+    number = TRI_StringUInt64(fid);
     jname = TRI_Concatenate3String("journal-", number, ".db");
     filename = TRI_Concatenate2File(collection->base._directory, jname);
 
