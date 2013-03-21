@@ -197,7 +197,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
                           void* mmHandle,
                           TRI_voc_size_t maximalSize,
                           TRI_voc_size_t currentSize,
-                          TRI_voc_fid_t tick,
+                          TRI_voc_fid_t fid,
                           char* data) {
 
   // filename is a string for physical datafiles, and NULL for anonymous regions
@@ -210,7 +210,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
   }
 
   datafile->_state       = TRI_DF_STATE_READ;
-  datafile->_fid         = tick;
+  datafile->_fid         = fid;
 
   datafile->_filename    = filename;
   datafile->_fd          = fd;
@@ -756,6 +756,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateDatafile (char const* filename,
+                                    TRI_voc_fid_t fid,
                                     TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   TRI_df_marker_t* position;
@@ -776,14 +777,14 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   // create either an anonymous or a physical datafile
   if (filename == NULL) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-    datafile = TRI_CreateAnonymousDatafile(maximalSize);
+    datafile = TRI_CreateAnonymousDatafile(fid, maximalSize);
 #else
     // system does not support anonymous mmap
     return NULL;
 #endif
   }
   else {
-    datafile = TRI_CreatePhysicalDatafile(filename, maximalSize);
+    datafile = TRI_CreatePhysicalDatafile(filename, fid, maximalSize);
   }
 
   if (datafile == NULL) {
@@ -800,7 +801,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
   header._version     = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
-  header._fid         = TRI_NewTickVocBase();
+  header._fid         = fid;
 
   // reserve space and write header to file
   result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
@@ -836,7 +837,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
-TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
+                                             const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   ssize_t res;
   void* data;
@@ -894,7 +896,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
                mmHandle,
                maximalSize,
                0,
-               TRI_NewTickVocBase(),
+               fid,
                data);
 
   return datafile;
@@ -906,7 +908,8 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
 /// @brief creates a new physical datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
+TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename, 
+                                            TRI_voc_fid_t fid,
                                             const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   int fd;
@@ -955,7 +958,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                mmHandle,
                maximalSize,
                0,
-               TRI_NewTickVocBase(),
+               fid,
                data);
 
   return datafile;
@@ -1245,6 +1248,8 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 
   // this function must not be called for non-physical datafiles
   assert(datafile->isPhysical(datafile));
+
+  LOG_TRACE("iterating over datafile '%s', fid: %llu", datafile->getName(datafile), (unsigned long long) datafile->_fid);
 
   ptr = datafile->_data;
   end = datafile->_data + datafile->_currentSize;

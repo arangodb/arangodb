@@ -289,8 +289,6 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     return false;
   }
 
-  memset(values, 0, sizeof(TRI_shape_value_t) * n);
-
   total = 0;
   e = values + n;
 
@@ -592,7 +590,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     // first find an identifier for the name
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
-    if (*keyStr == 0) {
+    if (*keyStr == 0 || keyStr.length() == 0) {
       --p;
       continue;
     }
@@ -789,13 +787,12 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
           return FillShapeValueNull(shaper, dst);
         }
       }
-
-      seenObjects.push_back(o);
     }
     else {
       seenHashes.insert(hash);
-      seenObjects.push_back(o);
     }
+
+    seenObjects.push_back(o);
   }
 
   if (json->IsNull()) {
@@ -1439,6 +1436,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
     const uint32_t n = arrayParameter->Length();
 
     TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+
     if (listJson != 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
@@ -1458,9 +1456,10 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
     const uint32_t n = names->Length();
 
     TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+
     if (arrayJson != 0) {
       for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
+        v8::Handle<v8::Value> key  = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = TRI_ObjectToJson(item);
 

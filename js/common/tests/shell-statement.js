@@ -194,6 +194,39 @@ function StatementSuite () {
 /// @brief test explain method
 ////////////////////////////////////////////////////////////////////////////////
 
+    testExplainNoBindError : function () {
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f" });
+      try {
+        st.explain();
+      }
+      catch (e) {
+        assertEqual(1551, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainWithBind : function () {
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 1 } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      
+      assertEqual(2, result[1]["id"]);
+      assertEqual(1, result[1]["loopLevel"]);
+      assertEqual("return", result[1]["type"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
     testExplainOk1 : function () {
       var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return 1" });
       var result = st.explain();

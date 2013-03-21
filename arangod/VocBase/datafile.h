@@ -437,6 +437,7 @@ TRI_df_skip_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateDatafile (char const*,
+                                    TRI_voc_fid_t fid,
                                     TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +450,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t, 
+                                             TRI_voc_size_t);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,6 +467,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreatePhysicalDatafile (char const*,
+                                            TRI_voc_fid_t,
                                             TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
