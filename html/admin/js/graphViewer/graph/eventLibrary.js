@@ -203,7 +203,10 @@ function EventLibrary() {
     nodeShaper = config.shaper;
     
     return function(nodeToDelete, callback) {
-      adapter.deleteNode(nodeToDelete, callback);
+      adapter.deleteNode(nodeToDelete, function() {
+        nodeShaper.drawNodes(nodes);
+        callback();
+      });
     };
   };
   
