@@ -68,8 +68,6 @@ function GraphViewer(svg, width, height,
     throw "Events config has to be given";
   }
   
-  
-  
   var self = this,
     adapter,
     nodeShaper,
@@ -122,10 +120,14 @@ function GraphViewer(svg, width, height,
         dispatcher.events.PATCHNODE);
     }
   
-    if (checkDefs(conf.deleteNode)) {
+    if (checkDefs(conf.deleteNode)
+    && checkFunction(conf.deleteNode.callback)) {
       dispatcher.bind(conf.deleteNode.target,
         conf.deleteNode.type,
-        dispatcher.events.DELETENODE);
+        function(n) {
+          dispatcher.events.DELETENODE(n, conf.deleteNode.callback);
+        }
+      );
     }
     if (conf.custom !== undefined) {
       _.each(conf.custom, function(toBind) {

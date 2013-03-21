@@ -255,7 +255,7 @@
   }
   
   function bindDelete() {
-    viewer.rebind({})
+    viewer.rebind({deleteNode: {target: "nodes", type: "click", callback: function() {console.log("Gone AWAY!");}}})
   }
 
   var viewer;
