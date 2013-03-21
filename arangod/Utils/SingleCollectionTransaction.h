@@ -74,10 +74,11 @@ namespace triagens {
                                      const TRI_transaction_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
           Transaction<T>(vocbase, resolver),
-          _cid(cid) {
+          _cid(cid),
+          _accessType(accessType) {
 
           // add the (sole) collection
-          this->addCollection(cid, accessType);
+          this->addCollection(cid, _accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,12 +108,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_primary_collection_t* primaryCollection () {
-          assert(this->_cid > 0);
+          TRI_ASSERT_DEBUG(_cid > 0);
 
-          TRI_vocbase_col_t* collection = TRI_CheckCollectionTransaction(this->getTrx(), this->_cid, TRI_TRANSACTION_READ);
+          TRI_vocbase_col_t* collection = TRI_GetCollectionTransaction(this->getTrx(), this->_cid, _accessType);
 
-          assert(collection != 0);
-          assert(collection->_collection != 0);
+          TRI_ASSERT_DEBUG(collection != 0);
+          TRI_ASSERT_DEBUG(collection->_collection != 0);
+          
           return collection->_collection;
         }
 
@@ -121,7 +123,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_voc_cid_t cid () const {
-          return this->_cid;
+          return _cid;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +213,17 @@ namespace triagens {
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection id
+////////////////////////////////////////////////////////////////////////////////
+
         TRI_transaction_cid_t _cid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection access type
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_type_e _accessType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

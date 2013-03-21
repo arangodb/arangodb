@@ -36,7 +36,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
-#include "Utils/UserTransaction.h"
 #include "Utilities/ResourceHolder.h"
 
 using namespace std;
