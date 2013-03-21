@@ -232,7 +232,7 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
 
 SHELL_SERVER = $(SHELL_COMMON) \
                @top_srcdir@/js/server/tests/routing.js \
-               @top_srcdir@/js/common/tests/shell-frank.js \
+               @top_srcdir@/js/common/tests/shell-fuxx.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \

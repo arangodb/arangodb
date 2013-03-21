@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-/*global EventLibrary, ArangoAdapter, JSONAdapter */
+/*global EventDispatcher, ArangoAdapter, JSONAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -78,9 +78,10 @@ function GraphViewer(svg, width, height,
     edgeContainer,
     layouter,
     fixedSize,
-    eventlib = new EventLibrary(),
+    dispatcher,
     edges = [],
     nodes = [],
+    eventsDispatcherConfig = {},
     // Function after handling events, will update the drawers and the layouter.
     start;
   
@@ -163,15 +164,26 @@ function GraphViewer(svg, width, height,
     layouter.start();
   };
   
-  if (eventsConfig.expander) {
-    nodeShaper.on("click", new eventlib.Expand(
-      edges,
-      nodes,
-      start,
-      adapter.loadNodeFromTreeById,
-      nodeShaper.reshapeNode
-    ));
-    nodeShaper.on("update", function(node) {
+  if (eventsConfig.expand !== undefined) {
+    eventsDispatcherConfig.expand = {
+      edges: edges,
+      nodes: nodes,
+      startCallback: start,
+      loadNode: adapter.loadNodeFromTreeById,
+      reshapeNode: nodeShaper.reshapeNode
+    };
+  }
+  if (eventsConfig.nodeEditor !== undefined) {
+  
+  }
+  
+  dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
+  
+  if (eventsConfig.expand !== undefined
+    && eventsConfig.expand.target !== undefined
+    && eventsConfig.expand.type !== undefined) {
+    dispatcher.bind(eventsConfig.expand.target, eventsConfig.expand.type, dispatcher.events.EXPAND);
+    dispatcher.bind("nodes", "update", function(node) {
       node.selectAll("circle")
       .attr("class", function(d) {
         return d._expanded ? "expanded" : 
@@ -179,6 +191,7 @@ function GraphViewer(svg, width, height,
       });
     });
   }
+  
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;

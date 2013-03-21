@@ -11,6 +11,7 @@
   <script src="../lib/jquery.livequery.js"></script>
   <script src="graph/forceLayouter.js"></script>
   <script src="graph/eventLibrary.js"></script>
+  <script src="graph/eventDispatcher.js"></script>
   <script src="graph/nodeShaper.js"></script>
   <script src="graph/edgeShaper.js"></script>
   <script src="graph/arangoAdapter.js"></script>
@@ -228,7 +229,7 @@
     
     
     evconfig = {
-      expander: true
+      expand: {target: "nodes", type: "click"}
     };
     
     
@@ -323,7 +324,7 @@
 
 <svg width="980" height="640" id="svg"/>
 <br />
-<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+<form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog">
   <fieldset>
     <div class="control-group">
       <div class="controls">
@@ -333,6 +334,11 @@
     <div class="control-group">
       <div class="controls">
         <button type="submit" class="btn btn-primary" onclick="loadGraphFromNode()">Load</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button id="createNode" type="submit" class="btn btn-primary">Create Node</button>
       </div>
     </div>
   </fieldset>
