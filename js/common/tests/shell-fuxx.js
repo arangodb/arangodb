@@ -609,4 +609,4 @@ jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);
 jsunity.run(FormatMiddlewareSpec);
 
-return isunity.done();
+return jsunity.done();
