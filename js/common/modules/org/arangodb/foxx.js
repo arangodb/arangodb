@@ -498,27 +498,28 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
     }
 
     if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
-      parsed.error = "Contradiction between Accept Header and URL.";
+      throw "Contradiction between Accept Header and URL.";
     }
 
     if (allowedFormats.indexOf(parsed.format) < 0) {
-      parsed.error = "Format '" + parsed.format + "' is not allowed.";
+      throw "Format '" + parsed.format + "' is not allowed.";
     }
 
     return parsed;
   };
 
   middleware = function (request, response, options, next) {
-    var parsed = determinePathAndFormat(request.path, request.headers);
+    var parsed;
 
-    if (parsed.error === undefined) {
+    try {
+      parsed = determinePathAndFormat(request.path, request.headers);
       request.path = parsed.path;
       request.format = parsed.format;
       response.contentType = parsed.contentType;
       next();
-    } else {
+    } catch (e) {
       response.responseCode = 406;
-      response.body = parsed.error;
+      response.body = e;
     }
   };
 
