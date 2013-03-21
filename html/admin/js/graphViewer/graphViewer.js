@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
-/*global EventLibrary, ArangoAdapter, JSONAdapter */
+/*global EventDispatcher, ArangoAdapter, JSONAdapter */
 /*global ForceLayouter, EdgeShaper, NodeShaper */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -68,8 +68,6 @@ function GraphViewer(svg, width, height,
     throw "Events config has to be given";
   }
   
-  
-  
   var self = this,
     adapter,
     nodeShaper,
@@ -78,11 +76,68 @@ function GraphViewer(svg, width, height,
     edgeContainer,
     layouter,
     fixedSize,
-    eventlib = new EventLibrary(),
+    dispatcher,
     edges = [],
     nodes = [],
+    eventsDispatcherConfig = {},
     // Function after handling events, will update the drawers and the layouter.
-    start;
+    start,
+    bindEventsFromConfig;
+  
+  
+  bindEventsFromConfig = function(conf) {
+    var checkDefs = function(el) {
+      return el !== undefined && el.target !== undefined && el.type !== undefined;
+    },
+    checkFunction = function(el) {
+      return el !== undefined && _.isFunction(el);
+    };
+    
+    if (checkDefs(conf.expand)) {
+      dispatcher.bind(conf.expand.target, conf.expand.type, dispatcher.events.EXPAND);
+      dispatcher.bind("nodes", "update", function(node) {
+        node.selectAll("circle")
+        .attr("class", function(d) {
+          return d._expanded ? "expanded" : 
+            d._centrality === 0 ? "single" : "collapsed";
+        });
+      });
+    }
+  
+    if (checkDefs(conf.createNode)
+    && checkFunction(conf.createNode.callback)) {
+      dispatcher.bind(conf.createNode.target,
+        conf.createNode.type,
+        function() {
+          dispatcher.events.CREATENODE(conf.createNode.callback);
+          start();
+        });
+    }
+  
+    if (checkDefs(conf.patchNode)) {
+      dispatcher.bind(conf.patchNode.target,
+        conf.patchNode.type,
+        dispatcher.events.PATCHNODE);
+    }
+  
+    if (checkDefs(conf.deleteNode)
+    && checkFunction(conf.deleteNode.callback)) {
+      dispatcher.bind(conf.deleteNode.target,
+        conf.deleteNode.type,
+        function(n) {
+          dispatcher.events.DELETENODE(n, conf.deleteNode.callback);
+        }
+      );
+    }
+    if (conf.custom !== undefined) {
+      _.each(conf.custom, function(toBind) {
+        if (checkDefs(toBind)
+        && checkFunction(toBind.func)) {
+          dispatcher.bind(toBind.target, toBind.type, toBind.func);
+        }
+      });
+    }
+  };
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
@@ -163,22 +218,33 @@ function GraphViewer(svg, width, height,
     layouter.start();
   };
   
-  if (eventsConfig.expander) {
-    nodeShaper.on("click", new eventlib.Expand(
-      edges,
-      nodes,
-      start,
-      adapter.loadNodeFromTreeById,
-      nodeShaper.reshapeNode
-    ));
-    nodeShaper.on("update", function(node) {
-      node.selectAll("circle")
-      .attr("class", function(d) {
-        return d._expanded ? "expanded" : 
-          d._centrality === 0 ? "single" : "collapsed";
-      });
-    });
+  if (eventsConfig.expand !== undefined) {
+    eventsDispatcherConfig.expand = {
+      edges: edges,
+      nodes: nodes,
+      startCallback: start,
+      loadNode: adapter.loadNodeFromTreeById,
+      reshapeNode: nodeShaper.reshapeNode
+    };
   }
+  if (eventsConfig.createNode !== undefined
+    || eventsConfig.patchNode !== undefined
+    || eventsConfig.deleteNode !== undefined) {
+    eventsDispatcherConfig.nodeEditor = {
+      nodes: nodes,
+      adapter: adapter
+    };
+  }
+  if (eventsConfig.edgeEditor !== undefined) {
+    eventsDispatcherConfig.edgeEditor = {
+      edges: edges,
+      adapter: adapter
+    };
+  }
+  
+  dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
+  
+  bindEventsFromConfig(eventsConfig);
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
@@ -192,6 +258,8 @@ function GraphViewer(svg, width, height,
     });
   };
   
-  
+  self.rebind = function(eventConfig) {
+    bindEventsFromConfig(eventConfig);
+  };
   
 }
