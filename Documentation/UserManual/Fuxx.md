@@ -8,17 +8,17 @@ to ArangoDB directly. ArangoDB serves this application, you do not
 need a separate application server.
 
 So given you want to build an application that sends a plain-text
-response "Worked!" for all requests to `/my/way`. How would you
+response "Worked!" for all requests to `/my/wiese`. How would you
 achieve that with Fuxx?
 
 First, create a directory `my_app` and save a file called `app.js`
 in this directory. Write the following content to this file:
 
-    Frank = require("org/arangodb/frank");
+    FuxxApplication = require("org/arangodb/fuxx").FuxxApplication;
 
-    app = new Frank();
+    app = new FuxxApplication();
 
-    app.get('/way', function(req, res) {
+    app.get('/wiese', function(req, res) {
       res.set("Content-Type", "text/plain");
       res.body = "Worked!"
     });
@@ -39,29 +39,29 @@ Now your application is done. Start ArangoDB as follows:
 
     arangod --app my_app /tmp/fancy_db
 
-Now point your browser to `/my/way` and you should see "Worked!".
-After this short overview, let's get into the details
+Now point your browser to `/my/wiese` and you should see "Worked!".
+After this short overview, let's get into the details.
 
-## Frank Syntax
+## FuxxApplication Features
 
-You find this somewhere completely different. Sorry.
+Please see the documentation of `fuxx.js` for further information on how to write the application file.
 
 ## Manifest Files
 
 When you start arangod with the `--app` option, ArangoDB scans the
 given directory on every request for files called `manifest.json`.
-There can be multiple files in the root directory and all direct subdirectories if you want that.
+There can be a file in the root directory and in each direct subdirectory if you want that.
 The content is a JSON object with two keys: `apps` and `libs`.
 (*we will also add a third one called `vendor` for NPM packages, but
 this does not exist yet*).
 `apps` is an object that matches routes to files:
 
 * The `key` is the route you want to mount at
-* The `value` is the path to the JavaScript file containing the `Frank`s you want to mount
+* The `value` is the path to the JavaScript file containing the `FuxxApplication`s you want to mount
 
 You can add multiple applications in one manifest in this way.
 
-In addition you can add an optional `libs` String. This is a path to
+In addition you can add an optional `lib` String. This is a path to
 a folder containing multiple JavaScript files which define CommonJS
 modules that you want to use in your Fuxx apps. They will all be loaded,
 so you can require them as usual. The `lib` folder can be structured however
