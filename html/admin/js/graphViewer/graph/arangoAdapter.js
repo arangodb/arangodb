@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console, jQuery*/
+/*global $, d3, _, console*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -341,7 +341,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        edgeToPatch = jQuery.extend(edgeToPatch, patchData);
+        edgeToPatch = $.extend(edgeToPatch, patchData);
         callback();
       },
       error: function(data) {
@@ -411,7 +411,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        nodeToPatch = jQuery.extend(nodeToPatch, patchData);
+        nodeToPatch = $.extend(nodeToPatch, patchData);
         callback(nodeToPatch);
       },
       error: function(data) {

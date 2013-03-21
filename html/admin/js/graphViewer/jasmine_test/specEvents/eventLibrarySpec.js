@@ -2,7 +2,7 @@
 /*global beforeEach, afterEach */
 /*global describe, it, expect */
 /*global runs, spyOn, waitsFor */
-/*global window, eb, loadFixtures, document, jQuery */
+/*global window, eb, loadFixtures, document, $ */
 /*global EventLibrary*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,6 +64,7 @@
       startCallback = function() {
         started++;
       },
+      config,
       testee;
       
       beforeEach(function() {
@@ -75,6 +76,13 @@
         edges = [];
         loadedNodes = [];
         reshapedNodes = [];
+        config = {
+          edges: edges,
+          nodes: nodes,
+          startCallback: startCallback,
+          loadNode: loadNodeCallback,
+          reshapeNode: reshapeNodeCallback
+        };
       });
       
       it('should expand a collapsed node', function() {
@@ -84,13 +92,7 @@
           _inboundCounter: 0
         };
         nodes.push(node);
-        testee = eventLib.Expand(
-          edges,
-          nodes,
-          startCallback,
-          loadNodeCallback,
-          reshapeNodeCallback
-        );
+        testee = eventLib.Expand(config);
         testee(node);
         
         expect(node._expanded).toBeTruthy();
@@ -112,13 +114,7 @@
           _inboundCounter: 0
         };
         nodes.push(node);
-        testee = eventLib.Expand(
-          edges,
-          nodes,
-          startCallback,
-          loadNodeCallback,
-          reshapeNodeCallback
-        );
+        testee = eventLib.Expand(config);
         testee(node);
         
         expect(node._expanded).toBeFalsy();
@@ -153,13 +149,7 @@
         edges.push({source: root, target: c1});
         edges.push({source: root, target: c2});
         
-        testee = eventLib.Expand(
-          edges,
-          nodes,
-          startCallback,
-          loadNodeCallback,
-          reshapeNodeCallback
-        );
+        testee = eventLib.Expand(config);
         testee(root);
         
         expect(root._expanded).toBeFalsy();
@@ -173,43 +163,55 @@
       });
       
       describe('setup process', function() {
-                
+        
+        var testConfig = {};
+              
         it('should throw an error if edges are not given', function() {          
           expect(
             function() {
-              eventLib.Expand();
+              eventLib.Expand(testConfig);
             }
           ).toThrow("Edges have to be defined");
         });
         
         it('should throw an error if nodes are not given', function() {
+          testConfig.edges = [];
           expect(
             function() {
-              eventLib.Expand([]);
+              eventLib.Expand(testConfig);
             }
           ).toThrow("Nodes have to be defined");
         });
         
         it('should throw an error if start callback is not given', function() {
+          testConfig.edges = [];
+          testConfig.nodes = [];
           expect(
             function() {
-              eventLib.Expand([], []);
+              eventLib.Expand(testConfig);
             }
           ).toThrow("A callback to the Start-method has to be defined");
         });
         
         it('should throw an error if load node callback is not given', function() {
+          testConfig.edges = [];
+          testConfig.nodes = [];
+          testConfig.startCallback = function(){};
           expect(
             function() {
-              eventLib.Expand([], [], function(){});
+              eventLib.Expand(testConfig);
             }
           ).toThrow("A callback to load a node has to be defined");
         });
         
         it('should throw an error if reshape node callback is not given', function() {
+          testConfig.edges = [];
+          testConfig.nodes = [];
+          testConfig.startCallback = function(){};
+          testConfig.loadNode = function(){};
           expect(
             function() {
-              eventLib.Expand([], [], function(){}, function(){});
+              eventLib.Expand(testConfig);
             }
           ).toThrow("A callback to reshape a node has to be defined");
         });
@@ -221,6 +223,7 @@
     describe('Insert Node', function() {
       
       it('should create an event to add a node', function() {
+                
         var adapterDummy = {},
         nodeShaperDummy = {},
         nodes = [],
@@ -229,6 +232,11 @@
         called = false,
         callbackCheck = function() {
           called = true;
+        },
+        nodeEditorConfig = {
+          nodes: nodes,
+          adapter: adapterDummy,
+          shaper: nodeShaperDummy
         },
         testee;
         
@@ -243,7 +251,7 @@
         };
         
         runs(function() {
-          testee = eventLib.InsertNode(nodes, adapterDummy, nodeShaperDummy);
+          testee = eventLib.InsertNode(nodeEditorConfig);
           testee(callbackCheck);
         });
         
@@ -275,11 +283,16 @@
         callbackCheck = function() {
           called = true;
         },
+        nodeEditorConfig = {
+          nodes: nodes,
+          adapter: adapterDummy,
+          shaper: nodeShaperDummy
+        },
         testee;
         
         adapterDummy.patchNode = function(nodeToPatch, patchData, callback) {
           patched = nodeToPatch;
-          jQuery.extend(patched, patchData);
+          $.extend(patched, patchData);
           callback();
         };
         
@@ -288,7 +301,7 @@
         };
         
         runs(function() {
-          testee = eventLib.PatchNode(nodes, adapterDummy, nodeShaperDummy);
+          testee = eventLib.PatchNode(nodeEditorConfig);
           testee(patched, data, callbackCheck);
         });
         
@@ -319,6 +332,11 @@
         callbackCheck = function() {
           called = true;
         },
+        nodeEditorConfig = {
+          nodes: nodes,
+          adapter: adapterDummy,
+          shaper: nodeShaperDummy
+        },
         testee;
         
         adapterDummy.deleteNode = function(nodeToDelete, callback) {
@@ -332,7 +350,7 @@
         };
         
         runs(function() {
-          testee = eventLib.DeleteNode(nodes, adapterDummy, nodeShaperDummy);
+          testee = eventLib.DeleteNode(nodeEditorConfig);
           testee(toDel, callbackCheck);
         });
         
@@ -363,6 +381,11 @@
         callbackCheck = function() {
           called = true;
         },
+        edgeEditorConfig = {
+          edges: edges,
+          adapter: adapterDummy,
+          shaper: edgeShaperDummy
+        },
         testee;
         
         adapterDummy.createEdge = function(edgeToCreate, callback) {
@@ -376,7 +399,7 @@
         };
         
         runs(function() {
-          testee = eventLib.InsertEdge(edges, adapterDummy, edgeShaperDummy);
+          testee = eventLib.InsertEdge(edgeEditorConfig);
           testee(source, target, callbackCheck);
         });
         
@@ -410,11 +433,16 @@
         callbackCheck = function() {
           called = true;
         },
+        edgeEditorConfig = {
+          edges: edges,
+          adapter: adapterDummy,
+          shaper: edgeShaperDummy
+        },
         testee;
         
         adapterDummy.patchEdge = function(edgeToPatch, patchData, callback) {
           patched = edgeToPatch;
-          jQuery.extend(patched, patchData);
+          $.extend(patched, patchData);
           callback();
         };
         
@@ -423,7 +451,7 @@
         };
         
         runs(function() {
-          testee = eventLib.PatchEdge(edges, adapterDummy, edgeShaperDummy);
+          testee = eventLib.PatchEdge(edgeEditorConfig);
           testee(patched, data, callbackCheck);
         });
         
@@ -458,6 +486,11 @@
         callbackCheck = function() {
           called = true;
         },
+        edgeEditorConfig = {
+          edges: edges,
+          adapter: adapterDummy,
+          shaper: edgeShaperDummy
+        },
         testee;
         
         adapterDummy.deleteEdge = function(edgeToDelete, callback) {
@@ -471,7 +504,7 @@
         };
         
         runs(function() {
-          testee = eventLib.DeleteEdge(edges, adapterDummy, edgeShaperDummy);
+          testee = eventLib.DeleteEdge(edgeEditorConfig);
           testee(toDel, callbackCheck);
         });
         

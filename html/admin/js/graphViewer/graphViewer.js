@@ -78,9 +78,10 @@ function GraphViewer(svg, width, height,
     edgeContainer,
     layouter,
     fixedSize,
-    eventlib = new EventLibrary(),
+    eventDispatcher,
     edges = [],
     nodes = [],
+    eventsDispatcherConfig = {},
     // Function after handling events, will update the drawers and the layouter.
     start;
   
@@ -163,7 +164,16 @@ function GraphViewer(svg, width, height,
     layouter.start();
   };
   
-  if (eventsConfig.expander) {
+  if (eventsConfig.expand !== undefined) {
+    expandConfig = {
+      edges: edges,
+      nodes: nodes,
+      startCallback: start,
+      loadNode: adapter.loadNodeFromTreeById,
+      reshapeNode: nodeShaper.reshapeNode
+    };
+    eventsDispatcherConfig.expand = expandConfig;
+    
     nodeShaper.on("click", new eventlib.Expand(
       edges,
       nodes,
@@ -179,6 +189,12 @@ function GraphViewer(svg, width, height,
       });
     });
   }
+  dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
+  
+  if (eventsConfig.expand !== undefined) {
+    dispatcher.bind()
+  }
+  
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
