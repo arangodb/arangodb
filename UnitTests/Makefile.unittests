@@ -205,8 +205,41 @@ unittests-boost:
 	@echo
 endif
 
+
 ################################################################################
-### @brief SHELL SERVER TESTS (BASICS)
+### @brief SHELL SERVER TESTS (SERVER-ONLY)
+################################################################################
+
+.PHONY: unittests-shell-server-only
+
+SHELL_SERVER_ONLY = @top_srcdir@/js/server/tests/routing.js \
+                    @top_srcdir@/js/common/tests/shell-fuxx.js \
+                    @top_srcdir@/js/common/tests/shell-graph-traversal.js \
+                    @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
+                    @top_srcdir@/js/common/tests/shell-graph-measurement.js \
+                    @top_srcdir@/js/common/tests/shell-skiplist-index.js \
+                    @top_srcdir@/js/server/tests/transactions.js
+
+UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY))
+
+unittests-shell-server-only:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL SERVER TESTS (SERVER-ONLY)                                           >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+
+################################################################################
+### @brief SHELL SERVER TESTS (COMMON)
 ################################################################################
 
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
@@ -230,15 +263,10 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
 
-SHELL_SERVER = $(SHELL_COMMON) \
-               @top_srcdir@/js/server/tests/routing.js \
-               @top_srcdir@/js/common/tests/shell-fuxx.js \
-               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
-               @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
-               @top_srcdir@/js/common/tests/shell-graph-measurement.js \
-               @top_srcdir@/js/common/tests/shell-skiplist-index.js
 
 .PHONY: unittests-shell-server
+
+SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
 
 UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 
@@ -246,7 +274,7 @@ UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (BASICS)                                                >>"
+	@echo "<< SHELL SERVER TESTS (COMMON & SERVER-ONLY)                                  >>"
 	@echo "================================================================================"
 	@echo
 
@@ -257,6 +285,7 @@ unittests-shell-server:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
+
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (AHUACATL)
