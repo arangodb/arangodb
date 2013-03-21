@@ -30,6 +30,8 @@
 
 #include "BasicsC/common.h"
 
+#include "VocBase/vocbase.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,9 +44,7 @@ extern "C" {
 // --SECTION--                                              FORWARD DECLARATIONS
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_document_key_marker_s;
 struct TRI_json_s;
-struct TRI_primary_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
@@ -84,13 +84,13 @@ struct TRI_primary_collection_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_key_generator_s {
-  struct TRI_json_s*               _parameters;
-  struct TRI_primary_collection_s* _collection;
-  void*                            _data;
+  void*                _data;
 
   int (*init)(struct TRI_key_generator_s* const, const struct TRI_json_s* const);
-  int (*generate)(struct TRI_key_generator_s* const, const size_t, const struct TRI_doc_document_key_marker_s* const, const char* const, char* const, size_t* const);
+  int (*generate)(struct TRI_key_generator_s* const, const size_t, const TRI_voc_rid_t, const char* const, char* const, size_t* const);
+  void (*track)(struct TRI_key_generator_s* const, const TRI_voc_key_t);
   void (*free)(struct TRI_key_generator_s* const);
+  struct TRI_json_s* (*toJson)(const struct TRI_key_generator_s* const);
 }
 TRI_key_generator_t;
 
@@ -108,11 +108,11 @@ TRI_key_generator_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a key generator and attach it to the collection
+/// @brief create a key generator
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateKeyGenerator (const struct TRI_json_s* const,
-                            struct TRI_primary_collection_s* const);
+                            struct TRI_key_generator_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a key generator

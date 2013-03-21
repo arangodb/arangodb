@@ -966,11 +966,11 @@ describe ArangoDB do
         ArangoDB.drop_collection(cn)
       end
 
-      it "create collection with createOptions property" do
+      it "create collection with explicit keyOptions property, traditional keygen" do
         cn = "UnitTestsCollectionBasics"
 
         cmd = "/_api/collection"
-        body = "{ \"name\" : \"#{cn}\", \"waitForSync\" : false, \"type\" : 2, \"createOptions\" : {\"opt1\" : 10, \"opt2\" : \"val2\" } }"
+        body = "{ \"name\" : \"#{cn}\", \"waitForSync\" : false, \"type\" : 2, \"keyOptions\" : {\"type\": \"traditional\", \"allowUserKeys\": true } }"
         doc = ArangoDB.log_post("#{prefix}-with-create-options", cmd, :body => body)
 
         doc.code.should eq(200)
@@ -989,8 +989,39 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
-        doc.parsed_response['createOptions']['opt1'].should eq(10)
-        doc.parsed_response['createOptions']['opt2'].should eq("val2")
+        doc.parsed_response['keyOptions']['type'].should eq("traditional")
+        doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
+
+        ArangoDB.drop_collection(cn)
+      end
+
+      it "create collection with explicit keyOptions property, autoinc keygen" do
+        cn = "UnitTestsCollectionBasics"
+
+        cmd = "/_api/collection"
+        body = "{ \"name\" : \"#{cn}\", \"waitForSync\" : false, \"type\" : 2, \"keyOptions\" : {\"type\": \"autoincrement\", \"offset\": 7, \"increment\": 99, \"allowUserKeys\": false } }"
+        doc = ArangoDB.log_post("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        cid = doc.parsed_response['id']
+
+        cmd = api + "/" + cn + "/properties"
+        body = "{ \"waitForSync\" : true }"
+        doc = ArangoDB.log_put("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should eq(cid)
+        doc.parsed_response['name'].should eq(cn)
+        doc.parsed_response['status'].should eq(3)
+        doc.parsed_response['waitForSync'].should eq(true)
+        doc.parsed_response['isVolatile'].should eq(false)
+        doc.parsed_response['keyOptions']['type'].should eq("autoincrement")
+        doc.parsed_response['keyOptions']['increment'].should eq(99)
+        doc.parsed_response['keyOptions']['offset'].should eq(7)
+        doc.parsed_response['keyOptions']['allowUserKeys'].should eq(false)
 
         ArangoDB.drop_collection(cn)
       end
@@ -1019,7 +1050,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(cn)
       end
       
-      it "create collection with empty createOptions property" do
+      it "create collection with empty keyOptions property" do
         cn = "UnitTestsCollectionBasics"
         ArangoDB.drop_collection(cn)
 
@@ -1043,7 +1074,6 @@ describe ArangoDB do
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
         doc.parsed_response['isVolatile'].should eq(false)
-        doc.parsed_response['createOptions'].should be_nil
 
         ArangoDB.drop_collection(cn)
       end
