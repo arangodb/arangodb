@@ -3,13 +3,13 @@ require("internal").flushModuleCache();
 var jsunity = require("jsunity"),
   console = require("console"),
   arangodb = require("org/arangodb"),
-  Frank = require("org/arangodb/frank").Frank,
+  FuxxApplication = require("org/arangodb/fuxx").FuxxApplication,
   db = arangodb.db;
 
-function CreateFrankSpec () {
+function CreateFuxxApplicationSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new Frank(),
+      var app = new FuxxApplication(),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -17,20 +17,20 @@ function CreateFrankSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new Frank({urlPrefix: "/frankentest"}),
+      var app = new FuxxApplication({urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
-      assertEqual(routingInfo.urlPrefix, "/frankentest");
+      assertEqual(routingInfo.urlPrefix, "/wiese");
     },
 
     testCreationWithTemplateCollectionIfCollectionDoesntExist: function () {
       var app, routingInfo, templateCollection;
 
-      db._drop("frankentest");
-      app = new Frank({templateCollection: "frankentest"});
+      db._drop("wiese");
+      app = new FuxxApplication({templateCollection: "wiese"});
       routingInfo = app.routingInfo;
-      templateCollection = db._collection("frankentest");
+      templateCollection = db._collection("wiese");
 
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
@@ -40,11 +40,11 @@ function CreateFrankSpec () {
     testCreationWithTemplateCollectionIfCollectionDoesExist: function () {
       var app, routingInfo, templateCollection;
 
-      db._drop("frankentest");
-      db._create("frankentest");
-      app = new Frank({templateCollection: "frankentest"});
+      db._drop("wiese");
+      db._create("wiese");
+      app = new FuxxApplication({templateCollection: "wiese"});
       routingInfo = app.routingInfo;
-      templateCollection = db._collection("frankentest");
+      templateCollection = db._collection("wiese");
 
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
@@ -52,7 +52,7 @@ function CreateFrankSpec () {
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new Frank(),
+      var app = new FuxxApplication(),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
@@ -62,12 +62,12 @@ function CreateFrankSpec () {
   };
 }
 
-function SetRoutesFrankSpec () {
+function SetRoutesFuxxApplicationSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new Frank();
+      app = new FuxxApplication();
     },
 
     testSettingRoutesWithoutConstraint: function () {
@@ -195,12 +195,12 @@ function SetRoutesFrankSpec () {
   };
 }
 
-function AddMidlewareFrankSpec () {
+function AddMidlewareFuxxApplicationSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new Frank();
+      app = new FuxxApplication();
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -289,7 +289,7 @@ function BaseMiddlewareWithoutTemplateSpec () {
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/frank").BaseMiddleware();
+      baseMiddleware = require("org/arangodb/fuxx").BaseMiddleware();
       request = {};
       response = {};
       options = {};
@@ -347,7 +347,7 @@ function BaseMiddlewareWithoutTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "No template collection has been provided when creating a new Frank");
+      assertEqual(error, "No template collection has been provided when creating a new FuxxApplication");
     },
 
     testMiddlewareCallsTheAction: function () {
@@ -373,7 +373,7 @@ function BaseMiddlewareWithTemplateSpec () {
       response = {};
       options = {};
       next = function () {};
-      BaseMiddleware = require("org/arangodb/frank").BaseMiddleware;
+      BaseMiddleware = require("org/arangodb/fuxx").BaseMiddleware;
     },
 
     testRenderingATemplate: function () {
@@ -447,8 +447,8 @@ function ViewHelperSpec () {
 
   return {
     setUp: function () {
-      app = new Frank();
-      Middleware = require('org/arangodb/frank').BaseMiddleware;
+      app = new FuxxApplication();
+      Middleware = require('org/arangodb/fuxx').BaseMiddleware;
       request = {};
       response = {};
       options = {};
@@ -493,7 +493,7 @@ function FormatMiddlewareSpec () {
 
   return {
     setUp: function () {
-      Middleware = require('org/arangodb/frank').FormatMiddleware;
+      Middleware = require('org/arangodb/fuxx').FormatMiddleware;
       request = {};
       response = {};
       options = {};
@@ -601,9 +601,9 @@ function FormatMiddlewareSpec () {
   };
 }
 
-jsunity.run(CreateFrankSpec);
-jsunity.run(SetRoutesFrankSpec);
-jsunity.run(AddMidlewareFrankSpec);
+jsunity.run(CreateFuxxApplicationSpec);
+jsunity.run(SetRoutesFuxxApplicationSpec);
+jsunity.run(AddMidlewareFuxxApplicationSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);

@@ -1,22 +1,16 @@
 /*jslint indent: 2, nomen: true, maxlen: 100 */
 /*global require, exports */
 
-// `Codename Frank` is a classy way to create APIs and simple web applications
+// Fuxx is an easy way to create APIs and simple web applications
 // from within **ArangoDB**.
-// It is inspired by Sinatra, the classy Ruby web framework. If Frank is Sinatra,
+// It is inspired by Sinatra, the classy Ruby web framework. If FuxxApplication is Sinatra,
 // [ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html)
 // are the corresponding `Rack`. They provide all the HTTP goodness.
 //
-// Please be aware of the following:
-//
-// > From now on Frank is only a codename.  
-// > But don't tell it to anyone.  
-// > Because it is a codename, you know.
-//
 // So let's get started, shall we?
 
-// Frank uses Underscore internally. This library is wonderful.
-var Frank,
+// FuxxApplication uses Underscore internally. This library is wonderful.
+var FuxxApplication,
   BaseMiddleware,
   FormatMiddleware,
   _ = require("underscore"),
@@ -28,7 +22,7 @@ var Frank,
 // exported) you can create an UrlObject with a given URL,
 // a constraint and a method. For example:
 //
-//     internal.createUrlObject('/rat/pack', null, 'get')
+//     internal.createUrlObject('/lecker/gans', null, 'get')
 internal.createUrlObject = function (url, constraint, method) {
   'use strict';
   var urlObject = {};
@@ -47,11 +41,11 @@ internal.createUrlObject = function (url, constraint, method) {
   return urlObject;
 };
 
-// ## Creating a new application
-// And that's Frank. He's a constructor, so call him like this:
+// ## Creating a new Application
+// And that's FuxxApplication. It's a constructor, so call it like this:
 //
-//     app = new Frank({
-//       urlPrefix: "/classyroutes",
+//     app = new FuxxApplication({
+//       urlPrefix: "/wiese",
 //       templateCollection: "my_templates"
 //     })
 //
@@ -59,7 +53,7 @@ internal.createUrlObject = function (url, constraint, method) {
 //
 // * **The URL Prefix:** All routes you define within will be prefixed with it
 // * **The Template Collection:** More information in the template section
-Frank = function (options) {
+FuxxApplication = function (options) {
   'use strict';
   var urlPrefix, templateCollection, myMiddleware;
 
@@ -94,23 +88,23 @@ Frank = function (options) {
   ];
 };
 
-// ## The functions on a created Frank
+// ## The functions on a created FuxxApplication
 //
-// When you have created your Frank you can now define routes
+// When you have created your FuxxApplication you can now define routes
 // on it. You provide each with a function that will handle
 // the request. It gets two arguments (four, to be honest. But the
 // other two are not relevant for now):
 //
 // * The request object
-// * The response object.
+// * The response object
 //
 // You can find more about those in their individual sections.
-_.extend(Frank.prototype, {
+_.extend(FuxxApplication.prototype, {
   // The `handleRequest` method is the raw way to create a new
   // route. You probably wont call it directly, but it is used
   // in the other request methods:
   //
-  //     app.handleRequest("get", "/come/fly/with/me", function (req, res) {
+  //     app.handleRequest("get", "/gaense", function (req, res) {
   //       //handle the request
   //     });
   handleRequest: function (method, route, argument1, argument2) {
@@ -144,11 +138,11 @@ _.extend(Frank.prototype, {
     this.handleRequest("head", route, argument1, argument2);
   },
 
-  // ### Handle a `get` request
+  // ### Manage a `get` request
   // This handles requests from the HTTP verb `get`.
   // See above for the arguments you can give. An example:
   //
-  //     app.get('/high/society', function (req, res) {
+  //     app.get('/gaense/stall', function (req, res) {
   //       // Take this request and deal with it!
   //     });
   get: function (route, argument1, argument2) {
@@ -156,11 +150,11 @@ _.extend(Frank.prototype, {
     this.handleRequest("get", route, argument1, argument2);
   },
 
-  // ### Handle a `post` request
+  // ### Tackle a `post` request
   // This handles requests from the HTTP verb `post`.
   // See above for the arguments you can give. An example:
   //
-  //     app.post('/high/society', function (req, res) {
+  //     app.post('/gaense/stall', function (req, res) {
   //       // Take this request and deal with it!
   //     });
   post: function (route, argument1, argument2) {
@@ -168,11 +162,11 @@ _.extend(Frank.prototype, {
     this.handleRequest("post", route, argument1, argument2);
   },
 
-  // ### Handle a `put` request
+  // ### Sort out a `put` request
   // This handles requests from the HTTP verb `put`.
   // See above for the arguments you can give. An example:
   //
-  //     app.put('/high/society', function (req, res) {
+  //     app.put('/gaense/stall', function (req, res) {
   //       // Take this request and deal with it!
   //     });
   put: function (route, argument1, argument2) {
@@ -180,11 +174,11 @@ _.extend(Frank.prototype, {
     this.handleRequest("put", route, argument1, argument2);
   },
 
-  // ### Handle a `patch` request
+  // ### Take charge of a `patch` request
   // This handles requests from the HTTP verb `patch`.
   // See above for the arguments you can give. An example:
   //
-  //     app.patch('/high/society', function (req, res) {
+  //     app.patch('/gaense/stall', function (req, res) {
   //       // Take this request and deal with it!
   //     });
   patch: function (route, argument1, argument2) {
@@ -192,13 +186,13 @@ _.extend(Frank.prototype, {
     this.handleRequest("patch", route, argument1, argument2);
   },
 
-  // ### Handle a `delete` request
+  // ### Respond to a `delete` request
   // This handles requests from the HTTP verb `delete`.
   // See above for the arguments you can give.
   // **A word of warning:** Do not forget that `delete` is
   // a reserved word in JavaScript so call it as follows:
   //
-  //     app['delete']('/high/society', function (req, res) {
+  //     app['delete']('/gaense/stall', function (req, res) {
   //       // Take this request and deal with it!
   //     });
   'delete': function (route, argument1, argument2) {
@@ -221,7 +215,7 @@ _.extend(Frank.prototype, {
   // Your function gets a Request and a Response object.
   // An example:
   //
-  //     app.before('/my/way', function(req, res) {
+  //     app.before('/high/way', function(req, res) {
   //       //Do some crazy request logging
   //     });
   before: function (path, func) {
@@ -247,7 +241,7 @@ _.extend(Frank.prototype, {
   //
   // An example:
   //
-  //     app.after('/my/way', function(req, res) {
+  //     app.after('/high/way', function(req, res) {
   //       //Do some crazy response logging
   //     });
   after: function (path, func) {
@@ -314,7 +308,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     // * suffix
     // * urlParameters
     //
-    // Frank currently leaves those unmodified.
+    // FuxxApplication currently leaves those unmodified.
     responseFunctions = {};
 
     // ### The Response Object
@@ -325,7 +319,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     // * body
     // * headers (an object)
     //
-    // Frank adds the following methods to this response object.
+    // FuxxApplication adds the following methods to this response object.
     responseFunctions = {
       // ### The straightforward `status` function
       // Set the status code of your response, for example:
@@ -377,12 +371,12 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       },
 
       // ### The mysterious `render` function
-      // If you initialize your Frank with a `templateCollection`,
+      // If you initialize your FuxxApplication with a `templateCollection`,
       // you're in luck now.
       // It expects documents in the following form in this collection:
       //
       //     {
-      //       path: "my/way",
+      //       path: "high/way",
       //       content: "hallo <%= username %>",
       //       contentType: "text/plain",
       //       templateLanguage: "underscore"
@@ -393,13 +387,13 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       // from this call. And with the `templateLanguage` you can choose
       // your template processor. There is only one choice now: `underscore`.
       //
-      // If you call render, Frank will look
+      // If you call render, FuxxApplication will look
       // into the this collection and search by the path attribute.
       // It will then render the template with the given data:
       //
-      //     response.render("my/way", {username: 'Frank'})
+      //     response.render("high/way", {username: 'FuxxApplication'})
       //
-      // Which would set the body of the response to `hello Frank` with the
+      // Which would set the body of the response to `hello FuxxApplication` with the
       // template defined above. It will also set the `contentType` to
       // `text/plain` in this case.
       //
@@ -410,7 +404,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
         var template;
 
         if (_.isUndefined(templateCollection)) {
-          throw "No template collection has been provided when creating a new Frank";
+          throw "No template collection has been provided when creating a new FuxxApplication";
         }
 
         template = templateCollection.firstExample({path: templatePath });
@@ -442,28 +436,20 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 // ## The Format Middleware
 // Unlike the `BaseMiddleware` this Middleware is only loaded if you
 // want it. This Middleware gives you Rails-like format handling via
-// the `extension` of the URL. Say you request an URL like `/people.json`.
+// the `extension` of the URL or the accept header.
+// Say you request an URL like `/people.json`:
 // The `FormatMiddleware` will set the format of the request to JSON
 // and then delete the `.json` from the request. You can therefore write
 // handlers that do not take an `extension` into consideration and instead
 // handle the format via a simple String.
-// It is planned to adjust the request according to the request type,
-// but this is not implemented yet.
-// It will never touch the response body however, because
-// you could use templates for example.
-// If you want to return an object as JSON, I refer
-// you to the `response.json` function provided
-// by BaseMiddleware.
 // To determine the format of the request it checks the URL and then
 // the `accept` header. If one of them gives a format or both give
-// the same, the format is set. If the formats are not the same
-// or both do not have a format or accept all it depends on wether
-// you have provided an default: If no default was provided, the request
-// will be rejected.
+// the same, the format is set. If the formats are not the same,
+// an error is raised.
 //
 // Use it by calling:
 //
-//     FormatMiddleware = require('frank').FormatMiddleware;
+//     FormatMiddleware = require('fuxx').FormatMiddleware;
 //     app.before("/*", FormatMiddleware.new(['json']));
 //
 // or the shortcut:
@@ -471,7 +457,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 //     app.accepts(['json']);
 //
 // In both forms you can give a default format as a second parameter,
-// if no format could be determined. If you give no defaultFormat this
+// if no format could be determined. If you give no `defaultFormat` this
 // case will be handled as an error.
 FormatMiddleware = function (allowedFormats, defaultFormat) {
   'use strict';
@@ -539,10 +525,10 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   return middleware;
 };
 
-// We finish off with exporting Frank and the middlewares.
+// We finish off with exporting FuxxApplication and the middlewares.
 // Everything else will remain our secret.
 //
 // Fin.
-exports.Frank = Frank;
+exports.FuxxApplication = FuxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
