@@ -29,32 +29,62 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// Example onclick = new eventLibrary.Expand(
-// edges, nodes, start,
-// adapter.loadNode, nodeShaper.reshapeNode)
+// configs:
+//  expand: {
+//    edges,
+//    nodes,
+//    startCallback,
+//    loadNode,
+//    reshapeNode
+//  }
+//  
+//  nodeEditor: {
+//    nodes,
+//    adapter,
+//    shaper
+//  }
+//
+//  edgeEditor: {
+//    edges,
+//    adapter,
+//    shaper
+//  }
+//
+//
+//
 function EventLibrary() {
-  this.Expand = function (edges, nodes, startCallback, loadNode, reshapeNode) {
-    if (edges === undefined) {
+  "use strict";
+  
+  var self = this;
+  
+  this.checkExpandConfig = function(config) {
+    if (config.edges === undefined) {
       throw "Edges have to be defined";
     }
-  
-    if (nodes === undefined) {
+    if (config.nodes === undefined) {
       throw "Nodes have to be defined";
     }
-  
-    if (startCallback === undefined) {
+    if (config.startCallback === undefined) {
       throw "A callback to the Start-method has to be defined";
     }
-  
-    if (loadNode === undefined) {
+    if (config.loadNode === undefined) {
       throw "A callback to load a node has to be defined";
     }
-  
-    if (reshapeNode === undefined) {
+    if (config.reshapeNode === undefined) {
       throw "A callback to reshape a node has to be defined";
     }
+    return true;
+  };
   
-    var removeNode = function (node) {
+  this.Expand = function (config) {
+    self.checkExpandConfig(config);
+    
+    var edges = config.edges,
+    nodes = config.nodes,
+    startCallback = config.startCallback,
+    loadNode = config.loadNode,
+    reshapeNode = config.reshapeNode,
+    removeNode = function (node) {
       var i;
       for ( i = 0; i < nodes.length; i++ ) {
         if ( nodes[i] === node ) {
@@ -101,8 +131,6 @@ function EventLibrary() {
       loadNode(n._id, startCallback);
     };
   
-    // @ before layouter.stop()
-    // nodeClicked = function(n)
     return function(n) {
       if (!n._expanded) {
         expandNode(n);
@@ -114,7 +142,38 @@ function EventLibrary() {
     };
   };
   
-  this.InsertNode = function (nodes, adapter, nodeShaper) {
+  this.checkNodeEditorConfig = function (config) {
+    if (config.nodes === undefined) {
+      throw "Nodes have to be defined";
+    }
+    if (config.adapter === undefined) {
+      throw "An adapter has to be defined";
+    }
+    if (config.shaper === undefined) {
+      throw "A Node Shaper has to be defined";
+    }
+    return true;
+  };
+  
+  this.checkEdgeEditorConfig = function (config) {
+    if (config.edges === undefined) {
+      throw "Nodes have to be defined";
+    }
+    if (config.adapter === undefined) {
+      throw "An adapter has to be defined";
+    }
+    if (config.shaper === undefined) {
+      throw "An Edge Shaper has to be defined";
+    }
+    return true;
+  };
+  
+  this.InsertNode = function (config) {
+    self.checkNodeEditorConfig(config);
+    var nodes = config.nodes,
+    adapter = config.adapter,
+    nodeShaper = config.shaper;
+    
     return function(callback) {
       adapter.createNode({}, function(newNode) {
         newNode._outboundCounter = 0;
@@ -125,24 +184,36 @@ function EventLibrary() {
     };
   };
   
-  
-  this.PatchNode = function (nodes, adapter, nodeShaper) {
+  this.PatchNode = function (config) {
+    self.checkNodeEditorConfig(config);
+    var nodes = config.nodes,
+    adapter = config.adapter,
+    nodeShaper = config.shaper;
+    
     return function(nodeToPatch, patchData, callback) {
       adapter.patchNode(nodeToPatch, patchData, function(patchedNode) {
         nodeShaper.drawNodes(nodes);
         callback(patchedNode);
       });
     };
-    
   };
   
-  this.DeleteNode = function (nodes, adapter, nodeShaper) {
+  this.DeleteNode = function (config) {
+    self.checkNodeEditorConfig(config);
+    var nodes = config.nodes,
+    adapter = config.adapter,
+    nodeShaper = config.shaper;
+    
     return function(nodeToDelete, callback) {
       adapter.deleteNode(nodeToDelete, callback);
     };
   };
   
-  this.InsertEdge = function (edges, adapter, edgeShaper) {
+  this.InsertEdge = function (config) {
+    self.checkEdgeEditorConfig(config);
+    var edges = config.edges,
+    adapter = config.adapter,
+    edgeShaper = config.shaper;
     return function(source, target, callback) {
       adapter.createEdge({source: source, target: target}, function(newEdge) {
         edgeShaper.drawEdges(edges);
@@ -151,18 +222,24 @@ function EventLibrary() {
     };
   };
   
-  
-  this.PatchEdge = function (edges, adapter, edgeShaper) {
+  this.PatchEdge = function (config) {
+    self.checkEdgeEditorConfig(config);
+    var edges = config.edges,
+    adapter = config.adapter,
+    edgeShaper = config.shaper;
     return function(edgeToPatch, patchData, callback) {
       adapter.patchEdge(edgeToPatch, patchData, function(patchedEdge) {
         edgeShaper.drawEdges(edges);
         callback(patchedEdge);
       });
     };
-    
   };
   
-  this.DeleteEdge = function (edges, adapter, edgeShaper) {
+  this.DeleteEdge = function (config) {
+    self.checkEdgeEditorConfig(config);
+    var edges = config.edges,
+    adapter = config.adapter,
+    edgeShaper = config.shaper;
     return function(edgeToDelete, callback) {
       adapter.deleteEdge(edgeToDelete, callback);
     };

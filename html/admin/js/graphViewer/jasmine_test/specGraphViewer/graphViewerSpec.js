@@ -40,9 +40,16 @@ describe("Graph Viewer", function() {
   svg,
   docSVG,
   
+  simulateMouseEvent = function (type, objectId) {
+    var evt = document.createEvent("MouseEvents"),
+    testee = document.getElementById(objectId); 
+    evt.initMouseEvent(type, true, true, window,
+      0, 0, 0, 0, 0, false, false, false, false, 0, null);
+    testee.dispatchEvent(evt);
+  },
+  
   clickOnNode = function(id) {
-    var raw = $("#"+id).get(0);
-    raw.__onclick();
+    simulateMouseEvent("click", id);
   };
   
   beforeEach(function() {
@@ -164,7 +171,7 @@ describe("Graph Viewer", function() {
       nsconf = {},
       esconf = {},
       lconf = {type: "force"},
-      evconf = { expander: true };
+      evconf = { expand: "click" };
       viewer = new GraphViewer(svg, 10, 10, aconf, nsconf, esconf, lconf, evconf);
       
       this.addMatchers({

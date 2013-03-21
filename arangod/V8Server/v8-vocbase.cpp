@@ -4767,15 +4767,12 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
     if (keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
     else {
       result->Set(v8g->KeyOptionsKey, v8::Array::New());
     }
     result->Set(v8g->WaitForSyncKey, base->_info._waitForSync ? v8::True() : v8::False());
-
-    if (keyOptions != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-    }
   }
 
   ReleaseCollection(collection);

@@ -119,6 +119,10 @@ function EdgeShaper(parent, flags, idfunc) {
       });
   };
   
+  self.on = function() {
+    throw "Not implemented yet";
+  };
+  
 }
 
 
