@@ -229,7 +229,8 @@
     
     
     evconfig = {
-      expand: {target: "nodes", type: "click"}
+      expand: {target: "nodes", type: "click"},
+      createNode: {target: $("#createNode"), type: "click", callback: function(newNode) {console.log(newNode);}}
     };
     
     
