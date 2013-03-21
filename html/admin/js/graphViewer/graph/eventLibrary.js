@@ -176,8 +176,6 @@ function EventLibrary() {
     
     return function(callback) {
       adapter.createNode({}, function(newNode) {
-        newNode._outboundCounter = 0;
-        newNode._inboundCounter = 0;
         nodeShaper.drawNodes(nodes);
         callback(newNode);
       });

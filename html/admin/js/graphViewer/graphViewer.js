@@ -212,6 +212,7 @@ function GraphViewer(svg, width, height,
       eventsConfig.createNode.type,
       function() {
         dispatcher.events.CREATENODE(eventsConfig.createNode.callback);
+        start();
       });
   }
   

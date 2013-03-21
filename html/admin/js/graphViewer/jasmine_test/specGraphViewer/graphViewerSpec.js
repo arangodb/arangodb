@@ -171,7 +171,7 @@ describe("Graph Viewer", function() {
       nsconf = {},
       esconf = {},
       lconf = {type: "force"},
-      evconf = { expand: "click" };
+      evconf = {expand: {target: "nodes", type: "click"}};
       viewer = new GraphViewer(svg, 10, 10, aconf, nsconf, esconf, lconf, evconf);
       
       this.addMatchers({
