@@ -1254,7 +1254,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
                              EqualKeyCollectionName,
                              NULL);
 
-  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase, 1);
+  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase);
 
   TRI_InitAssociativePointer(&vocbase->_authInfo,
                              TRI_CORE_MEM_ZONE,

@@ -63,28 +63,6 @@ struct TRI_vocbase_col_s;
 typedef uint64_t TRI_transaction_cid_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief local transaction id typedef
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint64_t TRI_transaction_local_id_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server identifier type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint16_t TRI_transaction_server_id_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction id typedef
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_transaction_id_s {
-  TRI_transaction_local_id_t  _localId;
-  TRI_transaction_server_id_t _serverId;
-}
-TRI_transaction_id_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,8 +82,7 @@ typedef enum {
   TRI_TRANSACTION_RUNNING      = 2,
   TRI_TRANSACTION_COMMITTED    = 3,
   TRI_TRANSACTION_ABORTED      = 4,
-  TRI_TRANSACTION_FINISHED     = 5,
-  TRI_TRANSACTION_FAILED       = 6
+  TRI_TRANSACTION_FAILED       = 5
 }
 TRI_transaction_status_e;
 
@@ -174,7 +151,7 @@ TRI_transaction_list_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_context_s {
-  TRI_transaction_id_t      _id;                // last transaction id assigned
+  //TRI_transaction_id_t      _id;                // last transaction id assigned
   
   TRI_read_write_lock_t     _rwLock;            // lock used to either simulatensously read this structure, 
                                                 // or uniquely modify this structure
@@ -219,9 +196,7 @@ TRI_transaction_collection_global_t;
 /// @brief create the global transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_context_t* TRI_CreateTransactionContext (struct TRI_vocbase_s* const,
-                                                         TRI_transaction_server_id_t);
-
+TRI_transaction_context_t* TRI_CreateTransactionContext (struct TRI_vocbase_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the global transaction context
@@ -282,6 +257,7 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 typedef struct TRI_transaction_collection_s {
   TRI_transaction_cid_t                _cid;                // collection id
   TRI_transaction_type_e               _type;               // access type (read|write)
+  int                                  _nestingLevel;       // the transaction level that added this collection
 #if 0
   TRI_transaction_list_t               _writeTransactions;  // private copy of other write transactions at transaction start
 #endif
@@ -307,7 +283,7 @@ typedef uint32_t TRI_transaction_hint_t;
 typedef enum {
   TRI_TRANSACTION_HINT_NONE             = 0,
   TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1,
-  TRI_TRANSACTION_HINT_IMPLICIT_LOCK    = 2
+  TRI_TRANSACTION_HINT_LOCK_ENTIRELY    = 2
 }
 TRI_transaction_hint_e;
 
@@ -317,7 +293,9 @@ TRI_transaction_hint_e;
 
 typedef struct TRI_transaction_s {
   TRI_transaction_context_t*    _context;        // global context object
-  TRI_transaction_id_t          _id;             // id of transaction
+  // TODO: fix
+  uint64_t                      _id; 
+  //TRI_transaction_id_t          _id;             // id of transaction
   TRI_transaction_type_e        _type;           // access type (read|write)
   TRI_transaction_status_e      _status;         // current status
   TRI_vector_pointer_t          _collections;    // list of participating collections
@@ -381,12 +359,6 @@ bool TRI_IsMultiCollectionWriteTransaction (const TRI_transaction_t* const);
 */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the local id of a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_local_id_t TRI_LocalIdTransaction (const TRI_transaction_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump information about a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -398,9 +370,9 @@ void TRI_DumpTransaction (TRI_transaction_t* const);
 /// @brief check if a collection is contained in a transaction and return it
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_col_s* TRI_CheckCollectionTransaction (TRI_transaction_t* const,
-                                                          const TRI_transaction_cid_t,
-                                                          const TRI_transaction_type_e);
+struct TRI_vocbase_col_s* TRI_GetCollectionTransaction (TRI_transaction_t* const,
+                                                        const TRI_transaction_cid_t,
+                                                        const TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to a transaction
@@ -408,14 +380,8 @@ struct TRI_vocbase_col_s* TRI_CheckCollectionTransaction (TRI_transaction_t* con
 
 int TRI_AddCollectionTransaction (TRI_transaction_t* const,
                                   const TRI_transaction_cid_t,
-                                  const TRI_transaction_type_e);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a collection to an already running transaction, read-only mode
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AddDelayedReadCollectionTransaction (TRI_transaction_t* const,
-                                             const TRI_transaction_cid_t);
+                                  const TRI_transaction_type_e, 
+                                  const int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a lock for a collection
@@ -423,7 +389,8 @@ int TRI_AddDelayedReadCollectionTransaction (TRI_transaction_t* const,
 
 int TRI_LockCollectionTransaction (TRI_transaction_t* const,
                                    const TRI_transaction_cid_t,
-                                   const TRI_transaction_type_e);
+                                   const TRI_transaction_type_e,
+                                   const int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request an unlock for a collection
@@ -431,31 +398,39 @@ int TRI_LockCollectionTransaction (TRI_transaction_t* const,
 
 int TRI_UnlockCollectionTransaction (TRI_transaction_t* const,
                                      const TRI_transaction_cid_t,
-                                     const TRI_transaction_type_e);
+                                     const TRI_transaction_type_e, 
+                                     const int);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start a transaction
+/// @brief check whether a collection is locked in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartTransaction (TRI_transaction_t* const, TRI_transaction_hint_t);
+bool TRI_IsLockedCollectionTransaction (TRI_transaction_t* const,
+                                        const TRI_transaction_cid_t,
+                                        const TRI_transaction_type_e,
+                                        const int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_BeginTransaction (TRI_transaction_t* const, 
+                          TRI_transaction_hint_t,
+                          const int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CommitTransaction (TRI_transaction_t* const);
+int TRI_CommitTransaction (TRI_transaction_t* const,
+                           const int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abort a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AbortTransaction (TRI_transaction_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finish a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FinishTransaction (TRI_transaction_t* const);
+int TRI_AbortTransaction (TRI_transaction_t* const,
+                          const int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
