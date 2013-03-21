@@ -51,9 +51,8 @@ Please see the documentation of `fuxx.js` for further information on how to writ
 When you start arangod with the `--app` option, ArangoDB scans the
 given directory on every request for files called `manifest.json`.
 There can be a file in the root directory and in each direct subdirectory if you want that.
-The content is a JSON object with two keys: `apps` and `libs`.
-(*we will also add a third one called `vendor` for NPM packages, but
-this does not exist yet*).
+The content is a JSON object with two keys: `apps`, `libs` and `assets`.
+(*we will also add a fourth called `vendor` for NPM packages, but this does not exist yet*).
 `apps` is an object that matches routes to files:
 
 * The `key` is the route you want to mount at
@@ -68,6 +67,9 @@ so you can require them as usual. The `lib` folder can be structured however
 you want. If you have a folder `models` in your `lib` folder containing
 a file `user.js`, you can require it with `user = require('models/user')`.
 
+Also optional is the definition of an `asset` directive.
+Read more about in the section Assets.
+
 A more complete example for a Manifest file:
 
     {
@@ -76,9 +78,45 @@ A more complete example for a Manifest file:
         '/shop': 'apps/shop.js'
       },
 
-      'lib': 'lib'
+      'lib': 'lib',
+
+      'assets': {
+        'application.js': [
+          'vendor/jquery.js',
+          'assets/javascripts/*'
+        ]
+      }
     }
 
+## Assets
+
+The value for the asset key is an object consisting of paths that are
+matched to files they are composed of. Let's take the following example:
+
+  'assets': {
+    'application.js': [
+      'vendor/jquery.js',
+      'assets/javascripts/*'
+    ]
+  }
+
+If a request is made to `/application.js` (in development mode), the array
+provided will be processed one element at a time. The elements are paths
+to files (with the option to use wildcards).
+
+A file with an unknown extension will just be used as it is. It is however
+possible to define preprocessors based on the file extension.
+Currently we have defined a preprocessor for CoffeeScript that will process
+all files ending in `.coffee`.
+When the file was processed, the extension will be removed and the file
+will be executed again. This is useful if you want to chain multiple processors.
+
+The processed files will then be concatenated and delivered as a single file.
+We provide source maps, so if your browser supports them, you can always jump
+to the original file.
+We will offer the option to process all assets at once and write the files to
+disk for production with the option to run `Uglify.js` and similar tools
+in order to compress them.
 
 ## Development Mode
 
