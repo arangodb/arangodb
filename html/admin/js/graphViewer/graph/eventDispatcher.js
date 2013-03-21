@@ -77,22 +77,27 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   
   //Check for expand config
   self.bind = function (object, event, func) {
+    if (func === self.events.CREATENODE) {
+      console.log("Equally!");
+    }
     if (func === undefined || !_.isFunction(func)) {
-      throw "You have to give a function that should be triggered as a third argument";
+      throw "You have to give a function that should be bound as a third argument";
     }
     switch (object) {
       case "nodes":
         nodeShaper.on(event, func);
+        nodeShaper.drawNodes();
         break;
       case "edges":
         edgeShaper.on(event, func);
+        edgeShaper.drawEdges();
         break;
       default:
-      if (object.bind !== undefined) {
-        object.bind(event, func);
-      } else {
-        throw "Sorry cannot bind to object. Please give either "
-        + "\"nodes\", \"edges\" or a jQuery-selected DOM-Element";
+        if (object.bind !== undefined) {
+          object.bind(event, func);
+        } else {
+          throw "Sorry cannot bind to object. Please give either "
+          + "\"nodes\", \"edges\" or a jQuery-selected DOM-Element";
       }
     }
   };

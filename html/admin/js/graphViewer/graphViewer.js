@@ -173,8 +173,19 @@ function GraphViewer(svg, width, height,
       reshapeNode: nodeShaper.reshapeNode
     };
   }
-  if (eventsConfig.nodeEditor !== undefined) {
-  
+  if (eventsConfig.createNode !== undefined
+    || eventsConfig.patchNode !== undefined
+    || eventsConfig.deleteNode !== undefined) {
+    eventsDispatcherConfig.nodeEditor = {
+      nodes: nodes,
+      adapter: adapter
+    };
+  }
+  if (eventsConfig.edgeEditor !== undefined) {
+    eventsDispatcherConfig.edgeEditor = {
+      edges: edges,
+      adapter: adapter
+    };
   }
   
   dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
@@ -192,6 +203,34 @@ function GraphViewer(svg, width, height,
     });
   }
   
+  if (eventsConfig.createNode !== undefined
+    && eventsConfig.createNode.target !== undefined
+    && eventsConfig.createNode.type !== undefined
+    && eventsConfig.createNode.callback !== undefined
+    && _.isFunction(eventsConfig.createNode.callback)) {
+    dispatcher.bind(eventsConfig.createNode.target,
+      eventsConfig.createNode.type,
+      function() {
+        dispatcher.events.CREATENODE(eventsConfig.createNode.callback);
+      });
+  }
+  
+  
+  if (eventsConfig.patchNode !== undefined
+    && eventsConfig.patchNode.target !== undefined
+    && eventsConfig.patchNode.type !== undefined) {
+    dispatcher.bind(eventsConfig.patchNode.target,
+      eventsConfig.patchNode.type,
+      dispatcher.events.PATCHNODE);
+  }
+  
+  if (eventsConfig.deleteNode !== undefined
+    && eventsConfig.deleteNode.target !== undefined
+    && eventsConfig.deleteNode.type !== undefined) {
+    dispatcher.bind(eventsConfig.deleteNode.target,
+      eventsConfig.deleteNode.type,
+      dispatcher.events.DELETENODE);
+  }
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
@@ -204,7 +243,5 @@ function GraphViewer(svg, width, height,
       start();
     });
   };
-  
-  
   
 }
