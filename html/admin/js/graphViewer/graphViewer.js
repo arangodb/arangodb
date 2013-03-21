@@ -83,7 +83,59 @@ function GraphViewer(svg, width, height,
     nodes = [],
     eventsDispatcherConfig = {},
     // Function after handling events, will update the drawers and the layouter.
-    start;
+    start,
+    bindEventsFromConfig;
+  
+  
+  bindEventsFromConfig = function(conf) {
+    var checkDefs = function(el) {
+      return el !== undefined && el.target !== undefined && el.type !== undefined;
+    },
+    checkFunction = function(el) {
+      return el !== undefined && _.isFunction(el);
+    };
+    
+    if (checkDefs(conf.expand)) {
+      dispatcher.bind(conf.expand.target, conf.expand.type, dispatcher.events.EXPAND);
+      dispatcher.bind("nodes", "update", function(node) {
+        node.selectAll("circle")
+        .attr("class", function(d) {
+          return d._expanded ? "expanded" : 
+            d._centrality === 0 ? "single" : "collapsed";
+        });
+      });
+    }
+  
+    if (checkDefs(conf.createNode)
+    && checkFunction(conf.createNode.callback)) {
+      dispatcher.bind(conf.createNode.target,
+        conf.createNode.type,
+        function() {
+          dispatcher.events.CREATENODE(conf.createNode.callback);
+          start();
+        });
+    }
+  
+    if (checkDefs(conf.patchNode)) {
+      dispatcher.bind(conf.patchNode.target,
+        conf.patchNode.type,
+        dispatcher.events.PATCHNODE);
+    }
+  
+    if (checkDefs(conf.deleteNode)) {
+      dispatcher.bind(conf.deleteNode.target,
+        conf.deleteNode.type,
+        dispatcher.events.DELETENODE);
+    }
+    if (conf.custom !== undefined) {
+      _.each(conf.custom, function(toBind) {
+        if (checkDefs(toBind)
+        && checkFunction(toBind.func)) {
+          dispatcher.bind(toBind.target, toBind.type, toBind.func);
+        }
+      });
+    }
+  };
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
@@ -190,48 +242,7 @@ function GraphViewer(svg, width, height,
   
   dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
   
-  if (eventsConfig.expand !== undefined
-    && eventsConfig.expand.target !== undefined
-    && eventsConfig.expand.type !== undefined) {
-    dispatcher.bind(eventsConfig.expand.target, eventsConfig.expand.type, dispatcher.events.EXPAND);
-    dispatcher.bind("nodes", "update", function(node) {
-      node.selectAll("circle")
-      .attr("class", function(d) {
-        return d._expanded ? "expanded" : 
-          d._centrality === 0 ? "single" : "collapsed";
-      });
-    });
-  }
-  
-  if (eventsConfig.createNode !== undefined
-    && eventsConfig.createNode.target !== undefined
-    && eventsConfig.createNode.type !== undefined
-    && eventsConfig.createNode.callback !== undefined
-    && _.isFunction(eventsConfig.createNode.callback)) {
-    dispatcher.bind(eventsConfig.createNode.target,
-      eventsConfig.createNode.type,
-      function() {
-        dispatcher.events.CREATENODE(eventsConfig.createNode.callback);
-        start();
-      });
-  }
-  
-  
-  if (eventsConfig.patchNode !== undefined
-    && eventsConfig.patchNode.target !== undefined
-    && eventsConfig.patchNode.type !== undefined) {
-    dispatcher.bind(eventsConfig.patchNode.target,
-      eventsConfig.patchNode.type,
-      dispatcher.events.PATCHNODE);
-  }
-  
-  if (eventsConfig.deleteNode !== undefined
-    && eventsConfig.deleteNode.target !== undefined
-    && eventsConfig.deleteNode.type !== undefined) {
-    dispatcher.bind(eventsConfig.deleteNode.target,
-      eventsConfig.deleteNode.type,
-      dispatcher.events.DELETENODE);
-  }
+  bindEventsFromConfig(eventsConfig);
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
@@ -243,6 +254,10 @@ function GraphViewer(svg, width, height,
       node.fixed = true;
       start();
     });
+  };
+  
+  self.rebind = function(eventConfig) {
+    bindEventsFromConfig(eventConfig);
   };
   
 }

@@ -246,6 +246,18 @@
     viewer = new GraphViewer(d3.select("svg"), 980, 640, aaconfig, nsconfig, esconfig, layouterConfig, evconfig);
   }
 
+  function bindExpander() {
+    viewer.rebind({expand: {target: "nodes", type: "click"}});
+  }
+  
+  function bindEdit() {
+    
+  }
+  
+  function bindDelete() {
+    viewer.rebind({})
+  }
+
   var viewer;
   </script>
   <title>DEMO</title>
@@ -322,6 +334,18 @@
       </div>
     </fieldset>
   </form>
+
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+  <fieldset>
+    <div class="control-group">
+      <div class="controls">
+        <button id="expander" type="submit" class="btn btn-primary" onclick="bindExpander()">Expand</button>
+        <button id="edit" type="submit" class="btn btn-primary" onclick="bindEdit()">Edit</button>
+        <button id="delete" type="submit" class="btn btn-primary" onclick="bindDelete()">Delete</button>
+      </div>
+    </div>
+  </fieldset>
+</form>
 
 <svg width="980" height="640" id="svg"/>
 <br />
