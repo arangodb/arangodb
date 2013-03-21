@@ -192,10 +192,11 @@ function NodeShaper(parent, flags, idfunc) {
   self.on = function (identifier, callback) {
     if (identifier === "update") {
       userDefinedUpdate = callback;
+    } else {
+      decorateShape(function (node) {
+        node.on(identifier, callback);
+      });
     }
-    decorateShape(function (node) {
-      node.on(identifier, callback);
-    });
     self.drawNodes();
   };
 }
