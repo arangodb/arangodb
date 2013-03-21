@@ -1,22 +1,22 @@
-# Fuxx: Build APIs and simple web applications in ArangoDB
+# Foxx: Build APIs and simple web applications in ArangoDB
 
 **WARNING: The following documentation file is pure fiction,
 it is not yet finished**
 
-An application build with Fuxx is written in JavaScript and deployed
+An application build with Foxx is written in JavaScript and deployed
 to ArangoDB directly. ArangoDB serves this application, you do not
 need a separate application server.
 
 So given you want to build an application that sends a plain-text
 response "Worked!" for all requests to `/my/wiese`. How would you
-achieve that with Fuxx?
+achieve that with Foxx?
 
 First, create a directory `my_app` and save a file called `app.js`
 in this directory. Write the following content to this file:
 
-    FuxxApplication = require("org/arangodb/fuxx").FuxxApplication;
+    FoxxApplication = require("org/arangodb/foxx").FoxxApplication;
 
-    app = new FuxxApplication();
+    app = new FoxxApplication();
 
     app.get('/wiese', function(req, res) {
       res.set("Content-Type", "text/plain");
@@ -42,9 +42,9 @@ Now your application is done. Start ArangoDB as follows:
 Now point your browser to `/my/wiese` and you should see "Worked!".
 After this short overview, let's get into the details.
 
-## FuxxApplication Features
+## FoxxApplication Features
 
-Please see the documentation of `fuxx.js` for further information on how to write the application file.
+Please see the documentation of `foxx.js` for further information on how to write the application file.
 
 ## Manifest Files
 
@@ -56,13 +56,13 @@ The content is a JSON object with two keys: `apps`, `libs` and `assets`.
 `apps` is an object that matches routes to files:
 
 * The `key` is the route you want to mount at
-* The `value` is the path to the JavaScript file containing the `FuxxApplication`s you want to mount
+* The `value` is the path to the JavaScript file containing the `FoxxApplication`s you want to mount
 
 You can add multiple applications in one manifest in this way.
 
 In addition you can add an optional `lib` String. This is a path to
 a folder containing multiple JavaScript files which define CommonJS
-modules that you want to use in your Fuxx apps. They will all be loaded,
+modules that you want to use in your Foxx apps. They will all be loaded,
 so you can require them as usual. The `lib` folder can be structured however
 you want. If you have a folder `models` in your `lib` folder containing
 a file `user.js`, you can require it with `user = require('models/user')`.

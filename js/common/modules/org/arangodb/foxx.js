@@ -1,16 +1,16 @@
 /*jslint indent: 2, nomen: true, maxlen: 100 */
 /*global require, exports */
 
-// Fuxx is an easy way to create APIs and simple web applications
+// Foxx is an easy way to create APIs and simple web applications
 // from within **ArangoDB**.
-// It is inspired by Sinatra, the classy Ruby web framework. If FuxxApplication is Sinatra,
+// It is inspired by Sinatra, the classy Ruby web framework. If FoxxApplication is Sinatra,
 // [ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html)
 // are the corresponding `Rack`. They provide all the HTTP goodness.
 //
 // So let's get started, shall we?
 
-// FuxxApplication uses Underscore internally. This library is wonderful.
-var FuxxApplication,
+// FoxxApplication uses Underscore internally. This library is wonderful.
+var FoxxApplication,
   BaseMiddleware,
   FormatMiddleware,
   _ = require("underscore"),
@@ -42,9 +42,9 @@ internal.createUrlObject = function (url, constraint, method) {
 };
 
 // ## Creating a new Application
-// And that's FuxxApplication. It's a constructor, so call it like this:
+// And that's FoxxApplication. It's a constructor, so call it like this:
 //
-//     app = new FuxxApplication({
+//     app = new FoxxApplication({
 //       urlPrefix: "/wiese",
 //       templateCollection: "my_templates"
 //     })
@@ -53,7 +53,7 @@ internal.createUrlObject = function (url, constraint, method) {
 //
 // * **The URL Prefix:** All routes you define within will be prefixed with it
 // * **The Template Collection:** More information in the template section
-FuxxApplication = function (options) {
+FoxxApplication = function (options) {
   'use strict';
   var urlPrefix, templateCollection, myMiddleware;
 
@@ -88,9 +88,9 @@ FuxxApplication = function (options) {
   ];
 };
 
-// ## The functions on a created FuxxApplication
+// ## The functions on a created FoxxApplication
 //
-// When you have created your FuxxApplication you can now define routes
+// When you have created your FoxxApplication you can now define routes
 // on it. You provide each with a function that will handle
 // the request. It gets two arguments (four, to be honest. But the
 // other two are not relevant for now):
@@ -99,7 +99,7 @@ FuxxApplication = function (options) {
 // * The response object
 //
 // You can find more about those in their individual sections.
-_.extend(FuxxApplication.prototype, {
+_.extend(FoxxApplication.prototype, {
   // The `handleRequest` method is the raw way to create a new
   // route. You probably wont call it directly, but it is used
   // in the other request methods:
@@ -308,7 +308,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     // * suffix
     // * urlParameters
     //
-    // FuxxApplication currently leaves those unmodified.
+    // FoxxApplication currently leaves those unmodified.
     responseFunctions = {};
 
     // ### The Response Object
@@ -319,7 +319,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     // * body
     // * headers (an object)
     //
-    // FuxxApplication adds the following methods to this response object.
+    // FoxxApplication adds the following methods to this response object.
     responseFunctions = {
       // ### The straightforward `status` function
       // Set the status code of your response, for example:
@@ -371,7 +371,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       },
 
       // ### The mysterious `render` function
-      // If you initialize your FuxxApplication with a `templateCollection`,
+      // If you initialize your FoxxApplication with a `templateCollection`,
       // you're in luck now.
       // It expects documents in the following form in this collection:
       //
@@ -387,13 +387,13 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       // from this call. And with the `templateLanguage` you can choose
       // your template processor. There is only one choice now: `underscore`.
       //
-      // If you call render, FuxxApplication will look
+      // If you call render, FoxxApplication will look
       // into the this collection and search by the path attribute.
       // It will then render the template with the given data:
       //
-      //     response.render("high/way", {username: 'FuxxApplication'})
+      //     response.render("high/way", {username: 'FoxxApplication'})
       //
-      // Which would set the body of the response to `hello FuxxApplication` with the
+      // Which would set the body of the response to `hello FoxxApplication` with the
       // template defined above. It will also set the `contentType` to
       // `text/plain` in this case.
       //
@@ -404,7 +404,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
         var template;
 
         if (_.isUndefined(templateCollection)) {
-          throw "No template collection has been provided when creating a new FuxxApplication";
+          throw "No template collection has been provided when creating a new FoxxApplication";
         }
 
         template = templateCollection.firstExample({path: templatePath });
@@ -449,7 +449,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 //
 // Use it by calling:
 //
-//     FormatMiddleware = require('fuxx').FormatMiddleware;
+//     FormatMiddleware = require('foxx').FormatMiddleware;
 //     app.before("/*", FormatMiddleware.new(['json']));
 //
 // or the shortcut:
@@ -525,10 +525,10 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   return middleware;
 };
 
-// We finish off with exporting FuxxApplication and the middlewares.
+// We finish off with exporting FoxxApplication and the middlewares.
 // Everything else will remain our secret.
 //
 // Fin.
-exports.FuxxApplication = FuxxApplication;
+exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
