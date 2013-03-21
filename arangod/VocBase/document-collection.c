@@ -2112,7 +2112,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (document == NULL) {
     TRI_FreeKeyGenerator(keyGenerator);
-    LOG_ERROR("cannot create document collection");
+    LOG_WARNING("cannot create key generator for document collection");
     return NULL;
   }
 
