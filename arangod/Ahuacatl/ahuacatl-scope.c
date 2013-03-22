@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ahuacatl-scope.h" 
-#include "Ahuacatl/ahuacatl-access-optimiser.h" 
+#include "Ahuacatl/ahuacatl-scope.h"
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-variable.h"
 
 #include "BasicsC/logging.h"
@@ -47,9 +47,9 @@
 static inline TRI_aql_scope_t* CurrentScope (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
   size_t n;
-  
+
   assert(context);
-  
+
   n = context->_currentScopes._length;
   assert(n > 0);
 
@@ -70,7 +70,7 @@ static inline TRI_aql_scope_e CurrentType (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type for the next scope
 ///
-/// this returns TRI_AQL_SCOPE_FOR_NESTED for a nested for scope, and the 
+/// this returns TRI_AQL_SCOPE_FOR_NESTED for a nested for scope, and the
 /// originally requested type in all other cases
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,14 +78,14 @@ static TRI_aql_scope_e NextType (TRI_aql_context_t* const context,
                                  const TRI_aql_scope_e requestedType) {
   TRI_aql_scope_e current;
 
-  // we're only interested in TRI_AQL_SCOPE_FOR 
+  // we're only interested in TRI_AQL_SCOPE_FOR
   if (requestedType != TRI_AQL_SCOPE_FOR) {
     return requestedType;
   }
-  
+
   current = CurrentType(context);
 
-  // if we are in a TRI_AQL_SCOPE_FOR scope, we'll return TRI_AQL_SCOPE_FOR_NESTED 
+  // if we are in a TRI_AQL_SCOPE_FOR scope, we'll return TRI_AQL_SCOPE_FOR_NESTED
   if (current == TRI_AQL_SCOPE_FOR || current == TRI_AQL_SCOPE_FOR_NESTED) {
     return TRI_AQL_SCOPE_FOR_NESTED;
   }
@@ -97,7 +97,7 @@ static TRI_aql_scope_e NextType (TRI_aql_context_t* const context,
 /// @brief create a scope
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context, 
+static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
                                      const TRI_aql_scope_e type) {
   TRI_aql_scope_t* scope;
 
@@ -122,11 +122,11 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
 
   TRI_InitVectorPointer(&scope->_sorts, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitAssociativePointer(&scope->_variables, 
-                             TRI_UNKNOWN_MEM_ZONE, 
+  TRI_InitAssociativePointer(&scope->_variables,
+                             TRI_UNKNOWN_MEM_ZONE,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashVariableAql,
-                             &TRI_EqualVariableAql, 
+                             &TRI_EqualVariableAql,
                              0);
 
   return scope;
@@ -148,9 +148,9 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
       TRI_FreeVariableAql(variable);
     }
   }
-  
+
   TRI_DestroyAssociativePointer(&scope->_variables);
-  
+
   if (scope->_ranges) {
     // free ranges if set
     TRI_FreeAccessesAql(scope->_ranges);
@@ -161,7 +161,7 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
   }
-  
+
   TRI_DestroyVectorPointer(&scope->_sorts);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
@@ -287,7 +287,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
 
   // set real scope level
   scope->_level = (size_t) context->_memory._scopes._length;
-  
+
   LOG_TRACE("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
   TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope);
@@ -296,7 +296,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
   if (node == NULL) {
     return false;
   }
-  
+
   if (! TRI_AppendStatementListAql(context->_statements, node)) {
     return false;
   }
@@ -320,12 +320,12 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
 
   scope = TRI_RemoveVectorPointer(&context->_currentScopes, --n);
   LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
-  
+
   node = TRI_CreateNodeScopeEndAql(context, scope);
   if (node == NULL) {
     return false;
   }
-  
+
   if (! TRI_AppendStatementListAql(context->_statements, node)) {
     return false;
   }
@@ -354,17 +354,17 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
 
   while (n > 0) {
     TRI_aql_scope_t* scope;
-    
+
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
     assert(scope);
 
     LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
-  
+
     node = TRI_CreateNodeScopeEndAql(context, scope);
     if (node == NULL) {
       return false;
     }
-  
+
     if (! TRI_AppendStatementListAql(context->_statements, node)) {
       return false;
     }
@@ -382,15 +382,15 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
 /// @brief checks if a variable is defined in the current scope or above
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context, 
+bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
                                  const char* const name) {
   size_t n;
-  
+
   if (name == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
-  
+
   n = context->_currentScopes._length;
   assert(n > 0);
 
@@ -416,8 +416,8 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
 /// @brief push a variable into the current scope's symbol table
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context, 
-                              const char* name, 
+bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
+                              const char* name,
                               TRI_aql_node_t* const definingNode) {
   TRI_aql_variable_t* variable;
   TRI_aql_scope_t* scope;
@@ -439,7 +439,7 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
 
   result = TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false);
   assert(result == NULL);
- 
+
   return true;
 }
 
@@ -449,5 +449,5 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

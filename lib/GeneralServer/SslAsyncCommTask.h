@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2010-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H
@@ -34,19 +34,19 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include <Basics/ssl-helper.h>
+#include "Basics/ssl-helper.h"
 
-#include <Logger/Logger.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/StringBuffer.h>
+#include "Logger/Logger.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
 
 
 namespace triagens {
   namespace rest {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief task for ssl communication
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief task for ssl communication
+////////////////////////////////////////////////////////////////////////////////
 
     template<typename S, typename HF, typename CT>
     class SslAsyncCommTask : public GeneralAsyncCommTask<S, HF, CT> {
@@ -55,15 +55,15 @@ namespace triagens {
 
       public:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief constructs a new task with a given socket
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new task with a given socket
+////////////////////////////////////////////////////////////////////////////////
 
-        SslAsyncCommTask (S* server, 
-                          TRI_socket_t socket, 
+        SslAsyncCommTask (S* server,
+                          TRI_socket_t socket,
                           ConnectionInfo const& info,
-                          double keepAliveTimeout, 
-                          BIO* bio) 
+                          double keepAliveTimeout,
+                          BIO* bio)
         : Task("SslAsyncCommTask"),
           GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
           accepted(false),
@@ -77,9 +77,9 @@ namespace triagens {
 
       protected:
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief destructs a task
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a task
+////////////////////////////////////////////////////////////////////////////////
 
         ~SslAsyncCommTask () {
           static int const SHUTDOWN_ITERATIONS = 10;
@@ -100,9 +100,9 @@ namespace triagens {
           delete[] tmpReadBuffer;
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
         bool handleEvent (EventToken token, EventType revents) {
           bool result = GeneralAsyncCommTask<S, HF, CT>::handleEvent(token, revents);
@@ -116,9 +116,9 @@ namespace triagens {
           return result;
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
         bool fillReadBuffer (bool& closed) {
           closed = false;
@@ -141,9 +141,9 @@ namespace triagens {
           return trySSLRead(closed);
         }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// {@inheritDoc}
-        ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
         bool handleWrite (bool& closed, bool noWrite) {
 
@@ -240,7 +240,7 @@ again:
                 LOGGER_WARNING("received SSL_ERROR_WANT_ACCEPT");
                 break;
 
-              case SSL_ERROR_SYSCALL: 
+              case SSL_ERROR_SYSCALL:
                 {
                   unsigned long err = ERR_peek_error();
 
@@ -326,7 +326,7 @@ again:
                     writeBlockedOnRead = true;
                     return true;
 
-                  case SSL_ERROR_SYSCALL: 
+                  case SSL_ERROR_SYSCALL:
                     {
                       unsigned long err = ERR_peek_error();
 

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statementlist.h"
@@ -76,7 +76,7 @@ static inline TRI_aql_node_t* StatementAt (const TRI_aql_statement_list_t* const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -105,7 +105,7 @@ TRI_aql_statement_list_t* TRI_CreateStatementListAql (void) {
   list->_currentLevel = 0;
 
   return list;
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a statement list
@@ -137,7 +137,7 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
 /// @brief init the global nodes at program start
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GlobalInitStatementListAql (void) { 
+void TRI_GlobalInitStatementListAql (void) {
   DummyNopNode = TRI_CreateNodeNopAql();
   DummyReturnEmptyNode = TRI_CreateNodeReturnEmptyAql();
 }
@@ -146,15 +146,15 @@ void TRI_GlobalInitStatementListAql (void) {
 /// @brief free the global nodes at program end
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GlobalFreeStatementListAql (void) { 
+void TRI_GlobalFreeStatementListAql (void) {
   if (DummyNopNode != NULL) {
     TRI_DestroyVectorPointer(&DummyNopNode->_members);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyNopNode);
   }
-  
+
   if (DummyReturnEmptyNode != NULL) {
     TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(DummyReturnEmptyNode, 0);
-    
+
     TRI_DestroyVectorPointer(&list->_members);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
 
@@ -180,7 +180,7 @@ TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pull out uncorrelated subqueries from the middle of the statement 
+/// @brief pull out uncorrelated subqueries from the middle of the statement
 /// list to the beginning
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -195,15 +195,15 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
 
   i = 0;
   n = list->_statements._length;
-  
+
   while (i < n) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
-    
+
     if (type == TRI_AQL_NODE_SCOPE_START) {
       // node is a scope start
       TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
-      
+
       if (scope->_type == TRI_AQL_SCOPE_SUBQUERY && scope->_selfContained) {
         if (! watch && scopes > 0) {
           watch = true;
@@ -211,7 +211,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
           moveStart = i;
         }
       }
-      
+
       ++scopes;
     }
     else if (type == TRI_AQL_NODE_SCOPE_END) {
@@ -228,7 +228,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
           size_t j = moveStart;
           size_t inserted = 0;
 
-          // moving statements from the middle to the beginning of the list will also 
+          // moving statements from the middle to the beginning of the list will also
           // modify the positions we're moving from
           while (j < i + 2) {
             node = StatementAt(list, j + inserted);
@@ -236,7 +236,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
               return;
             }
 
-            // insert a dummy node in place of the moved node 
+            // insert a dummy node in place of the moved node
             list->_statements._buffer[j + inserted + 1] = TRI_GetDummyNopNodeAql();
 
             // next
@@ -244,7 +244,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
             ++inserted;
           }
 
-          // moving statements from the middle to the beginning of the list will also 
+          // moving statements from the middle to the beginning of the list will also
           // change the list length and the position we'll be continuing from
           n += inserted;
           i = j + inserted;
@@ -326,7 +326,7 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
     if (node->_type == TRI_AQL_NODE_RETURN_EMPTY) {
       i = TRI_InvalidateStatementListAql(list, i);
       j = i;
-      continue; 
+      continue;
     }
 
     list->_statements._buffer[j++] = node;
@@ -395,7 +395,7 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
   while (true) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
-    
+
     list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
 
     if (type == TRI_AQL_NODE_SCOPE_START) {
@@ -412,7 +412,7 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
       break;
     }
   }
-  
+
   list->_statements._buffer[start] = TRI_GetDummyReturnEmptyNodeAql();
 
   return start + 1;
@@ -424,5 +424,5 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

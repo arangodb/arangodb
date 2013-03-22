@@ -31,7 +31,9 @@ Users can define their own keys for documents they save. The document key will
 be saved along with a document in the `_key` attribute. Users can pick key
 values as required, provided that the values conform to the following
 restrictions:
-* the key must be at most 254 bytes long
+* the key must be at least 1 byte and at most 254 bytes long. empty keys are 
+  disallowed when specified (though it may be valid to completely omit the
+  `_key` attribute from a document)
 * it must consist of the letters a-z (lower or upper case), the digits 0-9,
   the underscore (_), dash (-), or colon (:) characters only
  * any other characters, especially multi-byte sequences, whitespace or
@@ -63,6 +65,7 @@ following attribute naming constraints are not violated:
   More system attributes may be added in the future without further notice so
   end users should not use attribute names starting with an underscore for their
   own attributes.
+
 - Attribute names should not start with the at-mark (`\@`). The at-mark
   at the start of attribute names is reserved in ArangoDB for future use cases.
 - Theoretically, attribute names can include punctuation and special characters
@@ -84,3 +87,17 @@ following attribute naming constraints are not violated:
   length is variable and depends on the number and data types of attributes
   used.
 - Attribute names are case-sensitive.
+
+- Attributes with empty names (the empty string) and attributes with names that
+  start with an underscore and don't have a special meaning (system attributes)
+  are removed from the document when saving it. 
+
+  When the document is later requested, it will be returned without these 
+  attributes. For example, if this document is saved
+
+      { "a" : 1, "" : 2, "_test" : 3, "b": 4 }
+
+  and later requested, it will be returned like this:
+      
+      { "a" : 1, "b": 4 }
+

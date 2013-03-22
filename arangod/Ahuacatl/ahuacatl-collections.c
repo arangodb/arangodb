@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-collections.h"
@@ -79,7 +79,7 @@ static int CollectionNameComparator (const void* l, const void* r) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection container
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) {
   TRI_aql_collection_t* collection;
 
@@ -92,7 +92,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
 
   collection->_name = (char*) name;
   collection->_collection = NULL;
-  collection->_barrier = NULL; 
+  collection->_barrier = NULL;
 
   return collection;
 }
@@ -128,9 +128,9 @@ bool SetupCollections (TRI_aql_context_t* const context) {
   }
 
   if (result && n > 0) {
-    qsort(context->_collections._buffer, 
-          context->_collections._length, 
-          sizeof(void*), 
+    qsort(context->_collections._buffer,
+          context->_collections._length,
+          sizeof(void*),
           &CollectionNameComparator);
   }
 
@@ -191,7 +191,7 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
   if (hint == NULL) {
     return NULL;
   }
-  
+
   result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (result == NULL) {
@@ -200,9 +200,9 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
 
   if (hint->_index == NULL) {
     // full table scan
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
-                         "accessType", 
+                         "accessType",
                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "all"));
   }
   else {
@@ -210,64 +210,64 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
     TRI_index_t* idx = hint->_index->_idx;
     TRI_json_t* indexDescription;
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
-                         "accessType", 
+                         "accessType",
                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "index"));
 
     indexDescription = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
     if (indexDescription != NULL) {
       TRI_string_buffer_t* buffer;
       char* idString = GetIndexIdString(hint);
-      
+
       // index id
       if (idString != NULL) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              indexDescription,
-                             "id", 
+                             "id",
                              TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
 
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, idString);
       }
 
       // index type
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            indexDescription,
-                           "type", 
+                           "type",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(idx)));
-    
+
       // index attributes
       buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
       if (buffer != NULL) {
         size_t i;
-  
+
         for (i = 0; i < idx->_fields._length; i++) {
           if (i > 0) {
-            TRI_AppendStringStringBuffer(buffer, ", "); 
+            TRI_AppendStringStringBuffer(buffer, ", ");
           }
           TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
         }
-   
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              indexDescription,
-                             "attributes", 
+                             "attributes",
                              TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer->_buffer));
-  
+
         TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
       }
-  
+
     }
-    
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
-                         "index", 
+                         "index",
                          indexDescription);
   }
 
   if (hint->_limit._status == TRI_AQL_LIMIT_USE) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          result,
-                         "limit", 
+                         "limit",
                          TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) hint->_limit._offset + (double) hint->_limit._limit));
   }
 
@@ -291,7 +291,7 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
   hint->_index         = NULL;
   hint->_collection    = NULL;
   hint->_variableName  = NULL;
- 
+
   // init limit
   hint->_limit._offset = 0;
   hint->_limit._limit  = INT64_MAX;
@@ -438,7 +438,7 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* const context, const char* const n
 
   // duplicates are not a problem here, we simply ignore them
   TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);
-  
+
   if (context->_collectionNames._nrUsed > AQL_MAX_COLLECTIONS) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS, NULL);
 
@@ -454,5 +454,5 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* const context, const char* const n
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

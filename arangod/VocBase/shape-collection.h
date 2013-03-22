@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_SHAPE_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_SHAPE_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_SHAPE_COLLECTION_H
+#define TRIAGENS_VOC_BASE_SHAPE_COLLECTION_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <VocBase/vocbase.h>
-#include <VocBase/collection.h>
+#include "VocBase/vocbase.h"
+#include "VocBase/collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +49,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shape collection
 ///
-/// A shape collection is a collection of binary shapes. There is no versioning 
+/// A shape collection is a collection of binary shapes. There is no versioning
 /// or relationship between the shapes. The data is directly synced to disks.
 /// Therefore no special management thread is needed. It is not possible to
 /// delete entries, once they are created. The only query supported is a
@@ -121,8 +121,6 @@ void TRI_FreeShapeCollection (TRI_shape_collection_t* collection);
 int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
                               TRI_df_marker_t* marker,
                               TRI_voc_size_t markerSize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               TRI_df_marker_t** result);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,6 +148,6 @@ bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

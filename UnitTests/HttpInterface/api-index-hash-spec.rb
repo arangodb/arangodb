@@ -229,7 +229,7 @@ describe ArangoDB do
         doc.parsed_response['a'].should eq(1)
         doc.parsed_response['b'].should eq(1)
         doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should_not eq(rev1)
+        doc.parsed_response['_rev'].should eq(rev1)
 
         rev3 = doc.parsed_response['_rev']
         rev3.should be_kind_of(String)
@@ -257,8 +257,8 @@ describe ArangoDB do
         doc.parsed_response['a'].should eq(1)
         doc.parsed_response['b'].should eq(1)
         doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should_not eq(rev1)
-        doc.parsed_response['_rev'].should_not eq(rev3)
+        doc.parsed_response['_rev'].should eq(rev1)
+        doc.parsed_response['_rev'].should_not eq(rev2)
 
         # unload collection
         cmd4 = "/_api/collection/#{@cn}/unload"
@@ -282,8 +282,8 @@ describe ArangoDB do
         doc.parsed_response['a'].should eq(1)
         doc.parsed_response['b'].should eq(1)
         doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should_not eq(rev1)
-        doc.parsed_response['_rev'].should_not eq(rev3)
+        doc.parsed_response['_rev'].should eq(rev1)
+        doc.parsed_response['_rev'].should_not eq(rev2)
       end
     end
 

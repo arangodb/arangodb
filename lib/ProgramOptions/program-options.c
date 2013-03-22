@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "program-options.h"
@@ -974,7 +974,7 @@ TRI_program_options_t * TRI_CreateProgramOptions (TRI_PO_section_t * desc) {
   struct option nullOpt;
 
   po = (TRI_program_options_t*) (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_program_options_t), false));
-  
+
   // TODO: not safe since po could be 0
 
   TRI_InitVector(&po->_longopts, TRI_CORE_MEM_ZONE, sizeof(struct option));
@@ -1701,6 +1701,6 @@ bool TRI_HasOptionProgramOptions (TRI_program_options_t const * options, char co
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

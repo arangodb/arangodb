@@ -35,7 +35,11 @@ BUILT_SOURCES += @LIBEV_LIBS@
 ### @brief additional files to remove
 ################################################################################
 
-CLEANUP += @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
+CLEANUP_3RD += clean-libev
+
+clean-libev:
+	rm -f @srcdir@/.libev-build-@TRI_BITS@
+	rm -rf @top_srcdir@/3rdParty/libev/BUILD
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

@@ -40,22 +40,24 @@ bin_arangod_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-parser.c \
 	arangod/Ahuacatl/ahuacatl-result.c \
 	arangod/Ahuacatl/ahuacatl-scope.c \
-	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-statement-dump.c \
 	arangod/Ahuacatl/ahuacatl-statement-walker.c \
+	arangod/Ahuacatl/ahuacatl-statementlist.c \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
 	arangod/Ahuacatl/ahuacatl-variable.c \
 	arangod/BitIndexes/bitarray.c \
 	arangod/BitIndexes/bitarrayIndex.c \
-	arangod/GeoIndex/GeoIndex.c \
+	arangod/CapConstraint/cap-constraint.c \
 	arangod/FulltextIndex/fulltext-handles.c \
 	arangod/FulltextIndex/fulltext-index.c \
 	arangod/FulltextIndex/fulltext-list.c \
 	arangod/FulltextIndex/fulltext-query.c \
 	arangod/FulltextIndex/fulltext-result.c \
 	arangod/FulltextIndex/fulltext-wordlist.c \
-	arangod/HashIndex/hasharray.c \
-	arangod/HashIndex/hashindex.c \
+	arangod/GeoIndex/GeoIndex.c \
+	arangod/GeoIndex/geo-index.c \
+	arangod/HashIndex/hash-array.c \
+	arangod/HashIndex/hash-index.c \
 	arangod/IndexIterators/index-iterator.c \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
@@ -69,6 +71,8 @@ bin_arangod_SOURCES = \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
 	arangod/SkipLists/skiplistIndex.c \
+	arangod/SkipListsEx/skiplistEx.c \
+	arangod/SkipListsEx/skiplistExIndex.c \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-query.cpp \
@@ -85,11 +89,14 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \
 	arangod/VocBase/key-generator.c \
+	arangod/VocBase/marker.c \
 	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/server-id.c \
 	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/transaction.c \
+	arangod/VocBase/update-policy.c \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
 
@@ -126,7 +133,8 @@ BISON_FILES += \
 if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
-	arangod/Ahuacatl/ahuacatl-grammar.h
+	arangod/Ahuacatl/ahuacatl-grammar.h \
+	arangod/Ahuacatl/ahuacatl-grammar.c
 endif
 
 ################################################################################

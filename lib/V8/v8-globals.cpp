@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012 triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-globals.h"
@@ -40,9 +40,9 @@
 /// @brief add a method to a prototype object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl, 
-                                const char* const name, 
-                                v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
+                                const char* const name,
+                                v8::Handle<v8::Value>(*func)(v8::Arguments const&),
                                 const bool isHidden) {
   if (isHidden) {
     // hidden method
@@ -58,9 +58,9 @@ void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
 /// @brief add a method to an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl, 
-                           const char* const name, 
-                           v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
+                           const char* const name,
+                           v8::Handle<v8::Value>(*func)(v8::Arguments const&),
                            const bool isHidden) {
   if (isHidden) {
     // hidden method
@@ -75,9 +75,9 @@ void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
-  
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
-                                   const char* const name, 
+
+void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
+                                   const char* const name,
                                    v8::Handle<v8::Value>(*func)(v8::Arguments const&)) {
   // all global functions are read-only
   context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
@@ -87,8 +87,8 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 /// @brief add a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
-                                   const char* const name, 
+void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
+                                   const char* const name,
                                    v8::Handle<v8::Function> func) {
   // all global functions are read-only
   context->Global()->Set(TRI_V8_SYMBOL(name), func, v8::ReadOnly);
@@ -111,5 +111,5 @@ void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

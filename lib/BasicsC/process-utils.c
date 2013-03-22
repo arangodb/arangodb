@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "process-utils.h"
@@ -35,7 +35,7 @@
 #include <mach/mach_host.h>
 #include <mach/mach_port.h>
 #include <mach/mach_traps.h>
-#include <mach/shared_memory_server.h>
+// #include <mach/shared_memory_server.h>
 #include <mach/task.h>
 #include <mach/thread_act.h>
 #include <mach/vm_map.h>
@@ -265,6 +265,7 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
   {
     kern_return_t rc;
     struct task_basic_info t_info;
+/*
     struct host_basic_info h_info;
     struct vm_region_basic_info_64 vm_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
@@ -273,29 +274,42 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     vm_address_t address = GLOBAL_SHARED_TEXT_SEGMENT;
     vm_size_t size;
     mach_port_t object_name;
-		
+
     rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
 
     if (rc == KERN_SUCCESS) {
       rc = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&h_info, &h_info_count);
-
       if (rc == KERN_SUCCESS) {
         rc = vm_region_64(mach_task_self(), &address, &size, VM_REGION_BASIC_INFO, (vm_region_info_t)&vm_info, &vm_info_count, &object_name);
 
         if (rc == KERN_SUCCESS) {
 
           // check for firmware split libraries, this is copied from the ps source code
-          if (vm_info.reserved 
-           && size == SHARED_TEXT_REGION_SIZE 
+          if (vm_info.reserved
+           && size == SHARED_TEXT_REGION_SIZE
            && t_info.virtual_size > (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE)) {
 		t_info.virtual_size -= (SHARED_TEXT_REGION_SIZE + SHARED_DATA_REGION_SIZE);
           }
-		
+
           result._virtualSize = t_info.virtual_size;
           result._residentSize = t_info.resident_size;
         }
       }
     }
+*/
+    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+
+    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
+    if (rc == KERN_SUCCESS) {
+      result._virtualSize = t_info.virtual_size;
+      result._residentSize = t_info.resident_size;
+    }
+    else {
+      result._virtualSize = 0;
+      result._residentSize = 0;
+    }
+
+
   }
 #endif
 
@@ -332,7 +346,7 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     char str[1024];
     process_state_t st;
     size_t n;
-    
+
     memset(&str, 0, sizeof(str));
 
     n = read(fd, str, sizeof(str));
@@ -409,14 +423,14 @@ void TRI_SetProcessTitle (char const* title) {
         ;
       }
     }
-    
+
     if (envLen > 0) {
       size = environ[envLen - 1] + strlen(environ[envLen - 1]) - ARGV[0];
     }
     else {
       size = ARGV[ARGC - 1] + strlen(ARGV[ARGC - 1]) - ARGV[0];
     }
-    
+
     if (environ) {
       char** newEnviron = TRI_Allocate(TRI_CORE_MEM_ZONE, (envLen + 1) * sizeof(char*), false);
       size_t i = 0;
@@ -427,7 +441,7 @@ void TRI_SetProcessTitle (char const* title) {
       }
       // pad with a null pointer so we know the end of the array
       newEnviron[i] = NULL;
-        
+
       environ = newEnviron;
       MustFreeEnvironment = true;
     }
@@ -514,5 +528,5 @@ void TRI_ShutdownProcess () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

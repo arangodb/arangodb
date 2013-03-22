@@ -240,8 +240,8 @@ function lookupCallbackAction (route, action) {
   // user-defined function
   // .............................................................................
 
-  if (action.hasOwnProperty('function')) {
-    defn = "func = (function() { var callback = " + action['function'] + "; return callback;})();";
+  if (action.hasOwnProperty('callback')) {
+    defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
     env = {};
 
     try {
@@ -252,13 +252,13 @@ function lookupCallbackAction (route, action) {
       }
       else {
         func = notImplementedFunction(route,
-                                      "could not define function '" + action['function']);
+                                      "could not define function '" + action.callback);
       }
     }
     catch (err) {
       func = errorFunction(route,
                            "an error occurred while loading function '" 
-                           + action['function'] + "': " + String(err));
+                           + action.callback + "': " + String(err));
     }
 
     return {

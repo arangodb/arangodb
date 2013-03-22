@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-error.h"
@@ -69,7 +69,7 @@
 
 int TRI_GetErrorCodeAql (const TRI_aql_error_t* const error) {
   assert(error);
-  
+
   return error->_code;
 }
 
@@ -116,10 +116,10 @@ void TRI_InitErrorAql (TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an error structure, not freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void TRI_DestroyErrorAql (TRI_aql_error_t* const error) {
   assert(error);
-  
+
   if (error->_data) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, error->_data);
   }
@@ -128,7 +128,7 @@ void TRI_DestroyErrorAql (TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an error structure
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void TRI_FreeErrorAql (TRI_aql_error_t* const error) {
   assert(error);
 
@@ -145,7 +145,7 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
   char* temp;
   char* result;
   char c;
-  // note: line numbers reported by bison/flex start at 1, columns start at 0 
+  // note: line numbers reported by bison/flex start at 1, columns start at 0
   size_t offset;
   size_t currentLine = 1;
   size_t currentColumn = 0;
@@ -205,5 +205,5 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

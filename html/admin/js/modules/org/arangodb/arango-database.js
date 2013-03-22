@@ -348,8 +348,8 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
       body.isVolatile = properties.isVolatile;
     }
 
-    if (properties.hasOwnProperty("createOptions")) {
-      body.createOptions = properties.createOptions;
+    if (properties.hasOwnProperty("keyOptions")) {
+      body.keyOptions = properties.keyOptions;
     }
   }
 

@@ -5,13 +5,13 @@ content-type: application/json; charset=utf-8
 
 { 
   "system" : { 
-    "minorPageFaults" : 10801, 
-    "majorPageFaults" : 1661, 
-    "userTime" : 0.443238, 
-    "systemTime" : 0.284661, 
-    "numberThreads" : 16, 
-    "residentSize" : 27639808, 
-    "virtualSize" : 4917227520 
+    "minorPageFaults" : 10739, 
+    "majorPageFaults" : 1712, 
+    "userTime" : 0.442991, 
+    "systemTime" : 0.232343, 
+    "numberThreads" : 15, 
+    "residentSize" : 26771456, 
+    "virtualSize" : 4916088832 
   }, 
   "client" : { 
     "httpConnections" : 1, 

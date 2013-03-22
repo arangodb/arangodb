@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "primary-collection.h"
 
-#include <BasicsC/conversions.h>
-#include <BasicsC/files.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
@@ -68,7 +68,7 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
   TRI_doc_mptr_t const* e = element;
-  
+
   char const * k = key;
   return (strcmp(k, e->_key) == 0);
 }
@@ -105,50 +105,55 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the type name for a file
+////////////////////////////////////////////////////////////////////////////////
+
+static char* FileTypeName (const bool compactor) {
+  if (compactor) {
+    return "compactor";
+  }
+
+  return "journal";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool compactor) {
+static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, 
+                                      bool compactor) {
   TRI_col_header_marker_t cm;
   TRI_collection_t* collection;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
+  TRI_voc_fid_t fid;
   int res;
-  char* filename;
 
   collection = &primary->base;
 
+  fid = TRI_NewTickVocBase();
+
   if (collection->_info._isVolatile) {
     // in-memory collection
-    filename = NULL;
+    journal = TRI_CreateDatafile(NULL, fid, collection->_info._maximalSize);
   }
   else {
     char* jname;
     char* number;
+    char* filename;
 
-    // construct a suitable filename
-    number = TRI_StringUInt64(TRI_NewTickVocBase());
-
-    if (compactor) {
-      jname = TRI_Concatenate3String("journal-", number, ".db");
-    }
-    else {
-      jname = TRI_Concatenate3String("compactor-", number, ".db");
-    }
-
+    // construct a suitable filename (which is temporary at the beginning)
+    number   = TRI_StringUInt64(fid);
+    jname    = TRI_Concatenate3String("temp-", number, ".db");
     filename = TRI_Concatenate2File(collection->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-  }
 
-  // create journal file
-  journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
-    
-  if (filename != NULL) {
+    journal = TRI_CreateDatafile(filename, fid, collection->_info._maximalSize);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
-  
+
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
       collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
@@ -162,12 +167,45 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     return NULL;
   }
 
-  LOG_TRACE("created a new primary journal '%s'", journal->getName(journal));
+  LOG_TRACE("created new %s '%s'", FileTypeName(compactor), journal->getName(journal));
 
 
+  // create a collection header, still in the temporary file
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    collection->_lastError = journal->_lastError;
+    LOG_ERROR("cannot create document header in %s '%s': %s", FileTypeName(compactor), journal->getName(journal), TRI_last_error());
+
+    TRI_FreeDatafile(journal);
+
+    return NULL;
+  }
+
+
+  TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
+  cm._cid  = collection->_info._cid;
+  cm._type = (TRI_col_type_t) collection->_info._type;
+
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    collection->_lastError = journal->_lastError;
+    LOG_ERROR("cannot create document header in %s '%s': %s", FileTypeName(journal), journal->getName(journal), TRI_last_error());
+
+    TRI_FreeDatafile(journal);
+
+    return NULL;
+  }
+
+  TRI_ASSERT_DEBUG(fid == journal->_fid);
+
+
+  // if a physical file, we can rename it from the temporary name to the correct name
   if (journal->isPhysical(journal)) {
     char* jname;
     char* number;
+    char* filename;
     bool ok;
 
     // and use the correct name
@@ -188,48 +226,19 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
     ok = TRI_RenameDatafile(journal, filename);
 
     if (! ok) {
-      LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
+      LOG_ERROR("failed to rename the %s to '%s': %s", FileTypeName(compactor), filename, TRI_last_error());
+      TRI_FreeDatafile(journal);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      return NULL;
     }
     else {
-      LOG_TRACE("renamed journal to '%s'", filename);
+      LOG_TRACE("renamed %s to '%s'", FileTypeName(compactor), filename);
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 
-
-  // create a collection header
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
-    
-    TRI_FreeDatafile(journal);
-
-    return NULL;
-  }
-
-  memset(&cm, 0, sizeof(cm));
-
-  cm.base._size = sizeof(TRI_col_header_marker_t);
-  cm.base._type = TRI_COL_MARKER_HEADER;
-  cm.base._tick = TRI_NewTickVocBase();
-
-  cm._cid = collection->_info._cid;
-
-  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
-
-  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
-    
-    TRI_FreeDatafile(journal);
-
-    return NULL;
-  }
 
   // that's it
   if (compactor) {
@@ -326,7 +335,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an assoc array of datafile infos
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
   size_t i;
   size_t n;
@@ -360,7 +369,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   if (info == NULL) {
     return NULL;
   }
-  
+
   for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
     TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
 
@@ -390,7 +399,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   }
 
   info->_numberShapes = (TRI_voc_ssize_t) primary->_shaper->numShapes(primary->_shaper);
-  
+
   return info;
 }
 
@@ -442,8 +451,6 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 
 int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
-  int res;
-
   primary->_shaper = shaper;
   primary->_capConstraint = NULL;
   primary->_keyGenerator = NULL;
@@ -454,25 +461,22 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
   TRI_InitBarrierList(&primary->_barrierList, primary);
 
   TRI_InitAssociativePointer(&primary->_datafileInfo,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              HashKeyDatafile,
                              HashElementDatafile,
                              IsEqualKeyElementDatafile,
                              NULL);
 
   TRI_InitAssociativePointer(&primary->_primaryIndex,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              HashKeyHeader,
                              HashElementDocument,
                              IsEqualKeyDocument,
                              0);
-  
-  TRI_InitReadWriteLock(&primary->_lock);
-  
-  // init key generator
-  res = TRI_CreateKeyGenerator(primary->base._info._options, primary);
 
-  return res;
+  TRI_InitReadWriteLock(&primary->_lock);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,7 +494,7 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
   if (primary->_shaper != NULL) {
     TRI_FreeVocShaper(primary->_shaper);
   }
-  
+
   FreeDatafileInfo(&primary->_datafileInfo);
   TRI_DestroyBarrierList(&primary->_barrierList);
 
@@ -522,10 +526,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
   found = TRI_LookupByKeyAssociativePointer(&primary->_datafileInfo, &fid);
 
   if (found != NULL) {
-    union { TRI_doc_datafile_info_t const* c; TRI_doc_datafile_info_t* v; } cnv;
-
-    cnv.c = found;
-    return cnv.v;
+    return CONST_CAST(found);
   }
 
   dfi = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t), true);
@@ -589,65 +590,9 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
 /// @brief initialise a new operation context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context, 
-                                       TRI_primary_collection_t* const primary,
-                                       TRI_doc_update_policy_e policy,
-                                       bool forceSync) {
+void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context,
+                                       TRI_primary_collection_t* const primary) {
   context->_collection = primary;
-  context->_policy = policy;
-  context->_expectedRid = 0;
-  context->_previousRid = NULL;
-  context->_sync = forceSync || primary->base._info._waitForSync;
-  context->_allowRollback = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context for reads
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const context, 
-                                           TRI_primary_collection_t* const primary) {
-  context->_collection = primary;
-  context->_policy = TRI_DOC_UPDATE_LAST_WRITE;
-  context->_expectedRid = 0;
-  context->_previousRid = NULL;
-  context->_sync = false; 
-  context->_allowRollback = false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare revision of found document with revision specified in policy
-/// this will also store the actual revision id found in the database in the
-/// context variable _previousRid, but only if this is not NULL
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RevisionCheck (const TRI_doc_operation_context_t* const context,
-                       const TRI_voc_rid_t actualRid) {
- 
-  // store previous revision 
-  if (context->_previousRid != NULL) {
-    *(context->_previousRid) = actualRid;
-  }
- 
-  // check policy
-  switch (context->_policy) {
-    case TRI_DOC_UPDATE_ERROR:
-      if (context->_expectedRid != 0 && context->_expectedRid != actualRid) {
-        return TRI_ERROR_ARANGO_CONFLICT;
-      }
-      break;
-
-    case TRI_DOC_UPDATE_CONFLICT:
-      return TRI_ERROR_NOT_IMPLEMENTED;
-
-    case TRI_DOC_UPDATE_ILLEGAL:
-      return TRI_ERROR_INTERNAL;
-    
-    case TRI_DOC_UPDATE_LAST_WRITE:
-      return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,5 +601,5 @@ int TRI_RevisionCheck (const TRI_doc_operation_context_t* const context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

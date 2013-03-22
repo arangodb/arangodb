@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative-multi.h"
@@ -81,7 +81,7 @@ static void AddNewElement (TRI_multi_array_t* array, void* element) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
-#endif    
+#endif
   }
 
   // add a new element to the associative array
@@ -226,7 +226,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t* zone,
 
   // initialise the vector which will hold the result if any
   TRI_InitVectorPointer(&result, zone);
-   
+
   // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
@@ -238,14 +238,14 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t* zone,
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
-  
+
     if (array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
-      TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
+      TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);
     }
 #ifdef TRI_INTERNAL_STATS
     else {
       array->_nrProbesF++;
-    }      
+    }
 #endif
 
     i = (i + 1) % array->_nrAlloc;
@@ -273,7 +273,7 @@ TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t* zone,
 
   // initialise the vector which will hold the result if any
   TRI_InitVectorPointer(&result, zone);
-   
+
   // compute the hash
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
@@ -286,12 +286,12 @@ TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t* zone,
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     if (array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
-      TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
+      TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);
     }
 #ifdef TRI_INTERNAL_STATS
     else {
       array->_nrProbesF++;
-    }      
+    }
 #endif
 
     i = (i + 1) % array->_nrAlloc;
@@ -314,7 +314,7 @@ TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t* zone,
 bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool overwrite) {
   uint64_t hash;
   uint64_t i;
-  
+
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
     return false;
@@ -328,20 +328,20 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
   // update statistics
   array->_nrAdds++;
 #endif
-    
+
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   // ...........................................................................
   // If we found an element, return. While we allow duplicate entries in the hash
-  // table, we do not allow duplicate elements. Elements would refer to the 
-  // (for example) an actual row in memory. This is different from the 
+  // table, we do not allow duplicate elements. Elements would refer to the
+  // (for example) an actual row in memory. This is different from the
   // TRI_InsertElementMultiArray function below where we only have keys to
   // differentiate between elements.
   // ...........................................................................
@@ -353,7 +353,7 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
 
     return false;
   }
-  
+
   // add a new element to the associative array
   memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
   array->_nrUsed++;
@@ -362,7 +362,7 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     ResizeMultiArray(array);
   }
-  
+
   return true;
 }
 
@@ -373,7 +373,7 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
 bool TRI_InsertKeyMultiArray (TRI_multi_array_t* array, void* key, void* element, bool overwrite) {
   uint64_t hash;
   uint64_t i;
-  
+
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed) {
     return false;
@@ -382,18 +382,18 @@ bool TRI_InsertKeyMultiArray (TRI_multi_array_t* array, void* key, void* element
   // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
-  
+
 #ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
 #endif
-    
+
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
-#endif    
+#endif
   }
 
   // ...........................................................................
@@ -437,7 +437,7 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return false
@@ -499,7 +499,7 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return false
@@ -572,7 +572,7 @@ static void AddNewElementPointer (TRI_multi_pointer_t* array, void* element) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
-#endif    
+#endif
   }
 
   // add a new element to the associative array
@@ -602,7 +602,7 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
 
     return;
   }
-  
+
   array->_nrUsed = 0;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
@@ -666,7 +666,7 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -761,7 +761,7 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
-#endif    
+#endif
   }
 
   // return whatever we found
@@ -772,9 +772,9 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, 
-                                     void* element, 
-                                     const bool overwrite, 
+void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
+                                     void* element,
+                                     const bool overwrite,
                                      const bool checkEquality) {
   uint64_t hash;
   uint64_t i;
@@ -798,7 +798,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
 
   // if the checkEquality flag is not set, we do not check for element equality
   // we use this flag to speed up initial insertion into the index, i.e. when the
-  // index is built for a collection and we know for sure no duplicate elements 
+  // index is built for a collection and we know for sure no duplicate elements
   // will be inserted
   while (array->_table[i] != NULL && (! checkEquality || ! array->isEqualElementElement(array, element, array->_table[i]))) {
     i = (i + 1) % array->_nrAlloc;
@@ -853,7 +853,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
-#endif    
+#endif
   }
 
   // if we did not find such an item return 0
@@ -891,5 +891,5 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

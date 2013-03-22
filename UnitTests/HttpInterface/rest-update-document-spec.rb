@@ -128,6 +128,10 @@ describe ArangoDB do
       before do
         @cn = "UnitTestsCollectionBasics"
         @cid = ArangoDB.create_collection(@cn)
+
+        cmd = "/_api/collection/#{@cid}/properties"
+        body = "{ \"waitForSync\" : true }"
+        doc = ArangoDB.put(cmd, :body => body)
       end
 
       after do
@@ -152,7 +156,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -206,7 +210,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-if-match", cmd, :headers => hdr, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
 
@@ -217,6 +221,32 @@ describe ArangoDB do
         rev2 = doc.parsed_response['_rev']
         rev2.should be_kind_of(String)
         rev2.should_not eq(rev)
+
+        cmd = "/_api/collection/#{@cid}/properties"
+        body = "{ \"waitForSync\" : false }"
+        doc = ArangoDB.put(cmd, :body => body)
+
+        # update document 
+        cmd = "/_api/document/#{did}"
+        hdr = { "if-match" => "\"#{rev2}\"" }
+        body = "{ \"World\" : \"Hallo2\" }"
+        doc3 = ArangoDB.log_put("#{prefix}-if-match", cmd, :headers => hdr, :body => body)
+
+        doc3.code.should eq(202)
+        doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc3.parsed_response['error'].should eq(false)
+        rev3 = doc3.parsed_response['_rev']
+
+        # update document 
+        cmd = "/_api/document/#{did}?waitForSync=true"
+        hdr = { "if-match" => "\"#{rev3}\"" }
+        body = "{ \"World\" : \"Hallo3\" }"
+        doc4 = ArangoDB.log_put("#{prefix}-if-match", cmd, :headers => hdr, :body => body)
+
+        doc4.code.should eq(201)
+        doc4.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc4.parsed_response['error'].should eq(false)
+        rev4 = doc4.parsed_response['_rev']
 
         ArangoDB.delete(location)
 
@@ -242,7 +272,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-if-match-other-last-write", cmd, :headers => hdr, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
 
@@ -275,7 +305,7 @@ describe ArangoDB do
         # update document, different revision
         cmd = "/_api/document/#{did}?rev=858976#{rev}"
         body = "{ \"World\" : \"Hallo\" }"
-              doc = ArangoDB.log_put("#{prefix}-rev-other", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-rev-other", cmd, :body => body)
 
         doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
@@ -294,7 +324,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-rev", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
 
@@ -329,7 +359,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-rev-other-last-write", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(false)
 
@@ -364,7 +394,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-sync-false", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -399,7 +429,7 @@ describe ArangoDB do
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-sync-true", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -434,7 +464,7 @@ describe ArangoDB do
         body = "{ \"fox\" : \"Foxy\" }"
         doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -474,7 +504,7 @@ describe ArangoDB do
         body = "{ \"fox\" : \"Foxy\", \"Hallo\" : null }"
         doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -514,7 +544,7 @@ describe ArangoDB do
         body = "{ \"fox\" : \"Foxy\", \"Hallo\" : null }"
         doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 

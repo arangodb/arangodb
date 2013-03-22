@@ -84,14 +84,14 @@ describe ArangoDB do
       end
       
       it "using POST, with URL parameters" do
-        cmd = "/_admin/echo?a=1&b=2&foo[]=bar"
+        cmd = "/_admin/echo?a=1&b=2&foo[]=bar&foo[]=baz"
         body = "{\"foo\": \"bar\", \"baz\": { \"bump\": true, \"moo\": [ ] } }"
         doc = ArangoDB.log_post("#{prefix}-echo", cmd, :body => body)
 
         doc.code.should eq(200)
-        doc.parsed_response['url'].should eq("/_admin/echo?a=1&b=2&foo[]=bar")
+        doc.parsed_response['url'].should eq("/_admin/echo?a=1&b=2&foo[]=bar&foo[]=baz")
         doc.parsed_response['path'].should eq("/")
-        doc.parsed_response['parameters'].should eq({ "foo[]" => "bar", "b" => "2", "a" => "1" })
+        doc.parsed_response['parameters'].should eq( { "a"=>"1", "b"=>"2", "foo"=>["bar", "baz"] } )
         doc.parsed_response['requestType'].should eq("POST")
         doc.parsed_response['requestBody'].should eq("{\"foo\": \"bar\", \"baz\": { \"bump\": true, \"moo\": [ ] } }")
       end
@@ -125,7 +125,7 @@ describe ArangoDB do
         # check response code
         doc.code.should eq(200)
         # check whether HTML result contains expected title
-        doc.response.body.should include("ArangoDB - WebAdmin")
+        doc.response.body.should include("<!-- ArangoDB web interface -->")
       end
 
       it "checks whether the admin interface is available at /_admin/html" do

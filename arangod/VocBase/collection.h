@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,18 +22,18 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_COLLECTION_H 1
+#ifndef TRIAGENS_VOC_BASE_COLLECTION_H
+#define TRIAGENS_VOC_BASE_COLLECTION_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/vector.h>
+#include "BasicsC/vector.h"
 
-#include <VocBase/datafile.h>
-#include <VocBase/vocbase.h>
+#include "VocBase/datafile.h"
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,12 +85,12 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s;  
+struct TRI_json_s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -222,7 +222,7 @@ typedef struct TRI_col_info_s {
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
-  struct TRI_json_s* _options;         // optional collection options
+  struct TRI_json_s* _keyOptions;      // options for key creation
 
   // flags
   bool               _deleted : 1;     // if true, collection has been deleted
@@ -238,7 +238,7 @@ TRI_col_info_t;
 
 typedef struct TRI_collection_s {
   TRI_col_info_t _info;
-  
+
   TRI_vocbase_t* _vocbase;
 
   TRI_col_state_e _state;            // state of the collection
@@ -283,7 +283,8 @@ void TRI_InitCollectionInfo (TRI_vocbase_t*,
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t*, const TRI_col_info_t* const);
+void TRI_CopyCollectionInfo (TRI_col_info_t*,
+                             const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a collection info block
@@ -295,10 +296,11 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 /// @brief get the full directory name for a collection
 ///
 /// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not. 
+/// and to free it if not.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetDirectoryCollection (char const*, const TRI_col_info_t* const);
+char* TRI_GetDirectoryCollection (char const*,
+                                  const TRI_col_info_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
@@ -340,20 +342,24 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// @brief creates a parameter info block from file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadCollectionInfo (char const*, TRI_col_info_t*);
+int TRI_LoadCollectionInfo (char const*,
+                            TRI_col_info_t*,
+                            const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const*, const TRI_col_info_t* const);
+int TRI_SaveCollectionInfo (char const*,
+                            const TRI_col_info_t* const,
+                            const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
-                              TRI_collection_t*, 
+                              TRI_collection_t*,
                               TRI_col_info_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +394,7 @@ bool TRI_IterateCollection (TRI_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_IterateIndexCollection (TRI_collection_t*,
-                                 bool (*)(char const* filename, void*),
+                                 bool (*)(char const*, void*),
                                  void*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,10 +426,23 @@ TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const*);
 void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over markers in collection journals
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IterateJournalsCollection (const char* const,
+                                    bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool));
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSystemCollectionName (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_TypeNameCollection (const TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -437,5 +456,5 @@ bool TRI_IsSystemCollectionName (char const*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

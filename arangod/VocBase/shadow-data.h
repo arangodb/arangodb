@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_SHADOW_DATA_H
-#define TRIAGENS_DURHAM_VOC_BASE_SHADOW_DATA_H 1
+#ifndef TRIAGENS_VOC_BASE_SHADOW_DATA_H
+#define TRIAGENS_VOC_BASE_SHADOW_DATA_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/locks.h>
-#include <BasicsC/associative.h>
+#include "BasicsC/common.h"
+#include "BasicsC/locks.h"
+#include "BasicsC/associative.h"
 
 #include "VocBase/vocbase.h"
 
@@ -74,7 +74,7 @@ extern "C" {
 /// @brief typedef for shadow types
 ///
 /// Shadows are first created with the SHADOW_TRANSIENT type. This means that
-/// the shadow will exist only temporarily and will be destroyed when the 
+/// the shadow will exist only temporarily and will be destroyed when the
 /// refcount gets back to 0. Shadows of type SHADOW_PERSISTENT will remain in
 /// the shadow store even with a refcount of 0 until their ttl is over.
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +89,7 @@ TRI_shadow_type_e;
 /// @brief typedef for shadow ids
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef TRI_voc_tick_t TRI_shadow_id; 
+typedef TRI_voc_tick_t TRI_shadow_id;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shadow data (base struct)
@@ -159,11 +159,11 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a shadow in the index using its data pointer and return 
+/// @brief look up a shadow in the index using its data pointer and return
 /// its id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_id TRI_GetIdDataShadowData (TRI_shadow_store_t* const, 
+TRI_shadow_id TRI_GetIdDataShadowData (TRI_shadow_store_t* const,
                                        const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,11 +213,11 @@ bool TRI_DeleteDataShadowData (TRI_shadow_store_t* const, const void* const);
 bool TRI_DeleteIdShadowData (TRI_shadow_store_t* const, const TRI_shadow_id);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enumerate all shadows and remove them if 
+/// @brief enumerate all shadows and remove them if
 /// - their refcount is 0 and they are transient
 /// - their refcount is 0 and they are expired
 /// - the force flag is set
-/// 
+///
 /// The max age must be specified in seconds. The max age is ignored if the
 /// force flag is set. In this case all remaining shadows will be deleted
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,7 +228,7 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const, const double, const bool)
 /// @brief store a new shadow in the store
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const, 
+TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const,
                                    const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,5 +243,5 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

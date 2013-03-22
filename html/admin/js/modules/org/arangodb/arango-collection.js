@@ -359,8 +359,8 @@ ArangoCollection.prototype.properties = function (properties) {
     isVolatile : requestResult.isVolatile
   };
     
-  if (requestResult.createOptions !== undefined) {
-    result.createOptions = requestResult.createOptions;
+  if (requestResult.keyOptions !== undefined) {
+    result.keyOptions = requestResult.keyOptions;
   }
     
   return result;

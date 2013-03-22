@@ -2169,7 +2169,7 @@ static v8::Handle<v8::Value> ParseArray (yyscan_t scanner) {
       return scope.Close(v8::Undefined());
     }
 
-    array->Set(v8::String::New(name), sub);
+    array->Set(v8::String::New(name, outLength), sub);
 
     TRI_FreeString(yyextra._memoryZone, name);
 
@@ -2241,7 +2241,15 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
       return scope.Close(v8::Number::New(d));
 
     case STRING_CONSTANT:
-      ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+      if (yyleng <= 2) {
+        // string is empty
+        ptr = yytext + 1;
+        outLength = 0;
+      }
+      else {
+        // string is not empty
+        ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+      }
 
       if (ptr == NULL) {
         yyextra._message = "out-of-memory";

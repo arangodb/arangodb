@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,25 +22,25 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_INDEX_H
-#define TRIAGENS_DURHAM_VOC_BASE_INDEX_H 1
+#ifndef TRIAGENS_VOC_BASE_INDEX_H
+#define TRIAGENS_VOC_BASE_INDEX_H 1
 
 #include "VocBase/vocbase.h"
 
+#include "BasicsC/associative-multi.h"
 #include "BasicsC/json.h"
 #include "BasicsC/linked-list.h"
 #include "BitIndexes/bitarrayIndex.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/GeoIndex.h"
-#include "HashIndex/hashindex.h"
+#include "IndexIterators/index-iterator.h"
+#include "IndexOperators/index-operator.h"
 #include "PriorityQueue/pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
-#include "IndexIterators/index-iterator.h"
-#include "IndexOperators/index-operator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -117,44 +117,49 @@ typedef struct TRI_index_s {
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
 
   // .........................................................................................
-  // the following functions are called for document/collection administration 
+  // the following functions are called for document/collection administration
   // .........................................................................................
 
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
+#if 0
+  int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*);
+#endif
+
+  // NULL by default. will only be called if non-NULL
+  int (*postInsert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*postRemove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*postUpdate) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*);
 
   // a garbage collection function for the index
-  // NULL by default. will only be called if non-NULL
   int (*cleanup) (struct TRI_index_s*);
 
-  
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.
   // .........................................................................................
-  
+
   // stores the usefulness of this index for the indicated query in the struct TRI_index_challenge_s
   // returns integer which maps to set of errors.
   // the actual type is:
   // int (*indexQuery) (void*, struct TRI_index_operator_s*, struct TRI_index_challenge_s*, void*);
   // first parameter is the specific index structure, e.g. HashIndex, SkiplistIndex etc
   // fourth parameter is any internal storage which is/will be allocated as a consequence of this call
-  TRI_index_query_method_call_t indexQuery; 
-  
-  // returns the result set in an iterator  
+  TRI_index_query_method_call_t indexQuery;
+
+  // returns the result set in an iterator
   // the actual type is:
   // TRI_index_iterator_t* (*indexQueryResult) (void*, struct TRI_index_operator_s*, void*, bool (*filter) (TRI_index_iterator_t*) );
   // first parameter is the specific index structure, e.g. HashIndex, SkiplistIndex etc
   // third parameter is any internal storage might have been allocated as a consequence of this or the indexQuery call above
   // fourth parameter a filter which the index iterator should apply
   TRI_index_query_result_method_call_t indexQueryResult;
-  
-  // during the query or result function call, the index may have created and used 
+
+  // during the query or result function call, the index may have created and used
   // additional storage, this method attempts to free this if required.
   // the actual type is:
   // void (*indexQueryFree) (struct TRI_index_s*, void*);
-  // second parameter is any internal storage might have been allocated as a consequence of the indexQuery 
+  // second parameter is any internal storage might have been allocated as a consequence of the indexQuery
   // or indexQueryResult calls above
   TRI_index_query_free_method_call_t indexQueryFree;
 }
@@ -180,25 +185,13 @@ typedef struct TRI_geo_index_s {
 TRI_geo_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_hash_index_s {
-  TRI_index_t base;
-
-  HashIndex* _hashIndex;  // effectively the associative array
-  TRI_vector_t _paths;    // a list of shape pid which identifies the fields of the index
-}
-TRI_hash_index_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edge index
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_edge_index_s {
   TRI_index_t base;
 
-  TRI_multi_pointer_t _edges; 
+  TRI_multi_pointer_t _edges;
 }
 TRI_edge_index_t;
 
@@ -208,7 +201,7 @@ TRI_edge_index_t;
 
 typedef struct TRI_priorityqueue_index_s {
   TRI_index_t base;
-  PQIndex* _pqIndex; 
+  PQIndex* _pqIndex;
   TRI_vector_t _paths; // a list of shape pid which identifies the fields of the index
 }
 TRI_priorityqueue_index_t;
@@ -231,7 +224,7 @@ TRI_skiplist_index_t;
 
 typedef struct TRI_fulltext_index_s {
   TRI_index_t base;
-  
+
   TRI_fts_index_t* _fulltextIndex;
   TRI_shape_pid_t _attribute;
   int _minWordLength;
@@ -258,13 +251,33 @@ TRI_cap_constraint_t;
 
 typedef struct TRI_bitarray_index_s {
   TRI_index_t base;
-  
-  BitarrayIndex* _bitarrayIndex;  
+
+  BitarrayIndex* _bitarrayIndex;
   TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
   TRI_vector_t _values;           // a list of json objects which match the list of attributes used by the index
-  bool _supportUndef;            // allows documents which do not match the attribute list to be indexed
+  bool _supportUndef;             // allows documents which do not match the attribute list to be indexed
 }
 TRI_bitarray_index_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index query result
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_index_result_s {
+  size_t _length;
+  struct TRI_doc_mptr_s** _documents;     // simple list of elements
+}
+TRI_index_result_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index query parameter
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_index_search_value_s {
+  size_t _length;
+  TRI_shaped_json_t* _values;
+}
+TRI_index_search_value_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -273,6 +286,28 @@ TRI_bitarray_index_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             INDEX
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise basic index properties
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitIndex (TRI_index_t* idx, 
+                    const TRI_idx_type_e type, 
+                    struct TRI_primary_collection_s* collection,
+                    bool unique);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -318,6 +353,34 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a result set returned by a hash index query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyIndexResult (TRI_index_result_t* result);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies a path vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies all pointers from a vector
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CopyFieldsVector (TRI_vector_string_t* dst, TRI_vector_pointer_t* src);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a path vector into a field list
+///
+/// Note that you must free the field list itself, but not the fields. The
+/// belong to the shaper.
+////////////////////////////////////////////////////////////////////////////////
+
+char const** TRI_FieldListByPathList (TRI_shaper_t* shaper, 
+                                      TRI_vector_t* paths);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -386,202 +449,6 @@ void TRI_FreeEdgeIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    CAP CONSTRAINT
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collection,
-                                      size_t size);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyCapConstraint (TRI_index_t* idx);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCapConstraint (TRI_index_t* idx);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         GEO INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a geo-index for lists
-///
-/// If geoJson is true, than the coordinates should be in the order described
-/// in http://geojson.org/geojson-spec.html#positions, which is longitude
-/// first and latitude second.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
-                                  char const* locationName,
-                                  TRI_shape_pid_t,
-                                  bool geoJson,
-                                  bool constraint,
-                                  bool ignoreNull);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a geo-index for arrays
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s*,
-                                  char const* latitudeName,
-                                  TRI_shape_pid_t,
-                                  char const* longitudeName,
-                                  TRI_shape_pid_t,
-                                  bool constraint,
-                                  bool ignoreNull);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyGeoIndex (TRI_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeGeoIndex (TRI_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up all points within a given radius
-////////////////////////////////////////////////////////////////////////////////
-
-GeoCoordinates* TRI_WithinGeoIndex (TRI_index_t*,
-                                    double lat,
-                                    double lon,
-                                    double radius);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up the nearest points
-////////////////////////////////////////////////////////////////////////////////
-
-GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
-                                     double lat,
-                                     double lon,
-                                     size_t count);
-
-                                     
-                                     
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        HASH INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a hash-index
-///
-/// @note @FA{paths} must be sorted.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s*,
-                                  TRI_vector_pointer_t* fields,
-                                  TRI_vector_t* paths,
-                                  bool unique,
-                                  size_t initialDocumentCount);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyHashIndex (TRI_index_t* idx);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeHashIndex (TRI_index_t* idx);
-                                  
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a result set returned by a hash index query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeResultHashIndex (const TRI_index_t* const, 
-                              TRI_hash_index_elements_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
-///
-/// @warning who ever calls this function is responsible for destroying
-/// TRI_hash_index_elements_t* results
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_shaped_json_t** values);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                              PRIORITY QUEUE INDEX
 // -----------------------------------------------------------------------------
 
@@ -589,13 +456,12 @@ TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, TRI_json_t*);
+PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a priority queue index
@@ -617,7 +483,7 @@ void TRI_DestroyPriorityQueueIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreePriorityQueueIndex (TRI_index_t*);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,7 +523,7 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIndex (TRI_index_t* idx);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,7 +549,7 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
                                       const char*,
-                                      const bool, 
+                                      const bool,
                                       int);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -697,7 +563,7 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFulltextIndex (TRI_index_t* idx);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -745,7 +611,7 @@ void TRI_DestroyBitarrayIndex (TRI_index_t* idx);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBitarrayIndex (TRI_index_t* idx);
-                                  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,5 +624,5 @@ void TRI_FreeBitarrayIndex (TRI_index_t* idx);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shape-accessor.h"
@@ -48,7 +48,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* accessor) {
-  union { void const* c;  void* v; } cv;
   TRI_shape_aid_t const* paids;
   TRI_shape_path_t const* path;
   TRI_shape_t const* shape;
@@ -82,15 +81,15 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("out of memory");
     TRI_DestroyVectorPointer(&ops);
     return false;
   }
 
-  cv.c = shape;
-
-  res = TRI_PushBackVectorPointer(&ops, cv.v);
+  res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("out of memory");
     TRI_DestroyVectorPointer(&ops);
     return false;
   }
@@ -158,6 +157,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_FIX);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -165,6 +165,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[0])); // offset is always smaller than 4 GByte
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -172,6 +173,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[1])); // offset is always smaller than 4 GByte
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -179,15 +181,15 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
 
-          cv.c = shape;
-
-          res = TRI_PushBackVectorPointer(&ops, cv.v);
+          res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -216,6 +218,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
                       (unsigned long) accessor->_sid,
                       (unsigned long) *paids);
 
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -223,6 +226,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_OFFSET_VAR);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -230,6 +234,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) j);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -237,15 +242,15 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
           res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
 
-          cv.c = shape;
-
-          res = TRI_PushBackVectorPointer(&ops, cv.v);
+          res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("out of memory");
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -281,18 +286,20 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_DONE);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("out of memory");
     return false;
   }
 
   accessor->_shape = shape;
-  cv.c = accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false);
+  accessor->_code = TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false);
 
   if (accessor->_code == NULL) {
+    LOG_ERROR("out of memory");
     TRI_DestroyVectorPointer(&ops);
     return false;
   }
 
-  memcpy(cv.v, ops._buffer, ops._length * sizeof(void*));
+  memcpy(CONST_CAST(accessor->_code), ops._buffer, ops._length * sizeof(void*));
 
   TRI_DestroyVectorPointer(&ops);
   return true;
@@ -515,5 +522,5 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

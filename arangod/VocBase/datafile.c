@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011, triagens GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include <BasicsC/win-utils.h>
+#include "BasicsC/win-utils.h"
 #endif
 
 #include "datafile.h"
@@ -36,6 +36,8 @@
 #include "BasicsC/memory-map.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/files.h"
+
+#include "VocBase/marker.h"
 
 
 // #define DEBUG_DATAFILE 1
@@ -100,8 +102,8 @@ static void DestroyDatafile (TRI_datafile_t* const datafile) {
 /// @brief sync the data of a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SyncDatafile (const TRI_datafile_t* const datafile, 
-                          char const* begin, 
+static bool SyncDatafile (const TRI_datafile_t* const datafile,
+                          char const* begin,
                           char const* end) {
   // TODO: remove
   void** mmHandle = NULL;
@@ -136,7 +138,7 @@ static int TruncateDatafile (TRI_datafile_t* const datafile, const off_t length)
 /// returns the file descriptor or -1 if the file cannot be created
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateSparseFile (char const* filename, 
+static int CreateSparseFile (char const* filename,
                              const TRI_voc_size_t maximalSize) {
   off_t offset;
   char zero;
@@ -159,7 +161,7 @@ static int CreateSparseFile (char const* filename,
   if (offset == (off_t) -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
-    
+
     // remove empty file
     TRI_UnlinkFile(filename);
 
@@ -173,7 +175,7 @@ static int CreateSparseFile (char const* filename,
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
-    
+
     // remove empty file
     TRI_UnlinkFile(filename);
 
@@ -195,7 +197,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
                           void* mmHandle,
                           TRI_voc_size_t maximalSize,
                           TRI_voc_size_t currentSize,
-                          TRI_voc_fid_t tick,
+                          TRI_voc_fid_t fid,
                           char* data) {
 
   // filename is a string for physical datafiles, and NULL for anonymous regions
@@ -208,7 +210,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
   }
 
   datafile->_state       = TRI_DF_STATE_READ;
-  datafile->_fid         = tick;
+  datafile->_fid         = fid;
 
   datafile->_filename    = filename;
   datafile->_fd          = fd;
@@ -244,7 +246,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
 /// Create a truncated datafile, seal it and rename the old.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int TruncateAndSealDatafile (TRI_datafile_t* datafile, 
+static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
                                     TRI_voc_size_t vocSize) {
   char* filename;
   char* oldname;
@@ -255,10 +257,10 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   size_t offset;
   void* data;
   void* mmHandle;
-  
+
   // this function must not be called for non-physical datafiles
   assert(datafile->isPhysical(datafile));
-    
+
   // use multiples of page-size
   maximalSize = ((vocSize + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
 
@@ -298,7 +300,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
-    
+
     // remove empty file
     TRI_UnlinkFile(filename);
 
@@ -308,8 +310,8 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   // memory map the data
   res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
-  
-  if (res != TRI_ERROR_NO_ERROR) {  
+
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     TRI_CLOSE(fd);
 
@@ -333,19 +335,19 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   // .............................................................................................
   // For windows: Mem mapped files use handles
-  // the datafile->_mmHandle handle object has been closed in the underlying 
+  // the datafile->_mmHandle handle object has been closed in the underlying
   // TRI_UNMMFile(...) call above so we do not need to close it for the associated file below
   // .............................................................................................
-  
+
   TRI_CLOSE(datafile->_fd);
 
-  
+
   datafile->_data = data;
   datafile->_next = (char*)(data) + vocSize;
   datafile->_maximalSize = maximalSize;
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
-  
+
   // rename files
   oldname = TRI_Concatenate2String(datafile->_filename, ".corrupted");
 
@@ -443,7 +445,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       TRI_PushBackVector(&scan._entries, &entry);
       return scan;
     }
-    
+
     if (! TRI_IsValidMarkerDatafile(marker)) {
       entry._status = 4;
 
@@ -485,7 +487,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
   TRI_voc_size_t currentSize;
   char* end;
   char* ptr;
-  
+
   // this function must not be called for non-physical datafiles
   assert(datafile->isPhysical(datafile));
 
@@ -513,8 +515,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 #endif
 
     if (marker->_size == 0 && marker->_crc == 0 && marker->_type == 0 && marker->_tick == 0) {
-      LOG_DEBUG("reached end of datafile '%s' data, current size %lu", 
-                datafile->getName(datafile), 
+      LOG_DEBUG("reached end of datafile '%s' data, current size %lu",
+                datafile->getName(datafile),
                 (unsigned long) currentSize);
 
       datafile->_currentSize = currentSize;
@@ -524,8 +526,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     }
 
     if (marker->_size == 0) {
-      LOG_DEBUG("reached end of datafile '%s' data, current size %lu", 
-                datafile->getName(datafile), 
+      LOG_DEBUG("reached end of datafile '%s' data, current size %lu",
+                datafile->getName(datafile),
                 (unsigned long) currentSize);
 
       datafile->_currentSize = currentSize;
@@ -559,7 +561,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
       LOG_WARNING("marker in datafile '%s' is corrupt", datafile->getName(datafile));
       return false;
     }
-    
+
     ok = TRI_CheckCrcMarkerDatafile(marker);
 
     if (! ok) {
@@ -612,13 +614,13 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   struct stat status;
   TRI_df_header_marker_t header;
   void* mmHandle;
-  
+
   // this function must not be called for non-physical datafiles
   assert(filename != NULL);
 
-  // ..........................................................................  
+  // ..........................................................................
   // attempt to open a datafile file
-  // ..........................................................................  
+  // ..........................................................................
 
   fd = TRI_OPEN(filename, O_RDWR);
 
@@ -708,7 +710,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   // map datafile into memory
   res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     TRI_CLOSE(fd);
@@ -754,6 +756,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateDatafile (char const* filename,
+                                    TRI_voc_fid_t fid,
                                     TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   TRI_df_marker_t* position;
@@ -774,14 +777,14 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   // create either an anonymous or a physical datafile
   if (filename == NULL) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-    datafile = TRI_CreateAnonymousDatafile(maximalSize);
+    datafile = TRI_CreateAnonymousDatafile(fid, maximalSize);
 #else
     // system does not support anonymous mmap
     return NULL;
 #endif
   }
   else {
-    datafile = TRI_CreatePhysicalDatafile(filename, maximalSize);
+    datafile = TRI_CreatePhysicalDatafile(filename, fid, maximalSize);
   }
 
   if (datafile == NULL) {
@@ -791,26 +794,20 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
 
   datafile->_state = TRI_DF_STATE_WRITE;
-  
+
   // create the header
   memset(&header, 0, sizeof(TRI_df_header_marker_t));
-
-  header.base._size   = sizeof(TRI_df_header_marker_t);
-  header.base._tick   = TRI_NewTickVocBase();
-  header.base._type   = TRI_DF_MARKER_HEADER;
+  TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
 
   header._version     = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
-  header._fid         = TRI_NewTickVocBase();
-
-  // create CRC
-  TRI_FillCrcMarkerDatafile(datafile, &header.base, sizeof(TRI_df_header_marker_t), 0, 0, 0, 0);
+  header._fid         = fid;
 
   // reserve space and write header to file
   result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
 
   if (result == TRI_ERROR_NO_ERROR) {
-    result = TRI_WriteElementDatafile(datafile, position, &header.base, header.base._size, 0, 0, 0, 0, true);
+    result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, true);
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
@@ -840,7 +837,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
-TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
+                                             const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   ssize_t res;
   void* data;
@@ -860,21 +858,21 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
   if (fd == -1) {
     return NULL;
   }
-  
+
   flags = MAP_PRIVATE;
 #endif
 
   // memory map the data
   res = TRI_MMFile(NULL, maximalSize, PROT_WRITE | PROT_READ, flags, fd, &mmHandle, 0, &data);
- 
-#ifdef MAP_ANONYMOUS 
-  // nothing to do 
+
+#ifdef MAP_ANONYMOUS
+  // nothing to do
 #else
   // close auxilliary file
   TRI_CLOSE(fd);
   fd = -1;
 #endif
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
 
@@ -891,14 +889,14 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
     LOG_ERROR("out of memory");
     return NULL;
   }
-  
+
   InitDatafile(datafile,
                NULL,
                fd,
                mmHandle,
                maximalSize,
                0,
-               TRI_NewTickVocBase(),
+               fid,
                data);
 
   return datafile;
@@ -911,6 +909,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename, 
+                                            TRI_voc_fid_t fid,
                                             const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   int fd;
@@ -928,7 +927,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
 
   // memory map the data
   res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     TRI_CLOSE(fd);
@@ -959,7 +958,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                mmHandle,
                maximalSize,
                0,
-               TRI_NewTickVocBase(),
+               fid,
                data);
 
   return datafile;
@@ -1018,7 +1017,7 @@ bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker) {
     return false;
   }
 
-  if (marker->_size >= (TRI_voc_size_t) (256 * 1024 * 1024)) {
+  if (marker->_size >= (TRI_voc_size_t) TRI_MARKER_MAXIMAL_SIZE) {
     // a single marker bigger than 256 MB seems unreasonable
     // note: this is an arbitrary limit
     return false;
@@ -1066,8 +1065,6 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
 void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
                                 TRI_df_marker_t* marker,
                                 TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
                                 void const* body,
                                 TRI_voc_size_t bodySize) {
   marker->_crc = 0;
@@ -1079,10 +1076,6 @@ void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
     crc = TRI_InitialCrc32();
     crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
 
-    if (keyBody != NULL && 0 < keyBodySize) {
-      crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
-    }
-
     if (body != NULL && 0 < bodySize) {
       crc = TRI_BlockCrc32(crc, body, bodySize);
     }
@@ -1093,9 +1086,10 @@ void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
+/// @deprecated this function is deprecated. do not use for new code
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile, 
+void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
                                    TRI_df_marker_t* marker,
                                    TRI_voc_size_t markerSize,
                                    void const* keyBody,
@@ -1167,26 +1161,19 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker and body to the datafile
+/// @brief writes a marker to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
-                              void const* keyBody,
-                              TRI_voc_size_t keyBodySize,
-                              void const* body,
-                              TRI_voc_size_t bodySize,
                               bool forceSync) {
-  TRI_voc_size_t size;
 
-  size = markerSize + keyBodySize + bodySize;
-
-  if (size != marker->_size) {
+  if (markerSize != marker->_size) {
     LOG_ERROR("marker size is %lu, but size is %lu",
               (unsigned long) marker->_size,
-              (unsigned long) size);
+              (unsigned long) markerSize);
   }
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
@@ -1201,18 +1188,11 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
   memcpy(position, marker, markerSize);
 
-  if (keyBody != NULL && 0 < keyBodySize) {
-    memcpy(((char*) position) + markerSize, keyBody, keyBodySize);
-  }
-
-  if (body != NULL && 0 < bodySize) {
-    memcpy(((char*) position) + markerSize + keyBodySize, body, bodySize);
-  }
 
   if (forceSync) {
     bool ok;
 
-    ok = datafile->sync(datafile, position, ((char*) position) + size);
+    ok = datafile->sync(datafile, position, ((char*) position) + markerSize);
 
     if (! ok) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
@@ -1229,11 +1209,30 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       return datafile->_lastError;
     }
     else {
-      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) size);
+      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) markerSize);
     }
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checksums and writes a marker to the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
+                                 void* position,
+                                 TRI_df_marker_t* marker,
+                                 TRI_voc_size_t markerSize,
+                                 bool forceSync) {
+  if (datafile->isPhysical(datafile)) {
+    TRI_voc_crc_t crc = TRI_InitialCrc32();
+  
+    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+    marker->_crc = TRI_FinalCrc32(crc);
+  }
+
+  return TRI_WriteElementDatafile(datafile, position, marker, markerSize, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1246,9 +1245,11 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
                           bool journal) {
   char* ptr;
   char* end;
-  
+
   // this function must not be called for non-physical datafiles
   assert(datafile->isPhysical(datafile));
+
+  LOG_TRACE("iterating over datafile '%s', fid: %llu", datafile->getName(datafile), (unsigned long long) datafile->_fid);
 
   ptr = datafile->_data;
   end = datafile->_data + datafile->_currentSize;
@@ -1289,7 +1290,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   TRI_datafile_t* datafile;
   bool ok;
-  
+
   // this function must not be called for non-physical datafiles
   assert(filename != NULL);
 
@@ -1316,7 +1317,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   // change to read-write if no footer has been found
   if (! datafile->_isSealed) {
     datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle)); 
+    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle));
   }
 
   return datafile;
@@ -1350,7 +1351,7 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
   else {
     if (! datafile->_isSealed) {
       datafile->_state = TRI_DF_STATE_WRITE;
-      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle)); 
+      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle));
     }
   }
 
@@ -1373,7 +1374,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
       datafile->_lastError = res;
       return false;
     }
-    
+
     else {
       datafile->close(datafile);
       datafile->_data = 0;
@@ -1399,7 +1400,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
 
 bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
   int res;
-  
+
   // this function must not be called for non-physical datafiles
   assert(datafile->isPhysical(datafile));
   assert(filename != NULL);
@@ -1448,15 +1449,10 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_SEALED);
   }
 
+
   // create the footer
   memset(&footer, 0, sizeof(TRI_df_footer_marker_t));
-
-  footer.base._size = sizeof(TRI_df_footer_marker_t);
-  footer.base._tick = TRI_NewTickVocBase();
-  footer.base._type = TRI_DF_MARKER_FOOTER;
-
-  // create CRC
-  TRI_FillCrcMarkerDatafile(datafile, &footer.base, sizeof(TRI_df_footer_marker_t), 0, 0, 0, 0);
+  TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;
@@ -1464,7 +1460,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteElementDatafile(datafile, position, &footer.base, footer.base._size, 0, 0, 0, 0, true);
+    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, footer.base._size, true);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1476,7 +1472,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
   if (! ok) {
     // TODO: remove disastrous call to abort() here!! FIXME
-    abort(); 
+    abort();
     datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
     if (errno == ENOSPC) {
@@ -1492,26 +1488,26 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   // everything is now synced
   datafile->_synced = datafile->_written;
 
-  /* 
+  /*
     TODO: do we have to unmap file? That is, release the memory which has been allocated for
           this file? At the moment the windows of function TRI_ProtectMMFile does nothing.
   */
-  TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ, datafile->_fd, &(datafile->_mmHandle)); 
+  TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ, datafile->_fd, &(datafile->_mmHandle));
 
   // truncate datafile
   if (ok) {
     #ifdef _WIN32
       res = 0;
-      /* 
+      /*
       res = ftruncate(datafile->_fd, datafile->_currentSize);
       Linux centric problems:
-        Under windows can not reduce size of the memory mapped file without unmappping it! 
+        Under windows can not reduce size of the memory mapped file without unmappping it!
         However, apparently we may have users
       */
     #else
-      res = datafile->truncate(datafile, datafile->_currentSize); 
+      res = datafile->truncate(datafile, datafile->_currentSize);
     #endif
-  
+
     if (res < 0) {
       // TODO: remove disastrous call to abort() here!! FIXME
       abort();
@@ -1527,7 +1523,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   if (! ok) {
     return datafile->_lastError;
   }
- 
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1538,11 +1534,11 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
   TRI_datafile_t* datafile;
   int res;
-  
+
   // this function must not be called for non-physical datafiles
   assert(path != NULL);
 
-  datafile = OpenDatafile(path, true);  
+  datafile = OpenDatafile(path, true);
 
   if (datafile == NULL) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
@@ -1561,11 +1557,11 @@ int TRI_TruncateDatafile (char const* path, TRI_voc_size_t position) {
 TRI_df_scan_t TRI_ScanDatafile (char const* path) {
   TRI_df_scan_t scan;
   TRI_datafile_t* datafile;
-  
+
   // this function must not be called for non-physical datafiles
   assert(path != NULL);
 
-  datafile = OpenDatafile(path, true);  
+  datafile = OpenDatafile(path, true);
 
   if (datafile != 0) {
     scan = ScanDatafile(datafile);
@@ -1599,5 +1595,5 @@ void TRI_DestroyDatafileScan (TRI_df_scan_t* scan) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

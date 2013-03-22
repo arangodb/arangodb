@@ -43,9 +43,6 @@
     <Filter Include="PriorityQueue Header">
       <UniqueIdentifier>{e1c38b70-c0da-49f9-a438-654573b89d12}</UniqueIdentifier>
     </Filter>
-    <Filter Include="RestHandler Source">
-      <UniqueIdentifier>{bb231895-a7e8-4283-944f-c4c1bd195c08}</UniqueIdentifier>
-    </Filter>
     <Filter Include="RestHandler Header">
       <UniqueIdentifier>{bdf04799-3349-4e2d-8270-9e3b17a27613}</UniqueIdentifier>
     </Filter>
@@ -81,6 +78,27 @@
     </Filter>
     <Filter Include="Utils Header">
       <UniqueIdentifier>{e9fb58cc-8cec-41be-94ad-6ec0870d48fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FulltextIndex Source">
+      <UniqueIdentifier>{a87ac433-d49c-4124-abd8-053130d0fe42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FulltextIndex Header">
+      <UniqueIdentifier>{06cc9415-dcac-41b9-bedf-f3b5c2f422a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RestHandler Source">
+      <UniqueIdentifier>{4d19ad29-43da-4ceb-b550-a276e9de2ac6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SkiplistsEx Header">
+      <UniqueIdentifier>{cc4700ed-c00c-4ebb-9475-1d54354fcbfa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SkiplistsEx Source">
+      <UniqueIdentifier>{85835a0d-c3d2-4442-b52c-48379bf40a35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CapConstraint Header">
+      <UniqueIdentifier>{d2ec0280-a1a3-4d91-b1af-f3466b44ca47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CapConstraint Source">
+      <UniqueIdentifier>{73321ff7-c3c0-411c-9380-0e6382bfe7a3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -174,15 +192,6 @@
     <ClCompile Include="..\..\arangod\BitIndexes\bitarrayIndex.c">
       <Filter>BitIndexes Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c">
-      <Filter>GeoIndex Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\HashIndex\hasharray.c">
-      <Filter>HashIndex Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\HashIndex\hashindex.c">
-      <Filter>HashIndex Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\arangod\IndexIterators\index-iterator.c">
       <Filter>IndexIterators Source</Filter>
     </ClCompile>
@@ -194,30 +203,6 @@
     </ClCompile>
     <ClCompile Include="..\..\arangod\PriorityQueue\priorityqueue.c">
       <Filter>PriorityQueue Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\ConnectionStatisticsHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\RequestStatisticsHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\RestBatchHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\RestDocumentHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\RestEdgeHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\RestImportHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.cpp">
-      <Filter>RestHandler Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\RestHandler\StatisticsBaseHandler.cpp">
-      <Filter>RestHandler Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\SkipLists\skiplist.c">
       <Filter>Skiplists Source</Filter>
@@ -295,22 +280,61 @@
       <Filter>VocBase Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-handles.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-index.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-list.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-query.c">
-      <Filter>VocBase Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-result.c">
-      <Filter>VocBase Source</Filter>
+      <Filter>FulltextIndex Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-wordlist.c">
+      <Filter>FulltextIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-index.c">
+      <Filter>FulltextIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-list.c">
+      <Filter>FulltextIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-query.c">
+      <Filter>FulltextIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\FulltextIndex\fulltext-result.c">
+      <Filter>FulltextIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestBatchHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestDocumentHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestEdgeHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestImportHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.cpp">
+      <Filter>RestHandler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\SkipListsEx\skiplistEx.c">
+      <Filter>SkiplistsEx Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\SkipListsEx\skiplistExIndex.c">
+      <Filter>SkiplistsEx Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\CapConstraint\cap-constraint.c">
+      <Filter>CapConstraint Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\HashIndex\hash-array.c">
+      <Filter>HashIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\HashIndex\hash-index.c">
+      <Filter>HashIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\GeoIndex\geo-index.c">
+      <Filter>GeoIndex Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\server-id.c">
       <Filter>VocBase Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c">
+      <Filter>GeoIndex Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -398,18 +422,6 @@
     <ClInclude Include="..\..\arangod\BitIndexes\masterblocktable.h">
       <Filter>BitIndexes Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h">
-      <Filter>GeoIndex Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\HashIndex\compare.h">
-      <Filter>HashIndex Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\HashIndex\hasharray.h">
-      <Filter>HashIndex Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\HashIndex\hashindex.h">
-      <Filter>HashIndex Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\IndexIterators\index-iterator.h">
       <Filter>IndexIterators Header</Filter>
     </ClInclude>
@@ -421,12 +433,6 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\PriorityQueue\priorityqueue.h">
       <Filter>PriorityQueue Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\RestHandler\ConnectionStatisticsHandler.h">
-      <Filter>RestHandler Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\RestHandler\RequestStatisticsHandler.h">
-      <Filter>RestHandler Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\RestHandler\RestBatchHandler.h">
       <Filter>RestHandler Header</Filter>
@@ -441,9 +447,6 @@
       <Filter>RestHandler Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.h">
-      <Filter>RestHandler Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\RestHandler\StatisticsBaseHandler.h">
       <Filter>RestHandler Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\SkipLists\skiplist.h">
@@ -554,29 +557,59 @@
     <ClInclude Include="..\..\arangod\VocBase\key-generator.h">
       <Filter>VocBase Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-handles.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-index.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-list.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-query.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-result.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-wordlist.h">
-      <Filter>VocBase Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\CollectionNameResolver.h">
       <Filter>Utils Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\Utils\AhuacatlTransaction.h">
       <Filter>Utils Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-handles.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-wordlist.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-index.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-list.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-query.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-result.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\FulltextIndex\fulltext-common.h">
+      <Filter>FulltextIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\SkipListsEx\compareEx.h">
+      <Filter>SkiplistsEx Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\SkipListsEx\skiplistEx.h">
+      <Filter>SkiplistsEx Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\SkipListsEx\skiplistExIndex.h">
+      <Filter>SkiplistsEx Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\CapConstraint\cap-constraint.h">
+      <Filter>CapConstraint Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\HashIndex\hash-array.h">
+      <Filter>HashIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\HashIndex\hash-index.h">
+      <Filter>HashIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\GeoIndex\geo-index.h">
+      <Filter>GeoIndex Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\VocBase\server-id.h">
+      <Filter>VocBase Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h">
+      <Filter>GeoIndex Header</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

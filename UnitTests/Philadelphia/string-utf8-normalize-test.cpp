@@ -63,8 +63,6 @@ struct CNormalizeStringTestSetup {
 
 BOOST_FIXTURE_TEST_SUITE(CNormalizeStringTest, CNormalizeStringTestSetup)
 
-#ifdef TRI_HAVE_ICU
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test NFD to NFC
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,9 +218,6 @@ BOOST_AUTO_TEST_CASE (tst_5) {
   words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, false);
   BOOST_CHECK(words == NULL);
 }
-
-
-#endif
 
 BOOST_AUTO_TEST_SUITE_END ()
 

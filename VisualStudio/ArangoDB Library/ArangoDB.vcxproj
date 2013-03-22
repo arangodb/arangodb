@@ -204,6 +204,7 @@
     <ClInclude Include="..\..\lib\Basics\LibraryLoader.h" />
     <ClInclude Include="..\..\lib\Basics\Mutex.h" />
     <ClInclude Include="..\..\lib\Basics\MutexLocker.h" />
+    <ClInclude Include="..\..\lib\Basics\Nonce.h" />
     <ClInclude Include="..\..\lib\Basics\ProgramOptions.h" />
     <ClInclude Include="..\..\lib\Basics\RandomGenerator.h" />
     <ClInclude Include="..\..\lib\Basics\RandomHeap.h" />
@@ -241,6 +242,7 @@
     <ClInclude Include="..\..\lib\Rest\OperationMode.h" />
     <ClInclude Include="..\..\lib\Rest\SslInterface.h" />
     <ClInclude Include="..\..\lib\Rest\Url.h" />
+    <ClInclude Include="..\..\lib\Rest\Version.h" />
     <ClInclude Include="..\..\lib\ShapedJson\json-shaper.h" />
     <ClInclude Include="..\..\lib\ShapedJson\shape-accessor.h" />
     <ClInclude Include="..\..\lib\ShapedJson\shaped-json.h" />
@@ -249,27 +251,6 @@
     <ClInclude Include="..\..\lib\Statistics\StatisticsAgent.h" />
     <ClInclude Include="..\..\lib\Utilities\LineEditor.h" />
     <ClInclude Include="..\..\lib\Utilities\ScriptLoader.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantArray.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantBlob.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantBoolean.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantDate.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantDatetime.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantDouble.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantFloat.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantInt16.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantInt32.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantInt64.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantInt8.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantMatrix2.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantNull.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantObject.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantObjectTemplate.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantString.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantUInt16.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantUInt32.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantUInt64.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantUInt8.h" />
-    <ClInclude Include="..\..\lib\Variant\VariantVector.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\3rdParty\VisualStudio\mygetopt\mygetopt.c" />
@@ -312,6 +293,7 @@
     <ClCompile Include="..\..\lib\Basics\LibraryLoader.cpp" />
     <ClCompile Include="..\..\lib\Basics\Mutex.cpp" />
     <ClCompile Include="..\..\lib\Basics\MutexLocker.cpp" />
+    <ClCompile Include="..\..\lib\Basics\Nonce.cpp" />
     <ClCompile Include="..\..\lib\Basics\ProgramOptions.cpp" />
     <ClCompile Include="..\..\lib\Basics\ProgramOptionsDescription.cpp" />
     <ClCompile Include="..\..\lib\Basics\RandomGenerator.cpp" />
@@ -344,32 +326,13 @@
     <ClCompile Include="..\..\lib\Rest\InitialiseRest.cpp" />
     <ClCompile Include="..\..\lib\Rest\SslInterface.cpp" />
     <ClCompile Include="..\..\lib\Rest\Url.cpp" />
+    <ClCompile Include="..\..\lib\Rest\Version.cpp" />
     <ClCompile Include="..\..\lib\ShapedJson\json-shaper.c" />
     <ClCompile Include="..\..\lib\ShapedJson\shape-accessor.c" />
     <ClCompile Include="..\..\lib\ShapedJson\shaped-json.c" />
     <ClCompile Include="..\..\lib\Statistics\statistics.cpp" />
     <ClCompile Include="..\..\lib\Utilities\LineEditor.cpp" />
     <ClCompile Include="..\..\lib\Utilities\ScriptLoader.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantArray.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantBlob.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantBoolean.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantDate.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantDatetime.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantDouble.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantFloat.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantInt16.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantInt32.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantInt64.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantInt8.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantMatrix2.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantNull.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantObject.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantString.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantUInt16.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantUInt32.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantUInt64.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantUInt8.cpp" />
-    <ClCompile Include="..\..\lib\Variant\VariantVector.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

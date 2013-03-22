@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "locks.h"
@@ -111,7 +111,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("mutex deadlock detected"); 
+      LOG_ERROR("mutex deadlock detected");
     }
     LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
   }
@@ -190,7 +190,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
 
  if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("spinlock deadlock detected"); 
+      LOG_ERROR("spinlock deadlock detected");
     }
     LOG_FATAL_AND_EXIT("could not lock the spin-lock: %s", strerror(rc));
   }
@@ -257,7 +257,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +301,7 @@ again:
     }
 
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected"); 
+      LOG_ERROR("rw-lock deadlock detected");
     }
 
     LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s", strerror(rc));
@@ -345,7 +345,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected"); 
+      LOG_ERROR("rw-lock deadlock detected");
     }
     LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s", strerror(rc));
   }
@@ -551,6 +551,77 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   }
 }
 
+
+
+
+
+// -----------------------------------------------------------------------------
+// COMPARE & SWAP operations below for MAC and GNUC
+// -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically compares and swaps 32bit integers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapIntegerInt32 (volatile int32_t* theValue, int32_t oldValue, int32_t newValue) {
+  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
+    return OSAtomicCompareAndSwap32(oldValue, newValue, theValue);
+  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
+    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+  #else
+    #error No TRI_CompareAndSwapIntegerInt32 implementation defined
+  #endif
+}
+
+bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue) {
+  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
+    return OSAtomicCompareAndSwap32((int32_t)(oldValue), (int32_t)(newValue), (volatile int32_t*)(theValue));
+  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
+    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+  #else
+    #error No TRI_CompareAndSwapIntegerUInt32 implementation defined
+  #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically compares and swaps 64bit integers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapIntegerInt64 (volatile int64_t* theValue, int64_t oldValue, int64_t newValue) {
+  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
+    return OSAtomicCompareAndSwap64(oldValue, newValue, theValue);
+  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
+    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+  #else
+    #error No TRI_CompareAndSwapIntegerInt64 implementation defined
+  #endif
+}
+
+bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue) {
+  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
+    return OSAtomicCompareAndSwap64((int64_t)(oldValue), (int64_t)(newValue), (volatile int64_t*)(theValue));
+  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
+    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+  #else
+    #error No TRI_CompareAndSwapIntegerUInt64 implementation defined
+  #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically compares and swaps pointers
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue) {
+#if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
+    return OSAtomicCompareAndSwapPtr(oldValue, newValue, theValue);
+#elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
+    return __sync_val_compare_and_swap(theValue, oldValue, newValue);
+#else
+    #error No TRI_CompareAndSwapPointer implementation defined
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,5 +634,5 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

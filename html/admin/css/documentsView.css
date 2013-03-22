@@ -1,0 +1,317 @@
+table.dataTable thead th {
+  cursor: default !important;
+}
+
+table.dataTable td {
+  padding:12px 10px;
+}
+
+#documentAddBtn {
+  margin-left: 6px;
+}
+
+.docleftico {
+  width: 30px !important;
+}
+
+#deleteDoc, #documentsToolbar button {
+  border: medium none;
+  background-color: transparent;
+}
+
+#documentsFooterBox {
+  background-color: rgba(0,0,0,0.05);
+  height: 56px;
+}
+
+#documentsToolbarF {
+  padding-bottom: 15px;
+}
+
+#totalDocuments{
+  float: left;
+  color: black;
+  padding-left: 20px;
+  margin-top: -65px !important;
+}
+
+#documentsStatus {
+  padding-top: 10px;
+  float:left;
+  width: 40%;
+}
+
+#documentsPaging {
+  padding-top: 5px;
+  margin: 0;
+  float: right;
+  text-align: right;
+  width: 40%;
+}
+
+#documentsPaging a {
+  font-size: 1.4em;
+}
+
+#documentsDiv {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+#documentsTableID thead {
+  background-color: #F7F6F6 !important;
+}
+
+#documentsTableID_length, #documentsTableID_filter {
+  display: none;
+}
+
+#documentsTableID_wrapper {
+  padding-top: 30px !important;
+  padding-bottom: 0px !important;
+}
+
+#documentsTableID_wrapper .fg-toolbar {
+  visibility: hidden;
+}
+
+#documentsTableID {
+   margin-left: 20px !important;
+}
+#documentsTableID,
+#logContent .dataTable {
+  	width: 900px; !important;
+  	table-layout:fixed !important;
+  	border-collapse:separate;
+	border-spacing:0 5px;
+}
+
+table.dataTable thead th {
+  border-bottom:none;
+}
+
+#documentsTableID.dataTable thead tr,
+#logContent .dataTable thead tr {
+    background-image: -moz-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -ms-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f3efec), to(#ebe7e3));
+    background-image: -webkit-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: -o-linear-gradient(top, #f3efec, #ebe7e3);
+    background-image: linear-gradient(top, #f3efec, #ebe7e3);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f3efec', endColorstr='#ebe7e3', GradientType=0);
+	border:1px solid #c1bdba;
+}
+
+#documentsTableID.dataTable tr,
+#logContent .dataTable tr {  
+    -webkit-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px  rgba(0, 0, 0, 0.2);
+}
+
+#documentsTableID .odd, 
+#documentsTableID .even,
+#logContent .odd, 
+#logContent .even {
+	margin-bottom: 5px;
+    background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
+    background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
+    background-image: linear-gradient(top, #ffffff, #f5f5f5);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
+    border:1px solid #c1bdba;
+}
+
+
+#documentsTableID .odd:hover,
+#documentsTableID .even:hover,
+#logContent .odd:hover, 
+#logContent .even:hover {
+  border: 1px solid #fbdb7e;
+  cursor: pointer;
+  background-image: -moz-linear-gradient(top, #f4f4f4, #e4e4e4);
+  background-image: -ms-linear-gradient(top,#f4f4f4, #e4e4e4);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f4f4f4), to(#e4e4e4));
+  background-image: -webkit-linear-gradient(top, #f4f4f4, #e4e4e4);
+  background-image: -o-linear-gradient(top, #f4f4f4, #e4e4e4);
+  background-image: linear-gradient(top, #f4f4f4, #e4e4e4);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f4f4f4', endColorstr='#e4e4e4', GradientType=0);
+}
+
+#documentsTableID.dataTable tr.even td.sorting_1,
+#documentsTableID.dataTable tr.odd td.sorting_1,
+#logContent tr.even td.sorting_1, 
+#logContent tr.odd td.sorting_1 {
+    background-image: -moz-linear-gradient(top, #f4f4f4, #e4e4e4);
+    background-image: -ms-linear-gradient(top,#f4f4f4, #e4e4e4);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#f4f4f4), to(#e4e4e4));
+    background-image: -webkit-linear-gradient(top, #f4f4f4, #e4e4e4);
+    background-image: -o-linear-gradient(top, #f4f4f4, #e4e4e4);
+    background-image: linear-gradient(top, #f4f4f4, #e4e4e4);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f4f4f4', endColorstr='#e4e4e4', GradientType=0);
+}
+
+#documentsTableID tr.even:hover td.sorting_1,
+#documentsTableID tr.odd:hover td.sorting_1,
+#logContent tr.even:hover td.sorting_1, 
+#logContent tr.odd:hover td.sorting_1 {
+    background-image: -moz-linear-gradient(top, #e7e7e7, #d5d5d5);
+    background-image: -ms-linear-gradient(top, #e7e7e7, #d5d5d5);
+    background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#e7e7e7), to(#d5d5d5));
+    background-image: -webkit-linear-gradient(top, #e7e7e7, #d5d5d5);
+    background-image: -o-linear-gradient(top, #e7e7e7, #d5d5d5);
+    background-image: linear-gradient(top, #e7e7e7, #d5d5d5);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#e7e7e7', endColorstr='#d5d5d5', GradientType=0);
+}
+
+
+#documentsTableID_paginate, #documentsTableID_filter, #documentsTableID_length {
+  visibility: hidden;
+}
+
+
+.sorting_asc, .sorting_desc {
+  background:#e4e0dd;
+}
+
+.snippet-container {
+  /*  margin-top: 5px;*/
+}
+
+.snippet-no-num {
+  font-size: 1em;
+  font-weight: normal;
+  font-family: Verdana, Arial, sans-serif;
+  margin-bottom:0px;
+}
+
+.cuttedContent, .prettify ul li, .writeable a {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.prettify {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1em !important;
+}
+
+  #documentsToolbar button {
+    float:right;
+}
+
+.pagination ul > li > a, .pagination ul > li > span {
+	cursor:pointer;
+	border-width:0 0 0 1px;
+}
+
+.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
+	margin-right:10px;
+}
+
+.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span {
+	margin-left:10px;
+}
+
+.pagination-mini ul > li:last-child > a, .pagination-small ul > li:last-child > a, .pagination-mini ul > li:last-child > span, .pagination-small ul > li:last-child > span,
+.pagination-mini ul > li:first-child > a, .pagination-small ul > li:first-child > a, .pagination-mini ul > li:first-child > span, .pagination-small ul > li:first-child > span {
+ 	box-shadow: none;
+	background: #8f8d8c;
+	border: none;
+	color:#FFFFFF;
+	/*font-size:1.8em;*/
+	position:relative;
+	width:14px;
+	height:20px;
+}
+
+.pagination ul > li > a:hover, .pagination ul > .active > a, .pagination ul > .active > span {
+  background-color: #8aa050;
+  color:#FFFFFF;
+}
+
+.pagination-mini ul > li.disabled:last-child > a, .pagination-small ul > li.disabled:last-child > a, .pagination-mini ul > li.disabled:last-child > span, .pagination-small ul > li.disabled:last-child > span,
+.pagination-mini ul > li.disabled:first-child > a, .pagination-small ul > li.disabled:first-child > a, .pagination-mini ul > li.disabled:first-child > span, .pagination-small ul > li.disabled:first-child > span {
+   pointer-events: none;
+   cursor: default;
+   background-color: ##777;
+   color:#666666;
+}
+
+.icon-backward, .icon-forward, .icon-step-backward, .icon-step-forward {
+    position: absolute;
+    top: 3px;
+	left:10px;
+}
+
+.prePagi {
+  margin-right: -5px !important;
+}
+
+.badge {
+  border-radius:0;
+}
+
+.badge-success, .badge-success, .badge-important, .badge-inverse {
+  background: none;
+  padding-left: 0px;
+  padding-right: 0px;
+  position:absolute;
+  bottom:27px;
+  right:0px;
+}
+
+.cornered {
+  padding-left: 4px;
+  padding-right: 9px;
+}
+
+.badge-success .cornered {
+  height: 0px;
+  border-bottom: 16px solid #8AA051;
+  border-left: 16px solid transparent;
+}
+
+.badge-important .cornered {
+  height: 0px;
+  border-bottom: 16px solid #B94A48;
+  border-left: 16px solid transparent;
+}
+
+.badge-inverse .cornered {
+  height: 0px;
+  border-bottom: 16px solid #333333;
+  border-left: 16px solid transparent;
+}
+
+.badge .arrow:after {
+  border-left-width: 0;
+  border-right-color: #8AA051;
+  bottom: -10px;
+  left: 1px;
+}
+
+.badge .arrow:after {
+  border-width: 10px;
+  content: "";
+}
+
+.badge .arrow, .badge .arrow:after {
+  border-color: transparent;
+  border-style: solid;
+  display: block;
+  height: 0;
+  position: absolute;
+  width: 0;
+}
+
+.span3 .unloaded div {
+  border-bottom: 16px solid #FF8F35;
+}
+
+.span3 .deleted div {
+  border-bottom: 16px solid red;
+}

@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RandomGenerator.h"
@@ -151,7 +151,7 @@ namespace RandomHelper {
   class RandomDeviceCombined : public RandomDevice {
     public:
       RandomDeviceCombined (string path) : fd(0),  pos(0), rseed(0) {
-      
+
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
         if (fd < 0) {
@@ -161,10 +161,10 @@ namespace RandomHelper {
         // ..............................................................................
         // Set the random number generator file to be non-blocking (not for windows)
         // ..............................................................................
-        {    
+        {
           #ifdef _WIN32
             abort();
-          #else               
+          #else
             long flags = fcntl(fd, F_GETFL, 0);
             bool ok = (flags >= 0);
             if (ok) {
@@ -175,7 +175,7 @@ namespace RandomHelper {
               THROW_INTERNAL_ERROR("cannot switch random source '" + path + "' to non-blocking");
             }
           #endif
-        }  
+        }
         fillBuffer();
       }
 
@@ -246,15 +246,15 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceWin32 : public RandomDevice {
 #ifndef _WIN32
-    public: 
+    public:
       RandomDeviceWin32 () { assert(false); }
       ~RandomDeviceWin32 () {}
       uint32_t random () { return 0;}
-#else 
+#else
     public:
       RandomDeviceWin32 () : cryptoHandle(0), pos(0)  {
         BOOL result;
-        result = CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT); 
+        result = CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
         if (cryptoHandle == 0 || result == FALSE) {
           THROW_INTERNAL_ERROR("cannot create cryptographic windows handle");
         }
@@ -531,7 +531,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       // public methods
 // -----------------------------------------------------------------------------
-      
+
       random_e selectVersion (random_e newVersion) {
 
         MUTEX_LOCKER(RandomLock);
@@ -605,7 +605,7 @@ namespace triagens {
         return version;
       }
 
-      
+
       void shutdown () {
         if (RandomHelper::randomDevice != 0) {
           delete RandomHelper::randomDevice;

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-context.h"
@@ -61,7 +61,7 @@
   return NULL;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -76,7 +76,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all collection memory
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static void FreeCollections (TRI_aql_context_t* const context) {
   size_t i = context->_collections._length;
 
@@ -92,7 +92,7 @@ static void FreeCollections (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all strings
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static void FreeStrings (TRI_aql_context_t* const context) {
   size_t i = context->_memory._strings._length;
 
@@ -109,7 +109,7 @@ static void FreeStrings (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all nodes
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static void FreeNodes (TRI_aql_context_t* const context) {
   size_t i = context->_memory._nodes._length;
 
@@ -147,7 +147,7 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -167,9 +167,9 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                          const char* const query) {
   TRI_aql_context_t* context;
 
-  assert(vocbase);
-  assert(query);
-  
+  TRI_ASSERT_DEBUG(vocbase != NULL);
+  TRI_ASSERT_DEBUG(query != NULL);
+
   LOG_TRACE("creating context");
 
   context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t), false);
@@ -181,10 +181,10 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
   context->_variableIndex = 0;
   context->_scopeIndex = 0;
-  
+
   // actual bind parameter values
   TRI_InitAssociativePointer(&context->_parameters._values,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashBindParameterAql,
                              &TRI_EqualBindParameterAql,
@@ -192,22 +192,22 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
   // bind parameter names used in the query
   TRI_InitAssociativePointer(&context->_parameters._names,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
-  
+
   // collections
   TRI_InitAssociativePointer(&context->_collectionNames,
-                             TRI_UNKNOWN_MEM_ZONE, 
+                             TRI_UNKNOWN_MEM_ZONE,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_HashStringKeyAssociativePointer,
                              &TRI_EqualStringKeyAssociativePointer,
                              0);
-  
-  TRI_InitVectorPointer(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorPointer(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_InitVectorPointer2(&context->_memory._nodes, TRI_UNKNOWN_MEM_ZONE, 16);
+  TRI_InitVectorPointer2(&context->_memory._strings, TRI_UNKNOWN_MEM_ZONE, 16);
   TRI_InitVectorPointer(&context->_collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitErrorAql(&context->_error);
@@ -234,10 +234,10 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   if (context->_statements == NULL) {
     // could not create statement list
     TRI_FreeContextAql(context);
-    
+
     return NULL;
   }
-  
+
   TRI_InitScopesAql(context);
 
   return context;
@@ -248,7 +248,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextAql (TRI_aql_context_t* const context) {
-  assert(context);
+  TRI_ASSERT_DEBUG(context != NULL);
 
   LOG_TRACE("freeing context");
 
@@ -259,23 +259,23 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   TRI_FreeScopesAql(context);
 
   FreeStrings(context);
-  FreeNodes(context); 
+  FreeNodes(context);
 
   // free parameter names hash
   TRI_DestroyAssociativePointer(&context->_parameters._names);
-  
+
   // free collection names
   TRI_DestroyAssociativePointer(&context->_collectionNames);
-  
+
   FreeCollections(context);
-  
+
   // free parameter values
   TRI_FreeBindParametersAql(context);
   TRI_DestroyAssociativePointer(&context->_parameters._values);
 
   // free parser/lexer
   TRI_FreeParserAql(context->_parser);
-  
+
   // free statement list
   TRI_FreeStatementListAql(context->_statements);
 
@@ -288,7 +288,7 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse & validate the query string
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
   if (context->_parser->_length == 0) {
     // query is empty, no need to parse it
@@ -312,7 +312,7 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add bind parameters to the query context
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
                               const TRI_json_t* const parameters) {
 
@@ -321,7 +321,7 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
     // adding parameters failed
     return false;
   }
-  
+
   // validate the bind parameters used/passed
   if (! TRI_ValidateBindParametersAql(context)) {
     // invalid bind parameters
@@ -333,7 +333,7 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
     // bind parameter injection failed
     return false;
   }
-  
+
   if (context->_error._code) {
     return false;
   }
@@ -388,8 +388,8 @@ bool TRI_SetupCollectionsContextAql (TRI_aql_context_t* const context) {
 
 bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
                                  void* const node) {
-  assert(context);
-  assert(node);
+  TRI_ASSERT_DEBUG(context != NULL);
+  TRI_ASSERT_DEBUG(node != NULL);
 
   TRI_PushBackVectorPointer(&context->_memory._nodes, node);
 
@@ -400,25 +400,26 @@ bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
 /// @brief register a string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_RegisterStringAql (TRI_aql_context_t* const context, 
-                             const char* const value, 
+char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
+                             const char* const value,
                              const size_t length,
                              const bool deescape) {
   char* copy;
 
-  if (!value) {
+  if (value == NULL) {
     ABORT_OOM
   }
 
-  if (deescape) {
+  if (deescape && length > 0) {
     size_t outLength;
+
     copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, length, &outLength);
   }
   else {
-    copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, value);
+    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, value, length);
   }
 
-  if (! copy) {
+  if (copy == NULL) {
     ABORT_OOM
   }
 
@@ -431,12 +432,12 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetErrorContextAql (TRI_aql_context_t* const context, 
+void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
                              const int code,
                              const char* const data) {
 
-  assert(context);
-  assert(code > 0);
+  TRI_ASSERT_DEBUG(context != NULL);
+  TRI_ASSERT_DEBUG(code > 0);
 
   if (context->_error._code == 0) {
     // do not overwrite previous error
@@ -455,5 +456,5 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

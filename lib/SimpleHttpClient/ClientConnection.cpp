@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClientConnection.h"
@@ -32,7 +32,7 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 #include <sys/socket.h>
-#endif 
+#endif
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -164,7 +164,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
   FD_ZERO(&fdset);
-  FD_SET(_socket.fileHandle, &fdset); 
+  FD_SET(_socket.fileHandle, &fdset);
 
   fd_set* readFds = NULL;
   fd_set* writeFds = NULL;
@@ -221,12 +221,12 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   if (! checkSocket()) {
     return false;
   }
-  
+
   assert(_socket.fileHandle > 0);
 
   do {
@@ -254,7 +254,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the connection is readable
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 bool ClientConnection::readable () {
   if (prepare(0.0, false)) {
     return checkSocket();

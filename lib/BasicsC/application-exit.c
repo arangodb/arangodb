@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
+/// @author Dr. Oreste Costa-Panaia
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,12 +46,12 @@ void defaultExitFunction (int exitCode, void* data) {
 }
 
 void TRI_Application_Exit_SetExit (TRI_ExitFunction_t exitFunction) {
-  if (exitFunction != NULL) {  
+  if (exitFunction != NULL) {
     TRI_EXIT_FUNCTION = exitFunction;
   }
   else {
     TRI_EXIT_FUNCTION = defaultExitFunction;
-  } 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,5 +60,5 @@ void TRI_Application_Exit_SetExit (TRI_ExitFunction_t exitFunction) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
