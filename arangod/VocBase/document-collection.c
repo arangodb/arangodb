@@ -48,21 +48,6 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static int InsertPrimaryIndex (TRI_document_collection_t*,
-                               TRI_doc_mptr_t const*);
-
-static int InsertSecondaryIndexes (TRI_document_collection_t*,
-                                   TRI_doc_mptr_t const*,
-                                   const bool);
-
-static int DeletePrimaryIndex (TRI_document_collection_t*,
-                               TRI_doc_mptr_t const*,
-                               const bool);
-
-static int DeleteSecondaryIndexes (TRI_document_collection_t*,
-                                   TRI_doc_mptr_t const*,
-                                   const bool);
-
 static int CapConstraintFromJson (TRI_document_collection_t*,
                                   TRI_json_t*,
                                   TRI_idx_iid_t);
@@ -103,6 +88,148 @@ static int PriorityQueueFromJson (TRI_document_collection_t*,
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertPrimaryIndex (TRI_document_collection_t* document,
+                               TRI_doc_mptr_t const* header,
+                               const bool isRollback) {
+  TRI_primary_collection_t* primary;
+  TRI_doc_mptr_t* found;
+
+  TRI_ASSERT_DEBUG(document != NULL);
+  TRI_ASSERT_DEBUG(header != NULL);
+  TRI_ASSERT_DEBUG(header->_key != NULL);
+  
+  if (header->_validTo != 0) {
+    // don't insert in case the document is deleted
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  primary = &document->base;
+
+  // add a new header
+  found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, (void*) header, false);
+
+  // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL.
+  // in case the call succeeds but does not find any previous value, it also returns NULL
+  // this function here will continue happily in both cases.
+  // These two cases must be distinguishable in order to notify the caller about an error
+
+  if (found == NULL) {
+    // success
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // we found a previous revision in the index
+  if (found->_validTo == 0) {
+    // the found revision is still alive
+    LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
+              header->_key,
+              (unsigned long long) found->_rid,
+              (unsigned long long) header->_rid);
+
+    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+  }
+
+  // a deleted document was found in the index. now insert again and overwrite
+  // this should be an exceptional case
+  found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, (void*) header, true);
+
+  // overwriting does not change the size of the index and should always succeed
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertSecondaryIndexes (TRI_document_collection_t* document,
+                                   TRI_doc_mptr_t const* header,
+                                   const bool isRollback) {
+  size_t i, n;
+  int result;
+
+  result = TRI_ERROR_NO_ERROR;
+  n = document->_allIndexes._length;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+    int res;
+
+    idx = document->_allIndexes._buffer[i];
+    res = idx->insert(idx, header, isRollback);
+
+    // in case of no-memory, return immediately
+    if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      return res;
+    }
+    else if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+          result == TRI_ERROR_NO_ERROR) {
+        // "prefer" unique constraint violated
+        result = res;
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+static int DeletePrimaryIndex (TRI_document_collection_t* document,
+                               TRI_doc_mptr_t const* header,
+                               const bool isRollback) {
+  TRI_primary_collection_t* primary;
+  TRI_doc_mptr_t* found;
+
+  // .............................................................................
+  // remove from main index
+  // .............................................................................
+
+  primary = &document->base;
+  found = TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key);
+
+  if (found == NULL) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
+                                   TRI_doc_mptr_t const* header,
+                                   const bool isRollback) {
+  size_t i, n;
+  int result;
+
+  n = document->_allIndexes._length;
+  result = TRI_ERROR_NO_ERROR;
+
+  for (i = 0;  i < n;  ++i) {
+    TRI_index_t* idx;
+    int res;
+
+    idx = document->_allIndexes._buffer[i];
+    res = idx->remove(idx, header, isRollback);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred
+      result = res;
+    }
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the data length from a master pointer
@@ -578,6 +705,42 @@ static int WriteElement (TRI_document_collection_t* document,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+static int WriteMarker (TRI_document_collection_t* document,
+                        TRI_df_marker_t* marker,
+                        const TRI_voc_size_t totalSize,
+                        TRI_voc_fid_t* fid,
+                        TRI_df_marker_t** result,
+                        const bool forceSync) {
+  TRI_datafile_t* journal;
+  int res;
+
+  // find and select a journal
+  journal = SelectJournal(document, totalSize, result);
+  
+  if (journal == NULL) {
+    return TRI_ERROR_ARANGO_NO_JOURNAL;
+  }
+
+  *fid = journal->_fid;
+    
+  TRI_ASSERT_DEBUG(*result != NULL);
+    
+  // now write marker and blob
+  res = WriteElement(document, journal, marker, totalSize, *result);
+    
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (forceSync) {
+      WaitSync(document, journal, ((char const*) *result) + totalSize);
+    }
+  }
+  else {
+    // writing the element into the datafile has failed
+    LOG_ERROR("cannot write marker into datafile: '%s'", TRI_last_error());
+  }
+
+  return res;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document into indexes and datafile
 ///
@@ -592,8 +755,8 @@ static int InsertDocument (TRI_document_collection_t* document,
                            bool forceSync,
                            TRI_doc_mptr_t* mptr) {
 
-  TRI_datafile_t* journal;
   TRI_df_marker_t* result;
+  TRI_voc_fid_t fid;
   int res;
 
   TRI_ASSERT_DEBUG(header != NULL);
@@ -603,7 +766,7 @@ static int InsertDocument (TRI_document_collection_t* document,
   // .............................................................................
 
   // insert into primary index first
-  res = InsertPrimaryIndex(document, header);
+  res = InsertPrimaryIndex(document, header, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insert has failed
@@ -620,71 +783,49 @@ static int InsertDocument (TRI_document_collection_t* document,
     return res;
   }
 
-  // insert into indexes has succeeded
-
   
   // .............................................................................
   // insert into datafile
   // .............................................................................
   
-  // find and select a journal
-  journal = SelectJournal(document, totalSize, &result);
-
-  if (journal == NULL) {
-    res = TRI_ERROR_ARANGO_NO_JOURNAL;
-  }
+  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, forceSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    // now write marker and blob
-    res = WriteElement(document, journal, &marker->base, totalSize, result);
+    // writing the element into the datafile has succeeded
+    TRI_doc_datafile_info_t* dfi;
+    size_t i, n;
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      // writing the element into the datafile has succeeded
-      TRI_doc_datafile_info_t* dfi;
-      size_t i, n;
+    // update the header with the correct fid and the positions in the datafile
+    header->_fid  = fid;
+    header->_data = ((char*) result);
+    header->_key  = ((char*) result) + marker->_offsetKey;  
 
-      // update the header with the correct fid and the positions in the datafile
-      header->_fid    = journal->_fid;
-      header->_data   = ((char*) result);
-      header->_key    = ((char*) result) + marker->_offsetKey;  
+    *mptr = *header;
 
-      *mptr = *header;
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, fid);
 
-      // update the datafile info
-      dfi = TRI_FindDatafileInfoPrimaryCollection(&document->base, journal->_fid);
-
-      if (dfi != NULL) {
-        dfi->_numberAlive += 1;
-        dfi->_sizeAlive += LengthDataMasterPointer(mptr);
-      }
-
-      // .............................................................................
-      // post process insert
-      // .............................................................................
-
-      n = document->_allIndexes._length;
-
-      for (i = 0;  i < n;  ++i) {
-        TRI_index_t* idx;
-
-        idx = document->_allIndexes._buffer[i];
-
-        if (idx->postInsert != NULL) {
-          idx->postInsert(idx, header);
-        }
-      }
-
-      // TODO: does the sync need to be inside the lock?? 
-      if (forceSync) {
-        WaitSync(document, journal, ((char const*) result) + totalSize);
-      }
+    if (dfi != NULL) {
+      dfi->_numberAlive++;
+      dfi->_sizeAlive += LengthDataMasterPointer(mptr);
     }
-    else {
-      // writing the element into the datafile has failed
-      LOG_ERROR("cannot write element into datafile: '%s'", TRI_last_error());
+
+    // .............................................................................
+    // post process insert
+    // .............................................................................
+
+    n = document->_allIndexes._length;
+
+    for (i = 0;  i < n;  ++i) {
+      TRI_index_t* idx;
+
+      idx = document->_allIndexes._buffer[i];
+
+      if (idx->postInsert != NULL) {
+        idx->postInsert(idx, header);
+      }
     }
   }
-
 
   // something has failed.... now delete from the indexes again
 
@@ -713,9 +854,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   TRI_document_collection_t* document;
   TRI_doc_mptr_t* header;
   TRI_df_marker_t* result;
-  TRI_datafile_t* journal;
-  TRI_doc_datafile_info_t* dfi;
-  size_t i, n;
+  TRI_voc_fid_t fid;
   int res;
 
   primary = context->_collection;
@@ -739,98 +878,88 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   }
  
   
-  // find and select a journal
-  journal = SelectJournal(document, totalSize, &result);
-
-  if (journal == NULL) {
-    return TRI_ERROR_ARANGO_NO_JOURNAL;
-  }
-
-  TRI_ASSERT_DEBUG(result != NULL);
-
-  // and write marker and blob
-  res = WriteElement(document, journal, &marker->base, totalSize, result);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot delete element");
-
-    return res;
-  }
-  
   // delete from indexes
   res = DeleteSecondaryIndexes(document, header, false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("deleting document from indexes failed");
-
-    // TODO: though delete should never fail, if it does, the collection is left
-    // in an inconsistent state:
-    // there will be the deletion marker in the datafile, but the index will still contain the document
+   
+    // deletion failed. roll back
+    InsertSecondaryIndexes(document, header, true);
 
     return res;
   }
   
   res = DeletePrimaryIndex(document, header, false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("deleting document from indexes failed");
-    
-    // TODO: though delete should never fail, if it does, the collection is left
-    // in an inconsistent state:
-    // there will be the deletion marker in the datafile, but the index will still contain the document
+   
+    // deletion failed. roll back 
+    InsertSecondaryIndexes(document, header, true);
 
     return res;
   }
 
 
-  // update the datafile info
-  dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
-  if (dfi != NULL) {
-    size_t length = LengthDataMasterPointer(header);
-
-    dfi->_numberAlive -= 1;
-    dfi->_sizeAlive -= length;
-
-    dfi->_numberDead += 1;
-    dfi->_sizeDead += length;
-  }
-
-  if (header->_fid != journal->_fid) {
-    // only need to look up datafile if it is not the same
-    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
-  }
-
-  if (dfi != NULL) {
-    dfi->_numberDeletion += 1;
-  }
-
-
-  // .............................................................................
-  // post process delete
-  // .............................................................................
-
-  n = document->_allIndexes._length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-
-    idx = document->_allIndexes._buffer[i];
-
-    if (idx->postRemove != NULL) {
-      idx->postRemove(idx, header);
-    }
-  }
+  TRI_ASSERT_DEBUG(res == TRI_ERROR_NO_ERROR);
+ 
   
-  // and release the header pointer
-  document->_headers->release(document->_headers, header);
+  // find and select a journal
+  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, forceSync);
 
-  // .............................................................................
-  // wait for sync
-  // .............................................................................
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_doc_datafile_info_t* dfi;
+    size_t i, n;
 
-  if (forceSync) {
-    WaitSync(document, journal, ((char const*) result) + totalSize);
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
+
+    if (dfi != NULL) {
+      size_t length = LengthDataMasterPointer(header);
+
+      dfi->_numberAlive--;
+      dfi->_sizeAlive -= length;
+
+      dfi->_numberDead++;
+      dfi->_sizeDead += length;
+    }
+
+    if (header->_fid != fid) {
+      // only need to look up datafile if it is not the same
+      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
+    }
+
+    if (dfi != NULL) {
+      dfi->_numberDeletion++;
+    }
+
+    // .............................................................................
+    // post process delete
+    // .............................................................................
+
+    n = document->_allIndexes._length;
+    for (i = 0;  i < n;  ++i) {
+      TRI_index_t* idx;
+
+      idx = document->_allIndexes._buffer[i];
+
+      if (idx->postRemove != NULL) {
+        idx->postRemove(idx, header);
+      }
+    }
+  
+    // release the header pointer
+    document->_headers->release(document->_headers, header);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  if (res != TRI_ERROR_NO_ERROR) {
+    // deletion failed. roll back
+    InsertSecondaryIndexes(document, header, true);
+    InsertPrimaryIndex(document, header, true);
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,10 +993,10 @@ static int UpdateDocument (TRI_document_collection_t* document,
                            const bool forceSync,
                            TRI_doc_mptr_t* mptr) {
   
-  TRI_datafile_t* journal;
   TRI_doc_mptr_t* newHeader;
   TRI_doc_mptr_t oldData;
   TRI_df_marker_t* result;
+  TRI_voc_fid_t fid;
   int res;
  
   // save the old data, remember
@@ -884,13 +1013,7 @@ static int UpdateDocument (TRI_document_collection_t* document,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // re-enter the document in case of failure, ignore errors during rollback
-    int resRollback;
-
-    resRollback = InsertSecondaryIndexes(document, oldHeader, true);
-
-    if (resRollback != TRI_ERROR_NO_ERROR) {
-      LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
-    }
+    InsertSecondaryIndexes(document, oldHeader, true);
 
     return res;
   }
@@ -912,22 +1035,12 @@ static int UpdateDocument (TRI_document_collection_t* document,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // rollback
-    int resRollback;
-
-    resRollback = DeleteSecondaryIndexes(document, newHeader, true);
-
-    if (resRollback != TRI_ERROR_NO_ERROR) {
-      LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
-    }
+    DeleteSecondaryIndexes(document, newHeader, true);
     
     // copy back old header data
     *oldHeader = oldData;
-
-    resRollback = InsertSecondaryIndexes(document, oldHeader, true);
     
-    if (resRollback != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
-    }
+    InsertSecondaryIndexes(document, oldHeader, true);
 
     return res;
   }
@@ -937,102 +1050,71 @@ static int UpdateDocument (TRI_document_collection_t* document,
   // write datafile
   // .............................................................................
 
-  
-  // find and select a journal
-  journal = SelectJournal(document, totalSize, &result);
-  
-  if (journal == NULL) {
-    res = TRI_ERROR_ARANGO_NO_JOURNAL;
-  }
-
+  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, forceSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = WriteElement(document, journal, &marker->base, totalSize, result);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      TRI_doc_datafile_info_t* dfi;
-      TRI_primary_collection_t* primary;
-      size_t i, n;
+    TRI_doc_datafile_info_t* dfi;
+    TRI_primary_collection_t* primary;
+    size_t i, n;
       
-      
-      // update the header with the correct fid and the positions in the datafile
-      newHeader->_fid    = journal->_fid;
-      newHeader->_data   = ((char*) result);
-      newHeader->_key    = ((char*) result) + marker->_offsetKey;  
+    // update the header with the correct fid and the positions in the datafile
+    newHeader->_fid  = fid;
+    newHeader->_data = ((char*) result);
+    newHeader->_key  = ((char*) result) + marker->_offsetKey;  
 
-      primary = (TRI_primary_collection_t*) document;
+    primary = (TRI_primary_collection_t*) document;
 
-      // update the datafile info
-      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, oldData._fid);
+    // update the datafile info
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, oldData._fid);
 
-      if (dfi != NULL) {
-        size_t length = LengthDataMasterPointer(&oldData);
+    if (dfi != NULL) {
+      size_t length = LengthDataMasterPointer(&oldData);
 
-        dfi->_numberAlive -= 1;
-        dfi->_sizeAlive -= length;
-        dfi->_numberDead += 1;
-        dfi->_sizeDead += length;
-      }
+      dfi->_numberAlive--;
+      dfi->_sizeAlive -= length;
+      dfi->_numberDead++;
+      dfi->_sizeDead += length;
+    }
 
-      if (oldData._fid != journal->_fid) {
-        // only select new journal if it different from the old
-        dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
-      }
+    if (oldData._fid != fid) {
+      // only select new journal if it different from the old
+      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
+    }
 
-      if (dfi != NULL) {
-        dfi->_numberAlive += 1;
-        dfi->_sizeAlive += LengthDataMasterPointer(newHeader);
-      }
+    if (dfi != NULL) {
+      dfi->_numberAlive++;
+      dfi->_sizeAlive += LengthDataMasterPointer(newHeader);
+    }
   
-      // .............................................................................
-      // post process update
-      // .............................................................................
+    // .............................................................................
+    // post process update
+    // .............................................................................
 
-      n = document->_allIndexes._length;
+    n = document->_allIndexes._length;
 
-      for (i = 0;  i < n;  ++i) {
-        TRI_index_t* idx;
+    for (i = 0;  i < n;  ++i) {
+      TRI_index_t* idx;
 
-        idx = document->_allIndexes._buffer[i];
+      idx = document->_allIndexes._buffer[i];
 
-        if (idx->postUpdate != NULL) {
-          idx->postUpdate(idx, newHeader, oldHeader, &oldData);
-        }
+      if (idx->postUpdate != NULL) {
+        idx->postUpdate(idx, newHeader, oldHeader, &oldData);
       }
-
-      // wait for sync
-      if (forceSync) {
-        WaitSync(document, journal, ((char const*) result) + totalSize);
-      }
-
-      // write new header into result  
-      *mptr = *((TRI_doc_mptr_t*) newHeader);
-
-      TRI_ASSERT_DEBUG(res == TRI_ERROR_NO_ERROR);
     }
-    else {
-      // writing the element into the datafile has failed
-      LOG_ERROR("cannot write element into datafile: '%s'", TRI_last_error());
-    }
+
+    // write new header into result  
+    *mptr = *((TRI_doc_mptr_t*) newHeader);
   }
 
 
   if (res != TRI_ERROR_NO_ERROR) {
     // rollback index insertion
-    int resRollback;
-
-    resRollback = DeleteSecondaryIndexes(document, newHeader, true);
-    if (resRollback != TRI_ERROR_NO_ERROR) {
-      LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
-    }
+    DeleteSecondaryIndexes(document, newHeader, true);
     
     // copy back old header data
     *oldHeader = oldData;
 
-    resRollback = InsertSecondaryIndexes(document, oldHeader, true);
-    if (resRollback != TRI_ERROR_NO_ERROR) {
-      LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
-    }
+    InsertSecondaryIndexes(document, oldHeader, true);
   }
     
   return res;
@@ -1652,7 +1734,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_ASSERT_DEBUG(header != NULL);
 
       // insert into primary index
-      res = InsertPrimaryIndex(collection, header);
+      res = InsertPrimaryIndex(collection, header, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
@@ -1678,7 +1760,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
 
       if (dfi != NULL) {
-        dfi->_numberAlive += 1;
+        dfi->_numberAlive++;
         dfi->_sizeAlive += LengthDataMasterPointer(header);
       }
     }
@@ -1734,14 +1816,14 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_sizeAlive -= length;
 */
 
-        dfi->_numberDead += 1;
+        dfi->_numberDead++;
         dfi->_sizeDead += length;
       }
 
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
 
       if (dfi != NULL) {
-        dfi->_numberAlive += 1;
+        dfi->_numberAlive++;
         dfi->_sizeAlive += LengthDataMasterPointer(newHeader);
       }
     }
@@ -1798,7 +1880,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header->_key       = key;
 
       // insert into indexes
-      res = InsertPrimaryIndex(collection, header);
+      res = InsertPrimaryIndex(collection, header, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
@@ -1845,10 +1927,10 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       if (dfi != NULL) {
         size_t length = LengthDataMasterPointer(found);
 
-        dfi->_numberAlive -= 1;
+        dfi->_numberAlive--;
         dfi->_sizeAlive -= length;
 
-        dfi->_numberDead += 1;
+        dfi->_numberDead++;
         dfi->_sizeDead += length;
       }
 
@@ -1925,13 +2007,19 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   iis = TRI_LookupArrayJson(json, "id");
 
   if (iis != NULL && iis->_type == TRI_JSON_NUMBER) {
-    iid = iis->_value._number;
-    TRI_UpdateTickVocBase(iid);
+    iid = (TRI_idx_iid_t) iis->_value._number;
+  }
+  else if (iis != NULL && iis->_type == TRI_JSON_STRING) {
+    iid = (TRI_idx_iid_t) TRI_UInt64String(iis->_value._string.data);
   }
   else {
     LOG_ERROR("ignoring index, index identifier could not be located");
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
     return false;
   }
+    
+  TRI_UpdateTickVocBase(iid);
 
   // document collection of the index
   document = (TRI_document_collection_t*) data;
@@ -2580,147 +2668,6 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
   }
 
   return keyValues;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new entry in the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertPrimaryIndex (TRI_document_collection_t* document,
-                               TRI_doc_mptr_t const* header) {
-  TRI_primary_collection_t* primary;
-  TRI_doc_mptr_t* found;
-
-  TRI_ASSERT_DEBUG(document != NULL);
-  TRI_ASSERT_DEBUG(header != NULL);
-  TRI_ASSERT_DEBUG(header->_key != NULL);
-  
-  if (header->_validTo != 0) {
-    // don't insert in case the document is deleted
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  primary = &document->base;
-
-  // add a new header
-  found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, (void*) header, false);
-
-  // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL.
-  // in case the call succeeds but does not find any previous value, it also returns NULL
-  // this function here will continue happily in both cases.
-  // These two cases must be distinguishable in order to notify the caller about an error
-
-  if (found == NULL) {
-    // success
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // we found a previous revision in the index
-  if (found->_validTo == 0) {
-    // the found revision is still alive
-    LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
-              header->_key,
-              (unsigned long long) found->_rid,
-              (unsigned long long) header->_rid);
-
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-  }
-
-  // a deleted document was found in the index. now insert again and overwrite
-  // this should be an exceptional case
-  found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, (void*) header, true);
-
-  // overwriting does not change the size of the index and should always succeed
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new entry in the secondary indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertSecondaryIndexes (TRI_document_collection_t* document,
-                                   TRI_doc_mptr_t const* header,
-                                   const bool isRollback) {
-  size_t i, n;
-  int result;
-
-  result = TRI_ERROR_NO_ERROR;
-  n = document->_allIndexes._length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    int res;
-
-    idx = document->_allIndexes._buffer[i];
-    res = idx->insert(idx, header, isRollback);
-
-    // in case of no-memory, return immediately
-    if (res == TRI_ERROR_OUT_OF_MEMORY) {
-      return res;
-    }
-    else if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-          result == TRI_ERROR_NO_ERROR) {
-        // "prefer" unique constraint violated
-        result = res;
-      }
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an entry from the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-static int DeletePrimaryIndex (TRI_document_collection_t* document,
-                               TRI_doc_mptr_t const* header,
-                               const bool isRollback) {
-  TRI_primary_collection_t* primary;
-  TRI_doc_mptr_t* found;
-
-  // .............................................................................
-  // remove from main index
-  // .............................................................................
-
-  primary = &document->base;
-  found = TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key);
-
-  if (found == NULL) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an entry from the secondary indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
-                                   TRI_doc_mptr_t const* header,
-                                   const bool isRollback) {
-  size_t i, n;
-  int result;
-
-  n = document->_allIndexes._length;
-  result = TRI_ERROR_NO_ERROR;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    int res;
-
-    idx = document->_allIndexes._buffer[i];
-    res = idx->remove(idx, header, isRollback);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // an error occurred
-      result = res;
-    }
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
