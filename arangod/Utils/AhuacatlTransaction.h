@@ -66,7 +66,7 @@ namespace triagens {
                              TRI_aql_context_t* const context) :
           Transaction<T>(vocbase, resolver) {
 
-          this->addHint(TRI_TRANSACTION_HINT_IMPLICIT_LOCK);
+          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
           TRI_vector_pointer_t* collections = &context->_collections;
 
@@ -77,6 +77,7 @@ namespace triagens {
 
             TRI_transaction_cid_t cid = 0;
             TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name);
+
             if (col != 0) {
               cid = (TRI_transaction_cid_t) col->_cid;
             }

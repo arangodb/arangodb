@@ -28,12 +28,6 @@
 #ifndef TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H
 #define TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H 1
 
-#include "VocBase/transaction.h"
-
-#include "V8/v8-globals.h"
-
-#include <v8.h>
-
 namespace triagens {
   namespace arango {
 
@@ -59,14 +53,8 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        EmbeddableTransaction () : _trx(0) {
-          TRI_v8_global_t* v8g;
-
-          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-          if (v8g->_currentTransaction == 0) {
-            _previous = (TRI_transaction_t*) v8g->_currentTransaction;
-          }
+        EmbeddableTransaction () :
+          C() { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,52 +86,6 @@ namespace triagens {
         inline bool isEmbeddable () const {
           return true;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int freeTransaction () {
-          if (this->isEmbedded()) {
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (_trx != 0) {
-            this->unregisterTransaction();
-
-            TRI_FreeTransaction(_trx);
-            _trx = 0;
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief previous transaction, if any
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_t* _previous;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief used transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_t* _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

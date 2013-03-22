@@ -40,9 +40,16 @@ describe("Graph Viewer", function() {
   svg,
   docSVG,
   
+  simulateMouseEvent = function (type, objectId) {
+    var evt = document.createEvent("MouseEvents"),
+    testee = document.getElementById(objectId); 
+    evt.initMouseEvent(type, true, true, window,
+      0, 0, 0, 0, 0, false, false, false, false, 0, null);
+    testee.dispatchEvent(evt);
+  },
+  
   clickOnNode = function(id) {
-    var raw = $("#"+id).get(0);
-    raw.__onclick();
+    simulateMouseEvent("click", id);
   };
   
   beforeEach(function() {
@@ -164,7 +171,13 @@ describe("Graph Viewer", function() {
       nsconf = {},
       esconf = {},
       lconf = {type: "force"},
-      evconf = { expander: true };
+      evconf = {
+        expand: {
+          target: "nodes",
+          type: "click",
+          callback: function(){}
+        }
+      };
       viewer = new GraphViewer(svg, 10, 10, aconf, nsconf, esconf, lconf, evconf);
       
       this.addMatchers({
@@ -222,7 +235,6 @@ describe("Graph Viewer", function() {
       
     });
     
-    
     it("should be able to load a root node", function() {
       runs (function() {
         viewer.loadGraph(0);
@@ -245,6 +257,34 @@ describe("Graph Viewer", function() {
         });
     
         waits(1000);
+      });
+      
+      
+      it('should be able to rebind the events', function() {
+        var called = false;
+        
+        runs(function() {
+          var newEventConfig = {custom: [
+            {
+              target: "nodes",
+              type: "click",
+              func: function() {
+                called = true;
+              }
+            }
+          ]};
+          viewer.rebind(newEventConfig);
+          clickOnNode(1);
+        });
+        
+        waitsFor(function() {
+          return called;
+        }, 1000, "The click event should have been triggered.");
+        
+        runs(function() {
+          expect(called).toBeTruthy();
+        });
+        
       });
       
       it("should be able to expand a node", function() {

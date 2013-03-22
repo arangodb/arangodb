@@ -105,26 +105,33 @@ TRI_index_geo_variant_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_index_s {
-  TRI_idx_iid_t _iid;
-  TRI_idx_type_e _type;
+  TRI_idx_iid_t   _iid;
+  TRI_idx_type_e  _type;
   struct TRI_primary_collection_s* _collection;
 
   TRI_vector_string_t _fields;
   bool _unique;
   bool _ignoreNull;
+  bool _needsFullCoverage;
 
+  const char* (*typeName) (struct TRI_index_s const*);
   TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_primary_collection_s const*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
+  
+  // .........................................................................................
+  // the following functions are called for transaction management
+  // .........................................................................................
+
+  int (*beginTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
+  int (*abortTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
+  int (*commitTransaction) (struct TRI_index_s*, struct TRI_primary_collection_s*);
 
   // .........................................................................................
   // the following functions are called for document/collection administration
   // .........................................................................................
 
-  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-#if 0
-  int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*);
-#endif
+  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
+  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
 
   // NULL by default. will only be called if non-NULL
   int (*postInsert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
@@ -300,10 +307,11 @@ TRI_index_search_value_t;
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitIndex (TRI_index_t* idx, 
-                    const TRI_idx_type_e type, 
-                    struct TRI_primary_collection_s* collection,
-                    bool unique);
+void TRI_InitIndex (TRI_index_t*, 
+                    const TRI_idx_type_e, 
+                    struct TRI_primary_collection_s*,
+                    bool,
+                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -343,16 +351,12 @@ int TRI_SaveIndex (struct TRI_primary_collection_s*, TRI_index_t*);
 TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*, TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets name of index type
+/// @brief creates a basic index description as JSON
+/// this only contains the common index fields and needs to be extended by the
+/// specialised index 
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_TypeNameIndex (const TRI_index_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether an index supports full coverage only
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const);
+TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*, TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a result set returned by a hash index query
