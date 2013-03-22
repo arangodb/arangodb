@@ -243,6 +243,12 @@ namespace triagens {
         void disableActions ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enables development mode
+////////////////////////////////////////////////////////////////////////////////
+
+        void enableDevelopmentMode ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -338,10 +344,8 @@ namespace triagens {
 ///
 /// @CMDOPT{\--javascript.directory @CA{directory}}
 ///
-/// Specifies the @CA{directory} path to alternate startup JavaScript files.
-/// Normally, the server will start using built-in JavaScript core
-/// functionality. To override the core functionality with a different
-/// implementation, this option can be used.
+/// Specifies the @CA{directory} path to the JavaScript files used for
+/// bootstraping. Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupPath;
@@ -351,39 +355,56 @@ namespace triagens {
 ///
 /// @CMDOPT{\--javascript.modules-path @CA{directory}}
 ///
-/// Specifies the @CA{directory} path with user defined JavaScript modules.
+/// Specifies the @CA{directory} paths where the JavaScript modules are located.
 /// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _startupModules;
+        string _modulesPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of module directories
 ///
 /// @CMDOPT{\--javascript.package-path @CA{directory}}
 ///
-/// Specifies the @CA{directory} path with user defined Node modules.
+/// Specifies the @CA{directory} path where the JavaScript packages are located.
 /// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _startupNodeModules;
+        string _packagePath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
 /// @CMDOPT{\--javascript.action-directory @CA{directory}}
 ///
-/// Specifies the @CA{directory} containg the system defined JavaScript files
-/// that can be invoked as actions.
+/// Specifies the @CA{directory} containg the JavaScript files describing the
+/// system actions.  Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _actionPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief semicolon separated list of application directories
+///
+/// @CMDOPT{\--javascript.app-path @CA{directory}}
+///
+/// Specifies the @CA{directory} path where the application are located.
+/// Multiple paths can be specified separated with commas.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _appPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use actions
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _useActions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use development mode
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _developmentMode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform a database upgrade

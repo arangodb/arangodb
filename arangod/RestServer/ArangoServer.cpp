@@ -182,6 +182,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _forceSyncShapes(true),
     _forceSyncProperties(true),
+    _developmentMode(false),
     _vocbase(0) {
 
   // locate path to binary
@@ -313,6 +314,10 @@ void ArangoServer::buildApplicationServer () {
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 
+  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-admin"]
+    ("development-mode", "start server in development mode")
+  ;
+
   // .............................................................................
   // javascript options
   // .............................................................................
@@ -320,6 +325,11 @@ void ArangoServer::buildApplicationServer () {
   additional["JAVASCRIPT Options:help-admin"]
     ("javascript.script", &_scriptFile, "do not start as server, run script instead")
     ("javascript.script-parameter", &_scriptParameters, "script parameter")
+  ;
+
+  additional["JAVASCRIPT Options:help-devel"]
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
+    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -340,11 +350,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
-  ;
-
-  additional["JAVASCRIPT Options:help-devel"]
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
-    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -386,7 +391,6 @@ void ArangoServer::buildApplicationServer () {
                                                              TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
 
-
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
@@ -398,6 +402,10 @@ void ArangoServer::buildApplicationServer () {
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
+  if (_applicationServer->programOptions().has("development-mode")) {
+    _developmentMode = true;
+    _applicationV8->enableDevelopmentMode();
+  }
 
   // .............................................................................
   // set language of default collator
@@ -412,7 +420,6 @@ void ArangoServer::buildApplicationServer () {
   else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
-
 
   // .............................................................................
   // init nonces

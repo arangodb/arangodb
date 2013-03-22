@@ -273,10 +273,8 @@ namespace triagens {
 ///
 /// @CMDOPT{\--ruby.directory @CA{directory}}
 ///
-/// Specifies the @CA{directory} path to alternate startup MRuby files.
-/// Normally, the server will start using built-in MRuby core functionality. To
-/// override the core functionality with a different implementation, this option
-/// can be used.
+/// Specifies the @CA{directory} path to the MRuby files used for bootstraping.
+/// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupPath;
@@ -286,8 +284,8 @@ namespace triagens {
 ///
 /// @CMDOPT{\--ruby.modules-path @CA{directory}}
 ///
-/// Specifies the @CA{directory} path with user defined MRuby modules.  Multiple
-/// paths can be specified separated with commas.
+/// Specifies the @CA{directory} paths where the MRuby modules are located.
+/// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupModules;
@@ -297,8 +295,8 @@ namespace triagens {
 ///
 /// @CMDOPT{\--ruby.action-directory @CA{directory}}
 ///
-/// Specifies the @CA{directory} containg the system defined MRuby files that
-/// can be invoked as actions.
+/// Specifies the @CA{directory} containg the MRuby files describing the system
+/// actions.  Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _actionPath;

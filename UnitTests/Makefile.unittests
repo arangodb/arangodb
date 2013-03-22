@@ -30,6 +30,7 @@ unittests-brief: \
 	unittests-make \
 	unittests-boost \
 	unittests-shell-server \
+	unittests-shell-server-development \
 	unittests-shell-server-ahuacatl \
 	unittests-http-server \
 	unittests-ssl-server \
@@ -205,7 +206,6 @@ unittests-boost:
 	@echo
 endif
 
-
 ################################################################################
 ### @brief SHELL SERVER TESTS (SERVER-ONLY)
 ################################################################################
@@ -218,7 +218,8 @@ SHELL_SERVER_ONLY = @top_srcdir@/js/server/tests/routing.js \
                     @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                     @top_srcdir@/js/common/tests/shell-graph-measurement.js \
                     @top_srcdir@/js/common/tests/shell-skiplist-index.js \
-                    @top_srcdir@/js/server/tests/transactions.js
+                    @top_srcdir@/js/server/tests/transactions.js \
+                    @top_srcdir@/js/server/tests/shell-production.js
 
 UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY))
 
@@ -237,6 +238,30 @@ unittests-shell-server-only:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
+################################################################################
+### @brief SHELL SERVER TESTS (DEVELOPMENT)
+################################################################################
+
+.PHONY: unittests-shell-server-development
+
+SHELL_SERVER_DEVELOPMENT = @top_srcdir@/js/server/tests/shell-development.js
+
+UNITTESTS_SERVER_DEVELOPMENT = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_DEVELOPMENT))
+
+unittests-shell-server-development:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL SERVER TESTS (DEVELOPMENT)                                           >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod --development-mode "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_DEVELOPMENT) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (COMMON)
@@ -285,7 +310,6 @@ unittests-shell-server:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
-
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (AHUACATL)
@@ -416,7 +440,6 @@ unittests-http-server:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
-
 ################################################################################
 ### @brief SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)
 ################################################################################
@@ -474,7 +497,6 @@ unittests-import:
 	@sleep 5
 	@echo
 
-
 ################################################################################
 ### @brief UPGRADE TESTS
 ###
@@ -514,7 +536,6 @@ unittests-dfdb:
 	@test -d "$(VOCDIR)"
 
 	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arango-dfdb --relative --database "$(VOCDIR)" || test "x$(FORCE)" == "x1")
-
 
 ################################################################################
 ### @brief BITARRAY INDEXES TESTS
@@ -589,7 +610,7 @@ cppcheck:
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
-  
+
 ## Local Variables:
 ## mode: outline-minor
 ## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"

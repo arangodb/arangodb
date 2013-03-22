@@ -72,6 +72,38 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public classes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Converts an object to a UTF-8-encoded and normalized character array.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
+  _str(0), _length(0), _memoryZone(memoryZone) {
+
+   v8::String::Value str(obj);
+   size_t str_len = str.length();
+
+   _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);
+}
+
+TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC () {
+  if (_str) {
+    TRI_Free(_memoryZone, _str);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -208,33 +240,6 @@ static bool LoadJavaScriptDirectory (char const* path,
   regfree(&re);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates the path list
-//
-/// The spilt has been modified -- only except semicolon, previously we excepted
-/// a colon as well. So as not to break existing configurations, we only make
-/// the modification for windows version -- since there isn't one yet!
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Array> PathList (string const& modules) {
-  v8::HandleScope scope;
-
-#ifdef _WIN32
-  vector<string> paths = StringUtils::split(modules, ";", '\0');
-#else
-  vector<string> paths = StringUtils::split(modules, ";:");
-#endif
-
-  const uint32_t n = (uint32_t) paths.size();
-  v8::Handle<v8::Array> result = v8::Array::New(n);
-
-  for (uint32_t i = 0;  i < n;  ++i) {
-    result->Set(i, v8::String::New(paths[i].c_str(), paths[i].size()));
-  }
-
-  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1668,6 +1673,67 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a v8 object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
+  v8::HandleScope scope;
+
+  v8::String::Value str(obj);
+  size_t str_len = str.length();
+  if (str_len > 0) {
+    UErrorCode erroCode = U_ZERO_ERROR;
+    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
+
+    if (U_FAILURE(erroCode)) {
+      //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
+      return scope.Close(v8::String::New(*str, str_len));
+    }
+
+    UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), erroCode);
+
+    if (U_FAILURE(erroCode)) {
+      //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
+      return scope.Close(v8::String::New(*str, str_len));
+    }
+
+    // ..........................................................................
+    // Take note here: we are assuming that the ICU type UChar is two bytes.
+    // There is no guarantee that this will be the case on all platforms and
+    // compilers. v8 expects uint16_t (2 bytes)
+    // ..........................................................................
+
+    return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length()));
+  }
+  else {
+    return scope.Close(v8::String::New(""));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the path list
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
+  v8::HandleScope scope;
+
+#ifdef _WIN32
+  vector<string> paths = StringUtils::split(modules, ";", '\0');
+#else
+  vector<string> paths = StringUtils::split(modules, ";:");
+#endif
+
+  const uint32_t n = (uint32_t) paths.size();
+  v8::Handle<v8::Array> result = v8::Array::New(n);
+
+  for (uint32_t i = 0;  i < n;  ++i) {
+    result->Set(i, v8::String::New(paths[i].c_str(), paths[i].size()));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1727,62 +1793,13 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   // create the global variables
   // .............................................................................
 
-  TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", PathList(modules));
-  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", PathList(nodes));
+  TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
+  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(nodes));
 
   TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
-}
-
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
-  _str(0), _length(0), _memoryZone(memoryZone) {
-
-   v8::String::Value str(obj);
-   size_t str_len = str.length();
-
-   _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);
-}
-
-TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
-  if (_str) {
-    TRI_Free(_memoryZone, _str);
-  }
-}
-
-v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
-  v8::HandleScope scope;
-
-  v8::String::Value str(obj);
-  size_t str_len = str.length();
-  if (str_len > 0) {
-    UErrorCode erroCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
-
-    if (U_FAILURE(erroCode)) {
-      //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
-      return scope.Close(v8::String::New(*str, str_len));
-    }
-
-    UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), erroCode);
-
-    if (U_FAILURE(erroCode)) {
-      //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
-      return scope.Close(v8::String::New(*str, str_len));
-    }
-
-    // ..........................................................................
-    // Take note here: we are assuming that the ICU type UChar is two bytes.
-    // There is no guarantee that this will be the case on all platforms and
-    // compilers. v8 expects uint16_t (2 bytes)
-    // ..........................................................................
-
-    return scope.Close(v8::String::New( (const uint16_t*)(result.getBuffer()), result.length()));
-  }
-  else {
-    return scope.Close(v8::String::New(""));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
