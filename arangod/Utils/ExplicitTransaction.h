@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for user transactions
+/// @brief wrapper for explicit transactions
 ///
 /// @file
 ///
@@ -38,10 +38,10 @@ namespace triagens {
   namespace arango {
 
     template<typename T>
-    class UserTransaction : public Transaction<T> {
+    class ExplicitTransaction : public Transaction<T> {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class UserTransaction
+// --SECTION--                                         class ExplicitTransaction
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -59,13 +59,13 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        UserTransaction (struct TRI_vocbase_s* const vocbase,
-                         const triagens::arango::CollectionNameResolver& resolver,
-                         const vector<string>& readCollections,
-                         const vector<string>& writeCollections) :
+        ExplicitTransaction (struct TRI_vocbase_s* const vocbase,
+                             const triagens::arango::CollectionNameResolver& resolver,
+                             const vector<string>& readCollections,
+                             const vector<string>& writeCollections) :
           Transaction<T>(vocbase, resolver) {
 
-          this->addHint(TRI_TRANSACTION_HINT_IMPLICIT_LOCK);
+          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
           for (size_t i = 0; i < readCollections.size(); ++i) {
             this->addCollection(readCollections[i], TRI_TRANSACTION_READ);
@@ -80,7 +80,7 @@ namespace triagens {
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~UserTransaction () {
+        ~ExplicitTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

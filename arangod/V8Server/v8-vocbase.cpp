@@ -53,10 +53,10 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/EmbeddableTransaction.h"
+#include "Utils/ExplicitTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransaction.h"
-#include "Utils/UserTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utilities/ResourceHolder.h"
 #include "V8/v8-conv.h"
@@ -1329,7 +1329,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
+  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision, false);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1816,13 +1816,12 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 /// @brief executes a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
 static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  if (argv.Length() != 2 || ! argv[0]->IsObject() || ! argv[1]->IsFunction()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "usage: TRANSACTION(<object>)")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -1832,61 +1831,98 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(errorObject));
   }
 
+  // treat the argument as an object from now on
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
 
-  v8::Handle<v8::Array> collections = v8::Handle<v8::Array>::Cast(argv[0]);
-  if (collections.IsEmpty()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+  // extract the properties from the object
+
+  // "collections"
+  static const string collectionError = "missing/invalid collections definition for transaction";
+
+  if (! object->Has(TRI_V8_SYMBOL("collections")) || ! object->Get(TRI_V8_SYMBOL("collections"))->IsObject()) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, collectionError)));
   }
-
+  
+  // extract collections
+  v8::Handle<v8::Array> collections = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("collections")));
+  if (collections.IsEmpty()) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, collectionError)));
+  }
+  
   bool isValid = true;
-
   vector<string> readCollections;
   vector<string> writeCollections;
 
-  if (collections->Has(TRI_V8_SYMBOL("read")) && collections->Get(TRI_V8_SYMBOL("read"))->IsArray()) {
-    v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("read")));
+  // collections.read
+  if (collections->Has(TRI_V8_SYMBOL("read"))) {
+    if (collections->Get(TRI_V8_SYMBOL("read"))->IsArray()) {
+      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("read")));
 
-    for (uint32_t i = 0 ; i < names->Length(); ++i) {
-      v8::Handle<v8::Value> collection = names->Get(i);
-      if (! collection->IsString()) {
-        isValid = false;
-        break;
+      for (uint32_t i = 0 ; i < names->Length(); ++i) {
+        v8::Handle<v8::Value> collection = names->Get(i);
+        if (! collection->IsString()) {
+          isValid = false;
+          break;
+        }
+
+        readCollections.push_back(TRI_ObjectToString(collection));
       }
-
-      readCollections.push_back(TRI_ObjectToString(collection));
+    }
+    else {
+      isValid = false;
     }
   }
+  
+  // collections.write
+  if (collections->Has(TRI_V8_SYMBOL("write"))) {
+    if (collections->Get(TRI_V8_SYMBOL("write"))->IsArray()) {
+      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("write")));
 
-  if (collections->Has(TRI_V8_SYMBOL("write")) && collections->Get(TRI_V8_SYMBOL("write"))->IsArray()) {
-    v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("write")));
-
-    for (uint32_t i = 0 ; i < names->Length(); ++i) {
-      v8::Handle<v8::Value> collection = names->Get(i);
-      if (! collection->IsString()) {
-        isValid = false;
-        break;
+      for (uint32_t i = 0 ; i < names->Length(); ++i) {
+        v8::Handle<v8::Value> collection = names->Get(i);
+        if (! collection->IsString()) {
+          isValid = false;
+          break;
+        }
+      
+        writeCollections.push_back(TRI_ObjectToString(collection));
       }
-
-      writeCollections.push_back(TRI_ObjectToString(collection));
+    }
+    else {
+      isValid = false;
     }
   }
 
   if (! isValid) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, collectionError)));
   }
 
-  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+  // extract the "action" property
+  static const string actionError = "missing/invalid action definition for transaction";
 
-  UserTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, readCollections, writeCollections);
+  if (! object->Has(TRI_V8_SYMBOL("action")) || ! object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, actionError)));
+  }
+  
+  v8::Handle<v8::Function> action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
+  if (action.IsEmpty()) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, actionError)));
+  }
+  
+
+  // start actual transaction
+  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+  
+  CollectionNameResolver resolver(vocbase);
+  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, resolver, readCollections, writeCollections);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
   }
 
-  v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(argv[1]);
   v8::Handle<v8::Value> args;
-  v8::Handle<v8::Value> result = func->Call(current, 0, &args);
+  v8::Handle<v8::Value> result = action->Call(current, 0, &args);
 
   if (tryCatch.HasCaught()) {
     trx.abort();
@@ -1896,19 +1932,18 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 
   if (! TRI_ObjectToBoolean(result)) {
     trx.abort();
-
+    
     return scope.Close(v8::False());
   }
-
+  
   res = trx.commit();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
   }
-
+  
   return scope.Close(v8::True());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
@@ -4767,15 +4802,12 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
     if (keyOptions != 0) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
     else {
       result->Set(v8g->KeyOptionsKey, v8::Array::New());
     }
     result->Set(v8g->WaitForSyncKey, base->_info._waitForSync ? v8::True() : v8::False());
-
-    if (keyOptions != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-    }
   }
 
   ReleaseCollection(collection);
@@ -5069,6 +5101,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save document", true)));
   }
@@ -6702,9 +6735,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
 
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
-#if 0
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
-#endif
 
   // .............................................................................
   // create global variables

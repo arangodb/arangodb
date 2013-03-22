@@ -36,7 +36,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
-#include "Utils/UserTransaction.h"
 #include "Utilities/ResourceHolder.h"
 
 using namespace std;
@@ -1150,7 +1149,7 @@ bool RestDocumentHandler::deleteDocument () {
   const TRI_voc_cid_t cid = trx.cid();
 
   TRI_voc_rid_t rid = 0;
-  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
+  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid, false);
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }

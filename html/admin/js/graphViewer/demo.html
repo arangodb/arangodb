@@ -11,6 +11,7 @@
   <script src="../lib/jquery.livequery.js"></script>
   <script src="graph/forceLayouter.js"></script>
   <script src="graph/eventLibrary.js"></script>
+  <script src="graph/eventDispatcher.js"></script>
   <script src="graph/nodeShaper.js"></script>
   <script src="graph/edgeShaper.js"></script>
   <script src="graph/arangoAdapter.js"></script>
@@ -228,7 +229,8 @@
     
     
     evconfig = {
-      expander: true
+      expand: {target: "nodes", type: "click"},
+      createNode: {target: $("#createNode"), type: "click", callback: function(newNode) {console.log(newNode);}}
     };
     
     
@@ -242,6 +244,18 @@
     
     $("#creationDialog")[0].style.display = "none";
     viewer = new GraphViewer(d3.select("svg"), 980, 640, aaconfig, nsconfig, esconfig, layouterConfig, evconfig);
+  }
+
+  function bindExpander() {
+    viewer.rebind({expand: {target: "nodes", type: "click"}});
+  }
+  
+  function bindEdit() {
+    
+  }
+  
+  function bindDelete() {
+    viewer.rebind({deleteNode: {target: "nodes", type: "click", callback: function() {console.log("Gone AWAY!");}}})
   }
 
   var viewer;
@@ -321,9 +335,21 @@
     </fieldset>
   </form>
 
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+  <fieldset>
+    <div class="control-group">
+      <div class="controls">
+        <button id="expander" type="submit" class="btn btn-primary" onclick="bindExpander()">Expand</button>
+        <button id="edit" type="submit" class="btn btn-primary" onclick="bindEdit()">Edit</button>
+        <button id="delete" type="submit" class="btn btn-primary" onclick="bindDelete()">Delete</button>
+      </div>
+    </div>
+  </fieldset>
+</form>
+
 <svg width="980" height="640" id="svg"/>
 <br />
-<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+<form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog">
   <fieldset>
     <div class="control-group">
       <div class="controls">
@@ -333,6 +359,11 @@
     <div class="control-group">
       <div class="controls">
         <button type="submit" class="btn btn-primary" onclick="loadGraphFromNode()">Load</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button id="createNode" type="submit" class="btn btn-primary">Create Node</button>
       </div>
     </div>
   </fieldset>

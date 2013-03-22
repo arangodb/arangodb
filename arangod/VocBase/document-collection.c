@@ -52,13 +52,16 @@ static int InsertPrimaryIndex (TRI_document_collection_t*,
                                TRI_doc_mptr_t const*);
 
 static int InsertSecondaryIndexes (TRI_document_collection_t*,
-                                   TRI_doc_mptr_t const*);
+                                   TRI_doc_mptr_t const*,
+                                   const bool);
 
 static int DeletePrimaryIndex (TRI_document_collection_t*,
-                               TRI_doc_mptr_t const*);
+                               TRI_doc_mptr_t const*,
+                               const bool);
 
 static int DeleteSecondaryIndexes (TRI_document_collection_t*,
-                                   TRI_doc_mptr_t const*);
+                                   TRI_doc_mptr_t const*,
+                                   const bool);
 
 static int CapConstraintFromJson (TRI_document_collection_t*,
                                   TRI_json_t*,
@@ -608,11 +611,11 @@ static int InsertDocument (TRI_document_collection_t* document,
   }
 
   // insert into secondary indexes
-  res = InsertSecondaryIndexes(document, header);
+  res = InsertSecondaryIndexes(document, header, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insertion into secondary indexes failed
-    DeletePrimaryIndex(document, header);
+    DeletePrimaryIndex(document, header, true);
 
     return res;
   }
@@ -687,8 +690,8 @@ static int InsertDocument (TRI_document_collection_t* document,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // some error has occurred
-    DeleteSecondaryIndexes(document, header);
-    DeletePrimaryIndex(document, header);
+    DeleteSecondaryIndexes(document, header, true);
+    DeletePrimaryIndex(document, header, true);
   }
 
   return res;
@@ -755,7 +758,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   }
   
   // delete from indexes
-  res = DeleteSecondaryIndexes(document, header);
+  res = DeleteSecondaryIndexes(document, header, false);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("deleting document from indexes failed");
 
@@ -766,7 +769,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
     return res;
   }
   
-  res = DeletePrimaryIndex(document, header);
+  res = DeletePrimaryIndex(document, header, false);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("deleting document from indexes failed");
     
@@ -877,13 +880,13 @@ static int UpdateDocument (TRI_document_collection_t* document,
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
 
-  res = DeleteSecondaryIndexes(document, oldHeader);
+  res = DeleteSecondaryIndexes(document, oldHeader, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // re-enter the document in case of failure, ignore errors during rollback
     int resRollback;
 
-    resRollback = InsertSecondaryIndexes(document, oldHeader);
+    resRollback = InsertSecondaryIndexes(document, oldHeader, true);
 
     if (resRollback != TRI_ERROR_NO_ERROR) {
       LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
@@ -905,13 +908,13 @@ static int UpdateDocument (TRI_document_collection_t* document,
 
 
   // insert new document into secondary indexes
-  res = InsertSecondaryIndexes(document, newHeader);
+  res = InsertSecondaryIndexes(document, newHeader, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // rollback
     int resRollback;
 
-    resRollback = DeleteSecondaryIndexes(document, newHeader);
+    resRollback = DeleteSecondaryIndexes(document, newHeader, true);
 
     if (resRollback != TRI_ERROR_NO_ERROR) {
       LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
@@ -920,7 +923,7 @@ static int UpdateDocument (TRI_document_collection_t* document,
     // copy back old header data
     *oldHeader = oldData;
 
-    resRollback = InsertSecondaryIndexes(document, oldHeader);
+    resRollback = InsertSecondaryIndexes(document, oldHeader, true);
     
     if (resRollback != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
@@ -1018,7 +1021,7 @@ static int UpdateDocument (TRI_document_collection_t* document,
     // rollback index insertion
     int resRollback;
 
-    resRollback = DeleteSecondaryIndexes(document, newHeader);
+    resRollback = DeleteSecondaryIndexes(document, newHeader, true);
     if (resRollback != TRI_ERROR_NO_ERROR) {
       LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
     }
@@ -1026,13 +1029,12 @@ static int UpdateDocument (TRI_document_collection_t* document,
     // copy back old header data
     *oldHeader = oldData;
 
-    resRollback = InsertSecondaryIndexes(document, oldHeader);
+    resRollback = InsertSecondaryIndexes(document, oldHeader, true);
     if (resRollback != TRI_ERROR_NO_ERROR) {
       LOG_DEBUG("encountered error '%s' during rollback of update", TRI_errno_string(resRollback));
     }
   }
     
-
   return res;
 }
 
@@ -1073,7 +1075,7 @@ static void SetIndexCleanupFlag (TRI_document_collection_t* document, bool value
 
 static void AddIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   LOG_DEBUG("adding index of type %s for collection '%s'",
-            TRI_TypeNameIndex(idx),
+            idx->typeName(idx),
             document->base.base._info._name);
 
   TRI_PushBackVectorPointer(&document->_allIndexes, idx);
@@ -1232,6 +1234,42 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief notify a collection about transaction begin/commit/abort
+////////////////////////////////////////////////////////////////////////////////
+
+static int NotifyTransaction (TRI_primary_collection_t* primary, 
+                              TRI_transaction_status_e status) {
+  TRI_document_collection_t* document;
+  size_t i, n;
+
+  document = (TRI_document_collection_t*) primary;
+
+  n = document->_allIndexes._length;
+
+  for (i = 0; i < n ; ++i) {
+    TRI_index_t* idx = TRI_AtVectorPointer(&document->_allIndexes, i);
+
+    if (status == TRI_TRANSACTION_RUNNING) {
+      if (idx->beginTransaction != NULL) {
+        idx->beginTransaction(idx, primary);
+      }
+    }
+    else if (status == TRI_TRANSACTION_ABORTED) {
+      if (idx->abortTransaction != NULL) {
+        idx->abortTransaction(idx, primary);
+      }
+    }
+    else if (status == TRI_TRANSACTION_COMMITTED) {
+      if (idx->commitTransaction != NULL) {
+        idx->commitTransaction(idx, primary);
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shaped-json document into the collection
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
@@ -1315,15 +1353,24 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
 
 static int ReadShapedJson (TRI_doc_operation_context_t* context,
                            const TRI_voc_key_t key,
-                           TRI_doc_mptr_t* mptr) {
+                           TRI_doc_mptr_t* mptr,
+                           const bool lock) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* header;
 
   primary = context->_collection;
 
+  if (lock) {
+    primary->beginRead(primary);
+  }
+
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 
   if (! IsVisible(header, context)) {
+    if (lock) {
+      primary->endRead(primary);
+    }
+
     // make an empty result
     memset(mptr, 0, sizeof(TRI_doc_mptr_t));
 
@@ -1332,6 +1379,10 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
 
   // we found a document, now copy it over
   *mptr = *((TRI_doc_mptr_t*) header);
+
+  if (lock) {
+    primary->endRead(primary);
+  }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   TRI_ASSERT_DEBUG(mptr->_key != NULL);
@@ -1611,13 +1662,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         return false;
       }
 
-      res = InsertSecondaryIndexes(collection, header);
+      res = InsertSecondaryIndexes(collection, header, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
         LOG_ERROR("inserting document into indexes failed");
 
-        DeletePrimaryIndex(collection, header);
+        DeletePrimaryIndex(collection, header, true);
 
         collection->_headers->release(collection->_headers, header);
         return false;
@@ -1642,7 +1693,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       oldData = *found;
 
       // delete old entries
-      DeleteSecondaryIndexes(collection, found);
+      DeleteSecondaryIndexes(collection, found, false);
 
       // TODO: this will be identical for non-transactional collections only
       newHeader = CONST_CAST(found);
@@ -1653,20 +1704,20 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       
 
       // update secondary indexes
-      res = InsertSecondaryIndexes(collection, found);
+      res = InsertSecondaryIndexes(collection, found, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
         LOG_ERROR("inserting document into indexes failed");
 
         // revert the changes
-        DeleteSecondaryIndexes(collection, found);
+        DeleteSecondaryIndexes(collection, found, true);
 
         // copy the old data back into the header
         memcpy(newHeader, &oldData, sizeof(TRI_doc_mptr_t));
 
         // and re-insert the old header
-        InsertSecondaryIndexes(collection, found);
+        InsertSecondaryIndexes(collection, found, true);
         
         return false;
       }
@@ -1757,13 +1808,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         return false;
       }
 
-      res = InsertSecondaryIndexes(collection, header);
+      res = InsertSecondaryIndexes(collection, header, false);
       
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
         LOG_ERROR("inserting document into indexes failed");
 
-        DeletePrimaryIndex(collection, header);
+        DeletePrimaryIndex(collection, header, true);
 
         collection->_headers->release(collection->_headers, header);
         return false;
@@ -2042,18 +2093,21 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   TRI_InitCondition(&collection->_journalsCondition);
 
   // setup methods
-  collection->base.beginRead  = BeginRead;
-  collection->base.endRead    = EndRead;
+  collection->base.beginRead         = BeginRead;
+  collection->base.endRead           = EndRead;
 
-  collection->base.beginWrite = BeginWrite;
-  collection->base.endWrite   = EndWrite;
+  collection->base.beginWrite        = BeginWrite;
+  collection->base.endWrite          = EndWrite;
 
-  collection->base.insert     = InsertShapedJson;
-  collection->base.read       = ReadShapedJson;
-  collection->base.update     = UpdateShapedJson;
-  collection->base.destroy    = DeleteShapedJson;
+  collection->base.notifyTransaction = NotifyTransaction;
 
-  collection->cleanupIndexes  = CleanupIndexes;
+  // crud methods
+  collection->base.insert            = InsertShapedJson;
+  collection->base.read              = ReadShapedJson;
+  collection->base.update            = UpdateShapedJson;
+  collection->base.destroy           = DeleteShapedJson;
+
+  collection->cleanupIndexes         = CleanupIndexes;
 
   return true;
 }
@@ -2100,7 +2154,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_ERROR("cannot create document collection");
+    LOG_WARNING("cannot create key generator for document collection");
     return NULL;
   }
 
@@ -2112,7 +2166,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (document == NULL) {
     TRI_FreeKeyGenerator(keyGenerator);
-    LOG_ERROR("cannot create document collection");
+    LOG_WARNING("cannot create key generator for document collection");
     return NULL;
   }
 
@@ -2585,7 +2639,8 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertSecondaryIndexes (TRI_document_collection_t* document,
-                                   TRI_doc_mptr_t const* header) {
+                                   TRI_doc_mptr_t const* header,
+                                   const bool isRollback) {
   size_t i, n;
   int result;
 
@@ -2597,7 +2652,7 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
     int res;
 
     idx = document->_allIndexes._buffer[i];
-    res = idx->insert(idx, header);
+    res = idx->insert(idx, header, isRollback);
 
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
@@ -2620,7 +2675,8 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DeletePrimaryIndex (TRI_document_collection_t* document,
-                               TRI_doc_mptr_t const* header) {
+                               TRI_doc_mptr_t const* header,
+                               const bool isRollback) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t* found;
 
@@ -2643,7 +2699,8 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
-                                   TRI_doc_mptr_t const* header) {
+                                   TRI_doc_mptr_t const* header,
+                                   const bool isRollback) {
   size_t i, n;
   int result;
 
@@ -2655,7 +2712,7 @@ static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
     int res;
 
     idx = document->_allIndexes._buffer[i];
-    res = idx->remove(idx, header);
+    res = idx->remove(idx, header, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred
@@ -2693,7 +2750,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
     if (IsVisible(*ptr, &context)) {
       mptr = *ptr;
 
-      res = idx->insert(idx, mptr);
+      res = idx->insert(idx, mptr, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
@@ -3134,7 +3191,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
     if (idx->_iid == iid) {
       found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
 
-      if (found != NULL) {
+      if (found != NULL && found->removeIndex != NULL) {
+        // notify the index about its removal
         found->removeIndex(found, primary);
       }
 

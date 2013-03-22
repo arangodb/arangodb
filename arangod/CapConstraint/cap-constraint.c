@@ -45,11 +45,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameCapConstraint (const TRI_index_t const* idx) {
+  return "cap";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
-                                      TRI_primary_collection_t const* collection) {
+                                      TRI_primary_collection_t const* primary) {
   TRI_json_t* json;
   TRI_cap_constraint_t* cap;
 
@@ -57,10 +65,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx,
   cap = (TRI_cap_constraint_t*) idx;
 
   // create json object and fill it
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id",   TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "cap"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
 
   return json;
@@ -80,7 +86,8 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertCapConstraint (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* doc) {
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_cap_constraint_t* cap;
 
   cap = (TRI_cap_constraint_t*) idx;
@@ -131,7 +138,9 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
 /// @brief removes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveCapConstraint (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_cap_constraint_t* cap;
 
   cap = (TRI_cap_constraint_t*) idx;
@@ -157,25 +166,28 @@ static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief creates a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
                                       size_t size) {
   TRI_cap_constraint_t* cap;
+  TRI_index_t* idx;
 
   cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  idx = &cap->base;
 
-  TRI_InitIndex(&cap->base, TRI_IDX_TYPE_CAP_CONSTRAINT, collection, false);
-  cap->base.json = JsonCapConstraint;
-  cap->base.removeIndex = RemoveIndexCapConstraint;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
 
-  cap->base.insert     = InsertCapConstraint;
-  cap->base.postInsert = PostInsertCapConstraint;
-  cap->base.remove     = RemoveCapConstraint;
+  idx->typeName    = TypeNameCapConstraint;
+  idx->json        = JsonCapConstraint;
+  idx->removeIndex = RemoveIndexCapConstraint;
+  idx->insert      = InsertCapConstraint;
+  idx->postInsert  = PostInsertCapConstraint;
+  idx->remove      = RemoveCapConstraint;
 
   TRI_InitLinkedArray(&cap->_array, TRI_CORE_MEM_ZONE);
 
   cap->_size = size;
 
-  return &cap->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
