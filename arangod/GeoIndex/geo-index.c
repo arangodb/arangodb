@@ -347,7 +347,9 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
 /// @brief inserts a new document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertGeoIndex (TRI_index_t* idx, 
+                           TRI_doc_mptr_t const* doc,
+                           const bool isRollback) {
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
@@ -426,7 +428,9 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief erases a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveGeoIndex (TRI_index_t* idx, 
+                           TRI_doc_mptr_t const* doc,
+                           const bool isRollback) {
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
