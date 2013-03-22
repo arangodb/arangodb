@@ -248,7 +248,7 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext () {
+ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -277,6 +277,15 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
   context->_context->Enter();
 
   context->handleGlobalContextMethods();
+
+  if (_developmentMode && ! initialise) {
+    v8::HandleScope scope;
+
+    TRI_ExecuteJavaScriptString(context->_context,
+                                v8::String::New("require(\"internal\").resetEngine()"),
+                                v8::String::New("global context method"),
+                                false);
+  }
 
   return context;
 }

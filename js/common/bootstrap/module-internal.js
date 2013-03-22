@@ -249,9 +249,11 @@
   }
 
   if (internal.developmentMode) {
-    internal.log("warning", "################################################################################");
-    internal.log("warning", "development mode is active, never use this in production");
-    internal.log("warning", "################################################################################");
+    if (typeof THREAD_NUMBER !== "undefined" && THREAD_NUMBER === 0) {
+      internal.log("warning", "################################################################################");
+      internal.log("warning", "development mode is active, never use this in production");
+      internal.log("warning", "################################################################################");
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
