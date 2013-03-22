@@ -1073,7 +1073,7 @@ static void SetIndexCleanupFlag (TRI_document_collection_t* document, bool value
 
 static void AddIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   LOG_DEBUG("adding index of type %s for collection '%s'",
-            TRI_TypeNameIndex(idx),
+            idx->typeName(idx),
             document->base.base._info._name);
 
   TRI_PushBackVectorPointer(&document->_allIndexes, idx);
@@ -3134,7 +3134,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
     if (idx->_iid == iid) {
       found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
 
-      if (found != NULL) {
+      if (found != NULL && found->removeIndex != NULL) {
+        // notify the index about its removal
         found->removeIndex(found, primary);
       }
 

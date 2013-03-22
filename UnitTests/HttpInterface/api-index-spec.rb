@@ -744,7 +744,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns all index for an collection identifier" do
+      it "returns all index for a collection identifier" do
         cmd = api + "?collection=#{@cn}"
         doc = ArangoDB.log_get("#{prefix}-all-indexes", cmd)
 
@@ -762,7 +762,7 @@ describe ArangoDB do
         end
       end
 
-      it "returns all index for an collection name" do
+      it "returns all index for a collection name" do
         cmd = api + "?collection=#{@cn}"
         doc = ArangoDB.log_get("#{prefix}-all-indexes-name", cmd)
 
@@ -796,7 +796,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns primary index for an collection identifier" do
+      it "returns primary index for a collection identifier" do
         cmd = api + "/#{@cn}/0"
         doc = ArangoDB.log_get("#{prefix}-primary-index", cmd)
 
@@ -808,7 +808,7 @@ describe ArangoDB do
         doc.parsed_response['type'].should eq("primary")
       end
 
-      it "returns primary index for an collection name" do
+      it "returns primary index for a collection name" do
         cmd = api + "/#{@cn}/0"
         doc = ArangoDB.log_get("#{prefix}-primary-index-name", cmd)
 

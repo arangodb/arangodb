@@ -66,20 +66,30 @@
 
 void TRI_InitIndex (TRI_index_t* idx, 
                     const TRI_idx_type_e type, 
-                    struct TRI_primary_collection_s* collection,
-                    bool unique) {
-  idx->_iid            = TRI_NewTickVocBase();
-  idx->_type           = type;
-  idx->_collection     = collection;
-  idx->_unique         = unique;
+                    struct TRI_primary_collection_s* primary,
+                    bool unique,
+                    bool needsFullCoverage) {
+  TRI_ASSERT_DEBUG(idx != NULL);
 
+  idx->_iid               = TRI_NewTickVocBase();
+  idx->_type              = type;
+  idx->_collection        = primary;
+  idx->_unique            = unique;
+  idx->_needsFullCoverage = needsFullCoverage;
+  
   // init common functions
-  idx->cleanup    = NULL;
-  idx->postInsert = NULL;
-  idx->postUpdate = NULL;
-  idx->postRemove = NULL;
+  idx->removeIndex       = NULL;
+  idx->cleanup           = NULL;
 
-  LOG_TRACE("initialising index of type %s", TRI_TypeNameIndex(idx));
+  idx->postInsert        = NULL;
+  idx->postUpdate        = NULL;
+  idx->postRemove        = NULL;
+
+  idx->beginTransaction  = NULL;
+  idx->abortTransaction  = NULL;
+  idx->commitTransaction = NULL;
+
+  LOG_TRACE("initialising index of type %s", idx->typeName(idx));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,8 +228,8 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   }
 
   // construct filename
-  number = TRI_StringUInt64(idx->_iid);
-  name = TRI_Concatenate3String("index-", number, ".json");
+  number   = TRI_StringUInt64(idx->_iid);
+  name     = TRI_Concatenate3String("index-", number, ".json");
   filename = TRI_Concatenate2File(collection->base._directory, name);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
@@ -264,78 +274,27 @@ TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_
   }
 
   TRI_set_errno(TRI_ERROR_ARANGO_NO_INDEX);
+
   return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets name of index type
+/// @brief creates a basic index description as JSON
+/// this only contains the common index fields and needs to be extended by the
+/// specialised index 
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
-  switch (idx->_type) {
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
-      return "bitarray";
+TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, TRI_index_t* idx) {
+  TRI_json_t* json;
 
-    case TRI_IDX_TYPE_HASH_INDEX:
-      return "hash";
-
-    case TRI_IDX_TYPE_EDGE_INDEX:
-      return "edge";
-
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-      return "priorityqueue";
-
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      return "skiplist";
-
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
-      return "fulltext";
-
-    case TRI_IDX_TYPE_GEO1_INDEX:
-      return "geo1";
-
-    case TRI_IDX_TYPE_GEO2_INDEX:
-      return "geo2";
-
-    case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      return "cap";
-
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
-      return "primary";
+  json = TRI_CreateArrayJson(zone);
+  if (json != NULL) {
+    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateNumberJson(zone, idx->_iid));
+    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, idx->typeName(idx)));
+    TRI_Insert3ArrayJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
   }
 
-  return "unknown";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether an index supports full coverage only
-///
-/// Full coverage here means that all fields which comprise a index MUST be
-/// assigned a value otherwise the index can not return a meaningful result. 
-/// Thus this function below returns whether full coverage is required by index.
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
-
-  // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
-  switch (idx->_type) {
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
-    case TRI_IDX_TYPE_HASH_INDEX:
-    case TRI_IDX_TYPE_EDGE_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      return true;
-
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      return false;
-  }
-
-  assert(false);
-  return false;
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,6 +405,14 @@ char const** TRI_FieldListByPathList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNamePrimary (const TRI_index_t const* idx) {
+  return "primary";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -469,14 +436,10 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const
   TRI_json_t* json;
   TRI_json_t* fields;
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_id"));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, 0));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "primary"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -499,26 +462,28 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const
 /// @brief create the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* collection) {
-  TRI_index_t* primary;
+TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
+  TRI_index_t* idx;
   char* id;
 
   // create primary index
-  primary = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
+  idx = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
 
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
-  TRI_InitVectorString(&primary->_fields, TRI_CORE_MEM_ZONE);
-  TRI_PushBackVectorString(&primary->_fields, id);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
+  TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(primary, TRI_IDX_TYPE_PRIMARY_INDEX, collection, true);
+  TRI_InitIndex(idx, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true, true);
+
   // override iid
-  primary->_iid = 0;
+  idx->_iid     = 0;
 
-  primary->insert = InsertPrimary;
-  primary->remove = RemovePrimary;
-  primary->json = JsonPrimary;
+  idx->typeName = TypeNamePrimary;
+  idx->json     = JsonPrimary;
+  idx->insert   = InsertPrimary;
+  idx->remove   = RemovePrimary;
 
-  return primary;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -655,6 +620,14 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameEdge (const TRI_index_t const* idx) {
+  return "edge";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert method for edges
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -747,19 +720,15 @@ static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief JSON description of edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
+static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* primary) {
   TRI_json_t* json;
   TRI_json_t* fields;
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
+  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_from"));
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_to"));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, 0));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "edge"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -782,22 +751,25 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* c
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   TRI_edge_index_t* edgeIndex;
+  TRI_index_t* idx;
   char* id;
 
   // create index
   edgeIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false);
+  idx = &edgeIndex->base;
 
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
-
-  TRI_InitVectorString(&edgeIndex->base._fields, TRI_CORE_MEM_ZONE);
-  TRI_PushBackVectorString(&edgeIndex->base._fields, id);
+  TRI_PushBackVectorString(&idx->_fields, id);
  
-  TRI_InitIndex(&edgeIndex->base, TRI_IDX_TYPE_EDGE_INDEX, collection, false); 
-  edgeIndex->base.insert  = InsertEdge;
-  edgeIndex->base.remove  = RemoveEdge;
-  edgeIndex->base.json    = JsonEdge;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_EDGE_INDEX, primary, false, true); 
+
+  idx->typeName = TypeNameEdge;
+  idx->json     = JsonEdge;
+  idx->insert   = InsertEdge;
+  idx->remove   = RemoveEdge;
 
   TRI_InitMultiPointer(&edgeIndex->_edges,
                        TRI_UNKNOWN_MEM_ZONE,
@@ -806,7 +778,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
                        IsEqualKeyEdge,
                        IsEqualElementEdge);
 
-  return &edgeIndex->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -999,10 +971,18 @@ static int InsertPriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNamePriorityQueueIndex (const TRI_index_t const* idx) {
+  return "priorityqueue";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a priority queue index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
+static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collection_t const* primary) {
   TRI_json_t* json;
   TRI_json_t* fields;
   const TRI_shape_path_t* path;
@@ -1038,7 +1018,7 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collect
 
   for (j = 0; j < pqIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&pqIndex->_paths,j)));
-    path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, shape);
+    path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
 
     if (path == NULL) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1053,36 +1033,17 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collect
   // create json object and fill it
   // ..........................................................................  
 
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  if (json == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
-    return NULL;
-  }
-
-  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
+  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   for (j = 0; j < pqIndex->_paths._length; ++j) {
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, fieldList[j]));
+    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, fieldList[j]));
   }
-
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, pqIndex->base._unique));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(idx)));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
-    
+
   return json;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a priority queue from collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,12 +1084,18 @@ static int RemovePriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc
 /// @brief creates a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* primary,
                                            TRI_vector_pointer_t* fields,
                                            TRI_vector_t* paths,
                                            bool unique) {
   TRI_priorityqueue_index_t* pqIndex;
+  TRI_index_t* idx;
   size_t j;
+  
+  if (unique) {
+    LOG_ERROR("non-unique priority queue indexes are unsupported");
+    return NULL;
+  }
 
   if (paths == NULL) {
     LOG_WARNING("Internal error in TRI_CreatePriorityQueueIndex. PriorityQueue index creation failed.");
@@ -1145,25 +1112,21 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
     return NULL;
   }
 
-  pqIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_priorityqueue_index_t), false);
-
-  if (pqIndex == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
-  }
+  pqIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_priorityqueue_index_t), false);
+  idx = &pqIndex->base;
   
-  TRI_InitIndex(&pqIndex->base, TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, collection, unique); 
-  pqIndex->base.json = JsonPriorityQueueIndex;
-  pqIndex->base.removeIndex = RemoveIndexPriorityQueueIndex;
-
-  pqIndex->base.insert = InsertPriorityQueueIndex;
-  pqIndex->base.remove = RemovePriorityQueueIndex;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, primary, unique, true);
+   
+  idx->typeName = TypeNamePriorityQueueIndex;
+  idx->json     = JsonPriorityQueueIndex;
+  idx->insert   = InsertPriorityQueueIndex;
+  idx->remove   = RemovePriorityQueueIndex;
 
   // ...........................................................................
   // Copy the contents of the path list vector into a new vector and store this
   // ...........................................................................
 
-  TRI_InitVector(&pqIndex->_paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
+  TRI_InitVector(&pqIndex->_paths, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
 
   for (j = 0;  j < paths->_length;  ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,j)));
@@ -1171,32 +1134,18 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
     TRI_PushBackVector(&pqIndex->_paths, &shape);
   }
 
-  TRI_InitVectorString(&pqIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
-    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+    char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
 
-    if (copy == NULL) {
-      TRI_DestroyVector(&pqIndex->_paths);
-      TRI_DestroyVectorString(&pqIndex->base._fields);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqIndex);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-
-    TRI_PushBackVectorString(&pqIndex->base._fields, copy);
+    TRI_PushBackVectorString(&idx->_fields, copy);
   }
 
-  if (! unique) {
-    pqIndex->_pqIndex = PQueueIndex_new();
-  }
-  else {
-    assert(false);
-  }
+  pqIndex->_pqIndex = PQueueIndex_new();
 
-  return &pqIndex->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1228,7 +1177,7 @@ void TRI_FreePriorityQueueIndex(TRI_index_t* idx) {
     return;
   }
   TRI_DestroyPriorityQueueIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+  TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1639,6 +1588,14 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameSkiplistIndex (const TRI_index_t const* idx) {
+  return "skiplist";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1653,6 +1610,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
   // ..........................................................................
   // Recast as a skiplist index
   // ..........................................................................
+
   skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   if (skiplistIndex == NULL) {
@@ -1682,28 +1640,18 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
   // ..........................................................................
   // create json object and fill it
   // ..........................................................................
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, skiplistIndex->base._unique));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "skiplist"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a skip-list index from collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1795,22 +1743,24 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
   TRI_skiplist_index_t* skiplistIndex;
+  TRI_index_t* idx;
   int result;
   size_t j;
 
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
+  idx = &skiplistIndex->base;
 
-  TRI_InitIndex(&skiplistIndex->base, TRI_IDX_TYPE_SKIPLIST_INDEX, collection, unique);
-  skiplistIndex->base.json = JsonSkiplistIndex;
-  skiplistIndex->base.removeIndex = RemoveIndexSkiplistIndex;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, false);
 
-  skiplistIndex->base.insert = InsertSkiplistIndex;
-  skiplistIndex->base.remove = RemoveSkiplistIndex;
+  idx->typeName = TypeNameSkiplistIndex;
+  idx->json     = JsonSkiplistIndex;
+  idx->insert   = InsertSkiplistIndex;
+  idx->remove   = RemoveSkiplistIndex;
   
   // ...........................................................................
   // Copy the contents of the shape list vector into a new vector and store this
@@ -1824,22 +1774,12 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
     TRI_PushBackVector(&skiplistIndex->_paths, &shape);
   }
 
-  TRI_InitVectorString(&skiplistIndex->base._fields, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
     char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
-
-    if (copy == NULL) {
-      TRI_DestroyVector(&skiplistIndex->_paths);
-      TRI_DestroyVectorString(&skiplistIndex->base._fields);
-      TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-
-    TRI_PushBackVectorString(&skiplistIndex->base._fields, copy);
+    TRI_PushBackVectorString(&idx->_fields, copy);
   }
 
   if (unique) {
@@ -1851,7 +1791,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
 
   if (skiplistIndex->_skiplistIndex == NULL) {
     TRI_DestroyVector(&skiplistIndex->_paths);
-    TRI_DestroyVectorString(&skiplistIndex->base._fields);
+    TRI_DestroyVectorString(&idx->_fields);
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when creating skiplist structure");
     return NULL;
@@ -1861,20 +1801,20 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
   // Assign the function calls used by the query engine
   // ...........................................................................
 
-  result = SkiplistIndex_assignMethod(&(skiplistIndex->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  result = result || SkiplistIndex_assignMethod(&(skiplistIndex->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  result = result || SkiplistIndex_assignMethod(&(skiplistIndex->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  result = SkiplistIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || SkiplistIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || SkiplistIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&skiplistIndex->_paths);
-    TRI_DestroyVectorString(&skiplistIndex->base._fields);
+    TRI_DestroyVectorString(&idx->_fields);
     SkiplistIndex_free(skiplistIndex->_skiplistIndex);
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
     return NULL;
   }
 
-  return &skiplistIndex->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2021,6 +1961,14 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameFulltextIndex (const TRI_index_t const* idx) {
+  return "fulltext";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a fulltext index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2044,26 +1992,15 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
 
   attributeName = ((char const*) path) + sizeof(TRI_shape_path_t) + (path->_aidLength * sizeof(TRI_shape_aid_t));
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) fulltextIndex->_minWordLength));
+
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, attributeName));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "fulltext"));
-  // 2013-01-17: deactivated substring indexing
-  // TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, fulltextIndex->_indexSubstrings));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) fulltextIndex->_minWordLength));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a fulltext index from collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2121,18 +2058,19 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
 /// @brief creates a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
                                       const char* attributeName,
                                       const bool indexSubstrings,
                                       int minWordLength) {
   TRI_fulltext_index_t* fulltextIndex;
+  TRI_index_t* idx;
   TRI_fts_index_t* fts;
   TRI_shaper_t* shaper;
   char* copy;
   TRI_shape_pid_t attribute;
 
   // look up the attribute
-  shaper = collection->_shaper;
+  shaper = primary->_shaper;
   attribute = shaper->findAttributePathByName(shaper, attributeName);
 
   if (attribute == 0) {
@@ -2148,23 +2086,25 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
 
-  TRI_InitIndex(&fulltextIndex->base, TRI_IDX_TYPE_FULLTEXT_INDEX, collection, false); 
-  fulltextIndex->base.json = JsonFulltextIndex;
-  fulltextIndex->base.removeIndex = RemoveIndexFulltextIndex;
+  idx = &fulltextIndex->base;
 
-  fulltextIndex->base.insert  = InsertFulltextIndex;
-  fulltextIndex->base.remove  = RemoveFulltextIndex;
-  fulltextIndex->base.cleanup = CleanupFulltextIndex;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false, true); 
 
-  fulltextIndex->_fulltextIndex = fts;
+  idx->typeName = TypeNameFulltextIndex;
+  idx->json     = JsonFulltextIndex;
+  idx->insert   = InsertFulltextIndex;
+  idx->remove   = RemoveFulltextIndex;
+  idx->cleanup  = CleanupFulltextIndex;
+
+  fulltextIndex->_fulltextIndex   = fts;
   fulltextIndex->_indexSubstrings = indexSubstrings;
-  fulltextIndex->_attribute = attribute;
-  fulltextIndex->_minWordLength = (minWordLength > 0 ? minWordLength : 1);
+  fulltextIndex->_attribute       = attribute;
+  fulltextIndex->_minWordLength   = (minWordLength > 0 ? minWordLength : 1);
 
-  TRI_InitVectorString(&fulltextIndex->base._fields, TRI_CORE_MEM_ZONE);
-  TRI_PushBackVectorString(&fulltextIndex->base._fields, copy);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
+  TRI_PushBackVectorString(&idx->_fields, copy);
 
-  return &fulltextIndex->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2554,6 +2494,13 @@ static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameBitarrayIndex (const TRI_index_t const* idx) {
+  return "bitarray";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a bitarray index as a json object
@@ -2566,7 +2513,6 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
   TRI_bitarray_index_t* baIndex;
   char const** fieldList;
   size_t j;
-
 
   // ..........................................................................
   // Recast index as bitarray index
@@ -2603,7 +2549,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
   // create the json object representing the index and proceed to fill it
   // ..........................................................................
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   // ..........................................................................
   // Create json list which will hold the key value pairs. Assuming that the
@@ -2667,24 +2613,12 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, keyValues, keyValue);
   }
 
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "bitarray"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", keyValues);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, baIndex->_supportUndef));
 
   TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a bitarray index from collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2775,12 +2709,15 @@ static int RemoveBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       TRI_vector_pointer_t* values,
-                                      bool supportUndef, int* errorNum, char** errorStr) {
+                                      bool supportUndef, 
+                                      int* errorNum, 
+                                      char** errorStr) {
   TRI_bitarray_index_t* baIndex;
+  TRI_index_t* idx;
   size_t i,j,k;
   int result;
   void* createContext;
@@ -2839,17 +2776,18 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // ...........................................................................
 
   baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
+  idx = &baIndex->base;
 
-  TRI_InitIndex(&baIndex->base, TRI_IDX_TYPE_BITARRAY_INDEX, collection, false);
-  baIndex->base.json        = JsonBitarrayIndex;
-  baIndex->base.removeIndex = RemoveIndexBitarrayIndex;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false, false);
 
-  baIndex->base.insert      = InsertBitarrayIndex;
-  baIndex->base.remove      = RemoveBitarrayIndex;
-    
-  baIndex->_supportUndef    = supportUndef;
-  baIndex->_bitarrayIndex   = NULL;
-
+  idx->typeName = TypeNameBitarrayIndex;
+  idx->json     = JsonBitarrayIndex;
+  idx->insert   = InsertBitarrayIndex;
+  idx->remove   = RemoveBitarrayIndex;
+  
+  baIndex->_supportUndef  = supportUndef;
+  baIndex->_bitarrayIndex = NULL;
+  
   // ...........................................................................
   // Copy the contents of the shape list vector into a new vector and store this
   // Do the same for the values associated with the attributes
@@ -2871,23 +2809,13 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // c strings - saves us looking these up at a latter stage
   // ...........................................................................
 
-  TRI_InitVectorString(&baIndex->base._fields, TRI_CORE_MEM_ZONE);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
     char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
 
-    if (copy == NULL) {
-      TRI_DestroyVector(&baIndex->_values);
-      TRI_DestroyVector(&baIndex->_paths);
-      TRI_DestroyVectorString(&baIndex->base._fields);
-      TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-      return NULL;
-    }
-
-    TRI_PushBackVectorString(&baIndex->base._fields, copy);
+    TRI_PushBackVectorString(&idx->_fields, copy);
   }
 
   // ...........................................................................
@@ -2908,7 +2836,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   cardinality = 0;
 
   for (j = 0;  j < paths->_length;  ++j) {
-    TRI_json_t* value = (TRI_json_t*)(TRI_AtVector(&baIndex->_values,j));
+    TRI_json_t* value = (TRI_json_t*) TRI_AtVector(&baIndex->_values,j);
     size_t numValues;
 
     if (value == NULL) {
@@ -2955,9 +2883,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // Assign the function calls used by the query engine
   // ...........................................................................
 
-  result = BittarrayIndex_assignMethod(&(baIndex->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  result = result || BittarrayIndex_assignMethod(&(baIndex->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  result = result || BittarrayIndex_assignMethod(&(baIndex->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  result = BittarrayIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || BittarrayIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || BittarrayIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&baIndex->_paths);
@@ -2976,13 +2904,12 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_FreeBitarrayIndex(&baIndex->base);
-    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
+    TRI_FreeBitarrayIndex(idx);
     LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
     return NULL;
   }
 
-  return &baIndex->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

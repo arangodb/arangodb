@@ -67,7 +67,7 @@ static void LogIndexString (const char* const what,
 
   LOG_TRACE("%s %s index (%s) for '%s'",
             what,
-            TRI_TypeNameIndex(idx),
+            idx->typeName(idx),
             buffer->_buffer,
             collectionName);
 
@@ -447,7 +447,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     }
 
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && TRI_NeedsFullCoverageIndex(idx)) {
+    if (matches._length < numIndexFields && idx->_needsFullCoverage) {
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
     }
