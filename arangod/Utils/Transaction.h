@@ -415,17 +415,10 @@ namespace triagens {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary);
 
-          if (lock) {
-            // READ-LOCK START
-            this->lockExplicit(primary, TRI_TRANSACTION_READ);
-          }
-
-          int res = primary->read(&context, (TRI_voc_key_t) key.c_str(), mptr);
-
-          if (lock) {
-            this->unlockExplicit(primary, TRI_TRANSACTION_READ);
-            // READ-LOCK END
-          }
+          int res = primary->read(&context, 
+                                  (TRI_voc_key_t) key.c_str(), 
+                                  mptr,
+                                  lock && ! isLocked(primary, TRI_TRANSACTION_READ));
 
           return res;
         }
@@ -587,7 +580,14 @@ namespace triagens {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
-          res = this->createCollectionShaped(primary, markerType, key, mptr, shaped, data, forceSync, lock);
+          res = createCollectionShaped(primary, 
+                                       markerType, 
+                                       key, 
+                                       mptr, 
+                                       shaped, 
+                                       data, 
+                                       forceSync, 
+                                       lock);
 
           TRI_FreeShapedJson(primary->_shaper, shaped);
 
@@ -610,8 +610,16 @@ namespace triagens {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary);
 
-          // TODO: set transaction lock here
-          return primary->insert(&context, key, mptr, markerType, shaped, data, (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), forceSync);
+          int res = primary->insert(&context, 
+                                    key, 
+                                    mptr, 
+                                    markerType, 
+                                    shaped, 
+                                    data, 
+                                    (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), 
+                                    forceSync);
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -629,11 +637,20 @@ namespace triagens {
                                       const bool lock) {
 
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
-          int res = this->updateCollectionShaped(primary, key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync, lock);
+          int res = updateCollectionShaped(primary, 
+                                           key, 
+                                           mptr, 
+                                           shaped, 
+                                           policy, 
+                                           expectedRevision, 
+                                           actualRevision, 
+                                           forceSync, 
+                                           lock);
 
           TRI_FreeShapedJson(primary->_shaper, shaped);
 
@@ -660,8 +677,13 @@ namespace triagens {
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
-          // TODO: set transaction lock here
-          int res = primary->update(&context, (TRI_voc_key_t) key.c_str(), mptr, shaped, &updatePolicy, (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), forceSync);
+          int res = primary->update(&context, 
+                                    (TRI_voc_key_t) key.c_str(), 
+                                    mptr, 
+                                    shaped, 
+                                    &updatePolicy, 
+                                    (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), 
+                                    forceSync);
           
           return res;
         }
@@ -675,21 +697,19 @@ namespace triagens {
                                       const TRI_doc_update_policy_e policy,
                                       const TRI_voc_rid_t expectedRevision,
                                       TRI_voc_rid_t* actualRevision,
-                                      const bool forceSync) {
+                                      const bool forceSync,
+                                      const bool lock) {
           TRI_doc_operation_context_t context;
           TRI_InitContextPrimaryCollection(&context, primary);
           
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
 
-          // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // TODO: fix locks
-
-          int res = primary->destroy(&context, (TRI_voc_key_t) key.c_str(), &updatePolicy, false, forceSync);
-
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // WRITE-LOCK END
+          int res = primary->destroy(&context, 
+                                     (TRI_voc_key_t) key.c_str(), 
+                                     &updatePolicy, 
+                                     (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), 
+                                     forceSync);
 
           return res;
         }
@@ -725,7 +745,11 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
           
-            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str(), &updatePolicy, false, forceSync);
+            res = primary->destroy(&context, 
+                                   (TRI_voc_key_t) id.c_str(), 
+                                   &updatePolicy, 
+                                   false,
+                                   forceSync);
 
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error

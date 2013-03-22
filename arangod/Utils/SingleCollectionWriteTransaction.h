@@ -266,7 +266,8 @@ namespace triagens {
                             const TRI_doc_update_policy_e policy,
                             bool forceSync,
                             const TRI_voc_rid_t expectedRevision,
-                            TRI_voc_rid_t* actualRevision) {
+                            TRI_voc_rid_t* actualRevision,
+                            const bool lock) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
@@ -274,7 +275,7 @@ namespace triagens {
           TRI_primary_collection_t* primary = this->primaryCollection();
           _synchronous = forceSync || primary->base._info._waitForSync;
 
-          return this->deleteCollectionDocument(primary, key, policy, expectedRevision, actualRevision, forceSync);
+          return this->deleteCollectionDocument(primary, key, policy, expectedRevision, actualRevision, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
