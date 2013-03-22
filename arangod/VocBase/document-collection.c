@@ -1035,7 +1035,6 @@ static int UpdateDocument (TRI_document_collection_t* document,
     }
   }
     
-
   return res;
 }
 
@@ -1232,6 +1231,42 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
              (unsigned long long) d->_validTo);
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief notify a collection about transaction begin/commit/abort
+////////////////////////////////////////////////////////////////////////////////
+
+static int NotifyTransaction (TRI_primary_collection_t* primary, 
+                              TRI_transaction_status_e status) {
+  TRI_document_collection_t* document;
+  size_t i, n;
+
+  document = (TRI_document_collection_t*) primary;
+
+  n = document->_allIndexes._length;
+
+  for (i = 0; i < n ; ++i) {
+    TRI_index_t* idx = TRI_AtVectorPointer(&document->_allIndexes, i);
+
+    if (status == TRI_TRANSACTION_RUNNING) {
+      if (idx->beginTransaction != NULL) {
+        idx->beginTransaction(idx, primary);
+      }
+    }
+    else if (status == TRI_TRANSACTION_ABORTED) {
+      if (idx->abortTransaction != NULL) {
+        idx->abortTransaction(idx, primary);
+      }
+    }
+    else if (status == TRI_TRANSACTION_COMMITTED) {
+      if (idx->commitTransaction != NULL) {
+        idx->commitTransaction(idx, primary);
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2058,18 +2093,21 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   TRI_InitCondition(&collection->_journalsCondition);
 
   // setup methods
-  collection->base.beginRead  = BeginRead;
-  collection->base.endRead    = EndRead;
+  collection->base.beginRead         = BeginRead;
+  collection->base.endRead           = EndRead;
 
-  collection->base.beginWrite = BeginWrite;
-  collection->base.endWrite   = EndWrite;
+  collection->base.beginWrite        = BeginWrite;
+  collection->base.endWrite          = EndWrite;
 
-  collection->base.insert     = InsertShapedJson;
-  collection->base.read       = ReadShapedJson;
-  collection->base.update     = UpdateShapedJson;
-  collection->base.destroy    = DeleteShapedJson;
+  collection->base.notifyTransaction = NotifyTransaction;
 
-  collection->cleanupIndexes  = CleanupIndexes;
+  // crud methods
+  collection->base.insert            = InsertShapedJson;
+  collection->base.read              = ReadShapedJson;
+  collection->base.update            = UpdateShapedJson;
+  collection->base.destroy           = DeleteShapedJson;
+
+  collection->cleanupIndexes         = CleanupIndexes;
 
   return true;
 }

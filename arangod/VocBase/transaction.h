@@ -34,7 +34,6 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
-#include "BasicsC/voc-errors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,34 +103,8 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief an entry in the transactions list
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-typedef struct TRI_transaction_list_entry_s {
-  TRI_transaction_local_id_t _id;
-  TRI_transaction_status_e   _status;
-}
-TRI_transaction_list_entry_t;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction list typedef
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-typedef struct TRI_transaction_list_s {
-  TRI_vector_t _vector; // vector containing trx_list_entry_t
-  size_t _numRunning;   // number of currently running trx
-  size_t _numAborted;   // number of already aborted trx
-}
-TRI_transaction_list_t;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               TRANSACTION CONTEXT
@@ -165,19 +138,6 @@ typedef struct TRI_transaction_context_s {
   struct TRI_vocbase_s*     _vocbase;           // pointer to vocbase  
 }
 TRI_transaction_context_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global instance of a collection in the transaction system
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-typedef struct TRI_transaction_collection_global_s {
-  TRI_transaction_cid_t      _cid;               // collection id
-  TRI_transaction_list_t     _writeTransactions; // list of write-transactions currently going on for the collection
-  TRI_mutex_t                _writeLock;         // write lock for the collection, used to serialize writes on the same collection
-}
-TRI_transaction_collection_global_t;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -226,14 +186,6 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const,
                                              const TRI_transaction_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump transaction context data
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,16 +208,9 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 
 typedef struct TRI_transaction_collection_s {
   TRI_transaction_cid_t                _cid;                // collection id
-  TRI_transaction_type_e               _type;               // access type (read|write)
+  TRI_transaction_type_e               _accessType;         // access type (read|write)
   int                                  _nestingLevel;       // the transaction level that added this collection
-#if 0
-  TRI_transaction_list_t               _writeTransactions;  // private copy of other write transactions at transaction start
-#endif
   struct TRI_vocbase_col_s*            _collection;         // vocbase collection pointer
-#if 0
-  TRI_transaction_collection_global_t* _globalInstance;     // pointer to the global instance of the collection in the trx system
-  bool                                 _globalLock;         // global collection lock flag (used for write transactions)
-#endif
   bool                                 _locked;             // collection lock flag
 }
 TRI_transaction_collection_t;
@@ -295,7 +240,6 @@ typedef struct TRI_transaction_s {
   TRI_transaction_context_t*    _context;        // global context object
   // TODO: fix
   uint64_t                      _id; 
-  //TRI_transaction_id_t          _id;             // id of transaction
   TRI_transaction_type_e        _type;           // access type (read|write)
   TRI_transaction_status_e      _status;         // current status
   TRI_vector_pointer_t          _collections;    // list of participating collections
@@ -341,22 +285,6 @@ void TRI_FreeTransaction (TRI_transaction_t* const);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the transaction consists only of a single operation
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsSingleOperationTransaction (const TRI_transaction_t* const);
-*/
-
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the transaction spans multiple write collections
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsMultiCollectionWriteTransaction (const TRI_transaction_t* const);
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump information about a transaction
