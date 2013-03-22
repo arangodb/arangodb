@@ -287,6 +287,50 @@ CLEANUP += \
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief generate json for swagger REST-API
+################################################################################
+
+.PHONY: swagger
+
+swagger:
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/frontend/newswagger/api-docs/edges	
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/frontend/newswagger/api-docs/document
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-collection.js  > @srcdir@/frontend/newswagger/api-docs/collection
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-graph.js  > @srcdir@/frontend/newswagger/api-docs/graph
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-user.js  > @srcdir@/frontend/newswagger/api-docs/user
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-system.js  > @srcdir@/frontend/newswagger/api-docs/system
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-cursor.js  > @srcdir@/frontend/newswagger/api-docs/cursor
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-explain.js  > @srcdir@/frontend/newswagger/api-docs/explain
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-index.js  > @srcdir@/frontend/newswagger/api-docs/index
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-simple.js  > @srcdir@/frontend/newswagger/api-docs/simple
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-query.js  > @srcdir@/frontend/newswagger/api-docs/query
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-structure.js  > @srcdir@/frontend/newswagger/api-docs/structure
+	
+
+################################################################################
 ### @brief generate examples
 ################################################################################
 
