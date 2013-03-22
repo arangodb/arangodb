@@ -125,7 +125,7 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext();
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(false);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
