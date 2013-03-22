@@ -284,8 +284,9 @@ typedef struct TRI_primary_collection_s {
 
   TRI_associative_pointer_t _primaryIndex;
   struct TRI_key_generator_s* _keyGenerator;
-
   struct TRI_cap_constraint_s* _capConstraint;
+
+  int64_t _numberDocuments;
 
   int (*beginRead) (struct TRI_primary_collection_s*);
   int (*endRead) (struct TRI_primary_collection_s*);
