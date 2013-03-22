@@ -59,6 +59,16 @@ struct TRI_vocbase_col_s;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transaction id
+////////////////////////////////////////////////////////////////////////////////
+
+typedef uint64_t TRI_transaction_id_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection id
+////////////////////////////////////////////////////////////////////////////////
+
 typedef uint64_t TRI_transaction_cid_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,18 +134,10 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_context_s {
-  //TRI_transaction_id_t      _id;                // last transaction id assigned
-  
-  TRI_read_write_lock_t     _rwLock;            // lock used to either simulatensously read this structure, 
-                                                // or uniquely modify this structure
-#if 0  
-  TRI_mutex_t               _lock;              // lock used to serialize starting/stopping transactions
-  TRI_mutex_t               _collectionLock;    // lock used when accessing _collections
-  TRI_transaction_list_t    _readTransactions;  // global list of currently ongoing read transactions
-  TRI_transaction_list_t    _writeTransactions; // global list of currently ongoing write transactions
-  TRI_associative_pointer_t _collections;       // list of collections (TRI_transaction_collection_global_t)
-#endif
-  struct TRI_vocbase_s*     _vocbase;           // pointer to vocbase  
+  TRI_associative_pointer_t _collections;
+  TRI_read_write_lock_t     _collectionsLock;
+
+  struct TRI_vocbase_s*     _vocbase;     
 }
 TRI_transaction_context_t;
 
@@ -182,7 +184,7 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t* const);
 /// this function must be called for all collections that are dropped
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const,
+void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t*,
                                              const TRI_transaction_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,16 +205,34 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief global instance of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_transaction_collection_global_s {
+  TRI_transaction_cid_t _cid;
+
+  TRI_read_write_lock_t _lock;
+
+  TRI_transaction_id_t  _lastStartedReader;
+  TRI_transaction_id_t  _lastFinishedReader;
+
+  TRI_transaction_id_t  _lastStartedWriter;
+  TRI_transaction_id_t  _lastAbortedWriter;
+  TRI_transaction_id_t  _lastFinishedWriter;
+}
+TRI_transaction_collection_global_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief collection used in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_collection_s {
-  TRI_transaction_cid_t       _cid;            // collection id
-  TRI_transaction_type_e      _accessType;     // access type (read|write)
-  int                         _nestingLevel;   // the transaction level that added this collection
-  struct TRI_vocbase_col_s*   _collection;     // vocbase collection pointer
-  uint64_t                    _numWrites;      // number of writes performed for the collection
-  bool                        _locked;         // collection lock flag
+  TRI_transaction_cid_t                _cid;            // collection id
+  TRI_transaction_type_e               _accessType;     // access type (read|write)
+  int                                  _nestingLevel;   // the transaction level that added this collection
+  struct TRI_vocbase_col_s*            _collection;     // vocbase collection pointer
+  TRI_transaction_collection_global_t* _globalInstance; // pointer to the global instance
+  bool                                 _locked;         // collection lock flag
 }
 TRI_transaction_collection_t;
 
@@ -238,14 +258,13 @@ TRI_transaction_hint_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_s {
-  TRI_transaction_context_t*    _context;        // global context object
-  // TODO: fix
-  uint64_t                      _id; 
-  TRI_transaction_type_e        _type;           // access type (read|write)
-  TRI_transaction_status_e      _status;         // current status
-  TRI_vector_pointer_t          _collections;    // list of participating collections
-  TRI_transaction_hint_t        _hints;          // hints;
-  int                           _nestingLevel; 
+  TRI_transaction_context_t* _context;        // global context object
+  TRI_transaction_id_t       _id;
+  TRI_transaction_type_e     _type;           // access type (read|write)
+  TRI_transaction_status_e   _status;         // current status
+  TRI_vector_pointer_t       _collections;    // list of participating collections
+  TRI_transaction_hint_t     _hints;          // hints;
+  int                        _nestingLevel; 
 }
 TRI_transaction_t;
 

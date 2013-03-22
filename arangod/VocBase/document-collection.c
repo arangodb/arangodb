@@ -369,12 +369,10 @@ static int CloneDocumentMarker (TRI_df_marker_t const* original,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  // copy non-changed data (e.g. key(s)) from old marker into new marker
-  memcpy(marker, original, baseLength);
-  
-  // set the marker type, size, revision id etc.   
   tick = TRI_NewTickVocBase();
-  TRI_InitMarker(&marker->base, markerType, *totalSize, tick);
+  // copy non-changed data (e.g. key(s)) from old marker into new marker
+  TRI_CloneMarker(&marker->base, original, baseLength, *totalSize, tick);
+
   marker->_rid   = tick;
   marker->_shape = shaped->_sid;
 

@@ -206,7 +206,7 @@ typedef struct TRI_col_header_marker_s {
   char _padding_col_header_marker[4];
 #endif
 
-  TRI_voc_cid_t _cid;                   //  8 bytes
+  TRI_voc_cid_t  _cid;                   //  8 bytes
 }
 TRI_col_header_marker_t;
 
