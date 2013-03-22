@@ -37,6 +37,40 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public classes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Converts an object to a UTF-8-encoded and normalized character array.
+////////////////////////////////////////////////////////////////////////////////
+
+class TRI_Utf8ValueNFC {
+  public:
+    TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj);
+    ~TRI_Utf8ValueNFC ();
+    char* operator* () { return _str; }
+    const char* operator* () const { return _str; }
+    size_t length () const { return _length; }
+  private:
+    char* _str;
+    size_t _length;
+    TRI_memory_zone_t* _memoryZone;
+
+    // Disallow copying and assigning.
+    TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&);
+    void operator=(const TRI_Utf8ValueNFC&);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
 
@@ -163,39 +197,28 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const
 v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const& message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a v8 object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the path list
+//
+/// The spilt has been modified -- only except semicolon, previously we excepted
+/// a colon as well. So as not to break existing configurations, we only make
+/// the modification for windows version -- since there isn't one yet!
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Array> TRI_V8PathList (std::string const& modules);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Utils (v8::Handle<v8::Context>,
                       std::string const& modules,
                       std::string const& nodes);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Converts an object to a UTF-8-encoded and normalized character array.
-////////////////////////////////////////////////////////////////////////////////
-
-class TRI_Utf8ValueNFC {
-  public:
-    TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj);
-    ~TRI_Utf8ValueNFC();
-    char* operator*() { return _str; }
-    const char* operator*() const { return _str; }
-    size_t length() const { return _length; }
-  private:
-    char* _str;
-    size_t _length;
-    TRI_memory_zone_t* _memoryZone;
-
-    // Disallow copying and assigning.
-    TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&);
-    void operator=(const TRI_Utf8ValueNFC&);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize a v8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

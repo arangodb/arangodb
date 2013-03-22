@@ -241,6 +241,19 @@
     delete SYS_REQUEST_STATISTICS;
   }
 
+  internal.developmentMode = false;
+
+  if (typeof DEVELOPMENT_MODE !== "undefined") {
+    internal.developmentMode = DEVELOPMENT_MODE;
+    delete DEVELOPMENT_MODE;
+  }
+
+  if (internal.developmentMode) {
+    internal.log("warning", "################################################################################");
+    internal.log("warning", "development mode is active, never use this in production");
+    internal.log("warning", "################################################################################");
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
