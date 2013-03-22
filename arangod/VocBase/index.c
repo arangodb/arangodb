@@ -288,10 +288,16 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, TRI_index_t* idx) {
   TRI_json_t* json;
 
   json = TRI_CreateArrayJson(zone);
+
   if (json != NULL) {
-    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateNumberJson(zone, idx->_iid));
+    char* number;
+    
+    number = TRI_StringUInt64(idx->_iid);
+    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
     TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, idx->typeName(idx)));
     TRI_Insert3ArrayJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   }
 
   return json;
