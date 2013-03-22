@@ -207,11 +207,12 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_collection_s {
-  TRI_transaction_cid_t                _cid;                // collection id
-  TRI_transaction_type_e               _accessType;         // access type (read|write)
-  int                                  _nestingLevel;       // the transaction level that added this collection
-  struct TRI_vocbase_col_s*            _collection;         // vocbase collection pointer
-  bool                                 _locked;             // collection lock flag
+  TRI_transaction_cid_t       _cid;            // collection id
+  TRI_transaction_type_e      _accessType;     // access type (read|write)
+  int                         _nestingLevel;   // the transaction level that added this collection
+  struct TRI_vocbase_col_s*   _collection;     // vocbase collection pointer
+  uint64_t                    _numWrites;      // number of writes performed for the collection
+  bool                        _locked;         // collection lock flag
 }
 TRI_transaction_collection_t;
 

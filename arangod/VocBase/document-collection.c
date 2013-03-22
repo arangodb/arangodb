@@ -269,6 +269,24 @@ static void CollectionRevisionUpdate (TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the document counter
+////////////////////////////////////////////////////////////////////////////////
+
+static void IncreaseDocumentCount (TRI_primary_collection_t* primary) {
+  primary->_numberDocuments++;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the document counter
+////////////////////////////////////////////////////////////////////////////////
+
+static void DecreaseDocumentCount (TRI_primary_collection_t* primary) {
+  TRI_ASSERT_DEBUG(primary->_numberDocuments > 0);
+
+  primary->_numberDocuments--;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document or edge marker in memory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1409,6 +1427,9 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
     // something has failed... free the header
     document->_headers->release(document->_headers, header);
   }
+  else {
+    IncreaseDocumentCount(primary);
+  }
     
   if (lock) {
     primary->endWrite(primary);
@@ -1587,6 +1608,10 @@ static int DeleteShapedJson (TRI_doc_operation_context_t* context,
 
   res = DeleteDocument(context, policy, marker, totalSize, forceSync);
 
+  if (res == TRI_ERROR_NO_ERROR) {
+    DecreaseDocumentCount(primary);
+  }
+
   if (lock) {
     primary->endWrite(primary);
   }
@@ -1658,14 +1683,14 @@ static int EndWrite (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
-  TRI_document_collection_t* collection = data;
+  TRI_document_collection_t* document = data;
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* found;
   TRI_doc_datafile_info_t* dfi;
   TRI_key_generator_t* keyGenerator;
   TRI_voc_key_t key = NULL;
 
-  primary = &collection->base;
+  primary = &document->base;
   keyGenerator = primary->_keyGenerator;
 
   // new or updated document
@@ -1674,10 +1699,9 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
     size_t markerSize;
   
-    CollectionRevisionUpdate(collection, marker);
+    CollectionRevisionUpdate(document, marker);
 
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-
       LOG_TRACE("document: fid %llu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
                 (unsigned long long) datafile->_fid,
                 ((char*) d + d->_offsetKey),
@@ -1686,10 +1710,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long) d->_offsetKey);
 
       markerSize = sizeof(TRI_doc_document_key_marker_t);
-      key = ((char*) d) + d->_offsetKey;
     }
     else {
-
 #ifdef TRI_ENABLE_LOGGER
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
@@ -1703,12 +1725,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long) d->_offsetKey);
 #endif
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
-      key = ((char*) d) + d->_offsetKey;
     }
 
     if (primary->base._maximumMarkerSize < markerSize) {
       primary->base._maximumMarkerSize = markerSize;
     }
+
+    key = ((char*) d) + d->_offsetKey;
 
     if (keyGenerator->track != NULL) {
       keyGenerator->track(keyGenerator, key);
@@ -1722,7 +1745,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       int res;
 
       // get a header
-      res = CreateHeader(collection, (TRI_doc_document_key_marker_t*) marker, datafile->_fid, &header);
+      res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, datafile->_fid, &header);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("out of memory");
@@ -1734,25 +1757,21 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_ASSERT_DEBUG(header != NULL);
 
       // insert into primary index
-      res = InsertPrimaryIndex(collection, header, false);
+      res = InsertPrimaryIndex(document, header, false);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        // insertion failed
-        LOG_ERROR("inserting document into indexes failed");
+      if (res == TRI_ERROR_NO_ERROR) {
+        res = InsertSecondaryIndexes(document, header, false);
 
-        collection->_headers->release(collection->_headers, header);
-        return false;
+        if (res != TRI_ERROR_NO_ERROR) {
+          DeletePrimaryIndex(document, header, true);
+        }
       }
 
-      res = InsertSecondaryIndexes(collection, header, false);
-
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
         LOG_ERROR("inserting document into indexes failed");
+        document->_headers->release(document->_headers, header);
 
-        DeletePrimaryIndex(collection, header, true);
-
-        collection->_headers->release(collection->_headers, header);
         return false;
       }
       
@@ -1763,10 +1782,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_numberAlive++;
         dfi->_sizeAlive += LengthDataMasterPointer(header);
       }
+
+      IncreaseDocumentCount(primary);
     }
 
     // it is an update, but only if found has a smaller revision identifier
-    else if (found->_rid < d->_rid || (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
+    else if (found->_rid < d->_rid || 
+             (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
       TRI_doc_mptr_t* newHeader;
       TRI_doc_mptr_t oldData;
       int res;
@@ -1775,7 +1797,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       oldData = *found;
 
       // delete old entries
-      DeleteSecondaryIndexes(collection, found, false);
+      DeleteSecondaryIndexes(document, found, false);
 
       // TODO: this will be identical for non-transactional collections only
       newHeader = CONST_CAST(found);
@@ -1786,51 +1808,55 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       
 
       // update secondary indexes
-      res = InsertSecondaryIndexes(collection, found, false);
+      res = InsertSecondaryIndexes(document, found, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
         LOG_ERROR("inserting document into indexes failed");
 
         // revert the changes
-        DeleteSecondaryIndexes(collection, found, true);
+        DeleteSecondaryIndexes(document, found, true);
 
         // copy the old data back into the header
         memcpy(newHeader, &oldData, sizeof(TRI_doc_mptr_t));
 
         // and re-insert the old header
-        InsertSecondaryIndexes(collection, found, true);
+        InsertSecondaryIndexes(document, found, true);
         
         return false;
       }
 
       // update the datafile info
-      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, oldData._fid);
 
       if (dfi != NULL) {
         size_t length = LengthDataMasterPointer(found);
 
-/*
-        issue #411: if we decrease here, the counts might get negative!
-        dfi->_numberAlive -= 1;
+        dfi->_numberAlive--;
         dfi->_sizeAlive -= length;
-*/
 
         dfi->_numberDead++;
         dfi->_sizeDead += length;
       }
 
-      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
+      if (oldData._fid != datafile->_fid) {
+        dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
+      }
 
       if (dfi != NULL) {
         dfi->_numberAlive++;
         dfi->_sizeAlive += LengthDataMasterPointer(newHeader);
       }
+
+      if (oldData._validTo > 0) {
+        // we resurrected a deleted marker
+        // increase the count by one now because we did not count the document previously
+        IncreaseDocumentCount(primary);
+      }
     }
 
     // it is a delete
     else if (found->_validTo != 0) {
-      // TODO: fix for trx: check if delete was committed or not
       LOG_TRACE("skipping already deleted document: %s", key);
     }
 
@@ -1839,7 +1865,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
 
       if (dfi != NULL) {
-        dfi->_numberDead += 1;
+        dfi->_numberDead++;
         dfi->_sizeDead += LengthDataMasterPointer(found);
       }
     }
@@ -1868,37 +1894,33 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
       int res;
 
-      header = collection->_headers->request(collection->_headers);
+      header = document->_headers->request(document->_headers);
       if (header == NULL) {
         LOG_ERROR("out of memory");
         return false;
       }
 
-      header->_rid       = d->_rid;
-      header->_validTo   = marker->_tick; // TODO: fix for trx
-      header->_data      = marker;
-      header->_key       = key;
+      header->_fid     = datafile->_fid;
+      header->_rid     = d->_rid;
+      header->_validTo = marker->_tick; // TODO: fix for trx
+      header->_data    = marker;
+      header->_key     = key;
 
       // insert into indexes
-      res = InsertPrimaryIndex(collection, header, false);
+      res = InsertPrimaryIndex(document, header, false);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        // insertion failed
-        LOG_ERROR("inserting document into indexes failed");
-
-        collection->_headers->release(collection->_headers, header);
-        return false;
+      if (res == TRI_ERROR_NO_ERROR) {
+        res = InsertSecondaryIndexes(document, header, false);
       }
 
-      res = InsertSecondaryIndexes(collection, header, false);
-      
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
         LOG_ERROR("inserting document into indexes failed");
+        
+        DeleteSecondaryIndexes(document, header, true);
+        DeletePrimaryIndex(document, header, true);
 
-        DeletePrimaryIndex(collection, header, true);
-
-        collection->_headers->release(collection->_headers, header);
+        document->_headers->release(document->_headers, header);
         return false;
       }
 
@@ -1906,7 +1928,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
 
       if (dfi != NULL) {
-        dfi->_numberDeletion += 1;
+        dfi->_numberDeletion++;
       }
     }
 
@@ -1917,9 +1939,9 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       newHeader = CONST_CAST(found);
 
       // mark element as deleted
-      newHeader->_validTo   = marker->_tick; // TODO: fix for trx
-      newHeader->_data      = marker;
-      newHeader->_key       = key;
+      newHeader->_validTo = marker->_tick; // TODO: fix for trx
+      newHeader->_data    = marker;
+      newHeader->_key     = key;
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
@@ -1934,11 +1956,15 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_sizeDead += length;
       }
 
-      dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
+      if (found->_fid != datafile->_fid) {
+        dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
+      }
 
       if (dfi != NULL) {
-        dfi->_numberDeletion += 1;
+        dfi->_numberDeletion++;
       }
+
+      DecreaseDocumentCount(primary);
     }
 
     // it is a double delete
