@@ -1139,8 +1139,8 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(UnitTests[i].c_str()));
   }
 
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
 
   // run tests
   char const* input = "require(\"jsunity\").runCommandLineTests();";
@@ -1217,8 +1217,8 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(JsLint[i].c_str()));
   }
 
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
 
   // run tests
   char const* input = "require(\"jslint\").runCommandLineTests({ });";
@@ -1392,15 +1392,13 @@ int main (int argc, char* argv[]) {
   context->Enter();
 
   // set pretty print default: (used in print.js)
-  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
-  // add colors for print.js
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::Boolean::New(BaseClient.colors()));
+  TRI_AddGlobalVariableVocbase(context, "PRETTY_PRINT", v8::Boolean::New(BaseClient.prettyPrint()));
 
+  // add colors for print.js
+  TRI_AddGlobalVariableVocbase(context, "COLOR_OUTPUT", v8::Boolean::New(BaseClient.colors()));
 
   // add function SYS_OUTPUT to use pager
-  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
-                         v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
-                         v8::ReadOnly);
+  TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
   TRI_InitV8Utils(context, StartupModules, StartupNodeModules);
   TRI_InitV8Shell(context);
@@ -1440,46 +1438,21 @@ int main (int argc, char* argv[]) {
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
 
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
-    connection_inst->SetInternalFieldCount(2);
-
-    context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());
+    connection_inst->SetInternalFieldCount(2);    
+    
+    TRI_AddGlobalVariableVocbase(context, "ArangoConnection", connection_proto->NewInstance());
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
 
     // add the client connection to the context:
-    context->Global()->Set(v8::String::New("SYS_ARANGO"),
-                           wrapV8ClientConnection(ClientConnection),
-                           v8::ReadOnly);
+    TRI_AddGlobalVariableVocbase(context, "SYS_ARANGO", wrapV8ClientConnection(ClientConnection));
   }
-
-  context->Global()->Set(v8::String::New("SYS_START_PAGER"),
-                         v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction(),
-                         v8::ReadOnly);
-  context->Global()->Set(v8::String::New("SYS_STOP_PAGER"),
-                         v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_IMPORT_CSV_FILE"),
-                         v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction(),
-                         v8::ReadOnly);
-  context->Global()->Set(v8::String::New("SYS_IMPORT_JSON_FILE"),
-                         v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
-                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COMPARE_STRING"),
-                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("HAS_ICU"),
-#ifdef TRI_ICU_VERSION
-                         v8::Boolean::New(true),
-#else
-                         v8::Boolean::New(false),
-#endif
-                         v8::ReadOnly);
+    
+  TRI_AddGlobalVariableVocbase(context, "SYS_START_PAGER", v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_STOP_PAGER", v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_CSV_FILE", v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_JSON_FILE", v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "NORMALIZE_STRING", v8::FunctionTemplate::New(JS_normalize_string)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "COMPARE_STRING", v8::FunctionTemplate::New(JS_compare_string)->GetFunction());
 
   // .............................................................................
   // banner
@@ -1621,8 +1594,8 @@ int main (int argc, char* argv[]) {
   LOGGER_DEBUG("using JavaScript startup files at '" << StartupPath << "'");
   StartupLoader.setDirectory(StartupPath);
 
-  context->Global()->Set(v8::String::New("ARANGO_QUIET"), v8::Boolean::New(BaseClient.quiet()), v8::ReadOnly);
-  context->Global()->Set(v8::String::New("VALGRIND"), v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
+  TRI_AddGlobalVariableVocbase(context, "ARANGO_QUIET", v8::Boolean::New(BaseClient.quiet()));
+  TRI_AddGlobalVariableVocbase(context, "VALGRIND", v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
 
   // load all init files
   vector<string> files;
