@@ -209,6 +209,8 @@ static TRI_transaction_collection_t* CreateCollection (const TRI_transaction_cid
   collection->_collection   = NULL;
   collection->_locked       = false;
 
+  collection->_numWrites    = 0;
+
   return collection;
 }
 
