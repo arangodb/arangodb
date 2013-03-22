@@ -46,15 +46,17 @@ var shellView = Backbone.View.extend({
   submitEditor: function () {
     var editor = ace.edit("editor");
     var data = editor.getValue();
-    
     this.executeJs(data);
     jqconsole.Focus();
   },
   replShell: function () {
     // Creating the console.
+    var internal = require("internal");
+    var arangodb = require("org/arangodb");
+    var client = require("org/arangodb/arangosh");
     var header = 'Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.\n';
     window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "...>");
-
+    this.executeJs(internal.print(client.HELP));
     // Abort prompt on Ctrl+Z.
     jqconsole.RegisterShortcut('Z', function() {
       jqconsole.AbortPrompt();
@@ -73,7 +75,8 @@ var shellView = Backbone.View.extend({
     // Handle a command.
     var handler = function(command) {
       if (command === 'help') {
-        command = "require(\"arangosh\").HELP";
+        //command = "require(\"arangosh\").HELP";
+        command = help();
       }
       if (command === "exit") {
         location.reload();
