@@ -101,7 +101,7 @@ static TRI_spin_t TickLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the auth info
+/// @brief hashes the auth info
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyAuthInfo (TRI_associative_pointer_t* array, void const* key) {
@@ -111,7 +111,7 @@ static uint64_t HashKeyAuthInfo (TRI_associative_pointer_t* array, void const* k
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the auth info
+/// @brief hashes the auth info
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, void const* element) {
@@ -132,7 +132,7 @@ static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array, void const* key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection id
+/// @brief hashes the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
@@ -142,7 +142,7 @@ static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection id
+/// @brief hashes the collection id
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementCid (TRI_associative_pointer_t* array, void const* element) {
@@ -163,7 +163,7 @@ static bool EqualKeyCid (TRI_associative_pointer_t* array, void const* key, void
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection name
+/// @brief hashes the collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyCollectionName (TRI_associative_pointer_t* array, void const* key) {
@@ -173,7 +173,7 @@ static uint64_t HashKeyCollectionName (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the collection name
+/// @brief hashes the collection name
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementCollectionName (TRI_associative_pointer_t* array, void const* element) {
@@ -1362,6 +1362,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_deadCollections._buffer[i];
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, collection->_cid);
     FreeCollection(vocbase, collection);
   }
 
@@ -1370,6 +1371,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, collection->_cid);
     FreeCollection(vocbase, collection);
   }
 

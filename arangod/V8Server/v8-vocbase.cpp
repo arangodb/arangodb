@@ -2193,7 +2193,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: count()")));
+                                               "usage: next()")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3400,7 +3400,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
 
-  size_t s = primary->size(primary);
+  const TRI_voc_size_t s = primary->size(primary);
 
   trx.finish(res);
   // READ-LOCK end
