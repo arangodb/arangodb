@@ -86,7 +86,8 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertCapConstraint (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* doc) {
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_cap_constraint_t* cap;
 
   cap = (TRI_cap_constraint_t*) idx;
@@ -137,7 +138,9 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
 /// @brief removes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveCapConstraint (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_cap_constraint_t* cap;
 
   cap = (TRI_cap_constraint_t*) idx;

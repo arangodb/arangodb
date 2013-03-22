@@ -416,7 +416,9 @@ static const char* TypeNamePrimary (const TRI_index_t const* idx) {
 /// @brief insert methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertPrimary (TRI_index_t* idx, 
+                          TRI_doc_mptr_t const* doc, 
+                          const bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -424,7 +426,9 @@ static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief remove methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemovePrimary (TRI_index_t* idx, 
+                          TRI_doc_mptr_t const* doc,
+                          const bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -631,7 +635,9 @@ static const char* TypeNameEdge (const TRI_index_t const* idx) {
 /// @brief insert method for edges
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
+static int InsertEdge (TRI_index_t* idx, 
+                       TRI_doc_mptr_t const* mptr,
+                       const bool isRollback) {
   TRI_edge_header_t* entryIn;
   TRI_edge_header_t* entryOut;
   TRI_doc_edge_key_marker_t const* edge;
@@ -664,14 +670,14 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
   entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive);
   entryIn->_cid = edge->_toCid;
   entryIn->_searchKey._offsetKey = edge->_offsetToKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, false);
+  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, isRollback);
 
   // second slot: OUT
   entryOut->_mptr = mptr;
   entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive);
   entryOut->_cid = edge->_fromCid;
   entryOut->_searchKey._offsetKey = edge->_offsetFromKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, false);
+  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, isRollback);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -680,7 +686,9 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
 /// @brief remove an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveEdge (TRI_index_t* idx, 
+                       TRI_doc_mptr_t const* doc,
+                       const bool isRollback) {
   TRI_edge_header_t entry;
   TRI_edge_header_t* old;
   TRI_doc_edge_key_marker_t const* edge;
@@ -895,7 +903,9 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
 /// @brief attempts to add a document to a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertPriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertPriorityQueueIndex (TRI_index_t* idx, 
+                                     TRI_doc_mptr_t const* doc,
+                                     const bool isRollback) {
   TRI_pq_index_element_t pqElement;
   TRI_priorityqueue_index_t* pqIndex;
   int res;
@@ -1050,7 +1060,9 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collect
 /// @brief removes a document from a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemovePriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemovePriorityQueueIndex (TRI_index_t* idx, 
+                                     TRI_doc_mptr_t const* doc,
+                                     const bool isRollback) {
   TRI_priorityqueue_index_t* pqIndex;
   
   // ............................................................................
@@ -1504,8 +1516,9 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
 /// @brief inserts a document into a skip list index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-
+static int InsertSkiplistIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
@@ -1658,7 +1671,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveSkiplistIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
@@ -1927,7 +1942,9 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
 /// @brief inserts a document into the fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertFulltextIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_fulltext_index_t* fulltextIndex;
   TRI_fulltext_wordlist_t* wordlist;
   int res;
@@ -2007,7 +2024,9 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
 /// @brief removes a document from a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveFulltextIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_fulltext_index_t* fulltextIndex;
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
@@ -2397,8 +2416,9 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 /// @brief inserts a document into a bitarray list index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-
+static int InsertBitarrayIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_bitarray_index_key_t element;
   TRI_bitarray_index_t* baIndex;
   int result;
@@ -2625,7 +2645,9 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
 /// @brief removes a document from a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveBitarrayIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_bitarray_index_key_t element;
   TRI_bitarray_index_t* baIndex;
   int result;

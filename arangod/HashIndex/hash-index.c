@@ -442,7 +442,7 @@ static const char* TypeNameHashIndex (const TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
-                                  TRI_primary_collection_t const* collection) {
+                                  TRI_primary_collection_t const* primary) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_hash_index_t* hashIndex;
@@ -459,7 +459,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
   // Allocate sufficent memory for the field list
   // .............................................................................
 
-  fieldList = TRI_FieldListByPathList(hashIndex->base._collection->_shaper, &hashIndex->_paths);
+  fieldList = TRI_FieldListByPathList(primary->_shaper, &hashIndex->_paths);
 
   if (fieldList == NULL) {
     return NULL;
@@ -486,7 +486,9 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
 /// @brief inserts a a document to a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* document) {
+static int InsertHashIndex (TRI_index_t* idx, 
+                            TRI_doc_mptr_t const* document,
+                            const bool isRollback) {
   TRI_hash_index_element_t hashElement;
   TRI_hash_index_t* hashIndex;
   int res;
@@ -517,7 +519,9 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* document) {
 /// @brief removes a document from a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* document) {
+static int RemoveHashIndex (TRI_index_t* idx, 
+                            TRI_doc_mptr_t const* document,
+                            const bool isRollback) {
   TRI_hash_index_element_t hashElement;
   TRI_hash_index_t* hashIndex;
   int res;
@@ -562,7 +566,7 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* document) {
 /// @brief creates a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
                                   bool unique,
@@ -578,7 +582,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
   hashIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false);
   idx = &hashIndex->base;
 
-  TRI_InitIndex(idx, TRI_IDX_TYPE_HASH_INDEX, collection, unique, true);
+  TRI_InitIndex(idx, TRI_IDX_TYPE_HASH_INDEX, primary, unique, true);
   
   idx->typeName = TypeNameHashIndex;
   idx->json     = JsonHashIndex;
