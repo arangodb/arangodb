@@ -430,6 +430,14 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameHashIndex (const TRI_index_t const* idx) {
+  return "hash";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief describes a hash index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -461,30 +469,17 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx,
   // create json object and fill it
   // ..........................................................................
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
+  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   for (j = 0; j < hashIndex->_paths._length; ++j) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, hashIndex->base._unique));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "hash"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   TRI_Free(TRI_CORE_MEM_ZONE, fieldList);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a hash index from a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexHashIndex (TRI_index_t* idx,
-                                  TRI_primary_collection_t* collection) {
-  // the index will later be destroyed, so do nothing here
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,6 +568,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
                                   bool unique,
                                   size_t initialDocumentCount) {
   TRI_hash_index_t* hashIndex;
+  TRI_index_t* idx;
   int res;
 
   // ...........................................................................
@@ -580,14 +576,14 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
   // ...........................................................................
 
   hashIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false);
+  idx = &hashIndex->base;
 
-  TRI_InitIndex(&hashIndex->base, TRI_IDX_TYPE_HASH_INDEX, collection, unique);
-
-  hashIndex->base.json = JsonHashIndex;
-  hashIndex->base.removeIndex = RemoveIndexHashIndex;
-
-  hashIndex->base.insert = InsertHashIndex;
-  hashIndex->base.remove = RemoveHashIndex;
+  TRI_InitIndex(idx, TRI_IDX_TYPE_HASH_INDEX, collection, unique, true);
+  
+  idx->typeName = TypeNameHashIndex;
+  idx->json     = JsonHashIndex;
+  idx->insert   = InsertHashIndex;
+  idx->remove   = RemoveHashIndex;
 
   // ...........................................................................
   // Copy the contents of the path list vector into a new vector and store this
@@ -595,8 +591,8 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
 
   TRI_CopyPathVector(&hashIndex->_paths, paths);
 
-  TRI_InitVectorString(&hashIndex->base._fields, TRI_CORE_MEM_ZONE);
-  TRI_CopyDataVectorStringFromVectorPointer(TRI_CORE_MEM_ZONE, &hashIndex->base._fields, fields);
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
+  TRI_CopyDataVectorStringFromVectorPointer(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
 
   // create a index preallocated for the current number of documents
   res = TRI_InitHashArray(&hashIndex->_hashArray,
@@ -606,7 +602,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
   // oops, out of memory?
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&hashIndex->_paths);
-    TRI_DestroyVectorString(&hashIndex->base._fields);
+    TRI_DestroyVectorString(&idx->_fields);
     TRI_Free(TRI_CORE_MEM_ZONE, hashIndex);
     return NULL;
   }
@@ -615,11 +611,11 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
   // Assign the function calls used by the query engine
   // ...........................................................................
 
-  hashIndex->base.indexQuery = NULL;
-  hashIndex->base.indexQueryFree = NULL;
-  hashIndex->base.indexQueryResult = NULL;
+  idx->indexQuery = NULL;
+  idx->indexQueryFree = NULL;
+  idx->indexQueryResult = NULL;
 
-  return &hashIndex->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

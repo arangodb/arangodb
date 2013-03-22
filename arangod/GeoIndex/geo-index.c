@@ -238,6 +238,14 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameGeo1Index (const TRI_index_t const* idx) {
+  return "geo1";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -261,23 +269,28 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx,
   location = TRI_NAME_SHAPE_PATH(path);
 
   // create json
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "geo1"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
 
   if (geo->_constraint) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
   }
 
+  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index type name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeNameGeo2Index (const TRI_index_t const* idx) {
+  return "geo2";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,31 +327,20 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx,
   longitude = TRI_NAME_SHAPE_PATH(path);
 
   // create json
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude));
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude));
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "geo2"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_constraint));
 
   if (geo->_constraint) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
   }
 
+  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude));
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a json index from collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveIndexGeoIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
-  // the index will later be destroyed, so do nothing here
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,59 +480,60 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief creates a geo-index for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
                                   bool geoJson,
                                   bool constraint,
                                   bool ignoreNull) {
   TRI_geo_index_t* geo;
+  TRI_index_t* idx;
   char* ln;
 
   geo = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false);
+  idx = &geo->base;
+
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
+
+  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO1_INDEX, primary, false, true);
+  idx->_ignoreNull = ignoreNull;
+
+  idx->typeName = TypeNameGeo1Index;
+  idx->json     = JsonGeo1Index;
+  idx->insert   = InsertGeoIndex;
+  idx->remove   = RemoveGeoIndex;
+
   ln = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, locationName);
+  TRI_PushBackVectorString(&idx->_fields, ln);
 
-  TRI_InitVectorString(&geo->base._fields, TRI_CORE_MEM_ZONE);
-
-  TRI_InitIndex(&geo->base, TRI_IDX_TYPE_GEO1_INDEX, collection, false);
-  geo->base._ignoreNull = ignoreNull;
-
-  geo->base.json = JsonGeo1Index;
-  geo->base.removeIndex = RemoveIndexGeoIndex;
-
-  geo->base.insert = InsertGeoIndex;
-  geo->base.remove = RemoveGeoIndex;
-
-  TRI_PushBackVectorString(&geo->base._fields, ln);
-
-  geo->_constraint = constraint;
   geo->_geoIndex = GeoIndex_new();
 
   // oops, out of memory?
   if (geo->_geoIndex == NULL) {
-    TRI_DestroyVectorString(&geo->base._fields);
+    TRI_DestroyVectorString(&idx->_fields);
     TRI_Free(TRI_CORE_MEM_ZONE, geo);
     return NULL;
   }
 
-  geo->_variant = geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
-  geo->_location = location;
-  geo->_latitude = 0;
-  geo->_longitude = 0;
-  geo->_geoJson = geoJson;
+  geo->_constraint = constraint;
+  geo->_variant    = geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+  geo->_location   = location;
+  geo->_latitude   = 0;
+  geo->_longitude  = 0;
+  geo->_geoJson    = geoJson;
 
-  GeoIndex_assignMethod(&(geo->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  GeoIndex_assignMethod(&(geo->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  GeoIndex_assignMethod(&(geo->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  GeoIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  GeoIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  GeoIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
-  return &geo->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
                                   char const* latitudeName,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
@@ -538,47 +541,48 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
                                   bool constraint,
                                   bool ignoreNull) {
   TRI_geo_index_t* geo;
+  TRI_index_t* idx;
   char* lat;
   char* lon;
 
   geo = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false);
+  idx = &geo->base;
+
+  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
+
+  TRI_InitIndex(idx, TRI_IDX_TYPE_GEO2_INDEX, primary, false, true);
+  idx->_ignoreNull = ignoreNull;
+  
+  idx->typeName = TypeNameGeo2Index;
+  idx->json     = JsonGeo2Index;
+  idx->insert   = InsertGeoIndex;
+  idx->remove   = RemoveGeoIndex;
+
   lat = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, latitudeName);
   lon = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, longitudeName);
+  TRI_PushBackVectorString(&idx->_fields, lat);
+  TRI_PushBackVectorString(&idx->_fields, lon);
 
-  TRI_InitVectorString(&geo->base._fields, TRI_CORE_MEM_ZONE);
-
-  TRI_InitIndex(&geo->base, TRI_IDX_TYPE_GEO2_INDEX, collection, false);
-  geo->base._ignoreNull = ignoreNull;
-
-  geo->base.json = JsonGeo2Index;
-  geo->base.removeIndex = RemoveIndexGeoIndex;
-
-  geo->base.insert = InsertGeoIndex;
-  geo->base.remove = RemoveGeoIndex;
-
-  TRI_PushBackVectorString(&geo->base._fields, lat);
-  TRI_PushBackVectorString(&geo->base._fields, lon);
-
-  geo->_constraint = constraint;
   geo->_geoIndex = GeoIndex_new();
 
   // oops, out of memory?
   if (geo->_geoIndex == NULL) {
-    TRI_DestroyVectorString(&geo->base._fields);
+    TRI_DestroyVectorString(&idx->_fields);
     TRI_Free(TRI_CORE_MEM_ZONE, geo);
     return NULL;
   }
 
-  geo->_variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
-  geo->_location = 0;
-  geo->_latitude = latitude;
-  geo->_longitude = longitude;
+  geo->_constraint = constraint;
+  geo->_variant    = INDEX_GEO_INDIVIDUAL_LAT_LON;
+  geo->_location   = 0;
+  geo->_latitude   = latitude;
+  geo->_longitude  = longitude;
 
-  GeoIndex_assignMethod(&(geo->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  GeoIndex_assignMethod(&(geo->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  GeoIndex_assignMethod(&(geo->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  GeoIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  GeoIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  GeoIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
-  return &geo->base;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
