@@ -1,11 +1,11 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief MR enigne configuration
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_APPLICATION_MR_H
-#define TRIAGENS_REST_SERVER_APPLICATION_MR_H 1
+#ifndef TRIAGENS_MRSERVER_APPLICATION_MR_H
+#define TRIAGENS_MRSERVER_APPLICATION_MR_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
 
@@ -96,7 +96,7 @@ namespace triagens {
           mrb_state* _mrb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of requests since last GC of the context 
+/// @brief number of requests since last GC of the context
 ////////////////////////////////////////////////////////////////////////////////
 
           size_t _dirt;
@@ -320,7 +320,7 @@ namespace triagens {
 /// @CMDOPT{\--ruby.gc-frequency @CA{frequency}}
 ///
 /// Specifies the frequency in seconds for the automatic garbage collection of
-/// MRuby objects. This setting is useful to have the garbage collection 
+/// MRuby objects. This setting is useful to have the garbage collection
 /// still work in periods with no or little numbers of requests.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -397,5 +397,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

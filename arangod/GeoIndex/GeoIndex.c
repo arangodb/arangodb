@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author R. A. Parker
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.c -   GeoIndex algorithms                */
@@ -263,7 +263,7 @@ typedef struct
 // .............................................................................
 
 static int                   GeoIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
-static TRI_index_iterator_t* GeoIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
+static TRI_index_iterator_t* GeoIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*));
 static int                   GeoIndex_freeMethodCall   (void*, void*);
 
 
@@ -2267,29 +2267,29 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
     return 0;
 }
 
-#endif 
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Assigns a static function call to a function pointer used by Query Engine
 ////////////////////////////////////////////////////////////////////////////////
 
-int GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+void GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
 
   switch (methodType) {
-  
+
     case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
       TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
       *call = GeoIndex_freeMethodCall;
       break;
     }
-    
+
     case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
       TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
       *call = GeoIndex_queryMethodCall;
       break;
     }
-    
+
     case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
       TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
       *call = GeoIndex_resultMethodCall;
@@ -2300,16 +2300,14 @@ int GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e
       assert(false);
     }
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Implementation of forward declared query engine callback functions
-////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator,
                                     TRI_index_challenge_t* challenge, void* data) {
   GeoIx* geoIndex = (GeoIx*)(theIndex);
   if (geoIndex == NULL || indexOperator == NULL) {
@@ -2319,7 +2317,7 @@ static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexO
   return TRI_ERROR_NO_ERROR;
 }
 
-static TRI_index_iterator_t* GeoIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+static TRI_index_iterator_t* GeoIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator,
                                                        void* data, bool (*filter) (TRI_index_iterator_t*)) {
   GeoIx* geoIndex = (GeoIx*)(theIndex);
   if (geoIndex == NULL || indexOperator == NULL) {

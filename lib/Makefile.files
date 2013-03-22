@@ -81,6 +81,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/HttpResponse.cpp \
 	lib/Rest/InitialiseRest.cpp \
 	lib/Rest/SslInterface.cpp \
+	lib/Rest/Version.cpp \
 	lib/Rest/Url.cpp \
 	lib/ShapedJson/json-shaper.c \
 	lib/ShapedJson/shape-accessor.c \
@@ -108,7 +109,6 @@ lib_libarango_client_a_SOURCES = \
 lib_libarango_fe_a_SOURCES = \
 	lib/Admin/ApplicationAdminServer.cpp \
 	lib/Admin/RestAdminBaseHandler.cpp \
-	lib/Admin/RestAdminFeConfigurationHandler.cpp \
 	lib/Admin/RestAdminLogHandler.cpp \
 	lib/Admin/RestBaseHandler.cpp \
 	lib/Admin/RestVersionHandler.cpp \

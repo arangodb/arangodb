@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-conv.h"
@@ -288,8 +288,6 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   if (p == NULL) {
     return false;
   }
-
-  memset(values, 0, sizeof(TRI_shape_value_t) * n);
 
   total = 0;
   e = values + n;
@@ -592,7 +590,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     // first find an identifier for the name
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
-    if (*keyStr == 0) {
+    if (*keyStr == 0 || keyStr.length() == 0) {
       --p;
       continue;
     }
@@ -789,13 +787,12 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
           return FillShapeValueNull(shaper, dst);
         }
       }
-
-      seenObjects.push_back(o);
     }
     else {
       seenHashes.insert(hash);
-      seenObjects.push_back(o);
     }
+
+    seenObjects.push_back(o);
   }
 
   if (json->IsNull()) {
@@ -1238,7 +1235,7 @@ static v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
 static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   v8::Handle<v8::Object> object = v8::Object::New();
 
-  size_t n = json->_value._objects._length;
+  const size_t n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  i += 2) {
     TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
@@ -1250,7 +1247,7 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
     TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
     v8::Handle<v8::Value> val = TRI_ObjectJson(j);
 
-    object->Set(v8::String::New(key->_value._string.data), val);
+    object->Set(v8::String::New(key->_value._string.data, key->_value._string.length - 1), val);
   }
 
   return object;
@@ -1263,7 +1260,7 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
 static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
   v8::Handle<v8::Array> object = v8::Array::New();
 
-  size_t n = json->_value._objects._length;
+  const size_t n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  ++i) {
     TRI_json_t* j = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
@@ -1318,6 +1315,10 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer
 v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
   v8::HandleScope scope;
 
+  if (json == 0) {
+    return scope.Close(v8::Undefined());
+  }
+
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return scope.Close(v8::Undefined());
@@ -1342,76 +1343,6 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
   }
 
   return scope.Close(v8::Undefined());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert V8 object to TRI_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
-  if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
-  }
-
-  if (parameter->IsNull()) {
-    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
-  }
-
-  if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
-  }
-
-  if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter= parameter->ToString();
-    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
-    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
-  }
-
-  if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (listJson != 0) {
-      uint32_t n = arrayParameter->Length();
-
-      for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);
-        TRI_json_t* result = TRI_JsonObject(item);
-
-        if (result != 0) {
-          TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, listJson, result);
-        }
-      }
-    }
-
-    return listJson;
-  }
-
-  if (parameter->IsObject()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (arrayJson != 0) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-
-      uint32_t n = names->Length();
-      for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);
-        TRI_json_t* result = TRI_JsonObject(item);
-
-        if (result != 0) {
-          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
-        }
-      }
-    }
-
-    return arrayJson;
-  }
-
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1453,6 +1384,29 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a V8 object to a TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> object,
+                                TRI_shaped_json_t* result,
+                                TRI_shaper_t* shaper) {
+  TRI_shape_value_t dst;
+  set<int> seenHashes;
+  vector< v8::Handle<v8::Object> > seenObjects;
+  bool ok = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects);
+
+  if (! ok) {
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  result->_sid = dst._sid;
+  result->_data.length = dst._size;
+  result->_data.data = dst._value;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1474,19 +1428,22 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
-    return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
+    return TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
   }
 
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* listJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-    if (listJson) {
-      for (uint32_t j = 0; j < arrayParameter->Length(); ++j) {
+    const uint32_t n = arrayParameter->Length();
+
+    TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+
+    if (listJson != 0) {
+      for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = TRI_ObjectToJson(item);
-        if (result) {
-          TRI_PushBack2ListJson(listJson, result);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
+
+        if (result != 0) {
+          TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, listJson, result);
         }
       }
     }
@@ -1495,23 +1452,26 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsObject()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    TRI_json_t* arrayJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-    if (arrayJson) {
-      v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-      for (uint32_t j = 0; j < names->Length(); ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
+    v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+    const uint32_t n = names->Length();
+
+    TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+
+    if (arrayJson != 0) {
+      for (uint32_t j = 0; j < n; ++j) {
+        v8::Handle<v8::Value> key  = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = TRI_ObjectToJson(item);
-        if (result) {
-          TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
+
+        if (result != 0) {
+          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, arrayJson, TRI_ObjectToString(key).c_str(), result);
         }
       }
     }
     return arrayJson;
   }
 
-  return NULL;
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1572,7 +1532,7 @@ int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> value) {
 /// @brief converts an V8 object to a uint64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> value, 
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> value,
                              const bool allowStringConversion) {
   if (value->IsNumber()) {
     return (uint64_t) value->ToNumber()->Value();
@@ -1680,5 +1640,5 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

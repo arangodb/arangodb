@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoClient.h"
@@ -39,7 +39,7 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
-        
+
 double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
 double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
 size_t const ArangoClient::DEFAULT_RETRIES            = 2;
@@ -62,7 +62,7 @@ size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 ///
 /// This sequence must be used before any non-visible characters in the prompt.
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 char const * ArangoClient::PROMPT_IGNORE_START = "\001";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ char const * ArangoClient::PROMPT_IGNORE_END = "\002";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoClient::ArangoClient () 
+ArangoClient::ArangoClient ()
   : _configFile(),
     _logLevel("info"),
     _quiet(false),
@@ -201,11 +201,11 @@ void ArangoClient::setupPrettyPrint (ProgramOptionsDescription& description) {
   ProgramOptionsDescription hiddenOptions("HIDDEN options");
 
   hiddenOptions
-    ("no-pretty-print", "disable pretty printting")          
+    ("no-pretty-print", "disable pretty printting")
   ;
 
   description
-    ("pretty-print", "pretty print values")          
+    ("pretty-print", "pretty print values")
     (hiddenOptions, true)
   ;
 
@@ -263,7 +263,7 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::parse (ProgramOptions& options,
-                          ProgramOptionsDescription& description, 
+                          ProgramOptionsDescription& description,
                           int argc,
                           char* argv[],
                           string const& initFilename) {
@@ -319,7 +319,7 @@ void ArangoClient::parse (ProgramOptions& options,
       }
     }
   }
-  
+
 #endif
 
   if (! configFile.empty()) {
@@ -331,8 +331,8 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   // check if have a password
-  _hasPassword = options.has("server.password") || 
-                 options.has("server.disable-authentication") || 
+  _hasPassword = options.has("server.password") ||
+                 options.has("server.disable-authentication") ||
                  options.has("jslint");
 
   // set colors
@@ -386,7 +386,7 @@ void ArangoClient::parse (ProgramOptions& options,
     if (_requestTimeout <= 0) {
       LOGGER_FATAL_AND_EXIT("invalid value for --server.request-timeout, must be positive");
     }
-  
+
     // must specify a user name
     if (_username.size() == 0) {
       LOGGER_FATAL_AND_EXIT("no value specified for --server.username");
@@ -430,7 +430,7 @@ void ArangoClient::startPager () {
     _pager = stdout;
     return;
   }
-  
+
   _pager = popen(_outputPager.c_str(), "w");
 
   if (_pager == 0) {
@@ -473,12 +473,12 @@ void ArangoClient::internalPrint (const char* format, const char* str) {
     if (*str == '\x1b') {
       // terminal escape sequence
       if (_pager == stdout) {
-        fprintf(_pager, format, str);    
+        fprintf(_pager, format, str);
       }
     }
     else {
       // regular string value
-      fprintf(_pager, format, str);    
+      fprintf(_pager, format, str);
       log(format, str);
     }
   }
@@ -486,12 +486,12 @@ void ArangoClient::internalPrint (const char* format, const char* str) {
     if (*format == '\x1b') {
       // terminal escape sequence
       if (_pager == stdout) {
-        fprintf(_pager, "%s", format);    
+        fprintf(_pager, "%s", format);
       }
     }
     else {
       // regular string value
-      fprintf(_pager, "%s", format);    
+      fprintf(_pager, "%s", format);
       log("%s", format);
     }
   }
@@ -534,7 +534,7 @@ void ArangoClient::printWelcomeInfo () {
   }
 
   if (_prettyPrint) {
-    cout << "Pretty printing values." << endl;    
+    cout << "Pretty printing values." << endl;
   }
 }
 
@@ -556,7 +556,7 @@ void ArangoClient::log (const char* format, const char* str) {
   if (_log) {
     if (*str != '\x1b') {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, str); 
+      fprintf(_log, format, str);
     }
   }
 }
@@ -723,5 +723,5 @@ double ArangoClient::requestTimeout () const {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

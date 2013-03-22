@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-query.h"
@@ -64,14 +64,14 @@ static TRI_fulltext_query_operation_e ParseOperation (const char c) {
 /// this will create a copy of the word
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* NormaliseWord (const char* const word, const size_t wordLength) { 
+static char* NormaliseWord (const char* const word, const size_t wordLength) {
   char* copy;
   char* copy2;
   char* copy3;
   char* prefixEnd;
   size_t outLength;
   int32_t outLength2;
-  ptrdiff_t prefixLength; 
+  ptrdiff_t prefixLength;
 
   // normalise string
   copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
@@ -95,12 +95,12 @@ static char* NormaliseWord (const char* const word, const size_t wordLength) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
     return NULL;
   }
-  
+
   memcpy(copy3, copy2, ((size_t) prefixLength) * sizeof(char));
   copy3[prefixLength] = '\0';
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
 
-  return copy3; 
+  return copy3;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,14 +134,14 @@ TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t numWords) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
     return NULL;
   }
-  
+
   query->_matches = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_match_e) * numWords, false);
   if (query->_matches == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
     return NULL;
   }
-  
+
   query->_operations = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_operation_e) * numWords, false);
   if (query->_operations == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_matches);
@@ -216,7 +216,7 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const query,
     TRI_fulltext_query_operation_e operation;
     TRI_fulltext_query_match_e match;
     char c;
-    
+
     c = *ptr;
 
     // ignore whitespace
@@ -224,7 +224,7 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const query,
       ++ptr;
       continue;
     }
-    
+
     // defaults
     operation = TRI_FULLTEXT_AND;
     match     = TRI_FULLTEXT_COMPLETE;
@@ -302,8 +302,8 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const query,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const query,
-                                const size_t position, 
-                                const char* const word, 
+                                const size_t position,
+                                const char* const word,
                                 const size_t wordLength,
                                 TRI_fulltext_query_match_e match,
                                 TRI_fulltext_query_operation_e operation) {
@@ -312,7 +312,7 @@ bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const query,
   if (position >= query->_numWords) {
     return false;
   }
- 
+
   normalised = NormaliseWord(word, wordLength);
   if (normalised == NULL) {
     query->_words[position] = NULL;
@@ -332,5 +332,5 @@ bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const query,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

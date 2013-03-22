@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ScriptLoader.h"
@@ -125,9 +125,9 @@ void ScriptLoader::defineScript (string const& name, string const& script) {
 
 void ScriptLoader::defineScript (const string& name, const char** script) {
   string scriptString = buildScript(script);
-  
+
   MUTEX_LOCKER(_lock);
-  
+
   _scripts[name] = scriptString;
 }
 
@@ -189,9 +189,9 @@ string const& ScriptLoader::findScript (string const& name) {
 
 vector<string> ScriptLoader::getDirectoryParts () {
   vector<string> directories;
-  
+
   if (! _directory.empty()) {
-    
+
     // .........................................................................
     // for backwards compatibility allow ":" as a delimiter for POSIX like
     // implementations, otherwise we will only allow ";"
@@ -202,7 +202,7 @@ vector<string> ScriptLoader::getDirectoryParts () {
 #else
       TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
 #endif
- 
+
     for (size_t i = 0; i < parts._length; i++) {
       string part = StringUtils::trim(parts._buffer[i]);
 
@@ -213,7 +213,7 @@ vector<string> ScriptLoader::getDirectoryParts () {
 
     TRI_DestroyVectorString(&parts);
   }
-  
+
   return directories;
 }
 
@@ -223,5 +223,5 @@ vector<string> ScriptLoader::getDirectoryParts () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -3,6 +3,7 @@
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
+etag: 57595366
 
 {
   "edge": {

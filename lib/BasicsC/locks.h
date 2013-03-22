@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_LOCKS_H
@@ -240,7 +240,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock);
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,6 +373,80 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup CAS operations
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs an atomic compare and swap operation on a 32bit integer.
+///
+/// The position of 'theValue' must be aligned on a 32 bit boundary. The function
+/// performs the following atomically: compares the value stored in the position 
+/// pointed to by `theValue` with the value of `oldValue`. if the value stored
+/// in position `theValue` is EQUAL to the value of `oldValue`, then the
+/// `newValue` is stored in the position pointed to by `theValue` (true is 
+/// returned), otherwise no operation is performed (false is returned).
+////////////////////////////////////////////////////////////////////////////////
+
+// .............................................................................
+// The position of 'theValue' must be aligned on a 32 bit boundary. The function
+// performs the following atomically: compares the value stored in the position 
+// pointed to by `theValue` with the value of `oldValue`. if the value stored
+// in position `theValue` is EQUAL to the value of `oldValue`, then the
+// `newValue` is stored in the position pointed to by `theValue` (true is 
+// returned), otherwise no operation is performed (false is returned).
+// .............................................................................
+
+bool TRI_CompareAndSwapIntegerInt32  (volatile int32_t* theValue, int32_t oldValue, int32_t newValue);
+
+bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs an atomic compare and swap operation on a 64bit integer.
+///
+/// The position of 'theValue' must be aligned on a 64 bit boundary. This function is
+/// simply the 64bit equivalent of the function above.
+////////////////////////////////////////////////////////////////////////////////
+
+// .............................................................................
+// The position of 'theValue' must be aligned on a 64 bit boundary. This function is
+// simply the 64bit equivalent of the function above.
+// .............................................................................
+
+bool TRI_CompareAndSwapIntegerInt64  (volatile int64_t* theValue, int64_t oldValue, int64_t newValue);
+
+bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs an atomic compare and swap operation on a pointer.
+///
+/// On a 32bit machine, the position of 'theValue' must be aligned on a 32 bit 
+/// boundary. On a 64bit machine the alignment must be on a 64bit boundary.
+/// The function performs the following atomically: compares the value stored in 
+/// the position pointed to by `theValue` with the value of `oldValue`. if the 
+/// value stored in position `theValue` is EQUAL to the value of `oldValue`, 
+/// then the `newValue` is stored in the position pointed to by `theValue` 
+/// (true is returned), otherwise no operation is performed (false is returned).
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 #ifdef __cplusplus
 }
 #endif
@@ -381,5 +455,5 @@ void TRI_UnlockCondition (TRI_condition_t* cond);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

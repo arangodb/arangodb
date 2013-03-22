@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
@@ -63,7 +63,7 @@ using namespace triagens::arangob;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup Benchmark
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -128,474 +128,27 @@ static string Collection = "ArangoBenchmark";
 static string TestCase = "version";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief display progress
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              benchmark test cases
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            version retrieval test
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-struct VersionTest : public BenchmarkOperation {
-  VersionTest () 
-    : BenchmarkOperation () {
-  }
-
-  ~VersionTest () {
-  }
-
-  string collectionName () {
-    return "";
-  }
-  
-  bool useCollection () const {
-    return false;
-  }
-
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    static string url = "/_api/version";
-    
-    return url;
-  }
-
-  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return HttpRequest::HTTP_REQUEST_GET;
-  }
-  
-  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    static const char* payload = "";
-
-    *mustFree = false;
-    *length = 0;
-    return payload;
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-};
+static bool Progress = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         document CRUD append test
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
+/// @brief includes all the test cases
 ////////////////////////////////////////////////////////////////////////////////
 
-struct DocumentCrudAppendTest : public BenchmarkOperation {
-  DocumentCrudAppendTest () 
-    : BenchmarkOperation () {
-  }
-
-  ~DocumentCrudAppendTest () {
-  }
-  
-  string collectionName () {
-    return Collection;
-  }
-  
-  bool useCollection () const {
-    return true;
-  }
-
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
-
-    if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
-    }
-    else {
-      size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
-
-      return string("/_api/document/" + Collection + "/" + key);
-    }
-  }
-
-  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
-
-    if (mod == 0) {
-      return HttpRequest::HTTP_REQUEST_POST;
-    }
-    else if (mod == 1) {
-      return HttpRequest::HTTP_REQUEST_GET;
-    }
-    else if (mod == 2) {
-      return HttpRequest::HTTP_REQUEST_PATCH;
-    }
-    else if (mod == 3) {
-      return HttpRequest::HTTP_REQUEST_GET;
-    }
-    else {
-      assert(false);
-      return HttpRequest::HTTP_REQUEST_GET;
-    }
-  }
-  
-  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    const size_t mod = globalCounter % 4;
-
-    if (mod == 0 || mod == 2) {
-      const size_t n = Complexity;
-      TRI_string_buffer_t* buffer;
-
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
-      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
-
-      size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
-      TRI_AppendStringStringBuffer(buffer, key.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\"");
-
-      for (size_t i = 1; i <= n; ++i) {
-        TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
-        if (mod == 0) {
-          TRI_AppendStringStringBuffer(buffer, "\":true");
-        }
-        else {
-          TRI_AppendStringStringBuffer(buffer, "\":false");
-        }
-      }
-    
-      TRI_AppendCharStringBuffer(buffer, '}');
-
-      *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
-
-      return (const char*) ptr;
-    }
-    else if (mod == 1 || mod == 3) {
-      *length = 0;
-      *mustFree = false;
-      return (const char*) 0;
-    }
-    else {
-      assert(false);
-      return 0;
-    }
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document CRUD test
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-struct DocumentCrudTest : public BenchmarkOperation {
-  DocumentCrudTest () 
-    : BenchmarkOperation () {
-  }
-
-  ~DocumentCrudTest () {
-  }
-  
-  string collectionName () {
-    return Collection;
-  }
-  
-  bool useCollection () const {
-    return true;
-  }
-
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    const size_t mod = globalCounter % 5;
-
-    if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
-    }
-    else {
-      size_t keyId = (size_t) (globalCounter / 5);
-      const string key = "testkey" + StringUtils::itoa(keyId);
-
-      return string("/_api/document/" + Collection + "/" + key);
-    }
-  }
-
-  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    const size_t mod = globalCounter % 5;
-
-    if (mod == 0) {
-      return HttpRequest::HTTP_REQUEST_POST;
-    }
-    else if (mod == 1) {
-      return HttpRequest::HTTP_REQUEST_GET;
-    }
-    else if (mod == 2) {
-      return HttpRequest::HTTP_REQUEST_PATCH;
-    }
-    else if (mod == 3) {
-      return HttpRequest::HTTP_REQUEST_GET;
-    }
-    else if (mod == 4) {
-      return HttpRequest::HTTP_REQUEST_DELETE;
-    }
-    else {
-      assert(false);
-      return HttpRequest::HTTP_REQUEST_GET;
-    }
-  }
-  
-  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    const size_t mod = globalCounter % 5;
-
-    if (mod == 0 || mod == 2) {
-      const size_t n = Complexity;
-      TRI_string_buffer_t* buffer;
-
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
-      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
-
-      size_t keyId = (size_t) (globalCounter / 5);
-      const string key = "testkey" + StringUtils::itoa(keyId);
-      TRI_AppendStringStringBuffer(buffer, key.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\"");
-
-      for (size_t i = 1; i <= n; ++i) {
-        TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt32StringBuffer(buffer, (uint32_t) i);
-        if (mod == 0) {
-          TRI_AppendStringStringBuffer(buffer, "\":true");
-        }
-        else {
-          TRI_AppendStringStringBuffer(buffer, "\":false");
-        }
-      }
-    
-      TRI_AppendCharStringBuffer(buffer, '}');
-
-      *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = false;
-      char* ptr = buffer->_buffer;
-      buffer->_buffer = NULL;
-
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
-
-      return (const char*) ptr;
-    }
-    else if (mod == 1 || mod == 3 || mod == 4) {
-      *length = 0;
-      *mustFree = false;
-      return (const char*) 0;
-    }
-    else {
-      assert(false);
-      return 0;
-    }
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            document creation test
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-struct DocumentCreationTest : public BenchmarkOperation {
-  DocumentCreationTest () 
-    : BenchmarkOperation (),
-      _url(),
-      _buffer(0) {
-    _url = "/_api/document?collection=" + Collection + "&createCollection=true";
-
-    const size_t n = Complexity;
-
-    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
-    TRI_AppendCharStringBuffer(_buffer, '{');
-
-    for (size_t i = 1; i <= n; ++i) {
-      TRI_AppendStringStringBuffer(_buffer, "\"test");
-      TRI_AppendUInt32StringBuffer(_buffer, (uint32_t) i);
-      TRI_AppendStringStringBuffer(_buffer, "\":\"some test value\"");
-      if (i != n) {
-        TRI_AppendCharStringBuffer(_buffer, ',');
-      }
-    }
-    
-    TRI_AppendCharStringBuffer(_buffer, '}');
-
-    _length = TRI_LengthStringBuffer(_buffer);
-  }
-
-  ~DocumentCreationTest () {
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
-  }
-  
-  string collectionName () {
-    return Collection;
-  }
-  
-  bool useCollection () const {
-    return true;
-  }
-
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return _url;
-  }
-
-  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return HttpRequest::HTTP_REQUEST_POST;
-  }
-  
-  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    *mustFree = false;
-    *length = _length;
-    return (const char*) _buffer->_buffer;
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
-  string _url;
-
-  TRI_string_buffer_t* _buffer;
-  
-  size_t _length;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            document creation test
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-struct CollectionCreationTest : public BenchmarkOperation {
-  CollectionCreationTest () 
-    : BenchmarkOperation (),
-      _url() {
-    _url = "/_api/collection";
-
-  }
-
-  ~CollectionCreationTest () {
-  }
-  
-  BenchmarkCounter<uint64_t>* getSharedCounter () {
-    if (_counter == 0) {
-      _counter = new BenchmarkCounter<uint64_t>(0, 1024 * 1024);
-    }
-
-    return _counter;
-  }
-  
-  string collectionName () {
-    return "";
-  }
-  
-  bool useCollection () const {
-    return false;
-  }
-
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return _url;
-  }
-
-  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return HttpRequest::HTTP_REQUEST_POST;
-  }
-  
-  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    BenchmarkCounter<uint64_t>* ctr = getSharedCounter();
-    TRI_string_buffer_t* buffer;
-    char* data;
-
-    ctr->next(1);
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 64);
-    if (buffer == 0) {
-      return 0;
-    }
-    TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
-    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendUInt64StringBuffer(buffer, ctr->getValue());
-    TRI_AppendStringStringBuffer(buffer, "\"}");
-
-    *length = TRI_LengthStringBuffer(buffer);
-   
-    // this will free the string buffer frame, but not the string
-    data = buffer->_buffer; 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
-
-    *mustFree = true;
-    return (const char*) data;
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
-  static BenchmarkCounter<uint64_t>* _counter;
-
-  string _url;
-};
-
-BenchmarkCounter<uint64_t>* CollectionCreationTest::_counter = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
+#include "Benchmark/test-cases.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
+/// @addtogroup Benchmark
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -622,7 +175,7 @@ static int GetStartCounter () {
 /// @brief print a status line (if ! quiet)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Status (const string& value) {    
+static void Status (const string& value) {
   if (! BaseClient.quiet()) {
     cout << value << endl;
   }
@@ -634,7 +187,7 @@ static void Status (const string& value) {
 
 static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
-  
+
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
@@ -643,6 +196,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("test-case", &TestCase, "test case to use")
     ("complexity", &Complexity, "complexity parameter for the test")
     ("delay", &Delay, "use a startup delay (necessary only when run in series)")
+    ("progress", &Progress, "show progress")
   ;
 
   BaseClient.setupGeneral(description);
@@ -650,11 +204,11 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   vector<string> arguments;
   description.arguments(&arguments);
-  
+
   ProgramOptions options;
   BaseClient.parse(options, description, argc, argv, "arangob.conf");
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -685,7 +239,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-  
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -696,24 +250,9 @@ int main (int argc, char* argv[]) {
     LOGGER_FATAL_AND_EXIT("invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')");
   }
 
-  BenchmarkOperation* testCase;
+  BenchmarkOperation* testCase = GetTestCase(TestCase);
 
-  if (TestCase == "version") {
-    testCase = new VersionTest();
-  }
-  else if (TestCase == "document") {
-    testCase = new DocumentCreationTest();
-  }
-  else if (TestCase == "collection") {
-    testCase = new CollectionCreationTest();
-  }
-  else if (TestCase == "crud") {
-    testCase = new DocumentCrudTest();
-  }
-  else if (TestCase == "crud-append") {
-    testCase = new DocumentCrudAppendTest();
-  }
-  else {
+  if (testCase == 0) {
     LOGGER_FATAL_AND_EXIT("invalid test case name " << TestCase);
     return EXIT_FAILURE; // will not be reached
   }
@@ -727,6 +266,17 @@ int main (int argc, char* argv[]) {
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
 
+  const double stepSize = (double) Operations / (double) Concurrency;
+  int64_t realStep = (int64_t) stepSize;
+  if (stepSize - (double) ((int64_t) stepSize) > 0.0) {
+    realStep++;
+  }
+  if (realStep % 1000 != 0) {
+    realStep += 1000 - (realStep % 1000);
+  }
+  // add some more offset we don't get into trouble with threads of different speed
+  realStep += 10000;
+
   // start client threads
   for (int i = 0; i < Concurrency; ++i) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
@@ -735,18 +285,20 @@ int main (int argc, char* argv[]) {
     BenchmarkThread* thread = new BenchmarkThread(testCase,
         &startCondition,
         &UpdateStartCounter,
-        i, 
+        i,
         (unsigned long) BatchSize,
         &operationsCounter,
         endpoint,
-        BaseClient.username(), 
-        BaseClient.password());
+        BaseClient.username(),
+        BaseClient.password(),
+        BaseClient.requestTimeout(),
+        BaseClient.connectTimeout());
 
     threads.push_back(thread);
-    thread->setOffset(i * (Operations / Concurrency));
+    thread->setOffset(i * realStep);
     thread->start();
   }
- 
+
   // give all threads a chance to start so they will not miss the broadcast
   while (GetStartCounter() < Concurrency) {
     usleep(5000);
@@ -776,12 +328,12 @@ int main (int argc, char* argv[]) {
       break;
     }
 
-    if (numOperations > lastReportValue) {
+    if (Progress && numOperations > lastReportValue) {
       LOGGER_INFO("number of operations: " << numOperations);
       lastReportValue = numOperations + stepValue;
     }
 
-    usleep(50000); 
+    usleep(50000);
   }
 
   double time = ((double) timer.time()) / 1000000.0;
@@ -815,6 +367,8 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  testCase->tearDown();
+
   for (int i = 0; i < Concurrency; ++i) {
     threads[i]->join();
     delete threads[i];
@@ -838,5 +392,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

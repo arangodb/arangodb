@@ -86,12 +86,23 @@ describe ArangoDB do
     context "checks graph requests" do
       before do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
       end
 
       after do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         ArangoDB.drop_collection( vertex_collection )
         ArangoDB.drop_collection( edge_collection )
+        ArangoDB.drop_collection( "#{vertex_collection}2" )
+        ArangoDB.drop_collection( "#{edge_collection}2" )
       end
       
       it "checks create graph" do
@@ -101,6 +112,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['graph']['_key'].should eq("#{graph_name}")
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
       end
 
       it "checks create graph with wrong characters" do
@@ -151,14 +163,63 @@ describe ArangoDB do
       it "checks create and get graph" do
         doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
         doc1.code.should eq(201)
+        etag = doc1.headers['etag']
 
         doc1.parsed_response['graph']['_key'].should eq(graph_name)
+        doc1.parsed_response['graph']['_rev'].should eq(etag)
 
         cmd = "/_api/graph/#{graph_name}"
         doc2 = ArangoDB.log_get("#{prefix}", cmd)
 
         doc2.code.should eq(200)
         doc2.parsed_response['graph']['_key'].should eq(graph_name)
+        doc2.parsed_response['graph']['_rev'].should eq(etag)
+        doc2.parsed_response['graph']['_rev'].should eq(doc2.headers['etag'])
+
+        cmd = "/_api/graph/#{graph_name}?rev=#{etag}"
+        doc3 = ArangoDB.log_get("#{prefix}", cmd)
+        doc3.code.should eq(200)
+        doc3.parsed_response['graph']['_key'].should eq(graph_name)
+        doc3.parsed_response['graph']['_rev'].should eq(etag)
+        doc3.parsed_response['graph']['_rev'].should eq(doc3.headers['etag'])
+
+        cmd = "/_api/graph/#{graph_name}?rev=1007"
+        doc4 = ArangoDB.log_get("#{prefix}", cmd)
+        doc4.code.should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}?testWith=if-match"
+        hdr = { "if-match" => "#{etag}" }
+        doc5 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc5.code.should eq(200)
+
+        cmd = "/_api/graph/#{graph_name}?testWith=if-match2"
+        hdr = { "if-match" => "2007" }
+        doc5 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc5.code.should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}?testWith=if-none-match"
+        hdr = { "if-none-match" => "#{etag}" }
+        doc5 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc5.code.should eq(304)
+      end
+
+      it "checks create and get graph with waitForSync" do
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
+        doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+        doc1.code.should eq(202)
+        etag = doc1.headers['etag']
+
+        doc1.parsed_response['graph']['_key'].should eq(graph_name)
+        doc1.parsed_response['graph']['_rev'].should eq(etag)
+
+        cmd = "/_api/graph?waitForSync=true"
+        body = "{\"_key\" : \"#{graph_name}2\", \"vertices\" : \"#{vertex_collection}2\", \"edges\" : \"#{edge_collection}2\"}"
+        doc2 = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        doc2.code.should eq(201)
       end
 
       it "checks create and delete graph" do
@@ -170,7 +231,26 @@ describe ArangoDB do
         cmd = "/_api/graph/#{graph_name}"
         doc2 = ArangoDB.log_delete("#{prefix}", cmd)
         doc2.code.should eq(200)
-        doc2.parsed_response['deleted'].should eq(true)
+
+        # check
+        doc3 = ArangoDB.log_get("#{prefix}", cmd)
+        doc3.code.should eq(404)
+      end
+
+      it "checks create and delete graph waitForSync" do
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
+        # create
+        doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+        doc1.code.should eq(202)
+
+        # delete
+        cmd = "/_api/graph/#{graph_name}"
+        doc2 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc2.code.should eq(202)
 
         # check
         doc3 = ArangoDB.log_get("#{prefix}", cmd)
@@ -186,25 +266,77 @@ describe ArangoDB do
     context "checks graph vertex requests" do
       before do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+
+        cmd = "/_api/collection/#{vertex_collection}/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)    
       end
 
       after do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         ArangoDB.drop_collection( vertex_collection )
         ArangoDB.drop_collection( edge_collection )
       end
       
       it "checks create vertex with _key" do
-
         body = "{\"\_key\" : \"vertexTest1\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
         doc = create_vertex( prefix, graph_name, body )
 
         doc.code.should eq(201)
+        etag = doc.headers['etag']
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest1")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
+        doc.parsed_response['vertex']['_rev'].should eq(etag)
+      end
+
+      it "checks create vertex with _key and waitForSync" do
+        cmd = "/_api/collection/#{vertex_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
+        # create with waitForSync = false
+        body = "{\"\_key\" : \"vertexTest1\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        doc = create_vertex( prefix, graph_name, body )
+
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['vertex']['_key'].should eq("vertexTest1")
+        doc.parsed_response['vertex']['optional1'].should eq("val1")
+
+        # create with waitForSync = true
+        cmd = "/_api/graph/#{graph_name}/vertex?waitForSync=true"
+        body = "{\"\_key\" : \"vertexTest2\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        doc2 = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+
+        doc2.code.should eq(201)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(201)
+        doc2.parsed_response['vertex']['_key'].should eq("vertexTest2")
+        doc2.parsed_response['vertex']['optional1'].should eq("val1")
+
+      end
+
+      it "checks create vertex with unknown graph" do
+        body = "{\"\_key\" : \"vertexTest1\", \"optional1\" : \"val1\", \"optional2\" : \"val2\"}"        
+        doc = create_vertex( prefix, "hugo", body )
+
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
       end
 
       it "checks create second vertex with same _key" do
@@ -230,12 +362,56 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['_key'].should eq("vertexTest3")
         doc.parsed_response['vertex']['optional1'].should eq("val1")
+        etag = doc.headers['etag'];
 
         doc2 = get_vertex( prefix, graph_name, "vertexTest3")
         doc2.code.should eq(200)
         doc2.parsed_response['error'].should eq(false)
         doc2.parsed_response['code'].should eq(200)
         doc2.parsed_response['vertex']['optional1'].should eq(doc.parsed_response['vertex']['optional1'])
+      end
+
+      it "checks get vertex if-none-match" do
+        body = "{\"\_key\" : \"vertexTest4\", \"optional1\" : \"val1\", \"optional2\" : \"if-none-match\"}"        
+        doc = create_vertex( prefix, graph_name, body )
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['vertex']['_key'].should eq("vertexTest4")
+        doc.parsed_response['vertex']['optional1'].should eq("val1")
+        etag = doc.headers['etag'];
+
+        cmd = "/_api/graph/#{graph_name}/vertex/vertexTest4?testWith=if-none-match"
+        hdr = { "if-none-match" => "#{etag}" }
+        doc7 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc7.code.should eq(304)
+      end
+
+      it "checks get vertex if-match" do
+        body = "{\"\_key\" : \"vertexTest4\", \"optional1\" : \"val1\", \"optional2\" : \"if-match\"}"        
+        doc = create_vertex( prefix, graph_name, body )
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['vertex']['_key'].should eq("vertexTest4")
+        doc.parsed_response['vertex']['optional1'].should eq("val1")
+        etag = doc.headers['etag'];
+
+        cmd = "/_api/graph/#{graph_name}/vertex/vertexTest4?rev=1007"
+        doc4 = ArangoDB.log_get("#{prefix}", cmd)
+        doc4.code.should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/vertex/vertexTest4?testWith=if-match"
+        hdr = { "if-match" => "#{etag}" }
+        doc5 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc5.code.should eq(200)
+
+        cmd = "/_api/graph/#{graph_name}/vertex/vertexTest4?testWith=if-match2"
+        hdr = { "if-match" => "2007" }
+        doc6 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc6.code.should eq(412)
       end
 
       it "checks get vertex by _id" do
@@ -277,9 +453,9 @@ describe ArangoDB do
         cmd = "/_api/graph/#{graph_name}/vertex/vertexTest5"
         body = "{\"optional1\" : \"val2\"}"
         doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
-        doc3.code.should eq(200)
+        doc3.code.should eq(201)
         doc3.parsed_response['error'].should eq(false)
-        doc3.parsed_response['code'].should eq(200)
+        doc3.parsed_response['code'].should eq(201)
         doc3.parsed_response['vertex']['optional1'].should eq("val2")
 
         doc2 = get_vertex( prefix, graph_name, "vertexTest5")
@@ -314,9 +490,9 @@ describe ArangoDB do
         cmd = "/_api/graph/#{graph_name}/vertex/#{_key}"
         body = "{\"optional1\" : \"val2\"}"
         doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
-        doc3.code.should eq(200)
+        doc3.code.should eq(201)
         doc3.parsed_response['error'].should eq(false)
-        doc3.parsed_response['code'].should eq(200)
+        doc3.parsed_response['code'].should eq(201)
         doc3.parsed_response['vertex']['optional1'].should eq("val2")
         doc3.parsed_response['vertex']['optional2'].should eq(nil)
 
@@ -326,6 +502,105 @@ describe ArangoDB do
         doc4.parsed_response['code'].should eq(200)
         doc4.parsed_response['vertex']['optional1'].should eq("val2")
         doc4.parsed_response['vertex']['optional2'].should eq(nil)
+      end
+
+      it "checks update vertex with waitForSync" do
+        cmd = "/_api/collection/#{vertex_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
+        # create with waitForSync = false
+        body = "{\"optional1\" : \"val1\", \"optional2\" : \"val2\"}"
+        doc = create_vertex( prefix, graph_name, body )
+
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['vertex']['optional1'].should eq("val1")
+        doc.parsed_response['vertex']['optional2'].should eq("val2")
+        _key = doc.parsed_response['vertex']['_key'];
+
+        doc2 = get_vertex( prefix, graph_name, _key)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
+        doc2.parsed_response['vertex']['optional1'].should eq(doc.parsed_response['vertex']['optional1'])
+
+        # create with waitForSync = false
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}"
+        body = "{\"optional1\" : \"val2\"}"
+        doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc3.code.should eq(202)
+        doc3.parsed_response['error'].should eq(false)
+        doc3.parsed_response['code'].should eq(202)
+        doc3.parsed_response['vertex']['optional1'].should eq("val2")
+        doc3.parsed_response['vertex']['optional2'].should eq(nil)
+
+        doc4 = get_vertex( prefix, graph_name, _key)
+        doc4.code.should eq(200)
+        doc4.parsed_response['error'].should eq(false)
+        doc4.parsed_response['code'].should eq(200)
+        doc4.parsed_response['vertex']['optional1'].should eq("val2")
+        doc4.parsed_response['vertex']['optional2'].should eq(nil)
+
+        # create with waitForSync = true
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}?waitForSync=true"
+        body = "{\"optional2\" : \"val3\"}"
+        doc5 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc5.code.should eq(201)
+        doc5.parsed_response['error'].should eq(false)
+        doc5.parsed_response['code'].should eq(201)
+        doc5.parsed_response['vertex']['optional2'].should eq("val3")
+        doc5.parsed_response['vertex']['optional1'].should eq(nil)
+      end
+
+      it "checks update vertex with if-match" do
+        body = "{\"optional1\" : \"val1\", \"optional2\" : \"val2\"}"
+        doc = create_vertex( prefix, graph_name, body )
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['vertex']['optional1'].should eq("val1")
+        doc.parsed_response['vertex']['optional2'].should eq("val2")
+        _key = doc.parsed_response['vertex']['_key'];
+        _rev = doc.parsed_response['vertex']['_rev'];
+
+        cmd = "/_api/graph/#{graph_name}/vertex/error4711"
+        body = "{\"optional1\" : \"val2\"}"
+        doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc1.code.should eq(404)
+
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}?rev=4711"
+        body = "{\"optional1\" : \"val2\"}"
+        doc2 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc2.code.should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}?rev=#{_rev}"
+        body = "{\"optional1\" : \"val2\"}"
+        doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc3.code.should eq(201)
+        doc3.parsed_response['error'].should eq(false)
+        doc3.parsed_response['code'].should eq(201)
+        doc3.parsed_response['vertex']['optional1'].should eq("val2")
+        doc3.parsed_response['vertex']['optional2'].should eq(nil)
+        _rev = doc3.parsed_response['vertex']['_rev'];
+
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}?waitForSync=true"
+        body = "{\"optional2\" : \"val3\"}"
+        hdr = { "if-match" => "4711" }
+        doc4 = ArangoDB.log_put("#{prefix}", cmd, :body => body, :headers => hdr)
+        doc4.code.should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}?waitForSync=true"
+        body = "{\"optional2\" : \"val3\"}"
+        hdr = { "if-match" => "#{_rev}" }
+        doc5 = ArangoDB.log_put("#{prefix}", cmd, :body => body, :headers => hdr)
+        doc5.code.should eq(201)
+        doc5.parsed_response['error'].should eq(false)
+        doc5.parsed_response['code'].should eq(201)
+        doc5.parsed_response['vertex']['optional2'].should eq("val3")
+        doc5.parsed_response['vertex']['optional1'].should eq(nil)
       end
 
       it "checks delete vertex" do
@@ -347,10 +622,58 @@ describe ArangoDB do
         doc2.parsed_response['code'].should eq(200)
         doc2.parsed_response['deleted'].should eq(true)
 
+        cmd = "/_api/graph/#{graph_name}/vertex/unknown"
+        doc3 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc3.code.should eq(404)
+        doc3.parsed_response['error'].should eq(true)
+        doc3.parsed_response['code'].should eq(404)
+
         doc4 = get_vertex( prefix, graph_name, _key)
         doc4.code.should eq(404)
         doc4.parsed_response['error'].should eq(true)
         doc4.parsed_response['code'].should eq(404)
+      end
+
+      it "checks delete vertex with waitForSync" do
+        cmd = "/_api/collection/#{vertex_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
+        body = "{\"optional1\" : \"vertexDelete1\"}"
+        doc = create_vertex( prefix, graph_name, body )
+
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        _key = doc.parsed_response['vertex']['_key'];
+
+        doc3 = get_vertex( prefix, graph_name, _key)
+        doc3.code.should eq(200)
+        doc3.parsed_response['error'].should eq(false)
+
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}"
+        doc2 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc2.code.should eq(202)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(202)
+        doc2.parsed_response['deleted'].should eq(true)
+
+        doc4 = get_vertex( prefix, graph_name, _key)
+        doc4.code.should eq(404)
+        doc4.parsed_response['error'].should eq(true)
+        doc4.parsed_response['code'].should eq(404)
+
+        body = "{\"optional1\" : \"vertexDelete2\"}"
+        doc5 = create_vertex( prefix, graph_name, body )
+        doc5.code.should eq(202)
+        doc5.parsed_response['error'].should eq(false)
+        _key = doc5.parsed_response['vertex']['_key'];
+
+        cmd = "/_api/graph/#{graph_name}/vertex/#{_key}?waitForSync=true"
+        doc6 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc6.code.should eq(200)
+        doc6.parsed_response['error'].should eq(false)
+        doc6.parsed_response['code'].should eq(200)
+        doc6.parsed_response['deleted'].should eq(true)
       end
 
       it "checks patch vertex" do
@@ -364,34 +687,38 @@ describe ArangoDB do
 
         body = "{\"optional2\" : \"vertexPatch2\"}"
         doc3 = patch_vertex(prefix, graph_name, _key, body, '')
-        doc3.code.should eq(200)
+        doc3.code.should eq(201)
         doc3.parsed_response['error'].should eq(false)
         doc3.parsed_response['vertex']['optional1'].should eq('vertexPatch1')
         doc3.parsed_response['vertex']['optional2'].should eq('vertexPatch2')
 
+        cmd = "/_api/collection/#{vertex_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         body = "{\"_key\":\"egal\", \"optional2\" : null}"
         doc2 = patch_vertex(prefix, graph_name, _key, body, '')
-        doc2.code.should eq(200)
+        doc2.code.should eq(202)
         doc2.parsed_response['error'].should eq(false)
-        doc2.parsed_response['code'].should eq(200)
+        doc2.parsed_response['code'].should eq(202)
         doc2.parsed_response['vertex']['optional1'].should eq('vertexPatch1')
         doc2.parsed_response['vertex']['optional2'].should be_nil
         doc2.parsed_response['vertex']['_key'].should eq(_key)
 
         body = ""
         doc4 = patch_vertex(prefix, graph_name, _key, body, '')
-        doc4.code.should eq(200)
+        doc4.code.should eq(202)
         doc4.parsed_response['error'].should eq(false)
-        doc4.parsed_response['code'].should eq(200)
+        doc4.parsed_response['code'].should eq(202)
         doc4.parsed_response['vertex']['optional1'].should eq('vertexPatch1')
         doc4.parsed_response['vertex']['optional2'].should be_nil
         doc2.parsed_response['vertex']['_key'].should eq(_key)
 
         body = "{\"_key\":\"egal\", \"optional2\" : null}"
         doc5 = patch_vertex(prefix, graph_name, _key, body, 'false')
-        doc5.code.should eq(200)
+        doc5.code.should eq(202)
         doc5.parsed_response['error'].should eq(false)
-        doc5.parsed_response['code'].should eq(200)
+        doc5.parsed_response['code'].should eq(202)
         doc5.parsed_response['vertex']['optional1'].should eq('vertexPatch1')
         doc2.parsed_response['vertex']['_key'].should eq(_key)
         doc5.parsed_response['vertex'].should_not have_key('optional2')
@@ -416,13 +743,27 @@ describe ArangoDB do
     context "checks edge requests" do
       before do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
         create_simple_vertex( prefix, graph_name, "vert1" )
         create_simple_vertex( prefix, graph_name, "vert2" )
         create_simple_vertex( prefix, graph_name, "vert3" )
+
+        cmd = "/_api/collection/#{edge_collection}/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)    
       end
 
       after do
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         truncate_collection(prefix, "_graphs")
         ArangoDB.drop_collection( vertex_collection )
         ArangoDB.drop_collection( edge_collection )
@@ -477,6 +818,33 @@ describe ArangoDB do
         doc.parsed_response['edge']['$label'].should eq("label1")
       end
 
+      it "checks create edge with waitForSync" do
+        cmd = "/_api/collection/#{edge_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)    
+
+        body = "{\"_key\" : \"edgeTest-waitForSync1\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest-waitForSync1")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq("label1")
+
+        cmd = "/_api/graph/#{graph_name}/edge?waitForSync=true"
+        body = "{\"_key\" : \"edgeTest-waitForSync2\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc2 = ArangoDB.post(cmd, :body => body)
+        doc2.code.should eq(201)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(201)
+        doc2.parsed_response['edge']['_key'].should eq("edgeTest-waitForSync2")
+        doc2.parsed_response['edge']['optional1'].should eq("val1")
+        doc2.parsed_response['edge']['$label'].should eq("label1")
+
+      end
+
       it "checks create edge with _id of vertex" do
         doc = create_simple_vertex( prefix, graph_name, "vert1a" )
         v_id1 = doc.parsed_response['vertex']['_id']
@@ -525,6 +893,69 @@ describe ArangoDB do
         doc2.parsed_response['edge']['_id'].should eq(e_id)
       end
 
+      it "checks get edge by if-none-match" do
+        body = "{\"_key\" : \"edgeTest-if-none-match\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest-if-none-match")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq("label1")
+        _key = doc.parsed_response['edge']['_key']
+        _rev  = doc.parsed_response['edge']['_rev']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{_key}"
+        hdr = { "if-none-match" => "#{_rev}" }
+        doc1 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc1.code.should eq(304)
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{_key}"
+        hdr = { "if-none-match" => "123456" }
+        doc2 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc2.code.should eq(200)
+        doc2.parsed_response['edge']['_key'].should eq("edgeTest-if-none-match")
+        doc2.parsed_response['edge']['optional1'].should eq("val1")
+        doc2.parsed_response['edge']['$label'].should eq("label1")
+      end
+
+      it "checks get edge by if-match" do
+        body = "{\"_key\" : \"edgeTest-if-match\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['edge']['_key'].should eq("edgeTest-if-match")
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['$label'].should eq("label1")
+        _key = doc.parsed_response['edge']['_key']
+        _rev  = doc.parsed_response['edge']['_rev']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{_key}"
+        hdr = { "if-match" => "12121231" }
+        doc1 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc1.code.should eq(412)
+        doc1.parsed_response['error'].should eq(true)
+        doc1.parsed_response['code'].should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{_key}"
+        hdr = { "if-match" => "#{_rev}" }
+        doc2 = ArangoDB.log_get("#{prefix}", cmd, :headers => hdr)
+        doc2.code.should eq(200)
+        doc2.parsed_response['edge']['_key'].should eq("edgeTest-if-match")
+        doc2.parsed_response['edge']['optional1'].should eq("val1")
+        doc2.parsed_response['edge']['$label'].should eq("label1")
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{_key}?rev=#{_rev}"
+        doc3 = ArangoDB.log_get("#{prefix}", cmd)
+        doc3.code.should eq(200)
+        doc3.parsed_response['edge']['_key'].should eq("edgeTest-if-match")
+        doc3.parsed_response['edge']['optional1'].should eq("val1")
+        doc3.parsed_response['edge']['$label'].should eq("label1")
+      end
+
       it "checks replace edge properties by _id" do
         body = "{\"_key\" : \"edgeTest7\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
@@ -541,9 +972,9 @@ describe ArangoDB do
         cmd = "/_api/graph/#{graph_name}/edge/#{e_id}"
         body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
         doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
-        doc1.code.should eq(200)
+        doc1.code.should eq(201)
         doc1.parsed_response['error'].should eq(false)
-        doc1.parsed_response['code'].should eq(200)
+        doc1.parsed_response['code'].should eq(201)
         doc1.parsed_response['edge']['_key'].should eq(e_key)
         doc1.parsed_response['edge']['_id'].should eq(e_id)
         doc1.parsed_response['edge']['_to'].should eq(e_to)
@@ -557,6 +988,93 @@ describe ArangoDB do
         doc1.code.should eq(404)
         doc1.parsed_response['error'].should eq(true)
         doc1.parsed_response['code'].should eq(404)
+
+      end
+
+      it "checks replace edge properties with waitForSync" do
+        cmd = "/_api/collection/#{edge_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)    
+
+        body = "{\"_key\" : \"edgeTest7\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
+
+        e_key = doc.parsed_response['edge']['_key']
+        e_id = doc.parsed_response['edge']['_id']
+        e_to = doc.parsed_response['edge']['_to']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{e_id}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc1.code.should eq(202)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(202)
+        doc1.parsed_response['edge']['_key'].should eq(e_key)
+        doc1.parsed_response['edge']['_id'].should eq(e_id)
+        doc1.parsed_response['edge']['_to'].should eq(e_to)
+        doc1.parsed_response['edge']['optional1'].should eq(nil)
+        doc1.parsed_response['edge']['optional2'].should eq("val2")
+        doc1.parsed_response['edge']['$label'].should eq("label1")
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{e_id}?waitForSync=true"
+        body = "{\"_key\" : \"edge4711\", \"optional1\" : \"val1_huhu\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc1.code.should eq(201)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(201)
+        doc1.parsed_response['edge']['_key'].should eq(e_key)
+        doc1.parsed_response['edge']['_id'].should eq(e_id)
+        doc1.parsed_response['edge']['_to'].should eq(e_to)
+        doc1.parsed_response['edge']['optional2'].should eq(nil)
+        doc1.parsed_response['edge']['optional1'].should eq("val1_huhu")
+        doc1.parsed_response['edge']['$label'].should eq("label1")
+
+      end
+
+      it "checks replace edge properties with if-match" do
+        body = "{\"_key\" : \"edgeTest7\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
+
+        e_key = doc.parsed_response['edge']['_key']
+        e_rev = doc.parsed_response['edge']['_rev']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{e_key}?rev=123"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc1.code.should eq(412)
+        doc1.parsed_response['error'].should eq(true)
+        doc1.parsed_response['code'].should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{e_key}?rev=#{e_rev}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        doc2 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+        doc2.code.should eq(201)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(201)
+        doc2.parsed_response['edge']['_key'].should eq(e_key)
+        e_rev = doc2.parsed_response['edge']['_rev']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{e_key}"
+        hdr = { "if-match" => "123456" }
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body, :headers => hdr)
+        doc3.code.should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{e_key}"
+        hdr = { "if-match" => "#{e_rev}" }
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body, :headers => hdr)
+        doc3.code.should eq(201)
 
       end
 
@@ -605,6 +1123,89 @@ describe ArangoDB do
 
       end
 
+      it "checks delete edge with waitForSync" do
+        cmd = "/_api/collection/#{edge_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)    
+
+        body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
+
+        cmd = "/_api/graph/#{graph_name}/edge/edgeTest9"
+        doc1 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc1.code.should eq(202)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(202)
+
+        body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+        doc.code.should eq(202)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(202)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
+
+        cmd = "/_api/graph/#{graph_name}/edge/edgeTest9?waitForSync=true"
+        doc1 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc1.code.should eq(200)
+        doc1.parsed_response['error'].should eq(false)
+        doc1.parsed_response['code'].should eq(200)
+      end
+
+      it "checks delete edge with if-match" do
+        body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
+        key = doc.parsed_response['edge']['_key']
+        rev = doc.parsed_response['edge']['_rev']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{key}?rev=1111"
+        doc1 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc1.code.should eq(412)
+        doc1.parsed_response['error'].should eq(true)
+        doc1.parsed_response['code'].should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{key}?rev=#{rev}"
+        doc2 = ArangoDB.log_delete("#{prefix}", cmd)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
+
+        body = "{\"_key\" : \"edgeTest9\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
+        doc = create_edge( prefix, graph_name, body )
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['edge']['optional1'].should eq("val1")
+        doc.parsed_response['edge']['optional2'].should eq(nil)
+        key = doc.parsed_response['edge']['_key']
+        rev = doc.parsed_response['edge']['_rev']
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{key}"
+        hdr = { "if-match" => "11111" }
+        doc1 = ArangoDB.log_delete("#{prefix}", cmd, :headers => hdr)
+        doc1.code.should eq(412)
+        doc1.parsed_response['error'].should eq(true)
+        doc1.parsed_response['code'].should eq(412)
+
+        cmd = "/_api/graph/#{graph_name}/edge/#{key}"
+        hdr = { "if-match" => "#{rev}" }
+        doc2 = ArangoDB.log_delete("#{prefix}", cmd, :headers => hdr)
+        doc2.code.should eq(200)
+        doc2.parsed_response['error'].should eq(false)
+        doc2.parsed_response['code'].should eq(200)
+
+      end
+
       it "checks patch edge" do
         body = "{\"_key\" : \"patchEdge\", \"_from\" : \"vert2\", \"_to\" : \"vert1\", \"$label\" : \"label1\", \"optional1\" : \"val1\"}"
         doc = create_edge( prefix, graph_name, body )
@@ -619,15 +1220,19 @@ describe ArangoDB do
 
         body = "{\"$label\" : \"egal\", \"optional2\" : \"val2\"}"
         doc1 = patch_edge("#{prefix}", graph_name, _key, body, '');
-        doc1.code.should eq(200)
+        doc1.code.should eq(201)
         doc1.parsed_response['edge']['optional1'].should eq("val1")
         doc1.parsed_response['edge']['optional2'].should eq("val2")
         doc1.parsed_response['edge']['$label'].should eq("label1")
         doc1.parsed_response['edge']['_key'].should eq("patchEdge")
+        
+        cmd = "/_api/collection/#{edge_collection}/properties"
+        body = "{\"waitForSync\" : false}"
+        doc = ArangoDB.put(cmd, :body => body)    
 
         body = "{\"optional2\" : null}"
         doc2 = patch_edge("#{prefix}", graph_name, _key, body, '');
-        doc2.code.should eq(200)
+        doc2.code.should eq(202)
         doc2.parsed_response['edge']['optional1'].should eq("val1")
         doc2.parsed_response['edge']['optional2'].should be_nil
         doc2.parsed_response['edge']['$label'].should eq("label1")
@@ -635,7 +1240,7 @@ describe ArangoDB do
 
         body = "{\"optional1\" : null}"
         doc3 = patch_edge("#{prefix}", graph_name, _key, body, 'false');
-        doc3.code.should eq(200)
+        doc3.code.should eq(202)
         doc3.parsed_response['edge'].should_not have_key('optional1')
         doc3.parsed_response['edge']['optional2'].should be_nil
         doc3.parsed_response['edge']['$label'].should eq("label1")
@@ -643,7 +1248,7 @@ describe ArangoDB do
 
         body = ""
         doc4 = patch_edge("#{prefix}", graph_name, _key, body, '');
-        doc4.code.should eq(200)
+        doc4.code.should eq(202)
         doc3.parsed_response['edge'].should_not have_key('optional1')
         doc3.parsed_response['edge']['optional2'].should be_nil
         doc3.parsed_response['edge']['$label'].should eq("label1")
@@ -665,6 +1270,11 @@ describe ArangoDB do
     context "checks vertices requests" do
       before do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
         cmd = "/_api/graph/#{graph_name}/vertex"
         body = "{\"_key\" : \"id1\", \"optional1\" : \"val1\", \"optional2\" : 1}"
@@ -687,6 +1297,11 @@ describe ArangoDB do
 
       after do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         ArangoDB.drop_collection( vertex_collection )
         ArangoDB.drop_collection( edge_collection )
       end
@@ -805,6 +1420,11 @@ describe ArangoDB do
     context "checks edges requests" do
       before do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
         cmd = "/_api/graph/#{graph_name}/vertex"
         body = "{\"_key\" : \"id1\", \"optional1\" : \"val1a\", \"optional2\" : \"val2a\"}"
@@ -823,6 +1443,11 @@ describe ArangoDB do
 
       after do
         truncate_collection(prefix, "_graphs")
+
+        cmd = "/_api/collection/_graphs/properties"
+        body = "{\"waitForSync\" : true}"
+        doc = ArangoDB.put(cmd, :body => body)        
+
         ArangoDB.drop_collection( vertex_collection )
         ArangoDB.drop_collection( edge_collection )
       end

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -196,7 +196,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
 void Thread::stop () {
   if (_running != 0) {
-    LOGGER_TRACE("trying to cancel (aka stop) the thread " << _name);
+    LOGGER_TRACE("trying to cancel (aka stop) the thread '" << _name << "'");
     TRI_StopThread(&_thread);
   }
 }
@@ -226,7 +226,7 @@ void Thread::shutdown () {
   }
 
   if (_running != 0) {
-    LOGGER_TRACE("trying to cancel (aka stop) the thread " << _name);
+    LOGGER_TRACE("trying to cancel (aka stop) the thread '" << _name << "'");
     TRI_StopThread(&_thread);
   }
 
@@ -264,7 +264,7 @@ void Thread::allowAsynchronousCancelation () {
   if (_started) {
     if (_running) {
       if (TRI_IsSelfThread(&_thread)) {
-        LOGGER_DEBUG("set asynchronous cancelation for " << _name);
+        LOGGER_DEBUG("set asynchronous cancelation for thread '" << _name << "'");
         TRI_AllowCancelation();
       }
       else {
@@ -295,7 +295,7 @@ void Thread::allowAsynchronousCancelation () {
 
 void Thread::runMe () {
   if (_asynchronousCancelation) {
-    LOGGER_DEBUG("set asynchronous cancelation for " << _name);
+    LOGGER_DEBUG("set asynchronous cancelation for thread '" << _name << "'");
     TRI_AllowCancelation();
   }
 
@@ -306,6 +306,7 @@ void Thread::runMe () {
   }
   catch (...) {
     _running = 0;
+    LOGGER_WARNING("exception caught in thread '" << _name << "'");
     throw;
   }
 
@@ -327,5 +328,5 @@ void Thread::runMe () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

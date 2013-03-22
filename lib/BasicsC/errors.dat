@@ -16,6 +16,7 @@ ERROR_BAD_PARAMETER,10,"bad parameter","Will be raised when the parameter does n
 ERROR_FORBIDDEN,11,"forbidden","Will be raised when you are missing permission for the operation."
 ERROR_OUT_OF_MEMORY_MMAP,12,"out of memory in mmap","Will be raised when there is a memory shortage."
 ERROR_CORRUPTED_CSV,13,"csv is corrupt","Will be raised when encountering a corrupt csv line."
+ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not found."
 
 ################################################################################
 ## HTTP standard errors
@@ -96,6 +97,7 @@ ERROR_ARANGO_DOCUMENT_KEY_BAD,1221,"illegal document key","Will be raised when a
 ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED,1222,"unexpected document key","Will be raised when a user-defined document key is supplied for collections with auto key generation."
 ERROR_ARANGO_INDEX_NEEDS_RESIZE,1223,"index needs resizing","Will be raised when an index is full and should be resized to contain more data."
 ERROR_ARANGO_DATADIR_NOT_WRITABLE,1224,"database directory not writable","Will be raised when the database directory is not writable for the current user."
+ERROR_ARANGO_OUT_OF_KEYS,1225,"out of keys","Will be raised when a key generator runs out of keys."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -187,6 +189,17 @@ ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised w
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed"
 
 ################################################################################
+## Session errors
+################################################################################
+
+ERROR_SESSION_INVALID_SESSION,1951,"invalid session","Will be raised when an invalid session id is passed to the server"
+ERROR_SESSION_COULD_NOT_CREATE_SESSION,1952,"could not create session","Will be raised when the session could not be created"
+ERROR_SESSION_COULD_NOT_CHANGE_SESSION,1953,"could not change session","Will be raised when session data could not be changed"
+ERROR_SESSION_INVALID_FORM,1961,"invalid form","Will be raised when an invalid form id is passed to the server"
+ERROR_SESSION_COULD_NOT_CREATE_FORM,1962,"could not create form","Will be raised when the form could not be created"
+ERROR_SESSION_COULD_NOT_CHANGE_FORM,1963,"could not change form","Will be raised when form data could not be changed"
+
+################################################################################
 ## Simple Client
 ################################################################################
 
@@ -223,3 +236,13 @@ WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING,3411,"bitarray index remove fa
 ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE,3413,"bitarray index insert failure - document attribute value unsupported in index","Will be raised when an attempt to insert a document into a bitarray index fails due to the fact that one or more values for an index attribute is not supported within that index."
 ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES,3415,"bitarray index creation failure - one or more index attributes are duplicated.","Will be raised when an attempt to create an index with two or more index attributes repeated."
 ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES,3417,"bitarray index creation failure - one or more index attribute values are duplicated.","Will be raised when an attempt to create an index with two or more index attribute values repeated."
+
+
+################################################################################
+## results, which are not errors
+################################################################################
+
+RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key already exists","Will be returned if the element was not insert because the key already exists."
+RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
+RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
+RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."

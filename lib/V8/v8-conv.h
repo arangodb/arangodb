@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_V8_V8_CONV_H
@@ -59,12 +59,6 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (const TRI_associative_pointer
 v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert V8 object to TRI_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,6 +72,14 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value>, TRI_shaper_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a V8 object to a TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> object,
+                                TRI_shaped_json_t* result,
+                                TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a json_t value
@@ -158,5 +160,5 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context>);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SSL_SERVER_H
@@ -234,7 +234,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
-          
+
         virtual Endpoint::EncryptionType getEncryption () const {
           return Endpoint::ENCRYPTION_SSL;
         }
@@ -307,7 +307,7 @@ namespace triagens {
           // create an ssl task
           SocketTask* task = new SslAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, this->_keepAliveTimeout, sbio);
 
-          // add the task, otherwise it will not be shut down properly          
+          // add the task, otherwise it will not be shut down properly
           GENERAL_SERVER_LOCK(&this->_commTasksLock);
           this->_commTasks.insert(dynamic_cast<GeneralCommTask<S, HF>*>(task));
           GENERAL_SERVER_UNLOCK(&this->_commTasksLock);
@@ -364,5 +364,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

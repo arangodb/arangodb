@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2010-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Nonce.h"
@@ -64,9 +64,9 @@ namespace triagens {
   namespace basics {
     namespace Nonce {
 
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
       // static functions
-      // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
       void create (size_t size) {
         if (SizeNonces < 64) {
@@ -112,15 +112,15 @@ namespace triagens {
         memcpy(buffer + 4, &rand1, 4);
         memcpy(buffer + 8, &rand2, 4);
 
-        return StringUtils::encodeBase64U(string((char*) buffer, 12));        
+        return StringUtils::encodeBase64U(string((char*) buffer, 12));
       }
-      
+
       bool checkAndMark (string const& nonce) {
-        
+
         if (nonce.length() != 12) {
           return false;
         }
-        
+
         uint8_t const* buffer = (uint8_t const*) nonce.c_str();
 
         uint32_t timestamp = (uint32_t(buffer[0]) << 24)
@@ -137,14 +137,14 @@ namespace triagens {
                       | (uint64_t(buffer[10]) << 8)
                       |  uint64_t(buffer[11]);
 
-        return checkAndMark(timestamp, random);        
+        return checkAndMark(timestamp, random);
       }
 
       bool checkAndMark (uint32_t timestamp, uint64_t random) {
         MUTEX_LOCKER(MutexNonce);
 
         if (TimestampNonces == 0) {
-          LOGGER_INFO("setting nonce hash size to '" << SizeNonces << "'" );        
+          LOGGER_INFO("setting nonce hash size to '" << SizeNonces << "'" );
           create(SizeNonces);
         }
 
@@ -223,8 +223,8 @@ namespace triagens {
           for (size_t i = 1;  i < N + 1;  ++i) {
             T = T + StatisticsNonces[l2age][i];
             coeff = coeff * (N - i + 1) / i;
-            S0 = S0 * pow(StatisticsNonces[l2age][i] / coeff, (4 * N + 2 - 6 * i) / (N * N - N));
-            x = x * pow(StatisticsNonces[l2age][i] / coeff, (12 * i - 6 * N - 6) / (N * N * N - N));
+            S0 = S0 * pow((double)(StatisticsNonces[l2age][i] / coeff), (double)((4 * N + 2 - 6 * i) / (N * N - N)));
+            x = x * pow((double)(StatisticsNonces[l2age][i] / coeff), (double)((12 * i - 6 * N - 6) / (N * N * N - N)));
           }
 
           Statistics current;

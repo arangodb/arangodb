@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_CSV_H
@@ -142,16 +142,16 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
 /// note that the separator string must be valid until the parser is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser, 
+void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser,
                                 char separator);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the quote character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser, 
+void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser,
                             char quote,
-                            bool useQuote); 
+                            bool useQuote);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a CSV line
@@ -177,5 +177,5 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t*, char const*, size_t);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

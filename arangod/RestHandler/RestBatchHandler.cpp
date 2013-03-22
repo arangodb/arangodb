@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestBatchHandler.h"
@@ -51,7 +51,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase), 
+  : RestVocbaseBaseHandler(request, vocbase),
     _partContentType(HttpRequest::getPartContentType()) {
 }
 
@@ -100,7 +100,7 @@ string const& RestBatchHandler::queue () {
 Handler::status_e RestBatchHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
-  
+
   if (type != HttpRequest::HTTP_REQUEST_POST && type != HttpRequest::HTTP_REQUEST_PUT) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
@@ -120,7 +120,7 @@ Handler::status_e RestBatchHandler::execute() {
   // get authorization header. we will inject this into the subparts
   string authorization = _request->header("authorization");
 
-  // create the response 
+  // create the response
   _response = createResponse(HttpResponse::OK);
   _response->setContentType(_request->header("content-type"));
 
@@ -172,9 +172,9 @@ Handler::status_e RestBatchHandler::execute() {
         headerLength = partLength;
       }
     }
-   
+
     // set up request object for the part
-    LOGGER_TRACE("part header is " << string(headerStart, headerLength)); 
+    LOGGER_TRACE("part header is " << string(headerStart, headerLength));
     HttpRequest* request = new HttpRequest(headerStart, headerLength);
 
     if (bodyLength > 0) {
@@ -187,7 +187,7 @@ Handler::status_e RestBatchHandler::execute() {
       request->setHeader("authorization", 13, authorization.c_str());
     }
 
-    
+
     HttpHandler* handler = _server->createHandler(request);
     if (! handler) {
       delete request;
@@ -216,17 +216,17 @@ Handler::status_e RestBatchHandler::execute() {
       }
     }
     while (status == Handler::HANDLER_REQUEUE);
-    
-    
+
+
     if (status == Handler::HANDLER_FAILED) {
       // one of the handlers failed, we must exit now
       delete handler;
       generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "executing a handler for batch part failed");
 
-      return Handler::HANDLER_FAILED; 
+      return Handler::HANDLER_FAILED;
     }
 
-    HttpResponse* partResponse = handler->getResponse(); 
+    HttpResponse* partResponse = handler->getResponse();
     if (partResponse == 0) {
       delete handler;
       generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
@@ -274,7 +274,7 @@ Handler::status_e RestBatchHandler::execute() {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeader(HttpResponse::getBatchErrorHeader(), StringUtils::itoa(errors)); 
+    _response->setHeader(HttpResponse::getBatchErrorHeader(), StringUtils::itoa(errors));
   }
 
   // success
@@ -305,7 +305,7 @@ bool RestBatchHandler::getBoundary (string* result) {
   StringUtils::trimInPlace(parts[1]);
   string p = parts[1].substr(0, boundaryLength);
   StringUtils::tolowerInPlace(&p);
- 
+
   if (p != "boundary=") {
     return false;
   }
@@ -335,7 +335,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   helper->containsMore = false;
   helper->contentId = 0;
   helper->contentIdLength = 0;
-  
+
   const char* searchEnd = helper->message->messageEnd;
 
   if (helper->searchStart >= searchEnd) {
@@ -355,7 +355,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
     return false;
   }
 
-  found += helper->message->boundaryLength; 
+  found += helper->message->boundaryLength;
   if (found + 1 >= searchEnd) {
     // we're outside the buffer. this is an error
     return false;
@@ -466,5 +466,5 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

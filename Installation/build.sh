@@ -86,7 +86,7 @@ case $TRI_OS_LONG in
     # we need 64 bits
     TRI_MACH="x86_64"
     X=$(uname -r)
-    OPTIONS="$OPTIONS --build x86_64-apple-darwin${X}"
+    OPTIONS="$OPTIONS --build=x86_64-apple-darwin${X}"
     ;;
 
   Linux-Debian-6*)

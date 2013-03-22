@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <mruby.h>
@@ -144,7 +144,7 @@ static mrb_value ClientConnection_httpGet (mrb_state* mrb, mrb_value self) {
     printf("unknown connection (TODO raise error)\n");
     return self;
   }
-  
+
   // check header fields
   map<string, string> headerFields;
 
@@ -168,14 +168,14 @@ static mrb_value ClientConnection_httpGet (mrb_state* mrb, mrb_value self) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static MRubyClientConnection* createConnection (mrb_state* mrb) {
   return new MRubyClientConnection(mrb,
                                    BaseClient.endpointServer(),
                                    BaseClient.username(),
-                                   BaseClient.password(), 
-                                   BaseClient.requestTimeout(), 
-                                   BaseClient.connectTimeout(), 
+                                   BaseClient.password(),
+                                   BaseClient.requestTimeout(),
+                                   BaseClient.connectTimeout(),
                                    ArangoClient::DEFAULT_RETRIES,
                                    false);
 }
@@ -210,7 +210,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     LOGGER_FATAL_AND_EXIT("module path not known, please use '--ruby.modules-path'");
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set-up the connection functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +231,7 @@ static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* conne
   // .............................................................................
 
   rcl = mrb_define_class(mrb, "ArangoConnection", mrb->object_class);
-  
+
   mrb_define_method(mrb, rcl, "get", ClientConnection_httpGet, ARGS_REQ(1));
 
   // create the connection variable
@@ -327,9 +327,9 @@ int main (int argc, char* argv[]) {
   // .............................................................................
   // parse the program options
   // .............................................................................
-  
+
   ParseProgramOptions(argc, argv);
-  
+
   // .............................................................................
   // set-up MRuby objects
   // .............................................................................
@@ -338,7 +338,7 @@ int main (int argc, char* argv[]) {
   mrb_state* mrb = MR_OpenShell();
 
   TRI_InitMRUtils(mrb);
-  
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -359,7 +359,7 @@ int main (int argc, char* argv[]) {
 
   // .............................................................................
   // banner
-  // .............................................................................  
+  // .............................................................................
 
   // http://www.network-science.de/ascii/   Font: ogre
   if (! BaseClient.quiet()) {
@@ -398,7 +398,7 @@ int main (int argc, char* argv[]) {
       if (ClientConnection->isConnected()) {
         if (! BaseClient.quiet()) {
           cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-               << "' Version " << ClientConnection->getVersion() << endl; 
+               << "' Version " << ClientConnection->getVersion() << endl;
         }
       }
       else {
@@ -425,10 +425,10 @@ int main (int argc, char* argv[]) {
   char const* files[] = {
     "common/bootstrap/error.rb"
   };
-  
+
   for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
     bool ok = StartupLoader.loadScript(mrb, files[i]);
-    
+
     if (ok) {
       LOGGER_TRACE("loaded ruby file '" << files[i] << "'");
     }
@@ -436,13 +436,13 @@ int main (int argc, char* argv[]) {
       LOGGER_FATAL_AND_EXIT("cannot load ruby file '" << files[i] << "'");
     }
   }
-  
+
   // .............................................................................
   // run normal shell
   // .............................................................................
 
   RunShell(mrb);
-  
+
   TRIAGENS_REST_SHUTDOWN;
 
   return ret;
@@ -458,5 +458,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

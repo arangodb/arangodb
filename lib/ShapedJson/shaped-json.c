@@ -6,7 +6,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shaped-json.h"
@@ -310,6 +310,8 @@ static int WeightShapeType (TRI_shape_type_t type) {
     case TRI_SHAPE_HOMOGENEOUS_LIST:       return 900;
   }
 
+  LOG_ERROR("invalid shape type: %d\n", (int) type);
+  
   assert(false);
   return 0;
 }
@@ -780,8 +782,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   char* ptr;
 
   // sanity checks
-  assert(json->_type == TRI_JSON_ARRAY);
-  assert(json->_value._objects._length % 2 == 0);
+  TRI_ASSERT_DEBUG(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT_DEBUG(json->_value._objects._length % 2 == 0);
 
   // number of attributes
   n = json->_value._objects._length / 2;
@@ -804,6 +806,17 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
     key = TRI_AtVector(&json->_value._objects, 2 * i);
     val = TRI_AtVector(&json->_value._objects, 2 * i + 1);
+
+    TRI_ASSERT_DEBUG(key != NULL);
+    TRI_ASSERT_DEBUG(val != NULL);
+
+    if (key->_value._string.data == NULL ||
+        key->_value._string.length == 1 ||
+        key->_value._string.data[0] == '_') {
+      // empty or reserved attribute name
+      p--;
+      continue;
+    }
 
     // first find an identifier for the name
     p->_aid = shaper->findAttributeName(shaper, key->_value._string.data);
@@ -840,6 +853,9 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
 
   // add variable offset table size
   total += (v + 1) * sizeof(TRI_shape_size_t);
+
+  // now adjust n because we might have excluded empty attributes
+  n = f + v;
 
   // now sort the shape entries
   TRI_SortShapeValues(values, n);
@@ -1208,7 +1224,7 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
 
   TRI_shape_length_list_t l;
   TRI_shape_length_list_t i;
-  
+
   list = TRI_CreateListJson(shaper->_memoryZone);
 
   if (list == NULL) {
@@ -2105,21 +2121,21 @@ static bool StringifyJsonShapeData (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaped_json_t* TRI_CopyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* oldShapedJson) {
-  TRI_shaped_json_t* newShapedJson;  
+  TRI_shaped_json_t* newShapedJson;
   int res;
 
   if (oldShapedJson == NULL) {
     return NULL;
-  }  
+  }
 
   newShapedJson = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), true);
 
   if (newShapedJson == NULL) {
     return NULL;
-  }  
+  }
 
   newShapedJson->_sid  = oldShapedJson->_sid;
-  res = TRI_CopyToBlob(shaper->_memoryZone, &(newShapedJson->_data), &(oldShapedJson->_data)); 
+  res = TRI_CopyToBlob(shaper->_memoryZone, &(newShapedJson->_data), &(oldShapedJson->_data));
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(shaper->_memoryZone, newShapedJson);
@@ -2416,13 +2432,13 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
-                                const TRI_shaped_json_t* const shapedJson, 
+                                const TRI_shaped_json_t* const shapedJson,
                                 char** value,
                                 size_t* length) {
   if (shape->_type == TRI_SHAPE_SHORT_STRING) {
     TRI_shape_length_short_string_t l;
     char* data;
-   
+
     data = shapedJson->_data.data;
     l = * (TRI_shape_length_short_string_t const*) data;
     data += sizeof(TRI_shape_length_short_string_t);
@@ -2443,8 +2459,8 @@ bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
 
     return true;
   }
- 
-  // no string type  
+
+  // no string type
   *value = NULL;
   *length = 0;
 
@@ -2457,5 +2473,5 @@ bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

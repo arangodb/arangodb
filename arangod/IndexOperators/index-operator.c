@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index-operator.h"
@@ -67,18 +67,18 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
                                               TRI_json_t* parameters,
                                               TRI_shaper_t* shaper,
                                               TRI_shaped_json_t* fields,
-                                              size_t numFields, 
+                                              size_t numFields,
                                               void* collection) {
 
   TRI_index_operator_t*          newOperator;
   TRI_logical_index_operator_t*  newLogicalOperator;
   TRI_relation_index_operator_t* newRelationOperator;
-  
+
   switch (operatorType) {
-    case TRI_AND_INDEX_OPERATOR: 
+    case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-      
+
       newLogicalOperator = (TRI_logical_index_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_logical_index_operator_t), false);
 
       if (!newLogicalOperator) {
@@ -89,16 +89,16 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
       newLogicalOperator->_base._shaper = shaper;
       newLogicalOperator->_left         = leftOperand;
       newLogicalOperator->_right        = rightOperand;
-            
+
       newOperator = &(newLogicalOperator->_base);
       break;
     }
-    
-    case TRI_EQ_INDEX_OPERATOR: 
-    case TRI_GE_INDEX_OPERATOR: 
-    case TRI_GT_INDEX_OPERATOR: 
-    case TRI_NE_INDEX_OPERATOR: 
-    case TRI_LE_INDEX_OPERATOR: 
+
+    case TRI_EQ_INDEX_OPERATOR:
+    case TRI_GE_INDEX_OPERATOR:
+    case TRI_GT_INDEX_OPERATOR:
+    case TRI_NE_INDEX_OPERATOR:
+    case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
 
       newRelationOperator = (TRI_relation_index_operator_t*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_relation_index_operator_t), false);
@@ -113,17 +113,17 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e operator
       newRelationOperator->_fields     = fields;
       newRelationOperator->_numFields  = numFields;
       newRelationOperator->_collection = collection;
-      
+
       newOperator = &(newRelationOperator->_base);
       break;
-    }    
-    
+    }
+
     default: {
       newOperator = NULL;
       break;
-    }      
-  } // end of switch statement  
-  
+    }
+  } // end of switch statement
+
   return newOperator;
 }
 
@@ -137,37 +137,37 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
 
   TRI_logical_index_operator_t*  logicalOperator;
   TRI_relation_index_operator_t* relationOperator;
-  
+
   if (indexOperator == NULL) {
     return;
   }
-  
+
   switch (indexOperator->_type) {
-    case TRI_AND_INDEX_OPERATOR: 
+    case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-    
+
       logicalOperator = (TRI_logical_index_operator_t*)(indexOperator);
       TRI_ClearIndexOperator(logicalOperator->_left);
       TRI_ClearIndexOperator(logicalOperator->_right);
 
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
       break;
-      
+
     }
-    
-    
-    case TRI_EQ_INDEX_OPERATOR: 
-    case TRI_GE_INDEX_OPERATOR: 
-    case TRI_GT_INDEX_OPERATOR: 
-    case TRI_NE_INDEX_OPERATOR: 
-    case TRI_LE_INDEX_OPERATOR: 
+
+
+    case TRI_EQ_INDEX_OPERATOR:
+    case TRI_GE_INDEX_OPERATOR:
+    case TRI_GT_INDEX_OPERATOR:
+    case TRI_NE_INDEX_OPERATOR:
+    case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR:
     case TRI_IN_INDEX_OPERATOR: {
       relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
       if (relationOperator->_parameters != NULL) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
-      } 
+      }
 
       if (relationOperator->_fields != NULL) {
         size_t i;
@@ -180,10 +180,10 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
         }
         // free the memory pointer
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);
-      }  
+      }
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
       break;
-    }    
+    }
 
   } // end of switch statement
 }
@@ -200,76 +200,76 @@ TRI_index_operator_t* TRI_CopyIndexOperator(TRI_index_operator_t* indexOperator)
   TRI_logical_index_operator_t*  oldLogicalOperator;
   TRI_relation_index_operator_t* newRelationOperator;
   TRI_relation_index_operator_t* oldRelationOperator;
-  
+
   newOperator = NULL;
-  
+
   if (indexOperator == NULL) {
     return NULL;
   }
-  
+
   switch (indexOperator->_type) {
-    case TRI_AND_INDEX_OPERATOR: 
+    case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
-    case TRI_OR_INDEX_OPERATOR: {    
-    
+    case TRI_OR_INDEX_OPERATOR: {
+
       oldLogicalOperator = (TRI_logical_index_operator_t*)(indexOperator);
       newLogicalOperator = (TRI_logical_index_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_logical_index_operator_t), false));
-      
+
       if (newLogicalOperator == NULL) { // out of memory ?
         break;
       }
-      
+
       newLogicalOperator->_base._type   = indexOperator->_type;
       newLogicalOperator->_base._shaper = indexOperator->_shaper;
       newLogicalOperator->_left         = TRI_CopyIndexOperator(oldLogicalOperator->_left);
       newLogicalOperator->_right        = TRI_CopyIndexOperator(oldLogicalOperator->_right);
-      newOperator = &(newLogicalOperator->_base);      
+      newOperator = &(newLogicalOperator->_base);
 
       break;
-      
+
     }
-    
-    case TRI_EQ_INDEX_OPERATOR: 
-    case TRI_GE_INDEX_OPERATOR: 
-    case TRI_GT_INDEX_OPERATOR: 
-    case TRI_NE_INDEX_OPERATOR: 
-    case TRI_LE_INDEX_OPERATOR: 
-    case TRI_LT_INDEX_OPERATOR: 
+
+    case TRI_EQ_INDEX_OPERATOR:
+    case TRI_GE_INDEX_OPERATOR:
+    case TRI_GT_INDEX_OPERATOR:
+    case TRI_NE_INDEX_OPERATOR:
+    case TRI_LE_INDEX_OPERATOR:
+    case TRI_LT_INDEX_OPERATOR:
     case TRI_IN_INDEX_OPERATOR: {
-    
+
       oldRelationOperator = (TRI_relation_index_operator_t*)(indexOperator);
       newRelationOperator = (TRI_relation_index_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_relation_index_operator_t), false));
-      
+
       if (newRelationOperator == NULL) { // out of memory?
         break;
       }
-      
+
       newRelationOperator->_base._type   = indexOperator->_type;
       newRelationOperator->_base._shaper = indexOperator->_shaper;
-      
+
       if (oldRelationOperator->_parameters != NULL) {
         newRelationOperator->_parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, oldRelationOperator->_parameters);
       }
       else {
         newRelationOperator->_parameters = NULL;
       }
-      
+
       if (oldRelationOperator->_fields != NULL) {
         newRelationOperator->_fields = TRI_CopyShapedJson(oldRelationOperator->_base._shaper, oldRelationOperator->_fields);
-      }  
+      }
       else {
         newRelationOperator->_fields = NULL;
-      }  
-      
+      }
+
       newRelationOperator->_numFields    = oldRelationOperator->_numFields;
       newRelationOperator->_collection   = oldRelationOperator->_collection;
 
-      newOperator = &(newRelationOperator->_base);      
-      
-      break;            
-    }        
+      newOperator = &(newRelationOperator->_base);
+
+      break;
+    }
   }
-  
+
   return newOperator;
 }
 
@@ -288,6 +288,6 @@ void TRI_FreeIndexOperator (TRI_index_operator_t* indexOperator) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

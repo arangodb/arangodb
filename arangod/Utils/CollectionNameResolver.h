@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H
-#define TRIAGENS_ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H
+#define TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
 #include "BasicsC/common.h"
 
@@ -49,7 +49,7 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-  
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-  
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ namespace triagens {
           }
 
           return 0;
-        } 
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection struct for a collection name
@@ -103,19 +103,19 @@ namespace triagens {
         const TRI_vocbase_col_t* getCollectionStruct (const string& name) const {
           if (_resolvedNames.size() > 0) {
             map<string, const TRI_vocbase_col_t*>::const_iterator it = _resolvedNames.find(name);
-  
+
             if (it != _resolvedNames.end()) {
               return (*it).second;
             }
           }
-          
+
           const TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
           if (collection != 0) {
             _resolvedNames[name] = collection;
           }
 
           return collection;
-        } 
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection name for a collection id
@@ -124,10 +124,10 @@ namespace triagens {
         string getCollectionName (const TRI_voc_cid_t cid) const {
           if (_resolvedIds.size() > 0) {
             map<TRI_voc_cid_t, string>::const_iterator it = _resolvedIds.find(cid);
-          
+
             if (it != _resolvedIds.end()) {
               return (*it).second;
-            } 
+            }
           }
 
           char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
@@ -141,7 +141,7 @@ namespace triagens {
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
 
           return name;
-        } 
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -188,5 +188,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

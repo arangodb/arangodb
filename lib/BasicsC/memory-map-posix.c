@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "memory-map.h"
@@ -51,7 +51,7 @@
 int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
 
   // ...........................................................................
-  // Possible flags to send are (based upon the Ubuntu Linux ASM include files: 
+  // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
   // #define MS_ASYNC        1             /* sync memory asynchronously */
   // #define MS_INVALIDATE   2               /* invalidate the caches */
   // #define MS_SYNC         4               /* synchronous memory sync */
@@ -59,13 +59,13 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
   //
   // *mmHandle should always be NULL
   // ...........................................................................
-  
+
   int res;
 
   assert(*mmHandle == NULL);
-  
+
   res = msync(startingAddress, numOfBytesToFlush, flags);
-  
+
 #ifdef __APPLE__
   if (res == 0) {
     res = fcntl(fileDescriptor, F_FULLFSYNC, 0);
@@ -89,25 +89,25 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
   return TRI_ERROR_SYS_ERROR;
 }
 
-int TRI_MMFile(void* memoryAddress, 
-               size_t numOfBytesToInitialise, 
-               int memoryProtection, 
+int TRI_MMFile(void* memoryAddress,
+               size_t numOfBytesToInitialise,
+               int memoryProtection,
                int flags,
-               int fileDescriptor, 
+               int fileDescriptor,
                void** mmHandle,
                int64_t offset,
                void** result) {
-           
+
   off_t offsetRetyped = (off_t)(offset);
-  
+
   *mmHandle = NULL; // only useful for windows
-  
+
   *result = mmap(memoryAddress, numOfBytesToInitialise, memoryProtection, flags, fileDescriptor, offsetRetyped);
-  
-  if (*result != MAP_FAILED) {                
+
+  if (*result != MAP_FAILED) {
     return TRI_ERROR_NO_ERROR;
-  }  
-                  
+  }
+
   if (errno == ENOMEM) {
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
   }
@@ -117,19 +117,19 @@ int TRI_MMFile(void* memoryAddress,
 
 int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap, int fileDescriptor, void** mmHandle) {
   int result;
-  
+
   assert(*mmHandle == NULL);
-  
+
   result = munmap(memoryAddress, numOfBytesToUnMap);
-  
+
   if (result == 0) {
     return TRI_ERROR_NO_ERROR;
-  }  
-  
+  }
+
   if (errno == ENOSPC) {
     return TRI_ERROR_ARANGO_FILESYSTEM_FULL;
   }
-  
+
   return TRI_ERROR_SYS_ERROR;
 }
 
@@ -138,12 +138,12 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,  int flag
   int result;
 
   assert(*mmHandle == NULL);
-  
+
   result = mprotect(memoryAddress, numOfBytesToProtect, flags);
-  
+
   if (result == 0) {
     return TRI_ERROR_NO_ERROR;
-  }    
+  }
   return TRI_ERROR_SYS_ERROR;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +154,6 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,  int flag
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
 

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
@@ -199,7 +199,7 @@ void Scheduler::beginShutdown () {
   for (size_t i = 0;  i < nrThreads;  ++i) {
     threads[i]->beginShutdown();
   }
-  
+
   // set the flag AFTER stopping the threads
   stopping = 1;
 }
@@ -322,7 +322,7 @@ void Scheduler::destroyTask (Task* task) {
       task2thread.erase(i);
     }
   }
-  
+
   thread->destroyTask(task);
 }
 
@@ -402,5 +402,5 @@ void Scheduler::initialiseSignalHandlers () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

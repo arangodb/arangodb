@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-node.h"
@@ -57,8 +57,8 @@ bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node type group
 ////////////////////////////////////////////////////////////////////////////////
-      
-const char* TRI_NodeGroupAql (const TRI_aql_node_t* const node, 
+
+const char* TRI_NodeGroupAql (const TRI_aql_node_t* const node,
                               const bool inspect) {
   switch (node->_type) {
     case TRI_AQL_NODE_VALUE:
@@ -90,7 +90,7 @@ const char* TRI_NodeGroupAql (const TRI_aql_node_t* const node,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the "nice" name of an AST node
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
   switch (type) {
     case TRI_AQL_NODE_NOP:
@@ -202,9 +202,9 @@ bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
-  assert(node);
+  TRI_ASSERT_DEBUG(node != NULL);
 
-  if (node->_type != TRI_AQL_NODE_VALUE && 
+  if (node->_type != TRI_AQL_NODE_VALUE &&
       node->_type != TRI_AQL_NODE_LIST &&
       node->_type != TRI_AQL_NODE_ARRAY) {
     return false;
@@ -246,14 +246,14 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
-  assert(node);
+  TRI_ASSERT_DEBUG(node != NULL);
 
   if (node->_type != TRI_AQL_NODE_VALUE) {
     return false;
   }
 
   return (node->_value._type == TRI_AQL_TYPE_INT ||
-          node->_value._type == TRI_AQL_TYPE_DOUBLE); 
+          node->_value._type == TRI_AQL_TYPE_DOUBLE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,16 +261,16 @@ bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsBooleanValueNodeAql (const TRI_aql_node_t* const node) {
-  assert(node);
-  
+  TRI_ASSERT_DEBUG(node != NULL);
+
   return (node->_type == TRI_AQL_NODE_VALUE && node->_value._type == TRI_AQL_TYPE_BOOL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @} 
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

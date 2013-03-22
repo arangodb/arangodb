@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "strings.h"
@@ -423,7 +423,7 @@ char* TRI_LowerAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
       *out++ = c;
     }
   }
-  
+
   *out = '\0';
 
   return buffer;
@@ -458,7 +458,7 @@ char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   if (buffer == NULL) {
     return NULL;
   }
-  
+
   p = (char*) value;
   out = buffer;
 
@@ -470,7 +470,7 @@ char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
       *out++ = c;
     }
   }
-  
+
   *out = '\0';
 
   return buffer;
@@ -862,7 +862,7 @@ TRI_vector_string_t TRI_Split2String (char const* source, char const* delim) {
   if (source == NULL || *source == '\0') {
     return result;
   }
-  
+
   delimiterSize = strlen(delim);
   size = strlen(source);
   buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, size + 1, false);
@@ -947,7 +947,7 @@ char* TRI_EncodeHexString (char const* source, size_t sourceLen, size_t* dstLen)
   *dstLen = (sourceLen * 2);
   dst = TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1, false);
   result = (char*) dst;
-  
+
   hex = (uint16_t*) HexValues;
   src = (uint8_t*)  source;
 
@@ -1249,7 +1249,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
 
           // unicode range 0800 - ffff (3-byte sequence UTF-8)
           else if ((c & 0xF0) == 0xE0) {
-            
+
             // hopefully correct UTF-8
             if (ptr + 2 < end) {
               EscapeUtf8Range0800TFFFF(&qtr, &ptr);
@@ -1315,12 +1315,9 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char * qtr;
   char const * ptr;
   char const * end;
-  
-#ifdef TRI_HAVE_ICU
   char * utf8_nfc;
   size_t tmpLength = 0;
-#endif
-  
+
   buffer = TRI_Allocate(zone, inLength + 1, false);
 
   if (buffer == NULL) {
@@ -1361,7 +1358,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
             if (ptr + 10 < end) {
               bool sp;
               char c1 = ptr[1];
-           
+
               sp = (c1 == 'd' || c1 == 'D');
 
               if (sp) {
@@ -1371,8 +1368,8 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
 
               if (sp) {
                 char c3 = ptr[7];
-                
-                sp &= (ptr[5] == '\\' && ptr[6] == 'u'); 
+
+                sp &= (ptr[5] == '\\' && ptr[6] == 'u');
                 sp &= (c3 == 'd' || c3 == 'D');
               }
 
@@ -1400,7 +1397,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
             *qtr = *ptr;
           }
           break;
-  
+
         default:
           // this includes cases \/, \\, and \"
           *qtr = *ptr;
@@ -1409,30 +1406,28 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
 
       continue;
     }
-    
+
     *qtr = *ptr;
   }
 
   *qtr = '\0';
   *outLength = (size_t) (qtr - buffer);
 
-#ifdef TRI_HAVE_ICU
   if (*outLength > 0) {
     utf8_nfc = TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
     if (utf8_nfc) {
       *outLength = tmpLength;
       TRI_Free(zone, buffer);
       return utf8_nfc;
-    }    
+    }
   }
-#endif
 
   // we might have wasted some space if the unescaped string is shorter than the
   // escaped one. this is the case if the string contained escaped characters
   if (((ptr - in) > 0) && (*outLength < (size_t)(ptr - in))) {
     // result string is shorter than original string
     qtr = TRI_Allocate(zone, *outLength + 1, false);
- 
+
     if (qtr != NULL) {
       memcpy(qtr, buffer, *outLength + 1);
       TRI_Free(zone, buffer);
@@ -1460,7 +1455,7 @@ size_t TRI_CharLengthUtf8String (const char* in) {
 
   while (*p) {
     unsigned char c = *p;
-  
+
     if (c < 128) {
       // single byte
       p++;
@@ -1502,7 +1497,7 @@ char* TRI_PrefixUtf8String (const char* in, const uint32_t maximumLength) {
 
   while (*p && length < maximumLength) {
     unsigned char c = *p;
-  
+
     if (c < 128) {
       // single byte
       p++;
@@ -1533,5 +1528,5 @@ char* TRI_PrefixUtf8String (const char* in, const uint32_t maximumLength) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ENDPOINT_H
-#define TRIAGENS_FYN_REST_ENDPOINT_H 1
+#ifndef TRIAGENS_REST_ENDPOINT_H
+#define TRIAGENS_REST_ENDPOINT_H 1
 
-#include <BasicsC/socket-utils.h>
+#include "BasicsC/socket-utils.h"
 
-#include <Basics/Common.h>
-#include <Basics/StringUtils.h>
+#include "Basics/Common.h"
+#include "Basics/StringUtils.h"
 
 
 
@@ -43,7 +43,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <sys/file.h>
-#endif 
+#endif
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -73,7 +73,7 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ namespace triagens {
 
         enum EndpointType {
           ENDPOINT_SERVER,
-          ENDPOINT_CLIENT 
+          ENDPOINT_CLIENT
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,9 +108,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encryption used when talking to endpoint
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         enum EncryptionType {
-          ENCRYPTION_NONE = 0, 
+          ENCRYPTION_NONE = 0,
           ENCRYPTION_SSL
         };
 
@@ -133,9 +133,9 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        Endpoint (const EndpointType, 
-                  const DomainType, 
-                  const ProtocolType, 
+        Endpoint (const EndpointType,
+                  const DomainType,
+                  const ProtocolType,
                   const EncryptionType,
                   const std::string&,
                   int);
@@ -145,7 +145,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         virtual ~Endpoint ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +160,7 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-    
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +179,7 @@ namespace triagens {
 /// @brief creates an endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Endpoint* factory (const EndpointType type, 
+        static Endpoint* factory (const EndpointType type,
                                   const std::string&,
                                   int);
 
@@ -198,14 +198,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
-        
-        virtual TRI_socket_t connect (double, double) = 0; 
+
+        virtual TRI_socket_t connect (double, double) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
-        
-        virtual void disconnect () = 0; 
+
+        virtual void disconnect () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief init an incoming connection
@@ -216,14 +216,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set socket timeout
 ////////////////////////////////////////////////////////////////////////////////
-        
-        virtual void setTimeout (TRI_socket_t, double); 
+
+        virtual void setTimeout (TRI_socket_t, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise socket flags
 ////////////////////////////////////////////////////////////////////////////////
-        
-        virtual bool setSocketFlags (TRI_socket_t); 
+
+        virtual bool setSocketFlags (TRI_socket_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the endpoint is connected
@@ -327,13 +327,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint type
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         EndpointType _type;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint domain type
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         DomainType _domainType;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,5 +372,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

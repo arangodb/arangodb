@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BENCHMARK_BENCHMARK_OPERATION_H
@@ -44,7 +44,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Client
+/// @addtogroup Benchmark
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -69,16 +69,16 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the underlying collection
+/// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual string collectionName () = 0;
+      virtual bool setUp (triagens::httpclient::SimpleClient*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the test uses a collection
+/// @brief teardown
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual bool useCollection () const = 0;
+      virtual void tearDown () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the URL of the operation to execute
@@ -93,9 +93,9 @@ namespace triagens {
       virtual HttpRequest::HttpRequestType type (const int, const size_t, const size_t) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the payload (body) of the HTTP request to execute 
+/// @brief return the payload (body) of the HTTP request to execute
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       virtual const char* payload (size_t*, const int, const size_t, const size_t, bool*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,5 +120,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

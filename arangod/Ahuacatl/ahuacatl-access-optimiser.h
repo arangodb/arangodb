@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H
-#define TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H 1
+#ifndef TRIAGENS_AHUACATL_AHUACATL_ACCESS_OPTIMISER_H
+#define TRIAGENS_AHUACATL_AHUACATL_ACCESS_OPTIMISER_H 1
 
 #include "BasicsC/common.h"
 #include "BasicsC/string-buffer.h"
@@ -53,7 +53,7 @@ struct TRI_vector_pointer_s;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logical operator types
 ////////////////////////////////////////////////////////////////////////////////
-                              
+
 typedef enum {
   TRI_AQL_LOGICAL_AND,
   TRI_AQL_LOGICAL_OR
@@ -82,7 +82,7 @@ TRI_aql_access_e;
 
 typedef enum {
   TRI_AQL_RANGE_LOWER_EXCLUDED, // x| ... inf
-  TRI_AQL_RANGE_LOWER_INCLUDED, // |x ... inf 
+  TRI_AQL_RANGE_LOWER_INCLUDED, // |x ... inf
   TRI_AQL_RANGE_UPPER_EXCLUDED, // -inf ... |x
   TRI_AQL_RANGE_UPPER_INCLUDED  // -inf ... x|
 }
@@ -93,7 +93,7 @@ TRI_aql_range_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_AQL_REFERENCE_VARIABLE,        // reference to a variable 
+  TRI_AQL_REFERENCE_VARIABLE,        // reference to a variable
   TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS // reference to an attribute access
 }
 TRI_aql_reference_e;
@@ -135,10 +135,10 @@ typedef struct TRI_aql_field_access_s {
       }
       _ref;
       TRI_aql_reference_e _type;
-      TRI_aql_node_type_e _operator; 
+      TRI_aql_node_type_e _operator;
     }
     _reference;                   // used for TRI_AQL_ACCESS_REFERENCE
-  } 
+  }
   _value;
 }
 TRI_aql_field_access_t;
@@ -146,7 +146,7 @@ TRI_aql_field_access_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attribute name container
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 typedef struct TRI_aql_attribute_name_s {
   const char* _variable;     // variable name/alias used
   TRI_string_buffer_t _name; // complete attribute name (including variable and '.'s)
@@ -180,7 +180,7 @@ TRI_aql_field_access_t* TRI_CreateImpossibleAccessAql (struct TRI_aql_context_s*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if an attribute access structure vector contains the
-/// impossible range 
+/// impossible range
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ContainsImpossibleAql (const struct TRI_vector_pointer_s* const);
@@ -189,7 +189,7 @@ bool TRI_ContainsImpossibleAql (const struct TRI_vector_pointer_s* const);
 /// @brief clone a vector of accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vector_pointer_s* TRI_CloneAccessesAql (struct TRI_aql_context_s* const, 
+struct TRI_vector_pointer_s* TRI_CloneAccessesAql (struct TRI_aql_context_s* const,
                                                    const struct TRI_vector_pointer_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +242,7 @@ const char* TRI_ComparisonOperatorAql (const TRI_aql_node_type_e);
 /// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vector_pointer_s* TRI_OptimiseRangesAql (struct TRI_aql_context_s* const,  
+struct TRI_vector_pointer_s* TRI_OptimiseRangesAql (struct TRI_aql_context_s* const,
                                                     TRI_aql_node_t*,
                                                     bool*,
                                                     const struct TRI_vector_pointer_s* const);
@@ -259,5 +259,5 @@ struct TRI_vector_pointer_s* TRI_OptimiseRangesAql (struct TRI_aql_context_s* co
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

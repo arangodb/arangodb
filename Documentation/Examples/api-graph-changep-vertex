@@ -3,6 +3,7 @@
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
+etag: 24332193
 
 {
   "vertex": {
@@ -21,6 +22,7 @@ content-type: application/json; charset=utf-8
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
+etag: 24332199
 
 {
   "vertex": {

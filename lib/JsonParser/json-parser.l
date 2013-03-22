@@ -286,7 +286,7 @@ static TRI_json_t* ParseArray (yyscan_t scanner) {
 
       // do proper unescaping
       name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, nameLen, &outLength);
-
+      nameLen = outLength;
     }
     else if (c == STRING_CONSTANT_ASCII) {
       // ASCII-only attribute name
@@ -414,12 +414,20 @@ static TRI_json_t* ParseObject (yyscan_t scanner, int c) {
     case STRING_CONSTANT: {
       char* ptr;
       size_t outLength;
+        
+      if (yyleng <= 2) {
+        // string is empty, use original pointer
+        ptr = yytext + 1;
+        outLength = 0;
+      }
+      else {
+        // string is not empty, process it
+        ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-      ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-
-      if (ptr == NULL) {
-        yyextra._message = "out-of-memory";
-        return NULL;
+        if (ptr == NULL) {
+          yyextra._message = "out-of-memory";
+          return NULL;
+        }
       }
 
       result = TRI_CreateString2Json(yyextra._memoryZone, ptr, outLength);

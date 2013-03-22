@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Dr. O
-/// @author Copyright 2006-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_BASICS_C_ASSOCIATIVE_MULTI_H
@@ -61,16 +61,16 @@ typedef struct TRI_multi_array_s {
   uint64_t (*hashElement) (struct TRI_multi_array_s*, void*);
 
   void (*clearElement) (struct TRI_multi_array_s*, void*);
-  
+
   bool (*isEmptyElement) (struct TRI_multi_array_s*, void*);
   bool (*isEqualKeyElement) (struct TRI_multi_array_s*, void*, void*);
   bool (*isEqualElementElement) (struct TRI_multi_array_s*, void*, void*);
 
   uint32_t _elementSize; // the size of the elements which are to be stored in the table
-  
+
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
-  
+
   char* _table;          // the table itself
 
 #ifdef TRI_INTERNAL_STATS
@@ -153,7 +153,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t*,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t*, 
+TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t*,
                                                     TRI_multi_array_t*,
                                                     void* element);
 
@@ -297,7 +297,7 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, void const* element
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*, 
+void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*,
                                      void*,
                                      const bool,
                                      const bool);
@@ -320,5 +320,5 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t*, void const* element);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

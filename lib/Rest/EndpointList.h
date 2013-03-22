@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint list 
+/// @brief connection endpoint list
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ENDPOINT_LIST_H
-#define TRIAGENS_FYN_REST_ENDPOINT_LIST_H 1
+#ifndef TRIAGENS_REST_ENDPOINT_LIST_H
+#define TRIAGENS_REST_ENDPOINT_LIST_H 1
 
-#include <Basics/Common.h>
+#include "Basics/Common.h"
 
-#include <Rest/Endpoint.h>
+#include "Rest/Endpoint.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      EndpointList
@@ -82,7 +82,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint list
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         ~EndpointList ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,8 +101,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-        
-        static const string getKey (const Endpoint::ProtocolType protocol, 
+
+        static const string getKey (const Endpoint::ProtocolType protocol,
                                     const Endpoint::EncryptionType encryption) {
           return string(getProtocolName(protocol) + " " + getEncryptionName(encryption));
         }
@@ -116,7 +116,7 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-    
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,7 @@ namespace triagens {
               return "http";
             default:
               return "unknown";
-          } 
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,7 +143,7 @@ namespace triagens {
             case Endpoint::ENCRYPTION_NONE:
             default:
               return "tcp";
-          } 
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,13 +182,13 @@ namespace triagens {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-    
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists of endpoints
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         map<string, ListType> _lists;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,5 +208,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

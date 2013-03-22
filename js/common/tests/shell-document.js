@@ -216,6 +216,22 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document w/ invalid primary key data types
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveInvalidDocumentKeyType : function () {
+      [ 1, 2, 3, false, true, null, [ ], { } ].forEach(function (key) {
+        try {
+          collection.save({ _key: key });
+          fail();
+        }
+        catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document w/ primary key violation
 ////////////////////////////////////////////////////////////////////////////////
 

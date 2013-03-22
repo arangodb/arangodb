@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2005-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2005-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Timing.h"
@@ -30,9 +30,9 @@
 namespace triagens {
   namespace basics {
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // implementation
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     struct TimingImpl {
         TimingImpl (Timing::TimingType type)
@@ -107,9 +107,9 @@ namespace triagens {
 
 #endif
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // constructors and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     Timing::Timing (TimingType type)
       : impl(new TimingImpl(type)) {
@@ -138,9 +138,9 @@ namespace triagens {
       delete impl;
     }
 
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
     // public methods
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
     uint64_t Timing::time () {
       impl->fill(&(impl->tv2));
