@@ -1318,15 +1318,24 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
 
 static int ReadShapedJson (TRI_doc_operation_context_t* context,
                            const TRI_voc_key_t key,
-                           TRI_doc_mptr_t* mptr) {
+                           TRI_doc_mptr_t* mptr,
+                           const bool lock) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* header;
 
   primary = context->_collection;
 
+  if (lock) {
+    primary->beginRead(primary);
+  }
+
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 
   if (! IsVisible(header, context)) {
+    if (lock) {
+      primary->endRead(primary);
+    }
+
     // make an empty result
     memset(mptr, 0, sizeof(TRI_doc_mptr_t));
 
@@ -1335,6 +1344,10 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
 
   // we found a document, now copy it over
   *mptr = *((TRI_doc_mptr_t*) header);
+
+  if (lock) {
+    primary->endRead(primary);
+  }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   TRI_ASSERT_DEBUG(mptr->_key != NULL);
