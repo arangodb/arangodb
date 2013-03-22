@@ -129,7 +129,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.appendCurlRequest = function (appender) {
-    return function (method, url, body) {
+    return function (method, url, body, headers) {
       var response;
       var curl;
 
@@ -161,6 +161,10 @@
       else if (method === 'OPTION') {
         response = internal.arango.OPTION_RAW(url, body);
         curl += "-X " + method + " ";
+      }
+
+      if (headers !== undefined && headers !== "") {
+        curl += "--header \'" + headers + "\' ";
       }
 
       if (body !== undefined && body !== "") {
