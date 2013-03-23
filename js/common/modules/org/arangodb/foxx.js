@@ -104,6 +104,7 @@ _.extend(FoxxApplication.prototype, {
   // you wrote. If this precious moment has arrived, you should
   // use this function.
   start: function () {
+    'use strict';
     db._routing.save(this.routingInfo);
   },
 
