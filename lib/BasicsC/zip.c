@@ -25,9 +25,10 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "files.h"
+#include "zip.h"
 
-#include "unzip.h"
+#include "files.h"
+#include "Zip/unzip.h"
 
 #ifdef _WIN32
 #define USEWIN32IOAPI
@@ -35,7 +36,7 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,125 +45,131 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unzips a file
+/// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
 
-int do_extract_currentfile (unzFile uf,
-                            const bool withoutPath,
-                            const bool overwrite,
-                            const char* password) {
+static int ExtractCurrentFile (unzFile uf,
+                               void* buffer,
+                               const size_t bufferSize,
+                               const char* outPath,
+                               const bool skipPaths,
+                               const bool overwrite,
+                               const char* password) {
   char filenameInZip[256];
   char* filenameWithoutPath;
+  char* fullPath;
   char* p;
-  int err = UNZ_OK;
-  FILE *fout=NULL;
-  void* buf;
-  size_t bufferSize;
+  FILE *fout;
   unz_file_info64 fileInfo;
 
-  err = unzGetCurrentFileInfo64(uf, &fileInfo, filenameInZip, sizeof(filenameInZip), NULL, 0, NULL, 0);
-
-  if (err != UNZ_OK) {
-    return err;
-  }
-
-  bufferSize = 16384;
-  buf = (void*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
-
-  if (buf == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+  if (unzGetCurrentFileInfo64(uf, &fileInfo, filenameInZip, sizeof(filenameInZip), NULL, 0, NULL, 0) != UNZ_OK) {
+    return TRI_ERROR_INTERNAL;
   }
 
   p = filenameWithoutPath = filenameInZip;
+
   while (*p != '\0') {
+    // get the file name without any path prefix
+
     if (*p == '/' || *p == '\\') {
       filenameWithoutPath = p + 1;
     }
     p++;
   }
-
+  
   if (*filenameWithoutPath == '\0') {
-    if (! withoutPath) {
-      if (! TRI_CreateDirectory(filenameInZip)) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
+    // found a directory
+    if (! skipPaths) {
+      fullPath = TRI_Concatenate2File(outPath, filenameInZip);
 
-        return TRI_ERROR_INTERNAL;
-      }
+      TRI_CreateRecursiveDirectory(fullPath);
+
+      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
     }
   }
   else {
+    // found a file
     const char* writeFilename;
 
-    if (! withoutPath) {
+    if (! skipPaths) {
       writeFilename = filenameInZip;
     }
     else {
       writeFilename = filenameWithoutPath;
     }
 
-    err = unzOpenCurrentFilePassword(uf, password);
-    if (err != UNZ_OK) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
-
+    if (unzOpenCurrentFilePassword(uf, password) != UNZ_OK) {
       return TRI_ERROR_INTERNAL;
     }
 
     if (! overwrite && TRI_ExistsFile(writeFilename)) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
-
       return TRI_ERROR_INTERNAL;
     }
 
-    fout = fopen(writeFilename,"wb");
-      /* some zipfile don't contain directory alone before file */
-    if (fout == NULL && ! withoutPath && filenameWithoutPath != (char*) filenameInZip) {
+    // prefix the name from the zip file with the path specified
+    fullPath = TRI_Concatenate2File(outPath, writeFilename);
+    
+    // try to write the outfile
+    fout = fopen(fullPath, "wb");
+
+    if (fout == NULL && ! skipPaths && filenameWithoutPath != (char*) filenameInZip) {
+      // cannot write to outfile. this may be due to the target directory missing
       char c = *(filenameWithoutPath - 1);
-      *(filenameWithoutPath - 1)='\0';
-      TRI_CreateRecursiveDirectory(writeFilename);
-      *(filenameWithoutPath - 1)=c;
+      *(filenameWithoutPath - 1) = '\0';
+
+      // create target directory recursively
+      TRI_CreateRecursiveDirectory(fullPath);
+
+      *(filenameWithoutPath - 1) = c;
+
+      // try again
       fout = fopen(writeFilename,"wb");
     }
+    
+    TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
 
-    if (fout==NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
-
-      return TRI_ERROR_INTERNAL;
+    if (fout == NULL) {
+      return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
-    do {
-      err = unzReadCurrentFile(uf, buf, bufferSize);
-      if (err<0) {
-        break;
+    while (true) {
+      int result = unzReadCurrentFile(uf, buffer, bufferSize);
+
+      if (result < 0) {
+        fclose(fout);
+        return TRI_ERROR_INTERNAL;
       }
-      if (err>0) {
-        if (fwrite(buf, err, 1, fout) != 1) {
-          err = UNZ_ERRNO;
-          break;
+
+      if (result > 0) {
+        if (fwrite(buffer, result, 1, fout) != 1) {
+          fclose(fout);
+
+          return errno;
         }
       }
+      else {
+        TRI_ASSERT_DEBUG(result == 0);
+        break;
+      }
     }
-    while (err > 0);
 
     fclose(fout);
-/*
-      if (err==0)
-        change_file_date(write_filename,file_info.dosDate,
-            file_info.tmu_date);
-        */
   }
 
   unzCloseCurrentFile(uf);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
   
-  return err;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a single file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UnzipFile (unzFile uf, 
-                      const bool withoutPath,
+static int UnzipFile (unzFile uf,
+                      void* buffer,
+                      const size_t bufferSize,
+                      const char* outPath, 
+                      const bool skipPaths,
                       const bool overwrite,
                       const char* password) {
   unz_global_info64 gi;
@@ -173,9 +180,10 @@ static int UnzipFile (unzFile uf,
     return TRI_ERROR_INTERNAL;
   }
     
-  for (i=0; i < gi.number_entry; i++) {
-    if (do_extract_currentfile(uf, withoutPath, overwrite, password) != UNZ_OK) {
-      res = TRI_ERROR_INTERNAL;
+  for (i = 0; i < gi.number_entry; i++) {
+    res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password);
+
+    if (res != TRI_ERROR_NO_ERROR) {
       break;
     }
 
@@ -191,28 +199,55 @@ static int UnzipFile (unzFile uf,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Files
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile (const char* filename, 
-                   const bool withoutPath,
+int TRI_UnzipFile (const char* filename,
+                   const char* outPath, 
+                   const bool skipPaths,
                    const bool overwrite,
                    const char* password) {
   unzFile uf;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
+  void* buffer;
+  size_t bufferSize;
   int res;
+  
+  bufferSize = 16384;
+  buffer = (void*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+
+  if (buffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
 
 #ifdef USEWIN32IOAPI
   fill_win32_filefunc64A(&ffunc);
-  uf = unzOpen2_64(filename ,&ffunc);
+  uf = unzOpen2_64(filename, &ffunc);
 #else
   uf = unzOpen64(filename);
 #endif
-  res = UnzipFile(uf, withoutPath, overwrite, password);
+
+  res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password);
 
   unzClose(uf);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
   return res;
 }

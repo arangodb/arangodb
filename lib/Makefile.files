@@ -93,7 +93,9 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/shaped-json.c \
 	lib/Statistics/statistics.cpp \
 	lib/Utilities/LineEditor.cpp \
-	lib/Utilities/ScriptLoader.cpp
+	lib/Utilities/ScriptLoader.cpp \
+	lib/Zip/ioapi.c \
+	lib/Zip/unzip.c
 
 ################################################################################
 ### @brief library "libarango.a", client part
