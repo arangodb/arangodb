@@ -499,10 +499,11 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
+  idx->typeName = TypeNameGeo1Index;
   TRI_InitIndex(idx, TRI_IDX_TYPE_GEO1_INDEX, primary, false, true);
+
   idx->_ignoreNull = ignoreNull;
 
-  idx->typeName = TypeNameGeo1Index;
   idx->json     = JsonGeo1Index;
   idx->insert   = InsertGeoIndex;
   idx->remove   = RemoveGeoIndex;
@@ -554,10 +555,11 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
+  idx->typeName = TypeNameGeo2Index;
   TRI_InitIndex(idx, TRI_IDX_TYPE_GEO2_INDEX, primary, false, true);
+
   idx->_ignoreNull = ignoreNull;
   
-  idx->typeName = TypeNameGeo2Index;
   idx->json     = JsonGeo2Index;
   idx->insert   = InsertGeoIndex;
   idx->remove   = RemoveGeoIndex;

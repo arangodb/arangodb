@@ -15,6 +15,8 @@ var FoxxApplication,
   FormatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
+  fs = require("fs"),
+  console = require("console"),
   internal = {};
 
 // ArangoDB uses a certain structure we refer to as `UrlObject`.
@@ -561,8 +563,41 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 
 // We finish off with exporting FoxxApplication and the middlewares.
 // Everything else will remain our secret.
-//
-// Fin.
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file
+////////////////////////////////////////////////////////////////////////////////
+
+exports.loadManifest = function (path) {
+  var name;
+  var content;
+  var manifest;
+  var key;
+
+  name = fs.join(path, "manifest.json");
+  content = fs.read(name);
+  manifest = JSON.parse(content);
+
+  for (key in manifest.apps) {
+    if (manifest.apps.hasOwnProperty(key)) {
+      var app = manifest.apps[key];
+
+      console.info("loading app '%s' from '%s'", key, app);
+
+      module.loadAppScript(path, manifest, app);
+    }
+  }
+};
+
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// End:

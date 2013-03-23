@@ -365,6 +365,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
 
+      LOG_TRACE("shaper failed to find shape of type %d", (int) shape->base._type);
       return false;
     }
 
@@ -433,6 +434,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
 
+      LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
       return false;
     }
 
@@ -756,6 +758,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   found = shaper->findShape(shaper, &a->base);
 
   if (found == 0) {
+    LOG_TRACE("shaper failed to find shape %d", (int) a->base._type);
     TRI_Free(shaper->_memoryZone, a);
     return false;
   }
@@ -835,6 +838,32 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
     return FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects);
   }
 
+  if (json->IsRegExp()) {
+    LOG_TRACE("shaper failed because a regexp cannot be converted");
+    return false;
+  }
+
+  if (json->IsFunction()) {
+    LOG_TRACE("shaper failed because a function cannot be converted");
+    return false;
+  }
+
+  if (json->IsExternal()) {
+    LOG_TRACE("shaper failed because an external cannot be converted");
+    return false;
+  }
+
+  if (json->IsDate()) {
+    LOG_TRACE("shaper failed because a date cannot be converted");
+    return false;
+  }
+
+  if (json->IsUndefined()) {
+    LOG_TRACE("shaper failed because an undefined cannot be converted");
+    return false;
+  }
+
+  LOG_TRACE("shaper failed to convert object");
   return false;
 }
 

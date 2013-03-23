@@ -483,12 +483,12 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
+  idx->typeName = TypeNamePrimary;
   TRI_InitIndex(idx, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true, true);
 
   // override iid
   idx->_iid     = 0;
 
-  idx->typeName = TypeNamePrimary;
   idx->json     = JsonPrimary;
   idx->insert   = InsertPrimary;
   idx->remove   = RemovePrimary;
@@ -778,9 +778,9 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
   TRI_PushBackVectorString(&idx->_fields, id);
  
+  idx->typeName = TypeNameEdge;
   TRI_InitIndex(idx, TRI_IDX_TYPE_EDGE_INDEX, primary, false, true); 
 
-  idx->typeName = TypeNameEdge;
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
@@ -1133,9 +1133,9 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* prim
   pqIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_priorityqueue_index_t), false);
   idx = &pqIndex->base;
   
+  idx->typeName = TypeNamePriorityQueueIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, primary, unique, true);
    
-  idx->typeName = TypeNamePriorityQueueIndex;
   idx->json     = JsonPriorityQueueIndex;
   idx->insert   = InsertPriorityQueueIndex;
   idx->remove   = RemovePriorityQueueIndex;
@@ -1776,9 +1776,9 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
   idx = &skiplistIndex->base;
 
+  idx->typeName = TypeNameSkiplistIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, false);
 
-  idx->typeName = TypeNameSkiplistIndex;
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
   idx->remove   = RemoveSkiplistIndex;
@@ -2113,9 +2113,9 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   idx = &fulltextIndex->base;
 
+  idx->typeName = TypeNameFulltextIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false, true); 
 
-  idx->typeName = TypeNameFulltextIndex;
   idx->json     = JsonFulltextIndex;
   idx->insert   = InsertFulltextIndex;
   idx->remove   = RemoveFulltextIndex;
@@ -2806,9 +2806,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
   idx = &baIndex->base;
 
+  idx->typeName = TypeNameBitarrayIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false, false);
 
-  idx->typeName = TypeNameBitarrayIndex;
   idx->json     = JsonBitarrayIndex;
   idx->insert   = InsertBitarrayIndex;
   idx->remove   = RemoveBitarrayIndex;
