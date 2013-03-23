@@ -532,6 +532,32 @@ static v8::Handle<v8::Value> JS_IsDirectory (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if path is a file
+///
+/// @FUN{fs.isFile(@FA{path})}
+///
+/// Returns true if the @FA{path} points to a file.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: isFile(<path>)")));
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<path> must be a string")));
+  }
+
+  // return result
+  return scope.Close(TRI_ExistsFile(*name) ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory tree
 ///
 /// @FUN{fs.listTree(@FA{path})}
@@ -1762,6 +1788,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
+  TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
