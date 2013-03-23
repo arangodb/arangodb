@@ -632,9 +632,9 @@ function FormatMiddlewareSpec () {
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 //jsunity.run(AddMidlewareFoxxApplicationSpec);
-jsunity.run(BaseMiddlewareWithoutTemplateSpec);
-jsunity.run(BaseMiddlewareWithTemplateSpec);
-jsunity.run(ViewHelperSpec);
-jsunity.run(FormatMiddlewareSpec);
+//jsunity.run(BaseMiddlewareWithoutTemplateSpec);
+//jsunity.run(BaseMiddlewareWithTemplateSpec);
+//jsunity.run(ViewHelperSpec);
+//jsunity.run(FormatMiddlewareSpec);
 
 return jsunity.done();
