@@ -77,9 +77,9 @@ FoxxApplication = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
+    myMiddleware = BaseMiddleware(templateCollection, this.helperCollection);
   } else {
-    myMiddleware = new BaseMiddleware();
+    myMiddleware = BaseMiddleware();
   }
 
   this.routingInfo.middleware = [
