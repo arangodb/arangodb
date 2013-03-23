@@ -186,7 +186,7 @@ typedef struct
 #include "crypt.h"
 #endif
 
-local linkedlist_datablock_internal* allocate_new_datablock()
+local linkedlist_datablock_internal* allocate_new_datablock(void)
 {
     linkedlist_datablock_internal* ldi;
     ldi = (linkedlist_datablock_internal*)
@@ -1506,12 +1506,12 @@ extern int ZEXPORT zipWriteInFileInZip (zipFile file,const void* buf,unsigned in
     return err;
 }
 
-extern int ZEXPORT zipCloseFileInZipRaw (zipFile file, uLong uncompressed_size, uLong crc32)
+extern int ZEXPORT zipCloseFileInZipRaw (zipFile file, uLong uncompressed_size, uLong _crc32)
 {
-    return zipCloseFileInZipRaw64 (file, uncompressed_size, crc32);
+    return zipCloseFileInZipRaw64 (file, uncompressed_size, _crc32);
 }
 
-extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_size, uLong crc32)
+extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_size, uLong _crc32)
 {
     zip64_internal* zi;
     ZPOS64_T compressed_size;
@@ -1599,7 +1599,7 @@ extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_s
 
     if (!zi->ci.raw)
     {
-        crc32 = (uLong)zi->ci.crc32;
+        _crc32 = (uLong)zi->ci.crc32;
         uncompressed_size = zi->ci.totalUncompressedData;
     }
     compressed_size = zi->ci.totalCompressedData;
@@ -1618,7 +1618,7 @@ extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_s
 
     }
 
-    zip64local_putValue_inmemory(zi->ci.central_header+16,crc32,4); /*crc*/
+    zip64local_putValue_inmemory(zi->ci.central_header+16,_crc32,4); /*crc*/
 
 
     if(compressed_size >= 0xffffffff)
@@ -1709,7 +1709,7 @@ extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_s
             err = ZIP_ERRNO;
 
         if (err==ZIP_OK)
-            err = zip64local_putValue(&zi->z_filefunc,zi->filestream,crc32,4); /* crc 32, unknown */
+            err = zip64local_putValue(&zi->z_filefunc,zi->filestream,_crc32,4); /* crc 32, unknown */
 
         if(uncompressed_size >= 0xffffffff || compressed_size >= 0xffffffff )
         {
