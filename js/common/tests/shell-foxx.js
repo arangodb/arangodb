@@ -204,7 +204,7 @@ function SetRoutesFoxxApplicationSpec () {
         b: 2
       };
       app.get('/simple/route', myFunc);
-      app.start("myContext", true);
+      app.start("myContext");
 
       assertEqual(app.routingInfo.routes[0].action.context, "myContext");
       assertEqual(app.routingInfo.routes[0].action.requires.a, 1);
@@ -647,11 +647,11 @@ function formatMiddlewareSpec () {
 
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
+// TODO: Recreate the Test Suite, changed the Middlewares to Strings
 //jsunity.run(AddMidlewareFoxxApplicationSpec);
 //jsunity.run(baseMiddlewareWithoutTemplateSpec);
 //jsunity.run(baseMiddlewareWithTemplateSpec);
 //jsunity.run(ViewHelperSpec);
-// TODO: Recreate the Test Suite, changed the Middlewares to Strings
 //jsunity.run(formatMiddlewareSpec);
 
 return jsunity.done();
