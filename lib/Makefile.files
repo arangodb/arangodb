@@ -95,7 +95,8 @@ lib_libarango_a_SOURCES = \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Zip/ioapi.c \
-	lib/Zip/unzip.c
+	lib/Zip/unzip.c \
+	lib/Zip/zip.c
 
 ################################################################################
 ### @brief library "libarango.a", client part
