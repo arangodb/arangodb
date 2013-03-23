@@ -214,16 +214,51 @@ function lookupCallbackActionCallback (route, action) {
   var defn;
   var env;
   var func;
+  var key;
+  var appModule;
 
   defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
-  env = {
-    module: module.root,
-    require: function (path) {
-      return module.root.require(path);
-    }
-  };
+  env = {};
 
   try {
+    if (action.hasOwnProperty("context")) {
+      var context = action.context;
+
+      appModule = module.appRootModule(context.name);
+    }
+    else {
+      appModule = module.root;
+    }
+
+    if (action.hasOwnProperty("requires")) {
+      var requires = action.requires;
+
+      for (key in requires) {
+        if (requires.hasOwnProperty(key)) {
+          var val = requires[key];
+
+          env[key] = appModule.require(val);
+        }
+      }
+    }
+
+    if (action.hasOwnProperty("modules")) {
+      var modules = action.modules;
+
+      for (key in modules) {
+        if (modules.hasOwnProperty(key)) {
+          var val = modules[key];
+
+          env[key] = appModule.require(val);
+        }
+      }
+    }
+
+    env.module = module.root;
+    env.require = function (path) {
+      return module.root.require(path);
+    };
+
     internal.execute(defn, env, route);
 
     if (env.hasOwnProperty("func")) {
@@ -375,7 +410,7 @@ function lookupCallbackActionController (route, action) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a callback for a controller action
+/// @brief looks up a callback for a prefix controller action
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackActionPrefixController (route, action) {
