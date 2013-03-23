@@ -56,9 +56,9 @@ JAVASCRIPT_JSLINT = \
 	\
 	@srcdir@/html/admin/js/arangodb/browser.js \
 	\
-	@srcdir@/js/actions/system/api-collection.js \
-	@srcdir@/js/actions/system/api-structure.js \
-	@srcdir@/js/actions/system/api-system.js
+	@srcdir@/js/actions/api-collection.js \
+	@srcdir@/js/actions/api-structure.js \
+	@srcdir@/js/actions/api-system.js
 
 ################################################################################
 ### @brief executes jslint
