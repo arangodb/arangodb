@@ -297,6 +297,10 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     bool ok = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects);
 
     if (! ok) {
+      if (! ok) {
+        LOG_TRACE("failed to convert position '%d'", (int) i);
+      }
+
       for (e = p, p = values;  p < e;  ++p) {
         if (p->_value != 0) {
           TRI_Free(shaper->_memoryZone, p->_value);
@@ -610,6 +614,10 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
     else {
       ok = FillShapeValueJson(shaper, p, val, seenHashes, seenObjects);
+
+      if (! ok) {
+        LOG_TRACE("failed to convert attribute '%s'", *keyStr);
+      }
     }
 
     if (! ok) {
