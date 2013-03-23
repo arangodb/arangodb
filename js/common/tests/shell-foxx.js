@@ -302,6 +302,26 @@ function BaseMiddlewareWithoutTemplateSpec () {
       assertEqual(request.body(), "test");
     },
 
+    testParamFunctionReturnsUrlParameters: function () {
+      request.urlParameters = {a: 1};
+      baseMiddleware(request, response, options, next);
+      assertEqual(request.params("a"), 1);
+    },
+
+    testParamFunctionReturnsParameters: function () {
+      request.parameters = {a: 1};
+      baseMiddleware(request, response, options, next);
+      assertEqual(request.params("a"), 1);
+    },
+
+    testParamFunctionReturnsAllParams: function () {
+      request.urlParameters = {a: 1};
+      request.parameters = {b: 2};
+      baseMiddleware(request, response, options, next);
+      assertEqual(request.params("a"), 1);
+      assertEqual(request.params("b"), 2);
+    },
+
     testStatusFunctionAddedToResponse: function () {
       baseMiddleware(request, response, options, next);
 

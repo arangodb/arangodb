@@ -115,6 +115,11 @@ _.extend(FoxxApplication.prototype, {
   //     app.handleRequest("get", "/gaense", function (req, res) {
   //       //handle the request
   //     });
+  //
+  // When defining a route you can also define a so called 'parameterized'
+  // route like `/gaense/:stable`. In this case you can later get the value
+  // the user provided for `stable` via the `params` function (see the Request
+  // object).
   handleRequest: function (method, route, argument1, argument2) {
     'use strict';
     var newRoute = {}, options, callback;
@@ -316,9 +321,26 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     //
     // FoxxApplication adds the following methods to this request object:
     requestFunctions = {
-      // Get the body of the request.
+      // ### The superfluous `body` function
+      // Get the body of the request
       body: function () {
         return this.requestBody;
+      },
+
+      // ### The jinxed `params` function
+      // Get the parameters of the request. This process is two-fold:
+      //
+      // 1. If you have defined an URL like `/test/:id` and the user
+      // requested `/test/1`, the call `params("id")` will return `1`.
+      // 2. If you have defined an URL like `/test` and the user gives a
+      // query component, the query parameters will also be returned.
+      // So for example if the user requested `/test?a=2`, the call
+      // `params("a")` will return `2`.
+      params: function (key) {
+        var ps = {};
+        _.extend(ps, this.urlParameters);
+        _.extend(ps, this.parameters);
+        return ps[key];
       }
     };
 
