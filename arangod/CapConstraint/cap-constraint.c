@@ -174,9 +174,9 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
   idx = &cap->base;
 
+  idx->typeName = TypeNameCapConstraint;
   TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
 
-  idx->typeName    = TypeNameCapConstraint;
   idx->json        = JsonCapConstraint;
   idx->removeIndex = RemoveIndexCapConstraint;
   idx->insert      = InsertCapConstraint;

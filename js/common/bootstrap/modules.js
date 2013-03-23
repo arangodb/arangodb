@@ -429,9 +429,9 @@ function stop_color_print () {
 
     paths = pkg._paths;
 
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // normal modules, file based
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -469,9 +469,9 @@ function stop_color_print () {
 
     paths = internal.MODULES_PATH;
 
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // normal modules, file based
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -494,9 +494,9 @@ function stop_color_print () {
       }
     }
 
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // normal modules, database based
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
 
     if (internal.db !== undefined) {
       mc = internal.db._collection("_modules");
@@ -724,6 +724,68 @@ function stop_color_print () {
       + " for package '" + this._package.id + "'"
       + " using module path '" + internal.MODULES_PATH + "'"
       + " and package path '" + this._package._paths + "'";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a file from an application path
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.loadAppScript = function (unormalizedPath, manifest, appfile) {
+    var path = this.normalize(unormalizedPath);
+    var file = this.normalize(path + "/" + appfile);
+    var sandbox = {};
+    var content;
+    var fun;
+    var libpath;
+    var mdl;
+    var pkg;
+    var result;
+
+    if (manifest.hasOwnProperty("lib")) {
+      libpath = path + "/" + manifest.lib;
+    }
+    else {
+      libpath = path;
+    }
+
+    pkg = new Package("application",
+                      {name: "application '" + appfile + "'"},
+                      undefined,
+                      [ libpath ]);
+
+    mdl = new Module("application", 'application', pkg);
+
+    try {
+      content = internal.read(file);
+    }
+    catch (err) {
+      throw "cannot read file '" + file + "': " + err + " - " + err.stack;
+    }
+
+    sandbox.module = mdl;
+
+    sandbox.require = function (path) {
+      return mdl.require(path);
+    };
+
+    content = "var func = function () {"
+            + content
+            + "\n};";
+
+    fun = internal.execute(content, sandbox, appfile);
+
+    if (fun !== true || ! sandbox.hasOwnProperty("func")) {
+      throw "cannot create application function";
+    }
+
+    try {
+      result = sandbox.func();
+    }
+    catch (err) {
+      throw "Javascript exception in application file '" + appfile + "': " + err + " - " + err.stack;
+    }
+
+    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
