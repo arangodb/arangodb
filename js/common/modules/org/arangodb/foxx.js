@@ -36,7 +36,7 @@ internal.createUrlObject = function (url, constraint, method) {
   urlObject.match = url;
   urlObject.methods = [method];
 
-  if (!_.isNull(constraint)) {
+  if (!_.isUndefined(constraint)) {
     urlObject.constraint = constraint;
   }
 
@@ -77,15 +77,15 @@ FoxxApplication = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
+    myMiddleware = BaseMiddleware(templateCollection, this.helperCollection);
   } else {
-    myMiddleware = new BaseMiddleware();
+    myMiddleware = BaseMiddleware();
   }
 
   this.routingInfo.middleware = [
     {
       url: {match: "/*"},
-      action: {callback: String(myMiddleware)}
+      action: {callback: myMiddleware}
     }
   ];
 };
@@ -301,7 +301,7 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url:    { match: "/*" },
-      action: { callback: String(new FormatMiddleware(allowedFormats, defaultFormat)) }
+      action: { callback: new FormatMiddleware(allowedFormats, defaultFormat) }
     });
   }
 });
@@ -313,7 +313,9 @@ _.extend(FoxxApplication.prototype, {
 BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
-    var responseFunctions, requestFunctions;
+    var responseFunctions,
+      requestFunctions,
+      _ = require("underscore");
 
     // ### The Request Object
     // Every request object has the following attributes from the underlying Actions,
@@ -465,7 +467,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     next();
   };
 
-  return middleware;
+  return String(middleware);
 };
 
 // ## The Format Middleware
@@ -591,7 +593,7 @@ exports.loadManifest = function (path) {
 
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
-exports.FormatMiddleware = FormatMiddleware;
+//TODO: Make a String exports.FormatMiddleware = FormatMiddleware;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
