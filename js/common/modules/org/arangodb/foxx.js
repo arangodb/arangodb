@@ -83,7 +83,7 @@ FoxxApplication = function (options) {
   this.routingInfo.middleware = [
     {
       url: {match: "/*"},
-      action: {callback: myMiddleware}
+      action: {callback: String(myMiddleware)}
     }
   ];
 };
@@ -105,7 +105,7 @@ _.extend(FoxxApplication.prototype, {
   // use this function.
   start: function () {
     'use strict';
-    db._routing.save(this.routingInfo);
+    db._collection("_routing").save(this.routingInfo);
   },
 
   // The `handleRequest` method is the raw way to create a new
@@ -240,10 +240,10 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: function (req, res, opts, next) {
+      action: {callback: String(function (req, res, opts, next) {
         func(req, res);
         next();
-      }}
+      })}
     });
   },
 
@@ -266,10 +266,10 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: function (req, res, opts, next) {
+      action: {callback: String(function (req, res, opts, next) {
         next();
         func(req, res);
-      }}
+      })}
     });
   },
 
@@ -299,7 +299,7 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url:    { match: "/*" },
-      action: { callback: new FormatMiddleware(allowedFormats, defaultFormat) }
+      action: { callback: String(new FormatMiddleware(allowedFormats, defaultFormat)) }
     });
   }
 });
