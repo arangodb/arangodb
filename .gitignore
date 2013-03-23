@@ -20,6 +20,7 @@ mr-*.h
 .setup-js-directories
 3rdParty/libev/ARCH.x64/
 3rdParty/libev/ARCH.ia32/
+3rdParty/zlib-1.2.7/
 
 Doxygen/doc/
 Doxygen/manuals/
