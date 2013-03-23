@@ -10,8 +10,10 @@ mr-*.h
 .v8-build-64
 .icu-build-64
 .mruby-build-64
+.zlib-build-64
 .libev-build-32
 .v8-build-32
+.zlib-build-32
 .icu-build-32
 .mruby-build-32
 .setup-mr-directories

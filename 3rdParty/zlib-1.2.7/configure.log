@@ -1,0 +1,354 @@
+--------------------
+./configure
+Sat Mar 23 14:09:59 CET 2013
+
+Checking for gcc...
+=== ztest7381.c ===
+extern int getchar();
+int hello() {return getchar();}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread ztest7381.c
+ztest7381.c:1:1: warning: function declaration isn’t a prototype
+ztest7381.c:2:5: warning: function declaration isn’t a prototype
+... using gcc
+
+Checking for shared library support...
+=== ztest7381.c ===
+extern int getchar();
+int hello() {return getchar();}
+===
+gcc -w -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -fPIC ztest7381.c
+gcc -shared -Wl,-soname,libz.so.1,--version-script,zlib.map -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -fPIC -o ztest7381.so ztest7381.o
+Building shared library libz.so.1.2.7 with gcc.
+
+
+=== ztest7381.c ===
+#include <sys/types.h>
+off64_t dummy = 0;
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c
+Checking for off64_t... Yes.
+Checking for fseeko... Yes.
+
+=== ztest7381.c ===
+#include <string.h>
+#include <errno.h>
+int main() { return strlen(strerror(errno)); }
+===
+gcc -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 -o ztest7381 ztest7381.c
+ztest7381.c:3:5: warning: function declaration isn’t a prototype
+Checking for strerror... Yes.
+
+=== ztest7381.c ===
+#include <unistd.h>
+int main() { return 0; }
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c
+ztest7381.c:2:5: warning: function declaration isn’t a prototype
+Checking for unistd.h... Yes.
+
+=== ztest7381.c ===
+#include <stdarg.h>
+int main() { return 0; }
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c
+ztest7381.c:2:5: warning: function declaration isn’t a prototype
+Checking for stdarg.h... Yes.
+
+=== ztest7381.c ===
+#include <stdio.h>
+#include <stdarg.h>
+#include "zconf.h"
+int main()
+{
+#ifndef STDC
+  choke me
+#endif
+  return 0;
+}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c
+ztest7381.c:4:5: warning: function declaration isn’t a prototype
+Checking whether to use vs[n]printf() or s[n]printf()... using vs[n]printf().
+
+=== ztest7381.c ===
+#include <stdio.h>
+#include <stdarg.h>
+int mytest(const char *fmt, ...)
+{
+  char buf[20];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  return 0;
+}
+int main()
+{
+  return (mytest("Hello%d\n", 1));
+}
+===
+gcc -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 -o ztest7381 ztest7381.c
+ztest7381.c:12:5: warning: function declaration isn’t a prototype
+Checking for vsnprintf() in stdio.h... Yes.
+
+=== ztest7381.c ===
+#include <stdio.h>
+#include <stdarg.h>
+int mytest(const char *fmt, ...)
+{
+  int n;
+  char buf[20];
+  va_list ap;
+  va_start(ap, fmt);
+  n = vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  return n;
+}
+int main()
+{
+  return (mytest("Hello%d\n", 1));
+}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c
+ztest7381.c:13:5: warning: function declaration isn’t a prototype
+Checking for return value of vsnprintf()... Yes.
+
+=== ztest7381.c ===
+#define ZLIB_INTERNAL __attribute__((visibility ("hidden")))
+int ZLIB_INTERNAL foo;
+int main()
+{
+  return 0;
+}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c
+ztest7381.c:3:5: warning: function declaration isn’t a prototypeChecking for attribute(visibility) support... No.
+
+=== ztest7381.c ===
+#include <stdio.h>
+#define is32(n,t) for(n=1,k=0;n;n<<=1,k++);if(k==32){puts(t);return 0;}
+int main() {
+    int k;
+    unsigned i;
+    unsigned long l;
+    unsigned short s;
+    is32(i, "unsigned")
+    is32(l, "unsigned long")
+    is32(s, "unsigned short")
+    return 1;
+}
+===
+gcc -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest7381.c -o ztest7381
+ztest7381.c:3:5: warning: function declaration isn’t a prototype
+Looking for a four-byte integer type... Found.
+
+ALL = static shared all64
+AR = ar
+ARFLAGS = rc
+CC = gcc
+CFLAGS = -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1
+CPP = gcc -E
+EXE =
+LDCONFIG = ldconfig
+LDFLAGS =
+LDSHARED = gcc -shared -Wl,-soname,libz.so.1,--version-script,zlib.map
+LDSHAREDLIBC = -lc
+OBJC = $(OBJZ) $(OBJG)
+PIC_OBJC = $(PIC_OBJZ) $(PIC_OBJG)
+RANLIB = ranlib
+SFLAGS = -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -fPIC -D_LARGEFILE64_SOURCE=1
+SHAREDLIB = libz.so
+SHAREDLIBM = libz.so.1
+SHAREDLIBV = libz.so.1.2.7
+STATICLIB = libz.a
+TEST = all teststatic testshared test64
+VER = 1.2.7
+Z_U4 = unsigned
+exec_prefix = ${prefix}
+includedir = ${prefix}/include
+libdir = ${exec_prefix}/lib
+mandir = ${prefix}/share/man
+prefix = /usr/local
+sharedlibdir = ${libdir}
+uname = Linux
+--------------------
+
+
+--------------------
+./configure
+Sat Mar 23 14:17:03 CET 2013
+
+Checking for gcc...
+=== ztest13465.c ===
+extern int getchar();
+int hello() {return getchar();}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread ztest13465.c
+ztest13465.c:1:1: warning: function declaration isn’t a prototype
+ztest13465.c:2:5: warning: function declaration isn’t a prototype
+... using gcc
+
+Checking for shared library support...
+=== ztest13465.c ===
+extern int getchar();
+int hello() {return getchar();}
+===
+gcc -w -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -fPIC ztest13465.c
+gcc -shared -Wl,-soname,libz.so.1,--version-script,zlib.map -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -fPIC -o ztest13465.so ztest13465.o
+Building shared library libz.so.1.2.7 with gcc.
+
+
+=== ztest13465.c ===
+#include <sys/types.h>
+off64_t dummy = 0;
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c
+Checking for off64_t... Yes.
+Checking for fseeko... Yes.
+
+=== ztest13465.c ===
+#include <string.h>
+#include <errno.h>
+int main() { return strlen(strerror(errno)); }
+===
+gcc -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 -o ztest13465 ztest13465.c
+ztest13465.c:3:5: warning: function declaration isn’t a prototype
+Checking for strerror... Yes.
+
+=== ztest13465.c ===
+#include <unistd.h>
+int main() { return 0; }
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c
+ztest13465.c:2:5: warning: function declaration isn’t a prototype
+Checking for unistd.h... Yes.
+
+=== ztest13465.c ===
+#include <stdarg.h>
+int main() { return 0; }
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c
+ztest13465.c:2:5: warning: function declaration isn’t a prototype
+Checking for stdarg.h... Yes.
+
+=== ztest13465.c ===
+#include <stdio.h>
+#include <stdarg.h>
+#include "zconf.h"
+int main()
+{
+#ifndef STDC
+  choke me
+#endif
+  return 0;
+}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c
+ztest13465.c:4:5: warning: function declaration isn’t a prototype
+Checking whether to use vs[n]printf() or s[n]printf()... using vs[n]printf().
+
+=== ztest13465.c ===
+#include <stdio.h>
+#include <stdarg.h>
+int mytest(const char *fmt, ...)
+{
+  char buf[20];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  return 0;
+}
+int main()
+{
+  return (mytest("Hello%d\n", 1));
+}
+===
+gcc -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 -o ztest13465 ztest13465.c
+ztest13465.c:12:5: warning: function declaration isn’t a prototype
+Checking for vsnprintf() in stdio.h... Yes.
+
+=== ztest13465.c ===
+#include <stdio.h>
+#include <stdarg.h>
+int mytest(const char *fmt, ...)
+{
+  int n;
+  char buf[20];
+  va_list ap;
+  va_start(ap, fmt);
+  n = vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  return n;
+}
+int main()
+{
+  return (mytest("Hello%d\n", 1));
+}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c
+ztest13465.c:13:5: warning: function declaration isn’t a prototype
+Checking for return value of vsnprintf()... Yes.
+
+=== ztest13465.c ===
+#define ZLIB_INTERNAL __attribute__((visibility ("hidden")))
+int ZLIB_INTERNAL foo;
+int main()
+{
+  return 0;
+}
+===
+gcc -c -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c
+ztest13465.c:3:5: warning: function declaration isn’t a prototypeChecking for attribute(visibility) support... No.
+
+=== ztest13465.c ===
+#include <stdio.h>
+#define is32(n,t) for(n=1,k=0;n;n<<=1,k++);if(k==32){puts(t);return 0;}
+int main() {
+    int k;
+    unsigned i;
+    unsigned long l;
+    unsigned short s;
+    is32(i, "unsigned")
+    is32(l, "unsigned long")
+    is32(s, "unsigned short")
+    return 1;
+}
+===
+gcc -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1 ztest13465.c -o ztest13465
+ztest13465.c:3:5: warning: function declaration isn’t a prototype
+Looking for a four-byte integer type... Found.
+
+ALL = static shared all64
+AR = ar
+ARFLAGS = rc
+CC = gcc
+CFLAGS = -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -D_LARGEFILE64_SOURCE=1
+CPP = gcc -E
+EXE =
+LDCONFIG = ldconfig
+LDFLAGS =
+LDSHARED = gcc -shared -Wl,-soname,libz.so.1,--version-script,zlib.map
+LDSHAREDLIBC = -lc
+OBJC = $(OBJZ) $(OBJG)
+PIC_OBJC = $(PIC_OBJZ) $(PIC_OBJG)
+RANLIB = ranlib
+SFLAGS = -std=gnu90 -O2 -g -DTRI_BITS=64 -Wall -Winit-self -Wno-long-long -Wno-variadic-macros -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement -pthread -fPIC -D_LARGEFILE64_SOURCE=1
+SHAREDLIB = libz.so
+SHAREDLIBM = libz.so.1
+SHAREDLIBV = libz.so.1.2.7
+STATICLIB = libz.a
+TEST = all teststatic testshared test64
+VER = 1.2.7
+Z_U4 = unsigned
+exec_prefix = ${prefix}
+includedir = ${prefix}/include
+libdir = ${exec_prefix}/lib
+mandir = ${prefix}/share/man
+prefix = /usr/local
+sharedlibdir = ${libdir}
+uname = Linux
+--------------------
+
+
