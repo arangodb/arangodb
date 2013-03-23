@@ -11,7 +11,7 @@
 
 // FoxxApplication uses Underscore internally. This library is wonderful.
 var FoxxApplication,
-  baseMiddleware,
+  BaseMiddleware,
   formatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
@@ -79,15 +79,15 @@ FoxxApplication = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = baseMiddleware(templateCollection, this.helperCollection);
+    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
   } else {
-    myMiddleware = baseMiddleware();
+    myMiddleware = new BaseMiddleware();
   }
 
   this.routingInfo.middleware = [
     {
       url: {match: "/*"},
-      action: {callback: myMiddleware}
+      action: {callback: myMiddleware.stringRepresentation}
     }
   ];
 };
@@ -321,9 +321,9 @@ _.extend(FoxxApplication.prototype, {
 
 
 // ## The Base Middleware
-// The `baseMiddleware` manipulates the request and response
+// The `BaseMiddleware` manipulates the request and response
 // objects to give you a nicer API.
-baseMiddleware = function (templateCollection, helperCollection) {
+BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
     var responseFunctions,
@@ -480,11 +480,14 @@ baseMiddleware = function (templateCollection, helperCollection) {
     next();
   };
 
-  return String(middleware);
+  return {
+    stringRepresentation: String(middleware),
+    functionRepresentation: middleware
+  };
 };
 
 // ## The Format Middleware
-// Unlike the `baseMiddleware` this Middleware is only loaded if you
+// Unlike the `BaseMiddleware` this Middleware is only loaded if you
 // want it. This Middleware gives you Rails-like format handling via
 // the `extension` of the URL or the accept header.
 // Say you request an URL like `/people.json`:
@@ -639,7 +642,7 @@ exports.installApp = function (name, mount, options) {
 };
 
 exports.FoxxApplication = FoxxApplication;
-exports.baseMiddleware = baseMiddleware;
+exports.BaseMiddleware = BaseMiddleware;
 //TODO: Make a String exports.formatMiddleware = formatMiddleware;
 
 // -----------------------------------------------------------------------------
