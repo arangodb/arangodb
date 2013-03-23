@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100 */
-/*global require, exports */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
+/*global module, require, exports */
 
 // Foxx is an easy way to create APIs and simple web applications
 // from within **ArangoDB**.
