@@ -36,7 +36,7 @@ internal.createUrlObject = function (url, constraint, method) {
   urlObject.match = url;
   urlObject.methods = [method];
 
-  if (!_.isNull(constraint)) {
+  if (!_.isUndefined(constraint)) {
     urlObject.constraint = constraint;
   }
 
