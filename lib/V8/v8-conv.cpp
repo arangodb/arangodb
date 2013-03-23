@@ -838,6 +838,31 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
     return FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects);
   }
 
+  if (json->IsRegExp()) {
+    LOG_TRACE("shaper failed because a regexp cannot be converted");
+    return false;
+  }
+
+  if (json->IsFunction()) {
+    LOG_TRACE("shaper failed because a function cannot be converted");
+    return false;
+  }
+
+  if (json->IsExternal()) {
+    LOG_TRACE("shaper failed because an external cannot be converted");
+    return false;
+  }
+
+  if (json->IsDate()) {
+    LOG_TRACE("shaper failed because a date cannot be converted");
+    return false;
+  }
+
+  if (json->IsUndefined()) {
+    LOG_TRACE("shaper failed because an undefined cannot be converted");
+    return false;
+  }
+
   LOG_TRACE("shaper failed to convert object");
   return false;
 }
