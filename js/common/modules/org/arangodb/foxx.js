@@ -309,15 +309,18 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     var responseFunctions, requestFunctions;
 
     // ### The Request Object
-    // Every request object has the following attributes from the underlying Actions:
+    // Every request object has the following attributes from the underlying Actions,
+    // amongst others:
     //
     // * path: The complete path as supplied by the user
-    // * prefix
-    // * suffix
-    // * urlParameters
     //
-    // FoxxApplication currently leaves those unmodified.
-    responseFunctions = {};
+    // FoxxApplication adds the following methods to this request object:
+    requestFunctions = {
+      // Get the body of the request.
+      body: function () {
+        return this.requestBody;
+      }
+    };
 
     // ### The Response Object
     // Every response object has the following attributes from the underlying Actions:
