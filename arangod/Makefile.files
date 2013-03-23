@@ -17,7 +17,8 @@ bin_arangod_LDADD = \
 	lib/libarango_v8.a \
 	lib/libarango.a \
 	$(LIBS) \
-	@V8_LIBS@
+	@V8_LIBS@ \
+	$(ZLIB_LIBS)
 
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \

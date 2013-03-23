@@ -8,6 +8,10 @@
 ### @brief library "libarango.a"
 ################################################################################
 
+lib_libarango_a_CPPFLAGS = \
+	$(ZLIB_CPPFLAGS) \
+	$(AM_CPPFLAGS) 
+
 lib_libarango_a_SOURCES = \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
@@ -62,6 +66,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/utf8-helper.c \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
+	lib/BasicsC/zip.c \
 	lib/JsonParser/json-parser.c \
 	lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp \
