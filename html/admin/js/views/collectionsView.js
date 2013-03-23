@@ -27,7 +27,6 @@ var collectionsView = Backbone.View.extend({
     $('#searchInput').val('');
     $('#searchInput').val(val);
     
-
     return this;
   },
   events: {

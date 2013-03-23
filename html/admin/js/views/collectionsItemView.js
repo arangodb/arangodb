@@ -9,10 +9,20 @@ window.CollectionListItemView = Backbone.View.extend({
     //this.model.bind("destroy", this.close, this);
   },
   events: {
+    'click .pull-left' : 'noop',
+    'click': 'selectCollection'
   },
   render: function () {
     $(this.el).html(this.template.render(this.model));
     return this;
+  },
+  
+  selectCollection: function() {
+    window.App.navigate("collection/" + this.model.get("name") + "/documents/1", {trigger: true});
+  },
+  
+  noop: function(event) {
+    event.stopPropagation();
   }
 
 });
