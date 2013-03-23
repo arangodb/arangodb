@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, module: true, PACKAGE_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,21 +384,21 @@ function stop_color_print () {
 
           if (internal.exists(mainfile)) {
             var content = internal.read(mainfile);
-            var paths;
+            var mypaths;
 
             if (typeof desc.directories !== "undefined" && typeof desc.directories.lib !== "undefined") {
               var full = m + internal.normalizeModuleName("", desc.directories.lib);
 
-              paths = [ full ];
+              mypaths = [ full ];
             }
             else {
-              paths = [ m ];
+              mypaths = [ m ];
             }
 
             return { name: main,
                      description: desc,
                      packagePath: m,
-                     packageLib: paths,
+                     packageLib: mypaths,
                      path: 'file://' + mainfile,
                      content: content };
           }
@@ -781,8 +781,8 @@ function stop_color_print () {
     try {
       result = sandbox.func();
     }
-    catch (err) {
-      throw "Javascript exception in application file '" + appfile + "': " + err + " - " + err.stack;
+    catch (err2) {
+      throw "Javascript exception in application file '" + appfile + "': " + err2+ " - " + err2.stack;
     }
 
     return result;

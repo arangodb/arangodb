@@ -94,6 +94,7 @@ function clear () {
 (function() {
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
+  var special;
 
   if (internal.db !== undefined) {
     try {
@@ -103,7 +104,9 @@ function clear () {
     }
   }
 
-  if (internal.ARANGO_QUIET !== true) {
+  special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+
+  if (internal.ARANGO_QUIET !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
       if (typeof internal.arango.isConnected !== "undefined") {
         if (internal.arango.isConnected() && typeof SYS_UNIT_TESTS === "undefined") {
@@ -130,15 +133,24 @@ var arango = require("org/arangodb").arango;
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var fs = require("fs");
-  var rcf = fs.join(fs.home(), ".arangosh.rc");
+require("console").log("############## %s", typeof SYS_UNIT_TESTS);
 
-  if (fs.exists(rcf)) {
-    var content = fs.read(rcf);
-    eval(content);
-  }
-}());
+if (! (IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT)) {
+  (function () {
+    var fs = require("fs");
+    var rcf = fs.join(fs.home(), ".arangosh.rc");
+
+    if (fs.exists(rcf)) {
+      var content = fs.read(rcf);
+      eval(content);
+    }
+  }());
+}
+
+delete IS_EXECUTE_SCRIPT;
+delete IS_CHECK_SCRIPT;
+delete IS_UNIT_TESTS;
+delete IS_JS_LINT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
