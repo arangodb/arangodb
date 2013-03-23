@@ -3,13 +3,13 @@ require("internal").flushModuleCache();
 var jsunity = require("jsunity"),
   console = require("console"),
   arangodb = require("org/arangodb"),
-  FuxxApplication = require("org/arangodb/fuxx").FuxxApplication,
+  FoxxApplication = require("org/arangodb/foxx").FoxxApplication,
   db = arangodb.db;
 
-function CreateFuxxApplicationSpec () {
+function CreateFoxxApplicationSpec () {
   return {
     testCreationWithoutParameters: function () {
-      var app = new FuxxApplication(),
+      var app = new FoxxApplication(),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -17,7 +17,7 @@ function CreateFuxxApplicationSpec () {
     },
 
     testCreationWithURLPrefix: function () {
-      var app = new FuxxApplication({urlPrefix: "/wiese"}),
+      var app = new FoxxApplication({urlPrefix: "/wiese"}),
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
@@ -28,7 +28,7 @@ function CreateFuxxApplicationSpec () {
       var app, routingInfo, templateCollection;
 
       db._drop("wiese");
-      app = new FuxxApplication({templateCollection: "wiese"});
+      app = new FoxxApplication({templateCollection: "wiese"});
       routingInfo = app.routingInfo;
       templateCollection = db._collection("wiese");
 
@@ -42,7 +42,7 @@ function CreateFuxxApplicationSpec () {
 
       db._drop("wiese");
       db._create("wiese");
-      app = new FuxxApplication({templateCollection: "wiese"});
+      app = new FoxxApplication({templateCollection: "wiese"});
       routingInfo = app.routingInfo;
       templateCollection = db._collection("wiese");
 
@@ -52,7 +52,7 @@ function CreateFuxxApplicationSpec () {
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
-      var app = new FuxxApplication(),
+      var app = new FoxxApplication(),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
 
@@ -62,12 +62,12 @@ function CreateFuxxApplicationSpec () {
   };
 }
 
-function SetRoutesFuxxApplicationSpec () {
+function SetRoutesFoxxApplicationSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new FuxxApplication();
+      app = new FoxxApplication();
     },
 
     testSettingRoutesWithoutConstraint: function () {
@@ -195,12 +195,12 @@ function SetRoutesFuxxApplicationSpec () {
   };
 }
 
-function AddMidlewareFuxxApplicationSpec () {
+function AddMidlewareFoxxApplicationSpec () {
   var app;
 
   return {
     setUp: function () {
-      app = new FuxxApplication();
+      app = new FoxxApplication();
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
@@ -289,7 +289,7 @@ function BaseMiddlewareWithoutTemplateSpec () {
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/fuxx").BaseMiddleware();
+      baseMiddleware = require("org/arangodb/foxx").BaseMiddleware();
       request = {};
       response = {};
       options = {};
@@ -347,7 +347,7 @@ function BaseMiddlewareWithoutTemplateSpec () {
         error = e;
       }
 
-      assertEqual(error, "No template collection has been provided when creating a new FuxxApplication");
+      assertEqual(error, "No template collection has been provided when creating a new FoxxApplication");
     },
 
     testMiddlewareCallsTheAction: function () {
@@ -373,7 +373,7 @@ function BaseMiddlewareWithTemplateSpec () {
       response = {};
       options = {};
       next = function () {};
-      BaseMiddleware = require("org/arangodb/fuxx").BaseMiddleware;
+      BaseMiddleware = require("org/arangodb/foxx").BaseMiddleware;
     },
 
     testRenderingATemplate: function () {
@@ -447,8 +447,8 @@ function ViewHelperSpec () {
 
   return {
     setUp: function () {
-      app = new FuxxApplication();
-      Middleware = require('org/arangodb/fuxx').BaseMiddleware;
+      app = new FoxxApplication();
+      Middleware = require('org/arangodb/foxx').BaseMiddleware;
       request = {};
       response = {};
       options = {};
@@ -493,7 +493,7 @@ function FormatMiddlewareSpec () {
 
   return {
     setUp: function () {
-      Middleware = require('org/arangodb/fuxx').FormatMiddleware;
+      Middleware = require('org/arangodb/foxx').FormatMiddleware;
       request = {};
       response = {};
       options = {};
@@ -601,9 +601,9 @@ function FormatMiddlewareSpec () {
   };
 }
 
-jsunity.run(CreateFuxxApplicationSpec);
-jsunity.run(SetRoutesFuxxApplicationSpec);
-jsunity.run(AddMidlewareFuxxApplicationSpec);
+jsunity.run(CreateFoxxApplicationSpec);
+jsunity.run(SetRoutesFoxxApplicationSpec);
+jsunity.run(AddMidlewareFoxxApplicationSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);
