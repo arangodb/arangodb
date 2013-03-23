@@ -15,6 +15,8 @@ var FuxxApplication,
   FormatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
+  fs = require("fs"),
+  console = require("console"),
   internal = {};
 
 // ArangoDB uses a certain structure we refer to as `UrlObject`.
@@ -523,6 +525,29 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   };
 
   return middleware;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file
+////////////////////////////////////////////////////////////////////////////////
+
+exports.loadManifest = function (name) {
+  var content;
+  var body;
+  var key;
+
+  content = fs.read(name);
+  body = JSON.parse(content);
+
+  for (key in body.apps) {
+    if (body.apps.hasOwnProperty(key)) {
+      var app = body.apps[key];
+
+      console.info("
+    }
+  }
+  
+  return body;
 };
 
 // We finish off with exporting FuxxApplication and the middlewares.

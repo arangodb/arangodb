@@ -241,6 +241,13 @@
     delete SYS_REQUEST_STATISTICS;
   }
 
+  internal.homeDirectory = "";
+
+  if (typeof HOME !== "undefined") {
+    internal.homeDirectory = HOME;
+    delete HOME;
+  }
+
   internal.developmentMode = false;
 
   if (typeof DEVELOPMENT_MODE !== "undefined") {

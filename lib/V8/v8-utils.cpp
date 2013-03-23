@@ -46,6 +46,7 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "Basics/FileUtils.h"
 #include "Rest/SslInterface.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
@@ -1792,6 +1793,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   // .............................................................................
   // create the global variables
   // .............................................................................
+
+  TRI_AddGlobalVariableVocbase(context, "HOME", v8::String::New(FileUtils::homeDirectory().c_str()));
 
   TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
   TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(nodes));
