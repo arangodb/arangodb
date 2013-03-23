@@ -731,17 +731,29 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.loadAppScript = function (unormalizedPath, manifest, appfile) {
-    var fun;
-    var result;
     var path = this.normalize(unormalizedPath);
-    var pkg = new Package("application",
-                          {name: "application '" + appfile + "'"},
-                          undefined,
-                          path);
-    var mdl = new Module("application", 'application', pkg);
     var file = this.normalize(path + "/" + appfile);
-    var content;
     var sandbox = {};
+    var content;
+    var fun;
+    var libpath;
+    var mdl;
+    var pkg;
+    var result;
+
+    if (manifest.hasOwnProperty("lib")) {
+      libpath = path + "/" + manifest.lib;
+    }
+    else {
+      libpath = path;
+    }
+
+    pkg = new Package("application",
+                      {name: "application '" + appfile + "'"},
+                      undefined,
+                      [ libpath ]);
+
+    mdl = new Module("application", 'application', pkg);
 
     try {
       content = internal.read(file);
