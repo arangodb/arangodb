@@ -604,12 +604,15 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a file of any type or directory exists
+/// @brief unzips a file
 ///
-/// @FUN{fs.exists(@FA{path})}
+/// @FUN{fs.unzip(@FA{filename}, @FA{outpath}, @FA{skipPaths}, @FA{overwrite}, @FA{password})}
 ///
-/// Returns true if a file (of any type) or a directory exists at a given
-/// path. If the file is a broken symbolic link, returns false.
+/// Unzips the zip file specified by @FA{filename} into the path specified by
+/// @FA{outpath}. Overwrites any existing target files if @FA{overwrite} is set
+/// to @LIT{true}.
+///
+/// Returns @LIT{true} if the file was unzipped successfully.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
@@ -644,6 +647,76 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
   }
 
   int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::True());
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New(TRI_errno_string(res))));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief zips a file
+///
+/// @FUN{fs.zip(@FA{filename}, @FA{files})
+///
+/// Stores the files specified by @FA{files} in the zip file @FA{filename}.
+///
+/// Returns @LIT{true} if the file was zipped successfully.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() < 2 || argv.Length() > 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: zip(<filename>, <files>, <password>)")));
+  }
+
+  const string filename = TRI_ObjectToString(argv[0]);
+
+  if (! argv[1]->IsArray()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: zip(<filename>, <files>, <password>)")));
+  }
+
+  v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(argv[1]);
+ 
+  int res = TRI_ERROR_NO_ERROR; 
+  TRI_vector_string_t filenames;
+  TRI_InitVectorString(&filenames, TRI_UNKNOWN_MEM_ZONE);
+
+  for (uint32_t i = 0 ; i < files->Length(); ++i) {
+    v8::Handle<v8::Value> file = files->Get(i);
+    if (file->IsString()) {
+      string fname = TRI_ObjectToString(file);
+      TRI_PushBackVectorString(&filenames, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
+    }
+    else {
+      res = TRI_ERROR_BAD_PARAMETER;
+      break;
+    }
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_ClearVectorString(&filenames);
+    TRI_DestroyVectorString(&filenames);
+    return scope.Close(v8::ThrowException(v8::String::New("usage: zip(<filename>, <files>, <password>)")));
+  }
+ 
+  const char* p; 
+  string password;
+  if (argv.Length() == 3) {
+    password = TRI_ObjectToString(argv[2]);
+    p = password.c_str();
+  }
+  else {
+    p = NULL;
+  }
+
+  res = TRI_ZipFile(filename.c_str(), &filenames, p);
+  TRI_ClearVectorString(&filenames);
+  TRI_DestroyVectorString(&filenames);
+
   if (res == TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::True());
   }
@@ -1847,6 +1920,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
   TRI_AddGlobalFunctionVocbase(context, "FS_UNZIP_FILE", JS_UnzipFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_ZIP_FILE", JS_ZipFile);
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
