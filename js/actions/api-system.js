@@ -138,6 +138,7 @@ actions.defineHttp({
   url : "",
   prefix : true,
   context : "admin",
+
   callback : routing
 });
 
@@ -149,6 +150,7 @@ actions.defineHttp({
   url : "_admin/auth/reload",
   context : "admin",
   prefix : false,
+
   callback : function (req, res) {
     internal.reloadAuth();
     actions.resultOk(req, res, actions.HTTP_OK);
@@ -170,6 +172,7 @@ actions.defineHttp({
   url : "_admin/routing/reload",
   context : "admin",
   prefix : false,
+
   callback : function (req, res) {
     internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
     console.warn("about to flush the routing cache");
@@ -185,6 +188,7 @@ actions.defineHttp({
   url : "_admin/routing/routes",
   context : "admin",
   prefix : false,
+
   callback : function (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
   }
@@ -206,6 +210,7 @@ actions.defineHttp({
   url : "_admin/modules/flush",
   context : "admin",
   prefix : false,
+
   callback : function (req, res) {
     internal.executeGlobalContextFunction("require(\"internal\").flushModuleCache()");
     console.warn("about to flush the modules cache");
@@ -229,6 +234,7 @@ actions.defineHttp({
   url : "_admin/time",
   context : "admin",
   prefix : false,
+
   callback : function (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
   }
@@ -255,6 +261,7 @@ actions.defineHttp({
   url : "_admin/echo",
   context : "admin",
   prefix : true,
+
   callback : function (req, res) {
     res.responseCode = actions.HTTP_OK;
     res.contentType = "application/json; charset=utf-8";
@@ -543,6 +550,35 @@ actions.defineHttp({
     }
   }
 });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_execute
+/// @brief executes a JavaScript program on the server
+///
+/// @RESTHEADER{POST /_admin/execute,executes a program}
+///
+/// Executes the body on the server.
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/execute",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var body = req.requestBody;
+    var result;
+
+    console.warn("about to execute: '%s'", body);
+
+    if (body !== "") {
+      result = eval("(function() {" + body + "}());");
+    }
+
+    actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+  }
+});
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

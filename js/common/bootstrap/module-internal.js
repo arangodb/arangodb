@@ -241,6 +241,13 @@
     delete SYS_REQUEST_STATISTICS;
   }
 
+  internal.homeDirectory = "";
+
+  if (typeof HOME !== "undefined") {
+    internal.homeDirectory = HOME;
+    delete HOME;
+  }
+
   internal.developmentMode = false;
 
   if (typeof DEVELOPMENT_MODE !== "undefined") {
@@ -360,6 +367,17 @@
   }
 
   internal.colors = (internal.COLOR_OUTPUT ? internal.COLORS : internal.NOCOLORS);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path separator
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.PATH_SEPARATOR = "/";
+
+  if (typeof PATH_SEPARATOR !== "undefined") {
+    internal.PATH_SEPARATOR = PATH_SEPARATOR;
+    delete PATH_SEPARATOR;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief valgrind flag

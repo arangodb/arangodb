@@ -1329,7 +1329,6 @@ static void arangoshExitFunction(int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-
   int ret = EXIT_SUCCESS;
 
   arangoshEntryFunction();
@@ -1625,7 +1624,6 @@ int main (int argc, char* argv[]) {
   }
 
   BaseClient.openLog();
-
 
   // .............................................................................
   // run normal shell

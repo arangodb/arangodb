@@ -45,6 +45,7 @@
 #include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
+#include "BasicsC/strings.h"
 
 namespace triagens {
   namespace basics {
@@ -431,6 +432,15 @@ namespace triagens {
         string result = current;
 
         delete[] current;
+
+        return result;
+      }
+
+
+      string homeDirectory () {
+        char* dir = TRI_HomeDirectory();
+        string result = dir;
+        TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
 
         return result;
       }
