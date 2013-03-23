@@ -15,6 +15,8 @@ var FoxxApplication,
   FormatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
+  fs = require("fs"),
+  console = require("console"),
   internal = {};
 
 // ArangoDB uses a certain structure we refer to as `UrlObject`.
@@ -34,7 +36,7 @@ internal.createUrlObject = function (url, constraint, method) {
   urlObject.match = url;
   urlObject.methods = [method];
 
-  if (!_.isNull(constraint)) {
+  if (!_.isUndefined(constraint)) {
     urlObject.constraint = constraint;
   }
 
@@ -75,9 +77,9 @@ FoxxApplication = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
+    myMiddleware = BaseMiddleware(templateCollection, this.helperCollection);
   } else {
-    myMiddleware = new BaseMiddleware();
+    myMiddleware = BaseMiddleware();
   }
 
   this.routingInfo.middleware = [
@@ -105,7 +107,7 @@ _.extend(FoxxApplication.prototype, {
   // use this function.
   start: function () {
     'use strict';
-    db._routing.save(this.routingInfo);
+    db._collection("_routing").save(this.routingInfo);
   },
 
   // The `handleRequest` method is the raw way to create a new
@@ -240,10 +242,10 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: function (req, res, opts, next) {
+      action: {callback: String(function (req, res, opts, next) {
         func(req, res);
         next();
-      }}
+      })}
     });
   },
 
@@ -266,10 +268,10 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: function (req, res, opts, next) {
+      action: {callback: String(function (req, res, opts, next) {
         next();
         func(req, res);
-      }}
+      })}
     });
   },
 
@@ -311,7 +313,9 @@ _.extend(FoxxApplication.prototype, {
 BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
-    var responseFunctions, requestFunctions;
+    var responseFunctions,
+      requestFunctions,
+      _ = require("underscore");
 
     // ### The Request Object
     // Every request object has the following attributes from the underlying Actions,
@@ -463,7 +467,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
     next();
   };
 
-  return middleware;
+  return String(middleware);
 };
 
 // ## The Format Middleware
@@ -561,8 +565,41 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 
 // We finish off with exporting FoxxApplication and the middlewares.
 // Everything else will remain our secret.
-//
-// Fin.
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file
+////////////////////////////////////////////////////////////////////////////////
+
+exports.loadManifest = function (path) {
+  var name;
+  var content;
+  var manifest;
+  var key;
+
+  name = fs.join(path, "manifest.json");
+  content = fs.read(name);
+  manifest = JSON.parse(content);
+
+  for (key in manifest.apps) {
+    if (manifest.apps.hasOwnProperty(key)) {
+      var app = manifest.apps[key];
+
+      console.info("loading app '%s' from '%s'", key, app);
+
+      module.loadAppScript(path, manifest, app);
+    }
+  }
+};
+
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
-exports.FormatMiddleware = FormatMiddleware;
+//TODO: Make a String exports.FormatMiddleware = FormatMiddleware;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// End:

@@ -192,8 +192,10 @@ sub formatFile ($$$) {
       $line = "$1";
     }
 
-    if ($line =~ /^[ \t]*(\/\/ --.*)$/) {
-      $line = "$1";
+    if (0) {
+      if ($line =~ /^[ \t]*(\/\/ --.*)$/) {
+	$line = "$1";
+      }
     }
 
     if ($isJavaScript == 0) {

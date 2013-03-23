@@ -51,7 +51,7 @@ Please see the documentation of `foxx.js` for further information on how to writ
 When you start arangod with the `--app` option, ArangoDB scans the
 given directory on every request for files called `manifest.json`.
 There can be a file in the root directory and in each direct subdirectory if you want that.
-The content is a JSON object with two keys: `apps`, `libs` and `assets`.
+The content is a JSON object with three keys: `apps`, `lib` and `assets`.
 (*we will also add a fourth called `vendor` for NPM packages, but this does not exist yet*).
 `apps` is an object that matches routes to files:
 
