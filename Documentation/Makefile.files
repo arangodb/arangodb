@@ -33,16 +33,16 @@ dist_man_MANS += \
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/actions/system/api-collection.c \
-	Doxygen/js/actions/system/api-cursor.c \
-	Doxygen/js/actions/system/api-edges.c \
-	Doxygen/js/actions/system/api-explain.c \
-	Doxygen/js/actions/system/api-graph.c \
-	Doxygen/js/actions/system/api-index.c \
-	Doxygen/js/actions/system/api-query.c \
-	Doxygen/js/actions/system/api-simple.c \
-	Doxygen/js/actions/system/api-system.c \
-	Doxygen/js/actions/system/api-user.c \
+	Doxygen/js/actions/api-collection.c \
+	Doxygen/js/actions/api-cursor.c \
+	Doxygen/js/actions/api-edges.c \
+	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-graph.c \
+	Doxygen/js/actions/api-index.c \
+	Doxygen/js/actions/api-query.c \
+	Doxygen/js/actions/api-simple.c \
+	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
@@ -147,7 +147,7 @@ BUILT_SOURCES += Doxygen/.setup-directories
 Doxygen/.setup-directories:
 	@test -d Doxygen/doc/images || mkdir -p Doxygen/doc/images
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
-	@test -d Doxygen/js/actions/system || mkdir -p Doxygen/js/actions/system
+	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
@@ -157,7 +157,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 	@touch $@
 
-Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
+Doxygen/js/actions/%.c: @srcdir@/js/actions/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
 Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
@@ -298,7 +298,7 @@ examples:
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/js/actions/system/*.js \
+		@srcdir@/js/actions/*.js \
 		@srcdir@/Documentation/DbaManual/*.md \
 		@srcdir@/Documentation/UserManual/*.md \
 		@srcdir@/arangod/RestHandler/*.cpp \
