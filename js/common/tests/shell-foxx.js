@@ -51,7 +51,7 @@ function CreateFoxxApplicationSpec () {
       assertEqual(routingInfo.templateCollection, templateCollection);
     },
 
-    testAdditionOfBaseMiddlewareInRoutingInfo: function () {
+    testAdditionOfbaseMiddlewareInRoutingInfo: function () {
       var app = new FoxxApplication(),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
@@ -191,11 +191,28 @@ function SetRoutesFoxxApplicationSpec () {
       action = routes[0].action;
       assertEqual(routes.length, 1);
       assertEqual(action.callback, myFuncString);
+    },
+
+    testStart: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.requires = {
+        a: 1
+      };
+      app.models = {
+        b: 2
+      };
+      app.get('/simple/route', myFunc);
+      app.start("myContext", true);
+
+      assertEqual(app.routingInfo.routes[0].action.context, "myContext");
+      assertEqual(app.routingInfo.routes[0].action.requires.a, 1);
+      assertEqual(app.routingInfo.routes[0].action.models.b, 2);
     }
   };
 }
 
-/* TODO: Recreate the Test Suite, changed the Middlewares to Strings
 function AddMidlewareFoxxApplicationSpec () {
   var app;
 
@@ -276,7 +293,7 @@ function AddMidlewareFoxxApplicationSpec () {
       assertTrue(b);
     },
 
-    testAddTheFormatMiddlewareUsingTheShortform: function () {
+    testAddTheformatMiddlewareUsingTheShortform: function () {
       // I wish I could mock like in Ruby :( This test is not really a test.
       app.accepts(["json"], "json");
       assertEqual(app.routingInfo.middleware.length, 2);
@@ -284,14 +301,13 @@ function AddMidlewareFoxxApplicationSpec () {
     }
   };
 }
-*/
 
-function BaseMiddlewareWithoutTemplateSpec () {
+function baseMiddlewareWithoutTemplateSpec () {
   var baseMiddleware, request, response, options, next;
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/foxx").BaseMiddleware();
+      baseMiddleware = require("org/arangodb/foxx").baseMiddleware();
       request = {};
       response = {};
       options = {};
@@ -392,8 +408,8 @@ function BaseMiddlewareWithoutTemplateSpec () {
   };
 }
 
-function BaseMiddlewareWithTemplateSpec () {
-  var BaseMiddleware, request, response, options, next;
+function baseMiddlewareWithTemplateSpec () {
+  var baseMiddleware, request, response, options, next;
 
   return {
     setUp: function () {
@@ -401,7 +417,7 @@ function BaseMiddlewareWithTemplateSpec () {
       response = {};
       options = {};
       next = function () {};
-      BaseMiddleware = require("org/arangodb/foxx").BaseMiddleware;
+      baseMiddleware = require("org/arangodb/foxx").baseMiddleware;
     },
 
     testRenderingATemplate: function () {
@@ -417,7 +433,7 @@ function BaseMiddlewareWithTemplateSpec () {
         templateLanguage: "underscore"
       });
 
-      middleware = new BaseMiddleware(myCollection);
+      middleware = new baseMiddleware(myCollection);
       middleware(request, response, options, next);
 
       response.render("simple/path", { username: "moonglum" });
@@ -438,7 +454,7 @@ function BaseMiddlewareWithTemplateSpec () {
         templateLanguage: "pirateEngine"
       });
 
-      middleware = new BaseMiddleware(myCollection);
+      middleware = new baseMiddleware(myCollection);
       middleware(request, response, options, next);
 
       try {
@@ -456,7 +472,7 @@ function BaseMiddlewareWithTemplateSpec () {
       db._drop("templateTest");
       myCollection = db._create("templateTest");
 
-      middleware = new BaseMiddleware(myCollection);
+      middleware = new baseMiddleware(myCollection);
       middleware(request, response, options, next);
 
       try {
@@ -476,7 +492,7 @@ function ViewHelperSpec () {
   return {
     setUp: function () {
       app = new FoxxApplication();
-      Middleware = require('org/arangodb/foxx').BaseMiddleware;
+      Middleware = require('org/arangodb/foxx').baseMiddleware;
       request = {};
       response = {};
       options = {};
@@ -516,12 +532,12 @@ function ViewHelperSpec () {
   };
 }
 
-function FormatMiddlewareSpec () {
+function formatMiddlewareSpec () {
   var Middleware, middleware, request, response, options, next;
 
   return {
     setUp: function () {
-      Middleware = require('org/arangodb/foxx').FormatMiddleware;
+      Middleware = require('org/arangodb/foxx').formatMiddleware;
       request = {};
       response = {};
       options = {};
@@ -632,9 +648,10 @@ function FormatMiddlewareSpec () {
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 //jsunity.run(AddMidlewareFoxxApplicationSpec);
-//jsunity.run(BaseMiddlewareWithoutTemplateSpec);
-//jsunity.run(BaseMiddlewareWithTemplateSpec);
+//jsunity.run(baseMiddlewareWithoutTemplateSpec);
+//jsunity.run(baseMiddlewareWithTemplateSpec);
 //jsunity.run(ViewHelperSpec);
-//jsunity.run(FormatMiddlewareSpec);
+// TODO: Recreate the Test Suite, changed the Middlewares to Strings
+//jsunity.run(formatMiddlewareSpec);
 
 return jsunity.done();

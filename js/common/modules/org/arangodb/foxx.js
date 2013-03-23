@@ -11,8 +11,8 @@
 
 // FoxxApplication uses Underscore internally. This library is wonderful.
 var FoxxApplication,
-  BaseMiddleware,
-  FormatMiddleware,
+  baseMiddleware,
+  formatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
   fs = require("fs"),
@@ -68,6 +68,8 @@ FoxxApplication = function (options) {
     routes: []
   };
 
+  this.requires = {};
+  this.models = {};
   this.helperCollection = {};
 
   if (_.isString(urlPrefix)) {
@@ -77,9 +79,9 @@ FoxxApplication = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = BaseMiddleware(templateCollection, this.helperCollection);
+    myMiddleware = baseMiddleware(templateCollection, this.helperCollection);
   } else {
-    myMiddleware = BaseMiddleware();
+    myMiddleware = baseMiddleware();
   }
 
   this.routingInfo.middleware = [
@@ -105,9 +107,22 @@ _.extend(FoxxApplication.prototype, {
   // Sometimes it is a good idea to actually start the application
   // you wrote. If this precious moment has arrived, you should
   // use this function.
-  start: function () {
+  // You have to provide the start function with the `applicationContext`
+  // variable.
+  start: function (context, testMode) {
     'use strict';
-    db._collection("_routing").save(this.routingInfo);
+    var models = this.models,
+      requires = this.requires;
+
+    _.each(this.routingInfo.routes, function (route) {
+      route.action.context = context;
+      route.action.requires = requires;
+      route.action.models = models;
+    });
+
+    if (!testMode) {
+      db._collection("_routing").save(this.routingInfo);
+    }
   },
 
   // The `handleRequest` method is the raw way to create a new
@@ -290,9 +305,9 @@ _.extend(FoxxApplication.prototype, {
     this.helperCollection[name] = func;
   },
 
-  // ## Shortform for using the FormatMiddleware
+  // ## Shortform for using the formatMiddleware
   //
-  // More information about the FormatMiddleware in the corresponding section.
+  // More information about the formatMiddleware in the corresponding section.
   // This is a shortcut to add the middleware to your application:
   //
   //     app.accepts(["json"], "json");
@@ -301,16 +316,16 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url:    { match: "/*" },
-      action: { callback: new FormatMiddleware(allowedFormats, defaultFormat) }
+      action: { callback: formatMiddleware(allowedFormats, defaultFormat) }
     });
   }
 });
 
 
 // ## The Base Middleware
-// The `BaseMiddleware` manipulates the request and response
+// The `baseMiddleware` manipulates the request and response
 // objects to give you a nicer API.
-BaseMiddleware = function (templateCollection, helperCollection) {
+baseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
     var responseFunctions,
@@ -471,11 +486,11 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 };
 
 // ## The Format Middleware
-// Unlike the `BaseMiddleware` this Middleware is only loaded if you
+// Unlike the `baseMiddleware` this Middleware is only loaded if you
 // want it. This Middleware gives you Rails-like format handling via
 // the `extension` of the URL or the accept header.
 // Say you request an URL like `/people.json`:
-// The `FormatMiddleware` will set the format of the request to JSON
+// The `formatMiddleware` will set the format of the request to JSON
 // and then delete the `.json` from the request. You can therefore write
 // handlers that do not take an `extension` into consideration and instead
 // handle the format via a simple String.
@@ -486,8 +501,8 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 //
 // Use it by calling:
 //
-//     FormatMiddleware = require('foxx').FormatMiddleware;
-//     app.before("/*", FormatMiddleware.new(['json']));
+//     formatMiddleware = require('foxx').formatMiddleware;
+//     app.before("/*", formatMiddleware.new(['json']));
 //
 // or the shortcut:
 //
@@ -496,7 +511,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 // In both forms you can give a default format as a second parameter,
 // if no format could be determined. If you give no `defaultFormat` this
 // case will be handled as an error.
-FormatMiddleware = function (allowedFormats, defaultFormat) {
+formatMiddleware = function (allowedFormats, defaultFormat) {
   'use strict';
   var middleware, urlFormatToMime, mimeToUrlFormat, determinePathAndFormat;
 
@@ -571,10 +586,12 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.loadManifest = function (path) {
-  var name;
-  var content;
-  var manifest;
-  var key;
+  'use strict';
+  var name,
+    content,
+    manifest,
+    key,
+    app;
 
   name = fs.join(path, "manifest.json");
   content = fs.read(name);
@@ -582,7 +599,7 @@ exports.loadManifest = function (path) {
 
   for (key in manifest.apps) {
     if (manifest.apps.hasOwnProperty(key)) {
-      var app = manifest.apps[key];
+      app = manifest.apps[key];
 
       console.info("loading app '%s' from '%s'", key, app);
 
@@ -592,8 +609,8 @@ exports.loadManifest = function (path) {
 };
 
 exports.FoxxApplication = FoxxApplication;
-exports.BaseMiddleware = BaseMiddleware;
-//TODO: Make a String exports.FormatMiddleware = FormatMiddleware;
+exports.baseMiddleware = baseMiddleware;
+//TODO: Make a String exports.formatMiddleware = formatMiddleware;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

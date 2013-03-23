@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
-  FS_LIST_TREE, FS_UNZIP_FILE,
+  FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
   SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
@@ -197,6 +197,11 @@
   if (typeof FS_UNZIP_FILE !== "undefined") {
     internal.unzipFile = FS_UNZIP_FILE;
     delete FS_UNZIP_FILE;
+  }
+  
+  if (typeof FS_ZIP_FILE !== "undefined") {
+    internal.zipFile = FS_ZIP_FILE;
+    delete FS_ZIP_FILE;
   }
 
   if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {

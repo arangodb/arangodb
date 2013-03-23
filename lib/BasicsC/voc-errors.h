@@ -43,6 +43,8 @@ extern "C" {
 ///   Will be raised when a file is not found.
 /// - 15: @LIT{cannot write file}
 ///   Will be raised when a file cannot be written.
+/// - 16: @LIT{cannot overwrite file}
+///   Will be raised when an attempt is made to overwrite an existing file.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -549,6 +551,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CANNOT_WRITE_FILE                                       (15)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 16: ERROR_CANNOT_OVERWRITE_FILE
+///
+/// cannot overwrite file
+///
+/// Will be raised when an attempt is made to overwrite an existing file.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_OVERWRITE_FILE                                   (16)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

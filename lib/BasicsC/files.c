@@ -41,6 +41,7 @@
 
 
 #include "BasicsC/conversions.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
@@ -1516,6 +1517,62 @@ char* TRI_HomeDirectory () {
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate the crc32 checksum of a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_Crc32File (char const* path, uint32_t* crc) {
+  FILE* fin;
+  void* buffer;
+  size_t bufferSize;
+  int res;
+
+  *crc = TRI_InitialCrc32();
+
+  bufferSize = 4096;
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+
+  if (buffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  fin = fopen(path, "rb");
+
+  if (fin == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  while (true) {
+    int sizeRead = (int) fread(buffer, 1, bufferSize, fin);
+
+    if (sizeRead < bufferSize) {
+      if (feof(fin) == 0) {
+        res = errno;
+        break;
+      }
+    }
+
+    if (sizeRead > 0) {
+      *crc = TRI_BlockCrc32(*crc, buffer, sizeRead);
+    }
+    else if (sizeRead <= 0) {
+      break;
+    }
+  }
+
+  fclose(fin);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+  *crc = TRI_FinalCrc32(*crc);
+
+  return res;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

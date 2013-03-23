@@ -27,8 +27,9 @@
 
 #include "zip.h"
 
-#include "files.h"
+#include "BasicsC/files.h"
 #include "Zip/unzip.h"
+#include "Zip/zip.h"
 
 #ifdef _WIN32
 #define USEWIN32IOAPI
@@ -123,7 +124,7 @@ static int ExtractCurrentFile (unzFile uf,
       *(filenameWithoutPath - 1) = c;
 
       // try again
-      fout = fopen(writeFilename,"wb");
+      fout = fopen(fullPath, "wb");
     }
     
     TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
@@ -137,6 +138,7 @@ static int ExtractCurrentFile (unzFile uf,
 
       if (result < 0) {
         fclose(fout);
+
         return TRI_ERROR_INTERNAL;
       }
 
@@ -144,7 +146,7 @@ static int ExtractCurrentFile (unzFile uf,
         if (fwrite(buffer, result, 1, fout) != 1) {
           fclose(fout);
 
-          return errno;
+          return TRI_set_errno(TRI_ERROR_SYS_ERROR);
         }
       }
       else {
@@ -210,6 +212,136 @@ static int UnzipFile (unzFile uf,
 /// @addtogroup Files
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief zips a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ZipFile (const char* filename, 
+                 TRI_vector_string_t const* files,
+                 const char* password) {
+  void* buffer;
+  size_t bufferSize;
+  zipFile zf;
+#ifdef USEWIN32IOAPI
+  zlib_filefunc64_def ffunc;
+#endif
+  size_t i, n;
+  int res;
+
+  if (TRI_ExistsFile(filename)) {
+    return TRI_ERROR_CANNOT_OVERWRITE_FILE;
+  }
+
+  bufferSize = 16384;
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+
+  if (buffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+#ifdef USEWIN32IOAPI
+  fill_win32_filefunc64A(&ffunc);
+  zf = zipOpen2_64(filename, 0, NULL, &ffunc);
+#else
+  zf = zipOpen64(filename, 0);
+#endif
+
+  if (zf == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return ZIP_ERRNO;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  n = files->_length;
+  for (i = 0; i < n; ++i) {
+    FILE* fin;
+    char* file;
+    char* saveName;
+    zip_fileinfo zi;
+    uint32_t crc;
+    int isLarge;
+
+    file = TRI_AtVectorString(files, i);
+    memset(&zi, 0, sizeof(zi));
+
+    res = TRI_Crc32File(file, &crc);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+
+    isLarge = (TRI_SizeFile(file) > 0xFFFFFFFFLL);
+              
+    saveName = file;
+    while (*saveName == '\\' || *saveName == '/') {
+      ++saveName;
+    }
+
+    if (zipOpenNewFileInZip3_64(zf,
+                                saveName,
+                                &zi,
+                                NULL,
+                                0,
+                                NULL,
+                                0,
+                                NULL, /* comment*/
+                                Z_DEFLATED,
+                                Z_DEFAULT_COMPRESSION,
+                                0,
+                                -MAX_WBITS, 
+                                DEF_MEM_LEVEL, 
+                                Z_DEFAULT_STRATEGY,
+                                password,
+                                (unsigned long) crc, 
+                                isLarge) != ZIP_OK) {
+    }
+
+    fin = fopen(file, "rb");
+
+    if (fin == NULL) {
+      break;
+    }
+
+    while (true) {
+      int sizeRead;
+
+      sizeRead = (int) fread(buffer, 1, bufferSize, fin);
+      if (sizeRead < bufferSize) {
+        if (feof(fin) == 0) {
+          res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+          break;
+        }
+      }
+
+      if (sizeRead > 0) {
+        res = zipWriteInFileInZip(zf, buffer, sizeRead);
+        if (res != 0) {
+          break;
+        }
+      }
+      else if (sizeRead <= 0) {
+        break;
+      }
+    }
+
+    fclose(fin);
+    
+    zipCloseFileInZip(zf);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+  }
+
+  zipClose(zf, NULL);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+  return res;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
