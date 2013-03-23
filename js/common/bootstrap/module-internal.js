@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE,
+/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
+  FS_LIST_TREE, FS_UNZIP_FILE,
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
   SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
@@ -172,6 +173,11 @@
     internal.isDirectory = FS_IS_DIRECTORY;
     delete FS_IS_DIRECTORY;
   }
+  
+  if (typeof FS_IS_FILE !== "undefined") {
+    internal.isFile = FS_IS_FILE;
+    delete FS_IS_FILE;
+  }
 
   if (typeof FS_LIST_TREE !== "undefined") {
     internal.listTree = FS_LIST_TREE;
@@ -186,6 +192,11 @@
   if (typeof FS_REMOVE !== "undefined") {
     internal.remove = FS_REMOVE;
     delete FS_REMOVE;
+  }
+  
+  if (typeof FS_UNZIP_FILE !== "undefined") {
+    internal.unzipFile = FS_UNZIP_FILE;
+    delete FS_UNZIP_FILE;
   }
 
   if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {

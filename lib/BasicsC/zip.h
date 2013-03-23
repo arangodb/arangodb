@@ -51,7 +51,11 @@ extern "C" {
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile (const char*, const bool, const bool, const char*);
+int TRI_UnzipFile (const char*, 
+                   const char*, 
+                   const bool, 
+                   const bool, 
+                   const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
