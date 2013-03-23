@@ -244,9 +244,10 @@ function lookupCallbackAction (route, action) {
     defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
     env = {
       module: module.root,
-      require: funcion (path) {
+      require: function (path) {
         return module.root.require(path);
       }
+
     };
 
     try {
