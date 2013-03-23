@@ -109,7 +109,7 @@ _.extend(FoxxApplication.prototype, {
   // use this function.
   // You have to provide the start function with the `applicationContext`
   // variable.
-  start: function (context, testMode) {
+  start: function (context) {
     'use strict';
     var models = this.models,
       requires = this.requires;
@@ -120,9 +120,7 @@ _.extend(FoxxApplication.prototype, {
       route.action.models = models;
     });
 
-    if (!testMode) {
-      db._collection("_routing").save(this.routingInfo);
-    }
+    db._collection("_routing").save(this.routingInfo);
   },
 
   // The `handleRequest` method is the raw way to create a new
