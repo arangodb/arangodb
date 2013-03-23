@@ -41,6 +41,8 @@ extern "C" {
 ///   Will be raised when encountering a corrupt csv line.
 /// - 14: @LIT{file not found}
 ///   Will be raised when a file is not found.
+/// - 15: @LIT{cannot write file}
+///   Will be raised when a file cannot be written.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -537,6 +539,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_FILE_NOT_FOUND                                          (14)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 15: ERROR_CANNOT_WRITE_FILE
+///
+/// cannot write file
+///
+/// Will be raised when a file cannot be written.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_WRITE_FILE                                       (15)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

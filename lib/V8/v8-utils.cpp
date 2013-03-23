@@ -48,6 +48,7 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "BasicsC/zip.h"
 #include "Basics/FileUtils.h"
 #include "Rest/SslInterface.h"
 #include "Statistics/statistics.h"
@@ -600,6 +601,54 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 
   // return result
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file of any type or directory exists
+///
+/// @FUN{fs.exists(@FA{path})}
+///
+/// Returns true if a file (of any type) or a directory exists at a given
+/// path. If the file is a broken symbolic link, returns false.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() < 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: unzip(<filename>, <outPath>, <skipPaths>, <overwrite>, <password>)")));
+  }
+
+  const string filename = TRI_ObjectToString(argv[0]);
+  const string outPath = TRI_ObjectToString(argv[1]);
+
+  bool skipPaths = false;
+  if (argv.Length() > 2) {
+    skipPaths = TRI_ObjectToBoolean(argv[2]);
+  }
+
+  bool overwrite = false;
+  if (argv.Length() > 3) {
+    overwrite = TRI_ObjectToBoolean(argv[3]);
+  }
+
+  const char* p;
+  string password;
+  if (argv.Length() > 4) {
+    password = TRI_ObjectToString(argv[4]);
+    p = password.c_str();
+  }
+  else {
+    p = NULL;
+  }
+
+  int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p);
+  if (res == TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::True());
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New(TRI_errno_string(res))));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1797,6 +1846,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
+  TRI_AddGlobalFunctionVocbase(context, "FS_UNZIP_FILE", JS_UnzipFile);
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);

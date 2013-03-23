@@ -349,6 +349,52 @@ bool TRI_ExistsFile (char const* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a directory, recursively
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateRecursiveDirectory (char const* path) {
+  char* copy;
+  char* p;
+  char* s;
+  int res;
+  int m;
+
+  res = TRI_ERROR_NO_ERROR;
+  p = s = copy = TRI_DuplicateString(path);
+
+  while (*p != '\0') {
+    if (*p == TRI_DIR_SEPARATOR_CHAR) {
+      if (p - s > 0) {
+
+        *p = '\0';
+        m = TRI_MKDIR(copy, 0777);
+
+        *p = TRI_DIR_SEPARATOR_CHAR;
+        s = p + 1;
+
+        if (m != 0 && errno != EEXIST) {
+          res = errno;
+          break;
+        }
+      }
+    }
+    p++;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR && (p - s > 0)) {
+    m = TRI_MKDIR(copy, 0777);
+
+    if (m != 0 && errno != EEXIST) {
+      res = errno;
+    }
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, copy);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
