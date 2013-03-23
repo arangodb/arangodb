@@ -296,6 +296,12 @@ function BaseMiddlewareWithoutTemplateSpec () {
       next = function () {};
     },
 
+    testBodyFunctionAddedToRequest: function () {
+      request.requestBody = "test";
+      baseMiddleware(request, response, options, next);
+      assertEqual(request.body(), "test");
+    },
+
     testStatusFunctionAddedToResponse: function () {
       baseMiddleware(request, response, options, next);
 
