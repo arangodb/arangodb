@@ -5423,7 +5423,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
+  v8::Handle<v8::Object> holder = info.Holder()->ToObject();
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(holder, WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5443,24 +5444,40 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  // get the collection type (document/edge)
-  const TRI_col_type_e collectionType = GetVocBaseCollectionType(info.Holder());
+  if (holder->HasRealNamedProperty(name)) {
+    v8::Handle<v8::Object> value = holder->GetRealNamedProperty(name)->ToObject();
+    TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
-  // look up the value if it exists
-  TRI_vocbase_col_t const* collection;
+    if (collection != 0) {
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_vocbase_col_status_e status = collection->_status;
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      if (status != TRI_VOC_COL_STATUS_DELETED) {
+        return scope.Close(value);
+      }
+      else {
+        holder->Delete(name);
+      }
+    }
+  }
 
-  collection = TRI_FindCollectionByNameOrBearVocBase(vocbase, key.c_str(), (TRI_col_type_t) collectionType);
+  // look up the collection
+  TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, key.c_str());
 
-  // if the key is not present return an empty handle as signal
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot load or create collection")));
+    return scope.Close(v8::Undefined());
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     return scope.Close(v8::ThrowException(v8::String::New("collection is not a document or edge collection")));
   }
 
-  return scope.Close(TRI_WrapCollection(collection));
+  v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
+
+  holder->Set(name, result);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
