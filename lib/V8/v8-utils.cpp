@@ -29,6 +29,8 @@
 #include "BasicsC/win-utils.h"
 #endif
 
+#include "build.h"
+
 #include "v8-utils.h"
 
 #include <fstream>
@@ -46,12 +48,15 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "Basics/FileUtils.h"
 #include "Rest/SslInterface.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 
 #include "unicode/normalizer2.h"
+
+#include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -1820,8 +1825,13 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   // create the global variables
   // .............................................................................
 
+  TRI_AddGlobalVariableVocbase(context, "HOME", v8::String::New(FileUtils::homeDirectory().c_str()));
+
   TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
   TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(nodes));
+  TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
+  TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
+  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));
 
   TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));

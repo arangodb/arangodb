@@ -27,8 +27,6 @@
 
 #include "v8-vocbase.h"
 
-#include "3rdParty/valgrind/valgrind.h"
-
 #include "build.h"
 
 #include "Logger/Logger.h"
@@ -6743,8 +6741,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   
   TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
   TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT));
-  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));
-  TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);

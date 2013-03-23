@@ -276,6 +276,7 @@ int64_t TRI_SizeFile (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 bool TRI_IsWritable (char const* path) {
   // ..........................................................................
   // will attempt the following:
@@ -287,11 +288,14 @@ bool TRI_IsWritable (char const* path) {
   // implementation for seems to be non-trivial
   return true;
 }
+
 #else
+
 bool TRI_IsWritable (char const* path) {
   // we can use POSIX access() from unistd.h to check for write permissions
   return (access(path, W_OK) == 0);
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,11 +316,14 @@ bool TRI_IsDirectory (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 bool TRI_IsSymbolicLink (char const* path) {
   // todo : check if a file is a symbolic link - without opening the file
   return false;
 }
+
 #else
+
 bool TRI_IsSymbolicLink (char const* path) {
   struct stat stbuf;
   int res;
@@ -325,6 +332,7 @@ bool TRI_IsSymbolicLink (char const* path) {
 
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -953,6 +961,7 @@ int TRI_CreateLockFile (char const* filename) {
 
   return TRI_ERROR_NO_ERROR;
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1202,6 +1211,7 @@ int TRI_DestroyLockFile (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirectory) {
   char* result;
   size_t cwdLength;
@@ -1296,6 +1306,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
 
 
 #else
+
 char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   char* result;
   char* ptr;
@@ -1345,6 +1356,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 
   return result;
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1422,9 +1434,52 @@ char* TRI_LocateBinaryPath (char const* argv0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locates the home directory
+///
+/// Under windows there is no 'HOME' directory as such so getenv("HOME") may
+/// return NULL -- which it does under windows.  A safer approach below
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+
+char* TRI_HomeDirectory () {
+  char const* drive = getenv("HOMEDRIVE");
+  char const* path = getenv("HOMEPATH");
+  char* result;
+
+  if (drive != 0 && path != 0) {
+    result = TRI_Concatenate2String(drive, path);
+  }
+  else {
+    result = TRI_DuplicateString("");
+  }
+
+  retun result;
+}
+
+#else
+
+char* TRI_HomeDirectory () {
+  char const* result = getenv("HOME");
+
+  if (result == 0) {
+    result = ".";
+  }
+
+  return TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, result);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
