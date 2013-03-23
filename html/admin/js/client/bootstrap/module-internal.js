@@ -138,8 +138,7 @@
 
   internal.executeServer = function (body) {
     if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/execute", body);
-      return;
+      return internal.arango.POST("/_admin/execute", body);
     }
 
     throw "not connected";
