@@ -288,6 +288,7 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var internal = GlobalPackage.module("/internal").exports;
+  var fs = GlobalPackage.module("/fs").exports;
   var console = GlobalPackage.module("/console").exports;
 
   internal.GlobalPackage = GlobalPackage;
@@ -727,52 +728,121 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file from an application path
+/// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.loadAppScript = function (unormalizedPath, manifest, appfile) {
-    var path = this.normalize(unormalizedPath);
-    var file = this.normalize(path + "/" + appfile);
-    var sandbox = {};
-    var content;
-    var fun;
-    var libpath;
-    var mdl;
-    var pkg;
-    var result;
+  Module.prototype.appDescription = function (name) {
+    var apps = internal.APP_PATH;
+    var i;
 
-    if (manifest.hasOwnProperty("lib")) {
-      libpath = path + "/" + manifest.lib;
+    for (i = 0;  i < apps.length;  ++i) {
+      var path = apps[i];
+      var file = path + "/" + name + "/" + "manifest.json";
+      var content;
+      var manifest;
+      
+      if (internal.exists(file)) {
+        try {
+          content = internal.read(file);
+          manifest = JSON.parse(content);
+        }
+        catch (err) {
+          console.error("cannot load manifest file '%s': %s - %s",
+                        file,
+                        String(err),
+                        String(err.stack));
+          continue;
+        }
+
+        if (! manifest.hasOwnProperty("name")) {
+          console.error("cannot manifest file is missing a name '%s'", file);
+          continue;
+        }
+        
+        if (! manifest.hasOwnProperty("version")) {
+          console.error("cannot manifest file is missing a version '%s'", file);
+          continue;
+        }
+        
+        return {
+          path: path + "/" + name,
+          manifest: manifest
+        };
+      }
+    }
+
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the app root module
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.appRootModule = function (name) {
+    var description;
+    var libpath;
+    var pkg;
+
+    description = module.appDescription(name);
+
+    if (description === null) {
+      return null;
+    }
+
+    if (description.manifest.hasOwnProperty("lib")) {
+      libpath = description.path + "/" + description.manifest.lib;
     }
     else {
-      libpath = path;
+      libpath = description.path;
     }
 
     pkg = new Package("application",
-                      {name: "application '" + appfile + "'"},
+                      {name: "application '" + name + "'"},
                       undefined,
                       [ libpath ]);
 
     mdl = new Module("application", 'application', pkg);
+    mdl._appDescription = description;
+    
+    return mdl;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads an init file from an application path
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.loadAppScript = function (appRoot, file) {
+    var sandbox = {};
+    var content;
+    var description;
+    var full;
+
+    description = appRoot._appDescription;
 
     try {
-      content = internal.read(file);
+      full = description.path + "/" + file;
+      content = internal.read(full);
     }
-    catch (err) {
-      throw "cannot read file '" + file + "': " + err + " - " + err.stack;
+    catch (err1) {
+      throw "cannot read file '" + full + "': " + err1 + " - " + err1.stack;
     }
 
-    sandbox.module = mdl;
+    sandbox.module = appRoot;
 
     sandbox.require = function (path) {
-      return mdl.require(path);
+      return appRoot.require(path);
+    };
+
+    sandbox.applicationContext = {
+      name: description.name,
+      version: description.version
     };
 
     content = "var func = function () {"
             + content
             + "\n};";
 
-    fun = internal.execute(content, sandbox, appfile);
+    fun = internal.execute(content, sandbox, full);
 
     if (fun !== true || ! sandbox.hasOwnProperty("func")) {
       throw "cannot create application function";
@@ -782,7 +852,7 @@ function stop_color_print () {
       result = sandbox.func();
     }
     catch (err2) {
-      throw "Javascript exception in application file '" + appfile + "': " + err2+ " - " + err2.stack;
+      throw "Javascript exception in application file '" + full + "': " + err2+ " - " + err2.stack;
     }
 
     return result;
