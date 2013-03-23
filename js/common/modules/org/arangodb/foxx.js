@@ -100,6 +100,13 @@ FoxxApplication = function (options) {
 //
 // You can find more about those in their individual sections.
 _.extend(FoxxApplication.prototype, {
+  // Sometimes it is a good idea to actually start the application
+  // you wrote. If this precious moment has arrived, you should
+  // use this function.
+  start: function () {
+    db._routing.save(this.routingInfo);
+  },
+
   // The `handleRequest` method is the raw way to create a new
   // route. You probably wont call it directly, but it is used
   // in the other request methods:
