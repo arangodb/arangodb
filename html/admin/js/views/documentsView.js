@@ -285,7 +285,6 @@ var documentsView = Backbone.View.extend({
     $('#documentsToolbarF').prepend('<ul class="prePagi"><li><a id="documents_first"><i class="icon icon-step-backward"></i></a></li></ul>');
     $('#documentsToolbarF').append('<ul class="lasPagi"><li><a id="documents_last"><i class="icon icon-step-forward"></i></a></li></ul>');
     var total = $('#totalDocuments');
-    console.log(total);
     if (total.length > 0) {
       total.html("Total: " + this.documentsCount + " documents");
     } else {
