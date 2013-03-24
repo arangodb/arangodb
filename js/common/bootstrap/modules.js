@@ -811,7 +811,7 @@ function stop_color_print () {
 /// @brief loads an init file from an application path
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.loadAppScript = function (appRoot, file) {
+  Module.prototype.loadAppScript = function (appRoot, file, context) {
     var sandbox = {};
     var content;
     var description;
@@ -828,14 +828,10 @@ function stop_color_print () {
     }
 
     sandbox.module = appRoot;
+    sandbox.applicationContext = context;
 
     sandbox.require = function (path) {
       return appRoot.require(path);
-    };
-
-    sandbox.applicationContext = {
-      name: description.manifest.name,
-      version: description.manifest.version
     };
 
     content = "var func = function () {"
