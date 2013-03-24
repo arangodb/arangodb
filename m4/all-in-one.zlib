@@ -4,9 +4,11 @@ dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                            LIBEV
 dnl ----------------------------------------------------------------------------
 
-ZLIB_CPPFLAGS"=-I${srcdir}/3rdParty/zlib-1.2.7/contrib/minizip"
+TRI_ZLIB_VERSION="1.2.7"
+
+ZLIB_CPPFLAGS"=-I${srcdir}/3rdParty/zlib-$(TRI_ZLIB_VERSION)/contrib/minizip"
 ZLIB_LDFLAGS=""
-ZLIB_LIBS="${srcdir}/3rdParty/zlib-1.2.7/libz.a"
+ZLIB_LIBS="${srcdir}/3rdParty/zlib-$(TRI_ZLIB_VERSION)/libz.a"
 
 dnl ----------------------------------------------------------------------------
 dnl add substitutions
@@ -19,6 +21,15 @@ AC_SUBST(ZLIB_LIBS)
 dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl ----------------------------------------------------------------------------
+
+LIB_INFO="$LIB_INFO|ZLIB: 3rdParty version"
+LIB_INFO="$LIB_INFO|ZLIB VERSION: ${TRI_ZLIB_VERSION}"
+
+LIB_INFO="$LIB_INFO|ZLIB_CPPFLAGS: ${ZLIB_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|ZLIB_LDFLAGS:  ${ZLIB_LDFLAGS}"
+LIB_INFO="$LIB_INFO|ZLIB_LIBS:     ${ZLIB_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                      END-OF-FILE
