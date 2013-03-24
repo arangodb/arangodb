@@ -119,6 +119,7 @@
     "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" }, 
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" }, 
     "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" }, 
+    "ERROR_APPLICATION_NOT_FOUND"  : { "code" : 1750, "message" : "application not found" }, 
     "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" }, 
     "ERROR_KEYVALUE_KEY_EXISTS"    : { "code" : 1801, "message" : "key already exists" }, 
     "ERROR_KEYVALUE_KEY_NOT_FOUND" : { "code" : 1802, "message" : "key not found" }, 

@@ -293,6 +293,17 @@ v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "POST" request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
+                                                    const char* body,
+                                                    const size_t bodySize,
+                                                    map<string, string> const& headerFields) {
+  return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, bodySize, headerFields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "PUT" request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -343,6 +354,28 @@ v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location
 
 v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestType method,
                                                        string const& location,
+                                                       const char* body,
+                                                       const size_t bodySize,
+                                                       map<string, string> const& headerFields) {
+  
+  _lastErrorMessage = "";
+  _lastHttpReturnCode = 0;
+
+  if (_httpResult) {
+    delete _httpResult;
+  }
+
+  _httpResult = _client->request(method, location, body, bodySize, headerFields);
+
+  return handleResult();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestType method,
+                                                       string const& location,
                                                        string const& body,
                                                        map<string, string> const& headerFields) {
   _lastErrorMessage = "";
@@ -359,6 +392,14 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
     _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
   }
 
+  return handleResult();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a result
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::handleResult () {
   if (!_httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();

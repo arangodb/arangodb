@@ -101,8 +101,7 @@ Handler::status_e RestUploadHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
-  if (type != HttpRequest::HTTP_REQUEST_POST && 
-      type != HttpRequest::HTTP_REQUEST_PUT) {
+  if (type != HttpRequest::HTTP_REQUEST_POST) { 
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
     return Handler::HANDLER_DONE;
@@ -110,7 +109,7 @@ Handler::status_e RestUploadHandler::execute() {
 
   char* filename = NULL;
   
-  if (TRI_GetTempName("uploads", &filename) != TRI_ERROR_NO_ERROR) {
+  if (TRI_GetTempName("uploads", &filename, true) != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not generate temp file");
     return Handler::HANDLER_FAILED;
   }
@@ -118,7 +117,7 @@ Handler::status_e RestUploadHandler::execute() {
   char* relative = TRI_GetRelativePath(filename);
 
   try {
-    FileUtils::spit(string(filename), _request->body());
+    FileUtils::spit(string(filename), _request->body(), _request->bodySize());
   }
   catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
@@ -126,11 +125,11 @@ Handler::status_e RestUploadHandler::execute() {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not save file");
     return Handler::HANDLER_FAILED;
   }
-  
+ 
   // create the response
   _response = createResponse(HttpResponse::CREATED);
-  _response->setContentType(_request->header("application/json"));
-  _response->body().appendText("{\"filename\":\"uploads\\/").appendText(relative).appendText("\"}");
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText("{\"filename\":\"uploads/").appendText(relative).appendText("\"}");
     
   TRI_Free(TRI_CORE_MEM_ZONE, filename);
   TRI_Free(TRI_CORE_MEM_ZONE, relative);

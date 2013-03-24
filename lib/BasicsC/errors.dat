@@ -166,6 +166,12 @@ ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name alre
 ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist"
 
 ################################################################################
+## Application management
+################################################################################
+
+ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an application is not found or not present in the specified version."
+
+################################################################################
 ## Key value access
 ################################################################################
 
