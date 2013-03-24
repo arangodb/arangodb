@@ -17,6 +17,7 @@ var FoxxApplication,
   db = require("org/arangodb").db,
   fs = require("fs"),
   console = require("console"),
+  INTERNAL = require("internal"),
   internal = {};
 
 // ArangoDB uses a certain structure we refer to as `UrlObject`.
@@ -68,8 +69,8 @@ FoxxApplication = function (options) {
     routes: []
   };
 
-  this.requires = {};
-  this.models = {};
+  this.requiresLibs = {};
+  this.requiresModels = {};
   this.helperCollection = {};
 
   this.routingInfo.urlPrefix = urlPrefix;
@@ -109,16 +110,16 @@ _.extend(FoxxApplication.prototype, {
   // variable.
   start: function (context) {
     'use strict';
-    var models = this.models,
-      requires = this.requires,
+    var models = this.requiresModels,
+      requires = this.requiresLibs,
       prefix = context.prefix;
 
     this.routingInfo.urlPrefix = prefix + this.routingInfo.urlPrefix;
 
     _.each(this.routingInfo.routes, function (route) {
       route.action.context = context;
-      route.action.requires = requires;
-      route.action.models = models;
+      route.action.requiresLibs = requires;
+      route.action.requiresModels = models;
     });
 
     db._collection("_routing").save(this.routingInfo);
@@ -616,8 +617,13 @@ exports.installApp = function (name, mount, options) {
 
   if (mount === "") {
     mount = "/";
-  } else if (mount[0] !== "/") {
-    mount = "/" + mount;
+  }
+  else {
+    mount = INTERNAL.normalizeURL(mount);
+  }
+
+  if (mount[0] !== "/") {
+    throw "mount point must be absolute";
   }
 
   if (prefix === undefined) {
@@ -637,7 +643,7 @@ exports.installApp = function (name, mount, options) {
       var file = apps[i];
 
       context.appMount = i;
-      context.prefix = mount + "/" + i;
+      context.prefix = INTERNAL.normalizeURL(mount + "/" + i);
 
       root.loadAppScript(root, file, context);
     }
