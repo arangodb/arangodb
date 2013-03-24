@@ -155,7 +155,14 @@ $(document).ready(function() {
     },
     
     aarkvard: function() {
-      alert("Sorry not yet linked");
+      if (this.aarkvardView === undefined) {
+        var foxxList = new window.FoxxCollection();
+        this.aarkvardView = new FoxxListView({
+          collection: foxxList
+        });
+      }
+      this.aarkvardView.render();
+      this.naviView.selectMenuItem('aarkvard-menu');
     },
     
     swagger: function() {

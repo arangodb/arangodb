@@ -34,6 +34,9 @@
   background:#676665;
   padding: 4px 8px;
   margin:0;
+}
+
+.collectionName {
   text-align:left;
   position:absolute;
   bottom:0px;
