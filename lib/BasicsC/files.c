@@ -1606,9 +1606,9 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
 char* TRI_GetTempPath () {
 #ifdef _WIN32
 #warning TRI_GetTempPath not implemented for Windows
-  return NULL;
+  return TRI_DuplicateString(".");
 #else
-  return "/tmp/arangodb";
+  return TRI_DuplicateString("/tmp/arangodb");
 #endif
 }
 
@@ -1618,9 +1618,18 @@ char* TRI_GetTempPath () {
 
 int TRI_GetTempName (char const* directory, char** result) {
   char* dir;
+  char* temp;
   int tries;
 
-  dir = TRI_Concatenate2File(TRI_GetTempPath(), directory);
+  temp = TRI_GetTempPath();
+  if (directory != NULL) {
+    dir = TRI_Concatenate2File(temp, directory);
+  }
+  else {
+    dir = TRI_DuplicateString(temp); 
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, temp);
 
   TRI_CreateRecursiveDirectory(dir);
 

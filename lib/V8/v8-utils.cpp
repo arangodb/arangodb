@@ -820,6 +820,63 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the temporary directory
+///
+/// @FUN{fs.getTempPath()}
+///
+/// Returns the absolute path of the temporary directory
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getTempPath()")));
+  }
+
+  // return result
+  return scope.Close(v8::String::New(TempPath.c_str(), TempPath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name for a (new) temporary file
+///
+/// @FUN{fs.getTempFile(@FA{directory})}
+///
+/// Returns the name for a new temporary file in directory @FA{directory}. 
+/// An empty file will be created so no other process can create a file of the 
+/// same name.
+///
+/// Note that the directory @FA{directory} must exist.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetTempFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getTempFile(<directory>)")));
+  }
+
+  const char* p = NULL;
+  string path;
+  if (argv.Length() == 1) {
+    path = TRI_ObjectToString(argv[0]);
+    p = path.c_str();
+  }
+
+  char* result = 0;
+  if (TRI_GetTempName(p, &result) != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "could not create temp file")));
+  }
+
+  const string tempfile(result);
+  TRI_Free(TRI_CORE_MEM_ZONE, result);
+
+  // return result
+  return scope.Close(v8::String::New(tempfile.c_str(), tempfile.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if path is a directory
 ///
 /// @FUN{fs.isDirectory(@FA{path})}
@@ -2200,7 +2257,8 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& modules,
-                      string const& nodes) {
+                      string const& nodes,
+                      string const& tempPath) {
   v8::HandleScope scope;
 
   v8::Handle<v8::FunctionTemplate> ft;
@@ -2217,11 +2275,15 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
     isolate->SetData(v8g);
   }
 
+  TempPath = tempPath;
+
   // .............................................................................
   // create the global functions
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
+  TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_FILE", JS_GetTempFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);

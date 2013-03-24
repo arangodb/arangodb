@@ -176,6 +176,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _binaryPath(),
+    _tempPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
@@ -196,7 +197,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
+  p = TRI_GetTempPath();
+  _tempPath = string(p);
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // set working directory and database directory
@@ -252,7 +256,7 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_binaryPath);
+  _applicationV8 = new ApplicationV8(_binaryPath, _tempPath);
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -299,6 +303,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
+    ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
   ;
 

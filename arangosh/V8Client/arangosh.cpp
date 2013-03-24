@@ -1399,7 +1399,7 @@ int main (int argc, char* argv[]) {
   // add function SYS_OUTPUT to use pager
   TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
-  TRI_InitV8Utils(context, StartupModules, StartupNodeModules);
+  TRI_InitV8Utils(context, StartupModules, StartupNodeModules, BaseClient.tempPath());
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)

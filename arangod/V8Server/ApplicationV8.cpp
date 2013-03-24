@@ -166,8 +166,9 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::ApplicationV8 (string const& binaryPath)
+ApplicationV8::ApplicationV8 (string const& binaryPath, string const& tempPath)
   : ApplicationFeature("V8"),
+    _tempPath(tempPath),
     _startupPath(),
     _modulesPath(),
     _packagePath(),
@@ -715,7 +716,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath);
+  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _tempPath);
   TRI_InitV8Shell(context->_context);
 
   {
