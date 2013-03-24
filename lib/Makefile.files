@@ -149,7 +149,7 @@ lib_libarango_fe_a_SOURCES = \
 ################################################################################
 ### @brief library "libarango.a", JavaScript part
 ################################################################################
-
+	
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
@@ -158,7 +158,14 @@ lib_libarango_v8_a_SOURCES = \
 	lib/V8/v8-globals.cpp \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-shell.cpp \
-	lib/V8/v8-utils.cpp
+	lib/V8/v8-utils.cpp \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
+	lib/SimpleHttpClient/ClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
+	lib/SimpleHttpClient/SimpleClient.cpp \
+	lib/SimpleHttpClient/SimpleHttpClient.cpp \
+	lib/SimpleHttpClient/SimpleHttpResult.cpp
+
 
 ################################################################################
 ### @brief library "libarango.a", Ruby part

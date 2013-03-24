@@ -54,7 +54,7 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/html/admin/js/arangodb/browser.js \
+	@srcdir@/html/admin/js/shell/browser.js \
 	\
 	@srcdir@/js/actions/api-collection.js \
 	@srcdir@/js/actions/api-structure.js \
