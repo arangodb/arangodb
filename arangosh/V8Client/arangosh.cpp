@@ -1596,6 +1596,29 @@ int main (int argc, char* argv[]) {
   TRI_AddGlobalVariableVocbase(context, "ARANGO_QUIET", v8::Boolean::New(BaseClient.quiet()));
   TRI_AddGlobalVariableVocbase(context, "VALGRIND", v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
 
+  bool isExecuteScript = false;
+  bool isCheckScripts = false;
+  bool isUnitTests = false;
+  bool isJsLint = false;
+
+  if (! ExecuteScripts.empty()) {
+    isExecuteScript = true;
+  }
+  else if (! CheckScripts.empty()) {
+    isCheckScripts = true;
+  }
+  else if (! UnitTests.empty()) {
+    isUnitTests = true;
+  }
+  else if (! JsLint.empty()) {
+    isJsLint = true;
+  }
+
+  TRI_AddGlobalVariableVocbase(context, "IS_EXECUTE_SCRIPT", v8::Boolean::New(isExecuteScript));
+  TRI_AddGlobalVariableVocbase(context, "IS_CHECK_SCRIPT", v8::Boolean::New(isCheckScripts));
+  TRI_AddGlobalVariableVocbase(context, "IS_UNIT_TESTS", v8::Boolean::New(isUnitTests));
+  TRI_AddGlobalVariableVocbase(context, "IS_JS_LINT", v8::Boolean::New(isJsLint));
+
   // load all init files
   vector<string> files;
 
@@ -1605,7 +1628,7 @@ int main (int argc, char* argv[]) {
   files.push_back("common/bootstrap/module-console.js");  // needs internal
   files.push_back("common/bootstrap/errors.js");
 
-  if (JsLint.empty()) {
+  if (! isJsLint) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 
@@ -1629,7 +1652,7 @@ int main (int argc, char* argv[]) {
   // run normal shell
   // .............................................................................
 
-  if (ExecuteScripts.empty() && CheckScripts.empty() && UnitTests.empty() && JsLint.empty()) {
+  if (! (isExecuteScript || isCheckScripts || isUnitTests || isJsLint)) {
     RunShell(context, promptError);
   }
 
@@ -1640,19 +1663,19 @@ int main (int argc, char* argv[]) {
   else {
     bool ok = false;
 
-    if (! ExecuteScripts.empty()) {
+    if (isExecuteScript) {
       // we have scripts to execute or syntax check
       ok = RunScripts(context, ExecuteScripts, true);
     }
-    else if (! CheckScripts.empty()) {
+    else if (isCheckScripts) {
       // we have scripts to syntax check
       ok = RunScripts(context, CheckScripts, false);
     }
-    else if (! UnitTests.empty()) {
+    else if (isUnitTests) {
       // we have unit tests
       ok = RunUnitTests(context);
     }
-    else if (! JsLint.empty()) {
+    else if (isJsLint) {
       // we don't have unittests, but we have files to jslint
       ok = RunJsLint(context);
     }
