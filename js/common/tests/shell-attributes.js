@@ -1,14 +1,11 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoStatement
+/// @brief test attribute naming
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,84 +21,109 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dr. Frank Celler
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
-var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArrayCursor;
-var QUERY = require("internal").AQL_QUERY;
-var PARSE = require("internal").AQL_PARSE;
-var EXPLAIN = require("internal").AQL_EXPLAIN;
+var jsunity = require("jsunity");
+
+var arangodb = require("org/arangodb");
+
+var db = arangodb.db;
+var wait = require("internal").wait;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   ArangoStatement
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                        attributes
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoStatement
-/// @{
+/// @brief test attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query and return the results
-////////////////////////////////////////////////////////////////////////////////
+function AttributesSuite () {
+  var cn = "UnitTestsCollectionAttributes";
+  var c = null;
 
-ArangoStatement.prototype.parse = function () {
-  var result = PARSE(this._query); 
-
-  return { "bindVars" : result.parameters, "collections" : result.collections };
-};
+  return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explain a query and return the results
+/// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.explain = function () {
-  return EXPLAIN(this._query, this._bindVars); 
-};
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
-///
-/// This will return a cursor with the query results in case of success.
+/// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.execute = function () {
-  var result = QUERY(this._query, 
-                     this._bindVars, 
-                     this._doCount !== undefined ? this._doCount : false, 
-                     null, 
-                     true);  
-  return new GeneralArrayCursor(result, 0, null);
-};
+    tearDown : function () {
+      c.unload();
+      c.drop();
+      c = null;
+      wait(0.0);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief no attributes
 ////////////////////////////////////////////////////////////////////////////////
+
+    testNoAttributes : function () {
+      var doc = { };
+      
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+      delete d1.error;
+
+      assertEqual(d1, d2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query empty attribute name
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryEmptyAttribute : function () {
+      var doc = { "" : "foo" };
+      c.save(doc);
+
+      var docs = c.toArray();
+      assertEqual(1, docs.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attribute name with special chars
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpecialAttributes : function () {
+      var doc = { "-meow-" : 1, "mötör" : 2, " " : 3, "\t" : 4, "\r" : 5, "\n" : 6 };
+      
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+
+      assertEqual(1, d2["-meow-"]);
+      assertEqual(2, d2["mötör"]);
+      assertEqual(3, d2[" "]);
+      assertEqual(4, d2["\t"]);
+      assertEqual(5, d2["\r"]);
+      assertEqual(6, d2["\n"]);
+    }
+
+  };
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
+// --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoStatement
-/// @{
+/// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoStatement = ArangoStatement; 
+jsunity.run(AttributesSuite);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+return jsunity.done();
 
 // Local Variables:
 // mode: outline-minor

@@ -349,7 +349,10 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
     }
 
     if (properties.hasOwnProperty("createOptions")) {
-      body.createOptions = properties.createOptions;
+      body.keyOptions = properties.createOptions;
+    }
+    else if (properties.hasOwnProperty("keyOptions")) {
+      body.keyOptions = properties.keyOptions;
     }
   }
 

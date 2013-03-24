@@ -1729,7 +1729,7 @@ function documentTableMakeEditable (tableID) {
 ///////////////////////////////////////////////////////////////////////////////
 
 function escaped (value) {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#38;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 ///////////////////////////////////////////////////////////////////////////////

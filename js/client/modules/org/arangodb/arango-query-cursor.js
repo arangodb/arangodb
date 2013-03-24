@@ -236,10 +236,6 @@ ArangoQueryCursor.prototype.dispose = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.count = function () {
-  if (! this.data.id) {
-    throw "cursor has been disposed";
-  }
-
   return this.data.count;
 };
 

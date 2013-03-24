@@ -1360,13 +1360,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       effectiveSize = (TRI_voc_size_t) s;
     }
 
-    // get optional options
-    TRI_json_t* options = 0;
-    if (p->Has(v8g->CreateOptionsKey)) {
-      options = TRI_JsonObject(p->Get(v8g->CreateOptionsKey));
+    // get optional values
+    TRI_json_t* keyOptions = 0;
+    if (p->Has(v8g->KeyOptionsKey)) {
+      keyOptions = TRI_ObjectToJson(p->Get(v8g->KeyOptionsKey));
     }
 
-    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, options);
+    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, keyOptions);
 
     if (p->Has(v8g->WaitForSyncKey)) {
       parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
@@ -4586,6 +4586,20 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
 ///
+/// - @LIT{keyOptions} (optional) additional options for key generation. This is
+///   a JSON array containing the following attributes (note: some of the
+///   attributes are optional):
+///   - @LIT{type}: the type of the key generator used for the collection.
+///   - @LIT{allowUserKeys}: if set to @LIT{true}, then it is allowed to supply
+///     own key values in the @LIT{_key} attribute of a document. If set to
+///     @LIT{false}, then the key generator will solely be responsible for
+///     generating keys and supplying own key values in the @LIT{_key} attribute
+///     of documents is considered an error.
+///   - @LIT{increment}: increment value for @LIT{autoincrement} key generator.
+///     Not used for other key generator types.
+///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
+///     Not used for other key generator types.
+///
 /// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
 /// Changes the collection properties. @FA{properties} must be a object with
@@ -4601,8 +4615,8 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// created journals. Also note that you cannot lower the journal size to less
 /// then size of the largest document already stored in the collection.
 ///
-/// Note: some other collection properties, such as @LIT{type} or @LIT{isVolatile}
-/// cannot be changed once the collection is created.
+/// Note: some other collection properties, such as @LIT{type}, @LIT{isVolatile}
+/// or @LIT{keyOptions} cannot be changed once the collection is created.
 ///
 /// @EXAMPLES
 ///
@@ -4711,6 +4725,8 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   v8::Handle<v8::Object> result = v8::Object::New();
 
   if (TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
+    TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
+
     TRI_voc_size_t maximalSize = base->_info._maximalSize;
     bool waitForSync = base->_info._waitForSync;
 
@@ -4718,11 +4734,11 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
     result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
     result->Set(TRI_V8_SYMBOL("isSystem"), base->_info._isSystem ? v8::True() : v8::False());
-
-    if (base->_info._options) {
-      result->Set(v8g->CreateOptionsKey, TRI_ObjectJson(base->_info._options)->ToObject());
+    
+    if (keyOptions != 0) {
+      result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
-
   }
 
   ReleaseCollection(collection);
@@ -5588,6 +5604,21 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   enforce any synchronisation to disk and does not calculate any CRC
 ///   checksums for datafiles (as there are no datafiles).
 ///
+/// - @LIT{keyOptions} (optional) additional options for key generation. If
+///   specified, then @LIT{keyOptions} should be a JSON array containing the
+///   following attributes (note: some of them are optional):
+///   - @LIT{type}: specifies the type of the key generator. The currently
+///     available generators are @LIT{traditional} and @LIT{autoincrement}.
+///   - @LIT{allowUserKeys}: if set to @LIT{true}, then it is allowed to supply
+///     own key values in the @LIT{_key} attribute of a document. If set to
+///     @LIT{false}, then the key generator will solely be responsible for
+///     generating keys and supplying own key values in the @LIT{_key} attribute
+///     of documents is considered an error.
+///   - @LIT{increment}: increment value for @LIT{autoincrement} key generator.
+///     Not used for other key generator types.
+///   - @LIT{offset}: initial offset value for @LIT{autoincrement} key generator.
+///     Not used for other key generator types.
+///
 /// @EXAMPLES
 ///
 /// With defaults:
@@ -5941,7 +5972,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   if (TRI_IsSystemCollectionName(key.c_str())) {
@@ -5951,9 +5982,6 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
-
-  // TRI_shape_sid_t sid;
-  // TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
   TRI_shaped_json_t document;
   TRI_EXTRACT_SHAPED_JSON_MARKER(document, marker);
@@ -5972,7 +6000,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     }
   }
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot extract attribute")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 }
 
@@ -6443,7 +6471,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(v8::String::New("isVolatile"));
   v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
   v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
-  v8g->CreateOptionsKey  = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
+  v8g->KeyOptionsKey     = v8::Persistent<v8::String>::New(v8::String::New("keyOptions"));
 
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
