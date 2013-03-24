@@ -47,16 +47,17 @@ DOXYGEN = \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
-	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
+	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
+	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
 	Doxygen/js/common/modules/org/arangodb/users-common.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
-	Doxygen/js/server/modules/org/arangodb/arango-database.c \
-	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
+	Doxygen/js/server/modules/org/arangodb/arango-database.c \
+	Doxygen/js/server/modules/org/arangodb/foxx.c \
 	Doxygen/js/server/modules/org/arangodb/graph.c \
+	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/server.c
 
 ################################################################################
