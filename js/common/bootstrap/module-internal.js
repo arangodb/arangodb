@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
   FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD,
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
@@ -12,7 +12,7 @@
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, THREAD_NUMBER, HOME, PATH_SEPARATOR, DEVELOPMENT_MODE */
+  REQUEST_TIME_DISTRIBUTION, HOME, DEVELOPMENT_MODE, THREAD_NUMBER, PATH_SEPARATOR */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -301,7 +301,7 @@
 /// @brief modules path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.MODULES_PATH = "";
+  internal.MODULES_PATH = [];
 
   if (typeof MODULES_PATH !== "undefined") {
     internal.MODULES_PATH = MODULES_PATH;
@@ -309,14 +309,25 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief node modules path
+/// @brief package path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.PACKAGE_PATH = "";
+  internal.PACKAGE_PATH = [];
 
   if (typeof PACKAGE_PATH !== "undefined") {
     internal.PACKAGE_PATH = PACKAGE_PATH;
     delete PACKAGE_PATH;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief app path
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.APP_PATH = [];
+
+  if (typeof APP_PATH !== "undefined") {
+    internal.APP_PATH = APP_PATH;
+    delete APP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
