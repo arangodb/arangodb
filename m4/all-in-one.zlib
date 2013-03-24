@@ -1,0 +1,30 @@
+dnl -*- mode: Autoconf; -*-
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                            LIBEV
+dnl ----------------------------------------------------------------------------
+
+ZLIB_CPPFLAGS"=-I${srcdir}/3rdParty/zlib-1.2.7/contrib/minizip"
+ZLIB_LDFLAGS=""
+ZLIB_LIBS="${srcdir}/3rdParty/zlib-1.2.7/libz.a"
+
+dnl ----------------------------------------------------------------------------
+dnl add substitutions
+dnl ----------------------------------------------------------------------------
+
+AC_SUBST(ZLIB_CPPFLAGS)
+AC_SUBST(ZLIB_LDFLAGS)
+AC_SUBST(ZLIB_LIBS)
+
+dnl ----------------------------------------------------------------------------
+dnl informational output
+dnl ----------------------------------------------------------------------------
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:
