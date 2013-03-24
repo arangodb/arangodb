@@ -13,7 +13,7 @@ function CreateFoxxApplicationSpec () {
         routingInfo = app.routingInfo;
 
       assertEqual(routingInfo.routes.length, 0);
-      assertUndefined(routingInfo.urlPrefix);
+      assertEqual(routingInfo.urlPrefix, "");
     },
 
     testCreationWithURLPrefix: function () {

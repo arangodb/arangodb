@@ -61,7 +61,7 @@ FoxxApplication = function (options) {
 
   options = options || {};
 
-  urlPrefix = options.urlPrefix;
+  urlPrefix = options.urlPrefix || "";
   templateCollection = options.templateCollection;
 
   this.routingInfo = {
@@ -72,9 +72,7 @@ FoxxApplication = function (options) {
   this.models = {};
   this.helperCollection = {};
 
-  if (_.isString(urlPrefix)) {
-    this.routingInfo.urlPrefix = urlPrefix;
-  }
+  this.routingInfo.urlPrefix = urlPrefix;
 
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
