@@ -255,10 +255,9 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: String(function (req, res, opts, next) {
-        func(req, res);
-        next();
-      })}
+      action: {
+        callback: "function (req, res, opts, next) { " + String(func) + "(req, res); next(); })"
+      }
     });
   },
 
@@ -281,10 +280,9 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: String(function (req, res, opts, next) {
-        next();
-        func(req, res);
-      })}
+      action: {
+        callback: "function (req, res, opts, next) { next(); " + String(func) + "(req, res); })"
+      }
     });
   },
 
