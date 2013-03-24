@@ -41,6 +41,7 @@ var wait = require("internal").wait;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AttributesSuite () {
+  var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionAttributes";
   var c = null;
 
@@ -165,6 +166,55 @@ function AttributesSuite () {
       assertEqual(4, d2["\t"]);
       assertEqual(5, d2["\r"]);
       assertEqual(6, d2["\n"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shared attribute list
+////////////////////////////////////////////////////////////////////////////////
+
+    testSharedAttributesList : function () {
+      var sub = { name: 1 };
+      var doc = { a: [ sub, sub ] };
+      
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+
+      assertEqual(sub, d2["a"][0]);
+      assertEqual(sub, d2["a"][1]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shared attribute object
+////////////////////////////////////////////////////////////////////////////////
+
+    testSharedAttributesObject : function () {
+      var sub = { name: 1 };
+      var doc = { a: sub, b: sub };
+      
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+
+      assertEqual(sub, d2["a"]);
+      assertEqual(sub, d2["b"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shared attribute list
+////////////////////////////////////////////////////////////////////////////////
+
+    testCyclicAttributesList : function () {
+      var sub = {};
+      var doc = { a: [ sub ] };
+
+      sub.cycle = doc;
+      
+      try {
+        c.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+      }
     }
 
   };
