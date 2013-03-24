@@ -112,7 +112,10 @@ _.extend(FoxxApplication.prototype, {
   start: function (context) {
     'use strict';
     var models = this.models,
-      requires = this.requires;
+      requires = this.requires,
+      prefix = context.prefix;
+
+    this.routingInfo.urlPrefix = prefix + this.routingInfo.urlPrefix;
 
     _.each(this.routingInfo.routes, function (route) {
       route.action.context = context;
