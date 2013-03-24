@@ -1,6 +1,6 @@
 window.FoxxView = Backbone.View.extend({
   tagName: 'li',
-  className: "span3 foxxAttributeItem",
+  className: "span3",
   template: new EJS({url: '/_admin/html/js/templates/foxxView.ejs'}),
   
   events: {
@@ -12,7 +12,7 @@ window.FoxxView = Backbone.View.extend({
   },
   
   render: function(){
-    $(this.el).html(this.template.text);
+    $(this.el).html(this.template.render(this.model));
     return $(this.el);
   }
 });
