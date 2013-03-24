@@ -12,7 +12,7 @@
 // FoxxApplication uses Underscore internally. This library is wonderful.
 var FoxxApplication,
   BaseMiddleware,
-  formatMiddleware,
+  FormatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
   fs = require("fs"),
@@ -301,9 +301,9 @@ _.extend(FoxxApplication.prototype, {
     this.helperCollection[name] = func;
   },
 
-  // ## Shortform for using the formatMiddleware
+  // ## Shortform for using the FormatMiddleware
   //
-  // More information about the formatMiddleware in the corresponding section.
+  // More information about the FormatMiddleware in the corresponding section.
   // This is a shortcut to add the middleware to your application:
   //
   //     app.accepts(["json"], "json");
@@ -312,7 +312,9 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url:    { match: "/*" },
-      action: { callback: formatMiddleware(allowedFormats, defaultFormat) }
+      action: {
+        callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
+      }
     });
   }
 });
@@ -489,7 +491,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 // want it. This Middleware gives you Rails-like format handling via
 // the `extension` of the URL or the accept header.
 // Say you request an URL like `/people.json`:
-// The `formatMiddleware` will set the format of the request to JSON
+// The `FormatMiddleware` will set the format of the request to JSON
 // and then delete the `.json` from the request. You can therefore write
 // handlers that do not take an `extension` into consideration and instead
 // handle the format via a simple String.
@@ -500,8 +502,8 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 //
 // Use it by calling:
 //
-//     formatMiddleware = require('foxx').formatMiddleware;
-//     app.before("/*", formatMiddleware.new(['json']));
+//     FormatMiddleware = require('foxx').FormatMiddleware;
+//     app.before("/*", FormatMiddleware.new(['json']));
 //
 // or the shortcut:
 //
@@ -510,57 +512,57 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 // In both forms you can give a default format as a second parameter,
 // if no format could be determined. If you give no `defaultFormat` this
 // case will be handled as an error.
-formatMiddleware = function (allowedFormats, defaultFormat) {
+FormatMiddleware = function (allowedFormats, defaultFormat) {
   'use strict';
-  var middleware, urlFormatToMime, mimeToUrlFormat, determinePathAndFormat;
+  var stringRepresentation, middleware = function (request, response, options, next) {
+    var parsed, determinePathAndFormat;
 
-  urlFormatToMime = {
-    json: "application/json",
-    html: "text/html",
-    txt: "text/plain"
-  };
+    determinePathAndFormat = function (path, headers) {
+      var urlFormatToMime, mimeToUrlFormat, parsed;
 
-  mimeToUrlFormat = {
-    "application/json": "json",
-    "text/html": "html",
-    "text/plain": "txt"
-  };
+      parsed = {
+        contentType: headers.accept
+      };
 
-  determinePathAndFormat = function (path, headers) {
-    var parsed = {
-      contentType: headers.accept
+      urlFormatToMime = {
+        json: "application/json",
+        html: "text/html",
+        txt: "text/plain"
+      };
+
+      mimeToUrlFormat = {
+        "application/json": "json",
+        "text/html": "html",
+        "text/plain": "txt"
+      };
+      path = path.split('.');
+
+      if (path.length === 1) {
+        parsed.path = path.join();
+      } else {
+        parsed.format = path.pop();
+        parsed.path = path.join('.');
+      }
+
+      if (parsed.contentType === undefined && parsed.format === undefined) {
+        parsed.format = defaultFormat;
+        parsed.contentType = urlFormatToMime[defaultFormat];
+      } else if (parsed.contentType === undefined) {
+        parsed.contentType = urlFormatToMime[parsed.format];
+      } else if (parsed.format === undefined) {
+        parsed.format = mimeToUrlFormat[parsed.contentType];
+      }
+
+      if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
+        throw "Contradiction between Accept Header and URL.";
+      }
+
+      if (allowedFormats.indexOf(parsed.format) < 0) {
+        throw "Format '" + parsed.format + "' is not allowed.";
+      }
+
+      return parsed;
     };
-    path = path.split('.');
-
-    if (path.length === 1) {
-      parsed.path = path.join();
-    } else {
-      parsed.format = path.pop();
-      parsed.path = path.join('.');
-    }
-
-    if (parsed.contentType === undefined && parsed.format === undefined) {
-      parsed.format = defaultFormat;
-      parsed.contentType = urlFormatToMime[defaultFormat];
-    } else if (parsed.contentType === undefined) {
-      parsed.contentType = urlFormatToMime[parsed.format];
-    } else if (parsed.format === undefined) {
-      parsed.format = mimeToUrlFormat[parsed.contentType];
-    }
-
-    if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
-      throw "Contradiction between Accept Header and URL.";
-    }
-
-    if (allowedFormats.indexOf(parsed.format) < 0) {
-      throw "Format '" + parsed.format + "' is not allowed.";
-    }
-
-    return parsed;
-  };
-
-  middleware = function (request, response, options, next) {
-    var parsed;
 
     try {
       parsed = determinePathAndFormat(request.path, request.headers);
@@ -574,7 +576,14 @@ formatMiddleware = function (allowedFormats, defaultFormat) {
     }
   };
 
-  return middleware;
+  stringRepresentation = String(middleware)
+    .replace("allowedFormats", JSON.stringify(allowedFormats))
+    .replace("defaultFormat", JSON.stringify(defaultFormat));
+
+  return {
+    functionRepresentation: middleware,
+    stringRepresentation: stringRepresentation
+  };
 };
 
 // We finish off with exporting FoxxApplication and the middlewares.
@@ -641,7 +650,7 @@ exports.installApp = function (name, mount, options) {
 
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
-//TODO: Make a String exports.formatMiddleware = formatMiddleware;
+exports.FormatMiddleware = FormatMiddleware;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
