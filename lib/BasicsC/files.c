@@ -1233,6 +1233,7 @@ int TRI_DestroyLockFile (char const* filename) {
   }
 
   fd = TRI_OPEN(filename, O_RDWR);
+  // TODO: what happens if the file does not exist?
   res = flock(fd, LOCK_UN);
   TRI_CLOSE(fd);
 
