@@ -33,6 +33,7 @@ dist_man_MANS += \
 ################################################################################
 
 DOXYGEN = \
+	Doxygen/js/actions/api-aal.c \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
