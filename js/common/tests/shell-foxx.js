@@ -277,14 +277,12 @@ function AddMiddlewareFoxxApplicationSpec () {
         middleware[1].action.callback.indexOf("next()"));
     },
 
-    /*
-    testAddTheformatMiddlewareUsingTheShortform: function () {
-      // I wish I could mock like in Ruby :( This test is not really a test.
+    testAddTheFormatMiddlewareUsingTheShortform: function () {
       app.accepts(["json"], "json");
       assertEqual(app.routingInfo.middleware.length, 2);
       assertEqual(app.routingInfo.middleware[1].url.match, '/*');
+      assertTrue(app.routingInfo.middleware[1].action.callback.indexOf("[\"json\"]") > 0);
     }
-    */
   };
 }
 
@@ -518,21 +516,21 @@ function ViewHelperSpec () {
   };
 }
 
-function formatMiddlewareSpec () {
+function FormatMiddlewareSpec () {
   var Middleware, middleware, request, response, options, next;
 
   return {
     setUp: function () {
-      Middleware = require('org/arangodb/foxx').formatMiddleware;
+      Middleware = require('org/arangodb/foxx').FormatMiddleware;
       request = {};
       response = {};
       options = {};
       next = function () {};
-      middleware = new Middleware(["json"]);
     },
 
     testChangesTheURLAccordingly: function () {
       request = { path: "test/1.json", headers: {} };
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.path, "test/1");
     },
@@ -540,7 +538,7 @@ function formatMiddlewareSpec () {
     testRefusesFormatsThatHaveNotBeenAllowed: function () {
       var nextCalled = false,
         next = function () { nextCalled = true };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       request = { path: "test/1.html", headers: {} };
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
@@ -552,7 +550,7 @@ function formatMiddlewareSpec () {
       var nextCalled = false,
         next = function () { nextCalled = true };
       request = { path: "test/1.json", headers: {"accept": "text/html"} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
       assertEqual(response.body, "Contradiction between Accept Header and URL.");
@@ -563,7 +561,7 @@ function formatMiddlewareSpec () {
       var nextCalled = false,
         next = function () { nextCalled = true };
       request = { path: "test/1", headers: {} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
       assertEqual(response.body, "Format 'undefined' is not allowed.");
@@ -572,7 +570,7 @@ function formatMiddlewareSpec () {
 
     testFallBackToDefaultWhenMissingBothURLAndResponseType: function () {
       request = { path: "test/1", headers: {} };
-      middleware = new Middleware(["json"], "json");
+      middleware = new Middleware(["json"], "json").functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "json");
       assertEqual(response.contentType, "application/json");
@@ -581,7 +579,7 @@ function formatMiddlewareSpec () {
     // JSON
     testSettingTheFormatAttributeAndResponseTypeForJsonViaURL: function () {
       request = { path: "test/1.json", headers: {} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "json");
       assertEqual(response.contentType, "application/json");
@@ -589,7 +587,7 @@ function formatMiddlewareSpec () {
 
     testSettingTheFormatAttributeAndResponseTypeForJsonViaAcceptHeader: function () {
       request = { path: "test/1", headers: {"accept": "application/json"} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "json");
       assertEqual(response.contentType, "application/json");
@@ -598,7 +596,7 @@ function formatMiddlewareSpec () {
     // HTML
     testSettingTheFormatAttributeAndResponseTypeForHtmlViaURL: function () {
       request = { path: "test/1.html", headers: {} };
-      middleware = new Middleware(["html"]);
+      middleware = new Middleware(["html"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "html");
       assertEqual(response.contentType, "text/html");
@@ -606,7 +604,7 @@ function formatMiddlewareSpec () {
 
     testSettingTheFormatAttributeAndResponseTypeForHtmlViaAcceptHeader: function () {
       request = { path: "test/1", headers: {"accept": "text/html"} };
-      middleware = new Middleware(["html"]);
+      middleware = new Middleware(["html"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "html");
       assertEqual(response.contentType, "text/html");
@@ -615,7 +613,7 @@ function formatMiddlewareSpec () {
     // TXT
     testSettingTheFormatAttributeAndResponseTypeForTxtViaURL: function () {
       request = { path: "test/1.txt", headers: {} };
-      middleware = new Middleware(["txt"]);
+      middleware = new Middleware(["txt"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "txt");
       assertEqual(response.contentType, "text/plain");
@@ -623,7 +621,7 @@ function formatMiddlewareSpec () {
 
     testSettingTheFormatAttributeAndResponseTypeForTxtViaAcceptHeader: function () {
       request = { path: "test/1", headers: {"accept": "text/plain"} };
-      middleware = new Middleware(["txt"]);
+      middleware = new Middleware(["txt"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "txt");
       assertEqual(response.contentType, "text/plain");
@@ -637,8 +635,6 @@ jsunity.run(AddMiddlewareFoxxApplicationSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);
-
-// TODO: Recreate the Test Suite, changed the Middlewares to Strings
-//jsunity.run(formatMiddlewareSpec);
+jsunity.run(FormatMiddlewareSpec);
 
 return jsunity.done();
