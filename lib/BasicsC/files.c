@@ -44,6 +44,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/random.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/threads.h"
@@ -382,7 +383,7 @@ bool TRI_CreateRecursiveDirectory (char const* path) {
     p++;
   }
 
-  if (res != TRI_ERROR_NO_ERROR && (p - s > 0)) {
+  if (res == TRI_ERROR_NO_ERROR && (p - s > 0)) {
     m = TRI_MKDIR(copy, 0777);
 
     if (m != 0 && errno != EEXIST) {
@@ -1253,6 +1254,26 @@ int TRI_DestroyLockFile (char const* filename) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the relative path of a file
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetRelativePath (char const* filename) {
+  const char* p;
+  const char* s;
+  
+  p = s = filename;
+
+  while (*p != '\0') {
+    if (*p == '\\' || *p == '/' || *p == ':') {
+      s = p + 1;
+    }
+    p++;
+  }
+
+  return TRI_DuplicateString(s); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
 /// in contrast to realpath() this function can also be used to determine the
 /// full path for files & directories that do not exist. realpath() would fail
@@ -1576,6 +1597,79 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
   *crc = TRI_FinalCrc32(*crc);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the system's temporary path
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetTempPath () {
+#ifdef _WIN32
+#warning TRI_GetTempPath not implemented for Windows
+  return NULL;
+#else
+  return "/tmp/arangodb";
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a temporary file name
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_GetTempName (char const* directory, char** result) {
+  char* dir;
+  int tries;
+
+  dir = TRI_Concatenate2File(TRI_GetTempPath(), directory);
+
+  TRI_CreateRecursiveDirectory(dir);
+
+  if (! TRI_IsDirectory(dir)) {
+    TRI_Free(TRI_CORE_MEM_ZONE, dir);
+    return TRI_ERROR_INTERNAL;
+  }
+
+  tries = 0;
+  while (tries++ < 10) {
+    TRI_pid_t pid;
+    char* tempName;
+    char* pidString;
+    char* number;
+    char* filename;
+
+    pid = TRI_CurrentProcessId();
+
+    number = TRI_StringUInt32(TRI_UInt32Random());
+    pidString = TRI_StringUInt32(pid);
+    tempName = TRI_Concatenate4String("tmp-", pidString, "-", number); 
+    TRI_Free(TRI_CORE_MEM_ZONE, number);
+    TRI_Free(TRI_CORE_MEM_ZONE, pidString);
+
+    filename = TRI_Concatenate2File(dir, tempName);
+    TRI_Free(TRI_CORE_MEM_ZONE, tempName);
+
+    if (TRI_ExistsFile(filename)) {
+      TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    }
+    else {
+      FILE* fd = fopen(filename, "wb");
+
+      if (fd != NULL) {
+        fclose(fd);
+        TRI_Free(TRI_CORE_MEM_ZONE, dir);
+        *result = filename;
+        return TRI_ERROR_NO_ERROR;
+      }
+      
+      TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    }
+
+    // next try
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, dir);
+
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

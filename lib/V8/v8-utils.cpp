@@ -525,11 +525,14 @@ static v8::Handle<v8::Value> JS_SendFile (v8::Arguments const& argv) {
 
   HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_POST;
   const string methodString = TRI_ObjectToString(argv[1]);
-  if (methodString == "put") {
+  if (methodString == "post") {
+    method = HttpRequest::HTTP_REQUEST_POST;
+  }
+  else if (methodString == "put") {
     method = HttpRequest::HTTP_REQUEST_PUT;
   }
-  else if (methodString == "patch") {
-    method = HttpRequest::HTTP_REQUEST_PATCH;
+  else {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "invalid <method>")));
   }
 
   const string infile = TRI_ObjectToString(argv[2]);
