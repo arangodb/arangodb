@@ -585,25 +585,57 @@ formatMiddleware = function (allowedFormats, defaultFormat) {
 /// @brief loads a manifest file
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.loadManifest = function (path) {
+exports.installApp = function (name, mount, options) {
   'use strict';
-  var name,
-    content,
-    manifest,
-    key,
-    app;
+  var version = options && options.version; // TODO currently ignored
+  var prefix = options && options.collectionPrefix;
+  var context = {};
+  var apps;
+  var description;
+  var i;
+  var root;
 
-  name = fs.join(path, "manifest.json");
-  content = fs.read(name);
-  manifest = JSON.parse(content);
+  root = module.appRootModule(name); // TODO use version
 
-  for (key in manifest.apps) {
-    if (manifest.apps.hasOwnProperty(key)) {
-      app = manifest.apps[key];
+  if (root === null) {
+    if (version === undefined) {
+      throw "cannot find application '" + name + "'";
+    }
+    else {
+      throw "cannot find application '" + name + "' in version '" + version + "'";
+    }
+  }
 
-      console.info("loading app '%s' from '%s'", key, app);
+  description = root._appDescription;
 
-      module.loadAppScript(path, manifest, app);
+  if (mount === "") {
+    mount = "/";
+  }
+  else if (mount[0] !== "/") {
+    mount = "/" + mount;
+  }
+
+  if (prefix === undefined) {
+    context.collectionPrefix = mount.replace(/\\/g, "_");
+  }
+  else {
+    context.collectionPrefix = prefix;
+  }
+
+  context.name = description.manifest.name;
+  context.version = description.manifest.version;
+  context.mount = mount;
+
+  apps = root._appDescription.manifest.apps;
+
+  for (i in apps) {
+    if (apps.hasOwnProperty(i)) {
+      var file = apps[i];
+
+      context.appMount = i;
+      context.prefix = mount + "/" + i;
+
+      root.loadAppScript(root, file, context);
     }
   }
 };
