@@ -50,7 +50,11 @@
 #include "BasicsC/utf8-helper.h"
 #include "BasicsC/zip.h"
 #include "Basics/FileUtils.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -61,6 +65,7 @@
 
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::httpclient;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
@@ -346,6 +351,158 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads data from a URL
+///
+/// @FUN{internal.download(@FA{url})}
+///
+/// Downloads the data from the URL specified by @FA{url}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  if (argv.Length() < 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: download(<url>, <method>, <outfile>, <timeout>)")));
+  }
+
+  string url = TRI_ObjectToString(argv[0]);
+
+  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
+  const string methodString = TRI_ObjectToString(argv[1]);
+  if (methodString == "head") {
+    method = HttpRequest::HTTP_REQUEST_HEAD;
+  }
+  else if (methodString == "delete") {
+    method = HttpRequest::HTTP_REQUEST_DELETE;
+  }
+
+  const string outfile = TRI_ObjectToString(argv[2]);
+
+  double timeout = 10.0;
+  if (argv.Length() > 3) {
+    timeout = TRI_ObjectToDouble(argv[3]);
+  }
+
+  if (TRI_ExistsFile(outfile.c_str())) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CANNOT_OVERWRITE_FILE)));
+  }
+
+  int numRedirects = 0;
+
+  while (numRedirects++ < 5) {
+    string endpoint;
+    string relative;
+
+    if (url.substr(0, 7) == "http://") {
+      size_t found = url.find('/', 7);
+
+      relative = "/";
+      if (found != string::npos) {
+        relative.append(url.substr(found + 1));
+        endpoint = "tcp://" + url.substr(7, found - 7) + ":80";
+      }
+      else {
+        endpoint = "tcp://" + url.substr(7) + ":80";
+      }
+    }
+    else if (url.substr(0, 8) == "https://") {
+      size_t found = url.find('/', 8);
+
+      relative = "/";
+      if (found != string::npos) {
+        relative.append(url.substr(found + 1));
+        endpoint = "ssl://" + url.substr(8, found - 8) + ":443";
+      }
+      else {
+        endpoint = "ssl://" + url.substr(8) + ":443";
+      }
+    }
+    else {
+      return scope.Close(v8::ThrowException(v8::String::New("unsupported URL specified")));
+    }
+    
+    LOGGER_TRACE("downloading file. endpoint: " << endpoint << ", relative URL: " << url);
+
+    GeneralClientConnection* connection = GeneralClientConnection::factory(Endpoint::clientFactory(endpoint), timeout, timeout, 3);
+
+    if (connection == 0) {
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    }
+
+    SimpleHttpClient client(connection, timeout, false);
+
+    v8::Handle<v8::Object> result = v8::Object::New();
+
+    // connect to server and get version number
+    map<string, string> headerFields;
+    SimpleHttpResult* response = client.request(method, relative, 0, 0, headerFields);
+
+    int returnCode;
+    string returnMessage;
+
+    if (! response || ! response->isComplete()) {
+      // save error message
+      returnMessage = client.getErrorMessage();
+      returnCode = 500;
+
+      if (response && response->getHttpReturnCode() > 0) {
+        returnCode = response->getHttpReturnCode();
+      }
+    }
+    else {
+      returnMessage = response->getHttpReturnMessage();
+      returnCode = response->getHttpReturnCode();
+
+      if (returnCode == 301 || returnCode == 302) {
+        bool found;
+        url = response->getHeaderField(string("location"), found);
+
+        delete response;
+        delete connection;
+
+        if (! found) {
+          return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "caught invalid redirect URL")));
+        }
+        continue;
+      }
+
+      result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
+      result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
+
+      const map<string, string> responseHeaders = response->getHeaderFields();
+      map<string, string>::const_iterator it;
+
+      v8::Handle<v8::Object> headers = v8::Object::New();
+      for (it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
+        headers->Set(v8::String::New((*it).first.c_str()), v8::String::New((*it).second.c_str()));
+      }
+      result->Set(v8::String::New("headers"), headers);
+
+      if (returnCode == SimpleHttpResult::HTTP_STATUS_OK) {
+        try {
+          FileUtils::spit(outfile, response->getBody().str());
+        }
+        catch (...) {
+
+        }
+      }
+    }
+      
+    result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
+    result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
+
+    if (response) {
+      delete response;
+    }
+
+    delete connection;
+    return scope.Close(result);
+  }
+  
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "too many redirects")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1922,6 +2079,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_UNZIP_FILE", JS_UnzipFile);
   TRI_AddGlobalFunctionVocbase(context, "FS_ZIP_FILE", JS_ZipFile);
 
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);

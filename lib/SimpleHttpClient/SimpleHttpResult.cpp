@@ -125,6 +125,17 @@ namespace triagens {
       _headerFields[k] = value;
     }
 
+    string SimpleHttpResult::getHeaderField (const string& name, bool& found) const {
+      map<string, string>::const_iterator find = _headerFields.find(name);
+      if (find == _headerFields.end()) {
+        found = false;
+        return string("");
+      }
+
+      found = true;
+      return (*find).second;
+    }
+    
     const string SimpleHttpResult::getContentType (const bool partial) {
       map<string, string>::const_iterator find = _headerFields.find("content-type");
       if (find != _headerFields.end()) {
