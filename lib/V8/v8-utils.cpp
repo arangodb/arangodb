@@ -848,11 +848,7 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
   uint32_t j = 0;
   for (size_t i = 0;  i < list._length;  ++i) {
     const char* f = list._buffer[i]; 
-
-    if (*f != '\0') {
-      // don't add empty names
-      result->Set(j++, v8::String::New(f));
-    }
+    result->Set(j++, v8::String::New(f));
   }
 
   TRI_DestroyVectorString(&list);
@@ -916,7 +912,7 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
 ///
-/// @FUN{fs.zip(@FA{filename}, @FA{files})
+/// @FUN{fs.zip(@FA{filename}, @FA{files})}
 ///
 /// Stores the files specified by @FA{files} in the zip file @FA{filename}.
 ///
