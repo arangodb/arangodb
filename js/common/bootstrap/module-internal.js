@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
-  FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
+  FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD,
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
   SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
@@ -58,6 +58,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   // system functions
+  if (typeof SYS_DOWNLOAD !== "undefined") {
+    internal.download = SYS_DOWNLOAD;
+    delete SYS_DOWNLOAD;
+  }
+
   if (typeof SYS_EXECUTE !== "undefined") {
     internal.execute = SYS_EXECUTE;
     delete SYS_EXECUTE;
