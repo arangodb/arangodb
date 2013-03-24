@@ -181,7 +181,7 @@ bool TRI_fsync (int fd);
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile (TRI_memory_zone_t*, char const* filename);
+char* TRI_SlurpFile (TRI_memory_zone_t*, char const* filename, size_t* length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID

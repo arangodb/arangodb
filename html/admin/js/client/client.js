@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, SYS_UNIT_TESTS */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, nonpropdel: true, white: true, plusplus: true, evil: true */
+/*global require, IS_EXECUTE_SCRIPT, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -108,10 +108,8 @@ function clear () {
 
   if (internal.ARANGO_QUIET !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
-      if (typeof internal.arango.isConnected !== "undefined") {
-        if (internal.arango.isConnected() && typeof SYS_UNIT_TESTS === "undefined") {
-          internal.print(arangosh.HELP);
-        }
+      if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
+        internal.print(arangosh.HELP);
       }
     }
   }
@@ -132,8 +130,6 @@ var arango = require("org/arangodb").arango;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
-
-require("console").log("############## %s", typeof SYS_UNIT_TESTS);
 
 if (! (IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT)) {
   (function () {
