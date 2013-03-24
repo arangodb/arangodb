@@ -812,7 +812,7 @@ bool TRI_fsync (int fd) {
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename) {
+char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename, size_t* length) {
   TRI_string_buffer_t result;
   char buffer[10240];
   int fd;
@@ -854,6 +854,10 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename) {
 
       return NULL;
     }
+  }
+
+  if (length != NULL) {
+    *length = TRI_LengthStringBuffer(&result); 
   }
 
   TRI_CLOSE(fd);

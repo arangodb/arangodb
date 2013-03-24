@@ -159,7 +159,7 @@ static bool LoadJavaScriptFile (char const* filename,
                                 bool useGlobalContext) {
   v8::HandleScope handleScope;
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
 
   if (content == 0) {
     LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
@@ -356,9 +356,10 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief downloads data from a URL
 ///
-/// @FUN{internal.download(@FA{url})}
+/// @FUN{internal.download(@FA{url}, @FA{method}, @FA{outfile}, @FA{timeout})}
 ///
-/// Downloads the data from the URL specified by @FA{url}.
+/// Downloads the data from the URL specified by @FA{url} and saves the 
+/// response body to @FA{outfile}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
@@ -481,7 +482,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       }
       result->Set(v8::String::New("headers"), headers);
 
-      if (returnCode == SimpleHttpResult::HTTP_STATUS_OK) {
+      if (returnCode >= 200 && returnCode <= 299) {
         try {
           FileUtils::spit(outfile, response->getBody().str());
         }
@@ -503,6 +504,153 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
   }
   
   return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "too many redirects")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send data from a file to a URL
+///
+/// @FUN{internal.sendFile(@FA{url}, @FA{method}, @FA{file})}
+///
+/// Sends the data from the file @FA{file} to the URL specified by @FA{url}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SendFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 3) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: sendFile(<url>, <method>, <infile>, <outfile>, <timeout>)")));
+  }
+
+  string url = TRI_ObjectToString(argv[0]);
+
+  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_POST;
+  const string methodString = TRI_ObjectToString(argv[1]);
+  if (methodString == "put") {
+    method = HttpRequest::HTTP_REQUEST_PUT;
+  }
+  else if (methodString == "patch") {
+    method = HttpRequest::HTTP_REQUEST_PATCH;
+  }
+
+  const string infile = TRI_ObjectToString(argv[2]);
+  const string outfile = TRI_ObjectToString(argv[3]);
+
+  double timeout = 10.0;
+  if (argv.Length() > 4) {
+    timeout = TRI_ObjectToDouble(argv[4]);
+  }
+
+  if (! TRI_ExistsFile(infile.c_str())) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_FILE_NOT_FOUND)));
+  }
+
+  if (TRI_ExistsFile(outfile.c_str())) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CANNOT_OVERWRITE_FILE)));
+  }
+
+  string endpoint;
+  string relative;
+
+  if (url.substr(0, 7) == "http://") {
+    size_t found = url.find('/', 7);
+
+    relative = "/";
+    if (found != string::npos) {
+      relative.append(url.substr(found + 1));
+      endpoint = "tcp://" + url.substr(7, found - 7) + ":80";
+    }
+    else {
+      endpoint = "tcp://" + url.substr(7) + ":80";
+    }
+  }
+  else if (url.substr(0, 8) == "https://") {
+    size_t found = url.find('/', 8);
+
+    relative = "/";
+    if (found != string::npos) {
+      relative.append(url.substr(found + 1));
+      endpoint = "ssl://" + url.substr(8, found - 8) + ":443";
+    }
+    else {
+      endpoint = "ssl://" + url.substr(8) + ":443";
+    }
+  }
+  else {
+    return scope.Close(v8::ThrowException(v8::String::New("unsupported URL specified")));
+  }
+
+  size_t bodySize;
+  char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
+
+  if (body == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("could not read file")));
+  }
+
+  LOGGER_TRACE("sending file '" << infile << "'. endpoint: " << endpoint << ", relative URL: " << url);
+
+  GeneralClientConnection* connection = GeneralClientConnection::factory(Endpoint::clientFactory(endpoint), timeout, timeout, 3);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+  }
+
+  SimpleHttpClient client(connection, timeout, false);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  // connect to server and get version number
+  map<string, string> headerFields;
+  SimpleHttpResult* response = client.request(method, relative, body, bodySize, headerFields);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, body);
+
+  int returnCode;
+  string returnMessage;
+
+  if (! response || ! response->isComplete()) {
+    // save error message
+    returnMessage = client.getErrorMessage();
+    returnCode = 500;
+
+    if (response && response->getHttpReturnCode() > 0) {
+      returnCode = response->getHttpReturnCode();
+    }
+  }
+  else {
+    returnMessage = response->getHttpReturnMessage();
+    returnCode = response->getHttpReturnCode();
+
+    result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
+    result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
+
+    const map<string, string> responseHeaders = response->getHeaderFields();
+    map<string, string>::const_iterator it;
+
+    v8::Handle<v8::Object> headers = v8::Object::New();
+    for (it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
+      headers->Set(v8::String::New((*it).first.c_str()), v8::String::New((*it).second.c_str()));
+    }
+    result->Set(v8::String::New("headers"), headers);
+
+    if (returnCode >= 200 || returnCode <= 299) {
+      try {
+        FileUtils::spit(outfile, response->getBody().str());
+      }
+      catch (...) {
+
+      }
+    }
+  }
+
+  result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
+  result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
+
+  if (response) {
+    delete response;
+  }
+
+  delete connection;
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,7 +1051,7 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
 
   if (content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
@@ -1349,7 +1497,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
 
   if (content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
@@ -2080,6 +2228,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_ZIP_FILE", JS_ZipFile);
 
   TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SEND_FILE", JS_SendFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
