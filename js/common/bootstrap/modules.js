@@ -834,8 +834,8 @@ function stop_color_print () {
     };
 
     sandbox.applicationContext = {
-      name: description.name,
-      version: description.version
+      name: description.manifest.name,
+      version: description.manifest.version
     };
 
     content = "var func = function () {"
