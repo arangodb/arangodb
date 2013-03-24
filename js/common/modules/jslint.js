@@ -76,16 +76,16 @@ function RunCommandLineTests (options) {
 
     try {
       var testResult = RunTest(file, options);
-      result = result && testResult["passed"];
-      if (!testResult["passed"] && testResult["errors"]) {
-        for (var i = 0; i < testResult["errors"].length; ++i) {
-          var err = testResult["errors"][i];
-          if (!err) {
+      result = result && testResult && testResult.passed;
+      if (testResult && (! testResult.passed && testResult.errors)) {
+        for (var i = 0; i < testResult.errors.length; ++i) {
+          var err = testResult.errors[i];
+          if (! err) {
             continue;
           }
 
-          var position = file + ":" + err["line"] + ", " + err["character"];
-          var reason = err["reason"];
+          var position = file + ":" + err.line + ", " + err.character;
+          var reason = err.reason;
           console.error("jslint: %s : %s", position, reason);
         }
       }
