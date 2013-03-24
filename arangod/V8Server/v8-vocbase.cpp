@@ -905,8 +905,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
-
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
@@ -968,7 +968,6 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   }
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
-
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
@@ -1090,6 +1089,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
