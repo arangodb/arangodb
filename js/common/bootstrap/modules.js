@@ -294,6 +294,84 @@ function stop_color_print () {
   internal.GlobalPackage = GlobalPackage;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes an URL
+///
+/// If @FA{path} starts with "." or "..", then it is a relative path.
+/// Otherwise it is an absolute path. Normalizing will remove `//`,
+/// `/./`, `/../` from the url - expect in the beginning, where it keeps
+/// `../` and or at most one `./`.
+///
+/// If @FA{path} is empty, the url `./` will be returned.
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.normalizeURL = function (path) {
+    var i;
+    var n;
+    var p;
+    var q;
+    var r;
+    var x;
+
+    if (path === "") {
+      return "./";
+    }
+
+    p = path.split('/');
+
+    // relative path
+    if (p[0] === "." || p[0] === "..") {
+      r = p[0] + "/";
+      p.shift();
+      q = p;
+    }
+
+    // absolute path
+    else if (p[0] === "") {
+      r = "/";
+      p.shift();
+      q = p;
+    }
+
+    // assume that the path is relative
+    else {
+      r = "./";
+      q = p;
+    }
+
+    // normalize path
+    n = [];
+
+    for (i = 0;  i < q.length;  ++i) {
+      x = q[i];
+
+      if (x === "..") {
+        if (n.length === 0) {
+          if (r === "../") {
+            n.push(x);
+          }
+          else if (r === "./") {
+            r = "../";
+          }
+          else {
+            throw "cannot use '..' to escape top-level-directory";
+          }
+        }
+        else if (n[n.length - 1] === "..") {
+          n.push(x);
+        }
+        else {
+          n.pop();
+        }
+      }
+      else if (x !== "" && x !== ".") {
+        n.push(x);
+      }
+    }
+
+    return r + n.join('/');
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes a module name
 ///
 /// If @FA{path} starts with "." or "..", then it is a relative path.

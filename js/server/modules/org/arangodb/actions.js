@@ -222,16 +222,14 @@ function lookupCallbackActionCallback (route, action) {
 
   try {
     if (action.hasOwnProperty("context")) {
-      var context = action.context;
-
-      appModule = module.appRootModule(context.name);
+      appModule = module.appRootModule(action.context.name);
     }
     else {
       appModule = module.root;
     }
 
-    if (action.hasOwnProperty("requires")) {
-      var requires = action.requires;
+    if (action.hasOwnProperty("requiresLibs")) {
+      var requires = action.requiresLibs;
 
       for (key in requires) {
         if (requires.hasOwnProperty(key)) {
@@ -242,12 +240,33 @@ function lookupCallbackActionCallback (route, action) {
       }
     }
 
-    if (action.hasOwnProperty("modules")) {
-      var modules = action.modules;
+    if (action.hasOwnProperty("requiresModels")) {
+      var models = action.requiresModels;
 
-      for (key in modules) {
-        if (modules.hasOwnProperty(key)) {
-          var val = modules[key];
+      for (key in models) {
+        if (models.hasOwnProperty(key)) {
+          var val = models[key];
+
+          if (action.hasOwnProperty("context")) {
+            var cp = action.collectionPrefix;
+
+            appModule = module.appRootModule(action.context.name);
+
+            if (cp !== "") {
+              appModule._environment = {
+                appCollection: function (name) {
+                  return cp + "/" + name;
+                }
+              };
+            }
+            else {
+              appModule._environment = {
+                appCollection: function (name) {
+                  return name;
+                }
+              };
+            }
+          }
 
           env[key] = appModule.require(val);
         }
@@ -256,7 +275,7 @@ function lookupCallbackActionCallback (route, action) {
 
     env.module = module.root;
     env.require = function (path) {
-      return module.root.require(path);
+      return appModule.require(path);
     };
 
     internal.execute(defn, env, route);
