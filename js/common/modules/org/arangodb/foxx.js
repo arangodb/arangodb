@@ -11,8 +11,8 @@
 
 // FoxxApplication uses Underscore internally. This library is wonderful.
 var FoxxApplication,
-  baseMiddleware,
-  formatMiddleware,
+  BaseMiddleware,
+  FormatMiddleware,
   _ = require("underscore"),
   db = require("org/arangodb").db,
   fs = require("fs"),
@@ -79,15 +79,15 @@ FoxxApplication = function (options) {
   if (_.isString(templateCollection)) {
     this.routingInfo.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
-    myMiddleware = baseMiddleware(templateCollection, this.helperCollection);
+    myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
   } else {
-    myMiddleware = baseMiddleware();
+    myMiddleware = new BaseMiddleware();
   }
 
   this.routingInfo.middleware = [
     {
       url: {match: "/*"},
-      action: {callback: myMiddleware}
+      action: {callback: myMiddleware.stringRepresentation}
     }
   ];
 };
@@ -109,10 +109,13 @@ _.extend(FoxxApplication.prototype, {
   // use this function.
   // You have to provide the start function with the `applicationContext`
   // variable.
-  start: function (context, testMode) {
+  start: function (context) {
     'use strict';
     var models = this.models,
-      requires = this.requires;
+      requires = this.requires,
+      prefix = context.prefix;
+
+    this.routingInfo.urlPrefix = prefix + this.routingInfo.urlPrefix;
 
     _.each(this.routingInfo.routes, function (route) {
       route.action.context = context;
@@ -120,9 +123,7 @@ _.extend(FoxxApplication.prototype, {
       route.action.models = models;
     });
 
-    if (!testMode) {
-      db._collection("_routing").save(this.routingInfo);
-    }
+    db._collection("_routing").save(this.routingInfo);
   },
 
   // The `handleRequest` method is the raw way to create a new
@@ -257,10 +258,9 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: String(function (req, res, opts, next) {
-        func(req, res);
-        next();
-      })}
+      action: {
+        callback: "function (req, res, opts, next) { " + String(func) + "(req, res); next(); })"
+      }
     });
   },
 
@@ -283,10 +283,9 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url: {match: path},
-      action: {callback: String(function (req, res, opts, next) {
-        next();
-        func(req, res);
-      })}
+      action: {
+        callback: "function (req, res, opts, next) { next(); " + String(func) + "(req, res); })"
+      }
     });
   },
 
@@ -305,9 +304,9 @@ _.extend(FoxxApplication.prototype, {
     this.helperCollection[name] = func;
   },
 
-  // ## Shortform for using the formatMiddleware
+  // ## Shortform for using the FormatMiddleware
   //
-  // More information about the formatMiddleware in the corresponding section.
+  // More information about the FormatMiddleware in the corresponding section.
   // This is a shortcut to add the middleware to your application:
   //
   //     app.accepts(["json"], "json");
@@ -316,16 +315,18 @@ _.extend(FoxxApplication.prototype, {
 
     this.routingInfo.middleware.push({
       url:    { match: "/*" },
-      action: { callback: formatMiddleware(allowedFormats, defaultFormat) }
+      action: {
+        callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
+      }
     });
   }
 });
 
 
 // ## The Base Middleware
-// The `baseMiddleware` manipulates the request and response
+// The `BaseMiddleware` manipulates the request and response
 // objects to give you a nicer API.
-baseMiddleware = function (templateCollection, helperCollection) {
+BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
     var responseFunctions,
@@ -482,15 +483,18 @@ baseMiddleware = function (templateCollection, helperCollection) {
     next();
   };
 
-  return String(middleware);
+  return {
+    stringRepresentation: String(middleware),
+    functionRepresentation: middleware
+  };
 };
 
 // ## The Format Middleware
-// Unlike the `baseMiddleware` this Middleware is only loaded if you
+// Unlike the `BaseMiddleware` this Middleware is only loaded if you
 // want it. This Middleware gives you Rails-like format handling via
 // the `extension` of the URL or the accept header.
 // Say you request an URL like `/people.json`:
-// The `formatMiddleware` will set the format of the request to JSON
+// The `FormatMiddleware` will set the format of the request to JSON
 // and then delete the `.json` from the request. You can therefore write
 // handlers that do not take an `extension` into consideration and instead
 // handle the format via a simple String.
@@ -501,8 +505,8 @@ baseMiddleware = function (templateCollection, helperCollection) {
 //
 // Use it by calling:
 //
-//     formatMiddleware = require('foxx').formatMiddleware;
-//     app.before("/*", formatMiddleware.new(['json']));
+//     FormatMiddleware = require('foxx').FormatMiddleware;
+//     app.before("/*", FormatMiddleware.new(['json']));
 //
 // or the shortcut:
 //
@@ -511,57 +515,57 @@ baseMiddleware = function (templateCollection, helperCollection) {
 // In both forms you can give a default format as a second parameter,
 // if no format could be determined. If you give no `defaultFormat` this
 // case will be handled as an error.
-formatMiddleware = function (allowedFormats, defaultFormat) {
+FormatMiddleware = function (allowedFormats, defaultFormat) {
   'use strict';
-  var middleware, urlFormatToMime, mimeToUrlFormat, determinePathAndFormat;
+  var stringRepresentation, middleware = function (request, response, options, next) {
+    var parsed, determinePathAndFormat;
 
-  urlFormatToMime = {
-    json: "application/json",
-    html: "text/html",
-    txt: "text/plain"
-  };
+    determinePathAndFormat = function (path, headers) {
+      var urlFormatToMime, mimeToUrlFormat, parsed;
 
-  mimeToUrlFormat = {
-    "application/json": "json",
-    "text/html": "html",
-    "text/plain": "txt"
-  };
+      parsed = {
+        contentType: headers.accept
+      };
 
-  determinePathAndFormat = function (path, headers) {
-    var parsed = {
-      contentType: headers.accept
+      urlFormatToMime = {
+        json: "application/json",
+        html: "text/html",
+        txt: "text/plain"
+      };
+
+      mimeToUrlFormat = {
+        "application/json": "json",
+        "text/html": "html",
+        "text/plain": "txt"
+      };
+      path = path.split('.');
+
+      if (path.length === 1) {
+        parsed.path = path.join();
+      } else {
+        parsed.format = path.pop();
+        parsed.path = path.join('.');
+      }
+
+      if (parsed.contentType === undefined && parsed.format === undefined) {
+        parsed.format = defaultFormat;
+        parsed.contentType = urlFormatToMime[defaultFormat];
+      } else if (parsed.contentType === undefined) {
+        parsed.contentType = urlFormatToMime[parsed.format];
+      } else if (parsed.format === undefined) {
+        parsed.format = mimeToUrlFormat[parsed.contentType];
+      }
+
+      if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
+        throw "Contradiction between Accept Header and URL.";
+      }
+
+      if (allowedFormats.indexOf(parsed.format) < 0) {
+        throw "Format '" + parsed.format + "' is not allowed.";
+      }
+
+      return parsed;
     };
-    path = path.split('.');
-
-    if (path.length === 1) {
-      parsed.path = path.join();
-    } else {
-      parsed.format = path.pop();
-      parsed.path = path.join('.');
-    }
-
-    if (parsed.contentType === undefined && parsed.format === undefined) {
-      parsed.format = defaultFormat;
-      parsed.contentType = urlFormatToMime[defaultFormat];
-    } else if (parsed.contentType === undefined) {
-      parsed.contentType = urlFormatToMime[parsed.format];
-    } else if (parsed.format === undefined) {
-      parsed.format = mimeToUrlFormat[parsed.contentType];
-    }
-
-    if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
-      throw "Contradiction between Accept Header and URL.";
-    }
-
-    if (allowedFormats.indexOf(parsed.format) < 0) {
-      throw "Format '" + parsed.format + "' is not allowed.";
-    }
-
-    return parsed;
-  };
-
-  middleware = function (request, response, options, next) {
-    var parsed;
 
     try {
       parsed = determinePathAndFormat(request.path, request.headers);
@@ -575,7 +579,14 @@ formatMiddleware = function (allowedFormats, defaultFormat) {
     }
   };
 
-  return middleware;
+  stringRepresentation = String(middleware)
+    .replace("allowedFormats", JSON.stringify(allowedFormats))
+    .replace("defaultFormat", JSON.stringify(defaultFormat));
+
+  return {
+    functionRepresentation: middleware,
+    stringRepresentation: stringRepresentation
+  };
 };
 
 // We finish off with exporting FoxxApplication and the middlewares.
@@ -585,32 +596,59 @@ formatMiddleware = function (allowedFormats, defaultFormat) {
 /// @brief loads a manifest file
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.loadManifest = function (path) {
+exports.installApp = function (name, mount, options) {
   'use strict';
-  var name,
-    content,
-    manifest,
-    key,
-    app;
+  var version = options && options.version, // TODO currently ignored
+    prefix = options && options.collectionPrefix,
+    context = {},
+    apps,
+    description,
+    i,
+    root = module.appRootModule(name); // TODO use version
 
-  name = fs.join(path, "manifest.json");
-  content = fs.read(name);
-  manifest = JSON.parse(content);
+  if (root === null) {
+    if (version === undefined) {
+      throw "cannot find application '" + name + "'";
+    } else {
+      throw "cannot find application '" + name + "' in version '" + version + "'";
+    }
+  }
 
-  for (key in manifest.apps) {
-    if (manifest.apps.hasOwnProperty(key)) {
-      app = manifest.apps[key];
+  description = root._appDescription;
 
-      console.info("loading app '%s' from '%s'", key, app);
+  if (mount === "") {
+    mount = "/";
+  } else if (mount[0] !== "/") {
+    mount = "/" + mount;
+  }
 
-      module.loadAppScript(path, manifest, app);
+  if (prefix === undefined) {
+    context.collectionPrefix = mount.replace(/\\/g, "_");
+  } else {
+    context.collectionPrefix = prefix;
+  }
+
+  context.name = description.manifest.name;
+  context.version = description.manifest.version;
+  context.mount = mount;
+
+  apps = root._appDescription.manifest.apps;
+
+  for (i in apps) {
+    if (apps.hasOwnProperty(i)) {
+      var file = apps[i];
+
+      context.appMount = i;
+      context.prefix = mount + "/" + i;
+
+      root.loadAppScript(root, file, context);
     }
   }
 };
 
 exports.FoxxApplication = FoxxApplication;
-exports.baseMiddleware = baseMiddleware;
-//TODO: Make a String exports.formatMiddleware = formatMiddleware;
+exports.BaseMiddleware = BaseMiddleware;
+exports.FormatMiddleware = FormatMiddleware;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -51,7 +51,7 @@ function CreateFoxxApplicationSpec () {
       assertEqual(routingInfo.templateCollection, templateCollection);
     },
 
-    testAdditionOfbaseMiddlewareInRoutingInfo: function () {
+    testAdditionOfBaseMiddlewareInRoutingInfo: function () {
       var app = new FoxxApplication(),
         routingInfo = app.routingInfo,
         hopefully_base = routingInfo.middleware[0];
@@ -204,7 +204,7 @@ function SetRoutesFoxxApplicationSpec () {
         b: 2
       };
       app.get('/simple/route', myFunc);
-      app.start("myContext", true);
+      app.start("myContext");
 
       assertEqual(app.routingInfo.routes[0].action.context, "myContext");
       assertEqual(app.routingInfo.routes[0].action.requires.a, 1);
@@ -213,7 +213,7 @@ function SetRoutesFoxxApplicationSpec () {
   };
 }
 
-function AddMidlewareFoxxApplicationSpec () {
+function AddMiddlewareFoxxApplicationSpec () {
   var app;
 
   return {
@@ -222,92 +222,76 @@ function AddMidlewareFoxxApplicationSpec () {
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
-      var a = false,
-        b = false,
-        myFunc = function (req, res) { a = (req > res); },
-        myNext = function () { b = a; },
-        middleware = app.routingInfo.middleware,
-        resultingCallback;
+      var myFunc = function (req, res) { a = (req > res); },
+        middleware = app.routingInfo.middleware;
 
       app.before(myFunc);
+
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/*');
-      resultingCallback = middleware[1].action.callback;
-      resultingCallback(2, 1, undefined, myNext);
-
-      assertTrue(a);
-      assertTrue(b);
+      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
+      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) <
+        middleware[1].action.callback.indexOf("next()"));
     },
 
     testAddABeforeMiddlewareForCertainRoutes: function () {
-      var a = false,
-        b = false,
-        myFunc = function (req, res) { a = (req > res); },
-        myNext = function () { b = a; },
-        middleware = app.routingInfo.middleware,
-        resultingCallback;
+      var myFunc = function (req, res) { a = (req > res); },
+        middleware = app.routingInfo.middleware;
 
       app.before('/fancy/path', myFunc);
+
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/fancy/path');
-      resultingCallback = middleware[1].action.callback;
-      resultingCallback(2, 1, undefined, myNext);
-
-      assertTrue(a);
-      assertTrue(b);
+      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
+      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) <
+        middleware[1].action.callback.indexOf("next()"));
     },
 
-    testAddAfterMiddlewareForAllRoutes: function () {
-      var a = false,
-        b = false,
-        myNext = function () { a = true; },
-        myFunc = function (req, res) { b = a && (req > res); },
-        middleware = app.routingInfo.middleware,
-        resultingCallback;
+    testAddAnAfterMiddlewareForAllRoutes: function () {
+      var myFunc = function (req, res) { a = (req > res); },
+        middleware = app.routingInfo.middleware;
 
       app.after(myFunc);
+
       assertEqual(middleware.length, 2);
       assertEqual(middleware[1].url.match, '/*');
-      resultingCallback = middleware[1].action.callback;
-      resultingCallback(2, 1, undefined, myNext);
-
-      assertTrue(a);
-      assertTrue(b);
+      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
+      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) >
+        middleware[1].action.callback.indexOf("next()"));
     },
 
-    testAddAfterMiddlewareForCertainRoutes: function () {
-      var a = false,
-        b = false,
-        myNext = function () { a = true; },
-        myFunc = function (req, res) { b = a && (req > res); },
-        middleware = app.routingInfo.middleware,
-        resultingCallback;
+    testAddAnAfterMiddlewareForCertainRoutes: function () {
+      var myFunc = function (req, res) { a = (req > res); },
+        middleware = app.routingInfo.middleware;
 
-      app.after('/my/way', myFunc);
+      app.after('/fancy/path', myFunc);
+
       assertEqual(middleware.length, 2);
-      assertEqual(middleware[1].url.match, '/my/way');
-      resultingCallback = middleware[1].action.callback;
-      resultingCallback(2, 1, undefined, myNext);
-
-      assertTrue(a);
-      assertTrue(b);
+      assertEqual(middleware[1].url.match, '/fancy/path');
+      assertTrue(middleware[1].action.callback.indexOf((String(myFunc) + "(req, res)") > 0));
+      assertTrue(middleware[1].action.callback.indexOf("next()" > 0));
+      assertTrue(middleware[1].action.callback.indexOf(String(myFunc)) >
+        middleware[1].action.callback.indexOf("next()"));
     },
 
-    testAddTheformatMiddlewareUsingTheShortform: function () {
-      // I wish I could mock like in Ruby :( This test is not really a test.
+    testAddTheFormatMiddlewareUsingTheShortform: function () {
       app.accepts(["json"], "json");
       assertEqual(app.routingInfo.middleware.length, 2);
       assertEqual(app.routingInfo.middleware[1].url.match, '/*');
+      assertTrue(app.routingInfo.middleware[1].action.callback.indexOf("[\"json\"]") > 0);
     }
   };
 }
 
-function baseMiddlewareWithoutTemplateSpec () {
-  var baseMiddleware, request, response, options, next;
+function BaseMiddlewareWithoutTemplateSpec () {
+  var BaseMiddleware, request, response, options, next;
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/foxx").baseMiddleware();
+      baseMiddleware = require("org/arangodb/foxx").BaseMiddleware().functionRepresentation;
       request = {};
       response = {};
       options = {};
@@ -408,8 +392,8 @@ function baseMiddlewareWithoutTemplateSpec () {
   };
 }
 
-function baseMiddlewareWithTemplateSpec () {
-  var baseMiddleware, request, response, options, next;
+function BaseMiddlewareWithTemplateSpec () {
+  var BaseMiddleware, request, response, options, next;
 
   return {
     setUp: function () {
@@ -417,7 +401,7 @@ function baseMiddlewareWithTemplateSpec () {
       response = {};
       options = {};
       next = function () {};
-      baseMiddleware = require("org/arangodb/foxx").baseMiddleware;
+      BaseMiddleware = require("org/arangodb/foxx").BaseMiddleware;
     },
 
     testRenderingATemplate: function () {
@@ -433,7 +417,7 @@ function baseMiddlewareWithTemplateSpec () {
         templateLanguage: "underscore"
       });
 
-      middleware = new baseMiddleware(myCollection);
+      middleware = new BaseMiddleware(myCollection).functionRepresentation;
       middleware(request, response, options, next);
 
       response.render("simple/path", { username: "moonglum" });
@@ -454,7 +438,7 @@ function baseMiddlewareWithTemplateSpec () {
         templateLanguage: "pirateEngine"
       });
 
-      middleware = new baseMiddleware(myCollection);
+      middleware = new BaseMiddleware(myCollection).functionRepresentation;
       middleware(request, response, options, next);
 
       try {
@@ -472,7 +456,7 @@ function baseMiddlewareWithTemplateSpec () {
       db._drop("templateTest");
       myCollection = db._create("templateTest");
 
-      middleware = new baseMiddleware(myCollection);
+      middleware = new BaseMiddleware(myCollection).functionRepresentation;
       middleware(request, response, options, next);
 
       try {
@@ -492,7 +476,7 @@ function ViewHelperSpec () {
   return {
     setUp: function () {
       app = new FoxxApplication();
-      Middleware = require('org/arangodb/foxx').baseMiddleware;
+      Middleware = require('org/arangodb/foxx').BaseMiddleware;
       request = {};
       response = {};
       options = {};
@@ -522,7 +506,7 @@ function ViewHelperSpec () {
 
       middleware = new Middleware(myCollection, {
         testHelper: function() { a = true }
-      });
+      }).functionRepresentation;
       middleware(request, response, options, next);
 
       assertFalse(a);
@@ -532,21 +516,21 @@ function ViewHelperSpec () {
   };
 }
 
-function formatMiddlewareSpec () {
+function FormatMiddlewareSpec () {
   var Middleware, middleware, request, response, options, next;
 
   return {
     setUp: function () {
-      Middleware = require('org/arangodb/foxx').formatMiddleware;
+      Middleware = require('org/arangodb/foxx').FormatMiddleware;
       request = {};
       response = {};
       options = {};
       next = function () {};
-      middleware = new Middleware(["json"]);
     },
 
     testChangesTheURLAccordingly: function () {
       request = { path: "test/1.json", headers: {} };
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.path, "test/1");
     },
@@ -554,7 +538,7 @@ function formatMiddlewareSpec () {
     testRefusesFormatsThatHaveNotBeenAllowed: function () {
       var nextCalled = false,
         next = function () { nextCalled = true };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       request = { path: "test/1.html", headers: {} };
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
@@ -566,7 +550,7 @@ function formatMiddlewareSpec () {
       var nextCalled = false,
         next = function () { nextCalled = true };
       request = { path: "test/1.json", headers: {"accept": "text/html"} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
       assertEqual(response.body, "Contradiction between Accept Header and URL.");
@@ -577,7 +561,7 @@ function formatMiddlewareSpec () {
       var nextCalled = false,
         next = function () { nextCalled = true };
       request = { path: "test/1", headers: {} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(response.responseCode, 406);
       assertEqual(response.body, "Format 'undefined' is not allowed.");
@@ -586,7 +570,7 @@ function formatMiddlewareSpec () {
 
     testFallBackToDefaultWhenMissingBothURLAndResponseType: function () {
       request = { path: "test/1", headers: {} };
-      middleware = new Middleware(["json"], "json");
+      middleware = new Middleware(["json"], "json").functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "json");
       assertEqual(response.contentType, "application/json");
@@ -595,7 +579,7 @@ function formatMiddlewareSpec () {
     // JSON
     testSettingTheFormatAttributeAndResponseTypeForJsonViaURL: function () {
       request = { path: "test/1.json", headers: {} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "json");
       assertEqual(response.contentType, "application/json");
@@ -603,7 +587,7 @@ function formatMiddlewareSpec () {
 
     testSettingTheFormatAttributeAndResponseTypeForJsonViaAcceptHeader: function () {
       request = { path: "test/1", headers: {"accept": "application/json"} };
-      middleware = new Middleware(["json"]);
+      middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "json");
       assertEqual(response.contentType, "application/json");
@@ -612,7 +596,7 @@ function formatMiddlewareSpec () {
     // HTML
     testSettingTheFormatAttributeAndResponseTypeForHtmlViaURL: function () {
       request = { path: "test/1.html", headers: {} };
-      middleware = new Middleware(["html"]);
+      middleware = new Middleware(["html"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "html");
       assertEqual(response.contentType, "text/html");
@@ -620,7 +604,7 @@ function formatMiddlewareSpec () {
 
     testSettingTheFormatAttributeAndResponseTypeForHtmlViaAcceptHeader: function () {
       request = { path: "test/1", headers: {"accept": "text/html"} };
-      middleware = new Middleware(["html"]);
+      middleware = new Middleware(["html"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "html");
       assertEqual(response.contentType, "text/html");
@@ -629,7 +613,7 @@ function formatMiddlewareSpec () {
     // TXT
     testSettingTheFormatAttributeAndResponseTypeForTxtViaURL: function () {
       request = { path: "test/1.txt", headers: {} };
-      middleware = new Middleware(["txt"]);
+      middleware = new Middleware(["txt"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "txt");
       assertEqual(response.contentType, "text/plain");
@@ -637,7 +621,7 @@ function formatMiddlewareSpec () {
 
     testSettingTheFormatAttributeAndResponseTypeForTxtViaAcceptHeader: function () {
       request = { path: "test/1", headers: {"accept": "text/plain"} };
-      middleware = new Middleware(["txt"]);
+      middleware = new Middleware(["txt"]).functionRepresentation;
       middleware(request, response, options, next);
       assertEqual(request.format, "txt");
       assertEqual(response.contentType, "text/plain");
@@ -647,11 +631,10 @@ function formatMiddlewareSpec () {
 
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
-//jsunity.run(AddMidlewareFoxxApplicationSpec);
-//jsunity.run(baseMiddlewareWithoutTemplateSpec);
-//jsunity.run(baseMiddlewareWithTemplateSpec);
-//jsunity.run(ViewHelperSpec);
-// TODO: Recreate the Test Suite, changed the Middlewares to Strings
-//jsunity.run(formatMiddlewareSpec);
+jsunity.run(AddMiddlewareFoxxApplicationSpec);
+jsunity.run(BaseMiddlewareWithoutTemplateSpec);
+jsunity.run(BaseMiddlewareWithTemplateSpec);
+jsunity.run(ViewHelperSpec);
+jsunity.run(FormatMiddlewareSpec);
 
 return jsunity.done();
