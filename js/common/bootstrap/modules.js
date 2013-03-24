@@ -608,6 +608,8 @@ function stop_color_print () {
     var content;
     var fun;
     var module;
+    var env;
+    var key;
 
     // mark that we have seen the definition, used for debugging only
     ModuleExistsCache[description.name] = true;
@@ -624,9 +626,18 @@ function stop_color_print () {
     pkg.defineModule(description.name, module);
 
     // try to execute the module source code
-    content = "(function (module, exports, require, print) {"
-            + description.content
-            + "\n});";
+    content = "(function (module, exports, require, print, env) {";
+
+    env = pkg._environment;
+
+    if (env !== undefined) {
+      for (key in env) {
+        content += key + " = env['" + key + "'];";
+      }
+    }
+
+    content += description.content
+             + "\n});";
 
     fun = internal.execute(content, undefined, description.name);
 
@@ -639,7 +650,8 @@ function stop_color_print () {
       fun(module,
           module.exports,
           function(path) { return module.require(path); },
-          internal.print);
+          internal.print,
+          env);
     }
     catch (err) {
       pkg.clearModule(description.name);
@@ -856,7 +868,7 @@ function stop_color_print () {
 /// @brief returns the app root module
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.appRootModule = function (name) {
+  Module.prototype.appRootModule = function (name, type, rootPackage) {
     var description;
     var libpath;
     var pkg;
@@ -867,8 +879,12 @@ function stop_color_print () {
       return null;
     }
 
-    if (description.manifest.hasOwnProperty("lib")) {
-      libpath = description.path + "/" + description.manifest.lib;
+    if (type === undefined) {
+      type = 'lib';
+    }
+
+    if (description.manifest.hasOwnProperty(type)) {
+      libpath = description.path + "/" + description.manifest[type];
     }
     else {
       libpath = description.path;
@@ -876,7 +892,7 @@ function stop_color_print () {
 
     pkg = new Package("application",
                       {name: "application '" + name + "'"},
-                      undefined,
+                      rootPackage,
                       [ libpath ]);
 
     mdl = new Module("application", 'application', pkg);
