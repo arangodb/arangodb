@@ -6,9 +6,9 @@ dnl ----------------------------------------------------------------------------
 
 TRI_ZLIB_VERSION="1.2.7"
 
-ZLIB_CPPFLAGS"=-I${srcdir}/3rdParty/zlib-$(TRI_ZLIB_VERSION)/contrib/minizip"
+ZLIB_CPPFLAGS"=-I${srcdir}/3rdParty/zlib-${TRI_ZLIB_VERSION}/contrib/minizip"
 ZLIB_LDFLAGS=""
-ZLIB_LIBS="${srcdir}/3rdParty/zlib-$(TRI_ZLIB_VERSION)/libz.a"
+ZLIB_LIBS="${srcdir}/3rdParty/zlib-${TRI_ZLIB_VERSION}/libz.a"
 
 dnl ----------------------------------------------------------------------------
 dnl add substitutions
