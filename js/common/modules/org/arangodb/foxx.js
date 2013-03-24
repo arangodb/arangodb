@@ -598,21 +598,18 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 
 exports.installApp = function (name, mount, options) {
   'use strict';
-  var version = options && options.version; // TODO currently ignored
-  var prefix = options && options.collectionPrefix;
-  var context = {};
-  var apps;
-  var description;
-  var i;
-  var root;
-
-  root = module.appRootModule(name); // TODO use version
+  var version = options && options.version, // TODO currently ignored
+    prefix = options && options.collectionPrefix,
+    context = {},
+    apps,
+    description,
+    i,
+    root = module.appRootModule(name); // TODO use version
 
   if (root === null) {
     if (version === undefined) {
       throw "cannot find application '" + name + "'";
-    }
-    else {
+    } else {
       throw "cannot find application '" + name + "' in version '" + version + "'";
     }
   }
@@ -621,15 +618,13 @@ exports.installApp = function (name, mount, options) {
 
   if (mount === "") {
     mount = "/";
-  }
-  else if (mount[0] !== "/") {
+  } else if (mount[0] !== "/") {
     mount = "/" + mount;
   }
 
   if (prefix === undefined) {
     context.collectionPrefix = mount.replace(/\\/g, "_");
-  }
-  else {
+  } else {
     context.collectionPrefix = prefix;
   }
 
