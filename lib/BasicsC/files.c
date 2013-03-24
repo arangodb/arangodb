@@ -1616,7 +1616,9 @@ char* TRI_GetTempPath () {
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName (char const* directory, char** result) {
+int TRI_GetTempName (char const* directory, 
+                     char** result, 
+                     const bool createFile) {
   char* dir;
   char* temp;
   int tries;
@@ -1661,10 +1663,17 @@ int TRI_GetTempName (char const* directory, char** result) {
       TRI_Free(TRI_CORE_MEM_ZONE, filename);
     }
     else {
-      FILE* fd = fopen(filename, "wb");
+      if (createFile) {
+        FILE* fd = fopen(filename, "wb");
 
-      if (fd != NULL) {
-        fclose(fd);
+        if (fd != NULL) {
+          fclose(fd);
+          TRI_Free(TRI_CORE_MEM_ZONE, dir);
+          *result = filename;
+          return TRI_ERROR_NO_ERROR;
+        }
+      }
+      else {
         TRI_Free(TRI_CORE_MEM_ZONE, dir);
         *result = filename;
         return TRI_ERROR_NO_ERROR;

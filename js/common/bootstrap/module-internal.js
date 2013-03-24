@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
+/*global require, module, Module, FS_CREATE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
   FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD, 
-  SYS_SEND_FILE, SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, 
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, 
   SYS_RAND, SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
@@ -63,11 +63,6 @@
     delete SYS_DOWNLOAD;
   }
   
-  if (typeof SYS_SEND_FILE !== "undefined") {
-    internal.sendFile = SYS_SEND_FILE;
-    delete SYS_SEND_FILE;
-  }
-
   if (typeof SYS_EXECUTE !== "undefined") {
     internal.execute = SYS_EXECUTE;
     delete SYS_EXECUTE;
@@ -172,6 +167,11 @@
   if (typeof SYS_WAIT !== "undefined") {
     internal.wait = SYS_WAIT;
     delete SYS_WAIT;
+  }
+  
+  if (typeof FS_CREATE_DIRECTORY !== "undefined") {
+    internal.createDirectory = FS_CREATE_DIRECTORY;
+    delete FS_CREATE_DIRECTORY;
   }
 
   if (typeof FS_EXISTS !== "undefined") {
