@@ -13,7 +13,10 @@ $(document).ready(function() {
       "dashboard"                           : "dashboard",
       "query"                               : "query",
       "logs"                                : "logs",
-      "about"                               : "about"
+      "about"                               : "about",
+      "aarkvard"                            : "aarkvard",
+      "aarkvard/swagger"                    : "swagger"
+      
     },
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
@@ -149,6 +152,14 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
+    },
+    
+    aarkvard: function() {
+      alert("Sorry not yet linked");
+    },
+    
+    swagger: function() {
+      alert("Sorry not yet linked");
     }
 
   });
