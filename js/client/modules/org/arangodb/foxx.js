@@ -40,13 +40,17 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a foxx manifest
+/// @brief install a fox application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.loadManifest = function (name) {
-  var result = { manifest: name };
+exports.installApp = function (name, mount, options) {
+  var req = {
+    name: name,
+    mount: mount,
+    options: options
+  };
 
-  return internal.arango.POST("/_admin/foxx/load", JSON.stringify(result));
+  return internal.arango.POST("/_admin/foxx/install", JSON.stringify(req));
 };
 
 ////////////////////////////////////////////////////////////////////////////////

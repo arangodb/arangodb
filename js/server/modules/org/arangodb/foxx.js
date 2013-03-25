@@ -705,65 +705,7 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// We finish off with exporting FoxxApplication and the middlewares.
 /// Everything else will remain our secret.
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a manifest file
-////////////////////////////////////////////////////////////////////////////////
-
-exports.installApp = function (name, mount, options) {
-  'use strict';
-  var version = options && options.version, // TODO currently ignored
-    prefix = options && options.collectionPrefix,
-    context = {},
-    apps,
-    description,
-    i,
-    root = module.appRootModule(name); // TODO use version
-
-  if (root === null) {
-    if (version === undefined) {
-      throw "cannot find application '" + name + "'";
-    } else {
-      throw "cannot find application '" + name + "' in version '" + version + "'";
-    }
-  }
-
-  description = root._appDescription;
-
-  if (mount === "") {
-    mount = "/";
-  }
-  else {
-    mount = INTERNAL.normalizeURL(mount);
-  }
-
-  if (mount[0] !== "/") {
-    throw "mount point must be absolute";
-  }
-
-  if (prefix === undefined) {
-    context.collectionPrefix = mount.substr(1).replace(/\//g, "_");
-  } else {
-    context.collectionPrefix = prefix;
-  }
-
-  context.name = description.manifest.name;
-  context.version = description.manifest.version;
-  context.mount = mount;
-
-  apps = root._appDescription.manifest.apps;
-
-  for (i in apps) {
-    if (apps.hasOwnProperty(i)) {
-      var file = apps[i];
-
-      context.appMount = i;
-      context.prefix = INTERNAL.normalizeURL(mount + "/" + i);
-
-      root.loadAppScript(root, file, context);
-    }
-  }
-};
-
+exports.installApp = require("org/arangodb/foxx-manager").installApp;
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;

@@ -236,13 +236,21 @@ function lookupCallbackActionCallback (route, action) {
         me = modelModule._package._environment = {};
 
         if (cp !== "") {
-          me.appCollection = function (name) {
+          me.appCollectionName = function (name) {
             return cp + "_" + name;
+          };
+
+          me.appCollection = function (name) {
+            return internal.db._collection(cp + "_" + name);
           };
         }
         else {
-          me.appCollection = function (name) {
+          me.appCollectionName = function (name) {
             return name;
+          };
+
+          me.appCollection = function (name) {
+            return internal.db._collection(name);
           };
         }
 
