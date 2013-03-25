@@ -256,22 +256,6 @@ static const TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection type the object is responsible for
-/// - "db" will return TRI_COL_TYPE_DOCUMENT
-/// - "edges" will return TRI_COL_TYPE_EDGE
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
-  v8::Handle<v8::Value> type = obj->Get(TRI_V8_SYMBOL("_type"));
-
-  if (type->IsNumber()) {
-    return (TRI_col_type_e) TRI_ObjectToInt64(type);
-  }
-
-  return TRI_COL_TYPE_DOCUMENT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5434,7 +5418,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   if (   key == "toString"
@@ -5475,7 +5459,9 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 
   v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
 
-  holder->Set(name, result);
+  // TODO: when this line is uncommented, the collection names are cached.
+  // but this causes problems and confusion somewhere else. Need to find the reason!
+  // holder->Set(name, result);
 
   return scope.Close(result);
 }
@@ -5716,10 +5702,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
-  // get the collection type (document/edge)
-  const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
-
-  return CreateVocBase(argv, collectionType);
+  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6403,8 +6386,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
-                                        TRI_col_type_e type) {
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
   v8::HandleScope scope;
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -6413,7 +6395,6 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
                                             const_cast<TRI_vocbase_t*>(database));
 
   result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
-  result->Set(TRI_V8_SYMBOL("_type"), v8::Integer::New((int) type), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6757,7 +6738,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // .............................................................................
   
   TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
-  TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT));
+  TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
