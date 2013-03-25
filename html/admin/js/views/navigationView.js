@@ -9,7 +9,7 @@ var navigationView = Backbone.View.extend({
     $(this.el).html(this.template.text);
     return this;
   },
-  selectMenuItem: function (menuItem) {                                                                                                                                                          
+  selectMenuItem: function (menuItem) {
     $('.nav li').removeClass('active');
     if (menuItem) {
       $('.' + menuItem).addClass('active');

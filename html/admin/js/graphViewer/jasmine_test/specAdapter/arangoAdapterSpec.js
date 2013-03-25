@@ -191,8 +191,11 @@
       },
       
       deleteArangoContent = function() {
+        try {
         dropCollection(nodesCollection);
         dropCollection(edgesCollection);
+        }catch(e){
+        }
       },
       
       setupArangoContent = function() {
@@ -304,7 +307,7 @@
         expect(children).toEqual(4);
       });
     });
-    
+   
     describe('that has already loaded one graph', function() {
       
       beforeEach(function() {
@@ -577,7 +580,7 @@
     });
       
     });
-    
+   
   });
   
 }());
