@@ -9,7 +9,6 @@
 ################################################################################
 
 lib_libarango_a_CPPFLAGS = \
-	$(ZLIB_CPPFLAGS) \
 	$(AM_CPPFLAGS) 
 
 lib_libarango_a_SOURCES = \

@@ -1,8 +1,8 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
-  FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD,
-  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
-  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
+/*global require, module, Module, FS_CREATE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
+  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD, 
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, 
+  SYS_RAND, SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS,
@@ -12,7 +12,7 @@
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, THREAD_NUMBER, HOME, PATH_SEPARATOR, DEVELOPMENT_MODE */
+  REQUEST_TIME_DISTRIBUTION, HOME, DEVELOPMENT_MODE, THREAD_NUMBER, PATH_SEPARATOR, APP_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -62,7 +62,7 @@
     internal.download = SYS_DOWNLOAD;
     delete SYS_DOWNLOAD;
   }
-
+  
   if (typeof SYS_EXECUTE !== "undefined") {
     internal.execute = SYS_EXECUTE;
     delete SYS_EXECUTE;
@@ -168,10 +168,25 @@
     internal.wait = SYS_WAIT;
     delete SYS_WAIT;
   }
+  
+  if (typeof FS_CREATE_DIRECTORY !== "undefined") {
+    internal.createDirectory = FS_CREATE_DIRECTORY;
+    delete FS_CREATE_DIRECTORY;
+  }
 
   if (typeof FS_EXISTS !== "undefined") {
     internal.exists = FS_EXISTS;
     delete FS_EXISTS;
+  }
+  
+  if (typeof FS_GET_TEMP_PATH !== "undefined") {
+    internal.getTempPath = FS_GET_TEMP_PATH;
+    delete FS_GET_TEMP_PATH;
+  }
+  
+  if (typeof FS_GET_TEMP_FILE !== "undefined") {
+    internal.getTempFile = FS_GET_TEMP_FILE;
+    delete FS_GET_TEMP_FILE;
   }
 
   if (typeof FS_IS_DIRECTORY !== "undefined") {
@@ -301,7 +316,7 @@
 /// @brief modules path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.MODULES_PATH = "";
+  internal.MODULES_PATH = [];
 
   if (typeof MODULES_PATH !== "undefined") {
     internal.MODULES_PATH = MODULES_PATH;
@@ -309,14 +324,25 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief node modules path
+/// @brief package path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.PACKAGE_PATH = "";
+  internal.PACKAGE_PATH = [];
 
   if (typeof PACKAGE_PATH !== "undefined") {
     internal.PACKAGE_PATH = PACKAGE_PATH;
     delete PACKAGE_PATH;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief app path
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.APP_PATH = [];
+
+  if (typeof APP_PATH !== "undefined") {
+    internal.APP_PATH = APP_PATH;
+    delete APP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

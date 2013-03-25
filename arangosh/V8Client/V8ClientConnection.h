@@ -237,6 +237,11 @@ namespace triagens {
                                         map<string, string> const& headerFields,
                                         bool raw);
 
+        v8::Handle<v8::Value> postData (std::string const& location,
+                                        const char* body,
+                                        const size_t bodySize,
+                                        map<string, string> const& headerFields);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "PUT" request
 ///
@@ -290,8 +295,24 @@ namespace triagens {
 
       v8::Handle<v8::Value> requestData (rest::HttpRequest::HttpRequestType method,
                                          std::string const& location,
+                                         const char* body,
+                                         const size_t bodySize,
+                                         map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a request
+////////////////////////////////////////////////////////////////////////////////
+
+      v8::Handle<v8::Value> requestData (rest::HttpRequest::HttpRequestType method,
+                                         std::string const& location,
                                          std::string const& body,
                                          map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles a result
+////////////////////////////////////////////////////////////////////////////////
+      
+      v8::Handle<v8::Value> handleResult ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a request and returns raw response

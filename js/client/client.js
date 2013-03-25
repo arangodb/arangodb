@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, SYS_UNIT_TESTS */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, nonpropdel: true, white: true, plusplus: true, evil: true */
+/*global require, IS_EXECUTE_SCRIPT, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -94,6 +94,7 @@ function clear () {
 (function() {
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
+  var special;
 
   if (internal.db !== undefined) {
     try {
@@ -103,12 +104,12 @@ function clear () {
     }
   }
 
-  if (internal.ARANGO_QUIET !== true) {
+  special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+
+  if (internal.ARANGO_QUIET !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
-      if (typeof internal.arango.isConnected !== "undefined") {
-        if (internal.arango.isConnected() && typeof SYS_UNIT_TESTS === "undefined") {
-          internal.print(arangosh.HELP);
-        }
+      if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
+        internal.print(arangosh.HELP);
       }
     }
   }
@@ -130,15 +131,22 @@ var arango = require("org/arangodb").arango;
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var fs = require("fs");
-  var rcf = fs.join(fs.home(), ".arangosh.rc");
+if (! (IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT)) {
+  (function () {
+    var fs = require("fs");
+    var rcf = fs.join(fs.home(), ".arangosh.rc");
 
-  if (fs.exists(rcf)) {
-    var content = fs.read(rcf);
-    eval(content);
-  }
-}());
+    if (fs.exists(rcf)) {
+      var content = fs.read(rcf);
+      eval(content);
+    }
+  }());
+}
+
+delete IS_EXECUTE_SCRIPT;
+delete IS_CHECK_SCRIPT;
+delete IS_UNIT_TESTS;
+delete IS_JS_LINT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

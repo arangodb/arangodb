@@ -18,7 +18,7 @@ in this directory. Write the following content to this file:
 
     app = new FoxxApplication();
 
-    app.get('/wiese', function(req, res) {
+    app.get("/wiese", function(req, res) {
       res.set("Content-Type", "text/plain");
       res.body = "Worked!"
     });
@@ -30,8 +30,8 @@ In order to achieve that, we create a file called `manifest.json` in
 our `my_app` directory with the following content:
 
     {
-      'apps': {
-        '/my': 'app.js'
+      "apps": {
+        "/my": "app.js"
       }
     }
 
@@ -40,7 +40,7 @@ Now your application is done. Start ArangoDB as follows:
     arangod --app my_app /tmp/fancy_db
 
 Now point your browser to `/my/wiese` and you should see "Worked!".
-After this short overview, let's get into the details.
+After this short overview, let"s get into the details.
 
 ## FoxxApplication Features
 
@@ -65,7 +65,7 @@ a folder containing multiple JavaScript files which define CommonJS
 modules that you want to use in your Foxx apps. They will all be loaded,
 so you can require them as usual. The `lib` folder can be structured however
 you want. If you have a folder `models` in your `lib` folder containing
-a file `user.js`, you can require it with `user = require('models/user')`.
+a file `user.js`, you can require it with `user = require("models/user")`.
 
 Also optional is the definition of an `asset` directive.
 Read more about in the section Assets.
@@ -73,17 +73,17 @@ Read more about in the section Assets.
 A more complete example for a Manifest file:
 
     {
-      'apps': {
-        '/blog': 'apps/blog.js',
-        '/shop': 'apps/shop.js'
+      "apps": {
+        "/blog": "apps/blog.js",
+        "/shop": "apps/shop.js"
       },
 
-      'lib': 'lib',
+      "lib": "lib",
 
-      'assets': {
-        'application.js': [
-          'vendor/jquery.js',
-          'assets/javascripts/*'
+      "assets": {
+        "application.js": [
+          "vendor/jquery.js",
+          "assets/javascripts/*"
         ]
       }
     }
@@ -91,12 +91,12 @@ A more complete example for a Manifest file:
 ## Assets
 
 The value for the asset key is an object consisting of paths that are
-matched to files they are composed of. Let's take the following example:
+matched to files they are composed of. Let"s take the following example:
 
-  'assets': {
-    'application.js': [
-      'vendor/jquery.js',
-      'assets/javascripts/*'
+  "assets": {
+    "application.js": [
+      "vendor/jquery.js",
+      "assets/javascripts/*"
     ]
   }
 

@@ -322,7 +322,27 @@
         structures.ensureUniqueConstraint("collection");
 
         return true;
-      });
+    });
+
+    // set up the collection _aal
+    addTask("setupAal", "setup _aal collection", function () {
+      return createSystemCollection("_aal", { waitForSync : false });
+    });
+    
+    // create a unique index on collection attribute in _aal
+    addTask("createAalIndex",
+            "create index on collection attribute in _aal collection",
+      function () {
+        var aal = getCollection("_aal");
+
+        if (! aal) {
+          return false;
+        }
+
+        aal.ensureUniqueConstraint("name", "version");
+
+        return true;
+    });
 
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "
@@ -422,6 +442,9 @@
 
   if (lastVersion === currentVersion) {
     // version match!
+    if (internal.UPGRADE) {
+      runUpgrade(currentVersion);
+    }
     applyFixes();
     return true;
   }
