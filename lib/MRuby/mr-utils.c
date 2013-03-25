@@ -251,7 +251,7 @@ bool TRI_ExecuteRubyFile (mrb_state* mrb, char const* filename) {
   char* content;
   mrb_value result;
 
-  content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
+  content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
 
   if (content == 0) {
     LOG_TRACE("cannot loaded ruby file '%s': %s", filename, TRI_last_error());
