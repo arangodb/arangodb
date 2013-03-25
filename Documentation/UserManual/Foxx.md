@@ -4,71 +4,15 @@ Foxx {#UserManualFoxx}
 Foxx: Build APIs and simple web applications in ArangoDB
 ========================================================
 
-**WARNING: The following documentation file is pure fiction,
-it is not yet finished**
-
-Foxx is an easy way to create APIs and simple web applications
-from within **ArangoDB**.
-It is inspired by Sinatra, the classy Ruby web framework. If FoxxApplication is Sinatra,
-[ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html)
-are the corresponding `Rack`. They provide all the HTTP goodness.
+Foxx is an easy way to create APIs and simple web applications from within **ArangoDB**. It is inspired by Sinatra, the classy Ruby web framework. If FoxxApplication is Sinatra, [ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html) are the corresponding `Rack`. They provide all the HTTP goodness.
 
 So let's get started, shall we?
 
-## Foxx Application
+An application build with Foxx is written in JavaScript and deployed to ArangoDB directly. ArangoDB serves this application, you do not need a separate application server.
 
-@copydetails JSF_foxx_application_initializer
-@copydetails JSF_foxx_application_start
+So given you want to build an application that sends a plain-text response "Worked!" for all requests to `/my/wiese`. How would you achieve that with Foxx?
 
-### Handling Requests
-
-@copydetails JSF_foxx_application_handleRequest
-@copydetails JSF_foxx_application_head
-@copydetails JSF_foxx_application_get
-@copydetails JSF_foxx_application_post
-@copydetails JSF_foxx_application_put
-@copydetails JSF_foxx_application_patch
-@copydetails JSF_foxx_application_delete
-
-### Before and After Hooks
-
-You can use the following two functions to do something
-before or respectively after the normal routing process
-is happening. You could use that for logging or to manipulate
-the request or response (translate it to a certain format for
-example).
-
-@copydetails JSF_foxx_application_before
-@copydetails JSF_foxx_application_after
-
-### More functionality
-
-@copydetails JSF_foxx_application_helper
-@copydetails JSF_foxx_application_accepts
-
-## The functions on a created FoxxApplication
-
-When you have created your FoxxApplication you can now define routes
-on it. You provide each with a function that will handle
-the request. It gets two arguments (four, to be honest. But the
-other two are not relevant for now):
-
-* The request object
-* The response object
-
-
-You can find more about those in their individual sections.
-
-An application build with Foxx is written in JavaScript and deployed
-to ArangoDB directly. ArangoDB serves this application, you do not
-need a separate application server.
-
-So given you want to build an application that sends a plain-text
-response "Worked!" for all requests to `/my/wiese`. How would you
-achieve that with Foxx?
-
-First, create a directory `my_app` and save a file called `app.js`
-in this directory. Write the following content to this file:
+First, create a directory `my_app` and save a file called `app.js` in this directory. Write the following content to this file:
 
     FoxxApplication = require("org/arangodb/foxx").FoxxApplication;
 
@@ -79,11 +23,9 @@ in this directory. Write the following content to this file:
       res.body = "Worked!"
     });
 
-    app.start();
+    app.start(applicationContext);
 
-This is your application. Now we need to mount it to the path `/my`.
-In order to achieve that, we create a file called `manifest.json` in
-our `my_app` directory with the following content:
+This is your application. Now we need to mount it to the path `/my`. In order to achieve that, we create a file called `manifest.json` in our `my_app` directory with the following content:
 
     {
       "apps": {
@@ -95,12 +37,94 @@ Now your application is done. Start ArangoDB as follows:
 
     arangod --app my_app /tmp/fancy_db
 
-Now point your browser to `/my/wiese` and you should see "Worked!".
-After this short overview, let"s get into the details.
+Now point your browser to `/my/wiese` and you should see "Worked!". After this short overview, let's get into the details.
 
-## FoxxApplication Features
+## Details on FoxxApplication
 
-Please see the documentation of `foxx.js` for further information on how to write the application file.
+#### new FoxxApplication
+@copydetails JSF_foxx_application_initializer
+
+#### FoxxApplication#start
+@copydetails JSF_foxx_application_start
+
+### Handling Requests
+
+#### FoxxApplication#head
+@copydetails JSF_foxx_application_head
+
+#### FoxxApplication#get
+@copydetails JSF_foxx_application_get
+
+#### FoxxApplication#post
+@copydetails JSF_foxx_application_post
+
+#### FoxxApplication#put
+@copydetails JSF_foxx_application_put
+
+#### FoxxApplication#patch
+@copydetails JSF_foxx_application_patch
+
+#### FoxxApplication#delete
+@copydetails JSF_foxx_application_delete
+
+### Before and After Hooks
+
+You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
+
+#### FoxxApplication#before
+@copydetails JSF_foxx_application_before
+
+#### FoxxApplication#after
+@copydetails JSF_foxx_application_after
+
+### More functionality
+
+#### FoxxApplication#helper
+@copydetails JSF_foxx_application_helper
+
+#### FoxxApplication#accepts
+@copydetails JSF_foxx_application_accepts
+
+## The Request and Response Objects
+
+When you have created your FoxxApplication you can now define routes on it. You provide each with a function that will handle the request. It gets two arguments (four, to be honest. But the other two are not relevant for now):
+
+* The `request` object
+* The `response` object
+
+These objects are provided by the underlying ArangoDB actions and enhanced by the BaseMiddleware provided by Foxx.
+
+### The `request` object
+
+Every request object has the following attributes from the underlying Actions, amongst others:
+
+#### request.path
+This is the complete path as supplied by the user as a String.
+
+#### request.body
+@copydetails JSF_foxx_BaseMiddleware_request_body
+
+#### request.params
+@copydetails JSF_foxx_BaseMiddleware_request_params
+
+### The `response` object
+
+Every response object has the following attributes from the underlying Actions:
+
+#### request.body
+You provide your response body as a String here.
+
+#### request.status
+@copydetails JSF_foxx_BaseMiddleware_response_status
+
+#### request.set
+@copydetails JSF_foxx_BaseMiddleware_response_set
+
+#### request.json
+@copydetails JSF_foxx_BaseMiddleware_response_json
+
+#### request.render
+@copydetails JSF_foxx_BaseMiddleware_response_render
 
 ## Manifest Files
 
@@ -108,7 +132,6 @@ When you start arangod with the `--app` option, ArangoDB scans the
 given directory on every request for files called `manifest.json`.
 There can be a file in the root directory and in each direct subdirectory if you want that.
 The content is a JSON object with three keys: `apps`, `lib` and `assets`.
-(*we will also add a fourth called `vendor` for NPM packages, but this does not exist yet*).
 `apps` is an object that matches routes to files:
 
 * The `key` is the route you want to mount at
@@ -193,7 +216,21 @@ It is of course not meant for production, because the reloading makes the app re
 
 ## Deploying on Production
 
-If you are comfortable to deploy your app to your production ArangoDB, you will have to do
-the following:
+*The Production mode is in development right now.*
 
-**Not yet decided**
+## Optional Functionality: FormatMiddleware
+
+Unlike the `BaseMiddleware` this Middleware is only loaded if you want it. This Middleware gives you Rails-like format handling via the `extension` of the URL or the accept header. Say you request an URL like `/people.json`:
+
+The `FormatMiddleware` will set the format of the request to JSON and then delete the `.json` from the request. You can therefore write handlers that do not take an `extension` into consideration and instead handle the format via a simple String. To determine the format of the request it checks the URL and then the `accept` header. If one of them gives a format or both give the same, the format is set. If the formats are not the same, an error is raised.
+
+Use it by calling:
+
+    FormatMiddleware = require('foxx').FormatMiddleware;
+    app.before("/*", FormatMiddleware.new(['json']));
+
+or the shortcut:
+
+    app.accepts(['json']);
+
+In both forms you can give a default format as a second parameter, if no format could be determined. If you give no `defaultFormat` this case will be handled as an error.
