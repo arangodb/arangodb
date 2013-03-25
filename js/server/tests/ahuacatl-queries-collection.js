@@ -101,8 +101,8 @@ function ahuacatlQueryCollectionTestSuite () {
       internal.db._drop("UnitTestsAhuacatlUsers");
       internal.db._drop("UnitTestsAhuacatlUserRelations");
 
-      users = internal.db.UnitTestsAhuacatlUsers;
-      relations = internal.db.UnitTestsAhuacatlUserRelations;
+      users = internal.db._create("UnitTestsAhuacatlUsers");
+      relations = internal.db._create("UnitTestsAhuacatlUserRelations");
 
       users.save({ "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" });
       users.save({ "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" });
