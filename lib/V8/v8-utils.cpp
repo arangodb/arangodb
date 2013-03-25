@@ -812,7 +812,9 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
   }
 
   // return result
-  return scope.Close(TRI_ExistsFile(*name) ? v8::True() : v8::False());
+  bool isFile = TRI_ExistsFile(*name) && ! TRI_IsDirectory(*name);
+
+  return scope.Close(isFile ? v8::True() : v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
