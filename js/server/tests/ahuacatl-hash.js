@@ -73,18 +73,18 @@ function ahuacatlHashTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      hash = internal.db.UnitTestsAhuacatlHash;
+      internal.db._drop("UnitTestsAhuacatlHash");
 
-      if (hash.count() == 0) {
-        for (var i = 1; i <= 5; ++i) {
-          for (var j = 1; j <= 5; ++j) {
-            hash.save({ "a" : i, "b": j, "c" : i });
-          }
+      hash = internal.db._create("UnitTestsAhuacatlHash");
+
+      for (var i = 1; i <= 5; ++i) {
+        for (var j = 1; j <= 5; ++j) {
+          hash.save({ "a" : i, "b": j, "c" : i });
         }
-
-        hash.ensureHashIndex("a", "b");
-        hash.ensureHashIndex("c");
       }
+
+      hash.ensureHashIndex("a", "b");
+      hash.ensureHashIndex("c");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +92,8 @@ function ahuacatlHashTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      internal.db._drop("UnitTestsAhuacatlHash");
+      hash = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////

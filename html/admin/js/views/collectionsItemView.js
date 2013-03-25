@@ -10,11 +10,17 @@ window.CollectionListItemView = Backbone.View.extend({
   },
   events: {
     'click .pull-left' : 'noop',
+    'click .icon-edit' : 'editProperties',
     'click': 'selectCollection'
   },
   render: function () {
     $(this.el).html(this.template.render(this.model));
     return this;
+  },
+
+  editProperties: function (event) {
+    event.stopPropagation();
+    window.App.navigate("#collection/" + this.model.get("id"), {trigger: true});
   },
   
   selectCollection: function() {

@@ -30,7 +30,6 @@ var collectionsView = Backbone.View.extend({
     return this;
   },
   events: {
-    "click .icon-info-sign" : "details",
     "keydown #searchInput" : "restrictToSearchPhraseKey",
     "change #searchInput"   : "restrictToSearchPhrase",
     "click #searchSubmit"   : "restrictToSearchPhrase",
@@ -40,6 +39,7 @@ var collectionsView = Backbone.View.extend({
     "click #checkDocument"  : "checkDocument",
     "click #checkEdge"      : "checkEdge"
   },
+
   checkSystem: function () {
     var searchOptions = this.collection.searchOptions;
     var oldValue = searchOptions.includeSystem;
