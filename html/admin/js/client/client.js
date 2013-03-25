@@ -104,7 +104,13 @@ function clear () {
     }
   }
 
-  special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+  try {
+    // these variables don't exist in the browser context
+    special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+  }
+  catch (err2) {
+    special = false;
+  }
 
   if (internal.ARANGO_QUIET !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
@@ -131,22 +137,42 @@ var arango = require("org/arangodb").arango;
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
 
-if (! (IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT)) {
-  (function () {
-    var fs = require("fs");
-    var rcf = fs.join(fs.home(), ".arangosh.rc");
 
-    if (fs.exists(rcf)) {
-      var content = fs.read(rcf);
-      eval(content);
+(function () {
+  var special;
+
+  try {
+    // these variables are not defined in the browser context
+    special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+  }
+  catch (err) {
+    special = false;
+  }
+  
+  if (! special) {  
+    try {
+      // this will not work from within a browser
+      var fs = require("fs");
+      var rcf = fs.join(fs.home(), ".arangosh.rc");
+
+      if (fs.exists(rcf)) {
+        var content = fs.read(rcf);
+        eval(content);
+      }
+    } 
+    catch (err2) {
     }
-  }());
-}
+  }
 
-delete IS_EXECUTE_SCRIPT;
-delete IS_CHECK_SCRIPT;
-delete IS_UNIT_TESTS;
-delete IS_JS_LINT;
+  try {
+    delete IS_EXECUTE_SCRIPT;
+    delete IS_CHECK_SCRIPT;
+    delete IS_UNIT_TESTS;
+    delete IS_JS_LINT;
+  }
+  catch (err3) {
+  }
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

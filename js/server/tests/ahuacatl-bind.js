@@ -106,12 +106,11 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      numbers = internal.db.UnitTestsAhuacatlNumbers;
+      internal.db._drop("UnitTestsAhuacatlNumbers");
+      numbers = internal.db._create("UnitTestsAhuacatlNumbers");
 
-      if (numbers.count() == 0) {
-        for (i = 1; i <= 100; ++i) {
-          numbers.save({ "value" : i });
-        }
+      for (var i = 1; i <= 100; ++i) {
+        numbers.save({ "value" : i });
       }
     },
 
@@ -120,6 +119,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      internal.db._drop("UnitTestsAhuacatlNumbers");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
