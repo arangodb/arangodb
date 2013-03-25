@@ -741,7 +741,7 @@ exports.installApp = function (name, mount, options) {
   }
 
   if (prefix === undefined) {
-    context.collectionPrefix = mount.replace(/\\/g, "_");
+    context.collectionPrefix = mount.substr(1).replace(/\//g, "_");
   } else {
     context.collectionPrefix = prefix;
   }

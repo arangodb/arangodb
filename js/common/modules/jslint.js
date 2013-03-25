@@ -28,7 +28,9 @@
 var internal = require("internal");
 var console = require("console");
 
-internal.loadFile("jslint/jslint");
+var realJsLintPath = "/jslint/jslint";
+var realJsLint = internal.loadModuleFile(realJsLintPath).content;
+eval(realJsLint);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
