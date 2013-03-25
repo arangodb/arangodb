@@ -731,8 +731,7 @@ exports.installApp = function (name, mount, options) {
 
   if (mount === "") {
     mount = "/";
-  }
-  else {
+  } else {
     mount = INTERNAL.normalizeURL(mount);
   }
 
