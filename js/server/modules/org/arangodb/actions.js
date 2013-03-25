@@ -284,7 +284,7 @@ function lookupCallbackActionCallback (route, action) {
       return appModule.require(path);
     };
 
-    internal.execute(defn, env, route);
+    internal.executeScript(defn, env, route);
 
     if (env.hasOwnProperty("func")) {
       func = env.func;

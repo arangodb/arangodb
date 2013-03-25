@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
 /*global require, module: true, PACKAGE_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,10 +606,11 @@ function stop_color_print () {
 
   Module.prototype.createModule = function (description, type, pkg) {
     var content;
-    var fun;
     var module;
     var env;
+    var fun;
     var key;
+    var sandbox;
 
     // mark that we have seen the definition, used for debugging only
     ModuleExistsCache[description.name] = true;
@@ -625,33 +626,45 @@ function stop_color_print () {
 
     pkg.defineModule(description.name, module);
 
-    // try to execute the module source code
-    content = "(function (module, exports, require, print, env) {";
-
+    // setup a sandbox
     env = pkg._environment;
+
+    sandbox = {};
+    sandbox.print = internal.print;
 
     if (env !== undefined) {
       for (key in env) {
-        content += key + " = env['" + key + "'];";
+        if (env.hasOwnProperty(key) && key !== "__myenv__") {
+          sandbox[key] = env[key];
+        }
       }
     }
 
-    content += description.content
-             + "\n});";
+    sandbox.module = module;
+    sandbox.exports = module.exports;
+    sandbox.require = function(path) { return module.require(path); };
 
-    fun = internal.execute(content, undefined, description.name);
+    // try to execute the module source code
+    content = "(function (__myenv__) {";
 
-    if (fun === undefined) {
-      pkg.clearModule(description.name);
-      throw "cannot create context function";
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
     }
 
+    content += "delete __myenv__;"
+             + description.content
+             + "\n});";
+
     try {
-      fun(module,
-          module.exports,
-          function(path) { return module.require(path); },
-          internal.print,
-          env);
+      fun = internal.executeScript(content, undefined, description.name);
+
+      if (fun === undefined) {
+        throw "cannot create module context function for: " + content;
+      }
+
+      fun(sandbox);
     }
     catch (err) {
       pkg.clearModule(description.name);
@@ -872,6 +885,7 @@ function stop_color_print () {
     var description;
     var libpath;
     var pkg;
+    var mdl;
 
     description = module.appDescription(name);
 
@@ -910,6 +924,8 @@ function stop_color_print () {
     var content;
     var description;
     var full;
+    var fun;
+    var result;
 
     description = appRoot._appDescription;
 
@@ -932,7 +948,7 @@ function stop_color_print () {
             + content
             + "\n};";
 
-    fun = internal.execute(content, sandbox, full);
+    fun = internal.executeScript(content, sandbox, full);
 
     if (fun !== true || ! sandbox.hasOwnProperty("func")) {
       throw "cannot create application function";
