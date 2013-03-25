@@ -930,7 +930,9 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
   }
   else {
     // something is wrong
-    UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
+    if (nestingLevel == 0) {
+      UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
+    }
 
     // free what we have got so far
     ReleaseCollections(trx, nestingLevel);
