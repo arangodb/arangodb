@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _, d3*/
+/*global $, _, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -84,6 +84,7 @@ function NodeShaper(parent, flags, idfunc) {
         .selectAll(".node")
         .attr("class", "node") // node is CSS class that might be edited
         .attr("id",idFunction);
+      $(".node").empty();
       additionalShaping(node);
     };
     
@@ -174,7 +175,6 @@ function NodeShaper(parent, flags, idfunc) {
       data.exit().remove();
       return node;
     }
-    console.log("Evil kniewil");
   };
   
   self.updateNodes = function () {
