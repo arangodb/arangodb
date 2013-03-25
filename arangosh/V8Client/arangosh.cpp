@@ -886,6 +886,54 @@ static v8::Handle<v8::Value> ClientConnection_httpPatchRaw (v8::Arguments const&
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection send file helper
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+
+  // check params
+  if (argv.Length() != 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: sendFile(<url>, <file>)")));
+  }
+
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  
+  const string infile = TRI_ObjectToString(argv[1]);
+  if (! TRI_ExistsFile(infile.c_str())) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_FILE_NOT_FOUND)));
+  }
+  
+  size_t bodySize;
+  char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
+
+  if (body == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("could not read file")));
+  }
+    
+  v8::TryCatch tryCatch;
+
+  // check header fields
+  map<string, string> headerFields;
+
+  v8::Handle<v8::Value> result = connection->postData(*url, body, bodySize, headerFields);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, body);
+  
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1429,6 +1477,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("POST_RAW", v8::FunctionTemplate::New(ClientConnection_httpPostRaw));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
     connection_proto->Set("PUT_RAW", v8::FunctionTemplate::New(ClientConnection_httpPutRaw));
+    connection_proto->Set("SEND_FILE", v8::FunctionTemplate::New(ClientConnection_httpSendFile));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));

@@ -197,18 +197,18 @@ function SetRoutesFoxxApplicationSpec () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
 
-      app.requires = {
+      app.requiresLibs = {
         a: 1
       };
-      app.models = {
+      app.requiresModels = {
         b: 2
       };
       app.get('/simple/route', myFunc);
       app.start("myContext");
 
       assertEqual(app.routingInfo.routes[0].action.context, "myContext");
-      assertEqual(app.routingInfo.routes[0].action.requires.a, 1);
-      assertEqual(app.routingInfo.routes[0].action.models.b, 2);
+      assertEqual(app.routingInfo.routes[0].action.requiresLibs.a, 1);
+      assertEqual(app.routingInfo.routes[0].action.requiresModels.b, 2);
     }
   };
 }

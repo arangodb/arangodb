@@ -75,7 +75,10 @@ for line in f:
 
     if m:
         if not comment and not other:
-            print "void dummy_%d ();\n" % count
+            if fn:
+                print "void %s ();\n" % fn
+            else:
+                print "void dummy_%d ();\n" % count
             
         print "%s" % line
 
