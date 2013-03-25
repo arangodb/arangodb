@@ -3,6 +3,7 @@
 /*global describe, it, expect */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
+/*global helper*/
 /*global EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,26 +138,22 @@
           "target": one
         }
       ],
-      clicked = [false, false, false, false],
+      clicked = [],
       click = function (edge) {
-        clicked[edge.source._id-1] = !clicked[edge.source._id-1];
+        clicked[edge.source._id] = !clicked[edge.source._id];
       },
-      shaper = new EdgeShaper(d3.select("svg")),
-      first,
-      third;
+      shaper = new EdgeShaper(d3.select("svg"));
       
       shaper.on("click", click);
       shaper.drawEdges(edges);
-      first = $("#1-2").get(0);
-      third = $("#3-4").get(0);
-      first.__onclick();
-      third.__onclick();
+      helper.simulateMouseEvent("click", "1-2");
+      helper.simulateMouseEvent("click", "3-4");
       
       expect($("svg line").length).toEqual(4);
-      expect(clicked[0]).toBeTruthy();
-      expect(clicked[2]).toBeTruthy();
-      expect(clicked[1]).toBeFalsy();
-      expect(clicked[3]).toBeFalsy();
+      expect(clicked[1]).toBeTruthy();
+      expect(clicked[3]).toBeTruthy();
+      expect(clicked[2]).toBeFalsy();
+      expect(clicked[4]).toBeFalsy();
     });
     
     describe('configured for label', function() {

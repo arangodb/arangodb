@@ -49,7 +49,7 @@ describe("Graph Viewer", function() {
   },
   
   clickOnNode = function(id) {
-    simulateMouseEvent("click", id);
+    helper.simulateMouseEvent("click", id);
   };
   
   beforeEach(function() {

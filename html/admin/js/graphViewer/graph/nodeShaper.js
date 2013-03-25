@@ -77,7 +77,16 @@ function NodeShaper(parent, flags, idfunc) {
         tmp(node);
         deco(node);
       };
+    },
+    redrawNodes = function () {
+      var node;
+      node = self.parent
+        .selectAll(".node")
+        .attr("class", "node") // node is CSS class that might be edited
+        .attr("id",idFunction);
+      additionalShaping(node);
     };
+    
     
   self.parent = parent;
   
@@ -165,11 +174,7 @@ function NodeShaper(parent, flags, idfunc) {
       data.exit().remove();
       return node;
     }
-    node = self.parent
-      .selectAll(".node")
-      .attr("class", "node") // node is CSS class that might be edited
-      .attr("id",idFunction);
-    additionalShaping(node);
+    console.log("Evil kniewil");
   };
   
   self.updateNodes = function () {
@@ -196,7 +201,7 @@ function NodeShaper(parent, flags, idfunc) {
         node.on(identifier, callback);
       });
     }
-    self.drawNodes();
+    redrawNodes();
   };
 }
 
