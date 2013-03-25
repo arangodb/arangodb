@@ -165,8 +165,7 @@ function NodeShaper(parent, flags, idfunc) {
       data.exit().remove();
       return node;
     }
-    node = 
-    self.parent
+    node = self.parent
       .selectAll(".node")
       .attr("class", "node") // node is CSS class that might be edited
       .attr("id",idFunction);

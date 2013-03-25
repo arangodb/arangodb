@@ -43,8 +43,15 @@ function EdgeShaper(parent, flags, idfunc) {
     idFunction = function(d) {
       return d.source._id + "-" + d.target._id;
     },
-    additionalShaping = function(node) {
+    additionalShaping = function(edge) {
       return;
+    },
+    decorateShape = function (deco) {
+      var tmp = additionalShaping;
+      additionalShaping = function (edge) {
+        tmp(edge);
+        deco(edge);
+      };
     },
     parseLabelFlag;
     
@@ -55,22 +62,22 @@ function EdgeShaper(parent, flags, idfunc) {
     parseLabelFlag = function (label) {
       var labelDeco = additionalShaping;
       if (_.isFunction(label)) {
-        additionalShaping = function (node) {
-          node.append("text") // Append a label for the node
+        additionalShaping = function (edge) {
+          edge.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
             .text(function(d) { 
               return label(d);
             });
-          labelDeco(node);
+          labelDeco(edge);
         };
       } else {
-        additionalShaping = function (node) {
-          node.append("text") // Append a label for the node
+        additionalShaping = function (edge) {
+          edge.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
             .text(function(d) { 
               return d[label] || ""; // Which value should be used as label
             });
-          labelDeco(node);
+          labelDeco(edge);
         };
       }
     };
@@ -84,19 +91,25 @@ function EdgeShaper(parent, flags, idfunc) {
   }
   
   self.drawEdges = function (edges) {
-    // Set up edges
-    var data = self.parent
+    var data, link;
+    if (edges !== undefined) {
+      data = self.parent
+        .selectAll("line")
+        .data(edges, idFunction);
+      link = data
+        .enter()
+        .append("line")
+        .attr("class", "link") // link is CSS class that might be edited
+        .attr("id", idFunction);
+      additionalShaping(link);
+      data.exit().remove();
+      return link;
+    }
+    link = self.parent
       .selectAll("line")
-      .data(edges, idFunction),
-    link = data
-      .enter()
-      .append("line")
-      .attr("class", "link") // link is CSS class that might be edited
-      .attr("id", idFunction);
-      
+      .attr("class", "link") // node is CSS class that might be edited
+      .attr("id",idFunction);
     additionalShaping(link);
-    data.exit().remove();
-    return link;
   };
   
   self.updateEdges = function () {
@@ -119,9 +132,13 @@ function EdgeShaper(parent, flags, idfunc) {
       });
   };
   
-  self.on = function() {
-    throw "Not implemented yet";
+  self.on = function (identifier, callback) {
+    decorateShape(function (edge) {
+      edge.on(identifier, callback);
+    });
+    self.drawEdges();
   };
+  
   
 }
 
