@@ -5,7 +5,7 @@
   SYS_RAND, SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
-  SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS,
+  SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT,
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
@@ -64,7 +64,7 @@
   }
   
   if (typeof SYS_EXECUTE !== "undefined") {
-    internal.execute = SYS_EXECUTE;
+    internal.executeScript = SYS_EXECUTE;
     delete SYS_EXECUTE;
   }
 
@@ -815,6 +815,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unit-tests
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.unitTests = function () {
+    return SYS_UNIT_TESTS;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unit-tests result
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.setUnitTestsResult = function (value) {
+    SYS_UNIT_TESTS_RESULT = value;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief global print
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1015,38 +1031,6 @@
       });
 
     return target;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file from the file-system
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.loadFile = function (path) {
-    var i;
-
-    // try to load the file
-    var paths = internal.MODULES_PATH;
-
-    for (i = 0;  i < paths.length;  ++i) {
-      var p = paths[i];
-      var n;
-
-      if (p === "") {
-        n = "." + path + ".js";
-      }
-      else {
-        n = p + "/" + path + ".js";
-      }
-
-      if (internal.exists(n)) {
-        return internal.load(n);
-      }
-    }
-
-    throw "cannot find a file named '"
-        + path
-        + "' using the module path(s) '"
-        + internal.MODULES_PATH + "'";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
