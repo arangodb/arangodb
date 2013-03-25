@@ -35,7 +35,7 @@ This is your application. Now we need to mount it to the path `/my`. In order to
 
 Now your application is done. Start ArangoDB as follows:
 
-    arangod --app my_app /tmp/fancy_db
+    arangod --javascript.dev-app-path my_app /tmp/fancy_db
 
 Now point your browser to `/my/wiese` and you should see "Worked!". After this short overview, let's get into the details.
 
@@ -46,6 +46,22 @@ Now point your browser to `/my/wiese` and you should see "Worked!". After this s
 
 #### FoxxApplication#start
 @copydetails JSF_foxx_application_start
+
+#### `requiresLibs` and `requiresModels`
+
+Using the base paths defined in the manifest file, you can require libraries (and the special models described later) that you need in this FoxxApplication. So for example:
+
+    app.requiresLibs = {
+      "schafspelz": "wolf"
+    };
+
+This will require the file `wolf.js` in the libs folder you have defined and make the module available via the variable `schafspelz` in your FoxxApplication definitions:
+
+    app.get("/bark", function (req, res) {
+      schafspelz.bark();
+    });
+
+*Please note that you cannot use the normal require syntax in a `FoxxApplication`, because it's a special DSL and not a normal JavaScript file.*
 
 ### Handling Requests
 
@@ -84,6 +100,16 @@ You can use the following two functions to do something before or respectively a
 
 #### FoxxApplication#accepts
 @copydetails JSF_foxx_application_accepts
+
+## Models
+
+If you do not require a module with `requiresLibs`, but instead use `requiresModels`, you will have three additional functions available in the module (otherwise it will behave the same):
+
+* `var a = requireModel("module")`: Requires the model "module" (which again will have these functions available) and makes it available via the variable `a`.
+* `appCollection("test")`: Returns the collection "test" prefixed with the application prefix
+* `appCollectionName("test")`: Returns the name of the collection "test" prefixed with the application prefix
+
+If you need access to a normal module from this model, just require it as usual.
 
 ## The Request and Response Objects
 
@@ -126,51 +152,75 @@ You provide your response body as a String here.
 #### request.render
 @copydetails JSF_foxx_BaseMiddleware_response_render
 
-## Manifest Files
+## The Manifest File
 
-When you start arangod with the `--app` option, ArangoDB scans the
-given directory on every request for files called `manifest.json`.
-There can be a file in the root directory and in each direct subdirectory if you want that.
-The content is a JSON object with three keys: `apps`, `lib` and `assets`.
-`apps` is an object that matches routes to files:
+In the `manifest.json` you define the components of your application: The content is a JSON object with the following keys:
 
-* The `key` is the route you want to mount at
-* The `value` is the path to the JavaScript file containing the `FoxxApplication`s you want to mount
-
-You can add multiple applications in one manifest in this way.
-
-In addition you can add an optional `lib` String. This is a path to
-a folder containing multiple JavaScript files which define CommonJS
-modules that you want to use in your Foxx apps. They will all be loaded,
-so you can require them as usual. The `lib` folder can be structured however
-you want. If you have a folder `models` in your `lib` folder containing
-a file `user.js`, you can require it with `user = require("models/user")`.
-
-Also optional is the definition of an `asset` directive.
-Read more about in the section Assets.
+* `name`: Name of the application (Meta information)
+* `version`: Current version of the application (Meta information)
+* `description`: A short description of the application (Meta information)
+* `thumbnail`: Path to a thumbnail that represents the application (Meta information)
+* `apps`: Map routes to FoxxApplications
+* `lib`: Base path for the models you want to require
+* `models`: Base path for the models you want to require
+* `files`: Deliver files
+* `assets`: Deliver pre-processed files
+* `setup`: Path to a setup script
+* `teardown`: Path to a teardown script
 
 A more complete example for a Manifest file:
 
     {
+      "name": "my_website",
+      "version": "1.2.1",
+      "description": "My Website with a blog and a shop",
+      "thumnail": "images/website-logo.png",
+
       "apps": {
         "/blog": "apps/blog.js",
         "/shop": "apps/shop.js"
       },
 
       "lib": "lib",
+      "models": "models",
+
+      "files": {
+        "/images": "images"
+      },
 
       "assets": {
         "application.js": [
           "vendor/jquery.js",
           "assets/javascripts/*"
         ]
-      }
+      },
+
+      "setup": "scripts/setup.js",
+      "teardown": "scripts/teardown.js"
     }
 
-## Assets
+### `setup` and `teardown`
 
-The value for the asset key is an object consisting of paths that are
-matched to files they are composed of. Let"s take the following example:
+You can provide a path to a JavaScript file that prepares ArangoDB for your application (or respectively removes it entirely). These scripts have access to `appCollection` and `appCollectionName` just like models. Use the `setup` script to create all collections your application needs and fill them with initial data if you want to. Use the `teardown` script to remove all collections you have created.
+
+### `apps` is an object that matches routes to files:
+
+* The `key` is the route you want to mount at
+* The `value` is the path to the JavaScript file containing the `FoxxApplication` you want to mount
+
+You can add multiple applications in one manifest this way.
+
+### The `files`
+
+Deliver all files in a certain folder without modifying them. You can deliver text files as well as binaries:
+
+    "files": {
+      "/images": "images"
+    }
+
+### The `assets`
+
+The value for the asset key is an object consisting of paths that are matched to the files they are composed of. Let's take the following example:
 
   "assets": {
     "application.js": [
@@ -179,44 +229,26 @@ matched to files they are composed of. Let"s take the following example:
     ]
   }
 
-If a request is made to `/application.js` (in development mode), the array
-provided will be processed one element at a time. The elements are paths
-to files (with the option to use wildcards).
-
-A file with an unknown extension will just be used as it is. It is however
-possible to define preprocessors based on the file extension.
-Currently we have defined a preprocessor for CoffeeScript that will process
-all files ending in `.coffee`.
-When the file was processed, the extension will be removed and the file
-will be executed again. This is useful if you want to chain multiple processors.
-
-The processed files will then be concatenated and delivered as a single file.
-We provide source maps, so if your browser supports them, you can always jump
-to the original file.
-We will offer the option to process all assets at once and write the files to
-disk for production with the option to run `Uglify.js` and similar tools
-in order to compress them.
+If a request is made to `/application.js` (in development mode), the array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
 
 ## Development Mode
 
-If you start the application in the way described above, you are working
-in development mode. This means that on every request:
+If you start ArangoDB with the option `--javascript.dev-app-path` followed by the path to a directory containing a manifest file, you are starting ArangoDB in development mode with the application loaded. This means that on every request:
 
 1. All routes are dropped
 2. All module caches are flushed
-3. Your app directory is scanned for manifest files, and each manifest file is read
-4. All files in your lib folder(s) are loaded
+3. Your manifest file is read
+4. All files in your lib folder are loaded
 5. All `apps` are executed. Each `app.start()` will put the routes in a temporary route object, prefixed with the path given in the manifest
 6. All routes in the temporary route object are stored to the routes
 7. The request will be processed
 
-This means that you do not have to restart ArangoDB if you change anything in your app
-(*This will change when we add support for `vendor`, they will not be reloaded*).
-It is of course not meant for production, because the reloading makes the app relatively slow.
+This means that you do not have to restart ArangoDB if you change anything in your app. It is of course not meant for production, because the reloading makes the app relatively slow.
 
 ## Deploying on Production
 
 *The Production mode is in development right now.*
+We will offer the option to process all assets at once and write the files to disk for production with the option to run `Uglify2.js` and similar tools in order to compress them.
 
 ## Optional Functionality: FormatMiddleware
 
