@@ -131,7 +131,6 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str());
@@ -147,7 +146,6 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   }
 
   return scope.Close(errorObject);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +157,7 @@ static bool LoadJavaScriptFile (char const* filename,
                                 bool useGlobalContext) {
   v8::HandleScope handleScope;
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
 
   if (content == 0) {
     LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
@@ -356,9 +354,10 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief downloads data from a URL
 ///
-/// @FUN{internal.download(@FA{url})}
+/// @FUN{internal.download(@FA{url}, @FA{method}, @FA{outfile}, @FA{timeout})}
 ///
-/// Downloads the data from the URL specified by @FA{url}.
+/// Downloads the data from the URL specified by @FA{url} and saves the 
+/// response body to @FA{outfile}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
@@ -481,7 +480,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       }
       result->Set(v8::String::New("headers"), headers);
 
-      if (returnCode == SimpleHttpResult::HTTP_STATUS_OK) {
+      if (returnCode >= 200 && returnCode <= 299) {
         try {
           FileUtils::spit(outfile, response->getBody().str());
         }
@@ -630,6 +629,40 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a directory
+///
+/// @FUN{fs.createDirectory(@FA{path}, @FA{createParents})}
+///
+/// Creates the directory specified @FA{path}. If @FA{createParents} is set to
+/// @LIT{true}, then the path is created recursively.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CreateDirectory (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() == 0 || argv.Length() > 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: createDirectory(<path>, <createParents>)")));
+  }
+
+  const string path = TRI_ObjectToString(argv[0]);
+  bool createParents = false;
+  if (argv.Length() > 1) {
+    createParents = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  bool result; 
+  if (createParents) { 
+    result = TRI_CreateRecursiveDirectory(path.c_str());
+  }
+  else {
+    result = TRI_CreateDirectory(path.c_str());
+  }
+
+  return scope.Close(result ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a file of any type or directory exists
 ///
 /// @FUN{fs.exists(@FA{path})}
@@ -648,7 +681,7 @@ static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
 
   string filename = TRI_ObjectToString(argv[0]);
 
-  return scope.Close(TRI_ExistsFile(filename.c_str()) ? v8::True() : v8::False());;
+  return scope.Close(TRI_ExistsFile(filename.c_str()) ? v8::True() : v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -666,6 +699,68 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
   getline(cin, line);
 
   return scope.Close(v8::String::New(line.c_str(), line.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the temporary directory
+///
+/// @FUN{fs.getTempPath()}
+///
+/// Returns the absolute path of the temporary directory
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getTempPath()")));
+  }
+
+  // return result
+  return scope.Close(v8::String::New(TempPath.c_str(), TempPath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name for a (new) temporary file
+///
+/// @FUN{fs.getTempFile(@FA{directory})}
+///
+/// Returns the name for a new temporary file in directory @FA{directory}. 
+/// If @FA{createFile} is @LIT{true}, an empty file will be created so no other 
+/// process can create a file of the same name.
+///
+/// Note that the directory @FA{directory} must exist.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetTempFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: getTempFile(<directory>, <createFile>)")));
+  }
+
+  const char* p = NULL;
+  string path;
+  if (argv.Length() > 0) {
+    path = TRI_ObjectToString(argv[0]);
+    p = path.c_str();
+  }
+
+  bool create = false;
+  if (argv.Length() > 1) {
+    create = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  char* result = 0;
+  if (TRI_GetTempName(p, &result, create) != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(CreateErrorObject(TRI_ERROR_INTERNAL, "could not create temp file")));
+  }
+
+  const string tempfile(result);
+  TRI_Free(TRI_CORE_MEM_ZONE, result);
+
+  // return result
+  return scope.Close(v8::String::New(tempfile.c_str(), tempfile.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -750,8 +845,10 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
   v8::Handle<v8::Array> result = v8::Array::New();
   TRI_vector_string_t list = TRI_FullTreeDirectory(*name);
 
+  uint32_t j = 0;
   for (size_t i = 0;  i < list._length;  ++i) {
-    result->Set(i, v8::String::New(list._buffer[i]));
+    const char* f = list._buffer[i]; 
+    result->Set(j++, v8::String::New(f));
   }
 
   TRI_DestroyVectorString(&list);
@@ -815,7 +912,7 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
 ///
-/// @FUN{fs.zip(@FA{filename}, @FA{files})
+/// @FUN{fs.zip(@FA{filename}, @FA{files})}
 ///
 /// Stores the files specified by @FA{files} in the zip file @FA{filename}.
 ///
@@ -903,7 +1000,7 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
 
   if (content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
@@ -1192,7 +1289,7 @@ static v8::Handle<v8::Value> JS_Move (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot move file")));
   }
 
-  return scope.Close(v8::Undefined());;
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1349,7 +1446,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
 
   if (content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
@@ -1419,7 +1516,7 @@ static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: remove(<filename>)")));
   }
 
-  string filename = TRI_ObjectToString(argv[1]);
+  string filename = TRI_ObjectToString(argv[0]);
 
   int res = TRI_UnlinkFile(filename.c_str());
 
@@ -1427,7 +1524,7 @@ static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot remove file")));
   }
 
-  return scope.Close(v8::Undefined());;
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2049,7 +2146,8 @@ v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
 
 void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& modules,
-                      string const& nodes) {
+                      string const& nodes,
+                      string const& tempPath) {
   v8::HandleScope scope;
 
   v8::Handle<v8::FunctionTemplate> ft;
@@ -2066,11 +2164,16 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
     isolate->SetData(v8g);
   }
 
+  TempPath = tempPath;
+
   // .............................................................................
   // create the global functions
   // .............................................................................
 
+  TRI_AddGlobalFunctionVocbase(context, "FS_CREATE_DIRECTORY", JS_CreateDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
+  TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_FILE", JS_GetTempFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);

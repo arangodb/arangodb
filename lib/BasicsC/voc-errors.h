@@ -253,6 +253,9 @@ extern "C" {
 ///   Will be raised when a user name already exists
 /// - 1703: @LIT{user not found}
 ///   Will be raised when a user name is updated that does not exist
+/// - 1750: @LIT{application not found}
+///   Will be raised when an application is not found or not present in the
+///   specified version.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -1458,6 +1461,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_NOT_FOUND                                          (1703)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1750: ERROR_APPLICATION_NOT_FOUND
+///
+/// application not found
+///
+/// Will be raised when an application is not found or not present in the
+/// specified version.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

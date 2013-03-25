@@ -179,7 +179,7 @@ HttpResponse::HttpResponse (HttpResponseCode code)
     _bodySize(0),
     _freeables() {
 
-  _headers.insert("server", 6, "triagens GmbH High-Performance HTTP Server");
+  _headers.insert("server", 6, "ArangoDB");
   _headers.insert("connection", 10, "Keep-Alive");
   _headers.insert("content-type", 12, "text/plain; charset=utf-8");
 }

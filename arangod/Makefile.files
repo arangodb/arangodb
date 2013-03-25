@@ -17,8 +17,7 @@ bin_arangod_LDADD = \
 	lib/libarango_v8.a \
 	lib/libarango.a \
 	$(LIBS) \
-	@V8_LIBS@ \
-	$(ZLIB_LIBS)
+	@V8_LIBS@ 
 
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \
@@ -67,6 +66,7 @@ bin_arangod_SOURCES = \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
+	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp \
