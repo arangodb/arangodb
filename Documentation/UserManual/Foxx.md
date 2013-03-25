@@ -1,7 +1,63 @@
-# Foxx: Build APIs and simple web applications in ArangoDB
+Foxx {#UserManualFoxx}
+======================
+
+Foxx: Build APIs and simple web applications in ArangoDB
+========================================================
 
 **WARNING: The following documentation file is pure fiction,
 it is not yet finished**
+
+Foxx is an easy way to create APIs and simple web applications
+from within **ArangoDB**.
+It is inspired by Sinatra, the classy Ruby web framework. If FoxxApplication is Sinatra,
+[ArangoDB Actions](http://www.arangodb.org/manuals/current/UserManualActions.html)
+are the corresponding `Rack`. They provide all the HTTP goodness.
+
+So let's get started, shall we?
+
+## Foxx Application
+
+@copydetails JSF_foxx_application_initializer
+@copydetails JSF_foxx_application_start
+
+### Handling Requests
+
+@copydetails JSF_foxx_application_handleRequest
+@copydetails JSF_foxx_application_head
+@copydetails JSF_foxx_application_get
+@copydetails JSF_foxx_application_post
+@copydetails JSF_foxx_application_put
+@copydetails JSF_foxx_application_patch
+@copydetails JSF_foxx_application_delete
+
+### Before and After Hooks
+
+You can use the following two functions to do something
+before or respectively after the normal routing process
+is happening. You could use that for logging or to manipulate
+the request or response (translate it to a certain format for
+example).
+
+@copydetails JSF_foxx_application_before
+@copydetails JSF_foxx_application_after
+
+### More functionality
+
+@copydetails JSF_foxx_application_helper
+@copydetails JSF_foxx_application_accepts
+
+## The functions on a created FoxxApplication
+
+When you have created your FoxxApplication you can now define routes
+on it. You provide each with a function that will handle
+the request. It gets two arguments (four, to be honest. But the
+other two are not relevant for now):
+
+* The request object
+* The response object
+
+
+You can find more about those in their individual sections.
 
 An application build with Foxx is written in JavaScript and deployed
 to ArangoDB directly. ArangoDB serves this application, you do not
