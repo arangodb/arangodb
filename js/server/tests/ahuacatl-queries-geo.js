@@ -115,23 +115,23 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      locations = db.UnitTestsAhuacatlLocations;
-      if (locations.count() == 0) {
-        for (var lat = -40; lat <= 40; ++lat) {
-          for (var lon = -40; lon <= 40; ++lon) {
-            locations.save({"latitude" : lat, "longitude" : lon });
-          }
-        }
+      db._drop("UnitTestsAhuacatlLocations");
+      db._drop("UnitTestsAhuacatlLocationsNon");
 
-        locations.ensureGeoIndex("latitude", "longitude");
+      locations = db._create("UnitTestsAhuacatlLocations");
+      for (var lat = -40; lat <= 40; ++lat) {
+        for (var lon = -40; lon <= 40; ++lon) {
+          locations.save({"latitude" : lat, "longitude" : lon });
+        }
       }
 
-      locationsNon = db.UnitTestsAhuacatlLocationsNon;
-      if (locationsNon.count() == 0) {
-        for (var lat = -40; lat <= 40; ++lat) {
-          for (var lon = -40; lon <= 40; ++lon) {
-            locationsNon.save({"latitude" : lat, "longitude" : lon });
-          }
+      locations.ensureGeoIndex("latitude", "longitude");
+
+      locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
+
+      for (var lat = -40; lat <= 40; ++lat) {
+        for (var lon = -40; lon <= 40; ++lon) {
+          locationsNon.save({"latitude" : lat, "longitude" : lon });
         }
       }
     },
@@ -141,6 +141,8 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop("UnitTestsAhuacatlLocations");
+      db._drop("UnitTestsAhuacatlLocationsNon");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

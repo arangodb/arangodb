@@ -13,7 +13,10 @@ $(document).ready(function() {
       "dashboard"                           : "dashboard",
       "query"                               : "query",
       "logs"                                : "logs",
-      "about"                               : "about"
+      "about"                               : "about",
+      "aarkvard"                            : "aarkvard",
+      "aarkvard/swagger"                    : "swagger"
+      
     },
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
@@ -149,6 +152,21 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
+    },
+    
+    aarkvard: function() {
+      if (this.aarkvardView === undefined) {
+        var foxxList = new window.FoxxCollection();
+        this.aarkvardView = new FoxxListView({
+          collection: foxxList
+        });
+      }
+      this.aarkvardView.render();
+      this.naviView.selectMenuItem('aarkvard-menu');
+    },
+    
+    swagger: function() {
+      alert("Sorry not yet linked");
     }
 
   });

@@ -90,12 +90,12 @@ static TRI_transaction_collection_global_t* CreateGlobalInstance (TRI_transactio
   globalInstance = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_global_t), false);
 
   if (globalInstance != NULL) {
-    globalInstance->_cid                = cid;
-    globalInstance->_lastStartedReader  = 0;
-    globalInstance->_lastFinishedReader = 0;
-    globalInstance->_lastStartedWriter  = 0;
-    globalInstance->_lastAbortedWriter  = 0;
-    globalInstance->_lastFinishedWriter = 0;
+    globalInstance->_cid                       = cid;
+    globalInstance->_stats._lastStartedReader  = 0;
+    globalInstance->_stats._lastFinishedReader = 0;
+    globalInstance->_stats._lastStartedWriter  = 0;
+    globalInstance->_stats._lastAbortedWriter  = 0;
+    globalInstance->_stats._lastFinishedWriter = 0;
 
     TRI_InitReadWriteLock(&globalInstance->_lock);
   }
@@ -184,22 +184,22 @@ static int UpdateGlobalStats (const TRI_transaction_t const* trx,
 
     if (collection->_accessType == TRI_TRANSACTION_READ) {
       if (status == TRI_TRANSACTION_RUNNING) {    
-        globalInstance->_lastStartedReader = trx->_id;
+        globalInstance->_stats._lastStartedReader = trx->_id;
       }
       else if (status == TRI_TRANSACTION_ABORTED ||
                status == TRI_TRANSACTION_COMMITTED) {
-        globalInstance->_lastFinishedReader = trx->_id;
+        globalInstance->_stats._lastFinishedReader = trx->_id;
       }
     }
     else {
       if (status == TRI_TRANSACTION_RUNNING) {    
-        globalInstance->_lastStartedWriter = trx->_id;
+        globalInstance->_stats._lastStartedWriter = trx->_id;
       }
       else if (status == TRI_TRANSACTION_ABORTED) {
-        globalInstance->_lastAbortedWriter = trx->_id;
+        globalInstance->_stats._lastAbortedWriter = trx->_id;
       }
       else if (status == TRI_TRANSACTION_COMMITTED) {
-        globalInstance->_lastFinishedWriter = trx->_id;
+        globalInstance->_stats._lastFinishedWriter = trx->_id;
       }
     }
 
@@ -291,6 +291,28 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* context,
 
     FreeGlobalInstance(globalInstance);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief populates a struct with transaction statistics for a collections
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t* context,
+                                           const TRI_transaction_cid_t cid,
+                                           TRI_transaction_collection_stats_t* stats) {
+  TRI_transaction_collection_global_t* globalInstance;
+
+  globalInstance = GetGlobalInstance(context, cid, false);
+
+  if (globalInstance == NULL) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  TRI_ReadLockReadWriteLock(&globalInstance->_lock);
+  memcpy(stats, &globalInstance->_stats, sizeof(TRI_transaction_collection_stats_t));
+  TRI_ReadUnlockReadWriteLock(&globalInstance->_lock);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -930,7 +952,9 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
   }
   else {
     // something is wrong
-    UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
+    if (nestingLevel == 0) {
+      UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
+    }
 
     // free what we have got so far
     ReleaseCollections(trx, nestingLevel);

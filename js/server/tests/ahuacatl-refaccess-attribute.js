@@ -62,15 +62,14 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      collection = internal.db.UnitTestsAhuacatlRefAccess;
+      internal.db._drop("UnitTestsAhuacatlRefAccess");
+      collection = internal.db._create("UnitTestsAhuacatlRefAccess");
 
-      if (collection.count() == 0) {
-        for (var i = 1; i <= 10; ++i) {
-          collection.save({ "val" : i });
-        }
-
-        collection.ensureSkiplist("val");
+      for (var i = 1; i <= 10; ++i) {
+        collection.save({ "val" : i });
       }
+
+      collection.ensureSkiplist("val");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +77,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      internal.db._drop("UnitTestsAhuacatlRefAccess");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
