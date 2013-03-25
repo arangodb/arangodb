@@ -105,6 +105,60 @@
       expect($("svg line.link").length).toEqual(4);
     });
     
+    
+    it('should be able to add a click event', function () {
+      var one = {
+        "_id": 1
+      },
+      two = {
+        "_id": 2
+      },
+      three = {
+        "_id": 3
+      },
+      four = {
+        "_id": 4
+      },
+      edges = [
+        {
+          "source": one,
+          "target": two
+        },
+        {
+          "source": two,
+          "target": three
+        },
+        {
+          "source": three,
+          "target": four
+        },
+        {
+          "source": four,
+          "target": one
+        }
+      ],
+      clicked = [false, false, false, false],
+      click = function (edge) {
+        clicked[edge.source._id-1] = !clicked[edge.source._id-1];
+      },
+      shaper = new EdgeShaper(d3.select("svg")),
+      first,
+      third;
+      
+      shaper.on("click", click);
+      shaper.drawEdges(edges);
+      first = $("#1-2").get(0);
+      third = $("#3-4").get(0);
+      first.__onclick();
+      third.__onclick();
+      
+      expect($("svg line").length).toEqual(4);
+      expect(clicked[0]).toBeTruthy();
+      expect(clicked[2]).toBeTruthy();
+      expect(clicked[1]).toBeFalsy();
+      expect(clicked[3]).toBeFalsy();
+    });
+    
     describe('configured for label', function() {
       
       var shaper;

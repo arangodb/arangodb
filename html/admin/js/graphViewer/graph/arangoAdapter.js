@@ -251,7 +251,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     + edgeCollection + ", "
     + "\"" + nodeId + "\", "
     + "\"outbound\", {"
-    + "startegy: \"depthfirst\","
+    + "strategy: \"depthfirst\","
     + "maxDepth: 1,"
     + "paths: true"
     + "})";
