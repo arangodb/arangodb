@@ -391,7 +391,6 @@ _.extend(FoxxApplication.prototype, {
   }
 });
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_BaseMiddleware_initializer
 /// @brief The Base Middleware
@@ -406,15 +405,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       requestFunctions,
       _ = require("underscore");
 
-////////////////////////////////////////////////////////////////////////////////
-/// The Request Object
-/// Every request object has the following attributes from the underlying Actions,
-/// amongst others:
-///
-/// * path: The complete path as supplied by the user
-///
-/// FoxxApplication adds the following methods to this request object:
-////////////////////////////////////////////////////////////////////////////////
     requestFunctions = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_BaseMiddleware_request_body
@@ -446,18 +436,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
         return ps[key];
       }
     };
-
-////////////////////////////////////////////////////////////////////////////////
-/// The Response Object
-/// Every response object has the following attributes from the underlying Actions:
-///
-/// * contentType
-/// * responseCode
-/// * body
-/// * headers (an object)
-///
-/// FoxxApplication adds the following methods to this response object.
-////////////////////////////////////////////////////////////////////////////////
 
     responseFunctions = {
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,9 +561,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
       }
     };
 
-/// Now enhance the request and response as described above and call next at the
-/// end of this middleware (otherwise your application would never
-/// be executed. Would be a shame, really).
     request = _.extend(request, requestFunctions);
     response = _.extend(response, responseFunctions);
     next();
@@ -597,37 +572,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief The Format Middleware
-///
-/// Unlike the `BaseMiddleware` this Middleware is only loaded if you
-/// want it. This Middleware gives you Rails-like format handling via
-/// the `extension` of the URL or the accept header.
-/// Say you request an URL like `/people.json`:
-/// The `FormatMiddleware` will set the format of the request to JSON
-/// and then delete the `.json` from the request. You can therefore write
-/// handlers that do not take an `extension` into consideration and instead
-/// handle the format via a simple String.
-/// To determine the format of the request it checks the URL and then
-/// the `accept` header. If one of them gives a format or both give
-/// the same, the format is set. If the formats are not the same,
-/// an error is raised.
-///
-/// Use it by calling:
-///
-/// @EXAMPLES
-///     FormatMiddleware = require('foxx').FormatMiddleware;
-///     app.before("/*", FormatMiddleware.new(['json']));
-///
-/// or the shortcut:
-///
-/// @EXAMPLES
-///     app.accepts(['json']);
-///
-/// In both forms you can give a default format as a second parameter,
-/// if no format could be determined. If you give no `defaultFormat` this
-/// case will be handled as an error.
-////////////////////////////////////////////////////////////////////////////////
 FormatMiddleware = function (allowedFormats, defaultFormat) {
   'use strict';
   var stringRepresentation, middleware = function (request, response, options, next) {
@@ -702,9 +646,6 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   };
 };
 
-/// We finish off with exporting FoxxApplication and the middlewares.
-/// Everything else will remain our secret.
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a manifest file
 ////////////////////////////////////////////////////////////////////////////////
@@ -731,8 +672,7 @@ exports.installApp = function (name, mount, options) {
 
   if (mount === "") {
     mount = "/";
-  }
-  else {
+  } else {
     mount = INTERNAL.normalizeURL(mount);
   }
 
