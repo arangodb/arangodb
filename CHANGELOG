@@ -1,6 +1,10 @@
 v1.2.2 (XXXX-XX-XX)
 -------------------
 
+* issue #459: fulltext internal memory allocation didn't scale well
+  This fix improves loading times for collections with fulltext indexes that have
+  lots of equal words indexed.
+
 * issue #212: auto-increment support
 
   The feature can be used by creating a collection with the extra `keyOptions`
