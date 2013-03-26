@@ -4,6 +4,7 @@
 /*global waitsFor, runs, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
+/*global helper*/
 /*global GraphViewer*/
 
 ////////////////////////////////////////////////////////////////////////////////
