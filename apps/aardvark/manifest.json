@@ -1,0 +1,10 @@
+{
+  "name": "aardvark",
+  "version": "1.0",
+
+  "apps": {
+    "/": "aardvark.js"
+  },
+  
+  "models": "models"
+}
