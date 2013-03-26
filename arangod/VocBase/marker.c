@@ -37,10 +37,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a marker
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CloneMarker (TRI_df_marker_t* dst,
+                      TRI_df_marker_t const* src,
+                      TRI_voc_size_t copyLength,
+                      TRI_voc_size_t newSize,
+                      TRI_voc_tick_t tick) {
+  TRI_ASSERT_DEBUG(src != NULL);
+  TRI_ASSERT_DEBUG(dst != NULL);
+  TRI_ASSERT_DEBUG(copyLength > 0);
+  TRI_ASSERT_DEBUG(newSize > 0);
+  TRI_ASSERT_DEBUG(tick > 0);
+
+  memcpy(dst, src, copyLength);
+
+  dst->_size = newSize;
+  dst->_crc  = 0;
+  dst->_tick = tick;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a marker with the most basic information
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMarker (TRI_df_marker_t* const marker,
+void TRI_InitMarker (TRI_df_marker_t* marker,
                      TRI_df_marker_type_e type,
                      TRI_voc_size_t size,
                      TRI_voc_tick_t tick) {
@@ -49,10 +71,13 @@ void TRI_InitMarker (TRI_df_marker_t* const marker,
   TRI_ASSERT_DEBUG(size > 0);
   TRI_ASSERT_DEBUG(tick > 0);
 
-  marker->_type = type;
+  // initialise the basic byytes
+  memset(marker, 0, size);
+
   marker->_size = size;
-  marker->_tick = tick;
   marker->_crc  = 0;
+  marker->_type = type;
+  marker->_tick = tick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

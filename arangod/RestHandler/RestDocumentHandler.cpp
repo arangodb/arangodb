@@ -1312,7 +1312,7 @@ bool RestDocumentHandler::deleteDocument () {
   const TRI_voc_cid_t cid = trx.cid();
 
   TRI_voc_rid_t rid = 0;
-  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
+  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid, false);
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }

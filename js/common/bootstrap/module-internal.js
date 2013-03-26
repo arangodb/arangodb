@@ -1,17 +1,18 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE,
-  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
-  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
+/*global require, module, Module, FS_CREATE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
+  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD, 
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, 
+  SYS_RAND, SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
   SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
-  SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS,
+  SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT,
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION */
+  REQUEST_TIME_DISTRIBUTION, HOME, DEVELOPMENT_MODE, THREAD_NUMBER, PATH_SEPARATOR, APP_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -57,8 +58,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   // system functions
+  if (typeof SYS_DOWNLOAD !== "undefined") {
+    internal.download = SYS_DOWNLOAD;
+    delete SYS_DOWNLOAD;
+  }
+  
   if (typeof SYS_EXECUTE !== "undefined") {
-    internal.execute = SYS_EXECUTE;
+    internal.executeScript = SYS_EXECUTE;
     delete SYS_EXECUTE;
   }
 
@@ -162,15 +168,35 @@
     internal.wait = SYS_WAIT;
     delete SYS_WAIT;
   }
+  
+  if (typeof FS_CREATE_DIRECTORY !== "undefined") {
+    internal.createDirectory = FS_CREATE_DIRECTORY;
+    delete FS_CREATE_DIRECTORY;
+  }
 
   if (typeof FS_EXISTS !== "undefined") {
     internal.exists = FS_EXISTS;
     delete FS_EXISTS;
   }
+  
+  if (typeof FS_GET_TEMP_PATH !== "undefined") {
+    internal.getTempPath = FS_GET_TEMP_PATH;
+    delete FS_GET_TEMP_PATH;
+  }
+  
+  if (typeof FS_GET_TEMP_FILE !== "undefined") {
+    internal.getTempFile = FS_GET_TEMP_FILE;
+    delete FS_GET_TEMP_FILE;
+  }
 
   if (typeof FS_IS_DIRECTORY !== "undefined") {
     internal.isDirectory = FS_IS_DIRECTORY;
     delete FS_IS_DIRECTORY;
+  }
+  
+  if (typeof FS_IS_FILE !== "undefined") {
+    internal.isFile = FS_IS_FILE;
+    delete FS_IS_FILE;
   }
 
   if (typeof FS_LIST_TREE !== "undefined") {
@@ -186,6 +212,16 @@
   if (typeof FS_REMOVE !== "undefined") {
     internal.remove = FS_REMOVE;
     delete FS_REMOVE;
+  }
+  
+  if (typeof FS_UNZIP_FILE !== "undefined") {
+    internal.unzipFile = FS_UNZIP_FILE;
+    delete FS_UNZIP_FILE;
+  }
+  
+  if (typeof FS_ZIP_FILE !== "undefined") {
+    internal.zipFile = FS_ZIP_FILE;
+    delete FS_ZIP_FILE;
   }
 
   if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {
@@ -241,6 +277,28 @@
     delete SYS_REQUEST_STATISTICS;
   }
 
+  internal.homeDirectory = "";
+
+  if (typeof HOME !== "undefined") {
+    internal.homeDirectory = HOME;
+    delete HOME;
+  }
+
+  internal.developmentMode = false;
+
+  if (typeof DEVELOPMENT_MODE !== "undefined") {
+    internal.developmentMode = DEVELOPMENT_MODE;
+    delete DEVELOPMENT_MODE;
+  }
+
+  if (internal.developmentMode) {
+    if (typeof THREAD_NUMBER !== "undefined" && THREAD_NUMBER === 0) {
+      internal.log("warning", "################################################################################");
+      internal.log("warning", "development mode is active, never use this in production");
+      internal.log("warning", "################################################################################");
+    }
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +316,7 @@
 /// @brief modules path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.MODULES_PATH = "";
+  internal.MODULES_PATH = [];
 
   if (typeof MODULES_PATH !== "undefined") {
     internal.MODULES_PATH = MODULES_PATH;
@@ -266,14 +324,25 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief node modules path
+/// @brief package path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.PACKAGE_PATH = "";
+  internal.PACKAGE_PATH = [];
 
   if (typeof PACKAGE_PATH !== "undefined") {
     internal.PACKAGE_PATH = PACKAGE_PATH;
     delete PACKAGE_PATH;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief app path
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.APP_PATH = [];
+
+  if (typeof APP_PATH !== "undefined") {
+    internal.APP_PATH = APP_PATH;
+    delete APP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,6 +414,17 @@
   }
 
   internal.colors = (internal.COLOR_OUTPUT ? internal.COLORS : internal.NOCOLORS);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief path separator
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.PATH_SEPARATOR = "/";
+
+  if (typeof PATH_SEPARATOR !== "undefined") {
+    internal.PATH_SEPARATOR = PATH_SEPARATOR;
+    delete PATH_SEPARATOR;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief valgrind flag
@@ -735,6 +815,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unit-tests
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.unitTests = function () {
+    return SYS_UNIT_TESTS;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unit-tests result
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.setUnitTestsResult = function (value) {
+    SYS_UNIT_TESTS_RESULT = value;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief global print
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -935,38 +1031,6 @@
       });
 
     return target;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file from the file-system
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.loadFile = function (path) {
-    var i;
-
-    // try to load the file
-    var paths = internal.MODULES_PATH;
-
-    for (i = 0;  i < paths.length;  ++i) {
-      var p = paths[i];
-      var n;
-
-      if (p === "") {
-        n = "." + path + ".js";
-      }
-      else {
-        n = p + "/" + path + ".js";
-      }
-
-      if (internal.exists(n)) {
-        return internal.load(n);
-      }
-    }
-
-    throw "cannot find a file named '"
-        + path
-        + "' using the module path(s) '"
-        + internal.MODULES_PATH + "'";
   };
 
 ////////////////////////////////////////////////////////////////////////////////

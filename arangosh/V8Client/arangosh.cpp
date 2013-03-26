@@ -886,6 +886,54 @@ static v8::Handle<v8::Value> ClientConnection_httpPatchRaw (v8::Arguments const&
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection send file helper
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+
+  // check params
+  if (argv.Length() != 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: sendFile(<url>, <file>)")));
+  }
+
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  
+  const string infile = TRI_ObjectToString(argv[1]);
+  if (! TRI_ExistsFile(infile.c_str())) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_FILE_NOT_FOUND)));
+  }
+  
+  size_t bodySize;
+  char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
+
+  if (body == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("could not read file")));
+  }
+    
+  v8::TryCatch tryCatch;
+
+  // check header fields
+  map<string, string> headerFields;
+
+  v8::Handle<v8::Value> result = connection->postData(*url, body, bodySize, headerFields);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, body);
+  
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1139,8 +1187,8 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(UnitTests[i].c_str()));
   }
 
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
 
   // run tests
   char const* input = "require(\"jsunity\").runCommandLineTests();";
@@ -1217,8 +1265,8 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(JsLint[i].c_str()));
   }
 
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
 
   // run tests
   char const* input = "require(\"jslint\").runCommandLineTests({ });";
@@ -1329,7 +1377,6 @@ static void arangoshExitFunction(int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-
   int ret = EXIT_SUCCESS;
 
   arangoshEntryFunction();
@@ -1392,17 +1439,15 @@ int main (int argc, char* argv[]) {
   context->Enter();
 
   // set pretty print default: (used in print.js)
-  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
-  // add colors for print.js
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::Boolean::New(BaseClient.colors()));
+  TRI_AddGlobalVariableVocbase(context, "PRETTY_PRINT", v8::Boolean::New(BaseClient.prettyPrint()));
 
+  // add colors for print.js
+  TRI_AddGlobalVariableVocbase(context, "COLOR_OUTPUT", v8::Boolean::New(BaseClient.colors()));
 
   // add function SYS_OUTPUT to use pager
-  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
-                         v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
-                         v8::ReadOnly);
+  TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
-  TRI_InitV8Utils(context, StartupModules, StartupNodeModules);
+  TRI_InitV8Utils(context, StartupModules, StartupNodeModules, BaseClient.tempPath());
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)
@@ -1432,6 +1477,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("POST_RAW", v8::FunctionTemplate::New(ClientConnection_httpPostRaw));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
     connection_proto->Set("PUT_RAW", v8::FunctionTemplate::New(ClientConnection_httpPutRaw));
+    connection_proto->Set("SEND_FILE", v8::FunctionTemplate::New(ClientConnection_httpSendFile));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
@@ -1440,46 +1486,21 @@ int main (int argc, char* argv[]) {
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
 
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
-    connection_inst->SetInternalFieldCount(2);
-
-    context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());
+    connection_inst->SetInternalFieldCount(2);    
+    
+    TRI_AddGlobalVariableVocbase(context, "ArangoConnection", connection_proto->NewInstance());
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
 
     // add the client connection to the context:
-    context->Global()->Set(v8::String::New("SYS_ARANGO"),
-                           wrapV8ClientConnection(ClientConnection),
-                           v8::ReadOnly);
+    TRI_AddGlobalVariableVocbase(context, "SYS_ARANGO", wrapV8ClientConnection(ClientConnection));
   }
-
-  context->Global()->Set(v8::String::New("SYS_START_PAGER"),
-                         v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction(),
-                         v8::ReadOnly);
-  context->Global()->Set(v8::String::New("SYS_STOP_PAGER"),
-                         v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_IMPORT_CSV_FILE"),
-                         v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction(),
-                         v8::ReadOnly);
-  context->Global()->Set(v8::String::New("SYS_IMPORT_JSON_FILE"),
-                         v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
-                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COMPARE_STRING"),
-                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("HAS_ICU"),
-#ifdef TRI_ICU_VERSION
-                         v8::Boolean::New(true),
-#else
-                         v8::Boolean::New(false),
-#endif
-                         v8::ReadOnly);
+    
+  TRI_AddGlobalVariableVocbase(context, "SYS_START_PAGER", v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_STOP_PAGER", v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_CSV_FILE", v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_JSON_FILE", v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "NORMALIZE_STRING", v8::FunctionTemplate::New(JS_normalize_string)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "COMPARE_STRING", v8::FunctionTemplate::New(JS_compare_string)->GetFunction());
 
   // .............................................................................
   // banner
@@ -1621,8 +1642,31 @@ int main (int argc, char* argv[]) {
   LOGGER_DEBUG("using JavaScript startup files at '" << StartupPath << "'");
   StartupLoader.setDirectory(StartupPath);
 
-  context->Global()->Set(v8::String::New("ARANGO_QUIET"), v8::Boolean::New(BaseClient.quiet()), v8::ReadOnly);
-  context->Global()->Set(v8::String::New("VALGRIND"), v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
+  TRI_AddGlobalVariableVocbase(context, "ARANGO_QUIET", v8::Boolean::New(BaseClient.quiet()));
+  TRI_AddGlobalVariableVocbase(context, "VALGRIND", v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
+
+  bool isExecuteScript = false;
+  bool isCheckScripts = false;
+  bool isUnitTests = false;
+  bool isJsLint = false;
+
+  if (! ExecuteScripts.empty()) {
+    isExecuteScript = true;
+  }
+  else if (! CheckScripts.empty()) {
+    isCheckScripts = true;
+  }
+  else if (! UnitTests.empty()) {
+    isUnitTests = true;
+  }
+  else if (! JsLint.empty()) {
+    isJsLint = true;
+  }
+
+  TRI_AddGlobalVariableVocbase(context, "IS_EXECUTE_SCRIPT", v8::Boolean::New(isExecuteScript));
+  TRI_AddGlobalVariableVocbase(context, "IS_CHECK_SCRIPT", v8::Boolean::New(isCheckScripts));
+  TRI_AddGlobalVariableVocbase(context, "IS_UNIT_TESTS", v8::Boolean::New(isUnitTests));
+  TRI_AddGlobalVariableVocbase(context, "IS_JS_LINT", v8::Boolean::New(isJsLint));
 
   // load all init files
   vector<string> files;
@@ -1633,7 +1677,7 @@ int main (int argc, char* argv[]) {
   files.push_back("common/bootstrap/module-console.js");  // needs internal
   files.push_back("common/bootstrap/errors.js");
 
-  if (JsLint.empty()) {
+  if (! isJsLint) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 
@@ -1653,12 +1697,11 @@ int main (int argc, char* argv[]) {
 
   BaseClient.openLog();
 
-
   // .............................................................................
   // run normal shell
   // .............................................................................
 
-  if (ExecuteScripts.empty() && CheckScripts.empty() && UnitTests.empty() && JsLint.empty()) {
+  if (! (isExecuteScript || isCheckScripts || isUnitTests || isJsLint)) {
     RunShell(context, promptError);
   }
 
@@ -1669,19 +1712,19 @@ int main (int argc, char* argv[]) {
   else {
     bool ok = false;
 
-    if (! ExecuteScripts.empty()) {
+    if (isExecuteScript) {
       // we have scripts to execute or syntax check
       ok = RunScripts(context, ExecuteScripts, true);
     }
-    else if (! CheckScripts.empty()) {
+    else if (isCheckScripts) {
       // we have scripts to syntax check
       ok = RunScripts(context, CheckScripts, false);
     }
-    else if (! UnitTests.empty()) {
+    else if (isUnitTests) {
       // we have unit tests
       ok = RunUnitTests(context);
     }
-    else if (! JsLint.empty()) {
+    else if (isJsLint) {
       // we don't have unittests, but we have files to jslint
       ok = RunJsLint(context);
     }

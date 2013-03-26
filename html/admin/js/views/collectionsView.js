@@ -15,22 +15,21 @@ var collectionsView = Backbone.View.extend({
 
     var searchOptions = this.collection.searchOptions;
 
+    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
     this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
       $('.thumbnails', this.el).append(new window.CollectionListItemView({model: arango_collection}).render().el);
     }, this);
 
-    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
+    
     $('#searchInput').val(searchOptions.searchPhrase);
     $('#searchInput').focus();
     var val = $('#searchInput').val();
     $('#searchInput').val('');
     $('#searchInput').val(val);
     
-
     return this;
   },
   events: {
-    "click .icon-info-sign" : "details",
     "keydown #searchInput" : "restrictToSearchPhraseKey",
     "change #searchInput"   : "restrictToSearchPhrase",
     "click #searchSubmit"   : "restrictToSearchPhrase",
@@ -40,6 +39,7 @@ var collectionsView = Backbone.View.extend({
     "click #checkDocument"  : "checkDocument",
     "click #checkEdge"      : "checkEdge"
   },
+
   checkSystem: function () {
     var searchOptions = this.collection.searchOptions;
     var oldValue = searchOptions.includeSystem;

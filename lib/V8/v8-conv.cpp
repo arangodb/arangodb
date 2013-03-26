@@ -297,6 +297,10 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     bool ok = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects);
 
     if (! ok) {
+      if (! ok) {
+        LOG_TRACE("failed to convert position '%d'", (int) i);
+      }
+
       for (e = p, p = values;  p < e;  ++p) {
         if (p->_value != 0) {
           TRI_Free(shaper->_memoryZone, p->_value);
@@ -365,6 +369,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
 
+      LOG_TRACE("shaper failed to find shape of type %d", (int) shape->base._type);
       return false;
     }
 
@@ -433,6 +438,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       TRI_Free(shaper->_memoryZone, values);
       TRI_Free(shaper->_memoryZone, shape);
 
+      LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
       return false;
     }
 
@@ -608,6 +614,10 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
     else {
       ok = FillShapeValueJson(shaper, p, val, seenHashes, seenObjects);
+
+      if (! ok) {
+        LOG_TRACE("failed to convert attribute '%s'", *keyStr);
+      }
     }
 
     if (! ok) {
@@ -756,6 +766,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   found = shaper->findShape(shaper, &a->base);
 
   if (found == 0) {
+    LOG_TRACE("shaper failed to find shape %d", (int) a->base._type);
     TRI_Free(shaper->_memoryZone, a);
     return false;
   }
@@ -774,6 +785,9 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
                                 v8::Handle<v8::Value> json,
                                 set<int>& seenHashes,
                                 vector< v8::Handle<v8::Object> >& seenObjects) {
+  bool result = false;
+
+  // check for cycles
   if (json->IsObject()) {
     v8::Handle<v8::Object> o = json->ToObject();
     int hash = o->GetIdentityHash();
@@ -784,7 +798,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
       for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
         if (json->StrictEquals(*i)) {
           LOG_TRACE("found duplicate for hash %d", hash);
-          return FillShapeValueNull(shaper, dst);
+          return false;
         }
       }
     }
@@ -796,46 +810,67 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
   }
 
   if (json->IsNull()) {
-    return FillShapeValueNull(shaper, dst);
+    result = FillShapeValueNull(shaper, dst);
   }
 
-  if (json->IsBoolean()) {
-    return FillShapeValueBoolean(shaper, dst, json->ToBoolean());
+  else if (json->IsBoolean()) {
+    result = FillShapeValueBoolean(shaper, dst, json->ToBoolean());
   }
 
-  if (json->IsBooleanObject()) {
-    v8::Handle<v8::BooleanObject> bo = v8::Handle<v8::BooleanObject>::Cast(json);
-    return FillShapeValueBoolean(shaper, dst, bo);
+  else if (json->IsBooleanObject()) {
+    result = FillShapeValueBoolean(shaper, dst, v8::Handle<v8::BooleanObject>::Cast(json));
   }
 
-  if (json->IsNumber()) {
-    return FillShapeValueNumber(shaper, dst, json->ToNumber());
+  else if (json->IsNumber()) {
+    result = FillShapeValueNumber(shaper, dst, json->ToNumber());
   }
 
-  if (json->IsNumberObject()) {
-    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(json);
-    return FillShapeValueNumber(shaper, dst, no);
+  else if (json->IsNumberObject()) {
+    result = FillShapeValueNumber(shaper, dst, v8::Handle<v8::NumberObject>::Cast(json));
   }
 
-  if (json->IsString()) {
-    return FillShapeValueString(shaper, dst, json->ToString());
+  else if (json->IsString()) {
+    result = FillShapeValueString(shaper, dst, json->ToString());
   }
 
-  if (json->IsStringObject()) {
-    v8::Handle<v8::StringObject> so = v8::Handle<v8::StringObject>::Cast(json);
-    return FillShapeValueString(shaper, dst, so->StringValue());
+  else if (json->IsStringObject()) {
+    result = FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->StringValue());
   }
 
-  if (json->IsArray()) {
-    v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(json);
-    return FillShapeValueList(shaper, dst, array, seenHashes, seenObjects);
+  else if (json->IsArray()) {
+    result = FillShapeValueList(shaper, dst, v8::Handle<v8::Array>::Cast(json), seenHashes, seenObjects);
   }
 
-  if (json->IsObject()) {
-    return FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects);
+  else if (json->IsObject()) {
+    result = FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects);
+    seenObjects.pop_back();
   }
 
-  return false;
+  else if (json->IsRegExp()) {
+    LOG_TRACE("shaper failed because a regexp cannot be converted");
+  }
+
+  else if (json->IsFunction()) {
+    LOG_TRACE("shaper failed because a function cannot be converted");
+  }
+
+  else if (json->IsExternal()) {
+    LOG_TRACE("shaper failed because an external cannot be converted");
+  }
+
+  else if (json->IsDate()) {
+    LOG_TRACE("shaper failed because a date cannot be converted");
+  }
+
+  else if (json->IsUndefined()) {
+    LOG_TRACE("shaper failed because an undefined cannot be converted");
+  }
+
+  else {
+    LOG_TRACE("shaper failed to convert object");
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1367,6 +1402,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> object, TRI_sha
   bool ok = FillShapeValueJson(shaper, &dst, object, seenHashes, seenObjects);
 
   if (! ok) {
+    TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
     return 0;
   }
 
@@ -1468,6 +1504,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
         }
       }
     }
+
     return arrayJson;
   }
 

@@ -41,8 +41,10 @@
 
 
 #include "BasicsC/conversions.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/random.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/threads.h"
@@ -276,6 +278,7 @@ int64_t TRI_SizeFile (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 bool TRI_IsWritable (char const* path) {
   // ..........................................................................
   // will attempt the following:
@@ -287,11 +290,14 @@ bool TRI_IsWritable (char const* path) {
   // implementation for seems to be non-trivial
   return true;
 }
+
 #else
+
 bool TRI_IsWritable (char const* path) {
   // we can use POSIX access() from unistd.h to check for write permissions
   return (access(path, W_OK) == 0);
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,11 +318,14 @@ bool TRI_IsDirectory (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 bool TRI_IsSymbolicLink (char const* path) {
   // todo : check if a file is a symbolic link - without opening the file
   return false;
 }
+
 #else
+
 bool TRI_IsSymbolicLink (char const* path) {
   struct stat stbuf;
   int res;
@@ -325,6 +334,7 @@ bool TRI_IsSymbolicLink (char const* path) {
 
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,6 +348,52 @@ bool TRI_ExistsFile (char const* path) {
   res = stat(path, &stbuf);
 
   return res == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a directory, recursively
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateRecursiveDirectory (char const* path) {
+  char* copy;
+  char* p;
+  char* s;
+  int res;
+  int m;
+
+  res = TRI_ERROR_NO_ERROR;
+  p = s = copy = TRI_DuplicateString(path);
+
+  while (*p != '\0') {
+    if (*p == TRI_DIR_SEPARATOR_CHAR) {
+      if (p - s > 0) {
+
+        *p = '\0';
+        m = TRI_MKDIR(copy, 0777);
+
+        *p = TRI_DIR_SEPARATOR_CHAR;
+        s = p + 1;
+
+        if (m != 0 && errno != EEXIST) {
+          res = errno;
+          break;
+        }
+      }
+    }
+    p++;
+  }
+
+  if (res == TRI_ERROR_NO_ERROR && (p - s > 0)) {
+    m = TRI_MKDIR(copy, 0777);
+
+    if (m != 0 && errno != EEXIST) {
+      res = errno;
+    }
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, copy);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -757,7 +813,7 @@ bool TRI_fsync (int fd) {
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename) {
+char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename, size_t* length) {
   TRI_string_buffer_t result;
   char buffer[10240];
   int fd;
@@ -799,6 +855,10 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename) {
 
       return NULL;
     }
+  }
+
+  if (length != NULL) {
+    *length = TRI_LengthStringBuffer(&result); 
   }
 
   TRI_CLOSE(fd);
@@ -953,6 +1013,7 @@ int TRI_CreateLockFile (char const* filename) {
 
   return TRI_ERROR_NO_ERROR;
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1172,6 +1233,7 @@ int TRI_DestroyLockFile (char const* filename) {
   }
 
   fd = TRI_OPEN(filename, O_RDWR);
+  // TODO: what happens if the file does not exist?
   res = flock(fd, LOCK_UN);
   TRI_CLOSE(fd);
 
@@ -1193,6 +1255,26 @@ int TRI_DestroyLockFile (char const* filename) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the relative path of a file
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetRelativePath (char const* filename) {
+  const char* p;
+  const char* s;
+  
+  p = s = filename;
+
+  while (*p != '\0') {
+    if (*p == '\\' || *p == '/' || *p == ':') {
+      s = p + 1;
+    }
+    p++;
+  }
+
+  return TRI_DuplicateString(s); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
 /// in contrast to realpath() this function can also be used to determine the
 /// full path for files & directories that do not exist. realpath() would fail
@@ -1202,6 +1284,7 @@ int TRI_DestroyLockFile (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirectory) {
   char* result;
   size_t cwdLength;
@@ -1296,6 +1379,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
 
 
 #else
+
 char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   char* result;
   char* ptr;
@@ -1345,6 +1429,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 
   return result;
 }
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1422,9 +1507,199 @@ char* TRI_LocateBinaryPath (char const* argv0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locates the home directory
+///
+/// Under windows there is no 'HOME' directory as such so getenv("HOME") may
+/// return NULL -- which it does under windows.  A safer approach below
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+
+char* TRI_HomeDirectory () {
+  char const* drive = getenv("HOMEDRIVE");
+  char const* path = getenv("HOMEPATH");
+  char* result;
+
+  if (drive != 0 && path != 0) {
+    result = TRI_Concatenate2String(drive, path);
+  }
+  else {
+    result = TRI_DuplicateString("");
+  }
+
+  retun result;
+}
+
+#else
+
+char* TRI_HomeDirectory () {
+  char const* result = getenv("HOME");
+
+  if (result == 0) {
+    result = ".";
+  }
+
+  return TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, result);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate the crc32 checksum of a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_Crc32File (char const* path, uint32_t* crc) {
+  FILE* fin;
+  void* buffer;
+  size_t bufferSize;
+  int res;
+
+  *crc = TRI_InitialCrc32();
+
+  bufferSize = 4096;
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+
+  if (buffer == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  fin = fopen(path, "rb");
+
+  if (fin == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+
+  while (true) {
+    int sizeRead = (int) fread(buffer, 1, bufferSize, fin);
+
+    if (sizeRead < bufferSize) {
+      if (feof(fin) == 0) {
+        res = errno;
+        break;
+      }
+    }
+
+    if (sizeRead > 0) {
+      *crc = TRI_BlockCrc32(*crc, buffer, sizeRead);
+    }
+    else if (sizeRead <= 0) {
+      break;
+    }
+  }
+
+  fclose(fin);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+  *crc = TRI_FinalCrc32(*crc);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the system's temporary path
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetTempPath () {
+#ifdef _WIN32
+#warning TRI_GetTempPath not implemented for Windows
+  return TRI_DuplicateString(".");
+#else
+  return TRI_DuplicateString("/tmp/arangodb");
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a temporary file name
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_GetTempName (char const* directory, 
+                     char** result, 
+                     const bool createFile) {
+  char* dir;
+  char* temp;
+  int tries;
+
+  temp = TRI_GetTempPath();
+  if (directory != NULL) {
+    dir = TRI_Concatenate2File(temp, directory);
+  }
+  else {
+    dir = TRI_DuplicateString(temp); 
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, temp);
+
+  TRI_CreateRecursiveDirectory(dir);
+
+  if (! TRI_IsDirectory(dir)) {
+    TRI_Free(TRI_CORE_MEM_ZONE, dir);
+    return TRI_ERROR_INTERNAL;
+  }
+
+  tries = 0;
+  while (tries++ < 10) {
+    TRI_pid_t pid;
+    char* tempName;
+    char* pidString;
+    char* number;
+    char* filename;
+
+    pid = TRI_CurrentProcessId();
+
+    number = TRI_StringUInt32(TRI_UInt32Random());
+    pidString = TRI_StringUInt32(pid);
+    tempName = TRI_Concatenate4String("tmp-", pidString, "-", number); 
+    TRI_Free(TRI_CORE_MEM_ZONE, number);
+    TRI_Free(TRI_CORE_MEM_ZONE, pidString);
+
+    filename = TRI_Concatenate2File(dir, tempName);
+    TRI_Free(TRI_CORE_MEM_ZONE, tempName);
+
+    if (TRI_ExistsFile(filename)) {
+      TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    }
+    else {
+      if (createFile) {
+        FILE* fd = fopen(filename, "wb");
+
+        if (fd != NULL) {
+          fclose(fd);
+          TRI_Free(TRI_CORE_MEM_ZONE, dir);
+          *result = filename;
+          return TRI_ERROR_NO_ERROR;
+        }
+      }
+      else {
+        TRI_Free(TRI_CORE_MEM_ZONE, dir);
+        *result = filename;
+        return TRI_ERROR_NO_ERROR;
+      }
+      
+      TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    }
+
+    // next try
+  }
+
+  TRI_Free(TRI_CORE_MEM_ZONE, dir);
+
+  return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

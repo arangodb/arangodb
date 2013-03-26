@@ -48,6 +48,12 @@
 #define SORTED_BIT 2147483648UL
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief growth factor for lists
+////////////////////////////////////////////////////////////////////////////////
+
+#define GROWTH_FACTOR 1.2
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -206,6 +212,25 @@ static inline size_t MemoryList (const uint32_t size) {
   return sizeof(uint32_t) + // numAllocated
          sizeof(uint32_t) + // numEntries
          size * sizeof(TRI_fulltext_list_entry_t); // entries
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase an existing list
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_fulltext_list_t* IncreaseList (TRI_fulltext_list_t* list,
+                                          const uint32_t size) {
+  TRI_fulltext_list_t* copy;
+
+  copy = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, list, MemoryList(size));
+  if (copy == NULL) {
+    // out of memory
+    return NULL;
+  }
+  
+  InitList(copy, size);
+
+  return copy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -595,19 +620,26 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
   if (numEntries + 1 >= numAllocated) {
     // must allocate more memory
     TRI_fulltext_list_t* clone;
+    uint32_t newSize;
 
-    clone = TRI_CreateListFulltextIndex(numEntries + 1);
+    newSize = numEntries * GROWTH_FACTOR;
+    
+    if (newSize == numEntries) {
+      // 0 * something might not be enough...
+      newSize = numEntries + 1;
+    }
+
+    // increase the existing list
+    clone = IncreaseList(list, newSize);
     if (clone == NULL) {
       return NULL;
     }
 
-    memcpy(GetStart(clone), listEntries, sizeof(TRI_fulltext_list_entry_t) * numEntries);
-
-    // free the old list
-    TRI_FreeListFulltextIndex(list);
     // switch over
-    list = clone;
-    listEntries  = GetStart(list);
+    if (list != clone) {
+      list = clone;
+      listEntries = GetStart(list);
+    }
   }
 
   if (unsort) {

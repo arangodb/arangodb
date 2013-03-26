@@ -413,15 +413,18 @@ TRI_vocbase_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of a collection
+/// 
+/// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
+/// in this enum for compatibility with earlier versions
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
   TRI_VOC_COL_STATUS_CORRUPTED = 0,
-  TRI_VOC_COL_STATUS_NEW_BORN = 1,
-  TRI_VOC_COL_STATUS_UNLOADED = 2,
-  TRI_VOC_COL_STATUS_LOADED = 3,
+  TRI_VOC_COL_STATUS_NEW_BORN  = 1, // DEPRECATED, and shouldn't be used anymore
+  TRI_VOC_COL_STATUS_UNLOADED  = 2,
+  TRI_VOC_COL_STATUS_LOADED    = 3,
   TRI_VOC_COL_STATUS_UNLOADING = 4,
-  TRI_VOC_COL_STATUS_DELETED = 5
+  TRI_VOC_COL_STATUS_DELETED   = 5
 }
 TRI_vocbase_col_status_e;
 
@@ -546,9 +549,9 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_
 /// @brief finds a collection by name or creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t*,
-                                                          char const*,
-                                                          const TRI_col_type_t);
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t*,
+                                                            char const*,
+                                                            const TRI_col_type_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set

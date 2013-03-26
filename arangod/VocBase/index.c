@@ -288,10 +288,16 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, TRI_index_t* idx) {
   TRI_json_t* json;
 
   json = TRI_CreateArrayJson(zone);
+
   if (json != NULL) {
-    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateNumberJson(zone, idx->_iid));
+    char* number;
+    
+    number = TRI_StringUInt64(idx->_iid);
+    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
     TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, idx->typeName(idx)));
     TRI_Insert3ArrayJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   }
 
   return json;
@@ -416,7 +422,9 @@ static const char* TypeNamePrimary (const TRI_index_t const* idx) {
 /// @brief insert methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertPrimary (TRI_index_t* idx, 
+                          TRI_doc_mptr_t const* doc, 
+                          const bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -424,7 +432,9 @@ static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief remove methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemovePrimary (TRI_index_t* idx, 
+                          TRI_doc_mptr_t const* doc,
+                          const bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -473,12 +483,12 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
+  idx->typeName = TypeNamePrimary;
   TRI_InitIndex(idx, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true, true);
 
   // override iid
   idx->_iid     = 0;
 
-  idx->typeName = TypeNamePrimary;
   idx->json     = JsonPrimary;
   idx->insert   = InsertPrimary;
   idx->remove   = RemovePrimary;
@@ -631,7 +641,9 @@ static const char* TypeNameEdge (const TRI_index_t const* idx) {
 /// @brief insert method for edges
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
+static int InsertEdge (TRI_index_t* idx, 
+                       TRI_doc_mptr_t const* mptr,
+                       const bool isRollback) {
   TRI_edge_header_t* entryIn;
   TRI_edge_header_t* entryOut;
   TRI_doc_edge_key_marker_t const* edge;
@@ -664,14 +676,14 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
   entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive);
   entryIn->_cid = edge->_toCid;
   entryIn->_searchKey._offsetKey = edge->_offsetToKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, false);
+  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, isRollback);
 
   // second slot: OUT
   entryOut->_mptr = mptr;
   entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive);
   entryOut->_cid = edge->_fromCid;
   entryOut->_searchKey._offsetKey = edge->_offsetFromKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, false);
+  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, isRollback);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -680,7 +692,9 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* mptr) {
 /// @brief remove an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveEdge (TRI_index_t* idx, 
+                       TRI_doc_mptr_t const* doc,
+                       const bool isRollback) {
   TRI_edge_header_t entry;
   TRI_edge_header_t* old;
   TRI_doc_edge_key_marker_t const* edge;
@@ -764,9 +778,9 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
   TRI_PushBackVectorString(&idx->_fields, id);
  
+  idx->typeName = TypeNameEdge;
   TRI_InitIndex(idx, TRI_IDX_TYPE_EDGE_INDEX, primary, false, true); 
 
-  idx->typeName = TypeNameEdge;
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
@@ -895,7 +909,9 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
 /// @brief attempts to add a document to a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertPriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertPriorityQueueIndex (TRI_index_t* idx, 
+                                     TRI_doc_mptr_t const* doc,
+                                     const bool isRollback) {
   TRI_pq_index_element_t pqElement;
   TRI_priorityqueue_index_t* pqIndex;
   int res;
@@ -1050,7 +1066,9 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collect
 /// @brief removes a document from a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemovePriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemovePriorityQueueIndex (TRI_index_t* idx, 
+                                     TRI_doc_mptr_t const* doc,
+                                     const bool isRollback) {
   TRI_priorityqueue_index_t* pqIndex;
   
   // ............................................................................
@@ -1115,9 +1133,9 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* prim
   pqIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_priorityqueue_index_t), false);
   idx = &pqIndex->base;
   
+  idx->typeName = TypeNamePriorityQueueIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, primary, unique, true);
    
-  idx->typeName = TypeNamePriorityQueueIndex;
   idx->json     = JsonPriorityQueueIndex;
   idx->insert   = InsertPriorityQueueIndex;
   idx->remove   = RemovePriorityQueueIndex;
@@ -1504,8 +1522,9 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
 /// @brief inserts a document into a skip list index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-
+static int InsertSkiplistIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
@@ -1658,7 +1677,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveSkiplistIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
@@ -1755,9 +1776,9 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
   idx = &skiplistIndex->base;
 
+  idx->typeName = TypeNameSkiplistIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, false);
 
-  idx->typeName = TypeNameSkiplistIndex;
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
   idx->remove   = RemoveSkiplistIndex;
@@ -1927,7 +1948,9 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
 /// @brief inserts a document into the fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int InsertFulltextIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_fulltext_index_t* fulltextIndex;
   TRI_fulltext_wordlist_t* wordlist;
   int res;
@@ -2007,7 +2030,9 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
 /// @brief removes a document from a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveFulltextIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_fulltext_index_t* fulltextIndex;
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
@@ -2088,9 +2113,9 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   idx = &fulltextIndex->base;
 
+  idx->typeName = TypeNameFulltextIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false, true); 
 
-  idx->typeName = TypeNameFulltextIndex;
   idx->json     = JsonFulltextIndex;
   idx->insert   = InsertFulltextIndex;
   idx->remove   = RemoveFulltextIndex;
@@ -2397,8 +2422,9 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 /// @brief inserts a document into a bitarray list index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-
+static int InsertBitarrayIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_bitarray_index_key_t element;
   TRI_bitarray_index_t* baIndex;
   int result;
@@ -2625,7 +2651,9 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
 /// @brief removes a document from a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+static int RemoveBitarrayIndex (TRI_index_t* idx, 
+                                TRI_doc_mptr_t const* doc,
+                                const bool isRollback) {
   TRI_bitarray_index_key_t element;
   TRI_bitarray_index_t* baIndex;
   int result;
@@ -2778,9 +2806,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
   idx = &baIndex->base;
 
+  idx->typeName = TypeNameBitarrayIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false, false);
 
-  idx->typeName = TypeNameBitarrayIndex;
   idx->json     = JsonBitarrayIndex;
   idx->insert   = InsertBitarrayIndex;
   idx->remove   = RemoveBitarrayIndex;
