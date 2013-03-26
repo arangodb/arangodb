@@ -46,7 +46,7 @@ var foxx = require("org/arangodb/foxx");
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/load",
+  url : "_admin/foxx/install",
   context : "admin",
   prefix : false,
 
@@ -58,14 +58,11 @@ actions.defineHttp({
       return;
     }
 
-    if (! body.hasOwnProperty("manifest")) {
-      actions.resultBad(req,
-                        res,
-                        arangodb.ERROR_HTTP_BAD_PARAMETER,
-                        "body must specify a 'manifest'");
-    }
+    var name = body.name;
+    var mount = body.mount;
+    var options = body.options || {};
 
-    result = foxx.loadManifest(body.manifest);
+    result = foxx.installApp(name, mount, options);
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });
