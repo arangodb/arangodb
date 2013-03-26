@@ -149,6 +149,7 @@ window.arangoCollections = Backbone.Collection.extend({
           async: false,
           success: function(data) {
             returnobj.status = true;
+            returnobj.data = data;
           },
           error: function(data) {
             returnobj.status = false;
