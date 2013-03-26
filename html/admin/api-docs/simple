@@ -1,0 +1,161 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"all\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"all\""
+                }
+            ],
+            "path": "/_api/simple/all"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"any\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"any\""
+                }
+            ],
+            "path": "/_api/simple/any"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"near\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"near\""
+                }
+            ],
+            "path": "/_api/simple/near"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"within\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"within\""
+                }
+            ],
+            "path": "/_api/simple/within"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"fulltext\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"fulltext\""
+                }
+            ],
+            "path": "/_api/simple/fulltext"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"by-example\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"by-example\""
+                }
+            ],
+            "path": "/_api/simple/by-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple query \"first-example\"",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleQuery\"first-example\""
+                }
+            ],
+            "path": "/_api/simple/first-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "executes simple range query",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "executesSimpleRangeQuery"
+                }
+            ],
+            "path": "/_api/simple/range"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "removes documents by example",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "removesDocumentsByExample"
+                }
+            ],
+            "path": "/_api/simple/remove-by-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "replaces documents by example",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "replacesDocumentsByExample"
+                }
+            ],
+            "path": "/_api/simple/replace-by-example"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "updates documents by example",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "updatesDocumentsByExample"
+                }
+            ],
+            "path": "/_api/simple/update-by-example"
+        }
+    ]
+}

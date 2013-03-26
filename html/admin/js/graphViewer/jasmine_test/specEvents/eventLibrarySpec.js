@@ -261,8 +261,6 @@
         
         runs(function() {
           expect(created).toBeDefined();
-          expect(created._inboundCounter).toEqual(0);
-          expect(created._outboundCounter).toEqual(0);
           expect(reshaped[0]).toEqual(created);
         });
         

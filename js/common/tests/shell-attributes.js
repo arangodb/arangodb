@@ -207,13 +207,20 @@ function AttributesSuite () {
       var doc = { a: [ sub ] };
 
       sub.cycle = doc;
-      
+     
       try {
         c.save(doc);
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+        if (err && err.errorNum) {
+          // we're on the server
+          assertEqual(ERRORS.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+        }
+        else {
+          // we're on the client, and the JS engine just throws a generic type error
+        }
+
       }
     }
 

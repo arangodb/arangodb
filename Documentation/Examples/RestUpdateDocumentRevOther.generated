@@ -1,0 +1,15 @@
+unix> curl -X PUT --data @- --dump - http://localhost:8529/_api/document/products8/20722266
+{}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "21312090"
+location: /_api/document/products8/20722266
+
+{ 
+  "error" : false, 
+  "_id" : "products8/20722266", 
+  "_rev" : "21312090", 
+  "_key" : "20722266" 
+}
+

@@ -3,6 +3,7 @@
 /*global describe, it, expect */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
+/*global helper*/
 /*global NodeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,28 +64,80 @@
       expect($("svg .node").length).toEqual(3);
     });
 
-    it('should be able to add a click event', function () {
+    it('should be able to add an event', function () {
       var nodes = [{_id: 1}, {_id: 2}, {_id: 3}],
-      clicked = [false, false, false],
+      clicked = [],
       click = function (node) {
-        clicked[node._id-1] = !clicked[node._id-1];
+        clicked[node._id] = !clicked[node._id];
       },
-      shaper = new NodeShaper(d3.select("svg")),
-      first,
-      third;
+      shaper = new NodeShaper(d3.select("svg"));
       
       shaper.on("click", click);
       shaper.drawNodes(nodes);
-      first = $("#1").get(0);
-      third = $("#3").get(0);
-      first.__onclick();
-      third.__onclick();
+      helper.simulateMouseEvent("click", "1");
+      helper.simulateMouseEvent("click", "3");
       
       expect($("svg .node").length).toEqual(3);
-      expect(clicked[0]).toBeTruthy();
-      expect(clicked[2]).toBeTruthy();
-      expect(clicked[1]).toBeFalsy();
+      expect(clicked[1]).toBeTruthy();
+      expect(clicked[3]).toBeTruthy();
+      expect(clicked[2]).toBeUndefined();
     });
+
+    describe('when nodes are already drawn', function() {
+      var nodes,
+      clicked,
+      click = function (node) {
+        clicked[node._id] = !clicked[node._id];
+      },
+      shaper;
+      
+      beforeEach(function() {
+        nodes = [{_id: 1}, {_id: 2}, {_id: 3}];
+        clicked = [];
+        shaper = new NodeShaper(d3.select("svg"));
+        shaper.drawNodes(nodes);
+        expect($("svg .node").length).toEqual(3);
+      });
+      
+      it('should be able to add a click event to existing nodes', function() {
+        expect($("svg .node").length).toEqual(3);
+        shaper.on("click", click);
+        helper.simulateMouseEvent("click", "1");
+        helper.simulateMouseEvent("click", "3");
+        expect($("svg .node").length).toEqual(3);
+        expect(clicked[1]).toBeTruthy();
+        expect(clicked[3]).toBeTruthy();
+        expect(clicked[2]).toBeUndefined();
+      });
+      
+      it('should add a click event to newly arriving nodes', function() {
+        
+        shaper.on("click", click);
+        nodes.push({_id: 4});
+        nodes.push({_id: 5});
+        shaper.drawNodes(nodes);
+        
+        helper.simulateMouseEvent("click", "4");
+        helper.simulateMouseEvent("click", "5");
+        expect($("svg .node").length).toEqual(5);
+        expect(clicked[4]).toBeTruthy();
+        expect(clicked[5]).toBeTruthy();
+        expect(clicked[1]).toBeUndefined();
+        expect(clicked[2]).toBeUndefined();
+        expect(clicked[3]).toBeUndefined();
+      });
+      
+      it('should display each node exactly once if an event is added', function() {
+        shaper.on("click", function() {return 0;});
+        expect($("svg .node").length).toEqual(3);
+        shaper.on("click", function() {return 1;});
+        expect($("svg .node").length).toEqual(3);
+        shaper.on("click", function() {return 2;});
+        expect($("svg .node").length).toEqual(3);
+      });
+    });
+
+    
 
     describe('configured for circle', function () {
       var shaper;
@@ -149,6 +202,33 @@
         expect($("svg #4 circle")[0].attributes.r.value).toEqual("14");
         expect($("svg #5 circle")[0].attributes.r.value).toEqual("15");
         
+      });
+    
+      it('should display each node exactly once if an event is added', function() {
+        var radiusFunction = function (node) {
+          return 10;
+        },
+        nodes = [
+          {_id: 1},
+          {_id: 2},
+          {_id: 3},
+          {_id: 4},
+          {_id: 5}
+        ];
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          "shape": NodeShaper.shapes.CIRCLE,
+          "size": radiusFunction
+        });
+        shaper.drawNodes(nodes);
+        
+        expect($("circle").length).toEqual(5);
+        shaper.on("click", function() {return 0;});
+        expect($("circle").length).toEqual(5);
+        shaper.on("click", function() {return 1;});
+        expect($("circle").length).toEqual(5);
+        shaper.on("click", function() {return 2;});
+        expect($("circle").length).toEqual(5);
       });
     
     });
