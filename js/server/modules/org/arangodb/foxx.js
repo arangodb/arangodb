@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var FoxxApplication,
+  RequestContext,
   BaseMiddleware,
   FormatMiddleware,
   _ = require("underscore"),
@@ -177,24 +178,18 @@ _.extend(FoxxApplication.prototype, {
 ///       //handle the request
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  handleRequest: function (method, route, argument1, argument2) {
+  handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = {}, options, callback;
+    var newRoute = {};
 
-    if (_.isUndefined(argument2)) {
-      callback = argument1;
-      options = {};
-    } else {
-      options = argument1;
-      callback = argument2;
-    }
-
-    newRoute.url = internal.createUrlObject(route, options.constraint, method);
+    newRoute.url = internal.createUrlObject(route, undefined, method);
     newRoute.action = {
       callback: String(callback)
     };
 
     this.routingInfo.routes.push(newRoute);
+
+    return new RequestContext(newRoute);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,9 +202,9 @@ _.extend(FoxxApplication.prototype, {
 /// the last argument however. It will get a request and response
 /// object as its arguments
 ////////////////////////////////////////////////////////////////////////////////
-  head: function (route, argument1, argument2) {
+  head: function (route, callback) {
     'use strict';
-    this.handleRequest("head", route, argument1, argument2);
+    return this.handleRequest("head", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,9 +219,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  get: function (route, argument1, argument2) {
+  get: function (route, callback) {
     'use strict';
-    this.handleRequest("get", route, argument1, argument2);
+    return this.handleRequest("get", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,9 +236,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  post: function (route, argument1, argument2) {
+  post: function (route, callback) {
     'use strict';
-    this.handleRequest("post", route, argument1, argument2);
+    return this.handleRequest("post", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,9 +253,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  put: function (route, argument1, argument2) {
+  put: function (route, callback) {
     'use strict';
-    this.handleRequest("put", route, argument1, argument2);
+    return this.handleRequest("put", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,9 +270,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  patch: function (route, argument1, argument2) {
+  patch: function (route, callback) {
     'use strict';
-    this.handleRequest("patch", route, argument1, argument2);
+    return this.handleRequest("patch", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,14 +295,14 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  'delete': function (route, argument1, argument2) {
+  'delete': function (route, callback) {
     'use strict';
-    this.handleRequest("delete", route, argument1, argument2);
+    return this.handleRequest("delete", route, callback);
   },
 
-  del: function (route, argument1, argument2) {
+  del: function (route, callback) {
     'use strict';
-    this['delete'](route, argument1, argument2);
+    return this['delete'](route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,6 +405,61 @@ _.extend(FoxxApplication.prototype, {
         callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
       }
     });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_initializer
+/// @brief Context of a Request Definition
+///
+/// Used for documenting and constraining the routes.
+////////////////////////////////////////////////////////////////////////////////
+RequestContext = function (route) {
+  'use strict';
+  this.route = route;
+  this.route.docs = this.route.docs || {};
+  this.route.docs.parameters = this.route.docs.parameters || {};
+  this.typeToRegex = {
+    "int": "/[0-9]+/",
+    "string": "/[a-zA-Z]+/"
+  };
+};
+
+_.extend(RequestContext.prototype, {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_pathParam
+/// @brief Describe a Path Parameter
+///
+/// If you defined a route "/foxx/:id", you can constrain which format the id
+/// can have by giving a type. We currently support the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter.
+///
+/// @EXAMPLE:
+///     app.get("/foxx/:id", function {
+///       // Do something
+///     }).constrain("id", /[a-z]+/);
+////////////////////////////////////////////////////////////////////////////////
+  pathParam: function (paramName, attributes) {
+    'use strict';
+    var url = this.route.url,
+      docs = this.route.docs,
+      constraint = url.constraint || {};
+
+    constraint[paramName] = this.typeToRegex[attributes.dataType];
+    this.route.url = internal.createUrlObject(url.match, constraint, url.methods[0]);
+    this.route.docs.parameters[paramName] = {
+      paramType: "path",
+      name: paramName,
+      description: attributes.description,
+      dataType: attributes.dataType,
+      required: true
+    };
+
+    return this;
   }
 });
 

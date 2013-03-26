@@ -131,7 +131,7 @@ var collectionView = Backbone.View.extend({
   },
   deleteCollection: function () {
     var self = this;
-    var collName = $('#change-collection-name').val();
+    var collName = self.myCollection.name;
     var returnval = window.arangoCollectionsStore.deleteCollection(collName);
     if (returnval === true) {
       self.hideModal();
