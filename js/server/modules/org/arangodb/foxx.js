@@ -145,6 +145,17 @@ _.extend(FoxxApplication.prototype, {
       route.action.requiresModels = models;
     });
 
+    this.routingInfo.routes.push({
+      "url" : "/",
+      "action" : {
+        "do" : "org/arangodb/actions/redirectRequest",
+        "options" : {
+          "permanently" : true,
+          "destination" : "index.html"
+        }
+      }
+    });
+
     db._collection("_routing").save(this.routingInfo);
   },
 
@@ -276,16 +287,27 @@ _.extend(FoxxApplication.prototype, {
 /// This handles requests from the HTTP verb `delete`.
 /// See above for the arguments you can give.
 /// **A word of warning:** Do not forget that `delete` is
-/// a reserved word in JavaScript so call it as follows:
+/// a reserved word in JavaScript and therefore needs to be
+/// called as `app['delete']`. There is also an alias `del`
+/// for this very reason.
 ///
 /// @EXAMPLES
 ///     app['delete']('/gaense/stall', function (req, res) {
+///       // Take this request and deal with it!
+///     });
+///
+///     app.del('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
   'delete': function (route, argument1, argument2) {
     'use strict';
     this.handleRequest("delete", route, argument1, argument2);
+  },
+
+  del: function (route, argument1, argument2) {
+    'use strict';
+    this['delete'](route, argument1, argument2);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -646,64 +668,10 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a manifest file
-////////////////////////////////////////////////////////////////////////////////
+/// We finish off with exporting FoxxApplication and the middlewares.
+/// Everything else will remain our secret.
 
-exports.installApp = function (name, mount, options) {
-  'use strict';
-  var version = options && options.version, // TODO currently ignored
-    prefix = options && options.collectionPrefix,
-    context = {},
-    apps,
-    description,
-    i,
-    root = module.appRootModule(name); // TODO use version
-
-  if (root === null) {
-    if (version === undefined) {
-      throw "cannot find application '" + name + "'";
-    } else {
-      throw "cannot find application '" + name + "' in version '" + version + "'";
-    }
-  }
-
-  description = root._appDescription;
-
-  if (mount === "") {
-    mount = "/";
-  } else {
-    mount = INTERNAL.normalizeURL(mount);
-  }
-
-  if (mount[0] !== "/") {
-    throw "mount point must be absolute";
-  }
-
-  if (prefix === undefined) {
-    context.collectionPrefix = mount.substr(1).replace(/\//g, "_");
-  } else {
-    context.collectionPrefix = prefix;
-  }
-
-  context.name = description.manifest.name;
-  context.version = description.manifest.version;
-  context.mount = mount;
-
-  apps = root._appDescription.manifest.apps;
-
-  for (i in apps) {
-    if (apps.hasOwnProperty(i)) {
-      var file = apps[i];
-
-      context.appMount = i;
-      context.prefix = INTERNAL.normalizeURL(mount + "/" + i);
-
-      root.loadAppScript(root, file, context);
-    }
-  }
-};
-
+exports.installApp = require("org/arangodb/foxx-manager").installApp;
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
