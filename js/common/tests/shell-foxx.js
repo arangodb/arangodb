@@ -70,7 +70,7 @@ function SetRoutesFoxxApplicationSpec () {
       app = new FoxxApplication();
     },
 
-    testSettingRoutesWithoutConstraint: function () {
+    testSettingRoutes: function () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
 
@@ -80,15 +80,16 @@ function SetRoutesFoxxApplicationSpec () {
       assertUndefined(routes[0].url.constraint);
     },
 
-    testSettingRoutesWithConstraint: function () {
-      var myFunc = function () {},
-        routes = app.routingInfo.routes,
-        constraint = { test: "/[a-z]+/" };
+    // Old Constraints:
+    // testSettingRoutesWithConstraint: function () {
+    //   var myFunc = function () {},
+    //     routes = app.routingInfo.routes,
+    //     constraint = { test: "/[a-z]+/" };
 
-      app.get('/simple/route', { constraint: constraint }, myFunc);
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint, constraint);
-    },
+    //   app.get('/simple/route', { constraint: constraint }, myFunc);
+    //   assertEqual(routes.length, 1);
+    //   assertEqual(routes[0].url.constraint, constraint);
+    // },
 
     testSetMethodToHead: function () {
       var myFunc = function () {},
