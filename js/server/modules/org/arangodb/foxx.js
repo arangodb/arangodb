@@ -145,6 +145,17 @@ _.extend(FoxxApplication.prototype, {
       route.action.requiresModels = models;
     });
 
+    this.routingInfo.routes.push({
+      "url" : "/",
+      "action" : {
+        "do" : "org/arangodb/actions/redirectRequest",
+        "options" : {
+          "permanently" : true,
+          "destination" : "index.html"
+        }
+      }
+    });
+
     db._collection("_routing").save(this.routingInfo);
   },
 
