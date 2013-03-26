@@ -64,7 +64,7 @@
       expect($("svg .node").length).toEqual(3);
     });
 
-    it('should be able to add a click event', function () {
+    it('should be able to add an event', function () {
       var nodes = [{_id: 1}, {_id: 2}, {_id: 3}],
       clicked = [],
       click = function (node) {

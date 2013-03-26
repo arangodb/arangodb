@@ -14,8 +14,8 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "aarkvard"                            : "aarkvard",
-      "aarkvard/swagger"                    : "swagger"
+      "applications"                        : "applications",
+      "applications/swagger"                : "swagger"
       
     },
     initialize: function () {
@@ -154,19 +154,23 @@ $(document).ready(function() {
       });
     },
     
-    aarkvard: function() {
-      if (this.aarkvardView === undefined) {
+    applications: function() {
+      if (this.applicationsView === undefined) {
         var foxxList = new window.FoxxCollection();
-        this.aarkvardView = new FoxxListView({
+        this.applicationsView = new FoxxListView({
           collection: foxxList
         });
       }
-      this.aarkvardView.render();
-      this.naviView.selectMenuItem('aarkvard-menu');
+      this.applicationsView.render();
+      this.naviView.selectMenuItem('applications-menu');
     },
     
     swagger: function() {
-      alert("Sorry not yet linked");
+      if (this.swaggerView === undefined) {
+        this.swaggerView = new window.SwaggerView();
+      }
+      this.swaggerView.render();
+      this.naviView.selectMenuItem('applications-menu');
     }
 
   });
