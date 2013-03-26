@@ -482,6 +482,7 @@ body ul#resources {
 
 body ul#resources li.resource {
     border-bottom: 1px solid #dddddd;
+    line-height: 14px;
 }
 
 body ul#resources li.resource:last-child {
@@ -504,6 +505,9 @@ body ul#resources li.resource div.heading h2 {
     float: left;
     font-family: "Droid Sans", sans-serif;
     font-weight: bold;
+    font-size: 17px;
+    margin: 0px;
+    line-height: 17px;
 }
 
 body ul#resources li.resource div.heading h2 a {
@@ -531,6 +535,9 @@ body ul#resources li.resource div.heading ul.options li {
     clear: none;
     margin: 0;
     padding: 2px 10px;
+    font-size: 13px;
+    height: 13px;
+    line-height: 12px;
     border-right: 1px solid #dddddd;
 }
 
