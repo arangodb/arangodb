@@ -132,6 +132,7 @@ WIKI = \
 	UserManualActions \
 	UserManualArangosh \
 	UserManualWebInterface \
+	UserManualFoxx \
 	jsUnity
 
 ## -----------------------------------------------------------------------------
