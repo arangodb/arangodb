@@ -603,6 +603,8 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     padding: 0;
     line-height: 1.1em;
     color: black;
+    font-size: 16px;
+    font-weight: normal;
 }
 
 body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operation.get div.heading h3 span {
@@ -789,6 +791,8 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     margin: 0;
     padding: 0;
     line-height: 1.1em;
+    font-size: 16px;
+    font-weight: normal;
     color: black;
 }
 
@@ -976,6 +980,8 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     margin: 0;
     padding: 0;
     line-height: 1.1em;
+    font-size: 16px;
+    font-weight: normal;
     color: black;
 }
 
@@ -1163,6 +1169,8 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     margin: 0;
     padding: 0;
     line-height: 1.1em;
+    font-size: 16px;
+    font-weight: normal;
     color: black;
 }
 
@@ -1350,6 +1358,8 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     margin: 0;
     padding: 0;
     line-height: 1.1em;
+    font-size: 16px;
+    font-weight: normal;
     color: black;
 }
 
@@ -1537,6 +1547,8 @@ body ul#resources li.resource ul.endpoints li.endpoint ul.operations li.operatio
     margin: 0;
     padding: 0;
     line-height: 1.1em;
+    font-size: 16px;
+    font-weight: normal;
     color: black;
 }
 
