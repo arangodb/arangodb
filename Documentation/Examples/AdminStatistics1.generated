@@ -5,13 +5,13 @@ content-type: application/json; charset=utf-8
 
 { 
   "system" : { 
-    "minorPageFaults" : 10739, 
-    "majorPageFaults" : 1712, 
-    "userTime" : 0.442991, 
-    "systemTime" : 0.232343, 
+    "minorPageFaults" : 15867, 
+    "majorPageFaults" : 68, 
+    "userTime" : 0.74, 
+    "systemTime" : 0.13, 
     "numberThreads" : 15, 
-    "residentSize" : 26771456, 
-    "virtualSize" : 4916088832 
+    "residentSize" : 5876, 
+    "virtualSize" : 3469815808 
   }, 
   "client" : { 
     "httpConnections" : 1, 
@@ -25,9 +25,9 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "totalTime" : { 
-      "count" : 27, 
+      "count" : 48, 
       "counts" : [ 
-        25, 
+        46, 
         0, 
         0, 
         0, 
@@ -37,9 +37,9 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "requestTime" : { 
-      "count" : 27, 
+      "count" : 48, 
       "counts" : [ 
-        25, 
+        46, 
         0, 
         0, 
         0, 
@@ -49,9 +49,9 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "queueTime" : { 
-      "count" : 26, 
+      "count" : 47, 
       "counts" : [ 
-        26, 
+        47, 
         0, 
         0, 
         0, 
@@ -61,10 +61,10 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "bytesSent" : { 
-      "count" : 27, 
+      "count" : 48, 
       "counts" : [ 
-        4, 
-        22, 
+        8, 
+        39, 
         0, 
         1, 
         0, 
@@ -72,9 +72,9 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "bytesReceived" : { 
-      "count" : 27, 
+      "count" : 48, 
       "counts" : [ 
-        25, 
+        46, 
         2, 
         0, 
         0, 

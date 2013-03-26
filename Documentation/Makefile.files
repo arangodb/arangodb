@@ -294,40 +294,40 @@ CLEANUP += \
 
 swagger:
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/frontend/newswagger/api-docs/edges	
+		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/html/admin/api-docs/edges	
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/frontend/newswagger/api-docs/document
+		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-collection.js  > @srcdir@/frontend/newswagger/api-docs/collection
+		< @srcdir@/js/actions/system/api-collection.js  > @srcdir@/html/admin/api-docs/collection
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-graph.js  > @srcdir@/frontend/newswagger/api-docs/graph
+		< @srcdir@/js/actions/system/api-graph.js  > @srcdir@/html/admin/api-docs/graph
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-user.js  > @srcdir@/frontend/newswagger/api-docs/user
+		< @srcdir@/js/actions/system/api-user.js  > @srcdir@/html/admin/api-docs/user
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-system.js  > @srcdir@/frontend/newswagger/api-docs/system
+		< @srcdir@/js/actions/system/api-system.js  > @srcdir@/html/admin/api-docs/system
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-cursor.js  > @srcdir@/frontend/newswagger/api-docs/cursor
+		< @srcdir@/js/actions/system/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-explain.js  > @srcdir@/frontend/newswagger/api-docs/explain
+		< @srcdir@/js/actions/system/api-explain.js  > @srcdir@/html/admin/api-docs/explain
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-index.js  > @srcdir@/frontend/newswagger/api-docs/index
+		< @srcdir@/js/actions/system/api-index.js  > @srcdir@/html/admin/api-docs/index
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-simple.js  > @srcdir@/frontend/newswagger/api-docs/simple
+		< @srcdir@/js/actions/system/api-simple.js  > @srcdir@/html/admin/api-docs/simple
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-query.js  > @srcdir@/frontend/newswagger/api-docs/query
+		< @srcdir@/js/actions/system/api-query.js  > @srcdir@/html/admin/api-docs/query
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
-		< @srcdir@/js/actions/system/api-structure.js  > @srcdir@/frontend/newswagger/api-docs/structure
+		< @srcdir@/js/actions/system/api-structure.js  > @srcdir@/html/admin/api-docs/structure
 	
 
 ################################################################################
