@@ -1,5 +1,7 @@
-v1.2.2 (XXXX-XX-XX)
+v1.2.2 (2013-03-26)
 -------------------
+
+* fixed save of objects with common sub-objects
 
 * issue #459: fulltext internal memory allocation didn't scale well
   This fix improves loading times for collections with fulltext indexes that have
