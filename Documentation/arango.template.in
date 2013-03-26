@@ -221,7 +221,11 @@ ALIASES += \
   "RESTQUERYPARAM{3}=@htmlonly<div class=\"restqueryparam\">@endhtmlonly\1 (\2,\3)@htmlonly</div>@endhtmlonly" \
   "RESTRETURNCODES=@htmlonly<div class=\"restreturncodes\">Return Codes</div>@endhtmlonly" \
   "RESTRETURNCODE{1}=@htmlonly<div class=\"restreturncode\">HTTP \1</div>@endhtmlonly" \
-  "RESTDESCRIPTION=@htmlonly<div class=\"restdescription\">Description</div>@endhtmlonly"
+  "RESTDESCRIPTION=@htmlonly<div class=\"restdescription\">Description</div>@endhtmlonly" \
+  "RESTURLPARAMETERS=@htmlonly<div class=\"resturlparameters\">URL parameters</div>@endhtmlonly" \
+  "RESTURLPARAM{3}=@htmlonly<div class=\"resturlparam\">URL parameter</div>@endhtmlonly" \
+  "RESTHEADERPARAMETERS=@htmlonly<div class=\"restheaderparameters\">HTTP header parameters</div>@endhtmlonly" \
+  "RESTHEADERPARAM{2}=@htmlonly<div class=\"restheaderparam\">HTTP header</div>@endhtmlonly" 
 
 # navigation
 ALIASES += \

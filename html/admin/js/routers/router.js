@@ -166,7 +166,11 @@ $(document).ready(function() {
     },
     
     swagger: function() {
-      alert("Sorry not yet linked");
+      if (this.swaggerView === undefined) {
+        this.swaggerView = new window.SwaggerView();
+      }
+      this.swaggerView.render();
+      this.naviView.selectMenuItem('applications-menu');
     }
 
   });
