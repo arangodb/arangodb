@@ -40,13 +40,13 @@ var documentsView = Backbone.View.extend({
   },
 
   buildCollectionLink : function (collection) {
-    return "#collection/" + encodeURIComponent(collection.get('name')) + '/documents/1';
+    return "collection/" + encodeURIComponent(collection.get('name')) + '/documents/1';
   },
 
   prevCollection : function () {
     if (this.collectionContext.prev !== null) {
       $('#collectionPrev').parent().removeClass('disabledPag');
-      window.location.hash = this.buildCollectionLink(this.collectionContext.prev);
+      window.App.navigate(this.buildCollectionLink(this.collectionContext.prev));
     }
     else {
       $('#collectionPrev').parent().addClass('disabledPag');
@@ -56,7 +56,7 @@ var documentsView = Backbone.View.extend({
   nextCollection : function () {
     if (this.collectionContext.next !== null) {
       $('#collectionNext').parent().removeClass('disabledPag');
-      window.location.hash = this.buildCollectionLink(this.collectionContext.next);
+      window.App.navigate(this.buildCollectionLink(this.collectionContext.next));
     }
     else {
       $('#collectionNext').parent().addClass('disabledPag');
@@ -76,7 +76,7 @@ var documentsView = Backbone.View.extend({
       var result = window.arangoDocumentStore.createTypeDocument(collid);
       //Success
       if (result !== false) {
-        window.location.hash = "collection/"+result;
+        window.location.hash = "collection/" + result;
         arangoHelper.arangoNotification('Document created');
       }
       //Error

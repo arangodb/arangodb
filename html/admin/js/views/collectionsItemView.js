@@ -20,11 +20,11 @@ window.CollectionListItemView = Backbone.View.extend({
 
   editProperties: function (event) {
     event.stopPropagation();
-    window.App.navigate("#collection/" + this.model.get("id"), {trigger: true});
+    window.App.navigate("collection/" + encodeURIComponent(this.model.get("id")), {trigger: true});
   },
   
   selectCollection: function() {
-    window.App.navigate("collection/" + this.model.get("name") + "/documents/1", {trigger: true});
+    window.App.navigate("collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true});
   },
   
   noop: function(event) {
