@@ -30,7 +30,7 @@ describe ArangoDB do
    
       doc.code.should eq(404)
       doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['errorNum'].should eq(9)
+      doc.parsed_response['errorNum'].should eq(404)
     end
 
 ################################################################################
@@ -54,7 +54,7 @@ describe ArangoDB do
    
       doc.code.should eq(404)
       doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['errorNum'].should eq(9)
+      doc.parsed_response['errorNum'].should eq(404)
     end
 
 
