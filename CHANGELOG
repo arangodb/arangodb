@@ -1,6 +1,10 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* make `collection.count()` not recalculate the number of documents on the fly, but
+  use some internal document counters. This will work at least for non-transactional
+  collections.
+
 * issue #457: invalid string value in web interface
 
 * make datafile id (datafile->_fid) identical to the numeric part of the filename.
@@ -85,6 +89,10 @@ v1.3 (XXXX-XX-XX)
 
 v1.2.2 (XXXX-XX-XX)
 -------------------
+
+* issue #459: fulltext internal memory allocation didn't scale well
+  This fix improves loading times for collections with fulltext indexes that have
+  lots of equal words indexed.
 
 * issue #212: auto-increment support
 

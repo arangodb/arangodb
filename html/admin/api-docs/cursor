@@ -1,0 +1,57 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "false",
+                            "name": "body",
+                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
+                        }
+                    ],
+                    "notes": "",
+                    "summary": "creates a cursor",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "createsACursor"
+                }
+            ],
+            "path": "/_api/cursor"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "reads next batch from a cursor",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "readsNextBatchFromACursor"
+                }
+            ],
+            "path": "/_api/cursor"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": "deletes a cursor",
+                    "httpMethod": "DELETE",
+                    "examples": "",
+                    "nickname": "deletesACursor"
+                }
+            ],
+            "path": "/_api/cursor"
+        }
+    ]
+}
