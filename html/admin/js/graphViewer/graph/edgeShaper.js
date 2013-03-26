@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _*/
+/*global _, $*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -52,6 +52,13 @@ function EdgeShaper(parent, flags, idfunc) {
         tmp(edge);
         deco(edge);
       };
+    },
+    redrawEdges = function () {
+      var edge;
+      edge = self.parent
+        .selectAll(".link");
+      $(".link").empty();
+      additionalShaping(edge);
     },
     parseLabelFlag;
     

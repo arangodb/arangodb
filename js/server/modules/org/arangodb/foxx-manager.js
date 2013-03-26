@@ -137,6 +137,44 @@ function installAssets (app, mount) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up an app
+////////////////////////////////////////////////////////////////////////////////
+
+function setupApp (app, appContext) {
+  var desc;
+  var context;
+
+  desc = app._appDescription.manifest;
+
+  if (desc.hasOwnProperty("setup")) {
+    cp = appContext.collectionPrefix;
+
+    context = {};
+
+    if (cp !== "") {
+      context.appCollectionName = function (name) {
+        return cp + "_" + name;
+      };
+
+      context.appCollection = function (name) {
+        return internal.db._collection(cp + "_" + name);
+      };
+    }
+    else {
+      context.appCollectionName = function (name) {
+        return name;
+      };
+
+      context.appCollection = function (name) {
+        return internal.db._collection(name);
+      };
+    }
+
+    app.loadAppScript(app, desc.setup, appContext, context);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -208,10 +246,14 @@ exports.installApp = function (name, mount, options) {
       context.prefix = internal.normalizeURL(mount + "/" + i);
 
       root.loadAppScript(root, file, context);
+
+      delete context.appMount;
+      delete context.prefix;
     }
   }
 
   installAssets(root, mount);
+  setupApp(root, context);
 
   return true;
 };

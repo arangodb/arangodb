@@ -75,6 +75,10 @@ exports.guessContentType = function (filename) {
     return "application/x-javascript; charset=utf-8";
   }
 
+  if (extension === "css") {
+    return "text/css; charset=utf-8";
+  }
+
   return "text/plain; charset=utf-8";
 }
 

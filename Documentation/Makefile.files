@@ -289,6 +289,50 @@ CLEANUP += \
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief generate json for swagger REST-API
+################################################################################
+
+.PHONY: swagger
+
+swagger:
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/arangod/RestHandler/RestEdgeHandler.cpp  > @srcdir@/html/admin/api-docs/edges	
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/arangod/RestHandler/RestDocumentHandler.cpp  > @srcdir@/html/admin/api-docs/document
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-collection.js  > @srcdir@/html/admin/api-docs/collection
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-graph.js  > @srcdir@/html/admin/api-docs/graph
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-user.js  > @srcdir@/html/admin/api-docs/user
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-system.js  > @srcdir@/html/admin/api-docs/system
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-cursor.js  > @srcdir@/html/admin/api-docs/cursor
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-explain.js  > @srcdir@/html/admin/api-docs/explain
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-index.js  > @srcdir@/html/admin/api-docs/index
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-simple.js  > @srcdir@/html/admin/api-docs/simple
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-query.js  > @srcdir@/html/admin/api-docs/query
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/system/api-structure.js  > @srcdir@/html/admin/api-docs/structure
+	
+
+################################################################################
 ### @brief generate examples
 ################################################################################
 
