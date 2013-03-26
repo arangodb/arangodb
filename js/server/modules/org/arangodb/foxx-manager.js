@@ -133,6 +133,27 @@ function installAssets (app, mount) {
     }
   }
 
+  if (desc.hasOwnProperty('files')) {
+    for (path in desc.files) {
+      if (desc.files.hasOwnProperty(path)) {
+        var directory = desc.files[path];
+        var normalized = arangodb.normalizeURL("/" + path);
+
+        var route = {
+          url: { match: normalized + "/*" },
+          action: {
+            "do": "org/arangodb/actions/pathHandler",
+            "options": {
+              path: fs.join(app._appDescription.path, directory)
+            }
+          }
+        };
+
+        routes.routes.push(route);
+      }
+    }
+  }
+
   arangodb.db._collection("_routing").save(routes);
 }
 
