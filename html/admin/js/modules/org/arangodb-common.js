@@ -88,7 +88,7 @@ exports.guessContentType = function (filename) {
   }
 
   if (extension === "jpg") {
-    return "image/jpg;
+    return "image/jpg";
   }
 
   return "text/plain; charset=utf-8";

@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_CREATE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, 
+/*global require, module, Module, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY,
+  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_FILESIZE, 
   FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, SYS_DOWNLOAD, 
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, 
   SYS_RAND, SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
@@ -169,9 +170,14 @@
     delete SYS_WAIT;
   }
   
-  if (typeof FS_CREATE_DIRECTORY !== "undefined") {
-    internal.createDirectory = FS_CREATE_DIRECTORY;
-    delete FS_CREATE_DIRECTORY;
+  if (typeof FS_FILESIZE !== "undefined") {
+    internal.fileSize = FS_FILESIZE;
+    delete FS_FILESIZE;
+  }
+  
+  if (typeof FS_MAKE_DIRECTORY !== "undefined") {
+    internal.makeDirectory = FS_MAKE_DIRECTORY;
+    delete FS_MAKE_DIRECTORY;
   }
 
   if (typeof FS_EXISTS !== "undefined") {
@@ -212,6 +218,16 @@
   if (typeof FS_REMOVE !== "undefined") {
     internal.remove = FS_REMOVE;
     delete FS_REMOVE;
+  }
+  
+  if (typeof FS_REMOVE_DIRECTORY !== "undefined") {
+    internal.removeDirectory = FS_REMOVE_DIRECTORY;
+    delete FS_REMOVE_DIRECTORY;
+  }
+  
+  if (typeof FS_REMOVE_RECURSIVE_DIRECTORY !== "undefined") {
+    internal.removeDirectoryRecursive = FS_REMOVE_RECURSIVE_DIRECTORY;
+    delete FS_REMOVE_RECURSIVE_DIRECTORY;
   }
   
   if (typeof FS_UNZIP_FILE !== "undefined") {
