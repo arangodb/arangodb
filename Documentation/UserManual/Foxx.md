@@ -65,6 +65,8 @@ This will require the file `wolf.js` in the libs folder you have defined and mak
 
 ### Handling Requests
 
+If you do not redefine it, all requests that go to the root of your application will be redirected to `index.html`.
+
 #### FoxxApplication#head
 @copydetails JSF_foxx_application_head
 
