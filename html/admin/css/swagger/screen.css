@@ -138,12 +138,6 @@ div.heading_with_menu ul {
     height: 100px;
 }
 
-p {
-    line-height: 1.4em;
-    padding: 0 0 10px 0;
-    color: #333333;
-}
-
 ol {
     margin: 0px 0 10px 0;
     padding: 0 0 0 18px;
@@ -227,7 +221,6 @@ a.hider {
 
 strong {
     font-family: "Droid Sans", sans-serif;
-    font-weight: bold;
     font-weight: bold;
 }
 
@@ -397,7 +390,7 @@ form.fullwidth ol li.string input, form.fullwidth ol li.url input, form.fullwidt
 }
 
 body {
-    font-family: "Droid Sans", sans-serif;
+  /*  font-family: "Droid Sans", sans-serif; */
 }
 
 body #content_message {
@@ -415,7 +408,7 @@ body #header a#logo {
     font-size: 1.5em;
     font-weight: bold;
     text-decoration: none;
-    background: transparent url(../images/logo_small.png) no-repeat left center;
+    background: transparent url(../../img/swagger/logo_small.png) no-repeat left center;
     padding: 20px 0 20px 40px;
     color: white;
 }
