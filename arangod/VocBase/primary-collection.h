@@ -284,8 +284,9 @@ typedef struct TRI_primary_collection_s {
 
   TRI_associative_pointer_t _primaryIndex;
   struct TRI_key_generator_s* _keyGenerator;
-
   struct TRI_cap_constraint_s* _capConstraint;
+
+  int64_t _numberDocuments;
 
   int (*beginRead) (struct TRI_primary_collection_s*);
   int (*endRead) (struct TRI_primary_collection_s*);
@@ -293,9 +294,11 @@ typedef struct TRI_primary_collection_s {
   int (*beginWrite) (struct TRI_primary_collection_s*);
   int (*endWrite) (struct TRI_primary_collection_s*);
 
+  int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
+
   int (*insert) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);
 
-  int (*read) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*);
+  int (*read) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
 
   int (*update) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, const bool, const bool);
   int (*destroy) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, struct TRI_doc_update_policy_s const*, const bool, const bool);

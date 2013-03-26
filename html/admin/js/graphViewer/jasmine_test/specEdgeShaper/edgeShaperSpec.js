@@ -3,6 +3,7 @@
 /*global describe, it, expect */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
+/*global helper*/
 /*global EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,6 +104,56 @@
       shaper = new EdgeShaper(d3.select("svg"));
       shaper.drawEdges(edges);
       expect($("svg line.link").length).toEqual(4);
+    });
+    
+    
+    it('should be able to add a click event', function () {
+      var one = {
+        "_id": 1
+      },
+      two = {
+        "_id": 2
+      },
+      three = {
+        "_id": 3
+      },
+      four = {
+        "_id": 4
+      },
+      edges = [
+        {
+          "source": one,
+          "target": two
+        },
+        {
+          "source": two,
+          "target": three
+        },
+        {
+          "source": three,
+          "target": four
+        },
+        {
+          "source": four,
+          "target": one
+        }
+      ],
+      clicked = [],
+      click = function (edge) {
+        clicked[edge.source._id] = !clicked[edge.source._id];
+      },
+      shaper = new EdgeShaper(d3.select("svg"));
+      
+      shaper.on("click", click);
+      shaper.drawEdges(edges);
+      helper.simulateMouseEvent("click", "1-2");
+      helper.simulateMouseEvent("click", "3-4");
+      
+      expect($("svg line").length).toEqual(4);
+      expect(clicked[1]).toBeTruthy();
+      expect(clicked[3]).toBeTruthy();
+      expect(clicked[2]).toBeFalsy();
+      expect(clicked[4]).toBeFalsy();
     });
     
     describe('configured for label', function() {

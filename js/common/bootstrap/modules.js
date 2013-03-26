@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
 /*global require, module: true, PACKAGE_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,9 +288,88 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var internal = GlobalPackage.module("/internal").exports;
+  var fs = GlobalPackage.module("/fs").exports;
   var console = GlobalPackage.module("/console").exports;
 
   internal.GlobalPackage = GlobalPackage;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes an URL
+///
+/// If @FA{path} starts with "." or "..", then it is a relative path.
+/// Otherwise it is an absolute path. Normalizing will remove `//`,
+/// `/./`, `/../` from the url - expect in the beginning, where it keeps
+/// `../` and or at most one `./`.
+///
+/// If @FA{path} is empty, the url `./` will be returned.
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.normalizeURL = function (path) {
+    var i;
+    var n;
+    var p;
+    var q;
+    var r;
+    var x;
+
+    if (path === "") {
+      return "./";
+    }
+
+    p = path.split('/');
+
+    // relative path
+    if (p[0] === "." || p[0] === "..") {
+      r = p[0] + "/";
+      p.shift();
+      q = p;
+    }
+
+    // absolute path
+    else if (p[0] === "") {
+      r = "/";
+      p.shift();
+      q = p;
+    }
+
+    // assume that the path is relative
+    else {
+      r = "./";
+      q = p;
+    }
+
+    // normalize path
+    n = [];
+
+    for (i = 0;  i < q.length;  ++i) {
+      x = q[i];
+
+      if (x === "..") {
+        if (n.length === 0) {
+          if (r === "../") {
+            n.push(x);
+          }
+          else if (r === "./") {
+            r = "../";
+          }
+          else {
+            throw "cannot use '..' to escape top-level-directory";
+          }
+        }
+        else if (n[n.length - 1] === "..") {
+          n.push(x);
+        }
+        else {
+          n.pop();
+        }
+      }
+      else if (x !== "" && x !== ".") {
+        n.push(x);
+      }
+    }
+
+    return r + n.join('/');
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes a module name
@@ -384,10 +463,21 @@ function stop_color_print () {
 
           if (internal.exists(mainfile)) {
             var content = internal.read(mainfile);
+            var mypaths;
+
+            if (typeof desc.directories !== "undefined" && typeof desc.directories.lib !== "undefined") {
+              var full = m + internal.normalizeModuleName("", desc.directories.lib);
+
+              mypaths = [ full ];
+            }
+            else {
+              mypaths = [ m ];
+            }
 
             return { name: main,
                      description: desc,
                      packagePath: m,
+                     packageLib: mypaths,
                      path: 'file://' + mainfile,
                      content: content };
           }
@@ -418,9 +508,9 @@ function stop_color_print () {
 
     paths = pkg._paths;
 
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // normal modules, file based
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -458,9 +548,9 @@ function stop_color_print () {
 
     paths = internal.MODULES_PATH;
 
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // normal modules, file based
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
 
      // try to load the file
     for (i = 0;  i < paths.length;  ++i) {
@@ -483,9 +573,9 @@ function stop_color_print () {
       }
     }
 
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     // normal modules, database based
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
 
     if (internal.db !== undefined) {
       mc = internal.db._collection("_modules");
@@ -516,8 +606,11 @@ function stop_color_print () {
 
   Module.prototype.createModule = function (description, type, pkg) {
     var content;
-    var fun;
     var module;
+    var env;
+    var fun;
+    var key;
+    var sandbox;
 
     // mark that we have seen the definition, used for debugging only
     ModuleExistsCache[description.name] = true;
@@ -533,23 +626,45 @@ function stop_color_print () {
 
     pkg.defineModule(description.name, module);
 
-    // try to execute the module source code
-    content = "(function (module, exports, require, print) {"
-            + description.content
-            + "\n});";
+    // setup a sandbox
+    env = pkg._environment;
 
-    fun = internal.execute(content, undefined, description.name);
+    sandbox = {};
+    sandbox.print = internal.print;
 
-    if (fun === undefined) {
-      pkg.clearModule(description.name);
-      throw "cannot create context function";
+    if (env !== undefined) {
+      for (key in env) {
+        if (env.hasOwnProperty(key) && key !== "__myenv__") {
+          sandbox[key] = env[key];
+        }
+      }
     }
 
+    sandbox.module = module;
+    sandbox.exports = module.exports;
+    sandbox.require = function(path) { return module.require(path); };
+
+    // try to execute the module source code
+    content = "(function (__myenv__) {";
+
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
+    }
+
+    content += "delete __myenv__;"
+             + description.content
+             + "\n});";
+
     try {
-      fun(module,
-          module.exports,
-          function(path) { return module.require(path); },
-          internal.print);
+      fun = internal.executeScript(content, undefined, description.name);
+
+      if (fun === undefined) {
+        throw "cannot create module context function for: " + content;
+      }
+
+      fun(sandbox);
     }
     catch (err) {
       pkg.clearModule(description.name);
@@ -573,7 +688,7 @@ function stop_color_print () {
     pkg = new Package(path,
                       description.description,
                       parent,
-                      [description.packagePath]);
+                      description.packageLib);
 
     module = this.createModule(description, 'package', pkg);
 
@@ -716,6 +831,140 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the app path and manifest
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.appDescription = function (name) {
+    var apps = internal.APP_PATH;
+    var i;
+
+    for (i = 0;  i < apps.length;  ++i) {
+      var path = apps[i];
+      var file = path + "/" + name + "/" + "manifest.json";
+      var content;
+      var manifest;
+      
+      if (internal.exists(file)) {
+        try {
+          content = internal.read(file);
+          manifest = JSON.parse(content);
+        }
+        catch (err) {
+          console.error("cannot load manifest file '%s': %s - %s",
+                        file,
+                        String(err),
+                        String(err.stack));
+          continue;
+        }
+
+        if (! manifest.hasOwnProperty("name")) {
+          console.error("cannot manifest file is missing a name '%s'", file);
+          continue;
+        }
+        
+        if (! manifest.hasOwnProperty("version")) {
+          console.error("cannot manifest file is missing a version '%s'", file);
+          continue;
+        }
+        
+        return {
+          path: path + "/" + name,
+          manifest: manifest
+        };
+      }
+    }
+
+    return null;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the app root module
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.appRootModule = function (name, type, rootPackage) {
+    var description;
+    var libpath;
+    var pkg;
+    var mdl;
+
+    description = module.appDescription(name);
+
+    if (description === null) {
+      return null;
+    }
+
+    if (type === undefined) {
+      type = 'lib';
+    }
+
+    if (description.manifest.hasOwnProperty(type)) {
+      libpath = description.path + "/" + description.manifest[type];
+    }
+    else {
+      libpath = description.path;
+    }
+
+    pkg = new Package("application",
+                      {name: "application '" + name + "'"},
+                      rootPackage,
+                      [ libpath ]);
+
+    mdl = new Module("application", 'application', pkg);
+    mdl._appDescription = description;
+    
+    return mdl;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads an init file from an application path
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.loadAppScript = function (appRoot, file, context) {
+    var sandbox = {};
+    var content;
+    var description;
+    var full;
+    var fun;
+    var result;
+
+    description = appRoot._appDescription;
+
+    try {
+      full = description.path + "/" + file;
+      content = internal.read(full);
+    }
+    catch (err1) {
+      throw "cannot read file '" + full + "': " + err1 + " - " + err1.stack;
+    }
+
+    sandbox.module = appRoot;
+    sandbox.applicationContext = context;
+
+    sandbox.require = function (path) {
+      return appRoot.require(path);
+    };
+
+    content = "var func = function () {"
+            + content
+            + "\n};";
+
+    fun = internal.executeScript(content, sandbox, full);
+
+    if (fun !== true || ! sandbox.hasOwnProperty("func")) {
+      throw "cannot create application function";
+    }
+
+    try {
+      result = sandbox.func();
+    }
+    catch (err2) {
+      throw "Javascript exception in application file '" + full + "': " + err2+ " - " + err2.stack;
+    }
+
+    return result;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if require found a file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -820,6 +1069,10 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 }());
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

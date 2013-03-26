@@ -17,6 +17,8 @@ ERROR_FORBIDDEN,11,"forbidden","Will be raised when you are missing permission f
 ERROR_OUT_OF_MEMORY_MMAP,12,"out of memory in mmap","Will be raised when there is a memory shortage."
 ERROR_CORRUPTED_CSV,13,"csv is corrupt","Will be raised when encountering a corrupt csv line."
 ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not found."
+ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file cannot be written."
+ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
 
 ################################################################################
 ## HTTP standard errors
@@ -162,6 +164,12 @@ ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid
 ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used"
 ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists"
 ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist"
+
+################################################################################
+## Application management
+################################################################################
+
+ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an application is not found or not present in the specified version."
 
 ################################################################################
 ## Key value access

@@ -27,8 +27,6 @@
 
 #include "v8-vocbase.h"
 
-#include "3rdParty/valgrind/valgrind.h"
-
 #include "build.h"
 
 #include "Logger/Logger.h"
@@ -255,22 +253,6 @@ static const TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& a
   }
 
   return policy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection type the object is responsible for
-/// - "db" will return TRI_COL_TYPE_DOCUMENT
-/// - "edges" will return TRI_COL_TYPE_EDGE
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
-  v8::Handle<v8::Value> type = obj->Get(TRI_V8_SYMBOL("_type"));
-
-  if (type->IsNumber()) {
-    return (TRI_col_type_e) TRI_ObjectToInt64(type);
-  }
-
-  return TRI_COL_TYPE_DOCUMENT;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -930,8 +912,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
-
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
@@ -998,7 +980,6 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   }
 
   TRI_primary_collection_t* primary = trx->primaryCollection();
-
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
 
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
@@ -1126,6 +1107,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
+
   if (! holder.registerShapedJson(primary->_shaper, shaped)) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
@@ -1329,7 +1311,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
+  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision, false);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2193,7 +2175,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: count()")));
+                                               "usage: next()")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -3400,7 +3382,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
 
-  size_t s = primary->size(primary);
+  const TRI_voc_size_t s = primary->size(primary);
 
   trx.finish(res);
   // READ-LOCK end
@@ -5425,7 +5407,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
                                             const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(info.Holder(), WRP_VOCBASE_TYPE);
+  v8::Handle<v8::Object> holder = info.Holder()->ToObject();
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(holder, WRP_VOCBASE_TYPE);
 
   if (vocbase == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
@@ -5435,7 +5418,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   string key = TRI_ObjectToString(name);
 
   if (key == "") {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   if (   key == "toString"
@@ -5445,24 +5428,42 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  // get the collection type (document/edge)
-  const TRI_col_type_e collectionType = GetVocBaseCollectionType(info.Holder());
+  if (holder->HasRealNamedProperty(name)) {
+    v8::Handle<v8::Object> value = holder->GetRealNamedProperty(name)->ToObject();
+    TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
-  // look up the value if it exists
-  TRI_vocbase_col_t const* collection;
+    if (collection != 0) {
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_vocbase_col_status_e status = collection->_status;
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+      if (status != TRI_VOC_COL_STATUS_DELETED) {
+        return scope.Close(value);
+      }
+      else {
+        holder->Delete(name);
+      }
+    }
+  }
 
-  collection = TRI_FindCollectionByNameOrBearVocBase(vocbase, key.c_str(), (TRI_col_type_t) collectionType);
+  // look up the collection
+  TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(vocbase, key.c_str());
 
-  // if the key is not present return an empty handle as signal
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot load or create collection")));
+    return scope.Close(v8::Undefined());
   }
 
   if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     return scope.Close(v8::ThrowException(v8::String::New("collection is not a document or edge collection")));
   }
 
-  return scope.Close(TRI_WrapCollection(collection));
+  v8::Handle<v8::Value> result = TRI_WrapCollection(collection);
+
+  // TODO: when this line is uncommented, the collection names are cached.
+  // but this causes problems and confusion somewhere else. Need to find the reason!
+  // holder->Set(name, result);
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5701,10 +5702,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
-  // get the collection type (document/edge)
-  const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
-
-  return CreateVocBase(argv, collectionType);
+  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6388,8 +6386,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
-                                        TRI_col_type_e type) {
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
   v8::HandleScope scope;
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -6398,7 +6395,6 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
                                             const_cast<TRI_vocbase_t*>(database));
 
   result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
-  result->Set(TRI_V8_SYMBOL("_type"), v8::Integer::New((int) type), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6541,11 +6537,11 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // keys
   // .............................................................................
 
-  v8g->IsSystemKey       = v8::Persistent<v8::String>::New(v8::String::New("isSystem"));
-  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(v8::String::New("isVolatile"));
-  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  v8g->KeyOptionsKey     = v8::Persistent<v8::String>::New(v8::String::New("keyOptions"));
-  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
+  v8g->IsSystemKey       = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isSystem"));
+  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isVolatile"));
+  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("journalSize"));
+  v8g->KeyOptionsKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("keyOptions"));
+  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("waitForSync"));
 
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
@@ -6740,19 +6736,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // .............................................................................
   // create global variables
   // .............................................................................
-
-  context->Global()->Set(TRI_V8_SYMBOL("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
-
-  // .............................................................................
-  // create the global variables
-  // .............................................................................
-
-  context->Global()->Set(TRI_V8_SYMBOL("db"),
-                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);
-  context->Global()->Set(v8::String::New("VALGRIND"), (RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False()), v8::ReadOnly);
+  
+  TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
+  TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);

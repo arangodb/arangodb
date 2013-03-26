@@ -312,16 +312,16 @@ TRI_datafile_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_marker_s {
-  TRI_voc_size_t _size;                 // 4 bytes, must be supplied
-  TRI_voc_crc_t _crc;                   // 4 bytes, will be generated
+  TRI_voc_size_t       _size;    // 4 bytes, must be supplied
+  TRI_voc_crc_t        _crc;     // 4 bytes, will be generated
 
-  TRI_df_marker_type_t _type;           // 4 bytes, must be supplied
+  TRI_df_marker_type_t _type;    // 4 bytes, must be supplied
 
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
 #endif
 
-  TRI_voc_tick_t _tick;                 // 8 bytes, will be generated
+  TRI_voc_tick_t _tick;          // 8 bytes, will be generated
 }
 TRI_df_marker_t;
 

@@ -166,13 +166,16 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::ApplicationV8 (string const& binaryPath)
+ApplicationV8::ApplicationV8 (string const& binaryPath, string const& tempPath)
   : ApplicationFeature("V8"),
+    _tempPath(tempPath),
     _startupPath(),
-    _startupModules(),
-    _startupNodeModules(),
+    _modulesPath(),
+    _packagePath(),
     _actionPath(),
+    _appPath(),
     _useActions(true),
+    _developmentMode(false),
     _performUpgrade(false),
     _skipUpgrade(false),
     _gcInterval(1000),
@@ -246,7 +249,7 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext () {
+ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -275,6 +278,15 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
   context->_context->Enter();
 
   context->handleGlobalContextMethods();
+
+  if (_developmentMode && ! initialise) {
+    v8::HandleScope scope;
+
+    TRI_ExecuteJavaScriptString(context->_context,
+                                v8::String::New("require(\"internal\").resetEngine()"),
+                                v8::String::New("global context method"),
+                                false);
+  }
 
   return context;
 }
@@ -491,6 +503,14 @@ void ApplicationV8::disableActions () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enables development mode
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::enableDevelopmentMode () {
+  _developmentMode = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -512,8 +532,9 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
-    ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
-    ("javascript.package-path", &_startupNodeModules, "one or more directories separated by (semi-) colons")
+    ("javascript.app-path", &_appPath, "one or more directories separated by (semi-) colons")
+    ("javascript.modules-path", &_modulesPath, "one or more directories separated by (semi-) colons")
+    ("javascript.package-path", &_packagePath, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
@@ -525,7 +546,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   // check the startup modules
-  if (_startupModules.empty()) {
+  if (_modulesPath.empty()) {
     LOGGER_FATAL_AND_EXIT("no 'javascript.modules-path' has been supplied, giving up");
   }
 
@@ -543,16 +564,22 @@ bool ApplicationV8::prepare () {
   {
     vector<string> paths;
 
-    paths.push_back(string("Javascript startup path '" + _startupPath + "'"));
-    paths.push_back(string("Javascript modules path '" + _startupModules + "'"));
-    if (! _startupNodeModules.empty()) {
-      paths.push_back(string("Node modules path '" + _startupNodeModules + "'"));
-    }
-    if (_useActions) {
-      paths.push_back(string("Javascript action path '" + _actionPath + "'"));
+    paths.push_back(string("startup '" + _startupPath + "'"));
+    paths.push_back(string("modules '" + _modulesPath + "'"));
+
+    if (! _packagePath.empty()) {
+      paths.push_back(string("packages '" + _packagePath + "'"));
     }
 
-    LOGGER_INFO("using " << StringUtils::join(paths, ", "));
+    if (_useActions) {
+      paths.push_back(string("actions '" + _actionPath + "'"));
+    }
+
+    if (! _appPath.empty()) {
+      paths.push_back(string("application '" + _appPath + "'"));
+    }
+
+    LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
   }
 
   _startupLoader.setDirectory(_startupPath);
@@ -689,13 +716,20 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _startupModules, _startupNodeModules);
+  TRI_InitV8Utils(context->_context, _modulesPath, _packagePath, _tempPath);
   TRI_InitV8Shell(context->_context);
+
+  {
+    v8::HandleScope scope;
+
+    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", TRI_V8PathList(_appPath));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
+  }
 
   // set global flag before loading system files
   if (i == 0 && ! _skipUpgrade) {
     v8::HandleScope scope;
-    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+    TRI_AddGlobalVariableVocbase(context->_context, "UPGRADE", v8::Boolean::New(_performUpgrade));
   }
 
   // load all init files
@@ -739,6 +773,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   // load all actions
   if (_useActions) {
+    v8::HandleScope scope;
+
     bool ok = _actionLoader.executeAllScripts(context->_context);
 
     if (! ok) {

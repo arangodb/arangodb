@@ -2,7 +2,7 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include <BasicsC/common.h>
 #include "./lib/BasicsC/voc-errors.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,6 +26,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_OUT_OF_MEMORY_MMAP, "out of memory in mmap");
   REG_ERROR(ERROR_CORRUPTED_CSV, "csv is corrupt");
   REG_ERROR(ERROR_FILE_NOT_FOUND, "file not found");
+  REG_ERROR(ERROR_CANNOT_WRITE_FILE, "cannot write file");
+  REG_ERROR(ERROR_CANNOT_OVERWRITE_FILE, "cannot overwrite file");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
@@ -113,6 +115,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
+  REG_ERROR(ERROR_APPLICATION_NOT_FOUND, "application not found");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");

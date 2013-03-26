@@ -184,8 +184,8 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
 
   TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
-  cm._cid  = collection->_info._cid;
   cm._type = (TRI_col_type_t) collection->_info._type;
+  cm._cid  = collection->_info._cid;
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
 
@@ -410,26 +410,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
-  TRI_doc_mptr_t const* mptr;
-  TRI_voc_size_t result;
-  void** end;
-  void** ptr;
-
-  ptr = primary->_primaryIndex._table;
-  end = ptr + primary->_primaryIndex._nrAlloc;
-  result = 0;
-
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr != NULL) {
-      mptr = *ptr;
-
-      if (mptr->_validTo == 0) {
-        ++result;
-      }
-    }
-  }
-
-  return result;
+  return (TRI_voc_size_t) primary->_numberDocuments;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,12 +432,13 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 
 int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
-  primary->_shaper = shaper;
-  primary->_capConstraint = NULL;
-  primary->_keyGenerator = NULL;
+  primary->_shaper          = shaper;
+  primary->_capConstraint   = NULL;
+  primary->_keyGenerator    = NULL;
+  primary->_numberDocuments = 0;
 
-  primary->figures = Figures;
-  primary->size    = Count;
+  primary->figures          = Figures;
+  primary->size             = Count;
 
   TRI_InitBarrierList(&primary->_barrierList, primary);
 

@@ -87,6 +87,8 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 SslClientConnection::~SslClientConnection () {
+  disconnect();
+
   if (_ssl) {
     SSL_free(_ssl);
   }

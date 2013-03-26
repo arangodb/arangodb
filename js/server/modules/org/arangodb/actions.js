@@ -207,17 +207,169 @@ function lookupCallbackStatic (content) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a callback for an action
+/// @brief looks up a callback for a callback action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackAction (route, action) {
-  var path;
-  var name;
-  var func;
-  var module;
-  var joined;
+function lookupCallbackActionCallback (route, action) {
   var defn;
   var env;
+  var func;
+  var key;
+  var appModule;
+  var modelModule;
+
+  defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
+  env = {};
+
+  try {
+    if (action.hasOwnProperty("context")) {
+      appModule = module.appRootModule(action.context.name);
+
+      if (action.hasOwnProperty("requiresModels")) {
+        var cp = action.context.collectionPrefix;
+        var me;
+
+        modelModule = module.appRootModule(action.context.name,
+                                           'models',
+                                           appModule._package);
+
+        me = modelModule._package._environment = {};
+
+        if (cp !== "") {
+          me.appCollection = function (name) {
+            return cp + "_" + name;
+          };
+        }
+        else {
+          me.appCollection = function (name) {
+            return name;
+          };
+        }
+
+        me.requireModel = function (path) {
+          modelModule.require(path);
+        };
+      }
+      else {
+        modelModule = appModule;
+      }
+    }
+    else {
+      appModule = module.root;
+      modelModule = appModule;
+    }
+
+    if (action.hasOwnProperty("requiresLibs")) {
+      var requires = action.requiresLibs;
+
+      for (key in requires) {
+        if (requires.hasOwnProperty(key)) {
+          env[key] = appModule.require(requires[key]);
+        }
+      }
+    }
+
+    if (action.hasOwnProperty("requiresModels")) {
+      var models = action.requiresModels;
+
+      for (key in models) {
+        if (models.hasOwnProperty(key)) {
+          env[key] = modelModule.require(models[key]);
+        }
+      }
+    }
+
+    env.module = module.root;
+    env.require = function (path) {
+      return appModule.require(path);
+    };
+
+    internal.executeScript(defn, env, route);
+
+    if (env.hasOwnProperty("func")) {
+      func = env.func;
+    }
+    else {
+      func = notImplementedFunction(route,
+                                    "could not define function '" + action.callback);
+    }
+  }
+  catch (err) {
+    func = errorFunction(route,
+                         "an error occurred while loading function '" 
+                         + action.callback + "': " + String(err));
+  }
+
+  return {
+    controller: func,
+    options: action.options || {},
+    methods: action.methods || exports.ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a module action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionDo (route, action) {
+  var func;
+  var joined;
+  var name;
+  var path;
+  var mdl;
+
+  path = action['do'].split("/");
+  name = path.pop();
+  func = null;
+  joined = path.join("/");
+
+  try {
+    mdl = require(joined);
+
+    if (mdl.hasOwnProperty(name)) {
+      func = mdl[name];
+    }
+    else {
+      func = notImplementedFunction(route, "could not find action named '"
+                                    + name + "' in module '" + joined + "'");
+    }
+  }
+  catch (err) {
+    if (! moduleExists(joined)) {
+      func = notImplementedFunction(
+        route, 
+        "an error occurred while loading action named '" + name 
+          + "' in module '" + joined + "': " + String(err));
+    }
+    else {
+      func = errorFunction(
+        route,
+        "an error occurred while loading action named '" + name 
+          + "' in module '" + joined + "': " + String(err));
+    }
+  }
+
+  if (func === null || typeof func !== 'function') {
+    func = errorFunction(
+      route, 
+      "invalid definition for the action named '" + name 
+        + "' in module '" + joined + "'");
+  }
+
+  return {
+    controller: func,
+    options: action.options || {},
+    methods: action.methods || exports.ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a controller action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionController (route, action) {
+  var func;
+  var mdl;
   var httpMethods = { 
     'get': exports.GET,
     'head': exports.HEAD,
@@ -227,6 +379,156 @@ function lookupCallbackAction (route, action) {
     'options': exports.OPTIONS,
     'patch': exports.PATCH
   };
+
+  try {
+    mdl = require(action.controller);
+
+    return {
+      controller: function (req, res, options, next) {
+        var m;
+
+        // enum all HTTP methods
+        for (m in httpMethods) {
+          if (httpMethods.hasOwnProperty(m)) {
+            if (req.requestType === httpMethods[m] && mdl.hasOwnProperty(m)) {
+              func = mdl[m]
+                || errorFunction(
+                     route, 
+                     "invalid definition for " + m 
+                       + " action in action controller module '" 
+                       + action.controller + "'");
+
+              return func(req, res, options, next); 
+            }
+          }
+        }
+
+        if (mdl.hasOwnProperty('do')) {
+          func = mdl['do']
+            || errorFunction(
+                 route,
+                   "invalid definition for do action in action controller module '"
+                   + action.controller + "'");
+
+          return func(req, res, options, next);
+        }
+
+        next();
+      },
+      options: action.options || {},
+      methods: action.methods || exports.ALL_METHODS
+    };
+  }
+  catch (err) {
+    if (! moduleExists(action.controller)) {
+      return notImplementedFunction(
+        route, 
+        "cannot load/execute action controller module '" 
+          + action.controller + ": " + String(err));
+    }
+
+    return errorFunction(
+      route, 
+      "cannot load/execute action controller module '" 
+        + action.controller + ": " + String(err));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a prefix controller action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionPrefixController (route, action) {
+  var prefixController = action.prefixController;
+  var httpMethods = { 
+    'get': exports.GET,
+    'head': exports.HEAD,
+    'put': exports.PUT,
+    'post': exports.POST,
+    'delete': exports.DELETE,
+    'options': exports.OPTIONS,
+    'patch': exports.PATCH
+  };
+
+  return {
+    controller: function (req, res, options, next) {
+      var mdl;
+      var path;
+      var efunc;
+      var func;
+
+      // determine path
+      if (req.hasOwnProperty('suffix')) {
+        path = prefixController + "/" + req.suffix.join("/");
+      }
+      else {
+        path = prefixController;
+      }
+
+      // load module
+      try {
+        require(path);
+      }
+      catch (err1) {
+        efunc = errorFunction;
+
+        if (! moduleExists(path)) {
+          efunc = notImplementedFunction;
+        }
+
+        return efunc(route,
+                     "cannot load prefix controller: " + String(err1))(
+          req, res, options, next);
+      }
+
+      try {
+        var m;
+
+        // enum all HTTP methods
+        for (m in httpMethods) {
+          if (httpMethods.hasOwnProperty(m)) {
+            if (req.requestType === httpMethods[m] && mdl.hasOwnProperty(m)) {
+              func = mdl[m]
+                || errorFunction(
+                     route,
+                     "Invalid definition for " + m + " action in prefix controller '"
+                       + action.prefixController + "'");
+
+              return func(req, res, options, next);
+            }
+          }
+        }
+  
+        if (mdl.hasOwnProperty('do')) {
+          func = mdl['do']
+            || errorFunction(
+                 route, 
+                 "Invalid definition for do action in prefix controller '"
+                   + action.prefixController + "'");
+
+          return func(req, res, options, next);
+        }
+      }
+      catch (err2) {
+        return errorFunction(
+          route, 
+          "Cannot load/execute prefix controller '"
+            + action.prefixController + "': " + String(err2))(
+          req, res, options, next);
+      }
+
+      next();
+    },
+    options: action.options || {},
+    methods: action.methods || exports.ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for an action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackAction (route, action) {
 
   // .............................................................................
   // short-cut for prefix controller
@@ -241,31 +543,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('callback')) {
-    defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
-    env = {};
-
-    try {
-      internal.execute(defn, env, route);
-
-      if (env.hasOwnProperty("func")) {
-        func = env.func;
-      }
-      else {
-        func = notImplementedFunction(route,
-                                      "could not define function '" + action.callback);
-      }
-    }
-    catch (err) {
-      func = errorFunction(route,
-                           "an error occurred while loading function '" 
-                           + action.callback + "': " + String(err));
-    }
-
-    return {
-      controller: func,
-      options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
-    };
+    return lookupCallbackActionCallback(route, action);
   }
 
   // .............................................................................
@@ -273,46 +551,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('do')) {
-    path = action['do'].split("/");
-    name = path.pop();
-    func = null;
-    joined = path.join("/");
-
-    try {
-      module = require(joined);
-
-      if (module.hasOwnProperty(name)) {
-        func = module[name];
-      }
-      else {
-        func = notImplementedFunction(route, "could not find action named '"
-                                             + name + "' in module '" + joined + "'");
-      }
-    }
-    catch (err1) {
-      if (! moduleExists(joined)) {
-        func = notImplementedFunction(route, 
-                                      "an error occurred while loading action named '" + name 
-                                        + "' in module '" + joined + "': " + String(err1));
-      }
-      else {
-        func = errorFunction(route,
-                             "an error occurred while loading action named '" + name 
-                               + "' in module '" + joined + "': " + String(err1));
-      }
-    }
-
-    if (func === null || typeof func !== 'function') {
-      func = errorFunction(route, 
-                           "invalid definition for the action named '" + name 
-                             + "' in module '" + joined + "'");
-    }
-
-    return {
-      controller: func,
-      options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
-    };
+    return lookupCallbackActionDo(route, action);
   }
 
   // .............................................................................
@@ -320,54 +559,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('controller')) {
-    try {
-      module = require(action.controller);
-
-      return {
-        controller: function (req, res, options, next) {
-          var m;
-
-          // enum all HTTP methods
-          for (m in httpMethods) {
-            if (httpMethods.hasOwnProperty(m)) {
-              if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
-                func = module[m]
-                  || errorFunction(route, 
-                                   "invalid definition for " + m 
-                                     + " action in action controller module '" 
-                                     + action.controller + "'");
-
-                return func(req, res, options, next); 
-              }
-            }
-          }
-
-          if (module.hasOwnProperty('do')) {
-            func = module['do']
-              || errorFunction(route,
-                               "invalid definition for do action in action controller module '"
-                                 + action.controller + "'");
-
-            return func(req, res, options, next);
-          }
-
-          next();
-        },
-        options: action.options || {},
-        methods: action.methods || exports.ALL_METHODS
-      };
-    }
-    catch (err2) {
-      if (! moduleExists(action.controller)) {
-        return notImplementedFunction(route, 
-                                      "cannot load/execute action controller module '" 
-                                        + action.controller + ": " + String(err2));
-      }
-
-      return errorFunction(route, 
-                           "cannot load/execute action controller module '" 
-                             + action.controller + ": " + String(err2));
-    }
+    return lookupCallbackActionController(route, action);
   }
 
   // .............................................................................
@@ -375,75 +567,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('prefixController')) {
-    var prefixController = action.prefixController;
-
-    return {
-      controller: function (req, res, options, next) {
-        var module;
-        var path;
-        var efunc;
-
-        // determine path
-        if (req.hasOwnProperty('suffix')) {
-          path = prefixController + "/" + req.suffix.join("/");
-        }
-        else {
-          path = prefixController;
-        }
-
-        // load module
-        try {
-          require(path);
-        }
-        catch (err) {
-          efunc = errorFunction;
-
-          if (! moduleExists(path)) {
-            efunc = notImplementedFunction;
-          }
-
-          return efunc(route, "cannot load prefix controller: " + String(err))(
-                   req, res, options, next);
-        }
-
-        try {
-          var m;
-
-          // enum all HTTP methods
-          for (m in httpMethods) {
-            if (httpMethods.hasOwnProperty(m)) {
-              if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
-                func = module[m]
-                  || errorFunction(route,
-                                   "Invalid definition for " + m + " action in prefix controller '"
-                                     + action.prefixController + "'");
-
-                return func(req, res, options, next);
-              }
-            }
-          }
-  
-          if (module.hasOwnProperty('do')) {
-            func = module['do']
-              || errorFunction(route, 
-                               "Invalid definition for do action in prefix controller '"
-                                 + action.prefixController + "'");
-
-            return func(req, res, options, next);
-          }
-        }
-        catch (err2) {
-          return errorFunction(route, 
-                               "Cannot load/execute prefix controller '"
-                                 + action.prefixController + "': " + String(err2))(
-                   req, res, options, next);
-        }
-
-        next();
-      },
-      options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
-    };
+    return lookupCallbackActionPrefixController(route, action);
   }
 
   return null;

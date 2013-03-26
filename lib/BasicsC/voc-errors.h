@@ -41,6 +41,10 @@ extern "C" {
 ///   Will be raised when encountering a corrupt csv line.
 /// - 14: @LIT{file not found}
 ///   Will be raised when a file is not found.
+/// - 15: @LIT{cannot write file}
+///   Will be raised when a file cannot be written.
+/// - 16: @LIT{cannot overwrite file}
+///   Will be raised when an attempt is made to overwrite an existing file.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -249,6 +253,9 @@ extern "C" {
 ///   Will be raised when a user name already exists
 /// - 1703: @LIT{user not found}
 ///   Will be raised when a user name is updated that does not exist
+/// - 1750: @LIT{application not found}
+///   Will be raised when an application is not found or not present in the
+///   specified version.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -537,6 +544,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_FILE_NOT_FOUND                                          (14)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 15: ERROR_CANNOT_WRITE_FILE
+///
+/// cannot write file
+///
+/// Will be raised when a file cannot be written.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_WRITE_FILE                                       (15)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 16: ERROR_CANNOT_OVERWRITE_FILE
+///
+/// cannot overwrite file
+///
+/// Will be raised when an attempt is made to overwrite an existing file.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_OVERWRITE_FILE                                   (16)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1434,6 +1461,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_NOT_FOUND                                          (1703)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1750: ERROR_APPLICATION_NOT_FOUND
+///
+/// application not found
+///
+/// Will be raised when an application is not found or not present in the
+/// specified version.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

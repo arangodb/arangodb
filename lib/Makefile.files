@@ -8,6 +8,9 @@
 ### @brief library "libarango.a"
 ################################################################################
 
+lib_libarango_a_CPPFLAGS = \
+	$(AM_CPPFLAGS) 
+
 lib_libarango_a_SOURCES = \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
@@ -62,6 +65,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/utf8-helper.c \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
+	lib/BasicsC/zip.c \
 	lib/JsonParser/json-parser.c \
 	lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp \
@@ -88,7 +92,10 @@ lib_libarango_a_SOURCES = \
 	lib/ShapedJson/shaped-json.c \
 	lib/Statistics/statistics.cpp \
 	lib/Utilities/LineEditor.cpp \
-	lib/Utilities/ScriptLoader.cpp
+	lib/Utilities/ScriptLoader.cpp \
+	lib/Zip/ioapi.c \
+	lib/Zip/unzip.c \
+	lib/Zip/zip.c
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -141,7 +148,7 @@ lib_libarango_fe_a_SOURCES = \
 ################################################################################
 ### @brief library "libarango.a", JavaScript part
 ################################################################################
-
+	
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
@@ -150,7 +157,14 @@ lib_libarango_v8_a_SOURCES = \
 	lib/V8/v8-globals.cpp \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-shell.cpp \
-	lib/V8/v8-utils.cpp
+	lib/V8/v8-utils.cpp \
+	lib/SimpleHttpClient/GeneralClientConnection.cpp \
+	lib/SimpleHttpClient/ClientConnection.cpp \
+	lib/SimpleHttpClient/SslClientConnection.cpp \
+	lib/SimpleHttpClient/SimpleClient.cpp \
+	lib/SimpleHttpClient/SimpleHttpClient.cpp \
+	lib/SimpleHttpClient/SimpleHttpResult.cpp
+
 
 ################################################################################
 ### @brief library "libarango.a", Ruby part

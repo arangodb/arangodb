@@ -214,7 +214,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   ;
 
   options[ApplicationServer::OPTIONS_SERVER]
-    ("server.endpoint", &_endpoints, "endpoint for client requests")
+    ("server.endpoint", &_endpoints, "endpoint for client requests (e.g. \"tcp://127.0.0.1:8529\", or \"ssl://192.168.1.1:8529\")")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]

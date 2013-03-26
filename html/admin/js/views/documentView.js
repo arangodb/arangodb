@@ -68,7 +68,7 @@ var documentView = Backbone.View.extend({
     }
   },
   clicked: function (a) {
-    self = a.currentTarget;
+    var self = a.currentTarget;
     var checkData = $(this.table).dataTable().fnGetData(self);
     try {
       if (checkData[0] === '<div class="notwriteable"></div>') {
@@ -172,7 +172,8 @@ var documentView = Backbone.View.extend({
 
   },
 
-  addLine: function () {
+  addLine: function (event) {
+    //event.stopPropagation();
     var randomKey = arangoHelper.getRandomToken();
     var self = this;
     self.currentKey = "zkey" + randomKey;
@@ -279,7 +280,7 @@ var documentView = Backbone.View.extend({
       if (aPos[0] === 0) {
         $(this).removeClass('writeable');
       }
-      if ( i == 1) {
+      if ( i === 1) {
         $(this).removeClass('writeable');
         i = 0;
       }
@@ -312,6 +313,7 @@ var documentView = Backbone.View.extend({
       }
     },{
       data: function() {
+        $(".btn-success").click()
         var aPos = documentEditTable.fnGetPosition(this);
         var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
         if (aPos[1] == 0) {
@@ -338,7 +340,7 @@ var documentView = Backbone.View.extend({
       cssclass : 'jediTextarea',
       submitcssclass: 'btn btn-success pull-right',
       cancelcssclass: 'btn btn-danger pull-right',
-      cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
+      cancel: 'Cancel',
       submit: 'Save',
       onblur: 'ignore'
     });

@@ -67,6 +67,7 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestUploadHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Statistics/statistics.h"
 
@@ -128,6 +129,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createData<TRI_vocbase_t*>,
                             vocbase);
+
+  // add upload handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
+                            RestHandlerCreator<RestUploadHandler>::createData<TRI_vocbase_t*>,
+                            vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,6 +176,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _binaryPath(),
+    _tempPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
@@ -182,6 +189,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _forceSyncShapes(true),
     _forceSyncProperties(true),
+    _developmentMode(false),
     _vocbase(0) {
 
   // locate path to binary
@@ -189,7 +197,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
+  p = TRI_GetTempPath();
+  _tempPath = string(p);
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // set working directory and database directory
@@ -245,7 +256,7 @@ void ArangoServer::buildApplicationServer () {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(_binaryPath);
+  _applicationV8 = new ApplicationV8(_binaryPath, _tempPath);
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
@@ -292,6 +303,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
+    ("temp-path", &_tempPath, "temporary path")
     ("upgrade", "perform a database upgrade")
   ;
 
@@ -313,6 +325,10 @@ void ArangoServer::buildApplicationServer () {
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 
+  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-admin"]
+    ("development-mode", "start server in development mode")
+  ;
+
   // .............................................................................
   // javascript options
   // .............................................................................
@@ -320,6 +336,11 @@ void ArangoServer::buildApplicationServer () {
   additional["JAVASCRIPT Options:help-admin"]
     ("javascript.script", &_scriptFile, "do not start as server, run script instead")
     ("javascript.script-parameter", &_scriptParameters, "script parameter")
+  ;
+
+  additional["JAVASCRIPT Options:help-devel"]
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
+    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -340,11 +361,6 @@ void ArangoServer::buildApplicationServer () {
 
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
-  ;
-
-  additional["JAVASCRIPT Options:help-devel"]
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
-    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
   // .............................................................................
@@ -386,7 +402,6 @@ void ArangoServer::buildApplicationServer () {
                                                              TRI_CheckAuthenticationAuthInfo);
   _applicationServer->addFeature(_applicationEndpointServer);
 
-
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
@@ -398,6 +413,10 @@ void ArangoServer::buildApplicationServer () {
   // dump version details
   LOGGER_INFO(rest::Version::getVerboseVersionString());
 
+  if (_applicationServer->programOptions().has("development-mode")) {
+    _developmentMode = true;
+    _applicationV8->enableDevelopmentMode();
+  }
 
   // .............................................................................
   // set language of default collator
@@ -412,7 +431,6 @@ void ArangoServer::buildApplicationServer () {
   else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
-
 
   // .............................................................................
   // init nonces
@@ -675,7 +693,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->start();
 
   // enter V8 context
-  ApplicationV8::V8Context* context = _applicationV8->enterContext();
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(true);
 
   // .............................................................................
   // execute everything with a global scope

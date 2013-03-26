@@ -130,8 +130,8 @@ typedef struct TRI_index_s {
   // the following functions are called for document/collection administration
   // .........................................................................................
 
-  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
+  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
 
   // NULL by default. will only be called if non-NULL
   int (*postInsert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
