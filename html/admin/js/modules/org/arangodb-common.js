@@ -36,6 +36,69 @@ var internal = require("internal");
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief guesses the content type
+////////////////////////////////////////////////////////////////////////////////
+
+exports.guessContentType = function (filename) {
+  var re = /.*\.([^\.]*)$/;
+  var match = re.exec(filename);
+  var extension;
+
+  if (match === null) {
+    return "text/plain; charset=utf-8";
+  }
+
+  extension = match[1];
+
+  if (extension === "html") {
+    return "text/html; charset=utf-8";
+  }
+
+  if (extension === "xml") {
+    return "application/xml; charset=utf-8";
+  }
+
+  if (extension === "json") {
+    return "application/json; charset=utf-8";
+  }
+
+  if (extension === "js") {
+    return "application/x-javascript; charset=utf-8";
+  }
+
+  if (extension === "css") {
+    return "text/css; charset=utf-8";
+  }
+
+  if (extension === "png") {
+    return "image/png";
+  }
+
+  if (extension === "gif") {
+    return "image/gif";
+  }
+
+  if (extension === "jpg") {
+    return "image/jpg";
+  }
+
+  return "text/plain; charset=utf-8";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -45,10 +108,18 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function "normalizeURL"
+////////////////////////////////////////////////////////////////////////////////
+
+exports.normalizeURL = internal.normalizeURL;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function "output"
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.output = function () { internal.output.apply(internal.output, arguments); };
+exports.output = function () {
+  internal.output.apply(internal.output, arguments);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function "print"

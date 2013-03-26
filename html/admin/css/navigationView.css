@@ -45,3 +45,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   height: 34px;
   padding: 0 !important;
 }
+
+.applications-menu {
+  display: none;
+}
