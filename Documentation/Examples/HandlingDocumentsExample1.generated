@@ -1,6 +1,5 @@
 { 
   "firstName" : "Hugo", 
-  "_key" : "schlonz", 
   "lastName" : "Schlonz", 
   "address" : { 
     "city" : "Hier", 
@@ -12,5 +11,6 @@
     "programming" 
   ], 
   "_id" : "demo/schlonz", 
-  "_rev" : "11223463" 
+  "_rev" : "9908826", 
+  "_key" : "schlonz" 
 }

@@ -468,6 +468,19 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 ///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-None-Match,string}
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has a different revision than the
+/// given etag. Otherwise a @LIT{HTTP 304} is returned.
+///
+/// @RESTHEADERPARAM{If-Match,string}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
+/// you can supply the etag in an attribute @LIT{rev} in the URL.
+///
 /// @RESTDESCRIPTION
 /// Returns the document identified by @FA{document-handle}. The returned
 /// document contains two special attributes: @LIT{_id} containing the document
@@ -475,27 +488,6 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @RESTRETURNCODES
 /// 
-/// @RESTRETURNCODE{200}
-/// If the document exists, this is returned and the JSON
-/// representation of the document is the body of the response.
-///
-/// @RESTRETURNCODE{404}
-/// If the @FA{document-handle} points to a non-existing document, then a
-/// @LIT{HTTP 404} is returned and the body contains an error document.
-///
-/// @RESTRETURNCODE{304}
-/// If the "If-None-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise a @LIT{HTTP 304} is returned.
-///
-/// @RESTRETURNCODE{412}
-/// If the "If-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
-/// you can supply the etag in an attribute @LIT{rev} in the URL.
-///
-/// @RESTRETURNCODES
-///
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///

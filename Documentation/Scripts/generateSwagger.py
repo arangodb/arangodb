@@ -131,6 +131,9 @@ class Regexen:
         self.RESTHEADER = re.compile('.*@RESTHEADER')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
         self.RESTQUERYPARAMETERS = re.compile('.*@RESTQUERYPARAMETERS')
+        self.RESTHEADERPARAMETERS = re.compile('.*@RESTHEADERPARAMETERS')
+        self.RESTHEADERPARAM = re.compile('.*@RESTHEADERPARAM{')
+        self.RESTBODYPARAM = re.compile('.*@RESTBODYPARAM')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTQUERYPARAM = re.compile('.*@RESTQUERYPARAM{')
         self.RESTDESCRIPTION = re.compile('.*@RESTDESCRIPTION')
@@ -177,6 +180,39 @@ def resturlparam(cargo, r=Regexen()):
             para['description'] += Typography(line[4:-1]) + ' '
 
 def restqueryparameters(cargo, r=Regexen()):
+    fp, last = cargo
+    while 1:
+        line = fp.readline()
+        if not line:                                 return eof, (fp, line)
+        elif r.read_through.match(line):             return read_through, (fp, line)
+        elif r.RESTQUERYPARAM.match(line):           return restqueryparam, (fp, line)
+        elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
+        else:																				 continue
+
+def restheaderparameters(cargo, r=Regexen()):
+    fp, last = cargo
+    while 1:
+        line = fp.readline()
+        if not line:                                 return eof, (fp, line)
+        elif r.read_through.match(line):             return read_through, (fp, line)
+        elif r.RESTHEADERPARAM.match(line):          return restheaderparam, (fp, line)
+        elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
+        else:																				 continue
+
+def restheaderparam(cargo, r=Regexen()):
+    # TODO 
+    fp, last = cargo
+    while 1:
+        line = fp.readline()
+        if not line:                                 return eof, (fp, line)
+        elif r.read_through.match(line):             return read_through, (fp, line)
+        elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
+        elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
+        elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
+        else:																				 continue
+
+def restbodyparam(cargo, r=Regexen()):
+    # TODO see POST processing in comment till PUT
     fp, last = cargo
     while 1:
         line = fp.readline()
@@ -332,6 +368,7 @@ def comment(cargo, r=Regexen()):
             global operation 
             operation = _operation
         elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
+        elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
         elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
         elif len(line) >= 4 and line[:4] == "////":  continue
         elif len(line) >= 3 and line[:3] =="///":    continue
@@ -356,6 +393,9 @@ if __name__ == "__main__":
 		automat.add_state(resturlparam)
 		automat.add_state(restqueryparameters)
 		automat.add_state(restqueryparam)
+		automat.add_state(restbodyparam)
+		automat.add_state(restheaderparameters)
+		automat.add_state(restheaderparam)
 		automat.add_state(restdescription)
 		automat.add_state(restreturncodes)
 		automat.add_state(restreturncode)
