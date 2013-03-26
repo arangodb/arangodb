@@ -258,6 +258,18 @@ function GraphViewer(svg, width, height,
     });
   };
   
+  self.loadGraphWithAttributeValue = function(attribute, value) {
+    nodes.length = 0;
+    edges.length = 0;
+    adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
+      node._expanded = true;
+      node.x = width / 2;
+      node.y = height / 2;
+      node.fixed = true;
+      start();
+    });
+  };
+  
   self.rebind = function(eventConfig) {
     bindEventsFromConfig(eventConfig);
   };
