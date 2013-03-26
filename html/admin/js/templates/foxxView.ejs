@@ -1,11 +1,12 @@
 <small>
   <div class="plain">
-    <h5 class="blubbelParty"><%= attributes.title %></h5>
+    <h5 class="applicationName"><%= attributes.name %></h5>
     <p>
       Description: <%=attributes.description %><br />
-      Mount-Point: <%=attributes.mount %><br />
+      Mount-Point: <%=attributes.installPath %><br />
       Version: <%=attributes.version %><br />
-      Git: <a href=<%=attributes.git %>>Repository</a>
+      Prefix: <%=attributes.dbPrefix%><br />
+      <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
     </p>
   </div>
 </small>

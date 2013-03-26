@@ -208,6 +208,8 @@ namespace triagens {
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
+      _method = method;
+
       if (_state == DEAD) {
         _connection->resetNumConnectRetries();
       }
@@ -342,6 +344,13 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readBody () {
+      if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+        // HEAD requests may be responded to without a body...
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+        return true;
+      }
+
       if (_readBuffer.length() >= _result->getContentLength()) {
         _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
         _readBuffer.erase_front(_result->getContentLength());
@@ -403,6 +412,12 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readChunkedBody () {
+      if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+        // HEAD requests may be responded to without a body...
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+        return true;
+      }
 
       if (_readBuffer.length() >= _nextChunkedSize) {
 

@@ -165,6 +165,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
         insertEdge(edge);
       });
     });
+    console.log(result);
     if (callback) {
       callback(result[0].vertex);
     }
@@ -261,20 +262,21 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   };
   
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
-    var loadNodeQuery =
-        "FOR n IN " + nodeCollection
-      + "FILTER n." + attribute + " == \"" + value + "\""
-      + "LET links = ("
-      + "  FOR l IN " + edgeCollection
-      + "  FILTER n._id == l._from"
-      + "   FOR t IN " + nodeCollection
-      + "   FILTER t._id == l._to"
-      + "   RETURN t._id"
-      + ")"
-      + "RETURN MERGE(n, {\"children\" : links})";
-
-    sendQuery(loadNodeQuery, function(res) {
-      parseResultOfQuery(res, callback);
+    var traversal = "FOR n in "
+      + nodeCollection
+      + " FILTER n." + attribute
+      + " == " + JSON.stringify(value)
+      + " RETURN TRAVERSAL("
+      + nodeCollection + ", "
+      + edgeCollection + ", "
+      + "n._id, "
+      + "\"outbound\", {"
+      + "strategy: \"depthfirst\","
+      + "maxDepth: 1,"
+      + "paths: true"
+      + "})";
+    sendQuery(traversal, function(res) {
+      parseResultOfTraversal(res, callback);
     });
   };  
   

@@ -147,7 +147,7 @@ namespace triagens {
       bool readChunkedBody ();
 
     private:
-
+    
       uint32_t _nextChunkedSize;
 
       SimpleHttpResult* _result;
@@ -155,6 +155,8 @@ namespace triagens {
       std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
 
       const size_t _maxPacketSize;
+      
+      rest::HttpRequest::HttpRequestType _method;
 
     };
   }
