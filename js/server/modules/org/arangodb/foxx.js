@@ -411,31 +411,54 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_initializer
 /// @brief Context of a Request Definition
+///
+/// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 RequestContext = function (route) {
   'use strict';
   this.route = route;
+  this.route.docs = this.route.docs || {};
+  this.route.docs.parameters = this.route.docs.parameters || {};
+  this.typeToRegex = {
+    "int": "/[0-9]+/",
+    "string": "/[a-zA-Z]+/"
+  };
 };
 
 _.extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_constrain
-/// @brief Constrain a route
+/// @fn JSF_foxx_RequestContext_pathParam
+/// @brief Describe a Path Parameter
 ///
 /// If you defined a route "/foxx/:id", you can constrain which format the id
-/// can have by providing a RegEx for it. `constrain` can be chained.
+/// can have by giving a type. We currently support the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter.
 ///
 /// @EXAMPLE:
 ///     app.get("/foxx/:id", function {
 ///       // Do something
 ///     }).constrain("id", /[a-z]+/);
 ////////////////////////////////////////////////////////////////////////////////
-  constrain: function (paramName, restriction) {
+  pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
-      constraints = url.constraint || {};
-    constraints[paramName] = String(restriction);
-    this.route.url = internal.createUrlObject(url.match, constraints, url.match[0]);
+      docs = this.route.docs,
+      constraint = url.constraint || {};
+
+    constraint[paramName] = this.typeToRegex[attributes.dataType];
+    this.route.url = internal.createUrlObject(url.match, constraint, url.methods[0]);
+    this.route.docs.parameters[paramName] = {
+      paramType: "path",
+      name: paramName,
+      description: attributes.description,
+      dataType: attributes.dataType,
+      required: true
+    };
+
     return this;
   }
 });

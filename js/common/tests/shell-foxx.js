@@ -217,29 +217,64 @@ function SetRoutesFoxxApplicationSpec () {
       assertEqual(app.routingInfo.routes[1].action['do'], "org/arangodb/actions/redirectRequest");
       assertEqual(app.routingInfo.routes[1].action.options.permanently, true);
       assertEqual(app.routingInfo.routes[1].action.options.destination, "index.html");
-    },
-
-    testAddAConstraintToARoute: function () {
-      var myFunc = function () {},
-        routes = app.routingInfo.routes;
-
-      app.get('/foxx/:id', myFunc).constrain("id", /[a-z]+/);
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint.id, "/[a-z]+/");
-    },
-
-    testAddMultipleConstraintsToARoute: function () {
-      var myFunc = function () {},
-        routes = app.routingInfo.routes;
-
-      app.get('/:foxx/:id', myFunc).constrain("foxx", /[a-z]/).constrain("id", /[a-z]+/);
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint.id, "/[a-z]+/");
-      assertEqual(routes[0].url.constraint.foxx, "/[a-z]/");
-    },
+    }
   };
+}
+
+function DocumentationAndConstraintsSpec () {
+  var app, routes;
+
+  return {
+    setUp: function () {
+      app = new FoxxApplication(),
+        routes = app.routingInfo.routes;
+    },
+
+    testDefinePathParam: function () {
+      app.get('/foxx/:id', function () {
+        //nothing
+      }).pathParam("id", {
+        description: "Id of the Foxx",
+        dataType: "int"
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters.id.paramType, "path");
+      assertEqual(routes[0].docs.parameters.id.name, "id");
+      assertEqual(routes[0].docs.parameters.id.description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters.id.dataType, "int");
+      assertEqual(routes[0].docs.parameters.id.required, true);
+    },
+
+    testDefineMultiplePathParams: function () {
+      app.get('/:foxx/:id', function () {
+        //nothing
+      }).pathParam("foxx", {
+        description: "Kind of Foxx",
+        dataType: "string"
+      }).pathParam("id", {
+        description: "Id of the Foxx",
+        dataType: "int"
+      });
+
+      assertEqual(routes.length, 1);
+
+      assertEqual(routes[0].url.constraint.foxx, "/[a-zA-Z]+/");
+      assertEqual(routes[0].docs.parameters.foxx.paramType, "path");
+      assertEqual(routes[0].docs.parameters.foxx.name, "foxx");
+      assertEqual(routes[0].docs.parameters.foxx.description, "Kind of Foxx");
+      assertEqual(routes[0].docs.parameters.foxx.dataType, "string");
+      assertEqual(routes[0].docs.parameters.foxx.required, true);
+
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters.id.paramType, "path");
+      assertEqual(routes[0].docs.parameters.id.name, "id");
+      assertEqual(routes[0].docs.parameters.id.description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters.id.dataType, "int");
+      assertEqual(routes[0].docs.parameters.id.required, true);
+    },
+  }
 }
 
 function AddMiddlewareFoxxApplicationSpec () {
@@ -660,6 +695,7 @@ function FormatMiddlewareSpec () {
 
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
+jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
