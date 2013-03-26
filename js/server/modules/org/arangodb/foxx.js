@@ -276,16 +276,27 @@ _.extend(FoxxApplication.prototype, {
 /// This handles requests from the HTTP verb `delete`.
 /// See above for the arguments you can give.
 /// **A word of warning:** Do not forget that `delete` is
-/// a reserved word in JavaScript so call it as follows:
+/// a reserved word in JavaScript and therefore needs to be
+/// called as `app['delete']`. There is also an alias `del`
+/// for this very reason.
 ///
 /// @EXAMPLES
 ///     app['delete']('/gaense/stall', function (req, res) {
+///       // Take this request and deal with it!
+///     });
+///
+///     app.del('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
   'delete': function (route, argument1, argument2) {
     'use strict';
     this.handleRequest("delete", route, argument1, argument2);
+  },
+
+  del: function (route, argument1, argument2) {
+    'use strict';
+    this['delete'](route, argument1, argument2);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
