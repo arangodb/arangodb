@@ -156,6 +156,10 @@
     viewer.loadGraph($("#startNode").attr("value"));
   }
 
+  function loadGraphFromAttribute() {
+    viewer.loadGraphWithAttributeValue($("#attribute").attr("value"), $("#value").attr("value"));
+  }
+
   function createViewer() {
     var nshape,
     nlabel,
@@ -368,6 +372,32 @@
     </div>
   </fieldset>
 </form>
+<br />
+<form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog2">
+  <fieldset>
+    <div class="control-group">
+      <div class="controls">
+        <input type="text" id="attribute" placeholder="Attribute" />
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <input type="text" id="value" placeholder="Value" />
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button type="submit" class="btn btn-primary" onclick="loadGraphFromAttribute()">Load</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button id="createNode" type="submit" class="btn btn-primary">Create Node</button>
+      </div>
+    </div>
+  </fieldset>
+</form>
+
 
 </body>
 </html>
