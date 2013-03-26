@@ -462,31 +462,32 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document,reads a document}
+/// @RESTHEADER{GET /_api/document/@FA{document-handle},reads a document}
 ///
-/// @REST{GET /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Returns the document identified by @FA{document-handle}. The returned
-/// document contains two special attributes: @LIT{_id} containing the document
-/// handle and @LIT{_rev} containing the revision.
+/// @RESTURLPARAM{document-handle,string,required}
 ///
-/// If the document exists, then a @LIT{HTTP 200} is returned and the JSON
-/// representation of the document is the body of the response.
+/// @RESTHEADERPARAMETERS
 ///
-/// If the @FA{document-handle} points to a non-existing document, then a
-/// @LIT{HTTP 404} is returned and the body contains an error document.
-///
+/// @RESTHEADERPARAM{If-None-Match,string}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a @LIT{HTTP 304} is returned.
 ///
+/// @RESTHEADERPARAM{If-Match,string}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
-/// @RESTRETURNCODES
+/// @RESTDESCRIPTION
+/// Returns the document identified by @FA{document-handle}. The returned
+/// document contains two special attributes: @LIT{_id} containing the document
+/// handle and @LIT{_rev} containing the revision.
 ///
+/// @RESTRETURNCODES
+/// 
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -505,15 +506,54 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// Use a document handle:
 ///
-/// @verbinclude rest-read-document
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocument}
+///     var cn = "products1";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products1.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Use a document handle and an etag:
 ///
-/// @verbinclude rest-read-document-if-none-match
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentIfNoneMatch}
+///     var cn = "products2";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products2.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+///     var header = "if-none-match: \"" + document._rev + "\"";
+/// 
+///     var response = logCurlRequest('GET', url, "", header);
+/// 
+///     assert(response.code === 304);
+/// 
+///     logJsonResponse(response);
+//      db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-read-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentUnknownHandle}
+///     var url = "/_api/document/products/unknownhandle";
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
@@ -601,18 +641,37 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all documents
+/// @brief reads all documents from collection
 ///
-/// @RESTHEADER{GET /_api/document,reads all document}
+/// @RESTHEADER{GET /_api/document,reads all documents from collection}
 ///
-/// @REST{GET /_api/document?collection=@FA{collection-name}}
+/// @RESTQUERYPARAMETERS
 ///
+/// @RESTQUERYPARAM{collection,string,required}
+///
+/// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
-/// by @FA{collection-name}.
+/// by @FA{collection}.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest-read-document-all
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
+///     var cn = "products3";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     db.products3.save({"hallo1":"world1"});
+///     db.products3.save({"hallo2":"world1"});
+///     db.products3.save({"hallo3":"world1"});
+///     var url = "/_api/document/?collection=" + collection._id;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -680,10 +739,13 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document,reads a document header}
+/// @RESTHEADER{HEAD /_api/document/@FA{document-handle},reads a document header}
 ///
-/// @REST{HEAD /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{document-handle,string,required}
+///
+/// @RESTDESCRIPTION
 /// Like @FN{GET}, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
@@ -691,6 +753,22 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @EXAMPLES
 ///
 /// @verbinclude rest-read-document-head
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentHead}
+///     var cn = "productshead";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.productshead.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('HEAD', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
@@ -709,10 +787,13 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document,replaces a document}
+/// @RESTHEADER{PUT /_api/document/@FA{document-handle},replaces a document}
 ///
-/// @REST{PUT /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{document-handle,string,required}
+/// 
+/// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by @FA{document-handle}.
 /// If the document exists and can be updated, then a @LIT{HTTP 201} is returned
 /// and the "ETag" header field contains the new revision of the document.
@@ -804,23 +885,99 @@ bool RestDocumentHandler::checkDocument () {
 /// Using document handle:
 ///
 /// @verbinclude rest-update-document
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocument}
+///     var cn = "products4";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products4.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-update-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentUnknownHandle}
+///     var cn = "products5";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products5.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Produce a revision conflict:
 ///
-/// @verbinclude rest-update-document-if-match-other
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOther}
+///     var cn = "products6";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products6.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
 ///
-/// @verbinclude rest-update-document-if-match-other-last-write
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWrite}
+///     var cn = "products7";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products7.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Alternative to header field:
 ///
-/// @verbinclude rest-update-document-rev-other
-////////////////////////////////////////////////////////////////////////////////
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentRevOther}
+///     var cn = "products8";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var collection = db._collection(cn);
+///     var document = db.products8.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::replaceDocument () {
   return modifyDocument(false);
@@ -829,10 +986,13 @@ bool RestDocumentHandler::replaceDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document,patches a document}
+/// @RESTHEADER{PATCH /_api/document/@FA{document-handle},patches a document}
 ///
-/// @REST{PATCH /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{document-handle,string,required}
+///
+/// @RESTDESCRIPTION
 /// Partially updates the document identified by @FA{document-handle}.
 /// The body of the request must contain a JSON document with the attributes
 /// to patch (the patch document). All attributes from the patch document will
@@ -1041,10 +1201,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document,deletes a document}
+/// @RESTHEADER{DELETE /_api/document/@FA{documenthandle},deletes a document}
 ///
-/// @REST{DELETE /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{documenthandle,string,required}
+/// 
+/// @RESTDESCRIPTION
 /// Deletes the document identified by @FA{document-handle}. If the document
 /// exists and could be deleted, then a @LIT{HTTP 200} is returned.
 ///

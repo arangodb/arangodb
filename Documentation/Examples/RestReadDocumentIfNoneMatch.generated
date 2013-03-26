@@ -1,0 +1,13 @@
+unix> curl --header 'if-none-match: "29110874"' --dump - http://localhost:8529/_api/document/products2/29110874
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "29110874"
+
+{ 
+  "hallo" : "world", 
+  "_id" : "products2/29110874", 
+  "_rev" : "29110874", 
+  "_key" : "29110874" 
+}
+
