@@ -177,19 +177,11 @@ _.extend(FoxxApplication.prototype, {
 ///       //handle the request
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  handleRequest: function (method, route, argument1, argument2) {
+  handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = {}, options, callback;
+    var newRoute = {};
 
-    if (_.isUndefined(argument2)) {
-      callback = argument1;
-      options = {};
-    } else {
-      options = argument1;
-      callback = argument2;
-    }
-
-    newRoute.url = internal.createUrlObject(route, options.constraint, method);
+    newRoute.url = internal.createUrlObject(route, undefined, method);
     newRoute.action = {
       callback: String(callback)
     };
@@ -207,9 +199,9 @@ _.extend(FoxxApplication.prototype, {
 /// the last argument however. It will get a request and response
 /// object as its arguments
 ////////////////////////////////////////////////////////////////////////////////
-  head: function (route, argument1, argument2) {
+  head: function (route, callback) {
     'use strict';
-    this.handleRequest("head", route, argument1, argument2);
+    this.handleRequest("head", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,9 +216,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  get: function (route, argument1, argument2) {
+  get: function (route, callback) {
     'use strict';
-    this.handleRequest("get", route, argument1, argument2);
+    this.handleRequest("get", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,9 +233,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  post: function (route, argument1, argument2) {
+  post: function (route, callback) {
     'use strict';
-    this.handleRequest("post", route, argument1, argument2);
+    this.handleRequest("post", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,9 +250,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  put: function (route, argument1, argument2) {
+  put: function (route, callback) {
     'use strict';
-    this.handleRequest("put", route, argument1, argument2);
+    this.handleRequest("put", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,9 +267,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  patch: function (route, argument1, argument2) {
+  patch: function (route, callback) {
     'use strict';
-    this.handleRequest("patch", route, argument1, argument2);
+    this.handleRequest("patch", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,14 +292,14 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  'delete': function (route, argument1, argument2) {
+  'delete': function (route, callback) {
     'use strict';
-    this.handleRequest("delete", route, argument1, argument2);
+    this.handleRequest("delete", route, callback);
   },
 
-  del: function (route, argument1, argument2) {
+  del: function (route, callback) {
     'use strict';
-    this['delete'](route, argument1, argument2);
+    this['delete'](route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
