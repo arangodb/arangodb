@@ -56,7 +56,7 @@ function buildAssetContent (app, assets) {
 
   var reSub = /(.*)\/\*\*$/;
   var reAll = /(.*)\/\*$/;
-  var rootDir = app._appDescription.path;
+  var rootDir = app._path;
 
   files = [];
 
@@ -103,15 +103,16 @@ function buildAssetContent (app, assets) {
 /// @brief installs the assets of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAssets (app, mount) {
+function installAssets (app, mount, mountId) {
   var desc;
   var path;
   var routes;
 
-  desc = app._appDescription.manifest;
+  desc = app._manifest;
 
   routes = {
     urlPrefix: mount,
+    foxxMount: mountId,
     routes: []
   };
 
@@ -144,7 +145,7 @@ function installAssets (app, mount) {
           action: {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
-              path: fs.join(app._appDescription.path, directory)
+              path: fs.join(app._path, directory)
             }
           }
         };
@@ -165,7 +166,7 @@ function setupApp (app, appContext) {
   var desc;
   var context;
 
-  desc = app._appDescription.manifest;
+  desc = app._manifest;
 
   if (desc.hasOwnProperty("setup")) {
     cp = appContext.collectionPrefix;
@@ -191,7 +192,7 @@ function setupApp (app, appContext) {
       };
     }
 
-    app.loadAppScript(app, desc.setup, appContext, context);
+    app.loadAppScript(app.createAppModule(), desc.setup, appContext, context);
   }
 }
 
@@ -215,16 +216,39 @@ function setupApp (app, appContext) {
 exports.installApp = function (name, mount, options) {
   'use strict';
 
-  var apps;
-  var description;
-  var i;
+  var aal;
+  var app;
+  var doc;
+  var desc;
+  var find;
+  var prefix;
+  var version;
 
-  var version = options && options.version; // TODO currently ignored
-  var prefix = options && options.collectionPrefix;
-  var context = {};
-  var root = module.appRootModule(name); // TODO use version
+  aal = arangodb.db._collection("_aal");
 
-  if (root === null) {
+  if (aal === null) {
+    throw "internal error: collection '_aal' is unknown";
+  }
+
+  // .............................................................................
+  // check that the mount path is free
+  // .............................................................................
+
+  find = aal.firstExample({ type: "mount", mount: mount, active: true });
+
+  if (find !== null) {
+    throw "cannot use mount path '" + mount + "', already used by '" 
+      + find.app + "' (" + find._key + ")";
+  }
+
+  // .............................................................................
+  // locate the application
+  // .............................................................................
+
+  version = options && options.version;
+  app = module.createApp(name, version);
+
+  if (app === null) {
     if (version === undefined) {
       throw "cannot find application '" + name + "'";
     }
@@ -233,50 +257,84 @@ exports.installApp = function (name, mount, options) {
     }
   }
 
-  description = root._appDescription.manifest;
+  // .............................................................................
+  // create a new (unique) entry in aal
+  // .............................................................................
 
-  if (mount === "") {
-    mount = "/";
-  }
-  else {
-    mount = internal.normalizeURL(mount);
-  }
-
-  if (mount[0] !== "/") {
-    throw "mount point must be absolute";
-  }
+  prefix = options && options.collectionPrefix;
 
   if (prefix === undefined) {
-    context.collectionPrefix = mount.substr(1).replace(/\//g, "_");
-  }
-  else {
-    context.collectionPrefix = prefix;
+    prefix = mount.substr(1).replace(/\//g, "_");
   }
 
-  context.name = description.name;
-  context.version = description.version;
-  context.mount = mount;
+  desc = {
+    type: "mount",
+    app: app._id,
+    mount: mount,
+    active: false,
+    collectionPrefix: prefix
+  };
 
-  apps = description.apps;
+  doc = aal.save(desc);
 
-  for (i in apps) {
-    if (apps.hasOwnProperty(i)) {
-      var file = apps[i];
+  // .............................................................................
+  // install the application
+  // .............................................................................
 
-      context.appMount = i;
-      context.prefix = internal.normalizeURL(mount + "/" + i);
+  try {
+    var apps;
+    var i;
+    var context = {};
 
-      root.loadAppScript(root, file, context);
-
-      delete context.appMount;
-      delete context.prefix;
+    if (mount === "") {
+      mount = "/";
     }
+    else {
+      mount = internal.normalizeURL(mount);
+    }
+
+    if (mount[0] !== "/") {
+      throw "mount point must be absolute";
+    }
+
+    context.name = app._name;
+    context.version = app._version;
+    context.appId = app._id;
+    context.mount = mount;
+    context.collectionPrefix = prefix;
+
+    apps = app._manifest.apps;
+
+    for (i in apps) {
+      if (apps.hasOwnProperty(i)) {
+        var file = apps[i];
+
+        context.appMount = i;
+        context.prefix = internal.normalizeURL(mount + "/" + i);
+
+        app.loadAppScript(app.createAppModule(), file, context);
+
+        delete context.appMount;
+        delete context.prefix;
+      }
+    }
+
+    installAssets(app, mount, doc._key);
+    setupApp(app, context);
+  }
+  catch (err) {
+    desc.error = String(err);
+    desc.active = false;
+
+    aal.replace(doc, desc);
+
+    throw err;
   }
 
-  installAssets(root, mount);
-  setupApp(root, context);
+  desc.active = true;
+  doc = aal.replace(doc, desc);
 
-  return true;
+  return aal.document(doc);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
