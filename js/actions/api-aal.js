@@ -99,7 +99,7 @@ function POST_api_aal (req, res) {
   } 
 
   var path = BuildPath(name, version);
-  fs.createDirectory(path, true);
+  fs.makeDirectoryRecursive(path);
   internal.unzipFile(realFile, path, false, true);
 
   var storage = GetStorage();

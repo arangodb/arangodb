@@ -96,6 +96,25 @@ static TRI_read_write_lock_t FileNamesLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove trailing path separators from path.
+/// path will be modified in-place
+////////////////////////////////////////////////////////////////////////////////
+
+static void RemoveTrailingSeparator (char* path) {
+  size_t n;
+
+  n = strlen(path);
+
+  if (n > 0) {
+    char* p = path + n - 1;
+    while (*p == TRI_DIR_SEPARATOR_CHAR) {
+      *p = '\0';
+      --p;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief linear search of the giving element
 ///
 /// @return index of the element in the vector
@@ -338,7 +357,7 @@ bool TRI_IsSymbolicLink (char const* path) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if file exists
+/// @brief checks if file or directory exists
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExistsFile (char const* path) {
@@ -1633,7 +1652,10 @@ int TRI_GetTempName (char const* directory,
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, temp);
-
+  
+  // remove trailing PATH_SEPARATOR
+  RemoveTrailingSeparator(dir);
+  
   TRI_CreateRecursiveDirectory(dir);
 
   if (! TRI_IsDirectory(dir)) {
