@@ -80,17 +80,6 @@ function SetRoutesFoxxApplicationSpec () {
       assertUndefined(routes[0].url.constraint);
     },
 
-    // Old Constraints:
-    // testSettingRoutesWithConstraint: function () {
-    //   var myFunc = function () {},
-    //     routes = app.routingInfo.routes,
-    //     constraint = { test: "/[a-z]+/" };
-
-    //   app.get('/simple/route', { constraint: constraint }, myFunc);
-    //   assertEqual(routes.length, 1);
-    //   assertEqual(routes[0].url.constraint, constraint);
-    // },
-
     testSetMethodToHead: function () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
@@ -228,7 +217,28 @@ function SetRoutesFoxxApplicationSpec () {
       assertEqual(app.routingInfo.routes[1].action['do'], "org/arangodb/actions/redirectRequest");
       assertEqual(app.routingInfo.routes[1].action.options.permanently, true);
       assertEqual(app.routingInfo.routes[1].action.options.destination, "index.html");
-    }
+    },
+
+    testAddAConstraintToARoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.get('/foxx/:id', myFunc).constrain("id", /[a-z]+/);
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[a-z]+/");
+    },
+
+    testAddMultipleConstraintsToARoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.get('/:foxx/:id', myFunc).constrain("foxx", /[a-z]/).constrain("id", /[a-z]+/);
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[a-z]+/");
+      assertEqual(routes[0].url.constraint.foxx, "/[a-z]/");
+    },
   };
 }
 

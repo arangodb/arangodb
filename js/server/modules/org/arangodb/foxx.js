@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var FoxxApplication,
+  RequestContext,
   BaseMiddleware,
   FormatMiddleware,
   _ = require("underscore"),
@@ -187,6 +188,8 @@ _.extend(FoxxApplication.prototype, {
     };
 
     this.routingInfo.routes.push(newRoute);
+
+    return new RequestContext(newRoute);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +204,7 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   head: function (route, callback) {
     'use strict';
-    this.handleRequest("head", route, callback);
+    return this.handleRequest("head", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +221,7 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   get: function (route, callback) {
     'use strict';
-    this.handleRequest("get", route, callback);
+    return this.handleRequest("get", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +238,7 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   post: function (route, callback) {
     'use strict';
-    this.handleRequest("post", route, callback);
+    return this.handleRequest("post", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +255,7 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   put: function (route, callback) {
     'use strict';
-    this.handleRequest("put", route, callback);
+    return this.handleRequest("put", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +272,7 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   patch: function (route, callback) {
     'use strict';
-    this.handleRequest("patch", route, callback);
+    return this.handleRequest("patch", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,12 +297,12 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   'delete': function (route, callback) {
     'use strict';
-    this.handleRequest("delete", route, callback);
+    return this.handleRequest("delete", route, callback);
   },
 
   del: function (route, callback) {
     'use strict';
-    this['delete'](route, callback);
+    return this['delete'](route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,6 +405,38 @@ _.extend(FoxxApplication.prototype, {
         callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
       }
     });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_initializer
+/// @brief Context of a Request Definition
+////////////////////////////////////////////////////////////////////////////////
+RequestContext = function (route) {
+  'use strict';
+  this.route = route;
+};
+
+_.extend(RequestContext.prototype, {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_constrain
+/// @brief Constrain a route
+///
+/// If you defined a route "/foxx/:id", you can constrain which format the id
+/// can have by providing a RegEx for it. `constrain` can be chained.
+///
+/// @EXAMPLE:
+///     app.get("/foxx/:id", function {
+///       // Do something
+///     }).constrain("id", /[a-z]+/);
+////////////////////////////////////////////////////////////////////////////////
+  constrain: function (paramName, restriction) {
+    'use strict';
+    var url = this.route.url,
+      constraints = url.constraint || {};
+    constraints[paramName] = String(restriction);
+    this.route.url = internal.createUrlObject(url.match, constraints, url.match[0]);
+    return this;
   }
 });
 
