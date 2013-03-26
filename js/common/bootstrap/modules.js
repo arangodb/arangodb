@@ -608,7 +608,6 @@ function stop_color_print () {
     var content;
     var module;
     var env;
-    var fun;
     var key;
     var sandbox;
 
@@ -658,7 +657,7 @@ function stop_color_print () {
              + "\n});";
 
     try {
-      fun = internal.executeScript(content, undefined, description.name);
+      var fun = internal.executeScript(content, undefined, description.name);
 
       if (fun === undefined) {
         throw "cannot create module context function for: " + content;
@@ -919,49 +918,64 @@ function stop_color_print () {
 /// @brief loads an init file from an application path
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.loadAppScript = function (appRoot, file, context) {
+  Module.prototype.loadAppScript = function (appRoot, file, appContext, context) {
     var sandbox = {};
+    var fileContent;
     var content;
     var description;
     var full;
-    var fun;
-    var result;
+    var key;
 
     description = appRoot._appDescription;
 
     try {
       full = description.path + "/" + file;
-      content = internal.read(full);
+      fileContent = internal.read(full);
     }
     catch (err1) {
       throw "cannot read file '" + full + "': " + err1 + " - " + err1.stack;
     }
 
+    if (context !== undefined) {
+      for (key in context) {
+        if (context.hasOwnProperty(key) && key !== "__myenv__") {
+          sandbox[key] = context[key];
+        }
+      }
+    }
+
     sandbox.module = appRoot;
-    sandbox.applicationContext = context;
+    sandbox.applicationContext = appContext;
 
     sandbox.require = function (path) {
       return appRoot.require(path);
     };
 
-    content = "var func = function () {"
-            + content
-            + "\n};";
+    content = "(function (__myenv__) {";
 
-    fun = internal.executeScript(content, sandbox, full);
-
-    if (fun !== true || ! sandbox.hasOwnProperty("func")) {
-      throw "cannot create application function";
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
     }
+
+    content += "delete __myenv__;"
+             + fileContent
+             + "\n});";
 
     try {
-      result = sandbox.func();
+      var fun = internal.executeScript(content, undefined, full);
+
+      if (fun === undefined) {
+        throw "cannot create application script: " + content;
+      }
+
+      fun(sandbox);
     }
     catch (err2) {
-      throw "Javascript exception in application file '" + full + "': " + err2+ " - " + err2.stack;
+      throw "JavaScript exception in application file '" 
+        + full + "': " + err2+ " - " + err2.stack;
     }
-
-    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////

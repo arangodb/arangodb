@@ -30,6 +30,7 @@
 
 var arangodb = require("org/arangodb");
 var internal = require("internal");
+var fs = require("fs");
 var console = require("console");
 var moduleExists = function(name) { return module.exists; };
 
@@ -236,13 +237,21 @@ function lookupCallbackActionCallback (route, action) {
         me = modelModule._package._environment = {};
 
         if (cp !== "") {
-          me.appCollection = function (name) {
+          me.appCollectionName = function (name) {
             return cp + "_" + name;
+          };
+
+          me.appCollection = function (name) {
+            return arangodb.db._collection(cp + "_" + name);
           };
         }
         else {
-          me.appCollection = function (name) {
+          me.appCollectionName = function (name) {
             return name;
+          };
+
+          me.appCollection = function (name) {
+            return arangodb.db._collection(name);
           };
         }
 
@@ -1100,7 +1109,7 @@ function reloadRouting () {
   // lookup all routes
   // .............................................................................
 
-  routing = internal.db._collection("_routing");
+  routing = arangodb.db._collection("_routing");
   routes = routing.all();
 
   // .............................................................................
@@ -1732,6 +1741,28 @@ function redirectRequest (req, res, options, next) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief redirects a request
+////////////////////////////////////////////////////////////////////////////////
+
+function pathHandler (req, res, options, next) {
+  var filename;
+  var result;
+
+  filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
+
+  if (fs.exists(filename)) {
+    res.responseCode = exports.HTTP_OK;
+    res.contentType = arangodb.guessContentType(filename);
+    res.bodyFromFile = filename;
+  }
+  else {
+    res.responseCode = exports.HTTP_NOT_FOUND;
+    res.contentType = "text/plain";
+    res.body = "cannot find file '" + filename + "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1777,6 +1808,7 @@ exports.resultException          = resultException;
 exports.echoRequest              = echoRequest;
 exports.logRequest               = logRequest;
 exports.redirectRequest          = redirectRequest;
+exports.pathHandler              = pathHandler;
 
 // some useful constants
 exports.COLLECTION               = "collection";

@@ -32,6 +32,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/strings.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -39,7 +41,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
-#include "3rdParty/V8/include/v8.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -517,6 +518,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       response->setContentType(TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
     }
 
+    // .............................................................................
+    // body
+    // .............................................................................
+
     if (res->Has(v8g->BodyKey)) {
       // check if we should apply result transformations
       // transformations turn the result from one type into another
@@ -524,10 +529,11 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       // putting a list of transformations into the res.transformations
       // array, e.g. res.transformations = [ "base64encode" ]
       v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
+
       if (val->IsArray()) {
         string out(TRI_ObjectToString(res->Get(v8g->BodyKey)));
-
         v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+
         for (uint32_t i = 0; i < transformations->Length(); i++) {
           v8::Handle<v8::Value> transformator = transformations->Get(v8::Integer::New(i));
           string name = TRI_ObjectToString(transformator);
@@ -553,6 +559,31 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
       }
     }
+
+    // .............................................................................
+    // body from file
+    // .............................................................................
+
+    else if (res->Has(v8g->BodyFromFileKey)) {
+      TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(v8g->BodyFromFileKey));
+      size_t length;
+      char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
+
+      if (content != 0) {
+        response->body().appendText(content, length);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+      }
+      else {
+        string msg = string("cannot read file '") + *filename + "': " + TRI_last_error();
+
+        response->body().appendText(msg.c_str());
+        response->setResponseCode(HttpResponse::SERVER_ERROR);
+      }
+    }
+
+    // .............................................................................
+    // headers
+    // .............................................................................
 
     if (res->Has(v8g->HeadersKey)) {
       v8::Handle<v8::Value> val = res->Get(v8g->HeadersKey);
@@ -740,6 +771,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   // .............................................................................
 
   v8g->BodyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("body"));
+  v8g->BodyFromFileKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("bodyFromFile"));
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("contentType"));
   v8g->HeadersKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("parameters"));

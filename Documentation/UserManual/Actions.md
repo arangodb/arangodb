@@ -454,7 +454,7 @@ Install it as
 
     arangosh> db._routing.save({ 
     ........>   url: "/echo",
-    ........>   action: { controller: "org/arangodb/actions", do: "echoRequest" } });
+    ........>   action: { do: "org/arangodb/actions/echoRequest" } });
 
 Reload the routing and check
 
@@ -489,8 +489,7 @@ You may also pass options to the called function:
     arangosh> db._routing.save({ 
     ........>   url: "/echo",
     ........>   action: {
-    ........>     controller: "org/arangodb/actions",
-    ........>     do: "echoRequest",
+    ........>     do: "org/arangodb/actions/echoRequest",
     ........>     options: { "Hello": "World" } } });
 
 You should now see the options in the result.
@@ -651,8 +650,7 @@ Use the following for a permanent redirect:
     arangosh> db._routing.save({ 
     ........>   url: "/",
     ........>   action: {
-    ........>     controller: "org/arangodb/actions",
-    ........>     do: "redirectRequest", 
+    ........>     do: "org/arangodb/actions/redirectRequest", 
     ........>     options: { 
     ........>       permanently: true,
     ........>       destination: "http://somewhere.else/" } } });
@@ -707,7 +705,7 @@ should win in this case:
 
     arangosh> db._routing.save({ 
     ........>   middleware: [
-    ........>     { url: { match: "/*" }, action: { controller: "org/arangodb/actions", do: "logRequest" } }
+    ........>     { url: { match: "/*" }, action: { do: "org/arangodb/actions/logRequest" } }
     ........>   ]
     ........> });
 
