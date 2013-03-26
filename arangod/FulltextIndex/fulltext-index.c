@@ -275,16 +275,45 @@ static inline size_t Padding (const uint32_t numEntries) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief re-allocate memory for the index and update memory usage statistics
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void* ReallocateMemory (index_t* const idx, 
+                                      void* old, 
+                                      const size_t newSize, 
+                                      const size_t oldSize) {
+  void* data;
+
+#if TRI_FULLTEXT_DEBUG
+  assert(old != NULL);
+  assert(newSize > 0);
+  assert(oldSize > 0);
+#endif
+
+  data = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, old, newSize);
+  if (data != NULL) {
+    idx->_memoryAllocated += newSize;
+    idx->_memoryAllocated -= oldSize;
+  }
+  return data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate memory for the index and update memory usage statistics
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void* AllocateMemory (index_t* const idx, const size_t size) {
+  void* data;
+
 #if TRI_FULLTEXT_DEBUG
   assert(size > 0);
 #endif
 
-  idx->_memoryAllocated += size;
-  return TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, false);
+  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, false);
+  if (data != NULL) {
+    idx->_memoryAllocated += size;
+  }
+  return data;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,6 +472,18 @@ static inline node_t** NodeFollowersNodes (const node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a pointer to the start of the node-list in a sub-node list
+/// the caller must make sure the node actually has sub-nodes
+////////////////////////////////////////////////////////////////////////////////
+
+static inline node_t** FollowersNodesPos (void* data, const uint32_t numAllocated) {
+  uint8_t* head = (uint8_t*) data;
+  uint8_t* keys = (uint8_t*) (head + 2); // numAllocated + numEntries
+
+  return (node_t**) (uint8_t*) ((keys + numAllocated) + Padding(numAllocated));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory required to store a sub-node list of the
 /// specific length
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,7 +504,7 @@ static bool ExtendSubNodeList (index_t* const idx,
                                node_t* const node,
                                const uint32_t numFollowers,
                                const uint32_t numAllocated) {
-  followers_t* followers;
+  size_t nextSize;
   uint32_t nextAllocated;
 
 #if TRI_FULLTEXT_DEBUG
@@ -473,38 +514,53 @@ static bool ExtendSubNodeList (index_t* const idx,
   // current list has reached its limit, we must increase it
 
   nextAllocated = numAllocated + idx->_nodeChunkSize;
-  // allocate a new list
-  followers = AllocateMemory(idx, MemorySubNodeList(nextAllocated));
-  if (followers == NULL) {
-    idx->_memoryAllocated -= MemorySubNodeList(nextAllocated);
-    // out of memory
-    return false;
-  }
+  nextSize = MemorySubNodeList(nextAllocated);
 
-  // initialise the chunk of memory we just got
-  InitialiseSubNodeList(followers, nextAllocated, numFollowers);
+  if (node->_followers == NULL) {
+    // allocate a new list
+    node->_followers = AllocateMemory(idx, nextSize);
+    if (node->_followers == NULL) {
+      // out of memory
+      return false;
+    }
+  
+    // initialise the chunk of memory we just got
+    InitialiseSubNodeList(node->_followers, nextAllocated, numFollowers);
 #if TRI_FULLTEXT_DEBUG
-  idx->_memoryFollowers += MemorySubNodeList(nextAllocated);
+    idx->_memoryFollowers += nextSize;
+#endif
+    return true;
+  }
+  else {
+    // re-allocate an existing list
+    followers_t* followers;
+    size_t oldSize;
+
+    oldSize = MemorySubNodeList(numAllocated);
+
+    followers = ReallocateMemory(idx, node->_followers, nextSize, oldSize); 
+    if (followers == NULL) {
+      // out of memory
+      return false;
+    }
+
+    // initialise the chunk of memory we just got
+    InitialiseSubNodeList(followers, nextAllocated, numFollowers);
+#if TRI_FULLTEXT_DEBUG
+    idx->_memoryFollowers += nextSize;
+    idx->_memoryFollowers -= oldSize;
 #endif
 
-  if (numFollowers > 0) {
-    // copy existing sub-nodes into the new sub-nodes list
-    memcpy(FollowersKeys(followers), NodeFollowersKeys(node), sizeof(node_char_t) * numFollowers);
-    memcpy(FollowersNodes(followers), NodeFollowersNodes(node), sizeof(node_t*) * numFollowers);
+    // note the new pointer
+    node->_followers = followers;
+
+    if (numFollowers > 0) {
+      // copy existing sub-nodes into the new sub-nodes list
+      memmove(FollowersNodes(followers), FollowersNodesPos(followers, numAllocated), sizeof(node_t*) * numFollowers);
+    }
+  
+    return true;
   }
-
-  if (node->_followers != NULL) {
-    // free the old list
-    FreeMemory(idx, node->_followers, MemorySubNodeList(numAllocated));
-#if TRI_FULLTEXT_DEBUG
-    idx->_memoryFollowers -= MemorySubNodeList(numAllocated);
-#endif
-  }
-
-  // note the new pointer
-  node->_followers = followers;
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1013,14 +1069,13 @@ static node_t* EnsureSubNode (index_t* const idx,
 
     followerKeys = NodeFollowersKeys(node);
     // divide the search space in 2 halves
-    if (numFollowers > 16 && followerKeys[numFollowers / 2] < c) {
+    if (numFollowers >= 8 && followerKeys[numFollowers / 2] < c) {
       start = numFollowers / 2;
     }
     else {
       start = 0;
     }
 
-    start = 0;
     for (i = start; i < numFollowers; ++i) {
       node_char_t followerKey;
 
