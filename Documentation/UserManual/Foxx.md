@@ -85,6 +85,13 @@ If you do not redefine it, all requests that go to the root of your application 
 #### FoxxApplication#delete
 @copydetails JSF_foxx_application_delete
 
+### Handling Requests: Defining the route
+
+If you define a route like described above, you have the option to match parts of the URL to variables. If you for example define a route `/animals/:animal` and the URL `animals/foxx` is requested it is matched by this rule. You can then get the value of this variable (in this case "foxx") by calling `request.params("animal")`.
+
+#### Constraining the match
+/// @fn JSF_foxx_RequestContext_constrain
+
 ### Before and After Hooks
 
 You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
