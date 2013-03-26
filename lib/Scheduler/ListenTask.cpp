@@ -122,7 +122,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
     int res = closesocket(_listenSocket.fileHandle);
     if (res != 0) {
       res = WSAGetLastError();
-      LOGGER_ERROR("In ListenTask::setup closesocket(...) failed with error code: ",res);
+      LOGGER_ERROR("In ListenTask::setup closesocket(...) failed with error code: " << res);
     }
     _listenSocket.fileHandle = -1;
     _listenSocket.fileDescriptor = -1;
