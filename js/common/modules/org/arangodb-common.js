@@ -78,6 +78,18 @@ exports.guessContentType = function (filename) {
     return "text/css; charset=utf-8";
   }
 
+  if (extension === "png") {
+    return "image/png";
+  }
+
+  if (extension === "gif") {
+    return "image/gif";
+  }
+
+  if (extension === "jpg") {
+    return "image/jpg";
+  }
+
   return "text/plain; charset=utf-8";
 }
 
