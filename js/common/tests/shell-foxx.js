@@ -134,7 +134,15 @@ function SetRoutesFoxxApplicationSpec () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
 
-      app.delete('/simple/route', myFunc);
+      app['delete']('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["delete"]);
+    },
+
+    testSetMethodToDeleteViaAlias: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.del('/simple/route', myFunc);
       assertEqual(routes[0].url.methods, ["delete"]);
     },
 
