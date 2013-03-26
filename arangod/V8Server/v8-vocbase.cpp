@@ -6680,18 +6680,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
 
   // .............................................................................
-  // generate the general error template
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(TRI_V8_SYMBOL("ArangoError"));
-
-  rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ft->GetFunction());
-
-
-  // .............................................................................
   // generate the general cursor template
   // .............................................................................
 
