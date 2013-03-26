@@ -47,5 +47,5 @@ body, input, textarea, .page-title span, .pingback a.url {
 }
 
 .applications-menu {
-  display: block;
+  display: none;
 }
