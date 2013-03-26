@@ -107,7 +107,7 @@
     });
     
     
-    it('should be able to add a click event', function () {
+    it('should be able to add an event', function () {
       var one = {
         "_id": 1
       },
@@ -154,6 +154,65 @@
       expect(clicked[3]).toBeTruthy();
       expect(clicked[2]).toBeFalsy();
       expect(clicked[4]).toBeFalsy();
+    });
+    
+    describe('when edges are already drawn', function() {
+      var edges,
+      nodes,
+      clicked,
+      click = function (edge) {
+        clicked[edge._id] = !clicked[edge._id];
+      },
+      shaper;
+      
+      beforeEach(function() {
+        nodes = [{_id: 1}, {_id: 2}, {_id: 3}, {_id: 4}];
+        edges = [
+          {_id: 1, source: nodes[0], target: nodes[1]},
+          {_id: 2, source: nodes[1], target: nodes[2]},
+          {_id: 3, source: nodes[2], target: nodes[3]}
+        ];
+        clicked = [];
+        shaper = new EdgeShaper(d3.select("svg"));
+        shaper.drawEdges(edges);
+        expect($("svg .link").length).toEqual(3);
+      });
+      
+      it('should be able to add a click event to existing edges', function() {
+        expect($("svg .link").length).toEqual(3);
+        shaper.on("click", click);
+        helper.simulateMouseEvent("click", "1-2");
+        helper.simulateMouseEvent("click", "3-4");
+        expect(clicked[1]).toBeTruthy();
+        expect(clicked[3]).toBeTruthy();
+        expect(clicked[2]).toBeUndefined();
+      });
+      
+      it('should add a click event to newly arriving edges', function() {
+        
+        shaper.on("click", click);
+        edges.push({_id: 4, source: nodes[3], target: nodes[0]});
+        edges.push({_id: 5, source: nodes[0], target: nodes[2]});
+        shaper.drawEdges(edges);
+        
+        helper.simulateMouseEvent("click", "4-1");
+        helper.simulateMouseEvent("click", "1-3");
+        expect($("svg .link").length).toEqual(5);
+        expect(clicked[4]).toBeTruthy();
+        expect(clicked[5]).toBeTruthy();
+        expect(clicked[1]).toBeUndefined();
+        expect(clicked[2]).toBeUndefined();
+        expect(clicked[3]).toBeUndefined();
+      });
+      
+      it('should display each edge exactly once if an event is added', function() {
+        shaper.on("click", function() {return 0;});
+        expect($("svg .link").length).toEqual(3);
+        shaper.on("click", function() {return 1;});
+        expect($("svg .link").length).toEqual(3);
+        shaper.on("click", function() {return 2;});
+        expect($("svg .link").length).toEqual(3);
+      });
     });
     
     describe('configured for label', function() {
@@ -330,7 +389,7 @@
         
       });
 
-      it('should be able to remove nodes', function () {
+      it('should be able to remove edges', function () {
         edges.splice(2, 1);
         edges.splice(0, 1);
         shaper.drawEdges(edges);
@@ -341,7 +400,7 @@
         expect($("svg #3-4")[0]).toBeUndefined();
       });
 
-      it('should be able to add some nodes and remove other nodes', function () {
+      it('should be able to add some edges and remove other egdes', function () {
         edges.splice(2, 1);
         edges.splice(0, 1);
         edges.push(

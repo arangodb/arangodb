@@ -81,9 +81,7 @@ function NodeShaper(parent, flags, idfunc) {
     redrawNodes = function () {
       var node;
       node = self.parent
-        .selectAll(".node")
-        .attr("class", "node") // node is CSS class that might be edited
-        .attr("id",idFunction);
+        .selectAll(".node");
       $(".node").empty();
       additionalShaping(node);
     };
