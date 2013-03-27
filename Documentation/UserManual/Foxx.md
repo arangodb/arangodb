@@ -94,6 +94,21 @@ Furthermore you can describe your API by chaining the following methods onto you
 #### Describing a pathParam
 /// @fn JSF_foxx_RequestContext_pathParam
 
+#### Describing a queryParam
+/// @fn JSF_foxx_RequestContext_queryParam
+
+### Documenting the nickname of a route
+/// @fn JSF_foxx_RequestContext_nickname
+
+### Documenting the summary of a route
+/// @fn JSF_foxx_RequestContext_summary
+
+### Documenting the notes of a route
+/// @fn JSF_foxx_RequestContext_notes
+
+### Documenting the error response of a route
+/// @fn JSF_foxx_RequestContext_errorResponse
+
 ### Before and After Hooks
 
 You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
@@ -200,10 +215,12 @@ A more complete example for a Manifest file:
       },
 
       "assets": {
-        "application.js": [
-          "vendor/jquery.js",
-          "assets/javascripts/*"
-        ]
+        "application.js": {
+          "files": [
+            "vendor/jquery.js",
+            "assets/javascripts/*"
+          ]
+        }
       },
 
       "setup": "scripts/setup.js",
@@ -234,13 +251,15 @@ Deliver all files in a certain folder without modifying them. You can deliver te
 The value for the asset key is an object consisting of paths that are matched to the files they are composed of. Let's take the following example:
 
   "assets": {
-    "application.js": [
-      "vendor/jquery.js",
-      "assets/javascripts/*"
-    ]
+    "application.js": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ]
+    }
   }
 
-If a request is made to `/application.js` (in development mode), the array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
+If a request is made to `/application.js` (in development mode), the file array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
 
 ## Development Mode
 

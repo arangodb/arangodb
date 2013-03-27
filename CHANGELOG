@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* issue #454: error while creation of Collection
+
 * make `collection.count()` not recalculate the number of documents on the fly, but
   use some internal document counters. This will work at least for non-transactional
   collections.
@@ -87,8 +89,17 @@ v1.3 (XXXX-XX-XX)
   arangob is now always included in the build
 
 
-v1.2.2 (XXXX-XX-XX)
+v1.2.3 (XXXX-XX-XX)
 -------------------
+
+* issue triAGENS/ArangoDB-PHP#55: AQL optimiser may have mis-optimised duplicate 
+  filter statements with limit
+
+
+v1.2.2 (2013-03-26)
+-------------------
+
+* fixed save of objects with common sub-objects
 
 * issue #459: fulltext internal memory allocation didn't scale well
   This fix improves loading times for collections with fulltext indexes that have

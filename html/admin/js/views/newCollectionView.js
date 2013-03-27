@@ -77,10 +77,7 @@ var newCollectionView = Backbone.View.extend({
       window.App.navigate("collection/" + collName + "/documents/1", {trigger: true});
     }
     else {
-      self.hidden();
-      $("#add-collection").modal('hide');
       arangoHelper.arangoError(returnobj.errorMessage);
-      window.App.navigate("#"); 
     }
   }
 
