@@ -59,7 +59,8 @@ function routing (req, res) {
 
   execute = function () {
     if (action.route === undefined) {
-      actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, "unknown path '" + path + "'");
+      actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, 
+        "unknown path '" + path + "'");
       return;
     }
 

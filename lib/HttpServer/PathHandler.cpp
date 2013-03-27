@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
+#include "BasicsC/mimetypes.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -41,7 +42,7 @@ namespace triagens {
   namespace rest {
 
 // -----------------------------------------------------------------------------
-    // constructors and destructores
+// constructors and destructors
 // -----------------------------------------------------------------------------
 
     PathHandler::PathHandler (HttpRequest* request, Options const* options)
@@ -166,45 +167,25 @@ namespace triagens {
       string::size_type d = last.find_last_of('.');
 
       if (d != string::npos) {
-        string suffix = last.substr(d);
+        string suffix = last.substr(d + 1);
 
-        if (suffix == ".jpg") {
-          _response->setContentType("image/jpg");
-        }
-        else if (suffix == ".js") {
-          _response->setContentType("text/javascript");
-        }
-        else if (suffix == ".gif") {
-          _response->setContentType("image/gif");
-        }
-        else if (suffix == ".png") {
-          _response->setContentType("image/png");
-        }
-        else if (suffix == ".css") {
-          _response->setContentType("text/css");
-        }
-        else if (suffix == ".html" || suffix == ".htm") {
-          _response->setContentType("text/html");
-        }
-        else if (suffix == ".ico") {
-          _response->setContentType("image/x-icon");
-        }
-        else if (suffix == ".pdf") {
-          _response->setContentType("application/pdf");
-        }
-        else if (suffix == ".txt") {
-          _response->setContentType("text/plain");
+        if (suffix.size() > 0) {
+          // look up the mimetype
+          const char* mimetype = TRI_GetMimetype(suffix.c_str());
+
+          if (mimetype != 0) {
+            _response->setContentType(mimetype);
+
+            return HANDLER_DONE;
+          }
         }
         else {
           // note: changed the log level to debug. an unknown content-type does not justify a warning
           LOGGER_TRACE("unknown suffix = " << suffix);
-
-          _response->setContentType(contentType);
         }
       }
-      else {
-        _response->setContentType(contentType);
-      }
+      
+      _response->setContentType(contentType);
 
       return HANDLER_DONE;
     }
