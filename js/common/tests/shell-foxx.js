@@ -209,7 +209,7 @@ function SetRoutesFoxxApplicationSpec () {
       assertEqual(app.routingInfo.routes[0].action.requiresModels.b, 2);
     },
 
-    testStartAddsRequiresAndContext: function () {
+    testStartAddsDefaultRoute: function () {
       app.get('/simple/route', function() {});
       app.start("myContext");
 
@@ -260,7 +260,7 @@ function DocumentationAndConstraintsSpec () {
 
       assertEqual(routes.length, 1);
 
-      assertEqual(routes[0].url.constraint.foxx, "/[a-zA-Z]+/");
+      assertEqual(routes[0].url.constraint.foxx, "/.+/");
       assertEqual(routes[0].docs.parameters.foxx.paramType, "path");
       assertEqual(routes[0].docs.parameters.foxx.name, "foxx");
       assertEqual(routes[0].docs.parameters.foxx.description, "Kind of Foxx");
@@ -273,8 +273,8 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters.id.description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters.id.dataType, "int");
       assertEqual(routes[0].docs.parameters.id.required, true);
-    },
-  }
+    }
+  };
 }
 
 function AddMiddlewareFoxxApplicationSpec () {
@@ -552,7 +552,7 @@ function ViewHelperSpec () {
 
       app.helper("testHelper", my_func);
 
-      assertEqual(app.helperCollection["testHelper"], my_func);
+      assertEqual(app.helperCollection.testHelper, my_func);
     },
 
     testUsingTheHelperInATemplate: function () {
@@ -569,7 +569,7 @@ function ViewHelperSpec () {
       });
 
       middleware = new Middleware(myCollection, {
-        testHelper: function() { a = true }
+        testHelper: function() { a = true; }
       }).functionRepresentation;
       middleware(request, response, options, next);
 
@@ -601,7 +601,7 @@ function FormatMiddlewareSpec () {
 
     testRefusesFormatsThatHaveNotBeenAllowed: function () {
       var nextCalled = false,
-        next = function () { nextCalled = true };
+        next = function () { nextCalled = true; };
       middleware = new Middleware(["json"]).functionRepresentation;
       request = { path: "test/1.html", headers: {} };
       middleware(request, response, options, next);
@@ -612,7 +612,7 @@ function FormatMiddlewareSpec () {
 
     testRefuseContradictingURLAndResponseType: function () {
       var nextCalled = false,
-        next = function () { nextCalled = true };
+        next = function () { nextCalled = true; };
       request = { path: "test/1.json", headers: {"accept": "text/html"} };
       middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
@@ -623,7 +623,7 @@ function FormatMiddlewareSpec () {
 
     testRefuseMissingBothURLAndResponseTypeWhenNoDefaultWasGiven: function () {
       var nextCalled = false,
-        next = function () { nextCalled = true };
+        next = function () { nextCalled = true; };
       request = { path: "test/1", headers: {} };
       middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);

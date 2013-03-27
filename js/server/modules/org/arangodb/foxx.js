@@ -412,7 +412,7 @@ RequestContext = function (route) {
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
-    "string": "/[a-zA-Z]+/"
+    "string": "/.+/"
   };
 };
 
