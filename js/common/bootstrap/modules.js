@@ -733,8 +733,13 @@ function stop_color_print () {
     if (appId.substr(0,4) === "app:") {
       var a = appManifestAal(appId);
 
-      path = a.path;
-      appId = a.appId;
+      if (a != null) {
+        path = a.path;
+        appId = a.appId;
+      }
+      else {
+        path = null;
+      }
     }
     else if (appId.substr(0,4) === "dev:") {
       path = appManifestDev(appId);
@@ -752,6 +757,7 @@ function stop_color_print () {
     file = fs.join(path, "/manifest.json");
     
     if (! internal.exists(file)) {
+      console.error("manifest file is missing '%s'", file);
       return null;
     }
 
