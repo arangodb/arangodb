@@ -37,6 +37,7 @@ var FoxxApplication,
   fs = require("fs"),
   console = require("console"),
   INTERNAL = require("internal"),
+  foxxManager = require("org/arangodb/foxx-manager"),
   internal = {};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,32 +133,22 @@ _.extend(FoxxApplication.prototype, {
 /// You have to provide the start function with the `applicationContext`
 /// variable.
 ////////////////////////////////////////////////////////////////////////////////
+
   start: function (context) {
     'use strict';
     var models = this.requiresModels,
       requires = this.requiresLibs,
       prefix = context.prefix;
 
-    this.routingInfo.urlPrefix = prefix + this.routingInfo.urlPrefix;
+    this.routingInfo.urlPrefix = prefix + "/" + this.routingInfo.urlPrefix;
 
     _.each(this.routingInfo.routes, function (route) {
-      route.action.context = context;
+      route.action.context = context.context;
       route.action.requiresLibs = requires;
       route.action.requiresModels = models;
     });
 
-    this.routingInfo.routes.push({
-      "url" : "/",
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : true,
-          "destination" : "index.html"
-        }
-      }
-    });
-
-    db._collection("_routing").save(this.routingInfo);
+    context.routingInfo = this.routingInfo;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -721,7 +712,9 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// We finish off with exporting FoxxApplication and the middlewares.
 /// Everything else will remain our secret.
 
-exports.installApp = require("org/arangodb/foxx-manager").installApp;
+exports.installApp = foxxManager.installApp;
+exports.uninstallApp = foxxManager.uninstallApp;
+exports.scappAppDirectory = foxxManager.scanAppDirectory;
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
