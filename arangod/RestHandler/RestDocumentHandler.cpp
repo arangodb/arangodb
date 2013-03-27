@@ -243,7 +243,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -258,11 +257,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// `waitForSync` value of `false`.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
-///     var cn = "productsNoWait";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -277,11 +275,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// value of `false`, but using the `waitForSync` URL parameter.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
-///     var cn = "productsNoWait";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn + "&waitForSync=true";
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -298,7 +295,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn + "&createCollection=true";
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -312,10 +308,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// Unknown collection name:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
-///     var cn = "productsUnknown";
+///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -332,7 +327,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ 1: "World" }';
 ///
@@ -507,12 +501,11 @@ bool RestDocumentHandler::readDocument () {
 /// Use a document handle:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReadDocument}
-///     var cn = "products1";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products1.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('GET', url);
@@ -520,27 +513,24 @@ bool RestDocumentHandler::readDocument () {
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Use a document handle and an etag:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentIfNoneMatch}
-///     var cn = "products2";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products2.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 ///     var header = "if-none-match: \"" + document._rev + "\"";
 /// 
 ///     var response = logCurlRequest('GET', url, "", header);
 /// 
 ///     assert(response.code === 304);
-/// 
+///
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -656,15 +646,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
-///     var cn = "products3";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     db.products3.save({"hallo1":"world1"});
-///     db.products3.save({"hallo2":"world1"});
-///     db.products3.save({"hallo3":"world1"});
-///     var url = "/_api/document/?collection=" + collection._id;
+///     db.products.save({"hallo1":"world1"});
+///     db.products.save({"hallo2":"world1"});
+///     db.products.save({"hallo3":"world1"});
+///     var url = "/_api/document/?collection=" + cn;
 /// 
 ///     var response = logCurlRequest('GET', url);
 /// 
@@ -752,22 +741,19 @@ bool RestDocumentHandler::readAllDocuments () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest-read-document-head
 /// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentHead}
-///     var cn = "productshead";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.productshead.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
-///     var response = logCurlRequest('HEAD', url, "{}");
+///     var response = logCurlRequest('HEAD', url);
 /// 
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -884,14 +870,12 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Using document handle:
 ///
-/// @verbinclude rest-update-document
 /// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocument}
-///     var cn = "products4";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products4.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -899,18 +883,16 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentUnknownHandle}
-///     var cn = "products5";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products5.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -918,18 +900,16 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Produce a revision conflict:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOther}
-///     var cn = "products6";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products6.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -937,18 +917,16 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWrite}
-///     var cn = "products7";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products7.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -956,18 +934,16 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Alternative to header field:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentRevOther}
-///     var cn = "products8";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
 /// 
-///     var collection = db._collection(cn);
-///     var document = db.products8.save({"hallo":"world"});
+///     var document = db.products.save({"hallo":"world"});
 ///     var url = "/_api/document/" + document._id;
 /// 
 ///     var response = logCurlRequest('PUT', url, "{}");
@@ -975,7 +951,6 @@ bool RestDocumentHandler::checkDocument () {
 ///     assert(response.code === 200);
 /// 
 ///     logJsonResponse(response);
-///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///////////////////////////////////////////////////////////////////////////////
 
