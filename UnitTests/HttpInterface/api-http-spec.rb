@@ -60,11 +60,11 @@ describe ArangoDB do
         doc.response.body.should be_nil
       end
       
-      it "checks whether HEAD returns a body on 5xx" do
+      it "checks whether HEAD returns a body on 4xx" do
         cmd = "/_api/non-existing-method"
         doc = ArangoDB.log_head("#{prefix}-head-non-existing-method", cmd)
 
-        doc.code.should eq(501)
+        doc.code.should eq(404)
         doc.response.body.should be_nil
       end
 
@@ -109,32 +109,32 @@ describe ArangoDB do
         cmd = "/xxxx/yyyy"
         doc = ArangoDB.log_get("#{prefix}-get-non-existing-url", cmd)
 
-        doc.code.should eq(501)
+        doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(501)
+        doc.parsed_response['code'].should eq(404)
       end
 
       it "checks whether GET returns a body" do
         cmd = "/_api/non-existing-method"
         doc = ArangoDB.log_get("#{prefix}-get-non-existing-method", cmd)
 
-        doc.code.should eq(501)
+        doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(9)
-        doc.parsed_response['code'].should eq(501)
+        doc.parsed_response['errorNum'].should eq(404)
+        doc.parsed_response['code'].should eq(404)
       end
 
       it "checks whether GET returns a body" do
         cmd = "/_api/non-allowed-method"
         doc = ArangoDB.log_get("#{prefix}-get-non-allowed-method", cmd)
 
-        doc.code.should eq(501)
+        doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(9)
-        doc.parsed_response['code'].should eq(501)
+        doc.parsed_response['errorNum'].should eq(404)
+        doc.parsed_response['code'].should eq(404)
       end
     end
 

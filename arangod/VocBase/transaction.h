@@ -134,8 +134,8 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_context_s {
-  TRI_associative_pointer_t _collections;
   TRI_read_write_lock_t     _collectionsLock;
+  TRI_associative_pointer_t _collections;
 
   struct TRI_vocbase_s*     _vocbase;     
 }
