@@ -3,6 +3,7 @@
 /*global describe, it, expect */
 /*global runs, spyOn, waitsFor */
 /*global window, document, $, d3, _*/
+/*global helper*/
 /*global EventDispatcher, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
