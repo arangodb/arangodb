@@ -102,7 +102,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.quoteSingleJsonCharacter = function (c) {
-    if (internal.characterQuoteCache.hasOwnProperty[c]) {
+    if (internal.characterQuoteCache.hasOwnProperty(c)) {
       return internal.characterQuoteCache[c];
     }
 
@@ -132,7 +132,7 @@
 /// @brief quotes a string character
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.quoteJsonString = function (str) {
+  var quoteJsonString = function (str) {
     var quotable = /[\\\"\x00-\x1f]/g;
     return '"' + str.replace(quotable, internal.quoteSingleJsonCharacter) + '"';
   };

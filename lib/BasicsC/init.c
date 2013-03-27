@@ -53,6 +53,7 @@ void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseMemory();
   TRI_InitialiseMersenneTwister();
   TRI_InitialiseError();
+  TRI_InitialiseMimetypes();
   TRI_InitialiseLogging(false);
   TRI_InitialiseHashes();
   TRI_InitialiseRandom();
@@ -72,6 +73,7 @@ void TRI_ShutdownC () {
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();
   TRI_ShutdownLogging();
+  TRI_ShutdownMimetypes();
   TRI_ShutdownError();
   TRI_ShutdownMemory();
 }

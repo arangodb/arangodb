@@ -140,6 +140,7 @@ typedef long suseconds_t;
 #include "BasicsC/voc-errors.h"
 #include "BasicsC/error.h"
 #include "BasicsC/memory.h"
+#include "BasicsC/mimetypes.h"
 #include "BasicsC/structures.h"
 #undef TRI_WITHIN_COMMON
 
