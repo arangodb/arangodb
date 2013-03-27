@@ -325,7 +325,7 @@ void ArangoServer::buildApplicationServer () {
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
 
-  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-admin"]
+  additional[ApplicationServer::OPTIONS_HIDDEN]
     ("development-mode", "start server in development mode")
   ;
 
