@@ -14,8 +14,8 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "applicationsRunning"                 : "applicationsActive",
-      "applicationsInstalled"               : "applicationsInstalled",
+      "applications/running"                : "applicationsActive",
+      "applications/installed"              : "applicationsInstalled",
       "applications/swagger"                : "swagger"
       
     },
