@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var mimetypes = require("org/arangodb/mimetypes");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 module "arangodb"
@@ -48,50 +49,28 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.guessContentType = function (filename) {
-  var re = /.*\.([^\.]*)$/;
+  var re = /\.([a-zA-Z0-9]+)$/;
   var match = re.exec(filename);
-  var extension;
 
-  if (match === null) {
-    return "text/plain; charset=utf-8";
+  if (match !== null) {
+    var extension = match[1];
+  
+    if (mimetypes.hasOwnProperty(extension)) {
+      var type = mimetypes[extension];
+      
+      if (type[1]) {
+        // append charset
+        return type[0] + "; charset=utf-8";
+      }
+
+      return type[0]; 
+    }
+    // fall-through intentional
   }
 
-  extension = match[1];
-
-  if (extension === "html") {
-    return "text/html; charset=utf-8";
-  }
-
-  if (extension === "xml") {
-    return "application/xml; charset=utf-8";
-  }
-
-  if (extension === "json") {
-    return "application/json; charset=utf-8";
-  }
-
-  if (extension === "js") {
-    return "application/x-javascript; charset=utf-8";
-  }
-
-  if (extension === "css") {
-    return "text/css; charset=utf-8";
-  }
-
-  if (extension === "png") {
-    return "image/png";
-  }
-
-  if (extension === "gif") {
-    return "image/gif";
-  }
-
-  if (extension === "jpg") {
-    return "image/jpg";
-  }
-
+  // default mimetype
   return "text/plain; charset=utf-8";
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

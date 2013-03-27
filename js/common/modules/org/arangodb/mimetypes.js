@@ -1,6 +1,6 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 72,
+         maxlen: 100,
          sloppy: true,
          vars: true,
          white: true,

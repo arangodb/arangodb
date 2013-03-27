@@ -22,7 +22,7 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 def genJsFile(types):
   jslint = "/*jslint indent: 2,\n"\
            "         nomen: true,\n"\
-           "         maxlen: 72,\n"\
+           "         maxlen: 100,\n"\
            "         sloppy: true,\n"\
            "         vars: true,\n"\
            "         white: true,\n"\
