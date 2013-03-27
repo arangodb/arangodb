@@ -862,8 +862,9 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
     LOG_TRACE("shaper failed because a date cannot be converted");
   }
 
+  // treat undefined as null value
   else if (json->IsUndefined()) {
-    LOG_TRACE("shaper failed because an undefined cannot be converted");
+    result = FillShapeValueNull(shaper, dst);
   }
 
   else {
