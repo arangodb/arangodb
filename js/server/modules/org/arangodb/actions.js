@@ -50,6 +50,12 @@ var moduleExists = function(name) { return module.exists; };
 var RoutingCache;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief all methods
+////////////////////////////////////////////////////////////////////////////////
+
+var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,7 +170,7 @@ function lookupUrl (prefix, url) {
   if (url.hasOwnProperty('match')) {
     return {
       urlParts: splitUrl(prefix + "/" + url.match),
-      methods: url.methods || exports.ALL_METHODS,
+      methods: url.methods || ALL_METHODS,
       constraint: url.constraint || {}
     };
   }
@@ -225,7 +231,7 @@ function lookupCallbackActionCallback (route, action) {
 
   try {
     if (action.hasOwnProperty("context")) {
-      app = module.createApp(action.context.name, action.context.version);
+      app = module.createApp(action.context.appId);
 
       if (app === null) {
         throw "cannot locate application '" + action.context.name + "'"
@@ -319,7 +325,7 @@ function lookupCallbackActionCallback (route, action) {
   return {
     controller: func,
     options: action.options || {},
-    methods: action.methods || exports.ALL_METHODS
+    methods: action.methods || ALL_METHODS
   };
 }
 
@@ -375,7 +381,7 @@ function lookupCallbackActionDo (route, action) {
   return {
     controller: func,
     options: action.options || {},
-    methods: action.methods || exports.ALL_METHODS
+    methods: action.methods || ALL_METHODS
   };
 }
 
@@ -432,7 +438,7 @@ function lookupCallbackActionController (route, action) {
         next();
       },
       options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
+      methods: action.methods || ALL_METHODS
     };
   }
   catch (err) {
@@ -536,7 +542,7 @@ function lookupCallbackActionPrefixController (route, action) {
       next();
     },
     options: action.options || {},
-    methods: action.methods || exports.ALL_METHODS
+    methods: action.methods || ALL_METHODS
   };
 }
 
@@ -616,8 +622,8 @@ function intersectMethods (a, b) {
   var j;
   var results = [];
 
-  a = a || exports.ALL_METHODS;
-  b = b || exports.ALL_METHODS;
+  a = a || ALL_METHODS;
+  b = b || ALL_METHODS;
 
   for (i = 0; i < b.length;  i++) {
     d[b[i].toUpperCase()] = true;
@@ -1105,8 +1111,8 @@ function reloadRouting () {
   RoutingCache.routes = {};
   RoutingCache.middleware = {};
 
-  for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
-    method = exports.ALL_METHODS[i];
+  for (i = 0;  i < ALL_METHODS.length;  ++i) {
+    method = ALL_METHODS[i];
 
     RoutingCache.routes[method] = {};
     RoutingCache.middleware[method] = {};
@@ -1177,6 +1183,7 @@ function reloadRouting () {
   // .............................................................................
 
   while (routes.hasNext()) {
+
     // clone the route object so the barrier for the collection can be removed soon
     var route = clone(routes.next());
     var r;
@@ -1216,11 +1223,11 @@ function reloadRouting () {
 
   RoutingCache.flat = {};
 
-  for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
+  for (i = 0;  i < ALL_METHODS.length;  ++i) {
     var a;
     var b;
 
-    method = exports.ALL_METHODS[i];
+    method = ALL_METHODS[i];
 
     a = flattenRouting(RoutingCache.routes[method], "", {}, 0, false);
     b = flattenRouting(RoutingCache.middleware[method], "", {}, 0, false).reverse();
@@ -1831,7 +1838,7 @@ exports.POST                     = "POST";
 exports.PUT                      = "PUT";
 exports.PATCH                    = "PATCH";
 
-exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
+exports.ALL_METHODS              = ALL_METHODS;
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
