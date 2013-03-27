@@ -1,6 +1,6 @@
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_ERRORS_H
-#define TRIAGENS_DURHAM_VOC_BASE_ERRORS_H 1
+#ifndef TRIAGENS_BASICS_C_ERRORS_H
+#define TRIAGENS_BASICS_C_ERRORS_H 1
 
 #ifdef __cplusplus
 extern "C" {

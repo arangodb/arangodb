@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
+/// @brief mimetypes
 ///
 /// @file
 ///
@@ -21,201 +21,209 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_COMMON_H
-#define TRIAGENS_BASICS_C_COMMON_H 1
+#include "BasicsC/common.h"
+
+#include "BasicsC/associative.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/voc-mimetypes.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             configuration options
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Mimetypes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WITHIN_COMMON 1
-#include "BasicsC/operating-system.h"
-#include "BasicsC/local-configuration.h"
-#include "BasicsC/application-exit.h"
-#undef TRI_WITHIN_COMMON
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mimetype
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct mimetype_s {
+  char* _extension;
+  char* _mimetype;
+}
+mimetype_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--             C header files that are always present on all systems
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Mimetypes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+////////////////////////////////////////////////////////////////////////////////
+/// @brief already initialised
+////////////////////////////////////////////////////////////////////////////////
 
-#include <sys/stat.h>
-#include <sys/types.h>
+static bool Initialised = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the array of mimetypes
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_associative_pointer_t Mimetypes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                   system dependent C header files
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-// .............................................................................
-// The problem we have for visual studio is that if we include WinSock2.h here
-// it may conflict later in some other source file. The conflict arises when
-// windows.h is included BEFORE WinSock2.h -- this is a visual studio issue. For
-// now be VERY careful to ensure that if you need windows.h, then you include
-// this file AFTER common.h.
-// .............................................................................
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
-typedef long suseconds_t;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            basic triAGENS headers
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WITHIN_COMMON 1
-#include "BasicsC/voc-errors.h"
-#include "BasicsC/error.h"
-#include "BasicsC/memory.h"
-#include "BasicsC/mimetypes.h"
-#include "BasicsC/structures.h"
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              basic compiler stuff
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WITHIN_COMMON 1
-#include "BasicsC/system-compiler.h"
-#include "BasicsC/system-functions.h"
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 low level helpers
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Mimetypes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief const cast for C
+/// @brief Hash function used to hash errors messages (not used)
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void* CONST_CAST (void const* ptr) {
-  union { void* p; void const* c; } cnv;
+static uint64_t HashMimetype (TRI_associative_pointer_t* array,
+                              void const* element) {
 
-  cnv.c = ptr;
-  return cnv.p;
+  mimetype_t* entry = (mimetype_t*) element;
+  return (uint64_t) TRI_FnvHashString(entry->_extension);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a wrapper for assert()
-///
-/// This wrapper maps TRI_ASSERT_DEBUG() to (void) 0 for non-maintainers. It
-/// maps TRI_ASSERT_DEBUG() to assert() when TRI_ENABLE_MAINTAINER_MODE is set.
+/// @brief Comparison function used to determine error equality
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+static bool EqualMimetype (TRI_associative_pointer_t* array,
+                           void const* key,
+                           void const* element) {
+  mimetype_t* entry = (mimetype_t*) element;
 
-#define TRI_ASSERT_DEBUG(what) assert(what)
-
-#else
-
-#ifdef __cplusplus
-
-#define TRI_ASSERT_DEBUG(what) (static_cast<void> (0))
-
-#else
-
-#define TRI_ASSERT_DEBUG(what) ((void) (0))
-
-#endif
-
-#endif
+  return (strcmp((const char*) key, entry->_extension) == 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Mimetypes
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a mimetype for an extension
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_RegisterMimetype (const char* extension, const char* mimetype) {
+  mimetype_t* entry;
+  void* found;
+
+  entry = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(mimetype_t), false);
+  entry->_extension = TRI_DuplicateString(extension);
+  entry->_mimetype = TRI_DuplicateString(mimetype);
+
+  found = TRI_InsertKeyAssociativePointer(&Mimetypes, extension, entry, false);
+
+  return (found != NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the mimetype for an extension
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetMimetype (const char* extension) {
+  mimetype_t* entry;
+  
+ entry = TRI_LookupByKeyAssociativePointer(&Mimetypes, (void const*) extension);
+
+  if (entry == NULL) {
+    return NULL;
+  }
+
+  return entry->_mimetype;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            MODULE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Mimetypes
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises the mimetypes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitialiseMimetypes () {
+  if (Initialised) {
+    return;
+  }
+
+  TRI_InitAssociativePointer(&Mimetypes,
+                             TRI_CORE_MEM_ZONE,
+                             &TRI_HashStringKeyAssociativePointer,
+                             HashMimetype,
+                             EqualMimetype,
+                             0);
+
+  TRI_InitialiseEntriesMimetypes();
+  Initialised = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the mimetypes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ShutdownMimetypes () {
+  size_t i;
+
+  if (! Initialised) {
+    return;
+  }
+
+  for (i = 0; i < Mimetypes._nrAlloc; i++) {
+    mimetype_t* mimetype = Mimetypes._table[i];
+
+    if (mimetype != NULL) {
+      TRI_Free(TRI_CORE_MEM_ZONE, mimetype->_extension);
+      TRI_Free(TRI_CORE_MEM_ZONE, mimetype->_mimetype);
+      TRI_Free(TRI_CORE_MEM_ZONE, mimetype);
+    }
+  }
+
+  TRI_DestroyAssociativePointer(&Mimetypes);
+
+  Initialised = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
