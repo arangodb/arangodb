@@ -42,6 +42,13 @@
   };
 
   
+  app.get('/foxxes', function (req, res) {
+    res.json(foxxes.viewAll());
+  }).nickname("Foxxes")
+  .summary("List of all foxxes.")
+  .notes("This function simply returns the list of all running"
+   + " foxxes and supplies the information for the application viewer");
+  
   app.get('/swagger', function (req, res) {
     res.json(swagger.list());
   }).nickname("Swaggers")
