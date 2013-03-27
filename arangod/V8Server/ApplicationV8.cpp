@@ -582,7 +582,7 @@ bool ApplicationV8::prepare () {
     }
 
     if (! _devAppPath.empty()) {
-      paths.push_back(string("application '" + _devAppPath + "'"));
+      paths.push_back(string("dev application '" + _devAppPath + "'"));
     }
 
     LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
