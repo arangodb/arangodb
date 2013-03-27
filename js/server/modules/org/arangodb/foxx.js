@@ -812,6 +812,7 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// Everything else will remain our secret.
 
 exports.installApp = foxxManager.installApp;
+exports.installDevApp = foxxManager.installDevApp;
 exports.uninstallApp = foxxManager.uninstallApp;
 exports.scappAppDirectory = foxxManager.scanAppDirectory;
 exports.FoxxApplication = FoxxApplication;
