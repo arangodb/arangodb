@@ -273,6 +273,25 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters.id.description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters.id.dataType, "int");
       assertEqual(routes[0].docs.parameters.id.required, true);
+    },
+
+    testDefineQueryParam: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).queryParam("a", {
+        description: "The value of an a",
+        dataType: "int",
+        required: false,
+        allowMultiple: true
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters.a.paramType, "query");
+      assertEqual(routes[0].docs.parameters.a.name, "a");
+      assertEqual(routes[0].docs.parameters.a.description, "The value of an a");
+      assertEqual(routes[0].docs.parameters.a.dataType, "int");
+      assertEqual(routes[0].docs.parameters.a.required, false);
+      assertEqual(routes[0].docs.parameters.a.allowMultiple, true);
     }
   };
 }

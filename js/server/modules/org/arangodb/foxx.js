@@ -432,7 +432,10 @@ _.extend(RequestContext.prototype, {
 /// @EXAMPLE:
 ///     app.get("/foxx/:id", function {
 ///       // Do something
-///     }).constrain("id", /[a-z]+/);
+///     }).pathParam("id", {
+///       description: "Id of the Foxx",
+///       dataType: "int"
+///     });
 ////////////////////////////////////////////////////////////////////////////////
   pathParam: function (paramName, attributes) {
     'use strict';
@@ -448,6 +451,45 @@ _.extend(RequestContext.prototype, {
       description: attributes.description,
       dataType: attributes.dataType,
       required: true
+    };
+
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_queryParam
+/// @brief Describe a Query Parameter
+///
+/// If you defined a route "/foxx", you can constrain which format a query
+/// parameter (`/foxx?a=12`) can have by giving it a type.
+/// We currently support the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter, if it is required and
+///  if you can provide the parameter multiple times.
+///
+/// @EXAMPLE:
+///     app.get("/foxx", function {
+///       // Do something
+///     }).queryParam("id", {
+///       description: "Id of the Foxx",
+///       dataType: "int",
+///       required: true,
+///       allowMultiple: false
+///     });
+////////////////////////////////////////////////////////////////////////////////
+
+  queryParam: function (paramName, attributes) {
+    'use strict';
+    this.route.docs.parameters[paramName] = {
+      paramType: "query",
+      name: paramName,
+      description: attributes.description,
+      dataType: attributes.dataType,
+      required: attributes.required,
+      allowMultiple: attributes.allowMultiple
     };
 
     return this;
