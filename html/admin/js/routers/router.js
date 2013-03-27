@@ -14,7 +14,8 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "applications"                        : "applications",
+      "applications/running"                : "applicationsActive",
+      "applications/installed"              : "applicationsInstalled",
       "applications/swagger"                : "swagger"
       
     },
@@ -154,14 +155,29 @@ $(document).ready(function() {
       });
     },
     
-    applications: function() {
-      if (this.applicationsView === undefined) {
-        var foxxList = new window.FoxxCollection();
-        this.applicationsView = new FoxxListView({
-          collection: foxxList
+    applicationsInstalled: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsInstalledView === undefined) {
+        this.applicationsInstalledView = new FoxxInstalledListView({
+          collection: this.foxxList
         });
       }
-      this.applicationsView.render();
+      this.applicationsInstalledView.render();
+      this.naviView.selectMenuItem('applications-menu');
+    },
+    
+    applicationsActive: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsActiveView === undefined) {
+        this.applicationsActiveView = new FoxxActiveListView({
+          collection: this.foxxList
+        });
+      }
+      this.applicationsActiveView.render();
       this.naviView.selectMenuItem('applications-menu');
     },
     
