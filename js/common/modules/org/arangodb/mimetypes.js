@@ -1,6 +1,6 @@
 /*jslint indent: 2,
          nomen: true,
-         maxlen: 240,
+         maxlen: 72,
          sloppy: true,
          vars: true,
          white: true,
@@ -12,17 +12,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.mimeTypes = {
-  "gif": "image/gif", 
-  "jpg": "image/jpg", 
-  "png": "image/png", 
-  "ico": "image/x-icon", 
-  "css": "text/css", 
-  "js": "text/javascript", 
-  "json": "application/json", 
-  "html": "text/html", 
-  "htm": "text/html", 
-  "pdf": "application/pdf", 
-  "text": "text/plain", 
-  "xml": "application/xml"
+  "gif": [ "image/gif", false ], 
+  "jpg": [ "image/jpg", false ], 
+  "png": [ "image/png", false ], 
+  "ico": [ "image/x-icon", false ], 
+  "css": [ "text/css", true ], 
+  "js": [ "text/javascript", true ], 
+  "json": [ "application/json", true ], 
+  "html": [ "text/html", true ], 
+  "htm": [ "text/html", true ], 
+  "pdf": [ "application/pdf", false ], 
+  "text": [ "text/plain", true ], 
+  "xml": [ "application/xml", true ]
 };
 

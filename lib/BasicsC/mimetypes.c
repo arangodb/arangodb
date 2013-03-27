@@ -48,6 +48,7 @@
 typedef struct mimetype_s {
   char* _extension;
   char* _mimetype;
+  bool  _appendCharset;
 }
 mimetype_t;
 
@@ -129,13 +130,22 @@ static bool EqualMimetype (TRI_associative_pointer_t* array,
 /// @brief register a mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterMimetype (const char* extension, const char* mimetype) {
+bool TRI_RegisterMimetype (const char* extension, 
+                           const char* mimetype,
+                           bool appendCharset) {
   mimetype_t* entry;
   void* found;
 
   entry = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(mimetype_t), false);
   entry->_extension = TRI_DuplicateString(extension);
-  entry->_mimetype = TRI_DuplicateString(mimetype);
+  entry->_appendCharset = appendCharset;
+
+  if (appendCharset) {
+    entry->_mimetype = TRI_Concatenate2String(mimetype, "; charset=utf-8");
+  }
+  else {
+    entry->_mimetype = TRI_DuplicateString(mimetype);
+  }
 
   found = TRI_InsertKeyAssociativePointer(&Mimetypes, extension, entry, false);
 

@@ -62,7 +62,7 @@ extern "C" {
 /// @brief register a mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterMimetype (const char*, const char*);
+bool TRI_RegisterMimetype (const char*, const char*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the mimetype for an extension

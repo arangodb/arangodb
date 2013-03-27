@@ -15,18 +15,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseEntriesMimetypes (void) {
-  TRI_RegisterMimetype("gif", "image/gif");
-  TRI_RegisterMimetype("jpg", "image/jpg");
-  TRI_RegisterMimetype("png", "image/png");
-  TRI_RegisterMimetype("ico", "image/x-icon");
-  TRI_RegisterMimetype("css", "text/css");
-  TRI_RegisterMimetype("js", "text/javascript");
-  TRI_RegisterMimetype("json", "application/json");
-  TRI_RegisterMimetype("html", "text/html");
-  TRI_RegisterMimetype("htm", "text/html");
-  TRI_RegisterMimetype("pdf", "application/pdf");
-  TRI_RegisterMimetype("text", "text/plain");
-  TRI_RegisterMimetype("xml", "application/xml");
+  TRI_RegisterMimetype("gif", "image/gif", false);
+  TRI_RegisterMimetype("jpg", "image/jpg", false);
+  TRI_RegisterMimetype("png", "image/png", false);
+  TRI_RegisterMimetype("ico", "image/x-icon", false);
+  TRI_RegisterMimetype("css", "text/css", true);
+  TRI_RegisterMimetype("js", "text/javascript", true);
+  TRI_RegisterMimetype("json", "application/json", true);
+  TRI_RegisterMimetype("html", "text/html", true);
+  TRI_RegisterMimetype("htm", "text/html", true);
+  TRI_RegisterMimetype("pdf", "application/pdf", false);
+  TRI_RegisterMimetype("text", "text/plain", true);
+  TRI_RegisterMimetype("xml", "application/xml", true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
