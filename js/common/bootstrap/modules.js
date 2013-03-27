@@ -248,8 +248,8 @@ function stop_color_print () {
 /// @brief app constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ArangoApp (name, version, manifest, path) {
-    this._id = "app:" + name + ":" + version;
+  function ArangoApp (id, name, version, manifest, path) {
+    this._id = id;
     this._name = name;
     this._version = version;
     this._manifest = manifest;
@@ -673,11 +673,11 @@ function stop_color_print () {
     var re = /app:([^:]*):([^:]*)/;
     var m = re.exec(appId);
 
-    aal = internal.db._collection("_aal");
-
     if (m === null) {
       throw "illegal app identifier '" + appId + "'";
     }
+
+    aal = internal.db._collection("_aal");
 
     if (m[2] === "latest") {
       var docs = aal.byExample({ type: "app", name: m[1] }).toArray();
@@ -696,7 +696,27 @@ function stop_color_print () {
       return null;
     }
 
-    return doc.path;
+    return {
+      appId: doc.app,
+      path: doc.path
+    };
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file for development
+////////////////////////////////////////////////////////////////////////////////
+
+  function appManifestDev (appId) {
+    'use strict';
+
+    var re = /dev:([^:]*):(.*)/;
+    var m = re.exec(appId);
+
+    if (m === null) {
+      throw "illegal app identifier '" + appId + "'";
+    }
+
+    return m[2];
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,7 +731,13 @@ function stop_color_print () {
     var manifest;
 
     if (appId.substr(0,4) === "app:") {
-      path = appManifestAal(appId);
+      var a = appManifestAal(appId);
+
+      path = a.path;
+      appId = a.appId;
+    }
+    else if (appId.substr(0,4) === "dev:") {
+      path = appManifestDev(appId);
     }
     else {
       console.error("cannot load application '%s', unknown type", appId);
@@ -752,6 +778,7 @@ function stop_color_print () {
     }
         
     return {
+      id: appId,
       path: path,
       manifest: manifest
     };
@@ -855,6 +882,7 @@ function stop_color_print () {
     }
 
     return new ArangoApp(
+      description.id,
       description.manifest.name,
       description.manifest.version,
       description.manifest,

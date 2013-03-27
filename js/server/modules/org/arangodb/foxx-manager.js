@@ -119,17 +119,20 @@ function installAssets (app, routes) {
     for (path in desc.assets) {
       if (desc.assets.hasOwnProperty(path)) {
         var asset = desc.assets[path];
-        var content = buildAssetContent(app, asset);
 
-        normalized = arangodb.normalizeURL("/" + path);
-        type = arangodb.guessContentType(normalized);
+        if (asset.hasOwnProperty('files')) {
+          var content = buildAssetContent(app, asset.files);
 
-        route = {
-          url: { match: normalized },
-          content: { contentType: type, body: content }
-        };
+          normalized = arangodb.normalizeURL("/" + path);
+          type = arangodb.guessContentType(normalized);
 
-        routes.routes.push(route);
+          route = {
+            url: { match: normalized },
+            content: { contentType: type, body: content }
+          };
+
+          routes.routes.push(route);
+        }
       }
     }
   }
@@ -581,6 +584,68 @@ exports.uninstallApp = function (key) {
   internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
   return true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installs a FOXX application in development
+////////////////////////////////////////////////////////////////////////////////
+
+exports.installDevApp = function (name, mount, options) {
+  'use strict';
+
+  var aal;
+  var app;
+  var appPath;
+  var appId;
+  var desc;
+  var doc;
+  var i;
+
+  aal = arangodb.db._collection("_aal");
+
+  // .............................................................................
+  // locate the application
+  // .............................................................................
+
+  appPath = internal.DEV_APP_PATH;
+  appId = null;
+
+  for (i = 0;  i < appPath.length;  ++i) {
+    var path = appPath[i];
+    var filename = fs.join(path, name, "manifest.json");
+
+    if (fs.exists(filename)) {
+      appId = "dev:" + name + ":" + fs.join(path, name);
+      break;
+    }
+  }
+
+  app = appId !== null && module.createApp(appId);
+
+  if (app === null) {
+    throw "cannot find development application '" + name + "'";
+  }
+
+  // .............................................................................
+  // install the application
+  // .............................................................................
+
+  try {
+    doc = installAalApp(app, mount, options);
+  }
+  catch (err) {
+    if (doc !== undefined) {
+      aal.remove(doc._key);
+    }
+
+    throw err;
+  }
+
+  desc = aal.document(doc).shallowCopy;
+  desc.active = true;
+  doc = aal.replace(doc, desc);
+
+  return aal.document(doc);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
