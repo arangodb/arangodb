@@ -106,6 +106,9 @@ Furthermore you can describe your API by chaining the following methods onto you
 ### Documenting the notes of a route
 /// @fn JSF_foxx_RequestContext_notes
 
+### Documenting the error response of a route
+/// @fn JSF_foxx_RequestContext_errorResponse
+
 ### Before and After Hooks
 
 You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
