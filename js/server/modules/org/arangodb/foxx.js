@@ -177,7 +177,7 @@ _.extend(FoxxApplication.prototype, {
         callback: String(callback)
       },
       docs: {
-        parameters: {},
+        parameters: [],
         errorResponses: [],
         httpMethod: method.toUpperCase()
       }
@@ -447,13 +447,13 @@ _.extend(RequestContext.prototype, {
 
     constraint[paramName] = this.typeToRegex[attributes.dataType];
     this.route.url = internal.createUrlObject(url.match, constraint, url.methods[0]);
-    this.route.docs.parameters[paramName] = {
+    this.route.docs.parameters.push({
       paramType: "path",
       name: paramName,
       description: attributes.description,
       dataType: attributes.dataType,
       required: true
-    };
+    });
 
     return this;
   },
@@ -485,14 +485,14 @@ _.extend(RequestContext.prototype, {
 
   queryParam: function (paramName, attributes) {
     'use strict';
-    this.route.docs.parameters[paramName] = {
+    this.route.docs.parameters.push({
       paramType: "query",
       name: paramName,
       description: attributes.description,
       dataType: attributes.dataType,
       required: attributes.required,
       allowMultiple: attributes.allowMultiple
-    };
+    });
 
     return this;
   },

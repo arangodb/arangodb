@@ -247,11 +247,11 @@ function DocumentationAndConstraintsSpec () {
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters.id.paramType, "path");
-      assertEqual(routes[0].docs.parameters.id.name, "id");
-      assertEqual(routes[0].docs.parameters.id.description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters.id.dataType, "int");
-      assertEqual(routes[0].docs.parameters.id.required, true);
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "id");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].required, true);
     },
 
     testDefineMultiplePathParams: function () {
@@ -268,18 +268,18 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes.length, 1);
 
       assertEqual(routes[0].url.constraint.foxx, "/.+/");
-      assertEqual(routes[0].docs.parameters.foxx.paramType, "path");
-      assertEqual(routes[0].docs.parameters.foxx.name, "foxx");
-      assertEqual(routes[0].docs.parameters.foxx.description, "Kind of Foxx");
-      assertEqual(routes[0].docs.parameters.foxx.dataType, "string");
-      assertEqual(routes[0].docs.parameters.foxx.required, true);
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "foxx");
+      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "string");
+      assertEqual(routes[0].docs.parameters[0].required, true);
 
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters.id.paramType, "path");
-      assertEqual(routes[0].docs.parameters.id.name, "id");
-      assertEqual(routes[0].docs.parameters.id.description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters.id.dataType, "int");
-      assertEqual(routes[0].docs.parameters.id.required, true);
+      assertEqual(routes[0].docs.parameters[1].paramType, "path");
+      assertEqual(routes[0].docs.parameters[1].name, "id");
+      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+      assertEqual(routes[0].docs.parameters[1].required, true);
     },
 
     testDefineQueryParam: function () {
@@ -293,12 +293,12 @@ function DocumentationAndConstraintsSpec () {
       });
 
       assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.parameters.a.paramType, "query");
-      assertEqual(routes[0].docs.parameters.a.name, "a");
-      assertEqual(routes[0].docs.parameters.a.description, "The value of an a");
-      assertEqual(routes[0].docs.parameters.a.dataType, "int");
-      assertEqual(routes[0].docs.parameters.a.required, false);
-      assertEqual(routes[0].docs.parameters.a.allowMultiple, true);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].required, false);
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
     },
 
     testDefineMetaData: function () {
