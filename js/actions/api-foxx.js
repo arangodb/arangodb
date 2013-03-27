@@ -70,6 +70,34 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief installs a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/dev-install",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var result;
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var name = body.name;
+    var mount = body.mount;
+    var options = body.options || {};
+
+    result = foxx.installDevApp(name, mount, options);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief uninstalls a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
