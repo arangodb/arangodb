@@ -1,6 +1,8 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* issue #454: error while creation of Collection
+
 * make `collection.count()` not recalculate the number of documents on the fly, but
   use some internal document counters. This will work at least for non-transactional
   collections.
