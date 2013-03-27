@@ -1,15 +1,11 @@
-module.define("org/arangodb-common", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript base module
+/// @brief mimetypes
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,15 +21,61 @@ module.define("org/arangodb-common", function(exports, module) {
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
+#ifndef TRIAGENS_BASICS_C_MIMETYPES_H
+#define TRIAGENS_BASICS_C_MIMETYPES_H 1
+
+#ifndef TRI_WITHIN_COMMON
+#error use <BasicsC/common.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 module "arangodb"
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Mimetypes
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Mimetypes
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a mimetype for an extension
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_RegisterMimetype (const char*, const char*, bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the mimetype for an extension
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetMimetype (const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -41,109 +83,33 @@ var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
+/// @addtogroup Mimetypes
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief guesses the content type
+/// @brief initialises mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.guessContentType = function (filename) {
-  var re = /\.([a-zA-Z0-9]+)$/;
-  var match = re.exec(filename);
+void TRI_InitialiseMimetypes (void);
 
-  if (match !== null) {
-    var extension = match[1];
-  
-    if (mimetypes.hasOwnProperty(extension)) {
-      var type = mimetypes[extension];
-      
-      if (type[1]) {
-        // append charset
-        return type[0] + "; charset=utf-8";
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down mimetypes
+////////////////////////////////////////////////////////////////////////////////
 
-      return type[0]; 
-    }
-    // fall-through intentional
-  }
-
-  // default mimetype
-  return "text/plain; charset=utf-8";
-};
+void TRI_ShutdownMimetypes (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
+#ifdef __cplusplus
+}
+#endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "normalizeURL"
-////////////////////////////////////////////////////////////////////////////////
-
-exports.normalizeURL = internal.normalizeURL;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "output"
-////////////////////////////////////////////////////////////////////////////////
-
-exports.output = function () {
-  internal.output.apply(internal.output, arguments);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "print"
-////////////////////////////////////////////////////////////////////////////////
-
-exports.print = internal.print;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "printf"
-////////////////////////////////////////////////////////////////////////////////
-
-exports.printf = internal.printf;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "printObject"
-////////////////////////////////////////////////////////////////////////////////
-
-exports.printObject = internal.printObject;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief error codes
-////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var name;
-
-  for (name in internal.errors) {
-    if (internal.errors.hasOwnProperty(name)) {
-      exports[name] = internal.errors[name].code;
-    }
-  }
-}());
-
-exports.errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+#endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-});
