@@ -178,6 +178,7 @@ _.extend(FoxxApplication.prototype, {
       },
       docs: {
         parameters: {},
+        errorResponses: [],
         httpMethod: method.toUpperCase()
       }
     };
@@ -531,6 +532,23 @@ _.extend(RequestContext.prototype, {
   notes: function (notes) {
     'use strict';
     this.route.docs.notes = notes;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_errorResponse
+/// @brief Document an error response
+///
+/// Document the error response for a given error code with a reason for the
+/// occurrence.
+////////////////////////////////////////////////////////////////////////////////
+
+  errorResponse: function (code, reason) {
+    'use strict';
+    this.route.docs.errorResponses.push({
+      code: code,
+      reason: reason
+    });
     return this;
   }
 });

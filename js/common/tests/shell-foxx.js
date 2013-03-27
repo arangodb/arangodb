@@ -324,6 +324,17 @@ function DocumentationAndConstraintsSpec () {
       }
 
       assertEqual(error, "Summary can't be longer than 60 characters");
+    },
+
+    testDefineErrorResponse: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).errorResponse(400, "I don't understand a word you're saying");
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.errorResponses.length, 1);
+      assertEqual(routes[0].docs.errorResponses[0].code, 400);
+      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
     }
   };
 }
