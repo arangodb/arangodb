@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, continue: true, regexp: true */
 /*global require, module: true, PACKAGE_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +248,8 @@ function stop_color_print () {
 /// @brief app constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ArangoApp (name, version, manifest, path) {
-    this._id = "app:" + name + ":" + version;
+  function ArangoApp (id, name, version, manifest, path) {
+    this._id = id;
     this._name = name;
     this._version = version;
     this._manifest = manifest;
@@ -308,6 +308,51 @@ function stop_color_print () {
 
   var fs = GlobalPackage.module("/fs").exports;
   var console = GlobalPackage.module("/console").exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a semantic version
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.compareVersions = function (a, b) {
+    var aComponents;
+    var bComponents;
+    var len;
+    var i;
+
+    if (a === b) {
+      return 0;
+    }
+
+    aComponents = a.split(".");
+    bComponents = b.split(".");
+    len = Math.min(aComponents.length, bComponents.length);
+
+    // loop while the components are equal
+    for (i = 0; i < len; i++) {
+
+      // A bigger than B
+      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
+        return 1;
+      }
+
+      // B bigger than A
+      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
+        return -1;
+      }
+    }
+
+    // If one's a prefix of the other, the longer one is greater.
+    if (aComponents.length > bComponents.length) {
+      return 1;
+    }
+
+    if (aComponents.length < bComponents.length) {
+      return -1;
+    }
+
+    // Otherwise they are the same.
+    return 0;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes an URL
@@ -617,50 +662,126 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file
+////////////////////////////////////////////////////////////////////////////////
+
+  function appManifestAal (appId) {
+    'use strict';
+
+    var aal;
+    var doc = null;
+    var re = /app:([^:]*):([^:]*)/;
+    var m = re.exec(appId);
+
+    if (m === null) {
+      throw "illegal app identifier '" + appId + "'";
+    }
+
+    aal = internal.db._collection("_aal");
+
+    if (m[2] === "latest") {
+      var docs = aal.byExample({ type: "app", name: m[1] }).toArray();
+
+      docs.sort(function(a,b) {return internal.compareVersions(b.version, a.version);});
+
+      if (0 < docs.length) {
+        doc = docs[0];
+      }
+    }
+    else {
+      doc = aal.firstExample({ type: "app", app: appId });
+    }
+
+    if (doc === null) {
+      return null;
+    }
+
+    return {
+      appId: doc.app,
+      path: doc.path
+    };
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file for development
+////////////////////////////////////////////////////////////////////////////////
+
+  function appManifestDev (appId) {
+    'use strict';
+
+    var re = /dev:([^:]*):(.*)/;
+    var m = re.exec(appId);
+
+    if (m === null) {
+      throw "illegal app identifier '" + appId + "'";
+    }
+
+    return m[2];
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appDescription = function (name, version) {
-    var apps = internal.APP_PATH;
-    var i;
+  internal.appDescription = function (appId) {
+    'use strict';
 
-    for (i = 0;  i < apps.length;  ++i) {
-      var path = apps[i];
-      var file = path + "/" + name + "/" + "manifest.json";
-      var content;
-      var manifest;
-      
-      if (internal.exists(file)) {
-        try {
-          content = internal.read(file);
-          manifest = JSON.parse(content);
-        }
-        catch (err) {
-          console.error("cannot load manifest file '%s': %s - %s",
-                        file,
-                        String(err),
-                        String(err.stack));
-          continue;
-        }
+    var path;
+    var file;
+    var manifest;
 
-        if (! manifest.hasOwnProperty("name")) {
-          console.error("cannot manifest file is missing a name '%s'", file);
-          continue;
-        }
-        
-        if (! manifest.hasOwnProperty("version")) {
-          console.error("cannot manifest file is missing a version '%s'", file);
-          continue;
-        }
-        
-        return {
-          path: path + "/" + name,
-          manifest: manifest
-        };
-      }
+    if (appId.substr(0,4) === "app:") {
+      var a = appManifestAal(appId);
+
+      path = a.path;
+      appId = a.appId;
+    }
+    else if (appId.substr(0,4) === "dev:") {
+      path = appManifestDev(appId);
+    }
+    else {
+      console.error("cannot load application '%s', unknown type", appId);
+      return null;
     }
 
-    return null;
+    if (path === null) {
+      console.error("unknown application '%s'", appId);
+      return null;
+    }
+
+    file = fs.join(path, "/manifest.json");
+    
+    if (! internal.exists(file)) {
+      return null;
+    }
+
+    try {
+      var content = internal.read(file);
+      manifest = JSON.parse(content);
+    }
+    catch (err) {
+      console.error("cannot load manifest file '%s': %s - %s",
+                    file,
+                    String(err),
+                    String(err.stack));
+      return null;
+    }
+
+    if (! manifest.hasOwnProperty("name")) {
+      console.error("cannot manifest file is missing a name '%s'", file);
+      return null;
+    }
+        
+    if (! manifest.hasOwnProperty("version")) {
+      console.error("cannot manifest file is missing a version '%s'", file);
+      return null;
+    }
+        
+    return {
+      id: appId,
+      path: path,
+      manifest: manifest
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -753,14 +874,15 @@ function stop_color_print () {
 /// @brief creates an application
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (name, version) {
-    description = internal.appDescription(name, version);
+  Module.prototype.createApp = function (appId) {
+    var description = internal.appDescription(appId);
 
     if (description === null) {
       return description;
     }
 
     return new ArangoApp(
+      description.id,
       description.manifest.name,
       description.manifest.version,
       description.manifest,
@@ -1061,7 +1183,7 @@ function stop_color_print () {
       parent = ', parent "' + this._package._parent.id + '"';
     }
 
-    internal.output('[app "' + this._name + ' (' + this._version + ')]');
+    internal.output('[app "' + this._name + '" (' + this._version + ')]');
   };
 
 ////////////////////////////////////////////////////////////////////////////////

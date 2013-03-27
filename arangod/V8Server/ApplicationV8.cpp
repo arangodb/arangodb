@@ -174,6 +174,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath, string const& tempPath)
     _packagePath(),
     _actionPath(),
     _appPath(),
+    _devAppPath(),
     _useActions(true),
     _developmentMode(false),
     _performUpgrade(false),
@@ -533,6 +534,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.app-path", &_appPath, "one or more directories separated by (semi-) colons")
+    ("javascript.dev-app-path", &_devAppPath, "one or more directories separated by (semi-) colons")
     ("javascript.modules-path", &_modulesPath, "one or more directories separated by (semi-) colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
@@ -579,11 +581,19 @@ bool ApplicationV8::prepare () {
       paths.push_back(string("application '" + _appPath + "'"));
     }
 
+    if (! _devAppPath.empty()) {
+      paths.push_back(string("application '" + _devAppPath + "'"));
+    }
+
     LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
   }
 
   _startupLoader.setDirectory(_startupPath);
 
+  // check for development mode
+  if (! _devAppPath.empty()) {
+    _developmentMode = true;
+  }
 
   // set up action loader
   if (_useActions) {
@@ -723,6 +733,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     v8::HandleScope scope;
 
     TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", TRI_V8PathList(_appPath));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", TRI_V8PathList(_devAppPath));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
   }
 

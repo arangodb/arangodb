@@ -11,7 +11,7 @@
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
-  COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
+  COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE, FS_LIST, DEV_APP_PATH,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, HOME, DEVELOPMENT_MODE, THREAD_NUMBER, PATH_SEPARATOR, APP_PATH */
 
@@ -364,6 +364,17 @@
   if (typeof APP_PATH !== "undefined") {
     internal.APP_PATH = APP_PATH;
     delete APP_PATH;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dev app path
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.DEV_APP_PATH = [];
+
+  if (typeof DEV_APP_PATH !== "undefined") {
+    internal.DEV_APP_PATH = DEV_APP_PATH;
+    delete DEV_APP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

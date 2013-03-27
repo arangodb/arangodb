@@ -394,11 +394,23 @@ namespace triagens {
 ///
 /// @CMDOPT{\--javascript.app-path @CA{directory}}
 ///
-/// Specifies the @CA{directory} path where the application are located.
+/// Specifies the @CA{directory} path where the applications are located.
 /// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _appPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief semicolon separated list of application directories
+///
+/// @CMDOPT{\--javascript.dev-app-path @CA{directory}}
+///
+/// Specifies the @CA{directory} path where the development applications are
+/// located.  Multiple paths can be specified separated with commas. Never use
+/// this option for production.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _devAppPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use actions
