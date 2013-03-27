@@ -30,8 +30,11 @@
 
 var internal = require("internal");
 
-var arangodb = require("org/arangodb");
+var console = require("console");
 var fs = require("fs");
+
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -56,7 +59,7 @@ function buildAssetContent (app, assets) {
 
   var reSub = /(.*)\/\*\*$/;
   var reAll = /(.*)\/\*$/;
-  var rootDir = app._appDescription.path;
+  var rootDir = app._path;
 
   files = [];
 
@@ -103,17 +106,11 @@ function buildAssetContent (app, assets) {
 /// @brief installs the assets of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAssets (app, mount) {
+function installAssets (app, routes) {
   var desc;
   var path;
-  var routes;
 
-  desc = app._appDescription.manifest;
-
-  routes = {
-    urlPrefix: mount,
-    routes: []
-  };
+  desc = app._manifest;
 
   if (desc.hasOwnProperty('assets')) {
     for (path in desc.assets) {
@@ -144,7 +141,7 @@ function installAssets (app, mount) {
           action: {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
-              path: fs.join(app._appDescription.path, directory)
+              path: fs.join(app._path, directory)
             }
           }
         };
@@ -153,21 +150,19 @@ function installAssets (app, mount) {
       }
     }
   }
-
-  arangodb.db._collection("_routing").save(routes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function setupApp (app, appContext) {
+function executeAppScript (app, name, appContext) {
   var desc;
   var context;
 
-  desc = app._appDescription.manifest;
+  desc = app._manifest;
 
-  if (desc.hasOwnProperty("setup")) {
+  if (desc.hasOwnProperty(name)) {
     cp = appContext.collectionPrefix;
 
     context = {};
@@ -191,7 +186,48 @@ function setupApp (app, appContext) {
       };
     }
 
-    app.loadAppScript(app, desc.setup, appContext, context);
+    app.loadAppScript(app.createAppModule(), desc[name], appContext, context);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up an app
+////////////////////////////////////////////////////////////////////////////////
+
+function setupApp (app, appContext) {
+  return executeAppScript(app, "setup", appContext);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down an app
+////////////////////////////////////////////////////////////////////////////////
+
+function teardownApp (app, appContext) {
+  return executeAppScript(app, "teardown", appContext);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an app aal entry
+////////////////////////////////////////////////////////////////////////////////
+
+function upsertAalAppEntry (manifest, path) {
+  var aal = arangodb.db._collection("_aal");
+  var doc = aal.firstExample({ name: manifest.name, version: manifest.version });
+
+  if (doc === null) {
+    aal.save({
+      type: "app",
+      app: "app:" + manifest.name + ":" + manifest.version,
+      name: manifest.name,
+      version: manifest.version,
+      path: path
+    });
+  }
+  else {
+    if (doc.path !== path) {
+      doc.path = path;
+      aal.replace(doc, doc);
+    }
   }
 }
 
@@ -209,22 +245,75 @@ function setupApp (app, appContext) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief scans available FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.scanAppDirectory = function () {
+  'use strict';
+
+  var i;
+  var j;
+
+  var appPath = internal.APP_PATH;
+  var aal = arangodb.db._collection("_aal");
+
+  for (i = 0;  i < appPath.length;  ++i) {
+    var path = appPath[i];
+    var files = fs.list(path);
+
+    for (j = 0;  j < files.length;  ++j) {
+      var m = fs.join(path, files[j], "manifest.json");
+
+      if (fs.exists(m)) {
+        try {
+          var mf = JSON.parse(fs.read(m));
+
+          upsertAalAppEntry(mf, fs.join(path, files[j]));
+        }
+        catch (err) {
+          console.error("cannot read app manifest '%s': %s", m, String(err));
+        }
+      }
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief installs a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.installApp = function (name, mount, options) {
   'use strict';
 
-  var apps;
-  var description;
-  var i;
+  var aal;
+  var app;
+  var doc;
+  var desc;
+  var find;
+  var prefix;
+  var version;
 
-  var version = options && options.version; // TODO currently ignored
-  var prefix = options && options.collectionPrefix;
-  var context = {};
-  var root = module.appRootModule(name); // TODO use version
+  aal = arangodb.db._collection("_aal");
 
-  if (root === null) {
+  // .............................................................................
+  // check that the mount path is free
+  // .............................................................................
+
+  find = aal.firstExample({ type: "mount", mount: mount, active: true });
+
+  if (find !== null) {
+    throw "cannot use mount path '" + mount + "', already used by '" 
+      + find.app + "' (" + find._key + ")";
+  }
+
+  // .............................................................................
+  // locate the application
+  // .............................................................................
+
+  version = options && options.version;
+  app = module.createApp(name, version);
+
+  if (app === null) {
     if (version === undefined) {
       throw "cannot find application '" + name + "'";
     }
@@ -233,51 +322,207 @@ exports.installApp = function (name, mount, options) {
     }
   }
 
-  description = root._appDescription.manifest;
+  // .............................................................................
+  // create a new (unique) entry in aal
+  // .............................................................................
 
-  if (mount === "") {
-    mount = "/";
-  }
-  else {
-    mount = internal.normalizeURL(mount);
-  }
-
-  if (mount[0] !== "/") {
-    throw "mount point must be absolute";
-  }
+  prefix = options && options.collectionPrefix;
 
   if (prefix === undefined) {
-    context.collectionPrefix = mount.substr(1).replace(/\//g, "_");
-  }
-  else {
-    context.collectionPrefix = prefix;
+    prefix = mount.substr(1).replace(/\//g, "_");
   }
 
-  context.name = description.name;
-  context.version = description.version;
-  context.mount = mount;
+  desc = {
+    type: "mount",
+    app: app._id,
+    mount: mount,
+    active: false,
+    collectionPrefix: prefix
+  };
 
-  apps = description.apps;
+  doc = aal.save(desc);
 
-  for (i in apps) {
-    if (apps.hasOwnProperty(i)) {
-      var file = apps[i];
+  // .............................................................................
+  // install the application
+  // .............................................................................
 
-      context.appMount = i;
-      context.prefix = internal.normalizeURL(mount + "/" + i);
+  try {
+    var apps;
+    var i;
+    var context;
+    var routes;
 
-      root.loadAppScript(root, file, context);
-
-      delete context.appMount;
-      delete context.prefix;
+    if (mount === "") {
+      mount = "/";
     }
+    else {
+      mount = internal.normalizeURL(mount);
+    }
+
+    if (mount[0] !== "/") {
+      throw "mount point must be absolute";
+    }
+
+    // setup the routes
+    routes = {
+      urlPrefix: mount,
+      foxxMount: doc._key,
+      routes: [],
+      middleware: []
+    };
+
+    routes.routes.push({
+      "url" : { match: "/" },
+      "action" : {
+        "do" : "org/arangodb/actions/redirectRequest",
+        "options" : {
+          "permanently" : true,
+          "destination" : "index.html"
+        }
+      }
+    });
+
+    // mount all applications
+    apps = app._manifest.apps;
+
+    for (i in apps) {
+      if (apps.hasOwnProperty(i)) {
+        var file = apps[i];
+
+        // set up a context for the applications
+        context = {
+          prefix: internal.normalizeURL("/" + i),       // app mount
+
+          context: {
+            name: app._name,                              // app name
+            version: app._version,                        // app version
+            appId: app._id,                               // app identifier
+            mount: mount,                                 // global mount
+            collectionPrefix: prefix                      // collection prefix
+          }
+        };
+
+        app.loadAppScript(app.createAppModule(), file, context);
+
+        if (context.routingInfo !== undefined) {
+          var ri = context.routingInfo;
+          var p = ri.urlPrefix;
+          var i;
+
+          if (ri.hasOwnProperty("routes")) {
+            for (i = 0;  i < ri.routes.length;  ++i) {
+              var route = ri.routes[i];
+
+              if (route.hasOwnProperty("url")) {
+                route.url.match = internal.normalizeURL(p + "/" + route.url.match);
+              }
+
+              routes.routes.push(route);
+            }
+          }
+
+          if (ri.hasOwnProperty("middleware")) {
+            for (i = 0;  i < ri.middleware.length;  ++i) {
+              var route = ri.middleware[i];
+
+              if (route.hasOwnProperty("url")) {
+                route.url.match = internal.normalizeURL(p + "/" + route.url.match);
+              }
+
+              routes.middleware.push(route);
+            }
+          }
+        }
+      }
+    }
+
+    // install all files and assets
+    installAssets(app, routes);
+
+    // and save
+    arangodb.db._collection("_routing").save(routes);
+
+    // setup the application
+    context = {
+      name: app._name,
+      version: app._version,
+      appId: app._id,
+      mount: mount,
+      collectionPrefix: prefix
+    };
+
+    setupApp(app, context);
+  }
+  catch (err) {
+    desc.error = String(err);
+    desc.active = false;
+
+    aal.replace(doc, desc);
+
+    throw err;
   }
 
-  installAssets(root, mount);
-  setupApp(root, context);
+  desc.active = true;
+  doc = aal.replace(doc, desc);
+
+  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+
+  return aal.document(doc);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uninstalls a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.uninstallApp = function (key) {
+  'use strict';
+
+  var aal;
+  var app;
+  var appDoc;
+  var context;
+  var doc;
+  var routing;
+
+  aal = arangodb.db._collection("_aal");
+  doc = aal.document(key);
+
+  if (doc.type !== "mount") {
+    throw "key '" + key + "' does not belong to a mount point";
+  }
+
+  try {
+    appDoc = aal.firstExample({ app: doc.app, type: "app" });
+
+    if (appDoc === null) {
+      throw "cannot find app '" + doc.app + "'";
+    }
+
+    app = module.createApp(appDoc.name, appDoc.version);
+
+    context = {
+      name: app._name,
+      version: app._version,
+      appId: app._id,
+      mount: doc.mount,
+      collectionPrefix: doc.collectionPrefix
+    };
+
+    teardownApp(app, context);
+  }
+  catch (err) {
+    console.error("teardown not possible for application '%s': %s", doc.app, String(err));
+  }
+
+  routing = arangodb.db._collection("_routing");
+
+  routing.removeByExample({ foxxMount: doc._key });
+  aal.remove(doc);
+
+  internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
   return true;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

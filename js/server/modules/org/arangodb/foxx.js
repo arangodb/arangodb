@@ -37,6 +37,7 @@ var FoxxApplication,
   fs = require("fs"),
   console = require("console"),
   INTERNAL = require("internal"),
+  foxxManager = require("org/arangodb/foxx-manager"),
   internal = {};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,32 +133,22 @@ _.extend(FoxxApplication.prototype, {
 /// You have to provide the start function with the `applicationContext`
 /// variable.
 ////////////////////////////////////////////////////////////////////////////////
+
   start: function (context) {
     'use strict';
     var models = this.requiresModels,
       requires = this.requiresLibs,
       prefix = context.prefix;
 
-    this.routingInfo.urlPrefix = prefix + this.routingInfo.urlPrefix;
+    this.routingInfo.urlPrefix = prefix + "/" + this.routingInfo.urlPrefix;
 
     _.each(this.routingInfo.routes, function (route) {
-      route.action.context = context;
+      route.action.context = context.context;
       route.action.requiresLibs = requires;
       route.action.requiresModels = models;
     });
 
-    this.routingInfo.routes.push({
-      "url" : "/",
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : true,
-          "destination" : "index.html"
-        }
-      }
-    });
-
-    db._collection("_routing").save(this.routingInfo);
+    context.routingInfo = this.routingInfo;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,15 +171,19 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = {};
-
-    newRoute.url = internal.createUrlObject(route, undefined, method);
-    newRoute.action = {
-      callback: String(callback)
+    var newRoute = {
+      url: internal.createUrlObject(route, undefined, method),
+      action: {
+        callback: String(callback)
+      },
+      docs: {
+        parameters: [],
+        errorResponses: [],
+        httpMethod: method.toUpperCase()
+      }
     };
 
     this.routingInfo.routes.push(newRoute);
-
     return new RequestContext(newRoute);
   },
 
@@ -417,11 +412,9 @@ _.extend(FoxxApplication.prototype, {
 RequestContext = function (route) {
   'use strict';
   this.route = route;
-  this.route.docs = this.route.docs || {};
-  this.route.docs.parameters = this.route.docs.parameters || {};
   this.typeToRegex = {
     "int": "/[0-9]+/",
-    "string": "/[a-zA-Z]+/"
+    "string": "/.+/"
   };
 };
 
@@ -441,7 +434,10 @@ _.extend(RequestContext.prototype, {
 /// @EXAMPLE:
 ///     app.get("/foxx/:id", function {
 ///       // Do something
-///     }).constrain("id", /[a-z]+/);
+///     }).pathParam("id", {
+///       description: "Id of the Foxx",
+///       dataType: "int"
+///     });
 ////////////////////////////////////////////////////////////////////////////////
   pathParam: function (paramName, attributes) {
     'use strict';
@@ -451,14 +447,108 @@ _.extend(RequestContext.prototype, {
 
     constraint[paramName] = this.typeToRegex[attributes.dataType];
     this.route.url = internal.createUrlObject(url.match, constraint, url.methods[0]);
-    this.route.docs.parameters[paramName] = {
+    this.route.docs.parameters.push({
       paramType: "path",
       name: paramName,
       description: attributes.description,
       dataType: attributes.dataType,
       required: true
-    };
+    });
 
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_queryParam
+/// @brief Describe a Query Parameter
+///
+/// If you defined a route "/foxx", you can constrain which format a query
+/// parameter (`/foxx?a=12`) can have by giving it a type.
+/// We currently support the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter, if it is required and
+///  if you can provide the parameter multiple times.
+///
+/// @EXAMPLE:
+///     app.get("/foxx", function {
+///       // Do something
+///     }).queryParam("id", {
+///       description: "Id of the Foxx",
+///       dataType: "int",
+///       required: true,
+///       allowMultiple: false
+///     });
+////////////////////////////////////////////////////////////////////////////////
+
+  queryParam: function (paramName, attributes) {
+    'use strict';
+    this.route.docs.parameters.push({
+      paramType: "query",
+      name: paramName,
+      description: attributes.description,
+      dataType: attributes.dataType,
+      required: attributes.required,
+      allowMultiple: attributes.allowMultiple
+    });
+
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_nickname
+/// @brief Set the nickname for this route in the documentation
+////////////////////////////////////////////////////////////////////////////////
+
+  nickname: function (nickname) {
+    'use strict';
+    this.route.docs.nickname = nickname;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_summary
+/// @brief Set the summary for this route in the documentation
+///
+/// Can't be longer than 60 characters
+////////////////////////////////////////////////////////////////////////////////
+
+  summary: function (summary) {
+    'use strict';
+    if (summary.length > 60) {
+      throw "Summary can't be longer than 60 characters";
+    }
+    this.route.docs.summary = summary;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_notes
+/// @brief Set the notes for this route in the documentation
+////////////////////////////////////////////////////////////////////////////////
+
+  notes: function (notes) {
+    'use strict';
+    this.route.docs.notes = notes;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_errorResponse
+/// @brief Document an error response
+///
+/// Document the error response for a given error code with a reason for the
+/// occurrence.
+////////////////////////////////////////////////////////////////////////////////
+
+  errorResponse: function (code, reason) {
+    'use strict';
+    this.route.docs.errorResponses.push({
+      code: code,
+      reason: reason
+    });
     return this;
   }
 });
@@ -721,7 +811,9 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// We finish off with exporting FoxxApplication and the middlewares.
 /// Everything else will remain our secret.
 
-exports.installApp = require("org/arangodb/foxx-manager").installApp;
+exports.installApp = foxxManager.installApp;
+exports.uninstallApp = foxxManager.uninstallApp;
+exports.scappAppDirectory = foxxManager.scanAppDirectory;
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
