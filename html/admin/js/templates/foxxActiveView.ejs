@@ -2,12 +2,12 @@
   <div class="plain">
     <% var appInfos = attributes.app.split(":"); %>
     <h5 class="applicationName"><%= appInfos[1] %></h5>
-    <p>
+    <p class="foxxDescription">
       <!--Description: <%=attributes.description %><br /> -->
-      Mount-Point: <%=attributes.mount %><br />
-      Version: <%=appInfos[2] %><br />
-      Prefix: <%=attributes.collectionPrefix%><br />
-      Active: <%=attributes.active%>
+      Mount-Point:&nbsp;<%=attributes.mount %><br />
+      Version:&nbsp;<%=appInfos[2] %><br />
+      Prefix:&nbsp;<%=attributes.collectionPrefix%><br />
+      Active:&nbsp;<%=attributes.active%>
       <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
     </p>
   </div>

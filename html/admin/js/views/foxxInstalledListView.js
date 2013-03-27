@@ -11,7 +11,7 @@ var FoxxInstalledListView = Backbone.View.extend({
     var self = this;
     this.collection.fetch({
       success: function() {
-        self.collection.where({type: "app"}).each(function (foxx) {
+        _.each(self.collection.where({type: "app"}), function (foxx) {
           var subView = new window.FoxxInstalledView({model: foxx});
           self._subViews[foxx.get('_id')] = subView;
         });

@@ -1,3 +1,6 @@
 .foxxList {
-padding-top: 30px;
+  padding-top: 30px;
+}
+.foxxDescription {
+  word-wrap: break-word;
 }
