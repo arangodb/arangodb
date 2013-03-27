@@ -467,6 +467,54 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation for full collection access, limit > 0 and
+/// filter conditions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFilterFilterCollectionFilter : function () {
+      var tests = [
+        { offset: 0, limit: 500, value: 0, expectedLength: 100 },
+        { offset: 0, limit: 50, value: 0, expectedLength: 50 },
+        { offset: 0, limit: 5, value: 0, expectedLength: 5 },
+        { offset: 0, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 1, limit: 50, value: 0, expectedLength: 50 },
+        { offset: 1, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 10, limit: 50, value: 0, expectedLength: 50 },
+        { offset: 95, limit: 5, value: 0, expectedLength: 5 },
+        { offset: 95, limit: 50, value: 0, expectedLength: 5 },
+        { offset: 98, limit: 50, value: 0, expectedLength: 2 },
+        { offset: 98, limit: 2, value: 0, expectedLength: 2 },
+        { offset: 99, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 99, limit: 2, value: 0, expectedLength: 1 },
+        { offset: 100, limit: 2, value: 0, expectedLength: 0 },
+        { offset: 0, limit: 500, value: 10, expectedLength: 90 },
+        { offset: 0, limit: 50, value: 10, expectedLength: 50 },
+        { offset: 0, limit: 5, value: 10, expectedLength: 5 },
+        { offset: 0, limit: 1, value: 10, expectedLength: 1 },
+        { offset: 50, limit: 1, value: 10, expectedLength: 1 },
+        { offset: 90, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 89, limit: 1, value: 10, expectedLength: 1 },
+        { offset: 89, limit: 2, value: 10, expectedLength: 1 },
+        { offset: 90, limit: 1, value: 10, expectedLength: 0 },
+        { offset: 50, limit: 5, value: 40, expectedLength: 5 },
+        { offset: 50, limit: 5, value: 50, expectedLength: 0 }
+      ];
+
+      for (var i = 0; i < tests.length; ++i) {
+        var test = tests[i];
+
+        var query = "FOR c IN " + cn + " FILTER c.value >= " + test.value + " FILTER c.value <= 9999 LIMIT " + test.offset + ", " + test.limit + " RETURN c";
+
+        var actual = getQueryResults(query, false);
+        assertEqual(test.expectedLength, actual.length);
+      
+        var explain = explainQuery(query);
+        assertEqual("for", explain[0].type);
+        assertEqual(undefined, explain[0].limit);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimisation with index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -509,6 +557,26 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 /// @brief check limit optimisation with index
 ////////////////////////////////////////////////////////////////////////////////
 
+    testLimitFilterFilterCollectionHashIndex : function () {
+      collection.ensureHashIndex("value");
+
+      var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
+
+      var actual = getQueryResults(query, false);
+      assertEqual(10, actual.length);
+      assertEqual(20, actual[0].value);
+      assertEqual(21, actual[1].value);
+      assertEqual(29, actual[9].value);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual(undefined, explain[0].limit);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation with index
+////////////////////////////////////////////////////////////////////////////////
+
     testLimitFullCollectionSkiplistIndex1 : function () {
       collection.ensureSkiplist("value");
 
@@ -542,6 +610,26 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       var explain = explainQuery(query);
       assertEqual("for", explain[0].type);
       assertEqual(true, explain[0].limit);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation with index
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFilterFilterSkiplistIndex : function () {
+      collection.ensureSkiplist("value");
+
+      var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
+
+      var actual = getQueryResults(query, false);
+      assertEqual(10, actual.length);
+      assertEqual(20, actual[0].value);
+      assertEqual(21, actual[1].value);
+      assertEqual(29, actual[9].value);
+
+      var explain = explainQuery(query);
+      assertEqual("for", explain[0].type);
+      assertEqual(undefined, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
