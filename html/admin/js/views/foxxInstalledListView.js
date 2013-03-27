@@ -20,6 +20,20 @@ var FoxxInstalledListView = Backbone.View.extend({
     });
   },
   
+  reload: function() {
+    var self = this;
+    this.collection.fetch({
+      success: function() {
+        self._subViews = {};
+        _.each(self.collection.where({type: "app"}), function (foxx) {
+          var subView = new window.FoxxInstalledView({model: foxx});
+          self._subViews[foxx.get('_id')] = subView;
+        });
+        self.render();
+      }
+    });
+  },
+  
   
   render: function() {
     $(this.el).html(this.template.text);

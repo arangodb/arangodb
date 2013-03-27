@@ -164,7 +164,7 @@ $(document).ready(function() {
           collection: this.foxxList
         });
       }
-      this.applicationsInstalledView.render();
+      this.applicationsInstalledView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
     
@@ -177,7 +177,7 @@ $(document).ready(function() {
           collection: this.foxxList
         });
       }
-      this.applicationsActiveView.render();
+      this.applicationsActiveView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
     
