@@ -171,15 +171,17 @@ _.extend(FoxxApplication.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = {};
-
-    newRoute.url = internal.createUrlObject(route, undefined, method);
-    newRoute.action = {
-      callback: String(callback)
+    var newRoute = {
+      url: internal.createUrlObject(route, undefined, method),
+      action: {
+        callback: String(callback)
+      },
+      docs: {
+        parameters: {}
+      }
     };
 
     this.routingInfo.routes.push(newRoute);
-
     return new RequestContext(newRoute);
   },
 
@@ -408,8 +410,6 @@ _.extend(FoxxApplication.prototype, {
 RequestContext = function (route) {
   'use strict';
   this.route = route;
-  this.route.docs = this.route.docs || {};
-  this.route.docs.parameters = this.route.docs.parameters || {};
   this.typeToRegex = {
     "int": "/[0-9]+/",
     "string": "/[a-zA-Z]+/"
