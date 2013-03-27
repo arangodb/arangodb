@@ -209,21 +209,13 @@ function SetRoutesFoxxApplicationSpec () {
         b: 2
       };
       app.get('/simple/route', myFunc);
-      app.start("myContext");
+      app.start({
+        context: "myContext"
+      });
 
       assertEqual(app.routingInfo.routes[0].action.context, "myContext");
       assertEqual(app.routingInfo.routes[0].action.requiresLibs.a, 1);
       assertEqual(app.routingInfo.routes[0].action.requiresModels.b, 2);
-    },
-
-    testStartAddsDefaultRoute: function () {
-      app.get('/simple/route', function() {});
-      app.start("myContext");
-
-      assertEqual(app.routingInfo.routes[1].url, "/");
-      assertEqual(app.routingInfo.routes[1].action['do'], "org/arangodb/actions/redirectRequest");
-      assertEqual(app.routingInfo.routes[1].action.options.permanently, true);
-      assertEqual(app.routingInfo.routes[1].action.options.destination, "index.html");
     }
   };
 }
