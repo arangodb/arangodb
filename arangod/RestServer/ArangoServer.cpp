@@ -607,10 +607,10 @@ int ArangoServer::startupServer () {
   DefineAdminHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 
   // add action handler
-  handlerFactory->addPrefixHandler("/",
-                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                                   (void*) &httpOptions);
-
+  handlerFactory->addPrefixHandler(
+    "/",
+    RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+    (void*) &httpOptions);
 
   // .............................................................................
   // start the main event loop
@@ -626,7 +626,6 @@ int ArangoServer::startupServer () {
   if (! _vocbase->_authInfoLoaded && ! _applicationEndpointServer->isAuthenticationDisabled()) {
     LOGGER_FATAL_AND_EXIT("could not load required authentication information");
   }
-
 
   LOGGER_INFO("ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business. Have fun!");
 

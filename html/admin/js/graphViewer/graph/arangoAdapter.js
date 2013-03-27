@@ -106,6 +106,23 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     }
   },
   
+  removeEdgesForNode = function (node) {
+    var i;
+    for ( i = 0; i < edges.length; i++ ) {
+      if (edges[i].source === node) {
+        node._outboundCounter--;
+        edges[i].target._inboundCounter--;
+        edges.splice( i, 1 );
+        i--;
+      } else if (edges[i].target === node) {
+        node._inboundCounter--;
+        edges[i].source._outboundCounter--;
+        edges.splice( i, 1 );
+        i--;
+      }
+    }
+  },
+  
   // Helper function to easily remove all outbound edges for one node
   removeOutboundEdgesFromNode = function ( node ) {
     if (node._outboundCounter > 0) {
@@ -165,7 +182,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
         insertEdge(edge);
       });
     });
-    console.log(result);
     if (callback) {
       callback(result[0].vertex);
     }
@@ -204,6 +220,16 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
         callback(n);
       }
     });
+  },
+  
+  permanentlyRemoveEdgesOfNode = function (nodeId) {
+    var query = "FOR e IN " + edgeCollection
+     + " FILTER e._to == " + JSON.stringify(nodeId)
+     + " || e._from == " + JSON.stringify(nodeId)
+     + " RETURN e";
+     sendQuery(query, function(res) {
+       _.each(res, self.deleteEdge);
+     });
   };
   
   api.base = arangodb.lastIndexOf("http://", 0) === 0
@@ -214,7 +240,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   api.document = api.base + "document/";
   api.node = api.base + "document?collection=" + nodeCollection; 
   api.edge = api.base + "edge?collection=" + edgeCollection; 
-  
   
   
   initialX.range = width / 2;
@@ -288,7 +313,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       + " filter l._from == u._id"
       + " return 1 )"
       + " return length(g)";
-    
     sendQuery(requestChildren, function(res) {
       callback(res[0]);
     });
@@ -324,7 +348,9 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       dataType: "json",
       processData: false,
       success: function() {
-        callback();
+        if (callback !== undefined && _.isFunction(callback)) {
+          callback();
+        }
       },
       error: function(data) {
         throw data.statusText;
@@ -372,15 +398,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   };
   
   self.deleteNode = function (nodeToRemove, callback) {
-    var semaphore = 1,
-    semaphoreCallback = function() {
-      semaphore--;
-      if (semaphore === 0) {
-        if (callback) {
-          callback();
-        }
-      }
-    };
     $.ajax({
       cache: false,
       type: "DELETE",
@@ -389,13 +406,10 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function() {
-        var edges = removeOutboundEdgesFromNode(nodeToRemove);    
-        _.each(edges, function (e) {
-          semaphore++;
-          self.deleteEdge(e, semaphoreCallback);
-        });
+        removeEdgesForNode(nodeToRemove);
+        permanentlyRemoveEdgesOfNode(nodeToRemove._id);    
         removeNode(nodeToRemove);
-        semaphoreCallback();
+        callback();
       },
       error: function(data) {
         throw data.statusText;

@@ -42,7 +42,7 @@ var foxx = require("org/arangodb/foxx");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the server authentication information
+/// @brief installs a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -51,6 +51,8 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
+    'use strict';
+
     var result;
     var body = actions.getJsonBody(req, res);
 
@@ -63,6 +65,32 @@ actions.defineHttp({
     var options = body.options || {};
 
     result = foxx.installApp(name, mount, options);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uninstalls a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/uninstall",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var result;
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var key = body.key;
+
+    result = foxx.uninstallApp(key);
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });

@@ -210,6 +210,11 @@
     delete FS_LIST_TREE;
   }
 
+  if (typeof FS_LIST !== "undefined") {
+    internal.listDirectory = FS_LIST;
+    delete FS_LIST;
+  }
+
   if (typeof FS_MOVE !== "undefined") {
     internal.move = FS_MOVE;
     delete FS_MOVE;

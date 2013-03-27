@@ -216,6 +216,7 @@ function lookupCallbackActionCallback (route, action) {
   var env;
   var func;
   var key;
+  var app;
   var appModule;
   var modelModule;
 
@@ -224,16 +225,20 @@ function lookupCallbackActionCallback (route, action) {
 
   try {
     if (action.hasOwnProperty("context")) {
-      appModule = module.appRootModule(action.context.name);
+      app = module.createApp(action.context.name, action.context.version);
+
+      if (app === null) {
+        throw "cannot locate application '" + action.context.name + "'"
+          + " in version '" + action.context.version + "'";
+      }
+      
+      appModule = app.createAppModule();
 
       if (action.hasOwnProperty("requiresModels")) {
         var cp = action.context.collectionPrefix;
         var me;
 
-        modelModule = module.appRootModule(action.context.name,
-                                           'models',
-                                           appModule._package);
-
+        modelModule = app.createAppModule('models', appModule._package);
         me = modelModule._package._environment = {};
 
         if (cp !== "") {
@@ -299,14 +304,16 @@ function lookupCallbackActionCallback (route, action) {
       func = env.func;
     }
     else {
-      func = notImplementedFunction(route,
-                                    "could not define function '" + action.callback);
+      func = notImplementedFunction(
+        route,
+        "could not define function '" + action.callback);
     }
   }
   catch (err) {
-    func = errorFunction(route,
-                         "an error occurred while loading function '" 
-                         + action.callback + "': " + String(err));
+    func = errorFunction(
+      route,
+      "an error occurred while loading function '" 
+        + action.callback + "': " + String(err));
   }
 
   return {

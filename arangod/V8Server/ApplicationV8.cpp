@@ -771,6 +771,15 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
+  // scan for foxx applications
+  if (i == 0) {
+    v8::HandleScope scope;
+    TRI_ExecuteJavaScriptString(context->_context,
+                                v8::String::New("require(\"internal\").initializeFoxx()"),
+                                v8::String::New("initialize foxx"),
+                                false);
+  }
+
   // load all actions
   if (_useActions) {
     v8::HandleScope scope;

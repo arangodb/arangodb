@@ -1,3 +1,7 @@
 .foxxList {
-padding-top: 30px;
+  padding-top: 30px;
+}
+.foxxDescription {
+  text-align: left;
+  word-wrap: break-word;
 }
