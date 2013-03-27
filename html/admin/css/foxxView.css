@@ -2,6 +2,14 @@
   padding-top: 30px;
 }
 .foxxDescription {
+  width:190px;
   text-align: left;
   word-wrap: break-word;
+}
+
+.foxxIcon {
+  width:64px;
+  height:64px;
+  float:right;  
+  padding:10px;
 }
