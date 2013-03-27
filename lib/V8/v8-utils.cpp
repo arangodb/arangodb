@@ -821,6 +821,50 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory tree
 ///
+/// @FUN{fs.list(@FA{path})}
+///
+/// The functions returns the names of all the files in a directory, in
+/// lexically sorted order. Throws an exception if the directory cannot be
+/// traversed (or path is not a directory).
+///
+/// Note: this means that list("x") of a directory containing "a" and "b" would
+/// return ["a", "b"], not ["x/a", "x/b"].
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_List (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE("listTree(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "<path> must be a string");
+  }
+
+  // constructed listing
+  v8::Handle<v8::Array> result = v8::Array::New();
+  TRI_vector_string_t list = TRI_FilesDirectory(*name);
+
+  uint32_t j = 0;
+
+  for (size_t i = 0;  i < list._length;  ++i) {
+    const char* f = list._buffer[i]; 
+    result->Set(j++, v8::String::New(f));
+  }
+
+  TRI_DestroyVectorString(&list);
+
+  // return result
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the directory tree
+///
 /// @FUN{fs.listTree(@FA{path})}
 ///
 /// The function returns an array that starts with the given path, and all of
@@ -849,6 +893,7 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
   TRI_vector_string_t list = TRI_FullTreeDirectory(*name);
 
   uint32_t j = 0;
+
   for (size_t i = 0;  i < list._length;  ++i) {
     const char* f = list._buffer[i]; 
     result->Set(j++, v8::String::New(f));
@@ -2315,6 +2360,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_LIST", JS_List);
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
