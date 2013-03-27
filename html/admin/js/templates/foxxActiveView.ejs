@@ -8,9 +8,21 @@
       <strong>Mount-Point:</strong>&nbsp;<%=attributes.mount %><br />
       <strong>Version:</strong>&nbsp;<%=appInfos[2] %><br />
       <strong>Prefix:</strong>&nbsp;<%=attributes.collectionPrefix%><br />
-      <strong>Active:</strong>&nbsp;<%=attributes.active%>
+      
       <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
     </p>
-    
+    <%if (attributes.active) {%>
+      <span class="badge badge-success loaded badge-foxx">
+        <div class="cornered">
+          active
+        </div>
+      </span>
+    <%} else {%>
+      <span class="badge badge-success unloaded badge-foxx">
+        <div class="cornered">
+          inactive
+        </div>
+      </span>
+    <%}%>
   </div>
 </small>
