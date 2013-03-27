@@ -1,0 +1,14 @@
+<small>
+  <div class="plain">
+    <% var appInfos = attributes.app.split(":"); %>
+    <h5 class="applicationName"><%= appInfos[1] %></h5>
+    <p>
+      <!--Description: <%=attributes.description %><br /> -->
+      Mount-Point: <%=attributes.mount %><br />
+      Version: <%=appInfos[2] %><br />
+      Prefix: <%=attributes.collectionPrefix%><br />
+      Active: <%=attributes.active%>
+      <!--Git: <a href=<%=attributes.git %>>Repository</a>-->
+    </p>
+  </div>
+</small>
