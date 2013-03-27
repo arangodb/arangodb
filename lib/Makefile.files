@@ -52,6 +52,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/memory.c \
 	lib/BasicsC/memory-map-posix.c \
 	lib/BasicsC/mersenne.c \
+	lib/BasicsC/mimetypes.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
 	lib/BasicsC/socket-utils.c \
@@ -65,6 +66,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/utf8-helper.c \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
+	lib/BasicsC/voc-mimetypes.c \
 	lib/BasicsC/zip.c \
 	lib/JsonParser/json-parser.c \
 	lib/Logger/Logger.cpp \

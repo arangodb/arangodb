@@ -102,8 +102,8 @@ def genCHeaderFile(errors):
        + "////////////////////////////////////////////////////////////////////////////////\n"
 
   header = "\n"\
-           + "#ifndef TRIAGENS_DURHAM_VOC_BASE_ERRORS_H\n"\
-           + "#define TRIAGENS_DURHAM_VOC_BASE_ERRORS_H 1\n"\
+           + "#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H\n"\
+           + "#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1\n"\
            + "\n"\
            + "#ifdef __cplusplus\n"\
            + "extern \"C\" {\n"\

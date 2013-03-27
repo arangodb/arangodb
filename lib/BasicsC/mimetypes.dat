@@ -1,0 +1,17 @@
+################################################################################
+## mimetypes
+################################################################################
+
+"gif","image/gif"
+"jpg","image/jpg"
+"png","image/png"
+"ico","image/x-icon"
+"css","text/css"
+"js","text/javascript"
+"json","application/json"
+"html","text/html"
+"htm","text/html"
+"pdf","application/pdf"
+"text","text/plain"
+"xml","application/xml"
+
