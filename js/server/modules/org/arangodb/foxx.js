@@ -177,7 +177,8 @@ _.extend(FoxxApplication.prototype, {
         callback: String(callback)
       },
       docs: {
-        parameters: {}
+        parameters: {},
+        httpMethod: method.toUpperCase()
       }
     };
 

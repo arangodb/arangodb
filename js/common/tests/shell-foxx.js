@@ -85,6 +85,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.head('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'HEAD');
       assertEqual(routes[0].url.methods, ["head"]);
     },
 
@@ -93,6 +94,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.get('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'GET');
       assertEqual(routes[0].url.methods, ["get"]);
     },
 
@@ -101,6 +103,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.post('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
       assertEqual(routes[0].url.methods, ["post"]);
     },
 
@@ -109,6 +112,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.put('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'PUT');
       assertEqual(routes[0].url.methods, ["put"]);
     },
 
@@ -117,6 +121,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.patch('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'PATCH');
       assertEqual(routes[0].url.methods, ["patch"]);
     },
 
@@ -125,6 +130,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app['delete']('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'DELETE');
       assertEqual(routes[0].url.methods, ["delete"]);
     },
 
@@ -133,6 +139,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.del('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'DELETE');
       assertEqual(routes[0].url.methods, ["delete"]);
     },
 
