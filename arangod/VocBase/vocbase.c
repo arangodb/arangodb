@@ -244,12 +244,16 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
 static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection;
+  TRI_vocbase_t* vocbase;
+  TRI_voc_cid_t cid;
   TRI_document_collection_t* document;
   int res;
 
   collection = data;
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+  cid = collection->_cid;
+  vocbase = collection->_vocbase;
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -293,6 +297,10 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
 
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
   collection->_collection = NULL;
+  
+  if (cid > 0) {
+    TRI_RemoveCollectionTransactionContext(vocbase->_transactionContext, cid);
+  }
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return true;
