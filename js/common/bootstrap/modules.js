@@ -617,50 +617,76 @@ function stop_color_print () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a manifest file
+////////////////////////////////////////////////////////////////////////////////
+
+  function appManifestAal (appId) {
+    'use strict';
+
+    var doc;
+
+    doc = internal.db._collection("_aal").firstExample({ type: "app", app: appId });
+
+    if (doc === null) {
+      return null;
+    }
+
+    return doc.path;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appDescription = function (name, version) {
-    var apps = internal.APP_PATH;
-    var i;
+  internal.appDescription = function (appId) {
+    var path;
+    var file;
 
-    for (i = 0;  i < apps.length;  ++i) {
-      var path = apps[i];
-      var file = path + "/" + name + "/" + "manifest.json";
-      var content;
-      var manifest;
-      
-      if (internal.exists(file)) {
-        try {
-          content = internal.read(file);
-          manifest = JSON.parse(content);
-        }
-        catch (err) {
-          console.error("cannot load manifest file '%s': %s - %s",
-                        file,
-                        String(err),
-                        String(err.stack));
-          continue;
-        }
-
-        if (! manifest.hasOwnProperty("name")) {
-          console.error("cannot manifest file is missing a name '%s'", file);
-          continue;
-        }
-        
-        if (! manifest.hasOwnProperty("version")) {
-          console.error("cannot manifest file is missing a version '%s'", file);
-          continue;
-        }
-        
-        return {
-          path: path + "/" + name,
-          manifest: manifest
-        };
-      }
+    if (appId.substr(0,4) === "app:") {
+      path = appManifestAal(appId);
+    }
+    else {
+      console.error("cannot load application '%s', unknown type", appId);
+      return null;
     }
 
-    return null;
+    if (path === null) {
+      console.error("unknown application '%s'", appId);
+      return null;
+    }
+
+    file = fs.join(path, "/manifest.json");
+    
+    if (! internal.exists(file)) {
+      return null;
+    }
+
+    try {
+      content = internal.read(file);
+      manifest = JSON.parse(content);
+    }
+    catch (err) {
+      console.error("cannot load manifest file '%s': %s - %s",
+                    file,
+                    String(err),
+                    String(err.stack));
+      return null;
+    }
+
+    if (! manifest.hasOwnProperty("name")) {
+      console.error("cannot manifest file is missing a name '%s'", file);
+      return null;
+    }
+        
+    if (! manifest.hasOwnProperty("version")) {
+      console.error("cannot manifest file is missing a version '%s'", file);
+      return null;
+    }
+        
+    return {
+      path: path,
+      manifest: manifest
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -753,8 +779,8 @@ function stop_color_print () {
 /// @brief creates an application
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (name, version) {
-    description = internal.appDescription(name, version);
+  Module.prototype.createApp = function (appId) {
+    description = internal.appDescription(appId);
 
     if (description === null) {
       return description;

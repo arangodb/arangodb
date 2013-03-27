@@ -311,7 +311,7 @@ exports.installApp = function (name, mount, options) {
   // .............................................................................
 
   version = options && options.version;
-  app = module.createApp(name, version);
+  app = module.createApp("app:" + name + ":" + version);
 
   if (app === null) {
     if (version === undefined) {
@@ -498,7 +498,7 @@ exports.uninstallApp = function (key) {
       throw "cannot find app '" + doc.app + "'";
     }
 
-    app = module.createApp(appDoc.name, appDoc.version);
+    app = module.createApp(appDoc.app);
 
     context = {
       name: app._name,
