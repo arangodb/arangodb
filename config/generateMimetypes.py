@@ -22,7 +22,7 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 def genJsFile(types):
   jslint = "/*jslint indent: 2,\n"\
            "         nomen: true,\n"\
-           "         maxlen: 240,\n"\
+           "         maxlen: 72,\n"\
            "         sloppy: true,\n"\
            "         vars: true,\n"\
            "         white: true,\n"\
@@ -36,7 +36,7 @@ def genJsFile(types):
   # print individual mimetypes
   i = 0
   for t in types:
-    out = out + "  \"" + t[0] + "\": \"" + t[1] + "\""
+    out = out + "  \"" + t[0] + "\": [ \"" + t[1] + "\", " + t[2] + " ]"
     i = i + 1 
 
     if i < len(types):
@@ -94,7 +94,7 @@ def genCFile(types, filename):
 
   # print individual types
   for t in types:
-    impl = impl + "  TRI_RegisterMimetype(\"" + t[0] + "\", \"" + t[1] + "\");\n"
+    impl = impl + "  TRI_RegisterMimetype(\"" + t[0] + "\", \"" + t[1] + "\", " + t[2] + ");\n"
 
   impl = impl\
        + "}\n"\
@@ -142,7 +142,7 @@ for t in mimetypes:
   if r1.match(t[0]):
     continue
 
-  if t[0] == "" or t[1] == "":
+  if t[0] == "" or t[1] == "" or not (t[2] == "true" or t[2] == "false"):
     print >> sys.stderr, "invalid mimetypes declaration file: %s (line %i)" % (source, i)
     sys.exit()
 
