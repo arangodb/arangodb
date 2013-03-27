@@ -131,7 +131,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.resetEngine = function () {
-    internal.output("warning: engine resetted\n");
+    internal.output("warning: routing engine resetted\n");
+    require("org/arangodb/actions").reloadRouting();
   };
 
 ////////////////////////////////////////////////////////////////////////////////

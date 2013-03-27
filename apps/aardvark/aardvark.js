@@ -37,15 +37,36 @@
     app = new FoxxApplication();
   
   app.requiresModels = {
-    foxxes: "foxxes"
+    foxxes: "foxxes",
+    swagger: "swagger"
   };
+
   
-  // Define a GET event for the URL: /foxxes
-  // This is used to retrieve all foxxes.
   app.get('/foxxes', function (req, res) {
-    // Return the complete list of all foxxes
     res.json(foxxes.viewAll());
-  });
+  }).nickname("Foxxes")
+  .summary("List of all foxxes.")
+  .notes("This function simply returns the list of all running"
+   + " foxxes and supplies the information for the application viewer");
+  
+  app.get('/swagger', function (req, res) {
+    res.json(swagger.list());
+  }).nickname("Swaggers")
+  .summary("List of all foxxes.")
+  .notes("This function simply returns the list of all running"
+   + " foxxes and supplies the paths for the swagger documentation");
+  
+  app.get('/swagger/:appname', function(req, res) {
+    res.json(swagger.show(req.params("appname")))
+  }).pathParam("appname", {
+    description: "The mount point of the App the documentation should be requested for",
+    dataType: "string",
+    required: true,
+    allowMultiple: false
+  }).nickname("SwaggersApp")
+  .summary("List the API for one foxx")
+  .notes("This function lists the API of the foxx"
+    + " runnning under the given mount point");
   
   app.start(applicationContext);
 }());

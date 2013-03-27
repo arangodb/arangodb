@@ -34,7 +34,6 @@ var console = require("console");
 var fs = require("fs");
 
 var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -250,7 +249,7 @@ function upsertAalAppEntry (manifest, path) {
 /// @brief installs an app for aal
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAalApp (app, mount, options) {
+function installAalApp (app, mount, options, development) {
   'use strict';
 
   var aal;
@@ -292,7 +291,8 @@ function installAalApp (app, mount, options) {
     app: app._id,
     mount: mount,
     active: false,
-    collectionPrefix: prefix
+    collectionPrefix: prefix,
+    development: development
   };
 
   return aal.save(desc);
@@ -302,7 +302,7 @@ function installAalApp (app, mount, options) {
 /// @brief installs an app for aal
 ////////////////////////////////////////////////////////////////////////////////
 
-function routingAalApp (app, mount, options) {
+function routingAalApp (app, mount, prefix) {
   'use strict';
 
   try {
@@ -342,8 +342,6 @@ function routingAalApp (app, mount, options) {
     });
 
     // compute the collection prefix
-    prefix = options && options.collectionPrefix;
-    
     if (prefix === undefined) {
       prefix = mount.substr(1).replace(/\//g, "_");
     }
@@ -500,7 +498,7 @@ exports.installApp = function (name, mount, options) {
   // compute the routing information
   // .............................................................................
 
-  routes = routingAalApp(app, mount, options);
+  routes = routingAalApp(app, mount, options && options.collectionPrefix);
 
   if (routes === null) {
     throw "cannot compute the routing table for fox application '" 
@@ -512,7 +510,7 @@ exports.installApp = function (name, mount, options) {
   // .............................................................................
 
   try {
-    doc = installAalApp(app, mount, options);
+    doc = installAalApp(app, mount, options, false);
 
     // and save the routings
     routes.foxxMount = doc._key;
@@ -562,18 +560,21 @@ exports.uninstallApp = function (key) {
   }
 
   try {
-    appDoc = aal.firstExample({ app: doc.app, type: "app" });
+    var appId = doc.app;
 
-    if (appDoc === null) {
-      throw "cannot find app '" + doc.app + "'";
+    if (appId.substr(0,4) === "app:") {
+      appDoc = aal.firstExample({ app: appId, type: "app" });
+
+      if (appDoc === null) {
+        throw "cannot find app '" + appId + "' in _aal collection";
+      }
     }
 
-    app = module.createApp(appDoc.app);
-
+    app = module.createApp(appId);
     teardownApp(app, doc.mount, doc.collectionPrefix);
   }
   catch (err) {
-    console.error("teardown not possible for application '%s': %s", doc.app, String(err));
+    console.error("teardown not possible for application '%s': %s", appId, String(err));
   }
 
   routing = arangodb.db._collection("_routing");
@@ -631,7 +632,7 @@ exports.installDevApp = function (name, mount, options) {
   // .............................................................................
 
   try {
-    doc = installAalApp(app, mount, options);
+    doc = installAalApp(app, mount, options, true);
   }
   catch (err) {
     if (doc !== undefined) {
@@ -647,6 +648,30 @@ exports.installDevApp = function (name, mount, options) {
 
   return aal.document(doc);
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the development routes
+////////////////////////////////////////////////////////////////////////////////
+
+exports.developmentRoutes = function () {
+  var routes = [];
+  var aal = arangodb.db._collection("_aal");
+  var cursor = aal.byExample({ type: "mount", active: true, development: true });
+
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+    var appId = doc.app;
+    var mount = doc.mount;
+    var prefix = doc.collectionPrefix;
+
+    var app = module.createApp(appId);
+    var r = routingAalApp(app, mount, prefix);
+
+    routes.push(r);
+  }
+
+  return routes;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
