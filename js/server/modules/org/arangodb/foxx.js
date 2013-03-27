@@ -107,7 +107,7 @@ FoxxApplication = function (options) {
   this.routingInfo.urlPrefix = urlPrefix;
 
   if (_.isString(templateCollection)) {
-    this.routingInfo.templateCollection = db._collection(templateCollection) ||
+    this.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
     myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
   } else {

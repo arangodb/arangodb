@@ -34,7 +34,7 @@ function CreateFoxxApplicationSpec () {
 
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
-      assertEqual(routingInfo.templateCollection, templateCollection);
+      assertEqual(app.templateCollection, templateCollection);
     },
 
     testCreationWithTemplateCollectionIfCollectionDoesExist: function () {
@@ -48,7 +48,7 @@ function CreateFoxxApplicationSpec () {
 
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
-      assertEqual(routingInfo.templateCollection, templateCollection);
+      assertEqual(app.templateCollection, templateCollection);
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
