@@ -1,3 +1,10 @@
+v1.2.3 (XXXX-XX-XX)
+-------------------
+
+* issue triAGENS/ArangoDB-PHP#55: AQL optimiser may have mis-optimised duplicate 
+  filter statements with limit
+
+
 v1.2.2 (2013-03-26)
 -------------------
 
