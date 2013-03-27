@@ -92,22 +92,22 @@ If you define a route like described above, you have the option to match parts o
 Furthermore you can describe your API by chaining the following methods onto your path definition. With the provided information, Foxx will generate a nice documentation for you. Some of the methods additionally will check certain properties of the request.
 
 #### Describing a pathParam
-/// @fn JSF_foxx_RequestContext_pathParam
+@copydetails JSF_foxx_RequestContext_pathParam
 
 #### Describing a queryParam
-/// @fn JSF_foxx_RequestContext_queryParam
+@copydetails JSF_foxx_RequestContext_queryParam
 
 ### Documenting the nickname of a route
-/// @fn JSF_foxx_RequestContext_nickname
+@copydetails JSF_foxx_RequestContext_nickname
 
 ### Documenting the summary of a route
-/// @fn JSF_foxx_RequestContext_summary
+@copydetails JSF_foxx_RequestContext_summary
 
 ### Documenting the notes of a route
-/// @fn JSF_foxx_RequestContext_notes
+@copydetails JSF_foxx_RequestContext_notes
 
 ### Documenting the error response of a route
-/// @fn JSF_foxx_RequestContext_errorResponse
+@copydetails JSF_foxx_RequestContext_errorResponse
 
 ### Before and After Hooks
 
