@@ -258,7 +258,7 @@ exports.scanAppDirectory = function () {
   var aal = arangodb.db._collection("_aal");
 
   for (i = 0;  i < appPath.length;  ++i) {
-    var path = appPath[0];
+    var path = appPath[i];
     var files = fs.list(path);
 
     for (j = 0;  j < files.length;  ++j) {
