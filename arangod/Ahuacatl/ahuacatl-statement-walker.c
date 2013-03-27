@@ -197,7 +197,11 @@ void TRI_RestrictCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* con
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
   assert(scope);
-  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+  if (scope->_limit._hasFilter) {
+    scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
+    LOG_TRACE("limit given up because of additional filter");
+  }
+  else if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
     scope->_limit._hasFilter = true;
     LOG_TRACE("setting limit status to use-in-for-loop");
   }
