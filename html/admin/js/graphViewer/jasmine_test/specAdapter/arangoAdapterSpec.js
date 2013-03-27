@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect */
-/*global runs, spyOn, waitsFor */
+/*global runs, spyOn, waitsFor, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global describeInterface*/
@@ -67,6 +67,9 @@
       c43,
       c44,
       c45,
+      delTriple1,
+      delTriple2,
+      delTriple3,
       e1_5,
       e2_8,
       callbackCheck,
@@ -109,6 +112,10 @@
       
       existNodes = function(ids) {
         _.each(ids, existNode);
+      },
+      
+      notExistNodes = function(ids) {
+        _.each(ids, notExistNode);
       },
       
       createCollection = function(name, type, callback) {
@@ -192,9 +199,10 @@
       
       deleteArangoContent = function() {
         try {
-        dropCollection(nodesCollection);
-        dropCollection(edgesCollection);
+          dropCollection(nodesCollection);
+          dropCollection(edgesCollection);
         }catch(e){
+          
         }
       },
       
@@ -206,49 +214,6 @@
         
         createCollection(nodesCollection, "Document", function(id) {nodesCollId = id;});
         createCollection(edgesCollection, "Edge", function(id) {edgesCollId = id;});
-        c0 = insertNode(nodesCollection, 0);
-        c1 = insertNode(nodesCollection, 1);
-        c2 = insertNode(nodesCollection, 2);
-        c3 = insertNode(nodesCollection, 3);
-        c4 = insertNode(nodesCollection, 4);
-        c5 = insertNode(nodesCollection, 5);
-        c6 = insertNode(nodesCollection, 6);
-        c7 = insertNode(nodesCollection, 7);
-        c8 = insertNode(nodesCollection, 8);
-        c9 = insertNode(nodesCollection, 9);
-        c10 = insertNode(nodesCollection, 10);
-        c11 = insertNode(nodesCollection, 11);
-        c12 = insertNode(nodesCollection, 12);
-        
-        c42 = insertNode(nodesCollection, 42);
-        c43 = insertNode(nodesCollection, 43);
-        c44 = insertNode(nodesCollection, 44);
-        c45 = insertNode(nodesCollection, 45);
-        
-        
-        insertEdge(edgesCollection, c0, c1);
-        insertEdge(edgesCollection, c0, c2);
-        insertEdge(edgesCollection, c0, c3);
-        insertEdge(edgesCollection, c0, c4);
-        
-        e1_5 = insertEdge(edgesCollection, c1, c5);
-        insertEdge(edgesCollection, c1, c6);
-        insertEdge(edgesCollection, c1, c7);
-        
-        e2_8 = insertEdge(edgesCollection, c2, c8);
-        
-        insertEdge(edgesCollection, c3, c8);
-        insertEdge(edgesCollection, c3, c9);
-        
-        insertEdge(edgesCollection, c5, c10);
-        insertEdge(edgesCollection, c5, c11);
-        
-        insertEdge(edgesCollection, c4, c5);
-        insertEdge(edgesCollection, c4, c12);
-        
-        insertEdge(edgesCollection, c42, c43);
-        insertEdge(edgesCollection, c42, c44);
-        insertEdge(edgesCollection, c42, c45);
       };
     
     beforeEach(function() {
@@ -273,7 +238,24 @@
     
     it('should be able to load a tree node from ArangoDB by internal _id attribute', function() {
       
+      var c0,
+      c1,
+      c2,
+      c3,
+      c4;
+      
       runs(function() {
+        c0 = insertNode(nodesCollection, 0);
+        c1 = insertNode(nodesCollection, 1);
+        c2 = insertNode(nodesCollection, 2);
+        c3 = insertNode(nodesCollection, 3);
+        c4 = insertNode(nodesCollection, 4);
+        
+        insertEdge(edgesCollection, c0, c1);
+        insertEdge(edgesCollection, c0, c2);
+        insertEdge(edgesCollection, c0, c3);
+        insertEdge(edgesCollection, c0, c4);
+        
         callbackCheck = false;
         adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
       });
@@ -289,9 +271,20 @@
     });
     
     it('should be able to request the number of children centrality', function() {
-      var children;
-      
+      var c0, c1 ,c2 ,c3 ,c4,
+      children;
       runs(function() {
+        c0 = insertNode(nodesCollection, 0);
+        c1 = insertNode(nodesCollection, 1);
+        c2 = insertNode(nodesCollection, 2);
+        c3 = insertNode(nodesCollection, 3);
+        c4 = insertNode(nodesCollection, 4);
+        
+        insertEdge(edgesCollection, c0, c1);
+        insertEdge(edgesCollection, c0, c2);
+        insertEdge(edgesCollection, c0, c3);
+        insertEdge(edgesCollection, c0, c4);
+        
         callbackCheck = false;
         adapter.requestCentralityChildren(c0, function(count) {
           callbackCheck = true;
@@ -309,10 +302,30 @@
     });
    
     describe('that has already loaded one graph', function() {
+      var c0, c1, c2, c3, c4, c5, c6, c7;
+      
       
       beforeEach(function() {
       
         runs(function() {
+          
+          c0 = insertNode(nodesCollection, 0);
+          c1 = insertNode(nodesCollection, 1);
+          c2 = insertNode(nodesCollection, 2);
+          c3 = insertNode(nodesCollection, 3);
+          c4 = insertNode(nodesCollection, 4);
+          c5 = insertNode(nodesCollection, 5);
+          c6 = insertNode(nodesCollection, 6);
+          c7 = insertNode(nodesCollection, 7);
+          
+          insertEdge(edgesCollection, c0, c1);
+          insertEdge(edgesCollection, c0, c2);
+          insertEdge(edgesCollection, c0, c3);
+          insertEdge(edgesCollection, c0, c4);
+          insertEdge(edgesCollection, c1, c5);
+          insertEdge(edgesCollection, c1, c6);
+          insertEdge(edgesCollection, c1, c7);
+          
           callbackCheck = false;
           adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
           
@@ -489,98 +502,207 @@
         });
       });
     
-    describe('that has loaded several queries', function() {
-      beforeEach(function() {
+      describe('that has loaded several queries', function() {
+        var c8, c9;
       
-        runs(function() {
-          callbackCheck = false;
-          adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+        beforeEach(function() {
+      
+          runs(function() {
+            c8 = insertNode(nodesCollection, 8);
+            c9 = insertNode(nodesCollection, 9);
+          
+            e2_8 = insertEdge(edgesCollection, c2, c8);
+            insertEdge(edgesCollection, c3, c8);
+            insertEdge(edgesCollection, c3, c9);
+          
+            callbackCheck = false;
+            adapter.loadNodeFromTreeById(c2, checkCallbackFunction);
+          });
+      
+          waitsFor(function() {
+            return callbackCheck;
+          });
+      
+          runs(function() {
+            callbackCheck = false;
+          });
+      
         });
       
-        waitsFor(function() {
-          return callbackCheck;
-        });
+        it('should not add a node to the list twice', function() {
       
-        runs(function() {
-          callbackCheck = false;
-          adapter.loadNodeFromTreeById(c2, checkCallbackFunction);
-        });
+          runs(function() {
+            adapter.loadNodeFromTreeById(c3, checkCallbackFunction);
+          });
       
-        waitsFor(function() {
-          return callbackCheck;
-        });
-      
-        runs(function() {
-          callbackCheck = false;
-        });
-      
-      });
-      
-      it('should not add a node to the list twice', function() {
-      
-        runs(function() {
-          adapter.loadNodeFromTreeById(c3, checkCallbackFunction);
-        });
-      
-        waitsFor(function() {
-          return callbackCheck;
-        });  
+          waitsFor(function() {
+            return callbackCheck;
+          });  
         
-        runs(function() {
-          existNodes([c0, c1, c2, c3, c4, c8, c9]);
-          expect(nodes.length).toEqual(7);
-        });
-      });
-      
-      it('should be able to add an edge permanently', function() {
-        var insertedId,
-        source,
-        target;
-        
-        
-        runs(function() {
-          source = nodeWithID(c0);
-          target = nodeWithID(c8);
-          adapter.createEdge({source: source, target: target}, function(edge) {
-            insertedId = edge._id;
-            callbackCheck = true;
+          runs(function() {
+            existNodes([c0, c1, c2, c3, c4, c8, c9]);
+            expect(nodes.length).toEqual(7);
           });
         });
-        
-        waitsFor(function() {
-          return callbackCheck;
-        });
-        
-        runs(function() {
-          expect(insertedId).toBeStoredPermanently();
-          existEdge(source._id, target._id);
-        });
-        
-      });
       
-      it('should be able to remove a node permanently', function() {
-        var toDelete;
-        runs(function() {
-          toDelete = nodeWithID(c2);
-          adapter.deleteNode(toDelete, checkCallbackFunction);
-        });
+        it('should be able to add an edge permanently', function() {
+          var insertedId,
+          source,
+          target;
         
-        waitsFor(function() {
-          return callbackCheck;
-        });
         
-        runs(function() {
-          expect(toDelete._id).toNotBeStoredPermanently();
-          notExistNode(c2);
-          expect(e2_8).toNotBeStoredPermanently();
-          notExistEdge(c2, c8);
+          runs(function() {
+            source = nodeWithID(c0);
+            target = nodeWithID(c8);
+            adapter.createEdge({source: source, target: target}, function(edge) {
+              insertedId = edge._id;
+              callbackCheck = true;
+            });
+          });
+        
+          waitsFor(function() {
+            return callbackCheck;
+          });
+        
+          runs(function() {
+            expect(insertedId).toBeStoredPermanently();
+            existEdge(source._id, target._id);
+          });
+        
         });
-      });
       
-    });
+        it('should be able to remove a node and all connected edges permanently', function() {
+          var toDelete;
+          runs(function() {
+            toDelete = nodeWithID(c2);
+            adapter.deleteNode(toDelete, checkCallbackFunction);
+          });
+        
+          waits(2000);
+        
+          runs(function() {
+            expect(toDelete._id).toNotBeStoredPermanently();
+            notExistNode(c2);
+            expect(e2_8).toNotBeStoredPermanently();
+            notExistEdge(c2, c8);
+          });
+        });
+      
+      });
       
     });
    
+    describe('displaying only parts of the graph', function() {
+    
+      it('should be able to remove a node and all '
+      + 'connected edges including not visible ones', function() {
+        var s0, s1, t0, toDel,
+        s0_toDel, s1_toDel, toDel_t0;
+        
+        runs(function() {
+          
+          this.addMatchers({
+            toBeStoredPermanently: function() {
+              var id = this.actual,
+              res = false;
+              $.ajax({
+                type: "GET",
+                url: arangodb + "/_api/document/" + id,
+                contentType: "application/json",
+                processData: false,
+                async: false,
+                success: function(data) {
+                  res = true;
+                },
+                error: function(data) {
+                  try {
+                    var temp = JSON.parse(data);
+                    throw "[" + temp.errorNum + "] " + temp.errorMessage;
+                  }
+                  catch (e) {
+                    throw "Undefined ERROR";
+                  }
+                }
+              });
+              return res;
+            },
+            
+            toNotBeStoredPermanently: function() {
+              var id = this.actual,
+              res = false;
+              $.ajax({
+                type: "GET",
+                url: arangodb + "/_api/document/" + id,
+                contentType: "application/json",
+                processData: false,
+                async: false,
+                success: function(data) {
+
+                },
+                error: function(data) {
+                  if (data.status === 404) {
+                    res = true;
+                  }
+                  
+                }
+              });
+              return res;
+            }
+          });
+          
+          callbackCheck = false;
+          s0 = insertNode(nodesCollection, 0);
+          s1 = insertNode(nodesCollection, 1);
+          t0 = insertNode(nodesCollection, 2);
+          toDel = insertNode(nodesCollection, 3);
+          
+          s0_toDel = insertEdge(edgesCollection, s0, toDel);
+          s1_toDel = insertEdge(edgesCollection, s1, toDel);
+          toDel_t0 = insertEdge(edgesCollection, toDel, t0);
+          
+          adapter.loadNodeFromTreeById(s0, checkCallbackFunction);
+        });
+        
+        waitsFor(function() {
+          return callbackCheck;
+        });
+        
+        runs(function() {
+          callbackCheck = false;
+          adapter.deleteNode(nodeWithID(toDel), checkCallbackFunction);
+        });
+        
+        // Wait 2 seconds as no handle for the deletion of edges exists.
+        waits(2000);
+        
+        runs(function() {
+          notExistNodes([toDel, s1, t0]);
+          existNode(s0);
+          
+          notExistEdge(s0, toDel);
+          notExistEdge(s1, toDel);
+          notExistEdge(toDel, t0);
+          
+          expect(toDel).toNotBeStoredPermanently();
+          expect(s0).toBeStoredPermanently();
+          expect(s1).toBeStoredPermanently();
+          expect(t0).toBeStoredPermanently();
+          
+          
+          expect(s0_toDel).toNotBeStoredPermanently();
+          expect(s1_toDel).toNotBeStoredPermanently();
+          expect(toDel_t0).toNotBeStoredPermanently();
+          
+          // Check if counter is set correctly
+          expect(nodeWithID(s0)._outboundCounter).toEqual(0);
+        });
+        
+      });
+    
+    });
+   
   });
+  
+  
   
 }());
