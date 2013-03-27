@@ -11,7 +11,7 @@ var FoxxActiveListView = Backbone.View.extend({
     var self = this;
     this.collection.fetch({
       success: function() {
-        self.collection.where({type: "mount"}.each(function (foxx) {
+        _.each(self.collection.where({type: "mount"}), function (foxx) {
           var subView = new window.FoxxActiveView({model: foxx});
           self._subViews[foxx.get('_id')] = subView;
         });
