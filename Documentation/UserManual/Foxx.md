@@ -215,10 +215,12 @@ A more complete example for a Manifest file:
       },
 
       "assets": {
-        "application.js": [
-          "vendor/jquery.js",
-          "assets/javascripts/*"
-        ]
+        "application.js": {
+          "files": [
+            "vendor/jquery.js",
+            "assets/javascripts/*"
+          ]
+        }
       },
 
       "setup": "scripts/setup.js",
@@ -249,13 +251,15 @@ Deliver all files in a certain folder without modifying them. You can deliver te
 The value for the asset key is an object consisting of paths that are matched to the files they are composed of. Let's take the following example:
 
   "assets": {
-    "application.js": [
-      "vendor/jquery.js",
-      "assets/javascripts/*"
-    ]
+    "application.js": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ]
+    }
   }
 
-If a request is made to `/application.js` (in development mode), the array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
+If a request is made to `/application.js` (in development mode), the file array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
 
 ## Development Mode
 
