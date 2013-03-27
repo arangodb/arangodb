@@ -28,10 +28,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
 var internal = require("internal");
+
 var fs = require("fs");
 var console = require("console");
+
+var arangodb = require("org/arangodb");
+var foxxManager = require("org/arangodb/foxx-manager");
+
 var moduleExists = function(name) { return module.exists; };
 
 // -----------------------------------------------------------------------------
@@ -1096,6 +1100,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 
 function reloadRouting () {
   var i;
+  var j;
   var routes;
   var routing;
   var handleRoute;
@@ -1122,8 +1127,26 @@ function reloadRouting () {
   // lookup all routes
   // .............................................................................
 
+  routes = [];
+
   routing = arangodb.db._collection("_routing");
-  routes = routing.all();
+  i = routing.all();
+
+  while (i.hasNext()) {
+    var n = i.next();
+
+    routes.push(n.shallowCopy);
+  }
+
+  // allow the collection to unload
+  i  = null;
+  routing = null;
+
+  // check development routes
+  if (internal.developmentMode) {
+    i = foxxManager.developmentRoutes();
+    routes = routes.concat(i);
+  }
 
   // .............................................................................
   // defines a new route
@@ -1151,41 +1174,13 @@ function reloadRouting () {
   };
   
   // .............................................................................
-  // deep-copy a route object
-  // .............................................................................
-
-  function clone (obj) {
-    if (obj === null || typeof(obj) !== "object") {
-      return obj;
-    }
-
-    var copy, a; 
-    if (Array.isArray(obj)) {
-      copy = [ ];
-      obj.forEach(function (i) {
-        copy.push(clone(i));
-      });
-    }
-    else if (obj instanceof Object) {
-      copy = { };
-      for (a in obj) {
-        if (obj.hasOwnProperty(a)) {
-          copy[a] = clone(obj[a]);
-        }
-      }
-    }
-
-    return copy;
-  }
-
-  // .............................................................................
   // loop over the routes or routes bundle
   // .............................................................................
 
-  while (routes.hasNext()) {
+  for (j = 0;  j < routes.length;  ++j) {
 
     // clone the route object so the barrier for the collection can be removed soon
-    var route = clone(routes.next());
+    var route = routes[j];
     var r;
 
     if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
@@ -1212,10 +1207,6 @@ function reloadRouting () {
       handleRoute(RoutingCache.routes, "", "", route);
     }
   }
-
-  // allow the collection to unload
-  routes  = null;
-  routing = null;
 
   // .............................................................................
   // compute the flat routes
