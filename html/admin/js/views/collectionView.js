@@ -88,7 +88,7 @@ var collectionView = Backbone.View.extend({
 
     if (status === 'loaded') {
       if (this.myCollection.name !== newname) {
-        window.arangoCollectionsStore.renameCollection(collid, newname );
+        window.arangoCollectionsStore.renameCollection(collid, newname);
       }
 
       var wfs = $('#change-collection-sync').val();
@@ -105,9 +105,10 @@ var collectionView = Backbone.View.extend({
     }
     else if (status === 'unloaded') {
       if (this.myCollection.name !== newname) {
-        window.arangoCollectionsStore.renameCollection(collid, newname );
-        this.hideModal();
+        window.arangoCollectionsStore.renameCollection(collid, newname);
       }
+      // we're closing the dialogue after renaming is done & in case nothing was changed
+      this.hideModal();
     }
   },
   getCollectionId: function () {
