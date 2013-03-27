@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, continue: true, regexp: true */
 /*global require, module: true, PACKAGE_PATH */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,6 +308,51 @@ function stop_color_print () {
 
   var fs = GlobalPackage.module("/fs").exports;
   var console = GlobalPackage.module("/console").exports;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a semantic version
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.compareVersions = function (a, b) {
+    var aComponents;
+    var bComponents;
+    var len;
+    var i;
+
+    if (a === b) {
+      return 0;
+    }
+
+    aComponents = a.split(".");
+    bComponents = b.split(".");
+    len = Math.min(aComponents.length, bComponents.length);
+
+    // loop while the components are equal
+    for (i = 0; i < len; i++) {
+
+      // A bigger than B
+      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
+        return 1;
+      }
+
+      // B bigger than A
+      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
+        return -1;
+      }
+    }
+
+    // If one's a prefix of the other, the longer one is greater.
+    if (aComponents.length > bComponents.length) {
+      return 1;
+    }
+
+    if (aComponents.length < bComponents.length) {
+      return -1;
+    }
+
+    // Otherwise they are the same.
+    return 0;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes an URL
@@ -623,9 +668,29 @@ function stop_color_print () {
   function appManifestAal (appId) {
     'use strict';
 
-    var doc;
+    var aal;
+    var doc = null;
+    var re = /app:([^:]*):([^:]*)/;
+    var m = re.exec(appId);
 
-    doc = internal.db._collection("_aal").firstExample({ type: "app", app: appId });
+    aal = internal.db._collection("_aal");
+
+    if (m === null) {
+      throw "illegal app identifier '" + appId + "'";
+    }
+
+    if (m[2] === "latest") {
+      var docs = aal.byExample({ type: "app", name: m[1] }).toArray();
+
+      docs.sort(function(a,b) {return internal.compareVersions(b.version, a.version);});
+
+      if (0 < docs.length) {
+        doc = docs[0];
+      }
+    }
+    else {
+      doc = aal.firstExample({ type: "app", app: appId });
+    }
 
     if (doc === null) {
       return null;
@@ -639,8 +704,11 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.appDescription = function (appId) {
+    'use strict';
+
     var path;
     var file;
+    var manifest;
 
     if (appId.substr(0,4) === "app:") {
       path = appManifestAal(appId);
@@ -662,7 +730,7 @@ function stop_color_print () {
     }
 
     try {
-      content = internal.read(file);
+      var content = internal.read(file);
       manifest = JSON.parse(content);
     }
     catch (err) {
@@ -780,7 +848,7 @@ function stop_color_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.createApp = function (appId) {
-    description = internal.appDescription(appId);
+    var description = internal.appDescription(appId);
 
     if (description === null) {
       return description;
@@ -1087,7 +1155,7 @@ function stop_color_print () {
       parent = ', parent "' + this._package._parent.id + '"';
     }
 
-    internal.output('[app "' + this._name + ' (' + this._version + ')]');
+    internal.output('[app "' + this._name + '" (' + this._version + ')]');
   };
 
 ////////////////////////////////////////////////////////////////////////////////
