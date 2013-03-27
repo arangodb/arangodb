@@ -292,6 +292,31 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters.a.dataType, "int");
       assertEqual(routes[0].docs.parameters.a.required, false);
       assertEqual(routes[0].docs.parameters.a.allowMultiple, true);
+    },
+
+    testDefineMetaData: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).nickname("a").summary("b").notes("c");
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.nickname, "a");
+      assertEqual(routes[0].docs.summary, "b");
+      assertEqual(routes[0].docs.notes, "c");
+    },
+
+    testDefineSummaryRestrictedTo60Characters: function () {
+      var error;
+
+      try {
+        app.get('/foxx', function () {
+          //nothing
+        }).summary("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, "Summary can't be longer than 60 characters");
     }
   };
 }

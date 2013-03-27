@@ -493,6 +493,44 @@ _.extend(RequestContext.prototype, {
     };
 
     return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_nickname
+/// @brief Set the nickname for this route in the documentation
+////////////////////////////////////////////////////////////////////////////////
+
+  nickname: function (nickname) {
+    'use strict';
+    this.route.docs.nickname = nickname;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_summary
+/// @brief Set the summary for this route in the documentation
+///
+/// Can't be longer than 60 characters
+////////////////////////////////////////////////////////////////////////////////
+
+  summary: function (summary) {
+    'use strict';
+    if (summary.length > 60) {
+      throw "Summary can't be longer than 60 characters";
+    }
+    this.route.docs.summary = summary;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_notes
+/// @brief Set the notes for this route in the documentation
+////////////////////////////////////////////////////////////////////////////////
+
+  notes: function (notes) {
+    'use strict';
+    this.route.docs.notes = notes;
+    return this;
   }
 });
 
