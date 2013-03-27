@@ -30,7 +30,7 @@ module.define("org/arangodb-common", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var mimetypes = require("org/arangodb/mimetypes");
+var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 module "arangodb"
