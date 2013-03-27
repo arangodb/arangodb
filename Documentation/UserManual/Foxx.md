@@ -94,6 +94,9 @@ Furthermore you can describe your API by chaining the following methods onto you
 #### Describing a pathParam
 /// @fn JSF_foxx_RequestContext_pathParam
 
+#### Describing a queryParam
+/// @fn JSF_foxx_RequestContext_queryParam
+
 ### Before and After Hooks
 
 You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
