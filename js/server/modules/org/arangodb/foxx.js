@@ -431,7 +431,7 @@ _.extend(RequestContext.prototype, {
 ///
 /// You can also provide a description of this parameter.
 ///
-/// @EXAMPLE:
+/// @EXAMPLES
 ///     app.get("/foxx/:id", function {
 ///       // Do something
 ///     }).pathParam("id", {
@@ -472,7 +472,7 @@ _.extend(RequestContext.prototype, {
 /// You can also provide a description of this parameter, if it is required and
 ///  if you can provide the parameter multiple times.
 ///
-/// @EXAMPLE:
+/// @EXAMPLES
 ///     app.get("/foxx", function {
 ///       // Do something
 ///     }).queryParam("id", {
