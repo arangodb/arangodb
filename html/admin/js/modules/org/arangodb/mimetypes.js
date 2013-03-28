@@ -28,4 +28,18 @@ exports.mimeTypes = {
   "xml": [ "application/xml", true ]
 };
 
+exports.extensions = {
+  "text/html": [ "html", "htm" ], 
+  "text/javascript": [ "js" ], 
+  "image/png": [ "png" ], 
+  "image/x-icon": [ "ico" ], 
+  "image/gif": [ "gif" ], 
+  "image/jpg": [ "jpg" ], 
+  "text/plain": [ "text", "txt" ], 
+  "application/xml": [ "xml" ], 
+  "application/json": [ "json" ], 
+  "text/css": [ "css" ], 
+  "application/pdf": [ "pdf" ]
+};
+
 });
