@@ -507,6 +507,10 @@ exports.printAvailable = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printFishbowl = function (name) {
+  'use strict';
+
+  var i;
+
   var tempFile = fs.getTempFile("downloads", false); 
   var url = buildGithubFishbowlUrl(name);
   var content;
@@ -523,7 +527,7 @@ exports.printFishbowl = function (name) {
   }
   catch (err1) {
     fs.remove(tempFile);
-    throw "could not download from repository '" + url + "': " + String(err);
+    throw "could not download from repository '" + url + "': " + String(err1);
   }
 
   var desc;
@@ -535,7 +539,33 @@ exports.printFishbowl = function (name) {
     throw "description file for '" + name + "' is corrupt: " + String(err);
   }
 
-  return desc;
+  internal.printf("Name: %s\n", name);
+
+  if (desc.hasOwnProperty('author')) {
+    internal.printf("Author: %s\n", desc.author);
+  }
+
+  if (desc.hasOwnProperty('description')) {
+    internal.printf("\nDescription:\n%s\n\n", desc.description);
+  }
+
+  for (i in desc.versions) {
+    if (desc.versions.hasOwnProperty(i)) {
+      var v = desc.versions[i];
+
+      if (v.type === "github") {
+        if (v.hasOwnProperty("tag")) {
+          internal.printf('%s: aal.load("github", "%s", "%s");\n', i, v.location, v.tag);
+        }
+        else if (v.hasOwnProperty("branch")) {
+          internal.printf('%s: aal.load("github", "%s", "%s");\n', i, v.location, v.branch);
+        }
+        else {
+          internal.printf('%s: aal.load("github", "%s");\n', i, v.location);
+        }
+      }
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
