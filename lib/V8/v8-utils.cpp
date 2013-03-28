@@ -1004,17 +1004,18 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // extract arguments
-  if (argv.Length() < 2 || argv.Length() > 3) {
-    TRI_V8_EXCEPTION_USAGE("zip(<filename>, <files>, <password>)");
+  if (argv.Length() < 3 || argv.Length() > 4) {
+    TRI_V8_EXCEPTION_USAGE("zip(<filename>, <chdir>, <files>, <password>)");
   }
 
   const string filename = TRI_ObjectToString(argv[0]);
+  const string dir = TRI_ObjectToString(argv[1]);
 
-  if (! argv[1]->IsArray()) {
-    TRI_V8_EXCEPTION_USAGE("zip(<filename>, <files>, <password>)");
+  if (! argv[2]->IsArray()) {
+    TRI_V8_EXCEPTION_USAGE("zip(<filename>, <chdir>, <files>, <password>)");
   }
 
-  v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(argv[1]);
+  v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(argv[2]);
  
   int res = TRI_ERROR_NO_ERROR; 
   TRI_vector_string_t filenames;
@@ -1033,7 +1034,6 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_ClearVectorString(&filenames);
     TRI_DestroyVectorString(&filenames);
 
     TRI_V8_EXCEPTION_USAGE("zip(<filename>, <files>, <password>)");
@@ -1041,16 +1041,15 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
  
   const char* p; 
   string password;
-  if (argv.Length() == 3) {
-    password = TRI_ObjectToString(argv[2]);
+  if (argv.Length() == 4) {
+    password = TRI_ObjectToString(argv[3]);
     p = password.c_str();
   }
   else {
     p = NULL;
   }
 
-  res = TRI_ZipFile(filename.c_str(), &filenames, p);
-  TRI_ClearVectorString(&filenames);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), &filenames, p);
   TRI_DestroyVectorString(&filenames);
 
   if (res == TRI_ERROR_NO_ERROR) {
