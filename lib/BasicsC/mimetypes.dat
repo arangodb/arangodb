@@ -12,7 +12,7 @@
 "html","text/html",true
 "htm","text/html",true
 "pdf","application/pdf",false
-"text","text/plain",true
 "txt","text/plain",true
+"text","text/plain",true
 "xml","application/xml",true
 
