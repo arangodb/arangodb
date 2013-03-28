@@ -140,9 +140,6 @@ var collectionsView = Backbone.View.extend({
 
     // search executed
     this.search();
-  },
-
-  details: function () {
   }
 
 });
