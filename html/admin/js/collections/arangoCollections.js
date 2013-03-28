@@ -125,8 +125,10 @@ window.arangoCollections = Backbone.Collection.extend({
         result.sort(function (l, r) {
           var lValue, rValue;
           if (options.sortBy === 'type') {
-            lValue = l.get('type');
-            rValue = r.get('type');
+            // we'll use first type, then name as the sort criteria
+            // this is because when sorting by type, we need a 2nd criterion (type is not unique)
+            lValue = l.get('type') + ' ' + l.get('name').toLowerCase();
+            rValue = r.get('type') + ' ' + r.get('name').toLowerCase();
           }
           else {
             lValue = l.get('name').toLowerCase();
