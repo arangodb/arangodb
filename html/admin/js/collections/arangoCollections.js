@@ -11,11 +11,9 @@ window.arangoCollections = Backbone.Collection.extend({
         includeDocument: true,
         includeEdge: true,
         includeLoaded: true,
-        includeUnloaded: true
-      },
-
-      comparator : function(model) {
-        return model.get('name').toLowerCase();
+        includeUnloaded: true,
+        sortBy: 'name',
+        sortOrder: 1
       },
 
       translateStatus : function (status) {
@@ -122,6 +120,22 @@ window.arangoCollections = Backbone.Collection.extend({
           }
 
           result.push(model);
+        });
+
+        result.sort(function (l, r) {
+          var lValue, rValue;
+          if (options.sortBy === 'type') {
+            lValue = l.get('type');
+            rValue = r.get('type');
+          }
+          else {
+            lValue = l.get('name').toLowerCase();
+            rValue = r.get('name').toLowerCase();
+          }
+          if (lValue != rValue) {
+            return options.sortOrder * (lValue < rValue ? -1 : 1);
+          }
+          return 0;
         });
 
         return result;
