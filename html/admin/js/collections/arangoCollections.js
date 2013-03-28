@@ -82,17 +82,28 @@ window.arangoCollections = Backbone.Collection.extend({
 
       getFiltered : function (options) {
         var result = [ ];
+        var searchPhrases = [ ];
           
-        var searchPhrase = '';
         if (options.searchPhrase !== null) {
-          searchPhrase = options.searchPhrase.toLowerCase();
+          var searchPhrase = options.searchPhrase.toLowerCase();
+          // kick out whitespace
+          searchPhrase = searchPhrase.replace(/\s+/g, ' ').replace(/(^\s+|\s+$)/g, '');
+          searchPhrases = searchPhrase.split(' ');
         }
 
         this.models.forEach(function (model) {
-          if (searchPhrase !== '' && model.get('name').toLowerCase().indexOf(searchPhrase) === -1) {
-            // search phrase entered but current collection does not match?
-            return;
+          // search for name(s) entered
+          if (searchPhrases.length > 0) {
+            var lowerName = model.get('name').toLowerCase(), i;
+            // all phrases must match!
+            for (i = 0; i < searchPhrases.length; ++i) {
+              if (lowerName.indexOf(searchPhrases[i]) === -1) {
+                // search phrase entered but current collection does not match?
+                return;
+              }
+            }
           }
+
           if (options.includeSystem === false && model.get('isSystem')) {
             // system collection?
             return;
