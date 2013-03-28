@@ -38,6 +38,7 @@ var FoxxApplication,
   console = require("console"),
   INTERNAL = require("internal"),
   foxxManager = require("org/arangodb/foxx-manager"),
+  mimeTypes = require("org/arangodb/mimetypes"),
   internal = {};
 
 ////////////////////////////////////////////////////////////////////////////////
