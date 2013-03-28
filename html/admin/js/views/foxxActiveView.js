@@ -11,8 +11,9 @@ window.FoxxActiveView = Backbone.View.extend({
     _.bindAll(this, 'render');
   },
   
-  editFoxx: function() {
-    alert("Functionality will be added soon: You will be able to configure your foxx here.")
+  editFoxx: function(event) {
+    event.stopPropagation();
+    window.App.navigate("application/" + encodeURIComponent(this.model.get("_key")), {trigger: true});
   },
     
   render: function(){
