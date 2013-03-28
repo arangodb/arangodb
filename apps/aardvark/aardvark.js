@@ -44,7 +44,14 @@
   
   app.del("/foxxes/:key", function (req, res) {
     res.json(foxxes.uninstall(req.params("key")));
-  });
+  }).pathParam("key", {
+    description: "The _key attribute, where the information of this Foxx-Install is stored.",
+    dataType: "string",
+    required: true,
+    allowMultiple: false
+  }).nickname("Foxxes")
+  .summary("Uninstall a Foxx.")
+  .notes("This function is used to uninstall a foxx.");
   
   app.put("/foxxes/:key", function (req, res) {
     var content = JSON.parse(req.requestBody),
@@ -55,15 +62,22 @@
     } else {
       res.json(foxxes.deactivate());
     }
-  });
+  }).pathParam("key", {
+    description: "The _key attribute, where the information of this Foxx-Install is stored.",
+    dataType: "string",
+    required: true,
+    allowMultiple: false
+  }).nickname("Foxxes")
+  .summary("List of all foxxes.")
+  .notes("This function simply returns the list of all running"
+   + " foxxes and supplies the paths for the swagger documentation");
   
   
   app.get('/foxxes', function (req, res) {
     res.json(foxxes.viewAll());
   }).nickname("Foxxes")
-  .summary("List of all foxxes.")
-  .notes("This function simply returns the list of all running"
-   + " foxxes and supplies the information for the application viewer");
+  .summary("Update a foxx.")
+  .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
   app.get('/swagger', function (req, res) {
     res.json(swagger.list());
