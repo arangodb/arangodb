@@ -14,9 +14,10 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "applications/running"                : "applicationsActive",
+      "application/:key"                    : "applicationEdit",
       "applications/installed"              : "applicationsInstalled",
-      "applications/swagger"                : "swagger"
+      "applications/available"              : "applicationsAvailable",
+      "applications/documentation"          : "applicationsDocumentation"
       
     },
     initialize: function () {
@@ -155,7 +156,7 @@ $(document).ready(function() {
       });
     },
     
-    applicationsInstalled: function() {
+    applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
@@ -168,7 +169,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('applications-menu');
     },
     
-    applicationsActive: function() {
+    applicationsInstalled: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
@@ -181,11 +182,28 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('applications-menu');
     },
     
-    swagger: function() {
-      if (this.swaggerView === undefined) {
-        this.swaggerView = new window.SwaggerView();
+    applicationEdit: function(appkey) {
+      if (this.foxxList === undefined) {
+        var self = this;
+        this.foxxList = new window.FoxxCollection();
+        this.foxxList.fetch({
+          success: function() {
+            var editAppView = new window.foxxEditView({model: self.foxxList.findWhere({_key: appkey})});
+            editAppView.render();
+          }
+        });
+      } else {
+        var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
+        editAppView.render();
       }
-      this.swaggerView.render();
+      
+    },
+    
+    applicationsDocumentation: function() {
+      if (this.appDocuView === undefined) {
+        this.appDocuView = new window.AppDocumentationView();
+      }
+      this.appDocuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 

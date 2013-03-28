@@ -35,7 +35,7 @@ var collectionView = Backbone.View.extend({
     }
   },
   hidden: function () {
-    window.App.navigate("#");
+    window.App.navigate("#", {trigger: true});
   },
   fillModal: function() {
     try {

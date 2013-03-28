@@ -1,0 +1,12 @@
+arangod> db._create("users", { keyOptions: { allowUserKeys: false } });
+[ArangoCollection 1533105490832, "users" (type document, status loaded)]
+
+arangod> db.users.save({ name: "user 1" });
+{ "_id" : "users/1533106867088", "_rev" : "1533106867088", "_key" : "1533106867088" }
+
+arangod> db.users.save({ name: "user 2", _key: "myuser" });
+JavaScript exception in file '(arango)' at 1,10: [ArangoError 1222: cannot save document: unexpected document key]
+!db.users.save({ name: "user 2", _key: "myuser" });
+!         ^
+stacktrace: Error: cannot save document: unexpected document key
+    at (arango):1:10

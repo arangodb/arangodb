@@ -15,8 +15,10 @@ This is an introduction to ArangoDB's Http interface for collections.
 
 @copydoc GlossaryCollectionName
 
+@copydoc GlossaryKeyGenerator
+
 The basic operations (create, read, update, delete) for documents are mapped
-to the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`).
+to the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`). 
 
 Address of a Collection {#HttpCollectionResource}
 =================================================

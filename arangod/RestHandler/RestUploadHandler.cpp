@@ -114,7 +114,7 @@ Handler::status_e RestUploadHandler::execute() {
     return Handler::HANDLER_FAILED;
   }
 
-  char* relative = TRI_GetRelativePath(filename);
+  char* relative = TRI_GetFilename(filename);
 
   try {
     FileUtils::spit(string(filename), _request->body(), _request->bodySize());
