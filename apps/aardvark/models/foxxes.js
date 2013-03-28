@@ -38,12 +38,20 @@
   };
   */
   
-  // Define the functionality to remove one foxx
-  /*
-  exports.destroy = function (id) {
-    throw "To be implemented.";
+  // Define the functionality to uninstall an installed foxx
+  exports.uninstall = function (key) {
+    return require("org/arangodb/foxx").uninstallApp(key);
   };
-  */
+  
+  exports.deactivate = function (key) {
+    // Sorry not implemented yet
+    return false;
+  };
+  
+  exports.activate = function (key) {
+    // Sorry not implemented yet
+    return false;
+  };
   
   // Define the functionality to display all foxxes
   exports.viewAll = function () {

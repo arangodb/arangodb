@@ -20,18 +20,25 @@ window.foxxEditView = Backbone.View.extend({
     "click #activate"       : "activate"
   },
   hidden: function () {
-    window.App.navigate("applications/installed");
+    window.App.navigate("applications/installed", {trigger: true});
   },
   
   uninstall: function () {
     this.model.destroy();
+    this.hideModal();
   },
   
   deactivate: function () {
     this.model.save({active: false});
+    this.hideModal();
   },
   
   activate: function () {
     this.model.save({active: true});
+    this.hideModal();
+  },
+  
+  hideModal: function () {
+    $('#change-foxx').modal('hide');
   }
 });
