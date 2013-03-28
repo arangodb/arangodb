@@ -112,7 +112,7 @@ function byExample (collection, example, skip, limit) {
       if (example[k] === null) {
         unique = false;
       }
-      else if (k === '_id') {
+      else if (k === '_id' || k === '_key') {
         // example contains the document id in attribute "_id"
         documentId = example[k];
         break;
