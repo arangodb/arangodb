@@ -42,6 +42,22 @@
   };
 
   
+  app.del("/foxxes/:key", function (req, res) {
+    res.json(foxxes.uninstall(req.params("key")));
+  });
+  
+  app.put("/foxxes/:key", function (req, res) {
+    var content = JSON.parse(req.requestBody),
+    active = content.active;
+    // TODO: Other changes applied to foxx! e.g. Mount
+    if (active) {
+      res.json(foxxes.activate());
+    } else {
+      res.json(foxxes.deactivate());
+    }
+  });
+  
+  
   app.get('/foxxes', function (req, res) {
     res.json(foxxes.viewAll());
   }).nickname("Foxxes")
