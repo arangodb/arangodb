@@ -809,7 +809,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
 
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
   if (barrier == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
@@ -5699,6 +5699,14 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// With properties:
 ///
 /// @verbinclude shell_create-collection-properties
+///
+/// With a key generator:
+///
+/// @verbinclude shell_create-collection-keygen
+///
+/// With a special key option:
+///
+/// @verbinclude shell_create-collection-keyoptions
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {

@@ -30,10 +30,12 @@ has been created. The `_rev` value is maintained by ArangoDB autonomously.
 @copydoc GlossaryDocumentEtag
 
 The basic operations (create, read, update, delete) for documents are mapped to
-the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`). An identifier for
-the document revision is returned in the `ETag` header field. If you modify a
-document, you can use the `If-Match` field to detect conflicts. The revision of
-a document can be checking using the HTTP method HEAD.
+the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`). There is also a 
+partial update method, which is mapped to the HTTP `PATCH` method.
+
+An identifier for the document revision is returned in the `ETag` header field. 
+If you modify a document, you can use the `If-Match` field to detect conflicts. 
+The revision of a document can be checking using the HTTP method `HEAD`.
 
 Address and ETag of a Document {#RestDocumentResource}
 ======================================================

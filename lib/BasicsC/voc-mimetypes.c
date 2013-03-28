@@ -25,6 +25,7 @@ void TRI_InitialiseEntriesMimetypes (void) {
   TRI_RegisterMimetype("html", "text/html", true);
   TRI_RegisterMimetype("htm", "text/html", true);
   TRI_RegisterMimetype("pdf", "application/pdf", false);
+  TRI_RegisterMimetype("txt", "text/plain", true);
   TRI_RegisterMimetype("text", "text/plain", true);
   TRI_RegisterMimetype("xml", "application/xml", true);
 }

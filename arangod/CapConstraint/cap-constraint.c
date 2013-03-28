@@ -99,7 +99,8 @@ static int InsertCapConstraint (TRI_index_t* idx,
 /// @brief post processing of insert
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PostInsertCapConstraint (TRI_index_t* idx,
+static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
+                                    TRI_index_t* idx,
                                     TRI_doc_mptr_t const* doc) {
   TRI_cap_constraint_t* cap;
   TRI_primary_collection_t* primary;
@@ -108,7 +109,6 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
   primary = idx->_collection;
 
   while (cap->_size < cap->_array._array._nrUsed) {
-    TRI_doc_operation_context_t rollbackContext;
     TRI_doc_mptr_t* oldest;
     int res;
 
@@ -122,8 +122,7 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
 
     LOG_DEBUG("removing document '%s' because of cap constraint", (char*) oldest->_key);
 
-    TRI_InitContextPrimaryCollection(&rollbackContext, primary);
-    res = TRI_DeleteDocumentDocumentCollection(&rollbackContext, NULL, oldest);
+    res = TRI_DeleteDocumentDocumentCollection(trxCollection, NULL, oldest);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("cannot cap collection: %s", TRI_last_error());

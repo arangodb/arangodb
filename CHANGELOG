@@ -92,6 +92,8 @@ v1.3 (XXXX-XX-XX)
 v1.2.3 (XXXX-XX-XX)
 -------------------
 
+* fixed firstExample() query with `_id` and `_key` attributes
+
 * issue triAGENS/ArangoDB-PHP#55: AQL optimiser may have mis-optimised duplicate 
   filter statements with limit
 

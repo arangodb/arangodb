@@ -1,0 +1,56 @@
+<%var appInfos = attributes.app.split(":"); %>
+<div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3>Modify Application</h3>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><strong><%=appInfos[1] %></strong></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">&nbsp;</th>
+        <th class="collectionTh">&nbsp;</th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Mount-Point:</th>
+        <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>" disabled/></th>
+        <th><a class="modalTooltips" title="The path where the App can be reached."><i class="icon-info-sign"></i></a></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Version:</th>
+        <th class="collectionTh">
+          <select>
+            <option selected><%=appInfos[2] %></option>
+          </select>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Status:</th>
+        <th class="collectionTh">
+          <%if (attributes.active) {%>
+            <div class="modal-text active">
+              Active
+            </div>
+          <%} else {%>
+            <div class="modal-text inactive">
+              Inactive
+            </div>
+          <%}%>
+        </th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="uninstall" class="btn btn-danger pull-left">Uninstall</button>
+    <button id="change" class="btn btn-success pull-right" disabled>Save</button>
+    <%if (attributes.active) {%>
+      <button id="deactivate" class="btn btn-warning pull-right" style="margin-right:8px" disabled>Deactive</button>
+    <%} else {%>
+      <button id="activate" class="btn btn-success pull-right" style="margin-right:8px" disabled>Activate</button>
+    <%}%>
+    
+  </div>
+</div>
