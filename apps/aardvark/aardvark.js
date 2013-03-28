@@ -49,7 +49,7 @@
     dataType: "string",
     required: true,
     allowMultiple: false
-  }).nickname("Foxxes")
+  }).nickname("foxxes")
   .summary("Uninstall a Foxx.")
   .notes("This function is used to uninstall a foxx.");
   
@@ -67,7 +67,7 @@
     dataType: "string",
     required: true,
     allowMultiple: false
-  }).nickname("Foxxes")
+  }).nickname("foxxes")
   .summary("List of all foxxes.")
   .notes("This function simply returns the list of all running"
    + " foxxes and supplies the paths for the swagger documentation");
@@ -75,13 +75,13 @@
   
   app.get('/foxxes', function (req, res) {
     res.json(foxxes.viewAll());
-  }).nickname("Foxxes")
+  }).nickname("foxxes")
   .summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
   app.get('/swagger', function (req, res) {
     res.json(swagger.list());
-  }).nickname("Swaggers")
+  }).nickname("swaggers")
   .summary("List of all foxxes.")
   .notes("This function simply returns the list of all running"
    + " foxxes and supplies the paths for the swagger documentation");
@@ -93,7 +93,7 @@
     dataType: "string",
     required: true,
     allowMultiple: false
-  }).nickname("SwaggersApp")
+  }).nickname("swaggersapp")
   .summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
     + " runnning under the given mount point");

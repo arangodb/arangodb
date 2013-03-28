@@ -44,23 +44,7 @@
         "../../html/admin/js/lib/highlight.7.3.pack.js",
         "../../html/admin/js/arango/arango.js",
         "../../html/admin/js/shell/browser.js",
-        "../../html/admin/js/modules/org/arangodb/arango-collection-common.js",
-        "../../html/admin/js/modules/org/arangodb/arango-collection.js",
-        "../../html/admin/js/modules/org/arangodb/arango-database.js",
-        "../../html/admin/js/modules/org/arangodb/arango-error-common.js",
-        "../../html/admin/js/modules/org/arangodb/arango-error.js",
-        "../../html/admin/js/modules/org/arangodb/arango-query-cursor.js",
-        "../../html/admin/js/modules/org/arangodb/arango-statement-common.js",
-        "../../html/admin/js/modules/org/arangodb/arango-statement.js",
-        "../../html/admin/js/modules/org/arangodb/arangosh.js",
-        "../../html/admin/js/modules/org/arangodb/graph-common.js",
-        "../../html/admin/js/modules/org/arangodb/graph.js",
-        "../../html/admin/js/modules/org/arangodb/mimetypes.js",
-        "../../html/admin/js/modules/org/arangodb/simple-query-common.js",
-        "../../html/admin/js/modules/org/arangodb/simple-query.js",
-        "../../html/admin/js/modules/org/arangodb/graph/traversal.js",
-        "../../html/admin/js/modules/org/arangodb-common.js",
-        "../../html/admin/js/modules/org/arangodb.js",
+        "../../html/admin/js/modules/org/**",
         "../../html/admin/js/bootstrap/errors.js",
         "../../html/admin/js/bootstrap/monkeypatches.js",
         "../../html/admin/js/bootstrap/module-internal.js",
@@ -106,7 +90,7 @@
   },
 
   "files": {
-    "/img" : "../../html/admin/img"
+    "/img" : "../../html/admin/img/**"
   },
   
   "models": "models"
