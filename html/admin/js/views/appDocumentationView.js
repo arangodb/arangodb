@@ -1,10 +1,10 @@
-window.SwaggerView = Backbone.View.extend({
+window.AppDocumentationView = Backbone.View.extend({
 
   el: '#content',
-  template: new EJS({url: '/_admin/html/js/templates/swaggerView.ejs'}),
+  template: new EJS({url: '/_admin/html/js/templates/appDocumentationView.ejs'}),
   
   initialize: function() {
-    window.swaggerUi = new SwaggerUi({
+    this.swaggerUi = new SwaggerUi({
         discoveryUrl:"../../aardvark/swagger",
         apiKey: false,
         dom_id:"swagger-ui-container",
@@ -12,17 +12,17 @@ window.SwaggerView = Backbone.View.extend({
         supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch', 'head'],
         onComplete: function(swaggerApi, swaggerUi){
         	if(console) {
-                console.log("Loaded SwaggerUI")
-                console.log(swaggerApi);
-                console.log(swaggerUi);
-            }
+            console.log("Loaded SwaggerUI")
+            console.log(swaggerApi);
+            console.log(swaggerUi);
+          }
           $('pre code').each(function(i, e) {hljs.highlightBlock(e)});
         },
         onFailure: function(data) {
         	if(console) {
-                console.log("Unable to Load SwaggerUI");
-                console.log(data);
-            }
+            console.log("Unable to Load SwaggerUI");
+            console.log(data);
+          }
         },
         docExpansion: "none"
     });
@@ -30,7 +30,7 @@ window.SwaggerView = Backbone.View.extend({
   
   render: function(){
     $(this.el).html(this.template.render({}));
-    window.swaggerUi.load();
+    this.swaggerUi.load();
     return this;
   }
 });
