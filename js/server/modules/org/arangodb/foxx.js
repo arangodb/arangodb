@@ -504,6 +504,9 @@ _.extend(RequestContext.prototype, {
 
   nickname: function (nickname) {
     'use strict';
+    if (!nickname.match(/^[a-z]+$/)) {
+      throw "Nickname may only contain [a-z]";
+    }
     this.route.docs.nickname = nickname;
     return this;
   },
@@ -741,6 +744,7 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 
     determinePathAndFormat = function (path, headers) {
       var mimeTypes = require("org/arangodb/mimetypes").mimeTypes,
+        extensions = require("org/arangodb/mimetypes").extensions,
         urlFormatToMime = function (urlFormat) {
           var mimeType;
 
@@ -755,11 +759,11 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
         mimeToUrlFormat = function (mimeType) {
           var urlFormat;
 
-          urlFormat = {
-            "application/json": "json",
-            "text/html": "html",
-            "text/plain": "txt"
-          }[mimeType];
+          if (extensions[mimeType]) {
+            urlFormat = extensions[mimeType][0];
+          } else {
+            urlFormat = undefined;
+          }
 
           return urlFormat;
         },
