@@ -1,0 +1,14 @@
+{
+  "name": "aardvark",
+  "version": "1.0",
+
+  "apps": {
+    "/": "aardvark.js"
+  },
+    
+  "files": {
+    "/img" : "../../html/admin/img/**"
+  },
+  
+  "models": "models"
+}
