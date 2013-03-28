@@ -69,6 +69,14 @@ function buildGithubUrl (repository, version) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief builds a github repository URL
+////////////////////////////////////////////////////////////////////////////////
+
+function buildGithubFishbowlUrl (name) {
+  return "https://raw.github.com/triAGENS/ArangoDB-Apps/master/Fishbowl/" + name + ".json";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validates the source type specified by the user
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -358,7 +366,7 @@ exports.load = function (type, location, version) {
   res = arango.POST("/_admin/foxx/load", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return res;
+  return { path: res };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,6 +500,42 @@ exports.printAvailable = function () {
                     padding(doc.version, 2),
                     padding(doc.path, 3));
   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searchs for an application
+////////////////////////////////////////////////////////////////////////////////
+
+exports.printFishbowl = function (name) {
+  var tempFile = fs.getTempFile("downloads", false); 
+  var url = buildGithubFishbowlUrl(name);
+  var content;
+
+  try {
+    var result = internal.download(url, "get", tempFile);
+
+    if (result.code < 200 || result.code > 299) {
+      throw "github download failed";
+    }
+
+    content = fs.read(tempFile);
+    fs.remove(tempFile);
+  }
+  catch (err1) {
+    fs.remove(tempFile);
+    throw "could not download from repository '" + url + "': " + String(err);
+  }
+
+  var desc;
+
+  try {
+    desc = JSON.parse(content);
+  }
+  catch (err) {
+    throw "description file for '" + name + "' is corrupt: " + String(err);
+  }
+
+  return desc;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
