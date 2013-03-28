@@ -359,10 +359,8 @@
 /// @brief app path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.APP_PATH = [];
-
   if (typeof APP_PATH !== "undefined") {
-    internal.APP_PATH = APP_PATH;
+    internal.appPath = APP_PATH;
     delete APP_PATH;
   }
 
@@ -370,10 +368,8 @@
 /// @brief dev app path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.DEV_APP_PATH = [];
-
   if (typeof DEV_APP_PATH !== "undefined") {
-    internal.DEV_APP_PATH = DEV_APP_PATH;
+    internal.devAppPath = DEV_APP_PATH;
     delete DEV_APP_PATH;
   }
 
@@ -1091,6 +1087,40 @@
     else {
       mc.replace(m, { path: path, content: content });
     }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string padding
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.stringPadding = function (str, len, pad, dir) {
+    if (typeof(len) === "undefined") { len = 0; }
+    if (typeof(pad) === "undefined") { pad = ' '; }
+    if (typeof(dir) === "undefined") { dir = 'r'; }
+ 
+    if (len + 1 >= str.length) {
+      switch (dir){
+
+        // LEFT
+        case 'l':
+	  str = new Array(len + 1 - str.length).join(pad) + str;
+	  break;
+ 
+        // BOTH
+        case 'b':
+          var padlen = len - str.length;
+	  var right = Math.ceil(padlen / 2);
+	  var left = padlen - right;
+	  str = new Array(left+1).join(pad) + str + new Array(right+1).join(pad);
+	  break;
+ 
+        default:
+	   str = str + new Array(len + 1 - str.length).join(pad);
+	   break;
+      }
+    }
+ 
+    return str;
   };
 
 ////////////////////////////////////////////////////////////////////////////////

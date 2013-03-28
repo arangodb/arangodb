@@ -533,7 +533,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
-    ("javascript.app-path", &_appPath, "one or more directories separated by (semi-) colons")
+    ("javascript.app-path", &_appPath, "one directory separated by (semi-) colons")
     ("javascript.dev-app-path", &_devAppPath, "one or more directories separated by (semi-) colons")
     ("javascript.modules-path", &_modulesPath, "one or more directories separated by (semi-) colons")
     ("javascript.package-path", &_packagePath, "one or more directories separated by (semi-) colons")
@@ -732,8 +732,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   {
     v8::HandleScope scope;
 
-    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", TRI_V8PathList(_appPath));
-    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", TRI_V8PathList(_devAppPath));
+    TRI_AddGlobalVariableVocbase(context->_context, "APP_PATH", v8::String::New(_appPath.c_str()));
+    TRI_AddGlobalVariableVocbase(context->_context, "DEV_APP_PATH", v8::String::New(_devAppPath.c_str()));
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
   }
 
