@@ -15,9 +15,9 @@ $(document).ready(function() {
       "logs"                                : "logs",
       "about"                               : "about",
       "application/:key"                    : "applicationEdit",
-      "applications/running"                : "applicationsActive",
       "applications/installed"              : "applicationsInstalled",
-      "applications/swagger"                : "swagger"
+      "applications/available"              : "applicationsAvailable",
+      "applications/documentation"          : "applicationsDocumentation"
       
     },
     initialize: function () {
@@ -156,7 +156,7 @@ $(document).ready(function() {
       });
     },
     
-    applicationsInstalled: function() {
+    applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
@@ -169,7 +169,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('applications-menu');
     },
     
-    applicationsActive: function() {
+    applicationsInstalled: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
@@ -199,11 +199,11 @@ $(document).ready(function() {
       
     },
     
-    swagger: function() {
-      if (this.swaggerView === undefined) {
-        this.swaggerView = new window.SwaggerView();
+    applicationsDocumentation: function() {
+      if (this.appDocuView === undefined) {
+        this.appDocuView = new window.AppDocumentationView();
       }
-      this.swaggerView.render();
+      this.appDocuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 
