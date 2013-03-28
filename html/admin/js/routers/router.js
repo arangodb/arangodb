@@ -14,6 +14,7 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
+      "application/:key"                    : "applicationEdit",
       "applications/running"                : "applicationsActive",
       "applications/installed"              : "applicationsInstalled",
       "applications/swagger"                : "swagger"
@@ -179,6 +180,27 @@ $(document).ready(function() {
       }
       this.applicationsActiveView.reload();
       this.naviView.selectMenuItem('applications-menu');
+    },
+    
+    applicationEdit: function(appkey) {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+        this.foxxList.fetch({
+          success: function() {
+            console.log(this.foxxList.findWhere({_key: appkey}));
+            /*var editAppView = new window.ApplicationEditView();
+            window.applicationEditView.options.colId = colid;
+            window.collectionView.render();*/
+          }
+        });
+      } else {
+        window.meierei = this.foxxList;
+        console.log(this.foxxList.findWhere({_key: appkey}));
+        /*var editAppView = new window.ApplicationEditView{}
+        window.applicationEditView.options.colId = colid;
+        window.collectionView.render();*/
+      }
+      
     },
     
     swagger: function() {
