@@ -33,10 +33,18 @@ def genJsFile(types):
       + prologue\
       + "exports.mimeTypes = {\n"
   
+  extensions = { }
   # print individual mimetypes
   i = 0
   for t in types:
-    out = out + "  \"" + t[0] + "\": [ \"" + t[1] + "\", " + t[2] + " ]"
+    extension = t[0]
+    mimetype = t[1]
+    out = out + "  \"" + extension + "\": [ \"" + mimetype + "\", " + t[2] + " ]"
+
+    if not mimetype in extensions:
+      extensions[mimetype] = [ ]
+
+    extensions[mimetype].append(extension)
     i = i + 1 
 
     if i < len(types):
@@ -44,6 +52,21 @@ def genJsFile(types):
     else:
       out = out + "\n"
 
+  out = out + "};\n\n"
+
+  # print extensions
+  out = out + "exports.extensions = {\n"
+  i = 0
+  for e in extensions:
+
+    out = out + "  \"" + e + "\": [ \"" + "\", \"".join(extensions[e]) + "\" ]"
+    i = i + 1 
+
+    if i < len(extensions):
+      out = out + ", \n"
+    else:
+      out = out + "\n"
+      
   out = out + "};\n\n"
 
   return out
