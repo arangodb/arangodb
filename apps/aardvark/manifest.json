@@ -74,7 +74,7 @@
       ]
     },
 
-    "style.css": {
+    "css/style.css": {
       "files": [
         "../../html/admin/css/swagger/hightlight.default.css",
         "../../html/admin/css/swagger/screen.css",
