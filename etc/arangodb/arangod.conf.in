@@ -41,6 +41,7 @@ threads = 3
 startup-directory = @PKGDATADIR@/js
 action-directory = @PKGDATADIR@/js/actions
 modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules
+app-path = @PKGDATADIR@/js/apps
 
 [ruby]
 action-directory = @PKGDATADIR@/mr/actions
