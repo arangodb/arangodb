@@ -620,7 +620,7 @@ struct TRI_index_s* TRI_EnsurePriorityQueueIndexDocumentCollection (TRI_document
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
+TRI_vector_t TRI_SelectByExample (struct TRI_transaction_collection_s*,
                                   size_t,
                                   TRI_shape_pid_t*,
                                   TRI_shaped_json_t**);
@@ -629,7 +629,7 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t*,
+int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
                                           struct TRI_doc_update_policy_s const*,
                                           TRI_doc_mptr_t*);
 
