@@ -1274,10 +1274,10 @@ int TRI_DestroyLockFile (char const* filename) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the relative path of a file
+/// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetRelativePath (char const* filename) {
+char* TRI_GetFilename (char const* filename) {
   const char* p;
   const char* s;
   
