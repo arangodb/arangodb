@@ -1,6 +1,6 @@
 var FoxxInstalledListView = Backbone.View.extend({
   el: '#content',
-  template: new EJS({url: '/_admin/html/js/templates/foxxListView.ejs'}),
+  template: new EJS({url: 'js/templates/foxxListView.ejs'}),
   
   events: {
     // 'click button#add': 'callback'

@@ -7,7 +7,7 @@ var collectionsView = Backbone.View.extend({
   init: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/collectionsView.ejs'}),
+  template: new EJS({url: 'js/templates/collectionsView.ejs'}),
 
   render: function () {
     $(this.el).html(this.template.text);
@@ -15,7 +15,7 @@ var collectionsView = Backbone.View.extend({
 
     var searchOptions = this.collection.searchOptions;
 
-    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="/_admin/html/img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
+    $('.thumbnails', this.el).append('<li class="span3"><a href="#new" class="add"><img id="newCollection" src="img/plus_icon.png" class="pull-left" />Add Collection</a></li>');
     this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
       $('.thumbnails', this.el).append(new window.CollectionListItemView({model: arango_collection}).render().el);
     }, this);

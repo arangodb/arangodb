@@ -1,7 +1,7 @@
 window.AppDocumentationView = Backbone.View.extend({
 
   el: '#content',
-  template: new EJS({url: '/_admin/html/js/templates/appDocumentationView.ejs'}),
+  template: new EJS({url: 'js/templates/appDocumentationView.ejs'}),
   
   initialize: function() {
     this.swaggerUi = new SwaggerUi({

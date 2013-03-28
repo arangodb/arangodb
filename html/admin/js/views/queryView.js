@@ -13,7 +13,7 @@ var queryView = Backbone.View.extend({
     $('#queryOutput').empty();
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/queryView.ejs'}),
+  template: new EJS({url: 'js/templates/queryView.ejs'}),
 
   render: function() {
 
