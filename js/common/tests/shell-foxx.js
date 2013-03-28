@@ -315,7 +315,7 @@ function DocumentationAndConstraintsSpec () {
         error = e;
       }
 
-      assertEqual(error, "Nickname may only contain [a-z]");
+      assertEqual(error.substr(0,31), "Nickname may only contain [a-z]".substr(0,31));
     },
 
     testSummaryRestrictedTo60Characters: function () {
