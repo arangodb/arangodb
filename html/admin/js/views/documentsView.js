@@ -223,7 +223,7 @@ var documentsView = Backbone.View.extend({
     $(self.table).dataTable().fnAddData([
       '',
       '<a id="plusIconDoc" style="padding-left: 30px">Add document</a>',
-      '<img src="/_admin/html/img/plus_icon.png" id="documentAddBtn"></img>'
+      '<img src="img/plus_icon.png" id="documentAddBtn"></img>'
     ]);
     
     $.each(window.arangoDocumentsStore.models, function(key, value) {
@@ -237,7 +237,7 @@ var documentsView = Backbone.View.extend({
         + self.cutByResolution(JSON.stringify(value.attributes.content))
         + '</pre>',
         '<button class="enabled" id="deleteDoc">'
-        + '<img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+        + '<img src="img/icon_delete.png" width="16" height="16"></button>'
       ]);
     });
     $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
@@ -258,7 +258,7 @@ var documentsView = Backbone.View.extend({
     }
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/documentsView.ejs'}),
+  template: new EJS({url: 'js/templates/documentsView.ejs'}),
 
   render: function() {
     this.collectionContext = window.arangoCollectionsStore.getPosition(this.colid);

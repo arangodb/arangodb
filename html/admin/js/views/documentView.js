@@ -45,7 +45,7 @@ var documentView = Backbone.View.extend({
     }
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
+  template: new EJS({url: 'js/templates/documentView.ejs'}),
 
   typeCheck: function (type) {
     if (type === 'edge') {
@@ -142,7 +142,7 @@ var documentView = Backbone.View.extend({
       '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
-      '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="/_admin/html/img/plus_icon.png"></button>'
+      '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="img/plus_icon.png"></button>'
     ]);
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
@@ -163,7 +163,7 @@ var documentView = Backbone.View.extend({
             self.value2html(value),
             JSON.stringify(value),
             '<i class="icon-edit" id="editSecondRow"></i>',
-            '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+            '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png" width="16" height="16"></button>'
         ]);
       }
     });
@@ -184,7 +184,7 @@ var documentView = Backbone.View.extend({
         this.value2html("editme"),
         JSON.stringify("editme"),
         '<i class="icon-edit" id="editSecondRow"></i>',
-        '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+        '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png" width="16" height="16"></button>'
       ]
     );
     this.makeEditable();

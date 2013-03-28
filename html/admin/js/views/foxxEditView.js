@@ -3,7 +3,7 @@ window.foxxEditView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/foxxEditView.ejs'}),
+  template: new EJS({url: 'js/templates/foxxEditView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.render(this.model));

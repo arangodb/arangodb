@@ -3,7 +3,7 @@ var collectionView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/collectionView.ejs'}),
+  template: new EJS({url: 'js/templates/collectionView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);

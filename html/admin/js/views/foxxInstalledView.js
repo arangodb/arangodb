@@ -1,7 +1,7 @@
 window.FoxxInstalledView = Backbone.View.extend({
   tagName: 'li',
   className: "span3",
-  template: new EJS({url: '/_admin/html/js/templates/foxxInstalledView.ejs'}),
+  template: new EJS({url: 'js/templates/foxxInstalledView.ejs'}),
   
   events: {
     // 'click button#add': 'callback'

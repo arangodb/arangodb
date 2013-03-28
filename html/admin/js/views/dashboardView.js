@@ -13,7 +13,7 @@ var dashboardView = Backbone.View.extend({
   init: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/dashboardView.ejs'}),
+  template: new EJS({url: 'js/templates/dashboardView.ejs'}),
 
   render: function() {
     $.gritter.removeAll();

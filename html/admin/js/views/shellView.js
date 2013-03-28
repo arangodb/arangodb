@@ -5,7 +5,7 @@ var shellView = Backbone.View.extend({
     'mouseleave .vsplitbar' : 'renderEditor'
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/shellView.ejs'}),
+  template: new EJS({url: 'js/templates/shellView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);

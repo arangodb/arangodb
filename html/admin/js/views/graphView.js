@@ -7,7 +7,7 @@ var graphView = Backbone.View.extend({
   LINKDIST: 100, // Constant Link Distance
   handles: {},
   
-  template: new EJS({url: '/_admin/html/js/templates/graphView.ejs'}),
+  template: new EJS({url: 'js/templates/graphView.ejs'}),
   
   initialize: function () {
     var self = this;
