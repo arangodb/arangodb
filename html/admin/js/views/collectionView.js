@@ -135,14 +135,12 @@ var collectionView = Backbone.View.extend({
     var collName = self.myCollection.name;
     var returnval = window.arangoCollectionsStore.deleteCollection(collName);
     if (returnval === true) {
-      self.hideModal();
       arangoHelper.arangoNotification('Collection deleted successfully.');
-      window.App.navigate("#");
     }
     else {
       arangoHelper.arangoError('Could not delete collection.');
-      self.hideModal();
     }
+    self.hideModal();
   }
 
 });
