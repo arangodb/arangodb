@@ -740,23 +740,33 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
     var parsed, determinePathAndFormat;
 
     determinePathAndFormat = function (path, headers) {
-      var urlFormatToMime, mimeToUrlFormat, parsed;
+      var mimeTypes = require("org/arangodb/mimetypes").mimeTypes,
+        urlFormatToMime = function (urlFormat) {
+          var mimeType;
 
-      parsed = {
-        contentType: headers.accept
-      };
+          if (mimeTypes[urlFormat]) {
+            mimeType = mimeTypes[urlFormat][0];
+          } else {
+            mimeType = undefined;
+          }
 
-      urlFormatToMime = {
-        json: "application/json",
-        html: "text/html",
-        txt: "text/plain"
-      };
+          return mimeType;
+        },
+        mimeToUrlFormat = function (mimeType) {
+          var urlFormat;
 
-      mimeToUrlFormat = {
-        "application/json": "json",
-        "text/html": "html",
-        "text/plain": "txt"
-      };
+          urlFormat = {
+            "application/json": "json",
+            "text/html": "html",
+            "text/plain": "txt"
+          }[mimeType];
+
+          return urlFormat;
+        },
+        parsed = {
+          contentType: headers.accept
+        };
+
       path = path.split('.');
 
       if (path.length === 1) {
@@ -768,14 +778,14 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 
       if (parsed.contentType === undefined && parsed.format === undefined) {
         parsed.format = defaultFormat;
-        parsed.contentType = urlFormatToMime[defaultFormat];
+        parsed.contentType = urlFormatToMime(defaultFormat);
       } else if (parsed.contentType === undefined) {
-        parsed.contentType = urlFormatToMime[parsed.format];
+        parsed.contentType = urlFormatToMime(parsed.format);
       } else if (parsed.format === undefined) {
-        parsed.format = mimeToUrlFormat[parsed.contentType];
+        parsed.format = mimeToUrlFormat(parsed.contentType);
       }
 
-      if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
+      if (parsed.format !== mimeToUrlFormat(parsed.contentType)) {
         throw "Contradiction between Accept Header and URL.";
       }
 

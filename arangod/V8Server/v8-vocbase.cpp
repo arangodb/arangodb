@@ -809,7 +809,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
 
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
   if (barrier == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }

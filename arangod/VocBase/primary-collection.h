@@ -102,17 +102,6 @@ struct TRI_primary_collection_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for arbitrary collection operation parameters
-///
-/// the context struct needs to be passed as a parameter for CRUD operations
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_operation_context_s {
-  struct TRI_primary_collection_s* _collection;        // collection to be used
-}
-TRI_doc_operation_context_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -296,12 +285,12 @@ typedef struct TRI_primary_collection_s {
 
   int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
 
-  int (*insert) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);
+  int (*insert) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);
 
-  int (*read) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
+  int (*read) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
 
-  int (*update) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, const bool, const bool);
-  int (*destroy) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, struct TRI_doc_update_policy_s const*, const bool, const bool);
+  int (*update) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, const bool, const bool);
+  int (*remove) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, struct TRI_doc_update_policy_s const*, const bool, const bool);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);
@@ -465,13 +454,6 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t*)
 
 bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t*,
                                           size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
-                                       TRI_primary_collection_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

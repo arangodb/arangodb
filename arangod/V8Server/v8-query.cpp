@@ -1819,7 +1819,6 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
-
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
@@ -1827,14 +1826,10 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // inside a read transaction
   // .............................................................................
 
-  TRI_doc_operation_context_t context;
-
-  TRI_InitContextPrimaryCollection(&context, primary);
-
   trx.lockRead();
 
   // find documents by example
-  TRI_vector_t filtered = TRI_SelectByExample(&context, n,  pids, values);
+  TRI_vector_t filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
 
   // convert to list of shaped jsons
   size_t total = filtered._length;
