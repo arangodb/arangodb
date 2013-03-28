@@ -6,7 +6,6 @@ window.foxxEditView = Backbone.View.extend({
   template: new EJS({url: '/_admin/html/js/templates/foxxEditView.ejs'}),
 
   render: function() {
-    console.log(this.model);
     $(this.el).html(this.template.render(this.model));
     $('#change-foxx').modal('show');
     $('.modalTooltips').tooltip({
