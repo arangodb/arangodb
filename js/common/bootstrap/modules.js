@@ -801,7 +801,7 @@ function stop_color_print () {
     }
 
     return {
-      id: appId,
+      id: mp.appId,
       root: mp.root,
       path: mp.path,
       manifest: manifest
