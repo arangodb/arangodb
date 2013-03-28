@@ -23,6 +23,7 @@ exports.mimeTypes = {
   "htm": [ "text/html", true ], 
   "pdf": [ "application/pdf", false ], 
   "text": [ "text/plain", true ], 
+  "txt": [ "text/plain", true ], 
   "xml": [ "application/xml", true ]
 };
 
