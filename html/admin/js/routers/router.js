@@ -17,7 +17,7 @@ $(document).ready(function() {
       "application/:key"                    : "applicationEdit",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
-      "applications/swagger"                : "swagger"
+      "applications/documentation"          : "applicationsDocumentation"
       
     },
     initialize: function () {
@@ -199,11 +199,11 @@ $(document).ready(function() {
       
     },
     
-    swagger: function() {
-      if (this.swaggerView === undefined) {
-        this.swaggerView = new window.SwaggerView();
+    applicationsDocumentation: function() {
+      if (this.appDocuView === undefined) {
+        this.appDocuView = new window.AppDocumentationView();
       }
-      this.swaggerView.render();
+      this.appDocuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 
