@@ -46,7 +46,7 @@ var documentsView = Backbone.View.extend({
   prevCollection : function () {
     if (this.collectionContext.prev !== null) {
       $('#collectionPrev').parent().removeClass('disabledPag');
-      window.App.navigate(this.buildCollectionLink(this.collectionContext.prev));
+      window.App.navigate(this.buildCollectionLink(this.collectionContext.prev), { trigger: true });
     }
     else {
       $('#collectionPrev').parent().addClass('disabledPag');
@@ -56,7 +56,7 @@ var documentsView = Backbone.View.extend({
   nextCollection : function () {
     if (this.collectionContext.next !== null) {
       $('#collectionNext').parent().removeClass('disabledPag');
-      window.App.navigate(this.buildCollectionLink(this.collectionContext.next));
+      window.App.navigate(this.buildCollectionLink(this.collectionContext.next), { trigger: true });
     }
     else {
       $('#collectionNext').parent().addClass('disabledPag');
