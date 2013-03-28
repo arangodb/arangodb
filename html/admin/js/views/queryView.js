@@ -24,7 +24,7 @@ var queryView = Backbone.View.extend({
     editor2.setReadOnly(true);
     editor2.setHighlightActiveLine(false);
 
-    editor.getSession().setMode("ace/mode/javascript");
+    editor.getSession().setMode("ace/mode/aql");
     editor2.getSession().setMode("ace/mode/json");
     editor.setTheme("ace/theme/merbivore_soft");
     editor.resize();
