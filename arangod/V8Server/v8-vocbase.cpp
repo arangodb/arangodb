@@ -5699,6 +5699,14 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// With properties:
 ///
 /// @verbinclude shell_create-collection-properties
+///
+/// With a key generator:
+///
+/// @verbinclude shell_create-collection-keygen
+///
+/// With a special key option:
+///
+/// @verbinclude shell_create-collection-keyoptions
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
