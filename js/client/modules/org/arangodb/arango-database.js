@@ -54,7 +54,6 @@ var ArangoCollection;
 function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
-  this._friend = null;
   this._type = ArangoCollection.TYPE_DOCUMENT;
 
   // private function to store a collection in both "db" and "edges" at the 
@@ -62,11 +61,6 @@ function ArangoDatabase (connection) {
   this._registerCollection = function (name, obj) {
     // store the collection in our own list
     this[name] = obj;
-    
-    if (this._friend) {
-      // store the collection in our friend's list
-      this._friend[name] = obj;
-    }
   };
 }
 
