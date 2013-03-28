@@ -116,6 +116,18 @@ window.arangoCollections = Backbone.Collection.extend({
         return result;
       },
 
+      getByName: function (name) {
+        // some clumsy replacement for collection.findWhere()
+        var i;
+
+        for (i = 0; i < this.models.length; ++i) {
+          if (this.models[i].get('name') === name) {
+            return this.models[i];
+          }
+        }
+        return undefined;
+      },
+
       getProperties: function (id) {
         var data2;
         $.ajax({
@@ -213,6 +225,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       deleteCollection: function (id) {
         var returnval = false;
+        var self = this;
         $.ajax({
           cache: false,
           type: 'DELETE',
@@ -220,6 +233,8 @@ window.arangoCollections = Backbone.Collection.extend({
           async: false,
           success: function () {
             returnval = true;
+            self.remove(self.getByName(id));
+            window.collectionsView.render();
           },
           error: function () {
             returnval = false;
