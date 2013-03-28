@@ -15,8 +15,8 @@ $(document).ready(function() {
       "logs"                                : "logs",
       "about"                               : "about",
       "application/:key"                    : "applicationEdit",
-      "applications/running"                : "applicationsActive",
       "applications/installed"              : "applicationsInstalled",
+      "applications/available"              : "applicationsAvailable",
       "applications/swagger"                : "swagger"
       
     },
@@ -156,7 +156,7 @@ $(document).ready(function() {
       });
     },
     
-    applicationsInstalled: function() {
+    applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
@@ -169,7 +169,7 @@ $(document).ready(function() {
       this.naviView.selectMenuItem('applications-menu');
     },
     
-    applicationsActive: function() {
+    applicationsInstalled: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
       }
