@@ -52,7 +52,8 @@ extern "C" {
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile (const char*, 
+int TRI_ZipFile (const char* filename, 
+                 const char* chdir,
                  TRI_vector_string_t const*,
                  const char*);
 
