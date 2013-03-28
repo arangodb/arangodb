@@ -1,4 +1,4 @@
-<% var appInfos = attributes.app.split(":"); %>
+<%var appInfos = attributes.app.split(":"); %>
 <div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -10,7 +10,7 @@
         <th class="collectionTh">Name:</th>
         <th class="collectionTh"><%=appInfos[1] %></th>
       </tr>
-      <tr id="collectionSizeBox" style="display:none">
+      <tr id="collectionSizeBox">
         <th class="collectionTh">Mount-Point:</th>
         <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>" disabled/></th>
         <th><a class="modalTooltips" title="The path where the App can be reached."><i class="icon-info-sign"></i></a></th>
@@ -46,6 +46,5 @@
     <%} else {%>
       <button id="activate" class="btn btn-success pull-right" style="margin-right:8px">Activate</button>
     <%}%>
-    
   </div>
 </div>

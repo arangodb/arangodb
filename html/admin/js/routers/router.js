@@ -184,21 +184,17 @@ $(document).ready(function() {
     
     applicationEdit: function(appkey) {
       if (this.foxxList === undefined) {
+        var self = this;
         this.foxxList = new window.FoxxCollection();
         this.foxxList.fetch({
           success: function() {
-            console.log(this.foxxList.findWhere({_key: appkey}));
-            /*var editAppView = new window.ApplicationEditView();
-            window.applicationEditView.options.colId = colid;
-            window.collectionView.render();*/
+            var editAppView = new window.foxxEditView({model: self.foxxList.findWhere({_key: appkey})});
+            editAppView.render();
           }
         });
       } else {
-        window.meierei = this.foxxList;
-        console.log(this.foxxList.findWhere({_key: appkey}));
-        /*var editAppView = new window.ApplicationEditView{}
-        window.applicationEditView.options.colId = colid;
-        window.collectionView.render();*/
+        var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
+        editAppView.render();
       }
       
     },
