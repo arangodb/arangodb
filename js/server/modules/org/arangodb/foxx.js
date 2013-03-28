@@ -504,6 +504,9 @@ _.extend(RequestContext.prototype, {
 
   nickname: function (nickname) {
     'use strict';
+    if (!nickname.match(/^[a-z]+$/)) {
+      throw "Nickname may only contain [a-z]";
+    }
     this.route.docs.nickname = nickname;
     return this;
   },

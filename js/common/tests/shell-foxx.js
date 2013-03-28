@@ -304,7 +304,21 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.notes, "c");
     },
 
-    testDefineSummaryRestrictedTo60Characters: function () {
+    testNicknameFormat: function () {
+      var error;
+
+      try {
+        app.get('/foxx', function () {
+          //nothing
+        }).nickname("a b");
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, "Nickname may only contain [a-z]");
+    },
+
+    testSummaryRestrictedTo60Characters: function () {
       var error;
 
       try {
