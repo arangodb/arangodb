@@ -96,7 +96,7 @@ static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* document,
       datafile = document->base.base._compactors._buffer[i];
 
       // try to reserve space
-      res = TRI_ReserveElementDatafile(datafile, size, result);
+      res = TRI_ReserveElementDatafile(datafile, size, result, document->base.base._info._maximalSize);
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {

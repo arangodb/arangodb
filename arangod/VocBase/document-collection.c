@@ -601,7 +601,7 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       datafile = base->_journals._buffer[i];
 
       // try to reserve space
-      res = TRI_ReserveElementDatafile(datafile, size, result);
+      res = TRI_ReserveElementDatafile(datafile, size, result, document->base.base._info._maximalSize);
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
@@ -612,6 +612,8 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
         // some other error
         TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+    
+        LOG_ERROR("cannot select datafile: '%s'", TRI_last_error());
 
         return NULL;
       }
