@@ -1136,18 +1136,29 @@
     var pad = '...';
     var descriptions, matrix, col, what, j, value;
 
+    if (columns === undefined) {
+      what = list[0];
+    }
+    else if (Array.isArray(columns)) {
+      what = { };
+      columns.forEach(function (col) {
+        what[col] = null;
+      });
+    }
+    else {
+      what = columns;
+    } 
+    j = 0;
     descriptions = [ ];
     matrix = [ [ ] ];
-    what = (columns === undefined ? list[0] : columns);
-    j = 0;
 
-    for (col in what) { 
+    for (col in what) {
       if (what.hasOwnProperty(col)) {
         var fixedLength = null;
         if (columns && columns.hasOwnProperty(col) && columns[col] > 0) {
           fixedLength = columns[col] >= pad.length ? columns[col] : pad.length;
         }
-        descriptions.push({ id: col, name: col, fixedLength: fixedLength, length: fixedLength || 0 });
+        descriptions.push({ id: col, name: col, fixedLength: fixedLength, length: fixedLength || col.length });
         matrix[0][j++] = col;
       }
     }
