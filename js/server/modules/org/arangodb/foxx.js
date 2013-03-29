@@ -505,7 +505,7 @@ _.extend(RequestContext.prototype, {
   nickname: function (nickname) {
     'use strict';
     if (!nickname.match(/^[a-z]+$/)) {
-      throw "Nickname may only contain [a-z]";
+      throw "Nickname may only contain [a-z], not '" + nickname + "'";
     }
     this.route.docs.nickname = nickname;
     return this;
@@ -825,10 +825,6 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// We finish off with exporting FoxxApplication and the middlewares.
 /// Everything else will remain our secret.
 
-exports.installApp = foxxManager.installApp;
-exports.installDevApp = foxxManager.installDevApp;
-exports.uninstallApp = foxxManager.uninstallApp;
-exports.scappAppDirectory = foxxManager.scanAppDirectory;
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;

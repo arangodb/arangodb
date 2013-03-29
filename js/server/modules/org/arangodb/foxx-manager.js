@@ -45,6 +45,14 @@ var arangodb = require("org/arangodb");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the aal collection
+////////////////////////////////////////////////////////////////////////////////
+
+function getStorage () {
+  return arangodb.db._collection('_aal');
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief builds one assets of an app
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,7 +66,7 @@ function buildAssetContent (app, assets) {
 
   var reSub = /(.*)\/\*\*$/;
   var reAll = /(.*)\/\*$/;
-  var rootDir = app._path;
+  var rootDir = fs.join(app._root, app._path);
 
   files = [];
 
@@ -225,7 +233,7 @@ function teardownApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function upsertAalAppEntry (manifest, path) {
-  var aal = arangodb.db._collection("_aal");
+  var aal = getStorage();
   var doc = aal.firstExample({ name: manifest.name, version: manifest.version });
 
   if (doc === null) {
@@ -249,15 +257,14 @@ function upsertAalAppEntry (manifest, path) {
 /// @brief installs an app for aal
 ////////////////////////////////////////////////////////////////////////////////
 
-function installAalApp (app, mount, options, development) {
+function installAalApp (app, mount, prefix, development) {
   'use strict';
 
   var aal;
   var desc;
   var find;
-  var prefix;
 
-  aal = arangodb.db._collection("_aal");
+  aal = getStorage();
 
   // .............................................................................
   // check that the mount path is free
@@ -271,10 +278,8 @@ function installAalApp (app, mount, options, development) {
   }
 
   // .............................................................................
-  // sets up the app
+  // check the prefix
   // .............................................................................
-
-  prefix = options && options.collectionPrefix;
 
   if (prefix === undefined) {
     prefix = mount.substr(1).replace(/\//g, "_");
@@ -310,7 +315,6 @@ function routingAalApp (app, mount, prefix) {
     var i;
     var context;
     var routes;
-    var prefix;
 
     if (mount === "") {
       mount = "/";
@@ -437,25 +441,28 @@ exports.scanAppDirectory = function () {
   var i;
   var j;
 
-  var appPath = internal.APP_PATH;
-  var aal = arangodb.db._collection("_aal");
+  var path = internal.appPath;
+  var aal = getStorage();
 
-  for (i = 0;  i < appPath.length;  ++i) {
-    var path = appPath[i];
-    var files = fs.list(path);
+  aal.removeByExample({ type: "app" });
 
-    for (j = 0;  j < files.length;  ++j) {
-      var m = fs.join(path, files[j], "manifest.json");
+  if (typeof path === "undefined") {
+    return;
+  }
 
-      if (fs.exists(m)) {
-        try {
-          var mf = JSON.parse(fs.read(m));
+  var files = fs.list(path);
 
-          upsertAalAppEntry(mf, fs.join(path, files[j]));
-        }
-        catch (err) {
-          console.error("cannot read app manifest '%s': %s", m, String(err));
-        }
+  for (j = 0;  j < files.length;  ++j) {
+    var m = fs.join(path, files[j], "manifest.json");
+
+    if (fs.exists(m)) {
+      try {
+        var mf = JSON.parse(fs.read(m));
+
+        upsertAalAppEntry(mf, files[j]);
+      }
+      catch (err) {
+        console.error("cannot read app manifest '%s': %s", m, String(err));
       }
     }
   }
@@ -465,7 +472,7 @@ exports.scanAppDirectory = function () {
 /// @brief installs a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.installApp = function (name, mount, options) {
+exports.installApp = function (appId, mount, options) {
   'use strict';
 
   var aal;
@@ -476,29 +483,28 @@ exports.installApp = function (name, mount, options) {
   var routes;
   var version;
 
-  aal = arangodb.db._collection("_aal");
+  aal = getStorage();
 
   // .............................................................................
   // locate the application
   // .............................................................................
 
-  version = (options && options.version) || "latest";
-  app = module.createApp("app:" + name + ":" + version);
+  if (appId.substr(0,4) !== "app:") {
+    appId = "app:" + appId + ":latest";
+  }
+
+  app = module.createApp(appId);
 
   if (app === null) {
-    if (version === undefined) {
-      throw "cannot find application '" + name + "'";
-    }
-    else {
-      throw "cannot find application '" + name + "' in version '" + version + "'";
-    }
+    throw "cannot find application '" + appId + "'";
   }
 
   // .............................................................................
   // compute the routing information
   // .............................................................................
 
-  routes = routingAalApp(app, mount, options && options.collectionPrefix);
+  prefix = options && options.collectionPrefix;
+  routes = routingAalApp(app, mount, prefix);
 
   if (routes === null) {
     throw "cannot compute the routing table for fox application '" 
@@ -510,7 +516,7 @@ exports.installApp = function (name, mount, options) {
   // .............................................................................
 
   try {
-    doc = installAalApp(app, mount, options, false);
+    doc = installAalApp(app, mount, prefix, false);
 
     // and save the routings
     routes.foxxMount = doc._key;
@@ -535,7 +541,69 @@ exports.installApp = function (name, mount, options) {
 
   internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
 
-  return aal.document(doc);
+  return { appId: app._id, mountId: doc._key };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installs a FOXX application in development
+////////////////////////////////////////////////////////////////////////////////
+
+exports.installDevApp = function (name, mount, options) {
+  'use strict';
+
+  var aal;
+  var app;
+  var desc;
+  var doc;
+  var prefix;
+  var i;
+
+  aal = getStorage();
+
+  // .............................................................................
+  // locate the application
+  // .............................................................................
+
+  var path = internal.devAppPath;
+
+  if (typeof path === "undefined") {
+    throw "dev-app-path is not set, cannot instal development app '" + name + "'";
+  }
+
+  var appId = null;
+  var filename = fs.join(path, name, "manifest.json");
+
+  if (fs.exists(filename)) {
+    appId = "dev:" + name + ":" + name;
+  }
+
+  app = appId !== null && module.createApp(appId);
+
+  if (app === null) {
+    throw "cannot find development application '" + name + "'";
+  }
+
+  // .............................................................................
+  // install the application
+  // .............................................................................
+
+  try {
+    prefix = options && options.collectionPrefix;
+    doc = installAalApp(app, mount, prefix, true);
+  }
+  catch (err) {
+    if (doc !== undefined) {
+      aal.remove(doc._key);
+    }
+
+    throw err;
+  }
+
+  desc = aal.document(doc).shallowCopy;
+  desc.active = true;
+  doc = aal.replace(doc, desc);
+
+  return { appId: app._id, mountId: doc._key };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,16 +620,20 @@ exports.uninstallApp = function (key) {
   var doc;
   var routing;
 
-  aal = arangodb.db._collection("_aal");
-  doc = aal.document(key);
+  aal = getStorage();
+  doc = aal.firstExample({ type: "mount", _key: key });
 
-  if (doc.type !== "mount") {
-    throw "key '" + key + "' does not belong to a mount point";
+  if (doc === null) {
+    doc = aal.firstExample({ type: "mount", mount: key });
   }
 
-  try {
-    var appId = doc.app;
+  if (doc === null) {
+    throw "key '" + key + "' is neither a mount id nor a mount point";
+  }
 
+  var appId = doc.app;
+
+  try {
     if (appId.substr(0,4) === "app:") {
       appDoc = aal.firstExample({ app: appId, type: "app" });
 
@@ -583,70 +655,6 @@ exports.uninstallApp = function (key) {
   aal.remove(doc);
 
   internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
-
-  return true;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a FOXX application in development
-////////////////////////////////////////////////////////////////////////////////
-
-exports.installDevApp = function (name, mount, options) {
-  'use strict';
-
-  var aal;
-  var app;
-  var appPath;
-  var appId;
-  var desc;
-  var doc;
-  var i;
-
-  aal = arangodb.db._collection("_aal");
-
-  // .............................................................................
-  // locate the application
-  // .............................................................................
-
-  appPath = internal.DEV_APP_PATH;
-  appId = null;
-
-  for (i = 0;  i < appPath.length;  ++i) {
-    var path = appPath[i];
-    var filename = fs.join(path, name, "manifest.json");
-
-    if (fs.exists(filename)) {
-      appId = "dev:" + name + ":" + fs.join(path, name);
-      break;
-    }
-  }
-
-  app = appId !== null && module.createApp(appId);
-
-  if (app === null) {
-    throw "cannot find development application '" + name + "'";
-  }
-
-  // .............................................................................
-  // install the application
-  // .............................................................................
-
-  try {
-    doc = installAalApp(app, mount, options, true);
-  }
-  catch (err) {
-    if (doc !== undefined) {
-      aal.remove(doc._key);
-    }
-
-    throw err;
-  }
-
-  desc = aal.document(doc).shallowCopy;
-  desc.active = true;
-  doc = aal.replace(doc, desc);
-
-  return aal.document(doc);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -655,7 +663,7 @@ exports.installDevApp = function (name, mount, options) {
 
 exports.developmentRoutes = function () {
   var routes = [];
-  var aal = arangodb.db._collection("_aal");
+  var aal = getStorage();
   var cursor = aal.byExample({ type: "mount", active: true, development: true });
 
   while (cursor.hasNext()) {
@@ -671,7 +679,7 @@ exports.developmentRoutes = function () {
   }
 
   return routes;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

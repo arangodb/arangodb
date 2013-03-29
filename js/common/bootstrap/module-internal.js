@@ -359,10 +359,8 @@
 /// @brief app path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.APP_PATH = [];
-
   if (typeof APP_PATH !== "undefined") {
-    internal.APP_PATH = APP_PATH;
+    internal.appPath = APP_PATH;
     delete APP_PATH;
   }
 
@@ -370,10 +368,8 @@
 /// @brief dev app path
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.DEV_APP_PATH = [];
-
   if (typeof DEV_APP_PATH !== "undefined") {
-    internal.DEV_APP_PATH = DEV_APP_PATH;
+    internal.devAppPath = DEV_APP_PATH;
     delete DEV_APP_PATH;
   }
 
@@ -1091,6 +1087,143 @@
     else {
       mc.replace(m, { path: path, content: content });
     }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief string padding
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.stringPadding = function (str, len, pad, dir) {
+    if (typeof(len) === "undefined") { len = 0; }
+    if (typeof(pad) === "undefined") { pad = ' '; }
+    if (typeof(dir) === "undefined") { dir = 'r'; }
+ 
+    if (len + 1 >= str.length) {
+      switch (dir){
+
+        // LEFT
+        case 'l':
+	  str = new Array(len + 1 - str.length).join(pad) + str;
+	  break;
+ 
+        // BOTH
+        case 'b':
+          var padlen = len - str.length;
+	  var right = Math.ceil(padlen / 2);
+	  var left = padlen - right;
+	  str = new Array(left+1).join(pad) + str + new Array(right+1).join(pad);
+	  break;
+ 
+        default:
+	   str = str + new Array(len + 1 - str.length).join(pad);
+	   break;
+      }
+    }
+ 
+    return str;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2d ASCII table printing
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.printTable = function  (list, columns, framed) {
+    if (! Array.isArray(list) || list.length === 0) {
+      // not an array or empty
+      return;
+    }
+
+    var pad = '...';
+    var descriptions, matrix, col, what, j, value;
+
+    if (columns === undefined) {
+      what = list[0];
+    }
+    else if (Array.isArray(columns)) {
+      what = { };
+      columns.forEach(function (col) {
+        what[col] = null;
+      });
+    }
+    else {
+      what = columns;
+    } 
+    j = 0;
+    descriptions = [ ];
+    matrix = [ [ ] ];
+
+    for (col in what) {
+      if (what.hasOwnProperty(col)) {
+        var fixedLength = null;
+        if (columns && columns.hasOwnProperty(col) && columns[col] > 0) {
+          fixedLength = columns[col] >= pad.length ? columns[col] : pad.length;
+        }
+        descriptions.push({ id: col, name: col, fixedLength: fixedLength, length: fixedLength || col.length });
+        matrix[0][j++] = col;
+      }
+    }
+
+    // determine values & max widths
+    list.forEach(function (row, i) {
+      matrix[i + 1] = [ ];
+      descriptions.forEach(function (col) {
+        if (row.hasOwnProperty(col.id)) {
+          var value = JSON.stringify(row[col.id]);
+          matrix[i + 1].push(value);
+          if (value.length > col.length && ! col.fixedLength) {
+            col.length = Math.min(value.length, 100);
+          }
+        }
+        else {
+          // undefined
+          matrix[i + 1].push('');
+        }
+      });
+    });
+    
+    var divider = function () {
+      var parts = [ ];
+      descriptions.forEach(function (desc) {
+        parts.push(internal.stringPadding('', desc.length, '-', 'r'));
+      });
+      if (framed) {
+        return '+-' + parts.join('-+-') + '-+\n';
+      }
+      return parts.join('   ') + '\n';
+    };
+
+    var compose = function () {
+      var result = '';
+
+      if (framed) {
+        result += divider();
+      }
+      matrix.forEach(function (row, i) {
+        var parts = [ ];
+        row.forEach(function (col, j) {
+          var len = descriptions[j].length, value = row[j];
+          if (value.length > len) {
+            value = value.substr(0, len - pad.length) + pad;
+          }
+          parts.push(internal.stringPadding(value, len, ' ', 'r'));
+        });
+        if (framed) {
+          result += '| ' + parts.join(' | ') + ' |\n';
+        }
+        else {
+          result += parts.join('   ') + '\n';
+        }
+
+        if (i === 0) {
+          result += divider();
+        }
+      });
+      result += divider();
+      result += list.length + ' document(s)\n';
+      return result;
+    };
+
+    internal.print(compose());
   };
 
 ////////////////////////////////////////////////////////////////////////////////

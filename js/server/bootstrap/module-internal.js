@@ -131,7 +131,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.resetEngine = function () {
-    internal.output("warning: routing engine resetted\n");
+    internal.flushModuleCache();
     require("org/arangodb/actions").reloadRouting();
   };
 

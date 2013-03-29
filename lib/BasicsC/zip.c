@@ -28,6 +28,7 @@
 #include "zip.h"
 
 #include "BasicsC/files.h"
+#include "BasicsC/strings.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 
@@ -69,27 +70,26 @@ static int ExtractCurrentFile (unzFile uf,
 
   p = filenameWithoutPath = filenameInZip;
 
+  // get the file name without any path prefix
   while (*p != '\0') {
-    // get the file name without any path prefix
-
     if (*p == '/' || *p == '\\') {
       filenameWithoutPath = p + 1;
     }
+
     p++;
   }
   
+  // found a directory
   if (*filenameWithoutPath == '\0') {
-    // found a directory
     if (! skipPaths) {
       fullPath = TRI_Concatenate2File(outPath, filenameInZip);
-
       TRI_CreateRecursiveDirectory(fullPath);
-
       TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
     }
   }
+
+  // found a file
   else {
-    // found a file
     const char* writeFilename;
 
     if (! skipPaths) {
@@ -103,23 +103,27 @@ static int ExtractCurrentFile (unzFile uf,
       return TRI_ERROR_INTERNAL;
     }
 
-    if (! overwrite && TRI_ExistsFile(writeFilename)) {
-      return TRI_ERROR_INTERNAL;
-    }
-
     // prefix the name from the zip file with the path specified
     fullPath = TRI_Concatenate2File(outPath, writeFilename);
     
+    if (! overwrite && TRI_ExistsFile(fullPath)) {
+      return TRI_ERROR_INTERNAL;
+    }
+
     // try to write the outfile
     fout = fopen(fullPath, "wb");
 
+    // cannot write to outfile. this may be due to the target directory missing
     if (fout == NULL && ! skipPaths && filenameWithoutPath != (char*) filenameInZip) {
-      // cannot write to outfile. this may be due to the target directory missing
+      char* d;
+
       char c = *(filenameWithoutPath - 1);
       *(filenameWithoutPath - 1) = '\0';
 
       // create target directory recursively
-      TRI_CreateRecursiveDirectory(fullPath);
+      d = TRI_Concatenate2File(outPath, filenameInZip);
+      TRI_CreateRecursiveDirectory(d);
+      TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       *(filenameWithoutPath - 1) = c;
 
@@ -218,6 +222,7 @@ static int UnzipFile (unzFile uf,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ZipFile (const char* filename, 
+                 const char* dir,
                  TRI_vector_string_t const* files,
                  const char* password) {
   void* buffer;
@@ -259,15 +264,24 @@ int TRI_ZipFile (const char* filename,
   for (i = 0; i < n; ++i) {
     FILE* fin;
     char* file;
+    char* fullfile;
     char* saveName;
     zip_fileinfo zi;
     uint32_t crc;
     int isLarge;
 
     file = TRI_AtVectorString(files, i);
+
+    if (*dir == '\0') {
+      fullfile = TRI_DuplicateString(file);
+    }
+    else {
+      fullfile = TRI_Concatenate2File(dir, file);
+    }
+
     memset(&zi, 0, sizeof(zi));
 
-    res = TRI_Crc32File(file, &crc);
+    res = TRI_Crc32File(fullfile, &crc);
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
@@ -276,6 +290,7 @@ int TRI_ZipFile (const char* filename,
     isLarge = (TRI_SizeFile(file) > 0xFFFFFFFFLL);
               
     saveName = file;
+
     while (*saveName == '\\' || *saveName == '/') {
       ++saveName;
     }
@@ -299,7 +314,8 @@ int TRI_ZipFile (const char* filename,
                                 isLarge) != ZIP_OK) {
     }
 
-    fin = fopen(file, "rb");
+    fin = fopen(fullfile, "rb");
+    TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
 
     if (fin == NULL) {
       break;
