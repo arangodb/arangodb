@@ -340,7 +340,7 @@ function routingAalApp (app, mount, prefix) {
         "do" : "org/arangodb/actions/redirectRequest",
         "options" : {
           "permanently" : true,
-          "destination" : "index.html"
+          "destination" : mount + "/" + "index.html"
         }
       }
     });
