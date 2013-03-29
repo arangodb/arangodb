@@ -106,7 +106,8 @@
   },
 
   "files": {
-    "/img" : "../../html/admin/img"
+    "/img" : "../../html/admin/img",
+    "/js/templates" : "../../html/admin/js/templates"
   },
   
   "models": "models"
