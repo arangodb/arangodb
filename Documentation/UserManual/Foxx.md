@@ -191,6 +191,7 @@ In the `manifest.json` you define the components of your application: The conten
 * `models`: Base path for the models you want to require
 * `files`: Deliver files
 * `assets`: Deliver pre-processed files
+* `system`: Mark an application as a system application
 * `setup`: Path to a setup script
 * `teardown`: Path to a teardown script
 
