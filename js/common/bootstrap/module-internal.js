@@ -1127,7 +1127,7 @@
 /// @brief 2d ASCII table printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printTable = function  (list, columns) {
+  internal.printTable = function  (list, columns, framed) {
     if (! Array.isArray(list) || list.length === 0) {
       // not an array or empty
       return;
@@ -1186,11 +1186,18 @@
       descriptions.forEach(function (desc) {
         parts.push(internal.stringPadding('', desc.length, '-', 'r'));
       });
+      if (framed) {
+        return '+-' + parts.join('-+-') + '-+\n';
+      }
       return parts.join('   ') + '\n';
     };
 
     var compose = function () {
       var result = '';
+
+      if (framed) {
+        result += divider();
+      }
       matrix.forEach(function (row, i) {
         var parts = [ ];
         row.forEach(function (col, j) {
@@ -1200,7 +1207,12 @@
           }
           parts.push(internal.stringPadding(value, len, ' ', 'r'));
         });
-        result += parts.join('   ') + '\n';
+        if (framed) {
+          result += '| ' + parts.join(' | ') + ' |\n';
+        }
+        else {
+          result += parts.join('   ') + '\n';
+        }
 
         if (i === 0) {
           result += divider();
