@@ -632,6 +632,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   printRecursive = function (value, seen, path, names, level) {
+    'use strict';
+
     var output = internal.output;
     var p;
 
@@ -662,11 +664,25 @@
           printObject(value, seen, path, names, level);
         }
         else if (typeof value.toString === "function") {
+
           // it's possible that toString() throws, and this looks quite ugly
           try {
-            output(value.toString());
+            var s = value.toString();
+
+            if (0 < level) {
+              var a = s.split("\n");
+              var f = a[0];
+
+              f = f.substr(8, f.length - 10).trim();
+
+              output('[Function "' + f + '"]');
+            }
+            else {
+              output(s);
+            }
           }
           catch (e) {
+            output("[Function]");
           }
         }
         else {
