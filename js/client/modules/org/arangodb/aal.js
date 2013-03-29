@@ -366,7 +366,7 @@ exports.load = function (type, location, version) {
   res = arango.POST("/_admin/foxx/load", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return { path: res };
+  return { path: res.path };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
