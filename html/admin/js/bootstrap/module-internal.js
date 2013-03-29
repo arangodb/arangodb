@@ -1124,6 +1124,86 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 2d ASCII table printing
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.printTable = function  (list, columns) {
+    if (! Array.isArray(list) || list.length === 0) {
+      // not an array or empty
+      return;
+    }
+
+    var pad = '...';
+    var descriptions, matrix, col, what, j, value;
+
+    descriptions = [ ];
+    matrix = [ [ ] ];
+    what = (columns === undefined ? list[0] : columns);
+    j = 0;
+
+    for (col in what) { 
+      if (what.hasOwnProperty(col)) {
+        var fixedLength = null;
+        if (columns && columns.hasOwnProperty(col) && columns[col] > 0) {
+          fixedLength = columns[col] >= pad.length ? columns[col] : pad.length;
+        }
+        descriptions.push({ id: col, name: col, fixedLength: fixedLength, length: fixedLength || 0 });
+        matrix[0][j++] = col;
+      }
+    }
+
+    // determine values & max widths
+    list.forEach(function (row, i) {
+      matrix[i + 1] = [ ];
+      descriptions.forEach(function (col) {
+        if (row.hasOwnProperty(col.id)) {
+          var value = JSON.stringify(row[col.id]);
+          matrix[i + 1].push(value);
+          if (value.length > col.length && ! col.fixedLength) {
+            col.length = Math.min(value.length, 100);
+          }
+        }
+        else {
+          // undefined
+          matrix[i + 1].push('');
+        }
+      });
+    });
+    
+    var divider = function () {
+      var parts = [ ];
+      descriptions.forEach(function (desc) {
+        parts.push(internal.stringPadding('', desc.length, '-', 'r'));
+      });
+      return parts.join('   ') + '\n';
+    };
+
+    var compose = function () {
+      var result = '';
+      matrix.forEach(function (row, i) {
+        var parts = [ ];
+        row.forEach(function (col, j) {
+          var len = descriptions[j].length, value = row[j];
+          if (value.length > len) {
+            value = value.substr(0, len - pad.length) + pad;
+          }
+          parts.push(internal.stringPadding(value, len, ' ', 'r'));
+        });
+        result += parts.join('   ') + '\n';
+
+        if (i === 0) {
+          result += divider();
+        }
+      });
+      result += divider();
+      result += list.length + ' document(s)\n';
+      return result;
+    };
+
+    internal.print(compose());
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
