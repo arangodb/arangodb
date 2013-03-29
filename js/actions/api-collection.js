@@ -155,6 +155,8 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-create-collection
+///
+/// @verbinclude api-collection-create-keyopt
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {

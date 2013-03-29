@@ -248,11 +248,12 @@ function stop_color_print () {
 /// @brief app constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ArangoApp (id, name, version, manifest, path) {
+  function ArangoApp (id, name, version, manifest, root, path) {
     this._id = id;
     this._name = name;
     this._version = version;
     this._manifest = manifest;
+    this._root = root;
     this._path = path;
   }
 
@@ -669,8 +670,9 @@ function stop_color_print () {
     'use strict';
 
     var aal;
+
     var doc = null;
-    var re = /app:([^:]*):([^:]*)/;
+    var re = /^app:([0-9a-zA-Z_\-\.]+):([0-9a-zA-Z_\-\.]+|lastest)$/;
     var m = re.exec(appId);
 
     if (m === null) {
@@ -698,6 +700,7 @@ function stop_color_print () {
 
     return {
       appId: doc.app,
+      root: internal.appPath,
       path: doc.path
     };
   }
@@ -716,7 +719,11 @@ function stop_color_print () {
       throw "illegal app identifier '" + appId + "'";
     }
 
-    return m[2];
+    return {
+      appId: appId,
+      root: internal.devAppPath,
+      path: m[2]
+    };
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -726,35 +733,42 @@ function stop_color_print () {
   internal.appDescription = function (appId) {
     'use strict';
 
-    var path;
     var file;
     var manifest;
+    var mp;
 
     if (appId.substr(0,4) === "app:") {
-      var a = appManifestAal(appId);
+      if (typeof internal.appPath === "undefined") {
+        console.error("ignore app '%s', because no app-path is specified", appId);
+        return;
+      }
 
-      if (a != null) {
-        path = a.path;
-        appId = a.appId;
-      }
-      else {
-        path = null;
-      }
+      mp = appManifestAal(appId);
     }
     else if (appId.substr(0,4) === "dev:") {
-      path = appManifestDev(appId);
+      if (! internal.developmentMode) {
+        console.error("ignoring development app '%s'", appId);
+        return null;
+      }
+
+      if (typeof internal.devAppPath === "undefined") {
+        console.error("ignore development app '%s', because no dev-app-path is specified", appId);
+        return;
+      }
+
+      mp = appManifestDev(appId);
     }
     else {
       console.error("cannot load application '%s', unknown type", appId);
       return null;
     }
 
-    if (path === null) {
+    if (mp === null) {
       console.error("unknown application '%s'", appId);
       return null;
     }
 
-    file = fs.join(path, "/manifest.json");
+    file = fs.join(mp.root, mp.path, "manifest.json");
     
     if (! internal.exists(file)) {
       console.error("manifest file is missing '%s'", file);
@@ -762,8 +776,7 @@ function stop_color_print () {
     }
 
     try {
-      var content = internal.read(file);
-      manifest = JSON.parse(content);
+      manifest = JSON.parse(internal.read(file));
     }
     catch (err) {
       console.error("cannot load manifest file '%s': %s - %s",
@@ -783,9 +796,14 @@ function stop_color_print () {
       return null;
     }
         
+    if (appId.substr(0,4) === "dev:") {
+      appId = "dev:" + manifest.name + ":" + mp.path;
+    }
+
     return {
-      id: appId,
-      path: path,
+      id: mp.appId,
+      root: mp.root,
+      path: mp.path,
       manifest: manifest
     };
   };
@@ -892,6 +910,7 @@ function stop_color_print () {
       description.manifest.name,
       description.manifest.version,
       description.manifest,
+      description.root,
       description.path
     );
   };
@@ -1205,10 +1224,10 @@ function stop_color_print () {
     }
 
     if (this._manifest.hasOwnProperty(type)) {
-      libpath = this._path + "/" + this._manifest[type];
+      libpath = fs.join(this._root, this._path, this._manifest[type]);
     }
     else {
-      libpath = this._path;
+      libpath = fs.join(this._root, this._path);
     }
 
     pkg = new Package("application",
@@ -1227,14 +1246,11 @@ function stop_color_print () {
     var sandbox = {};
     var fileContent;
     var content;
-    var appPath;
     var full;
     var key;
 
-    appPath = this._path;
-
     try {
-      full = appPath + "/" + file;
+      full = fs.join(this._root, this._path, file);
       fileContent = internal.read(full);
     }
     catch (err1) {

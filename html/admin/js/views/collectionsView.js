@@ -37,7 +37,10 @@ var collectionsView = Backbone.View.extend({
     "click #checkLoaded"    : "checkLoaded",
     "click #checkUnloaded"  : "checkUnloaded",
     "click #checkDocument"  : "checkDocument",
-    "click #checkEdge"      : "checkEdge"
+    "click #checkEdge"      : "checkEdge",
+    "click #sortName"       : "sortName",
+    "click #sortType"       : "sortType",
+    "click #sortOrder"      : "sortOrder"
   },
 
   checkSystem: function () {
@@ -90,6 +93,36 @@ var collectionsView = Backbone.View.extend({
       this.render();
     }
   },
+  sortName: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.sortBy;
+
+    searchOptions.sortBy = (($('#sortName').is(":checked") === true) ? 'name' : 'type');
+
+    if (oldValue != searchOptions.sortBy) {
+      this.render();
+    }
+  },
+  sortType: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.sortBy;
+
+    searchOptions.sortBy = (($('#sortType').is(":checked") === true) ? 'type' : 'name');
+
+    if (oldValue != searchOptions.sortBy) {
+      this.render();
+    }
+  },
+  sortOrder: function () {
+    var searchOptions = this.collection.searchOptions;
+    var oldValue = searchOptions.sortOrder;
+
+    searchOptions.sortOrder = (($('#sortOrder').is(":checked") === true) ? -1 : 1);
+
+    if (oldValue != searchOptions.sortOrder) {
+      this.render();
+    }
+  },
 
   setFilterValues: function () {
     var searchOptions = this.collection.searchOptions;
@@ -98,11 +131,14 @@ var collectionsView = Backbone.View.extend({
     $('#checkSystem').attr('checked', searchOptions.includeSystem);
     $('#checkEdge').attr('checked', searchOptions.includeEdge);
     $('#checkDocument').attr('checked', searchOptions.includeDocument);
+    $('#sortName').attr('checked', searchOptions.sortBy !== 'type');
+    $('#sortType').attr('checked', searchOptions.sortBy === 'type');
+    $('#sortOrder').attr('checked', searchOptions.sortOrder !== 1);
   },
 
   search: function () {
     var searchOptions = this.collection.searchOptions;
-    var searchPhrase = $('#searchInput').val().replace(/(^\s+|\s+$)/g, '');
+    var searchPhrase = $('#searchInput').val();
 
     if (searchPhrase === searchOptions.searchPhrase) {
       return;

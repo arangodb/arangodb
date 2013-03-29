@@ -161,6 +161,7 @@ var arango = require("org/arangodb").arango;
       }
     } 
     catch (err2) {
+      require("console").warn("arangosh.rc: %s", String(err2));
     }
   }
 
