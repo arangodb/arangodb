@@ -403,6 +403,21 @@
         expect($("svg .node text")[0].textContent).toEqual("0");
       });
 
+      it('should be able to switch to another label during runtime', function() {
+        var node = [{
+          _id: 1,
+          label: "before",
+          switched: "after"
+        }];
+        shaper.drawNodes(node);
+        expect($("svg .node text")[0].textContent).toEqual("before");
+        shaper.changeTo({label: "switched"});
+        expect($("svg .node text")[0]).toBeDefined();
+        expect($("svg .node text").length).toEqual(1);
+        expect($("svg .node text")[0].textContent).toEqual("after");
+        
+      });
+
     });
 
     describe('using a function for labels', function () {
