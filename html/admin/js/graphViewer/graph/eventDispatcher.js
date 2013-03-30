@@ -82,7 +82,11 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     }
     switch (object) {
       case "nodes":
-        nodeShaper.on(event, func);
+      var actions = {};
+      actions[event] = func;
+        nodeShaper.changeTo({
+          actions: actions
+        });
         nodeShaper.drawNodes();
         break;
       case "edges":

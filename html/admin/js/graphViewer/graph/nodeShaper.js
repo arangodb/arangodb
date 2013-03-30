@@ -68,9 +68,11 @@ function NodeShaper(parent, flags, idfunc) {
     },
     events = {
       click: noop,
+      dblclick: noop,
       drag: noop,
       mousedown: noop,
-      mouseup: noop
+      mouseup: noop,
+      mousemove: noop
     },
     idFunction = function(d) {
       return d._id;
