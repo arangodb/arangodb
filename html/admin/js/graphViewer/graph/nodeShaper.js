@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
-/*global alert*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -73,10 +72,10 @@ function NodeShaper(parent, flags, idfunc) {
       mousedown: noop,
       mouseup: noop
     },
-    userDefinedUpdate = function(){},
     idFunction = function(d) {
       return d._id;
     },
+    addUpdate = noop,
     addShape = noop,
     reloadShape = noop,
     addLabel = noop,
@@ -87,7 +86,7 @@ function NodeShaper(parent, flags, idfunc) {
         if (type === "drag") {
           nodes.call(func);
         } else if (type === "update") {
-          alert("buhu");
+          addUpdate = func;
         } else {
           nodes.on(type, func);
         }
@@ -136,7 +135,7 @@ function NodeShaper(parent, flags, idfunc) {
       nodes.attr("transform", function(d) {
         return "translate(" + d.x + "," + d.y + ")"; 
       });
-      userDefinedUpdate(nodes);
+      addUpdate(nodes);
     },
     
     parseShapeFlag = function (shape) {
