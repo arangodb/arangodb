@@ -1,6 +1,6 @@
 module.define("org/arangodb-common", function(exports, module) {
-/*jslint indent: 2, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*jslint indent: 2, maxlen: 100, nomen: true, vars: true, white: true, plusplus: true */
+/*global require, module, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -225,6 +225,8 @@ exports.normalizeURL = function (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.output = function () {
+  'use strict';
+
   internal.output.apply(internal.output, arguments);
 };
 
