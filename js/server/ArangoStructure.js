@@ -80,7 +80,7 @@
 /// @brief prints a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoStructure.prototype._PRINT = function () {
+  ArangoStructure.prototype._PRINT = function (context) {
     var status = "unknown";
     var type = "unknown";
 
@@ -98,9 +98,9 @@
       case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
     }
 
-    internal.output("[ArangoStructure ", this._id, ", \"", this.name(), 
-                    "\" (type ", type, ", status ", status, "lang ", 
-                    this._language, ")]");
+    context.output += "[ArangoStructure " + this._id + ", \"", this.name() 
+                    + "\" (type " + type + ", status " + status +"lang "
+                    + this._language + ")]";
   };
 
 ////////////////////////////////////////////////////////////////////////////////

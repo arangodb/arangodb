@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*jslint indent: 2, maxlen: 100, nomen: true, vars: true, white: true, plusplus: true */
+/*global require, module, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -29,11 +29,45 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+
+var fs = require("fs");
+
 var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 module "arangodb"
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public constants
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief errors
+////////////////////////////////////////////////////////////////////////////////
+
+(function () {
+  'use strict';
+
+  var name;
+
+  for (name in internal.errors) {
+    if (internal.errors.hasOwnProperty(name)) {
+      exports[name] = internal.errors[name].code;
+    }
+  }
+}());
+
+exports.errors = internal.errors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -45,10 +79,40 @@ var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief guesses the content type
+/// @brief defines a module
+////////////////////////////////////////////////////////////////////////////////
+
+exports.defineModule = function (path, file) {
+  var content;
+  var m;
+  var mc;
+
+  content = fs.read(file);
+
+  mc = internal.db._collection("_modules");
+
+  if (mc === null) {
+    mc = internal.db._create("_modules", { isSystem: true });
+  }
+
+  path = module.normalize(path);
+  m = mc.firstExample({ path: path });
+
+  if (m === null) {
+    mc.save({ path: path, content: content });
+  }
+  else {
+    mc.replace(m, { path: path, content: content });
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief guessContentType
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.guessContentType = function (filename) {
+  'use strict';
+
   var re = /\.([a-zA-Z0-9]+)$/;
   var match = re.exec(filename);
 
@@ -73,65 +137,151 @@ exports.guessContentType = function (filename) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief normalizeURL
+///
+/// If @FA{path} starts with "." or "..", then it is a relative path.
+/// Otherwise it is an absolute path. Normalizing will remove `//`,
+/// `/./`, `/../` from the url - expect in the beginning, where it keeps
+/// `../` and or at most one `./`.
+///
+/// If @FA{path} is empty, the url `./` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
+exports.normalizeURL = function (path) {
+  'use strict';
+
+  var i;
+  var n;
+  var p;
+  var q;
+  var r;
+  var x;
+
+  if (path === "") {
+    return "./";
+  }
+
+  p = path.split('/');
+
+  // relative path
+  if (p[0] === "." || p[0] === "..") {
+    r = p[0] + "/";
+    p.shift();
+    q = p;
+  }
+
+  // absolute path
+  else if (p[0] === "") {
+    r = "/";
+    p.shift();
+    q = p;
+  }
+
+  // assume that the path is relative
+  else {
+    r = "./";
+    q = p;
+  }
+
+  // normalize path
+  n = [];
+
+  for (i = 0;  i < q.length;  ++i) {
+    x = q[i];
+
+    if (x === "..") {
+      if (n.length === 0) {
+        if (r === "../") {
+          n.push(x);
+        }
+        else if (r === "./") {
+          r = "../";
+        }
+        else {
+          throw "cannot use '..' to escape top-level-directory";
+        }
+      }
+      else if (n[n.length - 1] === "..") {
+        n.push(x);
+      }
+      else {
+        n.pop();
+      }
+    }
+    else if (x !== "" && x !== ".") {
+      n.push(x);
+    }
+  }
+
+  return r + n.join('/');
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "normalizeURL"
-////////////////////////////////////////////////////////////////////////////////
-
-exports.normalizeURL = internal.normalizeURL;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function "output"
+/// @brief output
+///
+/// In order to allow "capture" output to work, we cannot assigne the
+/// function here.
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.output = function () {
+  'use strict';
+
   internal.output.apply(internal.output, arguments);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function "print"
+/// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.print = internal.print;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function "printf"
+/// @brief printf
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printf = internal.printf;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function "printObject"
+/// @brief printObject
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printObject = internal.printObject;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief error codes
+/// @brief stringPadding
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var name;
+exports.stringPadding = function (str, len, pad, dir) {
+  'use strict';
 
-  for (name in internal.errors) {
-    if (internal.errors.hasOwnProperty(name)) {
-      exports[name] = internal.errors[name].code;
+  if (typeof(len) === "undefined") { len = 0; }
+  if (typeof(pad) === "undefined") { pad = ' '; }
+  if (typeof(dir) === "undefined") { dir = 'r'; }
+
+  if (len + 1 >= str.length) {
+    switch (dir){
+
+      // LEFT
+      case 'l':
+        str = new Array(len + 1 - str.length).join(pad) + str;
+        break;
+
+      // BOTH
+      case 'b':
+        var padlen = len - str.length;
+        var right = Math.ceil(padlen / 2);
+        var left = padlen - right;
+        str = new Array(left+1).join(pad) + str + new Array(right+1).join(pad);
+        break;
+
+      default:
+         str = str + new Array(len + 1 - str.length).join(pad);
+         break;
     }
   }
-}());
 
-exports.errors = internal.errors;
+  return str;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
