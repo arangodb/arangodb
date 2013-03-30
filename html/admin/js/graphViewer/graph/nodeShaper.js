@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
+/*global alert*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -33,174 +34,211 @@
 /*
 * flags example format:
 * {
-*   shape: NodeShaper.shapes.CIRCLE,
+*   shape: {
+*     type: NodeShaper.shapes.CIRCLE,
+*     radius: value || function(node)
+*   },
 *   label: "key" || function(node),
-*   radius: value || function(node),
-*   width: value || function(node),
-*   height: value || function(node),
-*   onclick: function(node),
-*   ondrag: function(node),
-*   onupdate: function(nodes)
+*   actions: {
+*     "click": function(node),
+*     "drag": function(node)
+*   },
+*   update: function(node)
 * }
 *
-*
+* {
+*   shape: {
+*     type: NodeShaper.shapes.RECT,
+*     width: value || function(node),
+*     height: value || function(node),
+*   },
+*   label: "key" || function(node),
+*   actions: {
+*     "click": function(node),
+*     "drag": function(node)
+*   },
+*   update: function(node)
+* }
 */
 function NodeShaper(parent, flags, idfunc) {
   "use strict";
   
-  var self = this,
-    radius,
-    width,
-    height,
-    parseShapeFlag,
-    parseLabelFlag,
+  var self = this,  
+    noop = function (node) {
+    
+    },
+    events = {
+      click: noop,
+      drag: noop,
+      mousedown: noop,
+      mouseup: noop
+    },
     userDefinedUpdate = function(){},
     idFunction = function(d) {
       return d._id;
     },
-    additionalShaping = function(node) {
-      return;
+    addShape = noop,
+    reloadShape = noop,
+    addLabel = noop,
+    reloadLabel = noop,
+    
+    addEvents = function (nodes) {
+      _.each(events, function (func, type) {
+        if (type === "drag") {
+          nodes.call(func);
+        } else if (type === "update") {
+          alert("buhu");
+        } else {
+          nodes.on(type, func);
+        }
+        
+      });
     },
-    decorateShape = function (deco) {
-      var tmp = additionalShaping;
-      additionalShaping = function (node) {
-        tmp(node);
-        deco(node);
-      };
+    
+    bindEvent = function (type, func) {
+      if (events[type] === undefined) {
+        throw "Sorry Unknown Event " + type + " cannot be bound.";
+      }
+      events[type] = func;
     },
-    reshaping = function(node) {
-      return;
+    
+    shapeNodes = function (nodes) {
+      if (nodes !== undefined) {
+        var data, handle;
+        data = self.parent
+          .selectAll(".node")
+          .data(nodes, idFunction);
+        handle = data
+          .enter()
+          .append("g")
+          .attr("class", "node") // node is CSS class that might be edited
+          .attr("id", idFunction);
+        addShape(handle);
+        addLabel(handle);
+        addEvents(handle);
+        data.exit().remove();
+        return handle;
+      }
     },
-    decorateReshape = function (deco) {
-      var tmp = reshaping;
-      reshaping = function (node) {
-        tmp(node);
-        deco(node);
-      };
-    },
-    redrawNodes = function () {
-      var node;
-      node = self.parent
+    
+    reshapeNodes = function () {
+      var handle;
+      handle = self.parent
         .selectAll(".node");
       $(".node").empty();
-      additionalShaping(node);
-    };
+      addShape(handle);
+      addLabel(handle);
+      addEvents(handle);
+    },
     
+    updateNodes = function () {
+      var nodes = self.parent.selectAll(".node");
+      nodes.attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")"; 
+      });
+      userDefinedUpdate(nodes);
+    },
     
-  self.parent = parent;
-  
-  if (flags !== undefined) {
     parseShapeFlag = function (shape) {
-      switch (shape) {
+      var radius, width, height;
+      switch (shape.type) {
         case NodeShaper.shapes.CIRCLE:
-          radius = flags.size || 12;
-          decorateShape(function(node) {
+          radius = shape.radius || 12;
+          addShape = function (node) {
             node.append("circle") // Display nodes as circles
               .attr("r", radius); // Set radius
-            });
-          decorateReshape(function(node) {
+          };
+          reloadShape = function (node) {
             node.select("circle") // Just Change the internal circle
               .attr("r", radius); // Set radius
-          });
+          };
           break;
         case NodeShaper.shapes.RECT:
-          width = flags.width || 20;
-          height = flags.height || 10;
-          decorateShape(function(node) {
+          width = shape.width || 20;
+          height = shape.height || 10;
+          addShape = function(node) {
             node.append("rect") // Display nodes as rectangles
               .attr("width", width) // Set width
               .attr("height", height); // Set height
-            });
-            decorateReshape(function(node) {
-              node.select("rect") // Just Change the internal rectangle
-                .attr("width", width) // Set width
-                .attr("height", height); // Set height
-            });
+          };
+          reloadShape = function(node) {
+            node.select("rect") // Just Change the internal rectangle
+              .attr("width", width) // Set width
+              .attr("height", height); // Set height
+          };
           break;
         case undefined:
           break;
         default:
           throw "Sorry given Shape not known!";
       }
-    };
+    },
+    
     parseLabelFlag = function (label) {
-      var labelDeco = additionalShaping;
       if (_.isFunction(label)) {
-        decorateShape(function (node) {
+        addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
-            .text(function(d) { 
-              return label(d);
-            });
-        });
+            .text(label);
+        };
       } else {
-        decorateShape(function (node) {
+        addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
             });
-        });
+        };
+      }
+    },
+    
+    parseActionFlag = function (actions) {
+      _.each(actions, function(func, type) {
+        bindEvent(type, func);
+      });
+    },
+    
+    parseConfig = function(config) {
+      if (config.shape !== undefined) {
+        parseShapeFlag(config.shape);
+      }
+      if (config.label !== undefined) {
+        parseLabelFlag(config.label);
+      }
+      if (config.actions !== undefined) {
+        parseActionFlag(config.actions);
       }
     };
+    
+    
+  self.parent = parent;
   
-    parseShapeFlag(flags.shape);
-    parseLabelFlag(flags.label);
-
-    if (flags.ondrag) {
-      decorateShape(function (node) {
-        node.call(flags.ondrag);
-      });
-    }
+  if (flags !== undefined) {
+    parseConfig(flags);
   } 
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;
   }
   
+  
+  /////////////////////////////////////////////////////////
+  /// Public functions
+  /////////////////////////////////////////////////////////
+  
+  self.changeTo = function(config) {
+    parseConfig(config);
+    reshapeNodes();
+  };
+  
   self.drawNodes = function (nodes) {
-    var data, node;
-    if (nodes !== undefined) {
-      data = self.parent
-        .selectAll(".node")
-        .data(nodes, idFunction);
-      node = data
-        .enter()
-        .append("g")
-        .attr("class", "node") // node is CSS class that might be edited
-        .attr("id",idFunction);
-      additionalShaping(node);
-      data.exit().remove();
-      return node;
-    }
+    return shapeNodes(nodes);
   };
   
   self.updateNodes = function () {
-    var nodes = self.parent.selectAll(".node");
-    nodes.attr("transform", function(d) {
-      return "translate(" + d.x + "," + d.y + ")"; 
-    });
-    userDefinedUpdate(nodes);
+    updateNodes();
   };
   
-  self.reshapeNode = function (node) {
-    var nodes  = d3.selectAll(".node").filter(
-      function(d) {
-        return d._id === node._id;
-      });
-    reshaping(nodes);
-  };
-  
-  self.on = function (identifier, callback) {
-    if (identifier === "update") {
-      userDefinedUpdate = callback;
-    } else {
-      decorateShape(function (node) {
-        node.on(identifier, callback);
-      });
-    }
-    redrawNodes();
-  };
 }
 
 NodeShaper.shapes = Object.freeze({
