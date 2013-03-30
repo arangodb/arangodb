@@ -146,7 +146,7 @@ var arango = require("org/arangodb").arango;
     special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
   }
   catch (err) {
-    special = false;
+    special = true;
   }
   
   if (! special) {  

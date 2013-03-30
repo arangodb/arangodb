@@ -82,7 +82,7 @@
     delete DEVELOPMENT_MODE;
   }
 
-  if (exports.developmentMode && THREAD_NUMBER === 0) {
+  if (exports.developmentMode && exports.threadNumber === 0) {
     SYS_LOG("warning", "################################################################################");
     SYS_LOG("warning", "development mode is active, never use this in production");
     SYS_LOG("warning", "################################################################################");
@@ -1074,10 +1074,12 @@
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.print = printShell;
-
   if (typeof exports.printBrowser === "function") {
+    exports.printShell = printShell;
     exports.print = exports.printBrowser;
+  }
+  else {
+    exports.print = printShell;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
