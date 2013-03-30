@@ -112,7 +112,7 @@ function clear () {
     special = false;
   }
 
-  if (internal.ARANGO_QUIET !== true && ! special) {
+  if (internal.quiet !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
       if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
         internal.print(arangosh.HELP);

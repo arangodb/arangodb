@@ -319,7 +319,7 @@
 // value is the JSLINT function itself. That function is also an object that
 // can contain data and other functions.
 
-var JSLINT = (function () {
+var JSLINT = exports.JSLINT = (function () {
     'use strict';
 
     function array_to_object(array, value) {

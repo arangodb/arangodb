@@ -262,7 +262,7 @@ function FileSystemSuite () {
       assertTrue(fs.exists(tempName));
 
       tempName = fs.join(tempDir, 'baz', 'foo', 'test');
-      internal.write(tempName, "this is a test");  
+      fs.write(tempName, "this is a test");  
       assertTrue(fs.exists(tempName));
 
       try {
@@ -334,7 +334,7 @@ function FileSystemSuite () {
       
       // existing file
       tempName = fs.join(tempDir, 'foo');
-      internal.write(tempName, "this is a test file");
+      fs.write(tempName, "this is a test file");
       assertEqual(19, fs.size(tempName));
       fs.remove(tempName);
     
