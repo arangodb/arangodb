@@ -437,6 +437,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   exports.setUnitTestsResult = function (value) {
+    // do not use strict here
     SYS_UNIT_TESTS_RESULT = value;
   };
 
