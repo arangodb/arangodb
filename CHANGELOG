@@ -1,6 +1,10 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* cleanup of Module, Package, ArangoApp and modules "internal", "fs", "console"
+
+* use Error instead of string in throw to allow stack-trace
+
 * issue #454: error while creation of Collection
 
 * make `collection.count()` not recalculate the number of documents on the fly, but

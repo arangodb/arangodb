@@ -8,7 +8,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
-jsUnity = (function () {
+var jsUnity = exports.jsUnity = (function () {
     function fmt(str) {
         var a = Array.prototype.slice.call(arguments, 1);
         return str.replace(/\?/g, function () { return a.shift(); });

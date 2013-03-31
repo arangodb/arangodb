@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoError, ArangoCursor,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         DATABASEPATH, THREAD_NUMBER, AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
+         DATABASEPATH, AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -84,13 +84,6 @@
 
   internal.DATABASEPATH = DATABASEPATH;
   delete DATABASEPATH;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal thread number
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.THREAD_NUMBER = THREAD_NUMBER;
-  delete THREAD_NUMBER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query
