@@ -437,8 +437,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   exports.setUnitTestsResult = function (value) {
-    'use strict';
-
     SYS_UNIT_TESTS_RESULT = value;
   };
 
