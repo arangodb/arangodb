@@ -331,7 +331,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   }
 
   if (! source->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+    TRI_V8_THROW_TYPE_ERROR(scope, "<script> must be a string");
   }
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
@@ -530,7 +530,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   v8::Handle<v8::Value> filename = argv[2];
 
   if (! source->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+    TRI_V8_THROW_TYPE_ERROR(scope, "<script> must be a string");
   }
 
   bool useSandbox = sandboxValue->IsObject();
