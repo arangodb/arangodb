@@ -30,7 +30,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/messages.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"

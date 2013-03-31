@@ -29,13 +29,12 @@
 #include "BasicsC/common.h"
 
 #include "BasicsC/json.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/logging.h"
 
 #ifdef _WIN32
 #define YY_NO_UNISTD_H 1
 #else
-int fileno(FILE *stream);
 #endif
 
 #define YY_NO_INPUT

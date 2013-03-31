@@ -41,7 +41,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
 #include "BasicsC/vector.h"
 

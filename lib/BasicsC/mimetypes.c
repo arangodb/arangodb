@@ -29,7 +29,7 @@
 
 #include "BasicsC/associative.h"
 #include "BasicsC/hashes.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/voc-mimetypes.h"
 
 // -----------------------------------------------------------------------------

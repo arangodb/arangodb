@@ -46,7 +46,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "BasicsC/zip.h"
 #include "Basics/FileUtils.h"
@@ -2419,21 +2419,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
 
-  char const* plattform = "unknown";
-
-#ifdef __linux__
-  plattform = "linux";
-#endif
-
-#if defined(_WIN32) && defined(_MSC_VER)
-  plattform = "win32";
-#endif
-
-#ifdef __APPLE__
-  plattform = "darwin";
-#endif
-
-  TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(plattform));
+  TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(TRI_PLATFORM));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

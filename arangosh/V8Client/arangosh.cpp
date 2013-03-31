@@ -25,14 +25,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BasicsC/common.h"
+
 #include <v8.h>
 
 #include <stdio.h>
 #include <fstream>
-
-#include "build.h"
-
-#include "3rdParty/valgrind/valgrind.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "BasicsC/messages.h"
@@ -45,7 +43,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/shell-colors.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -57,6 +55,10 @@
 #include "V8/v8-utils.h"
 #include "V8Client/ImportHelper.h"
 #include "V8Client/V8ClientConnection.h"
+
+#include "build.h"
+
+#include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
 using namespace triagens::basics;

@@ -32,7 +32,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/shell-colors.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "ShapedJson/shaped-json.h"
 
 #include <fstream>
