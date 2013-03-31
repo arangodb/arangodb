@@ -639,8 +639,12 @@ function require (path) {
     moduleExistsCache[description.name] = true;
 
     // test for parse errors first and fail early if a parse error detected
+    if (typeof description.content !== "string") {
+      throw new Error("description must be a string, not '" + typeof description.content + "'");
+    }
+
     if (! internal.parse(description.content)) {
-      throw "Javascript parse error in file '" + description.path + "'";
+      throw new Error("Javascript parse error in file '" + description.path + "'");
     }
 
     // create a new sandbox and execute
@@ -802,6 +806,7 @@ function require (path) {
       if (module.type === 'package') {
         module = null;
       }
+
       return module;
     }
 
@@ -824,6 +829,7 @@ function require (path) {
       if (module.type === 'package') {
         module = null;
       }
+
       return module;
     }
 

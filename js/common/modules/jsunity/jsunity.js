@@ -443,7 +443,12 @@ var jsUnity = exports.jsUnity = (function () {
                     } catch (e) {
                         tearDown(test.name); // if tearDown above throws exc, will call again!
 
+                        if (e.stack !== undefined) {
+                            this.results.fail(j + 1, test.name, String(e.stack));
+                        }
+                        else {
                         this.results.fail(j + 1, test.name, e);
+                        }
                     }
                 }
             }
