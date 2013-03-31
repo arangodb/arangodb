@@ -25,10 +25,10 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BasicsC/common.h"
+
 #include <stdio.h>
 #include <iomanip>
-
-#include "build.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
@@ -38,7 +38,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
@@ -50,6 +50,8 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
+
+#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;

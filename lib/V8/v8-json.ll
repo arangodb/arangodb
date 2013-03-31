@@ -26,12 +26,12 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
 #include "V8/v8-globals.h"
 
-#include <BasicsC/strings.h>
-#include <BasicsC/logging.h>
+#include "BasicsC/tri-strings.h"
+#include "BasicsC/logging.h"
 
 #define YY_NO_INPUT
 }

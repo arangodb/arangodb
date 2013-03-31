@@ -34,7 +34,7 @@
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------

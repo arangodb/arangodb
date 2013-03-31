@@ -25,7 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "strings.h"
+#include "tri-strings.h"
 
 #include "utf8-helper.h"
 #include <openssl/sha.h>

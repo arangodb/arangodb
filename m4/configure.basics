@@ -13,18 +13,24 @@ AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
 dnl ----------------------------------------------------------------------------
-dnl check for MacOS X
+dnl check for MacOS X or FreeBSD
 dnl ----------------------------------------------------------------------------
 
 tr_DARWIN="no"
+tr_FREEBSD="no"
 
 case $target in
   *-apple-darwin*)
     tr_DARWIN="yes"
     ;;
+
+  *-*-freebsd*)
+    tr_FREEBSD="yes"
+    ;;
 esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
+AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl bits
@@ -33,6 +39,10 @@ dnl ----------------------------------------------------------------------------
 tr_BITS=32
 
 case $target_cpu in
+  amd64*)
+    tr_BITS=64
+    ;;
+
   x86_64*)
     tr_BITS=64
     ;;

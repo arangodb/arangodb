@@ -33,7 +33,7 @@
 #endif
 #endif
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/associative.h"
 

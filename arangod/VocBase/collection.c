@@ -33,7 +33,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"

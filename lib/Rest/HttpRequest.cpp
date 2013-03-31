@@ -29,7 +29,7 @@
 #include "HttpRequest.h"
 
 #include "BasicsC/conversions.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"

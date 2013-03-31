@@ -31,7 +31,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"

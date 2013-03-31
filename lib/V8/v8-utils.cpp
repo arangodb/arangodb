@@ -42,7 +42,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "Rest/SslInterface.h"
 #include "V8/v8-conv.h"

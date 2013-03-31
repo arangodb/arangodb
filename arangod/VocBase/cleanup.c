@@ -29,7 +29,7 @@
 
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shadow-data.h"

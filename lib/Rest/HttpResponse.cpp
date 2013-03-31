@@ -28,7 +28,7 @@
 
 #include "HttpResponse.h"
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 

@@ -375,7 +375,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/random.$(OBJEXT) \
 	lib/BasicsC/socket-utils.$(OBJEXT) \
 	lib/BasicsC/string-buffer.$(OBJEXT) \
-	lib/BasicsC/strings.$(OBJEXT) lib/BasicsC/structures.$(OBJEXT) \
+	lib/BasicsC/tri-strings.$(OBJEXT) \
+	lib/BasicsC/structures.$(OBJEXT) \
 	lib/BasicsC/system-functions.$(OBJEXT) \
 	lib/BasicsC/terminal-utils-posix.$(OBJEXT) \
 	lib/BasicsC/terminal-utils.$(OBJEXT) \
@@ -1221,7 +1222,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/random.c \
 	lib/BasicsC/socket-utils.c \
 	lib/BasicsC/string-buffer.c \
-	lib/BasicsC/strings.c \
+	lib/BasicsC/tri-strings.c \
 	lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
 	lib/BasicsC/terminal-utils-posix.c \
@@ -2013,7 +2014,7 @@ lib/BasicsC/socket-utils.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/string-buffer.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
-lib/BasicsC/strings.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
+lib/BasicsC/tri-strings.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/structures.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -3238,12 +3239,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/socket-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/string-buffer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/strings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/structures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/system-functions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/threads-posix.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/tri-strings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/utf8-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/voc-errors.Po@am__quote@
