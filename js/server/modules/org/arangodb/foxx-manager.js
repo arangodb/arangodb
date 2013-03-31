@@ -320,7 +320,7 @@ function routingAalApp (app, mount, prefix) {
       mount = "/";
     }
     else {
-      mount = internal.normalizeURL(mount);
+      mount = arangodb.normalizeURL(mount);
     }
 
     if (mount[0] !== "/") {
@@ -340,7 +340,7 @@ function routingAalApp (app, mount, prefix) {
         "do" : "org/arangodb/actions/redirectRequest",
         "options" : {
           "permanently" : true,
-          "destination" : "index.html"
+          "destination" : mount + "/" + "index.html"
         }
       }
     });
@@ -359,7 +359,7 @@ function routingAalApp (app, mount, prefix) {
 
         // set up a context for the applications
         context = {
-          prefix: internal.normalizeURL("/" + i),   // app mount
+          prefix: arangodb.normalizeURL("/" + i),   // app mount
 
           context: {
             name: app._name,                        // app name
@@ -383,7 +383,7 @@ function routingAalApp (app, mount, prefix) {
               route = ri.routes[j];
 
               if (route.hasOwnProperty("url")) {
-                route.url.match = internal.normalizeURL(p + "/" + route.url.match);
+                route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
               }
 
               routes.routes.push(route);
@@ -395,7 +395,7 @@ function routingAalApp (app, mount, prefix) {
               route = ri.middleware[j];
 
               if (route.hasOwnProperty("url")) {
-                route.url.match = internal.normalizeURL(p + "/" + route.url.match);
+                route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
               }
 
               routes.middleware.push(route);
@@ -441,7 +441,7 @@ exports.scanAppDirectory = function () {
   var i;
   var j;
 
-  var path = internal.appPath;
+  var path = module.appPath();
   var aal = getStorage();
 
   aal.removeByExample({ type: "app" });
@@ -564,7 +564,7 @@ exports.installDevApp = function (name, mount, options) {
   // locate the application
   // .............................................................................
 
-  var path = internal.devAppPath;
+  var path = module.devAppPath();
 
   if (typeof path === "undefined") {
     throw "dev-app-path is not set, cannot instal development app '" + name + "'";

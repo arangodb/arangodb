@@ -2410,6 +2410,22 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
+
+  char const* plattform = "unknown";
+
+#ifdef __linux__
+  plattform = "linux";
+#endif
+
+#if defined(_WIN32) && defined(_MSC_VER)
+  plattform = "win32";
+#endif
+
+#ifdef __APPLE__
+  plattform = "darwin";
+#endif
+
+  TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(plattform));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

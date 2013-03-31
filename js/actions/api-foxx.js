@@ -168,7 +168,7 @@ actions.defineHttp({
     }
 
     var serverFile = json.filename;
-    var realFile = fs.join(internal.getTempPath(), serverFile); 
+    var realFile = fs.join(fs.getTempPath(), serverFile); 
 
     if (! fs.isFile(realFile)) {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_FILE_NOT_FOUND.code);
@@ -189,12 +189,14 @@ actions.defineHttp({
         throw "rejecting unsafe version '" + version + "'";
       }
 
-      if (typeof internal.appPath === "undefined") {
+      var appPath = module.appPath();
+
+      if (typeof appPath === "undefined") {
         fs.remove(realFile);
         throw "javascript.app-path not set, rejecting app loading";
       }
 
-      var path = fs.join(internal.appPath, name + "-" + version);
+      var path = fs.join(appPath, name + "-" + version);
 
       if (fs.exists(path)) {
         fs.remove(realFile);
@@ -202,7 +204,7 @@ actions.defineHttp({
       }
 
       fs.makeDirectoryRecursive(path);
-      internal.unzipFile(realFile, path, false, true);
+      fs.unzipFile(realFile, path, false, true);
 
       foxxManager.scanAppDirectory();
    

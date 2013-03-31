@@ -34,6 +34,7 @@ var internal = require("internal");
 var console = require("console");
 var fs = require("fs");
 
+var arangodb = require("org/arangodb/arangodb");
 var arangosh = require("org/arangodb/arangosh");
 
 var arango = internal.arango;
@@ -151,7 +152,7 @@ function processDirectory (source) {
   source.filename = tempFile;
   source.removeFile = true;
     
-  internal.zipFile(tempFile, location, files);
+  fs.zipFile(tempFile, location, files);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +165,7 @@ function repackZipFile (source) {
   var filename = source.filename;
   var path = fs.getTempFile("zip", false); 
 
-  internal.unzipFile(filename, path, false, true);
+  fs.unzipFile(filename, path, false, true);
 
   // .............................................................................
   // locate the manifest file
@@ -366,7 +367,7 @@ exports.load = function (type, location, version) {
   res = arango.POST("/_admin/foxx/load", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return { path: res };
+  return { path: res.path };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,7 +434,7 @@ exports.printInstalled = function (showPrefix) {
       p = ' ';
     }
 
-    return internal.stringPadding(s, pad[l], p, 'r');
+    return arangodb.stringPadding(s, pad[l], p, 'r');
   };
 
   internal.printf("\n%s  %s  %s  %s  %s\n",
@@ -476,7 +477,7 @@ exports.printAvailable = function () {
       p = ' ';
     }
 
-    return internal.stringPadding(s, pad[l], p, 'r');
+    return arangodb.stringPadding(s, pad[l], p, 'r');
   };
 
   internal.printf("\n%s  %s  %s  %s\n",
