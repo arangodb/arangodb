@@ -33,7 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"

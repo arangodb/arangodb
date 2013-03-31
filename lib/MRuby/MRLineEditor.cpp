@@ -30,7 +30,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches

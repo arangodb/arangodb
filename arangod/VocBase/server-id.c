@@ -36,7 +36,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

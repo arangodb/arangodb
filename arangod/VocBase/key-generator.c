@@ -32,7 +32,7 @@
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/voc-errors.h"
 
 #include "VocBase/vocbase.h"

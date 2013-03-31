@@ -31,7 +31,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/conversions.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/vector.h"
 

@@ -33,7 +33,7 @@
 #include "BasicsC/linked-list.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "CapConstraint/cap-constraint.h"
 #include "GeoIndex/geo-index.h"

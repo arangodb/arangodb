@@ -25,10 +25,10 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BasicsC/common.h"
+
 #include <stdio.h>
 #include <fstream>
-
-#include "build.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
@@ -38,7 +38,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "ImportHelper.h"
 #include "Logger/Logger.h"
@@ -47,6 +47,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8Client/V8ClientConnection.h"
+
+#include "build.h"
 
 using namespace std;
 using namespace triagens::basics;
