@@ -132,6 +132,12 @@ function NodeShaper(parent, flags, idfunc) {
       addEvents(handle);
     },
     
+    reshapeNode = function () {
+      var handle;
+      handle = self.parent
+        .filter()
+    },
+    
     updateNodes = function () {
       var nodes = self.parent.selectAll(".node");
       nodes.attr("transform", function(d) {
@@ -238,6 +244,14 @@ function NodeShaper(parent, flags, idfunc) {
   
   self.updateNodes = function () {
     updateNodes();
+  };
+  
+  self.reshapeNode = function(node) {
+    
+  };
+  
+  self.reshapeNodes = function() {
+    reshapeNodes();
   };
   
 }
