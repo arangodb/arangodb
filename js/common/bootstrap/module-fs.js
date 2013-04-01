@@ -353,7 +353,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   if (typeof FS_LIST !== "undefined") {
-    exports.listDirectory = FS_LIST;
+    exports.list = FS_LIST;
     delete FS_LIST;
   }
 
