@@ -1,6 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect, spyOn */
+/*global describe, it, expect*/
+/*global runs, waitsFor, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
@@ -66,20 +67,28 @@
     });
     
     it('should be able to add a shape circle control to the list', function() {
-      shaperUI.addControlOpticShapeCircle();
+      runs(function() {
+        shaperUI.addControlOpticShapeCircle();
       
-      expect($(".control_list #control_circle").length).toEqual(1);
+        expect($("#control_list #control_circle").length).toEqual(1);
       
-      helper.simulateMouseEvent("click", "control_circle");
-      $("control_circle_radius").attr("value", 42);
-      helper.simulateMouseEvent("click", "control_circle_confirm");
+        helper.simulateMouseEvent("click", "control_circle");
+        expect($("#control_circle_modal").length).toEqual(1);
       
-      expect(shaper.changeTo).toHaveBeenCalledWith({
-        shape: {
-          type: NodeShaper.shapes.CIRCLE,
-          radius: 42
-        }
+        $("#control_circle_radius").attr("value", 42);
+        helper.simulateMouseEvent("click", "control_circle_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          shape: {
+            type: NodeShaper.shapes.CIRCLE,
+            radius: "42"
+          }
+        });
       });
+      
+      waitsFor(function() {
+        return $("#control_circle_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
       
     });
     
