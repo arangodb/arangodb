@@ -160,6 +160,31 @@
         }});
         expect($("svg .node").length).toEqual(3);
       });
+      
+      it('should be able to reshape a single node only', function() {
+        shaper.changeTo({label: "label"});
+        nodes[0].label = "false";
+        nodes[1].label = "true";
+        nodes[2].label = "false_again";
+        expect($("#1 text").length).toEqual(1);
+        expect($("#2 text").length).toEqual(1);
+        expect($("#3 text").length).toEqual(1);
+        expect($("#1 text")[0].textContent).toEqual("");
+        expect($("#2 text")[0].textContent).toEqual("");
+        expect($("#3 text")[0].textContent).toEqual("");
+        
+        shaper.reshapeNode(nodes[1]);
+        expect($("#1 text").length).toEqual(1);
+        expect($("#3 text").length).toEqual(1);
+        expect($("#1 text")[0].textContent).toEqual("");
+        expect($("#3 text")[0].textContent).toEqual("");
+        
+        expect($("#2 text").length).toEqual(1);
+        expect($("#2 text")[0].textContent).toEqual("true");
+        console.log(nodes);
+        window.meierei = $("#2 text");
+        
+      });
     });
 
     

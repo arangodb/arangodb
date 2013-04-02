@@ -93,46 +93,58 @@
     });
     
     it('should be able to add a shape rect control to the list', function() {
-      shaperUI.addControlOpticShapeRect();
+      runs(function() {
+        shaperUI.addControlOpticShapeRect();
       
-      expect($(".control_list #control_rect").length).toEqual(1);
+        expect($("#control_list #control_rect").length).toEqual(1);
       
-      helper.simulateMouseEvent("click", "control_rect");
-      $("control_rect_width").attr("value", 42);
-      $("control_rect_height").attr("value", 12);
-      helper.simulateMouseEvent("click", "control_rect_confirm");
+        helper.simulateMouseEvent("click", "control_rect");
+        $("#control_rect_width").attr("value", 42);
+        $("#control_rect_height").attr("value", 12);
+        helper.simulateMouseEvent("click", "control_rect_submit");
       
-      expect(shaper.changeTo).toHaveBeenCalledWith({
-        shape: {
-          type: NodeShaper.shapes.RECT,
-          width: 42,
-          height: 12
-        }
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          shape: {
+            type: NodeShaper.shapes.RECT,
+            width: "42",
+            height: "12"
+          }
+        });
       });
+      
+      waitsFor(function() {
+        return $("#control_rect_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
       
     });
     
     it('should be able to add a switch label control to the list', function() {
-      shaperUI.addControlOpticLabel();
+      runs(function() {
+        shaperUI.addControlOpticLabel();
       
-      expect($(".control_list #control_label").length).toEqual(1);
+        expect($("#control_list #control_label").length).toEqual(1);
       
-      helper.simulateMouseEvent("click", "control_label");
-      $("control_label_key").attr("value", "theAnswer");
-      helper.simulateMouseEvent("click", "control_label_confirm");
+        helper.simulateMouseEvent("click", "control_label");
+        $("#control_label_key").attr("value", "theAnswer");
+        helper.simulateMouseEvent("click", "control_label_submit");
       
-      expect(shaper.changeTo).toHaveBeenCalledWith({
-        label: "theAnswer"
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          label: "theAnswer"
+        });
       });
+      
+      waitsFor(function() {
+        return $("#control_rect_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
       
     });
     
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
-      expect($(".control_list #control_circle").length).toEqual(1);
-      expect($(".control_list #control_rect").length).toEqual(1);
-      expect($(".control_list #control_label").length).toEqual(1);
+      expect($("#control_list #control_circle").length).toEqual(1);
+      expect($("#control_list #control_rect").length).toEqual(1);
+      expect($("#control_list #control_label").length).toEqual(1);
       
     });
     
@@ -144,9 +156,9 @@
     it('should be able to add all controls to the list', function () {
       shaperUI.addAll();
       
-      expect($(".control_list #control_circle").length).toEqual(1);
-      expect($(".control_list #control_rect").length).toEqual(1);
-      expect($(".control_list #control_label").length).toEqual(1);
+      expect($("#control_list #control_circle").length).toEqual(1);
+      expect($("#control_list #control_rect").length).toEqual(1);
+      expect($("#control_list #control_label").length).toEqual(1);
       
     });
   });
