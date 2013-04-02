@@ -632,21 +632,21 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>, <contexts>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "defineAction(<name>, <callback>, <parameter>, <contexts>)");
   }
 
   // extract the action name
   TRI_Utf8ValueNFC utf8name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*utf8name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
+    TRI_V8_TYPE_ERROR(scope, "<name> must be an UTF-8 string");
   }
 
   string name = *utf8name;
 
   // extract the action callback
   if (! argv[1]->IsFunction()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
+    TRI_V8_TYPE_ERROR(scope, "<callback> must be a function");
   }
 
   v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
@@ -665,7 +665,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   set<string> contexts;
 
   if (! argv[3]->IsArray()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<contexts> must be a list of contexts")));
+    TRI_V8_TYPE_ERROR(scope, "<contexts> must be a list of contexts");
   }
 
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[3]);
@@ -713,14 +713,14 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION(<function-definition>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "executeGlobalContextFunction(<function-definition>)");
   }
 
   // extract the action name
   v8::String::Utf8Value utf8def(argv[0]);
 
   if (*utf8def == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<defition> must be a UTF8 function definition")));
+    TRI_V8_TYPE_ERROR(scope, "<defition> must be a UTF-8 function definition");
   }
 
   string def = *utf8def;

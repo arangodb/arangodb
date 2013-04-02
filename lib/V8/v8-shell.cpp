@@ -37,6 +37,7 @@
 
 #include <fstream>
 
+#include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
@@ -133,14 +134,14 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: processCsvFile(<filename>, <callback>[, <options>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "processCsvFile(<filename>, <callback>[, <options>])");
   }
 
   // extract the filename
   TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF8 filename");
   }
 
   // extract the callback
@@ -161,7 +162,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
       separator = TRI_ObjectToString(options->Get(separatorKey));
 
       if (separator.size() != 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be exactly one character")));
+        TRI_V8_TYPE_ERROR(scope, "<options>.separator must be exactly one character");
       }
     }
 
@@ -170,7 +171,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
       quote = TRI_ObjectToString(options->Get(quoteKey));
 
       if (quote.length() > 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
+        TRI_V8_TYPE_ERROR(scope, "<options>.quote must be at most one character");
       }
     }
   }
@@ -179,7 +180,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   int fd = TRI_OPEN(*filename, O_RDONLY);
 
   if (fd < 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+    TRI_V8_EXCEPTION_SYS(scope, "cannot open file");
   }
 
   TRI_csv_parser_t parser;
@@ -212,7 +213,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
-      return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
+      TRI_V8_EXCEPTION_SYS(scope, "cannot read file");
     }
     else if (n == 0) {
       TRI_DestroyCsvParser(&parser);
@@ -247,14 +248,14 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: processJsonFile(<filename>, <callback>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "processJsonFile(<filename>, <callback>)");
   }
 
   // extract the filename
   TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF8 filename");
   }
 
   // extract the callback
@@ -287,9 +288,10 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
       v8::Handle<v8::Value> object = TRI_FromJsonString(line.c_str(), &error);
 
       if (object->IsUndefined()) {
-        v8::Handle<v8::String> msg = v8::String::New(error);
+        string msg = error;
         TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-        return scope.Close(v8::ThrowException(msg));
+
+        TRI_V8_SYNTAX_ERROR(scope, msg.c_str());
       }
 
       v8::Handle<v8::Number> r = v8::Number::New(row);
@@ -302,7 +304,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
     file.close();
   }
   else {
-    return scope.Close(v8::ThrowException(v8::String::New("cannot open file")));
+    TRI_V8_EXCEPTION_SYS(scope, "cannot open file");
   }
 
   return scope.Close(v8::Undefined());
