@@ -81,17 +81,18 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
       throw "You have to give a function that should be bound as a third argument";
     }
     switch (object) {
-      case "nodes":
       var actions = {};
-      actions[event] = func;
+      case "nodes":
+        actions[event] = func;
         nodeShaper.changeTo({
           actions: actions
         });
-        //nodeShaper.drawNodes();
         break;
       case "edges":
-        edgeShaper.on(event, func);
-        edgeShaper.drawEdges();
+        actions[event] = func;
+        edgeShaper.changeTo({
+          actions: actions
+        });
         break;
       default:
         if (object.bind !== undefined) {

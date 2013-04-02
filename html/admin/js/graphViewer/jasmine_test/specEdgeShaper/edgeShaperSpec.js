@@ -142,13 +142,12 @@
       click = function (edge) {
         clicked[edge.source._id] = !clicked[edge.source._id];
       },
-      shaper = new EdgeShaper(d3.select("svg"));
-      
-      shaper.changeTo({
+      shaper = new EdgeShaper(d3.select("svg"), {
         actions: {
           click: click
         }
       });
+      shaper.drawEdges(edges);
       helper.simulateMouseEvent("click", "1-2");
       helper.simulateMouseEvent("click", "3-4");
       
