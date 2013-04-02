@@ -30,3 +30,8 @@ text {
 marker#arrow {
   fill: #666;
 }
+
+
+capitalize {
+    text-transform:capitalize;
+}

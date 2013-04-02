@@ -178,6 +178,10 @@
         response = internal.arango.PATCH_RAW(url, body);
         curl += "-X " + method + " ";
       }
+      else if (method === 'HEAD') {
+        response = internal.arango.HEAD_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
       else if (method === 'OPTION') {
         response = internal.arango.OPTION_RAW(url, body);
         curl += "-X " + method + " ";
