@@ -37,39 +37,7 @@ function NodeShaperControls(list, shaper) {
   if (shaper === undefined) {
     throw "The NodeShaper has to be given.";
   }
-  var self = this,
-  
-  createModalDialog = function(title, idprefix, objects, callback) {
-    var table =  modalDialogHelper.modalDivTemplate(title, idprefix, callback);
-    
-    _.each(objects, function(o) {
-      var tr = document.createElement("tr"),
-      labelTh = document.createElement("th"),
-      contentTh = document.createElement("th"),
-      input;
-      
-      table.appendChild(tr);
-      tr.appendChild(labelTh);
-      labelTh.className = "collectionTh capitalize";
-      labelTh.appendChild(document.createTextNode(o.id + ":"));
-      tr.appendChild(contentTh);
-      contentTh.className = "collectionTh";
-      switch(o.type) {
-        case "text":
-          input = document.createElement("input");
-          input.type = "text";
-          input.id = idprefix + o.id;
-          contentTh.appendChild(input);
-          break;
-        default:
-          //Sorry unknown
-          table.removeChild(tr);
-          break;
-      }
-    });
-    $("#" + idprefix + "modal").modal('show');
-  };
-  
+  var self = this;
   
   this.addControlOpticShapeNone = function() {
     var prefix = "control_none",
@@ -93,7 +61,7 @@ function NodeShaperControls(list, shaper) {
     var prefix = "control_circle",
     idprefix = prefix + "_",
     callback = function() {
-      createModalDialog("Switch to Circle",
+      modalDialogHelper.createModalDialog("Switch to Circle",
         idprefix, [{
           type: "text",
           id: "radius"
@@ -120,7 +88,7 @@ function NodeShaperControls(list, shaper) {
     var prefix = "control_rect",
     idprefix = prefix + "_",
     callback = function() {
-      createModalDialog("Switch to Rectangle",
+      modalDialogHelper.createModalDialog("Switch to Rectangle",
         idprefix, [{
           type: "text",
           id: "width"
@@ -152,7 +120,7 @@ function NodeShaperControls(list, shaper) {
     var prefix = "control_label",
     idprefix = prefix + "_",
     callback = function() {
-      createModalDialog("Switch Label Attribute",
+      modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
           id: "key"
