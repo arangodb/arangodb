@@ -229,7 +229,8 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/html -name "*.ico" -print) \
 	$(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.ejs" -print) \
-	$(shell find @srcdir@/html -name "*.png" -print)
+	$(shell find @srcdir@/html -name "*.png" -print) \
+	$(shell find @srcdir@/js/apps -type f -print)
 
 if ENABLE_MRUBY
 
@@ -311,6 +312,28 @@ BUILT_SOURCES += \
 endif
 
 ################################################################################
+### @brief mimetypes file
+################################################################################
+
+if ENABLE_MAINTAINER_MODE
+
+BUILT_SOURCES += \
+	@top_srcdir@/lib/BasicsC/voc-mimetypes.h \
+	@top_srcdir@/lib/BasicsC/voc-mimetypes.c \
+	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
+
+@top_srcdir@/lib/BasicsC/voc-mimetypes.h: lib/BasicsC/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/BasicsC/mimetypes.dat @top_srcdir@/lib/BasicsC/voc-mimetypes.h
+
+@top_srcdir@/lib/BasicsC/voc-mimetypes.c: lib/BasicsC/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/BasicsC/mimetypes.dat @top_srcdir@/lib/BasicsC/voc-mimetypes.c
+
+@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js: lib/BasicsC/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/BasicsC/mimetypes.dat js/common/modules/org/arangodb/mimetypes.js
+
+endif
+
+################################################################################
 ## cleanup
 ################################################################################
 
@@ -329,7 +352,8 @@ clean-local:
 
 built-sources: \
 	build_posix.h \
-	@top_srcdir@/js/common/bootstrap/errors.js
+	@top_srcdir@/js/common/bootstrap/errors.js \
+	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
 
 ################################################################################
 ### @brief tags file

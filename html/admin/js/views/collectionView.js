@@ -3,7 +3,7 @@ var collectionView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/collectionView.ejs'}),
+  template: new EJS({url: 'js/templates/collectionView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);
@@ -35,7 +35,7 @@ var collectionView = Backbone.View.extend({
     }
   },
   hidden: function () {
-    window.App.navigate("#");
+    window.App.navigate("#", {trigger: true});
   },
   fillModal: function() {
     try {
@@ -88,7 +88,7 @@ var collectionView = Backbone.View.extend({
 
     if (status === 'loaded') {
       if (this.myCollection.name !== newname) {
-        window.arangoCollectionsStore.renameCollection(collid, newname );
+        window.arangoCollectionsStore.renameCollection(collid, newname);
       }
 
       var wfs = $('#change-collection-sync').val();
@@ -105,9 +105,10 @@ var collectionView = Backbone.View.extend({
     }
     else if (status === 'unloaded') {
       if (this.myCollection.name !== newname) {
-        window.arangoCollectionsStore.renameCollection(collid, newname );
-        this.hideModal();
+        window.arangoCollectionsStore.renameCollection(collid, newname);
       }
+      // we're closing the dialogue after renaming is done & in case nothing was changed
+      this.hideModal();
     }
   },
   getCollectionId: function () {
@@ -134,14 +135,12 @@ var collectionView = Backbone.View.extend({
     var collName = self.myCollection.name;
     var returnval = window.arangoCollectionsStore.deleteCollection(collName);
     if (returnval === true) {
-      self.hideModal();
-      window.location.hash="#";
       arangoHelper.arangoNotification('Collection deleted successfully.');
     }
     else {
-      self.hideModal();
-      arangoHelper.arangoError('Collection delete error!.');
+      arangoHelper.arangoError('Could not delete collection.');
     }
+    self.hideModal();
   }
 
 });

@@ -250,8 +250,7 @@ static size_t LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
 /// @brief checks whether a header is visible in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsVisible (TRI_doc_mptr_t const* header,
-                       const TRI_doc_operation_context_t* const context) {
+static bool IsVisible (TRI_doc_mptr_t const* header) {
   return (header != NULL && header->_validTo == 0);
 }
 
@@ -602,7 +601,7 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       datafile = base->_journals._buffer[i];
 
       // try to reserve space
-      res = TRI_ReserveElementDatafile(datafile, size, result);
+      res = TRI_ReserveElementDatafile(datafile, size, result, document->base.base._info._maximalSize);
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
@@ -613,6 +612,8 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* document,
       else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
         // some other error
         TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+    
+        LOG_ERROR("cannot select datafile: '%s'", TRI_last_error());
 
         return NULL;
       }
@@ -705,6 +706,26 @@ static int WriteElement (TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to write synchronised
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RealSync (TRI_transaction_collection_t* trxCollection,
+                      const bool syncRequested) {
+  if (syncRequested) {
+    // explicit request to sync
+    return true;
+  }
+
+  if (trxCollection->_waitForSync) {
+    // collection has waitForSync property
+    return true;
+  }
+
+  // default is false
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -764,18 +785,20 @@ static int WriteMarker (TRI_document_collection_t* document,
 /// the collection must be held
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertDocument (TRI_document_collection_t* document,
+static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_document_key_marker_t* marker,
                            TRI_doc_mptr_t* header,
                            TRI_voc_size_t totalSize,
                            bool forceSync,
                            TRI_doc_mptr_t* mptr) {
-
+  TRI_document_collection_t* document;
   TRI_df_marker_t* result;
   TRI_voc_fid_t fid;
   int res;
+  bool writeSynced;
 
   TRI_ASSERT_DEBUG(header != NULL);
+  document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
   // .............................................................................
   // insert into indexes
@@ -803,13 +826,16 @@ static int InsertDocument (TRI_document_collection_t* document,
   // .............................................................................
   // insert into datafile
   // .............................................................................
-  
-  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, forceSync);
+
+  writeSynced = RealSync(trxCollection, forceSync); 
+  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, writeSynced);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // writing the element into the datafile has succeeded
     TRI_doc_datafile_info_t* dfi;
     size_t i, n;
+
+    TRI_IncreaseWritesCollectionTransaction(trxCollection, writeSynced);
 
     // update the header with the correct fid and the positions in the datafile
     header->_fid  = fid;
@@ -838,7 +864,7 @@ static int InsertDocument (TRI_document_collection_t* document,
       idx = document->_allIndexes._buffer[i];
 
       if (idx->postInsert != NULL) {
-        idx->postInsert(idx, header);
+        idx->postInsert(trxCollection, idx, header);
       }
     }
   }
@@ -861,7 +887,7 @@ static int InsertDocument (TRI_document_collection_t* document,
 /// the collection must be held
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteDocument (TRI_doc_operation_context_t* context,
+static int RemoveDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_update_policy_t const* policy,
                            TRI_doc_deletion_key_marker_t* marker,
                            const TRI_voc_size_t totalSize,
@@ -872,14 +898,15 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   TRI_df_marker_t* result;
   TRI_voc_fid_t fid;
   int res;
+  bool writeSynced;
 
-  primary = context->_collection;
+  primary = trxCollection->_collection->_collection;
   document = (TRI_document_collection_t*) primary;
 
   // get the existing header pointer
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, ((char*) marker) + marker->_offsetKey);
 
-  if (! IsVisible(header, context)) {
+  if (! IsVisible(header)) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
@@ -922,11 +949,14 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
  
   
   // find and select a journal
-  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, forceSync);
+  writeSynced = RealSync(trxCollection, forceSync); 
+  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, writeSynced);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_doc_datafile_info_t* dfi;
     size_t i, n;
+
+    TRI_IncreaseWritesCollectionTransaction(trxCollection, writeSynced);
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
@@ -961,7 +991,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
       idx = document->_allIndexes._buffer[i];
 
       if (idx->postRemove != NULL) {
-        idx->postRemove(idx, header);
+        idx->postRemove(trxCollection, idx, header);
       }
     }
   
@@ -1002,18 +1032,21 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateDocument (TRI_document_collection_t* document,
+static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* oldHeader,
                            TRI_doc_document_key_marker_t* marker,
                            const TRI_voc_size_t totalSize,
                            const bool forceSync,
                            TRI_doc_mptr_t* mptr) {
-  
+  TRI_document_collection_t* document;
   TRI_doc_mptr_t* newHeader;
   TRI_doc_mptr_t oldData;
   TRI_df_marker_t* result;
   TRI_voc_fid_t fid;
   int res;
+  bool writeSynced;
+
+  document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
  
   // save the old data, remember
   oldData = *oldHeader;
@@ -1066,12 +1099,15 @@ static int UpdateDocument (TRI_document_collection_t* document,
   // write datafile
   // .............................................................................
 
-  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, forceSync);
+  writeSynced = RealSync(trxCollection, forceSync); 
+  res = WriteMarker(document, &marker->base, totalSize, &fid, &result, writeSynced);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_doc_datafile_info_t* dfi;
     TRI_primary_collection_t* primary;
     size_t i, n;
+    
+    TRI_IncreaseWritesCollectionTransaction(trxCollection, writeSynced);
       
     // update the header with the correct fid and the positions in the datafile
     newHeader->_fid  = fid;
@@ -1114,7 +1150,7 @@ static int UpdateDocument (TRI_document_collection_t* document,
       idx = document->_allIndexes._buffer[i];
 
       if (idx->postUpdate != NULL) {
-        idx->postUpdate(idx, newHeader, oldHeader, &oldData);
+        idx->postUpdate(trxCollection, idx, newHeader, oldHeader, &oldData);
       }
     }
 
@@ -1372,7 +1408,7 @@ static int NotifyTransaction (TRI_primary_collection_t* primary,
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertShapedJson (TRI_doc_operation_context_t* context,
+static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
                              TRI_doc_mptr_t* mptr,
                              TRI_df_marker_type_e markerType,
@@ -1389,7 +1425,7 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
   TRI_voc_size_t totalSize;
   int res;
 
-  primary = context->_collection;
+  primary = trxCollection->_collection->_collection;
 
   TRI_ASSERT_DEBUG(primary != NULL);
   TRI_ASSERT_DEBUG(shaped != NULL);
@@ -1418,7 +1454,7 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
   res = CreateHeader(document, marker, 0, &header);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = InsertDocument(document, marker, header, totalSize, forceSync, mptr);
+    res = InsertDocument(trxCollection, marker, header, totalSize, forceSync, mptr);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1452,14 +1488,14 @@ static int InsertShapedJson (TRI_doc_operation_context_t* context,
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ReadShapedJson (TRI_doc_operation_context_t* context,
+static int ReadShapedJson (TRI_transaction_collection_t* trxCollection,
                            const TRI_voc_key_t key,
                            TRI_doc_mptr_t* mptr,
                            const bool lock) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* header;
-
-  primary = context->_collection;
+  
+  primary = trxCollection->_collection->_collection;
 
   if (lock) {
     primary->beginRead(primary);
@@ -1467,7 +1503,7 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
 
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 
-  if (! IsVisible(header, context)) {
+  if (! IsVisible(header)) {
     if (lock) {
       primary->endRead(primary);
     }
@@ -1499,7 +1535,7 @@ static int ReadShapedJson (TRI_doc_operation_context_t* context,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateShapedJson (TRI_doc_operation_context_t* context,
+static int UpdateShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
                              TRI_doc_mptr_t* mptr,
                              TRI_shaped_json_t const* shaped,
@@ -1512,6 +1548,8 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
   TRI_voc_size_t totalSize;
   int res;
   
+  primary = trxCollection->_collection->_collection;
+  
   TRI_ASSERT_DEBUG(mptr != NULL);
   
   // initialise the result
@@ -1519,8 +1557,6 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
   mptr->_data = NULL;
   
   marker = NULL;  
-
-  primary = context->_collection;
 
   if (lock) {
     primary->beginWrite(primary);
@@ -1531,7 +1567,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
   // get the header pointer of the previous revision
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 
-  if (IsVisible(header, context)) {
+  if (IsVisible(header)) {
     // document found, now check revision
     res = TRI_CheckUpdatePolicy(policy, header->_rid);
   }
@@ -1549,7 +1585,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
     res = CloneDocumentMarker(original, &marker, &totalSize, original->_type, shaped);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = UpdateDocument((TRI_document_collection_t*) primary, header, marker, totalSize, forceSync, mptr);
+      res = UpdateDocument(trxCollection, header, marker, totalSize, forceSync, mptr);
     }
   }
 
@@ -1577,7 +1613,7 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteShapedJson (TRI_doc_operation_context_t* context,
+static int RemoveShapedJson (TRI_transaction_collection_t* trxCollection,
                              const TRI_voc_key_t key,
                              TRI_doc_update_policy_t const* policy,
                              const bool lock,
@@ -1587,6 +1623,7 @@ static int DeleteShapedJson (TRI_doc_operation_context_t* context,
   TRI_voc_size_t totalSize;
   int res;
   
+  primary = trxCollection->_collection->_collection;
   TRI_ASSERT_DEBUG(key != NULL);
 
   marker = NULL;
@@ -1598,13 +1635,11 @@ static int DeleteShapedJson (TRI_doc_operation_context_t* context,
 
   TRI_ASSERT_DEBUG(marker != NULL);
 
-  primary = context->_collection;
-  
   if (lock) {
     primary->beginWrite(primary);
   }
 
-  res = DeleteDocument(context, policy, marker, totalSize, forceSync);
+  res = RemoveDocument(trxCollection, policy, marker, totalSize, forceSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
     DecreaseDocumentCount(primary);
@@ -2217,7 +2252,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.insert            = InsertShapedJson;
   collection->base.read              = ReadShapedJson;
   collection->base.update            = UpdateShapedJson;
-  collection->base.destroy           = DeleteShapedJson;
+  collection->base.remove            = RemoveShapedJson;
 
   collection->cleanupIndexes         = CleanupIndexes;
 
@@ -2701,15 +2736,12 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
 static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   TRI_primary_collection_t* primary;
-  TRI_doc_operation_context_t context;
   uint64_t inserted;
   void** end;
   void** ptr;
   int res;
 
   primary = &document->base;
-
-  TRI_InitContextPrimaryCollection(&context, primary);
 
   // update index
   ptr = primary->_primaryIndex._table;
@@ -2718,7 +2750,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
-    if (IsVisible(*ptr, &context)) {
+    if (IsVisible(*ptr)) {
       mptr = *ptr;
 
       res = idx->insert(idx, mptr, false);
@@ -5163,7 +5195,7 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t* context,
+TRI_vector_t TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
                                   size_t length,
                                   TRI_shape_pid_t* pids,
                                   TRI_shaped_json_t** values) {
@@ -5173,7 +5205,7 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t* context,
   TRI_doc_mptr_t const** end;
   TRI_vector_t filtered;
 
-  primary = context->_collection;
+  primary = trxCollection->_collection->_collection;
 
   // use filtered to hold copies of the master pointer
   TRI_InitVector(&filtered, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t));
@@ -5185,7 +5217,7 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t* context,
   end = (TRI_doc_mptr_t const**) ptr + primary->_primaryIndex._nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
-    if (IsVisible(*ptr, context)) {
+    if (IsVisible(*ptr)) {
       if (IsExampleMatch(shaper, *ptr, length, pids, values)) {
         TRI_PushBackVector(&filtered, *ptr);
       }
@@ -5199,11 +5231,11 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t* context,
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t* context,
+int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxCollection,
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return DeleteShapedJson(context, doc->_key, policy, false, false);
+  return RemoveShapedJson(trxCollection, doc->_key, policy, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

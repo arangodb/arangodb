@@ -85,6 +85,30 @@ If you do not redefine it, all requests that go to the root of your application 
 #### FoxxApplication#delete
 @copydetails JSF_foxx_application_delete
 
+### Documenting and Constraining the Routes
+
+If you define a route like described above, you have the option to match parts of the URL to variables. If you for example define a route `/animals/:animal` and the URL `animals/foxx` is requested it is matched by this rule. You can then get the value of this variable (in this case "foxx") by calling `request.params("animal")`.
+
+Furthermore you can describe your API by chaining the following methods onto your path definition. With the provided information, Foxx will generate a nice documentation for you. Some of the methods additionally will check certain properties of the request.
+
+#### Describing a pathParam
+@copydetails JSF_foxx_RequestContext_pathParam
+
+#### Describing a queryParam
+@copydetails JSF_foxx_RequestContext_queryParam
+
+### Documenting the nickname of a route
+@copydetails JSF_foxx_RequestContext_nickname
+
+### Documenting the summary of a route
+@copydetails JSF_foxx_RequestContext_summary
+
+### Documenting the notes of a route
+@copydetails JSF_foxx_RequestContext_notes
+
+### Documenting the error response of a route
+@copydetails JSF_foxx_RequestContext_errorResponse
+
 ### Before and After Hooks
 
 You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
@@ -167,6 +191,7 @@ In the `manifest.json` you define the components of your application: The conten
 * `models`: Base path for the models you want to require
 * `files`: Deliver files
 * `assets`: Deliver pre-processed files
+* `system`: Mark an application as a system application
 * `setup`: Path to a setup script
 * `teardown`: Path to a teardown script
 
@@ -191,10 +216,12 @@ A more complete example for a Manifest file:
       },
 
       "assets": {
-        "application.js": [
-          "vendor/jquery.js",
-          "assets/javascripts/*"
-        ]
+        "application.js": {
+          "files": [
+            "vendor/jquery.js",
+            "assets/javascripts/*"
+          ]
+        }
       },
 
       "setup": "scripts/setup.js",
@@ -225,13 +252,15 @@ Deliver all files in a certain folder without modifying them. You can deliver te
 The value for the asset key is an object consisting of paths that are matched to the files they are composed of. Let's take the following example:
 
   "assets": {
-    "application.js": [
-      "vendor/jquery.js",
-      "assets/javascripts/*"
-    ]
+    "application.js": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ]
+    }
   }
 
-If a request is made to `/application.js` (in development mode), the array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
+If a request is made to `/application.js` (in development mode), the file array provided will be processed one element at a time. The elements are paths to files (with the option to use wildcards). The files will be concatenated and delivered as a single file.
 
 ## Development Mode
 

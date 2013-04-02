@@ -171,7 +171,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
 
   // create a collection header, still in the temporary file
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, primary->base._info._maximalSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
@@ -566,15 +566,6 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* 
 bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
                                       size_t position) {
   return CloseJournalPrimaryCollection(primary, position, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context,
-                                       TRI_primary_collection_t* const primary) {
-  context->_collection = primary;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

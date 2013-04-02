@@ -28,9 +28,13 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var internal = require("internal");
+
+var fs = require("fs");
+
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-var foxx = require("org/arangodb/foxx");
+var foxxManager = require("org/arangodb/foxx-manager");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -42,7 +46,7 @@ var foxx = require("org/arangodb/foxx");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the server authentication information
+/// @brief installs a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -51,6 +55,41 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
+    'use strict';
+
+    var result;
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var appId = body.appId;
+    var mount = body.mount;
+    var options = body.options || {};
+
+    try {
+      result = foxxManager.installApp(appId, mount, options);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief installs a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/dev-install",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
     var result;
     var body = actions.getJsonBody(req, res);
 
@@ -62,8 +101,118 @@ actions.defineHttp({
     var mount = body.mount;
     var options = body.options || {};
 
-    result = foxx.installApp(name, mount, options);
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    try {
+      result = foxxManager.installDevApp(name, mount, options);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uninstalls a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/uninstall",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var result;
+    var body = actions.getJsonBody(req, res);
+
+    if (body === undefined) {
+      return;
+    }
+
+    var key = body.key;
+
+    try {
+      result = foxxManager.uninstallApp(key);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/load",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    'use strict';
+
+    var safe = /^[0-9a-zA-Z_\-\.]+$/;
+
+    if (req.suffix.length !== 0) {
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+      return;
+    }
+
+    var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
+  
+    if (json === undefined) {
+      return;
+    }
+
+    var serverFile = json.filename;
+    var realFile = fs.join(fs.getTempPath(), serverFile); 
+
+    if (! fs.isFile(realFile)) {
+      actions.resultNotFound(req, res, arangodb.errors.ERROR_FILE_NOT_FOUND.code);
+      return;
+    }
+
+    try {
+      var name = json.name;
+      var version = json.version;
+
+      if (! safe.test(name)) {
+        fs.remove(realFile);
+        throw "rejecting unsafe name '" + name + "'";
+      }
+
+      if (! safe.test(version)) {
+        fs.remove(realFile);
+        throw "rejecting unsafe version '" + version + "'";
+      }
+
+      var appPath = module.appPath();
+
+      if (typeof appPath === "undefined") {
+        fs.remove(realFile);
+        throw "javascript.app-path not set, rejecting app loading";
+      }
+
+      var path = fs.join(appPath, name + "-" + version);
+
+      if (fs.exists(path)) {
+        fs.remove(realFile);
+        throw "destination path '" + path + "' already exists";
+      }
+
+      fs.makeDirectoryRecursive(path);
+      fs.unzipFile(realFile, path, false, true);
+
+      foxxManager.scanAppDirectory();
+   
+      actions.resultOk(req, res, actions.HTTP_OK, { path: path });
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
 });
 
