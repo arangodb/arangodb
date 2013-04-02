@@ -39,7 +39,7 @@ describe ArangoDB do
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(7)
+        doc.parsed_response['errorNum'].should eq(10)
       end      
       
       it "creation failure due to duplicate attributes" do

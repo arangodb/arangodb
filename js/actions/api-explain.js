@@ -135,8 +135,8 @@ function POST_api_explain (req, res) {
 
   var result = EXPLAIN(json.query, json.bindVars);
 
-  if (result instanceof ArangoError) {
-    actions.resultBad(req, res, result.errorNum, result.errorMessage);
+  if (result instanceof Error) {
+    actions.resultException(req, res, result);
     return;
   }
 
