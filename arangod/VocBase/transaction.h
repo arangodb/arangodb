@@ -134,8 +134,8 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_context_s {
-  TRI_associative_pointer_t _collections;
   TRI_read_write_lock_t     _collectionsLock;
+  TRI_associative_pointer_t _collections;
 
   struct TRI_vocbase_s*     _vocbase;     
 }
@@ -161,7 +161,6 @@ TRI_transaction_collection_stats_t;
 
 typedef struct TRI_transaction_collection_global_s {
   TRI_transaction_cid_t _cid;
-
   TRI_read_write_lock_t _lock;
 
   TRI_transaction_collection_stats_t _stats;
@@ -240,20 +239,6 @@ int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection used in a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_transaction_collection_s {
-  TRI_transaction_cid_t                _cid;            // collection id
-  TRI_transaction_type_e               _accessType;     // access type (read|write)
-  int                                  _nestingLevel;   // the transaction level that added this collection
-  struct TRI_vocbase_col_s*            _collection;     // vocbase collection pointer
-  TRI_transaction_collection_global_t* _globalInstance; // pointer to the global instance
-  bool                                 _locked;         // collection lock flag
-}
-TRI_transaction_collection_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for transaction hints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -264,9 +249,11 @@ typedef uint32_t TRI_transaction_hint_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_TRANSACTION_HINT_NONE             = 0,
-  TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1,
-  TRI_TRANSACTION_HINT_LOCK_ENTIRELY    = 2
+  TRI_TRANSACTION_HINT_NONE              = 0,
+  TRI_TRANSACTION_HINT_SINGLE_OPERATION  = 1,
+  TRI_TRANSACTION_HINT_LOCK_ENTIRELY     = 2,
+  TRI_TRANSACTION_HINT_READ_ONLY         = 4,
+  TRI_TRANSACTION_HINT_SINGLE_COLLECTION = 8
 }
 TRI_transaction_hint_e;
 
@@ -284,6 +271,24 @@ typedef struct TRI_transaction_s {
   int                        _nestingLevel; 
 }
 TRI_transaction_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection used in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_transaction_collection_s {
+  TRI_transaction_t*                   _transaction;     // the transaction
+  TRI_transaction_cid_t                _cid;             // collection id
+  TRI_transaction_type_e               _accessType;      // access type (read|write)
+  int                                  _nestingLevel;    // the transaction level that added this collection
+  struct TRI_vocbase_col_s*            _collection;      // vocbase collection pointer
+  TRI_transaction_collection_global_t* _globalInstance;  // pointer to the global instance
+  uint64_t                             _numWrites;       // number of writes
+  bool                                 _locked;          // collection lock flag
+  bool                                 _waitForSync;     // whether or not the collection has waitForSync
+  bool                                 _hadSyncedWrites; // whether or not synced writes happened
+}
+TRI_transaction_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -324,12 +329,26 @@ void TRI_FreeTransaction (TRI_transaction_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a collection is contained in a transaction and return it
+/// @brief increase the number of writes done for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_vocbase_col_s* TRI_GetCollectionTransaction (TRI_transaction_t* const,
-                                                        const TRI_transaction_cid_t,
-                                                        const TRI_transaction_type_e);
+void TRI_IncreaseWritesCollectionTransaction (TRI_transaction_collection_t*,
+                                              bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection from a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const*,
+                                              const TRI_transaction_cid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection from a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t const*,
+                                                            const TRI_transaction_cid_t,
+                                                            const TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to a transaction
@@ -344,8 +363,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const,
 /// @brief request a lock for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LockCollectionTransaction (TRI_transaction_t* const,
-                                   const TRI_transaction_cid_t,
+int TRI_LockCollectionTransaction (TRI_transaction_collection_t*,
                                    const TRI_transaction_type_e,
                                    const int);
 
@@ -353,8 +371,7 @@ int TRI_LockCollectionTransaction (TRI_transaction_t* const,
 /// @brief request an unlock for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnlockCollectionTransaction (TRI_transaction_t* const,
-                                     const TRI_transaction_cid_t,
+int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t*,
                                      const TRI_transaction_type_e, 
                                      const int);
 
@@ -362,8 +379,7 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_t* const,
 /// @brief check whether a collection is locked in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsLockedCollectionTransaction (TRI_transaction_t* const,
-                                        const TRI_transaction_cid_t,
+bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t*,
                                         const TRI_transaction_type_e,
                                         const int);
 

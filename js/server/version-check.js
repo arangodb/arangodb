@@ -44,6 +44,7 @@
 
 (function() {
   var internal = require("internal");
+  var fs = require("fs");
   var console = require("console");
   var userManager = require("org/arangodb/users");
   var db = internal.db;
@@ -96,9 +97,9 @@
     }
 
 
-    if (internal.exists(versionFile)) {
+    if (fs.exists(versionFile)) {
       // VERSION file exists, read its contents
-      var versionInfo = internal.read(versionFile);
+      var versionInfo = fs.read(versionFile);
 
       if (versionInfo !== '') {
         var versionValues = JSON.parse(versionInfo);
@@ -374,8 +375,9 @@
           lastTasks[task.name] = true;
 
           // save/update version info
-          internal.write(versionFile,
-                         JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+          fs.write(
+            versionFile,
+            JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
           console.log("Task successful");
         }
@@ -388,7 +390,9 @@
     }
 
     // save file so version gets saved even if there are no tasks
-    internal.write(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    fs.write(
+      versionFile,
+      JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
     console.log("Upgrade successfully finished");
 
@@ -421,13 +425,13 @@
   
   var currentVersion = parseFloat(currentServerVersion[1]);
   
-  if (! internal.exists(versionFile)) {
+  if (! fs.exists(versionFile)) {
     console.info("No version information file found in database directory.");
     return runUpgrade(currentVersion);
   }
 
    // VERSION file exists, read its contents
-  var versionInfo = internal.read(versionFile);
+  var versionInfo = fs.read(versionFile);
   if (versionInfo !== '') {
     var versionValues = JSON.parse(versionInfo);
     if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
@@ -442,7 +446,7 @@
 
   if (lastVersion === currentVersion) {
     // version match!
-    if (internal.UPGRADE) {
+    if (internal.upgrade) {
       runUpgrade(currentVersion);
     }
     applyFixes();
@@ -464,7 +468,7 @@
 
   if (lastVersion < currentVersion) {
     // upgrade
-    if (internal.UPGRADE) {
+    if (internal.upgrade) {
       return runUpgrade(currentVersion);
     }
 

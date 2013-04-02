@@ -14,8 +14,10 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "applications"                        : "applications",
-      "applications/swagger"                : "swagger"
+      "application/:key"                    : "applicationEdit",
+      "applications/installed"              : "applicationsInstalled",
+      "applications/available"              : "applicationsAvailable",
+      "applications/documentation"          : "applicationsDocumentation"
       
     },
     initialize: function () {
@@ -154,22 +156,54 @@ $(document).ready(function() {
       });
     },
     
-    applications: function() {
-      if (this.applicationsView === undefined) {
-        var foxxList = new window.FoxxCollection();
-        this.applicationsView = new FoxxListView({
-          collection: foxxList
+    applicationsAvailable: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsInstalledView === undefined) {
+        this.applicationsInstalledView = new FoxxInstalledListView({
+          collection: this.foxxList
         });
       }
-      this.applicationsView.render();
+      this.applicationsInstalledView.reload();
       this.naviView.selectMenuItem('applications-menu');
     },
     
-    swagger: function() {
-      if (this.swaggerView === undefined) {
-        this.swaggerView = new window.SwaggerView();
+    applicationsInstalled: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
       }
-      this.swaggerView.render();
+      if (this.applicationsActiveView === undefined) {
+        this.applicationsActiveView = new FoxxActiveListView({
+          collection: this.foxxList
+        });
+      }
+      this.applicationsActiveView.reload();
+      this.naviView.selectMenuItem('applications-menu');
+    },
+    
+    applicationEdit: function(appkey) {
+      if (this.foxxList === undefined) {
+        var self = this;
+        this.foxxList = new window.FoxxCollection();
+        this.foxxList.fetch({
+          success: function() {
+            var editAppView = new window.foxxEditView({model: self.foxxList.findWhere({_key: appkey})});
+            editAppView.render();
+          }
+        });
+      } else {
+        var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
+        editAppView.render();
+      }
+      
+    },
+    
+    applicationsDocumentation: function() {
+      if (this.appDocuView === undefined) {
+        this.appDocuView = new window.AppDocumentationView();
+      }
+      this.appDocuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 

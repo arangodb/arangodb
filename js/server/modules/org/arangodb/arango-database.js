@@ -74,8 +74,8 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._PRINT = function(seen, path, names, level) {
-  internal.output(this.toString());
+ArangoDatabase.prototype._PRINT = function(context) {
+  context.output += this.toString();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

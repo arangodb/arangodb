@@ -5,6 +5,14 @@ window.Foxx = Backbone.Model.extend({
     "mount": "",
     "description": "",
     "git": ""
+  },
+  
+  url: function() {
+    return "../../aardvark/foxxes/" + this.get("_key");
+  },
+  
+  isNew: function() {
+    return false;
   }
   
 });

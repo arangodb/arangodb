@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var FoxxApplication,
+  RequestContext,
   BaseMiddleware,
   FormatMiddleware,
   _ = require("underscore"),
@@ -36,6 +37,7 @@ var FoxxApplication,
   fs = require("fs"),
   console = require("console"),
   INTERNAL = require("internal"),
+  foxxManager = require("org/arangodb/foxx-manager"),
   internal = {};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +107,7 @@ FoxxApplication = function (options) {
   this.routingInfo.urlPrefix = urlPrefix;
 
   if (_.isString(templateCollection)) {
-    this.routingInfo.templateCollection = db._collection(templateCollection) ||
+    this.templateCollection = db._collection(templateCollection) ||
       db._create(templateCollection);
     myMiddleware = new BaseMiddleware(templateCollection, this.helperCollection);
   } else {
@@ -131,32 +133,22 @@ _.extend(FoxxApplication.prototype, {
 /// You have to provide the start function with the `applicationContext`
 /// variable.
 ////////////////////////////////////////////////////////////////////////////////
+
   start: function (context) {
     'use strict';
     var models = this.requiresModels,
       requires = this.requiresLibs,
       prefix = context.prefix;
 
-    this.routingInfo.urlPrefix = prefix + this.routingInfo.urlPrefix;
+    this.routingInfo.urlPrefix = prefix + "/" + this.routingInfo.urlPrefix;
 
     _.each(this.routingInfo.routes, function (route) {
-      route.action.context = context;
+      route.action.context = context.context;
       route.action.requiresLibs = requires;
       route.action.requiresModels = models;
     });
 
-    this.routingInfo.routes.push({
-      "url" : "/",
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : true,
-          "destination" : "index.html"
-        }
-      }
-    });
-
-    db._collection("_routing").save(this.routingInfo);
+    context.routingInfo = this.routingInfo;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,24 +169,22 @@ _.extend(FoxxApplication.prototype, {
 ///       //handle the request
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  handleRequest: function (method, route, argument1, argument2) {
+  handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = {}, options, callback;
-
-    if (_.isUndefined(argument2)) {
-      callback = argument1;
-      options = {};
-    } else {
-      options = argument1;
-      callback = argument2;
-    }
-
-    newRoute.url = internal.createUrlObject(route, options.constraint, method);
-    newRoute.action = {
-      callback: String(callback)
+    var newRoute = {
+      url: internal.createUrlObject(route, undefined, method),
+      action: {
+        callback: String(callback)
+      },
+      docs: {
+        parameters: [],
+        errorResponses: [],
+        httpMethod: method.toUpperCase()
+      }
     };
 
     this.routingInfo.routes.push(newRoute);
+    return new RequestContext(newRoute);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,9 +197,9 @@ _.extend(FoxxApplication.prototype, {
 /// the last argument however. It will get a request and response
 /// object as its arguments
 ////////////////////////////////////////////////////////////////////////////////
-  head: function (route, argument1, argument2) {
+  head: function (route, callback) {
     'use strict';
-    this.handleRequest("head", route, argument1, argument2);
+    return this.handleRequest("head", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,9 +214,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  get: function (route, argument1, argument2) {
+  get: function (route, callback) {
     'use strict';
-    this.handleRequest("get", route, argument1, argument2);
+    return this.handleRequest("get", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,9 +231,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  post: function (route, argument1, argument2) {
+  post: function (route, callback) {
     'use strict';
-    this.handleRequest("post", route, argument1, argument2);
+    return this.handleRequest("post", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,9 +248,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  put: function (route, argument1, argument2) {
+  put: function (route, callback) {
     'use strict';
-    this.handleRequest("put", route, argument1, argument2);
+    return this.handleRequest("put", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,9 +265,9 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  patch: function (route, argument1, argument2) {
+  patch: function (route, callback) {
     'use strict';
-    this.handleRequest("patch", route, argument1, argument2);
+    return this.handleRequest("patch", route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,14 +290,14 @@ _.extend(FoxxApplication.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
-  'delete': function (route, argument1, argument2) {
+  'delete': function (route, callback) {
     'use strict';
-    this.handleRequest("delete", route, argument1, argument2);
+    return this.handleRequest("delete", route, callback);
   },
 
-  del: function (route, argument1, argument2) {
+  del: function (route, callback) {
     'use strict';
-    this['delete'](route, argument1, argument2);
+    return this['delete'](route, callback);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,6 +400,159 @@ _.extend(FoxxApplication.prototype, {
         callback: (new FormatMiddleware(allowedFormats, defaultFormat)).stringRepresentation
       }
     });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_initializer
+/// @brief Context of a Request Definition
+///
+/// Used for documenting and constraining the routes.
+////////////////////////////////////////////////////////////////////////////////
+RequestContext = function (route) {
+  'use strict';
+  this.route = route;
+  this.typeToRegex = {
+    "int": "/[0-9]+/",
+    "string": "/.+/"
+  };
+};
+
+_.extend(RequestContext.prototype, {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_pathParam
+/// @brief Describe a Path Parameter
+///
+/// If you defined a route "/foxx/:id", you can constrain which format the id
+/// can have by giving a type. We currently support the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter.
+///
+/// @EXAMPLES
+///     app.get("/foxx/:id", function {
+///       // Do something
+///     }).pathParam("id", {
+///       description: "Id of the Foxx",
+///       dataType: "int"
+///     });
+////////////////////////////////////////////////////////////////////////////////
+  pathParam: function (paramName, attributes) {
+    'use strict';
+    var url = this.route.url,
+      docs = this.route.docs,
+      constraint = url.constraint || {};
+
+    constraint[paramName] = this.typeToRegex[attributes.dataType];
+    this.route.url = internal.createUrlObject(url.match, constraint, url.methods[0]);
+    this.route.docs.parameters.push({
+      paramType: "path",
+      name: paramName,
+      description: attributes.description,
+      dataType: attributes.dataType,
+      required: true
+    });
+
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_queryParam
+/// @brief Describe a Query Parameter
+///
+/// If you defined a route "/foxx", you can constrain which format a query
+/// parameter (`/foxx?a=12`) can have by giving it a type.
+/// We currently support the following types:
+///
+/// * int
+/// * string
+///
+/// You can also provide a description of this parameter, if it is required and
+///  if you can provide the parameter multiple times.
+///
+/// @EXAMPLES
+///     app.get("/foxx", function {
+///       // Do something
+///     }).queryParam("id", {
+///       description: "Id of the Foxx",
+///       dataType: "int",
+///       required: true,
+///       allowMultiple: false
+///     });
+////////////////////////////////////////////////////////////////////////////////
+
+  queryParam: function (paramName, attributes) {
+    'use strict';
+    this.route.docs.parameters.push({
+      paramType: "query",
+      name: paramName,
+      description: attributes.description,
+      dataType: attributes.dataType,
+      required: attributes.required,
+      allowMultiple: attributes.allowMultiple
+    });
+
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_nickname
+/// @brief Set the nickname for this route in the documentation
+////////////////////////////////////////////////////////////////////////////////
+
+  nickname: function (nickname) {
+    'use strict';
+    if (!nickname.match(/^[a-z]+$/)) {
+      throw "Nickname may only contain [a-z], not '" + nickname + "'";
+    }
+    this.route.docs.nickname = nickname;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_summary
+/// @brief Set the summary for this route in the documentation
+///
+/// Can't be longer than 60 characters
+////////////////////////////////////////////////////////////////////////////////
+
+  summary: function (summary) {
+    'use strict';
+    if (summary.length > 60) {
+      throw "Summary can't be longer than 60 characters";
+    }
+    this.route.docs.summary = summary;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_notes
+/// @brief Set the notes for this route in the documentation
+////////////////////////////////////////////////////////////////////////////////
+
+  notes: function (notes) {
+    'use strict';
+    this.route.docs.notes = notes;
+    return this;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_RequestContext_errorResponse
+/// @brief Document an error response
+///
+/// Document the error response for a given error code with a reason for the
+/// occurrence.
+////////////////////////////////////////////////////////////////////////////////
+
+  errorResponse: function (code, reason) {
+    'use strict';
+    this.route.docs.errorResponses.push({
+      code: code,
+      reason: reason
+    });
+    return this;
   }
 });
 
@@ -600,23 +743,34 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
     var parsed, determinePathAndFormat;
 
     determinePathAndFormat = function (path, headers) {
-      var urlFormatToMime, mimeToUrlFormat, parsed;
+      var mimeTypes = require("org/arangodb/mimetypes").mimeTypes,
+        extensions = require("org/arangodb/mimetypes").extensions,
+        urlFormatToMime = function (urlFormat) {
+          var mimeType;
 
-      parsed = {
-        contentType: headers.accept
-      };
+          if (mimeTypes[urlFormat]) {
+            mimeType = mimeTypes[urlFormat][0];
+          } else {
+            mimeType = undefined;
+          }
 
-      urlFormatToMime = {
-        json: "application/json",
-        html: "text/html",
-        txt: "text/plain"
-      };
+          return mimeType;
+        },
+        mimeToUrlFormat = function (mimeType) {
+          var urlFormat;
 
-      mimeToUrlFormat = {
-        "application/json": "json",
-        "text/html": "html",
-        "text/plain": "txt"
-      };
+          if (extensions[mimeType]) {
+            urlFormat = extensions[mimeType][0];
+          } else {
+            urlFormat = undefined;
+          }
+
+          return urlFormat;
+        },
+        parsed = {
+          contentType: headers.accept
+        };
+
       path = path.split('.');
 
       if (path.length === 1) {
@@ -628,14 +782,14 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 
       if (parsed.contentType === undefined && parsed.format === undefined) {
         parsed.format = defaultFormat;
-        parsed.contentType = urlFormatToMime[defaultFormat];
+        parsed.contentType = urlFormatToMime(defaultFormat);
       } else if (parsed.contentType === undefined) {
-        parsed.contentType = urlFormatToMime[parsed.format];
+        parsed.contentType = urlFormatToMime(parsed.format);
       } else if (parsed.format === undefined) {
-        parsed.format = mimeToUrlFormat[parsed.contentType];
+        parsed.format = mimeToUrlFormat(parsed.contentType);
       }
 
-      if (parsed.format !== mimeToUrlFormat[parsed.contentType]) {
+      if (parsed.format !== mimeToUrlFormat(parsed.contentType)) {
         throw "Contradiction between Accept Header and URL.";
       }
 
@@ -671,7 +825,6 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// We finish off with exporting FoxxApplication and the middlewares.
 /// Everything else will remain our secret.
 
-exports.installApp = require("org/arangodb/foxx-manager").installApp;
 exports.FoxxApplication = FoxxApplication;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;

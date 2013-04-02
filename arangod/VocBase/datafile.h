@@ -532,7 +532,8 @@ void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
 
 int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
-                                TRI_df_marker_t** position);
+                                TRI_df_marker_t** position,
+                                TRI_voc_size_t maximalJournalSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker to the datafile

@@ -34,7 +34,7 @@ function CreateFoxxApplicationSpec () {
 
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
-      assertEqual(routingInfo.templateCollection, templateCollection);
+      assertEqual(app.templateCollection, templateCollection);
     },
 
     testCreationWithTemplateCollectionIfCollectionDoesExist: function () {
@@ -48,7 +48,7 @@ function CreateFoxxApplicationSpec () {
 
       assertEqual(routingInfo.routes.length, 0);
       assertNotNull(templateCollection);
-      assertEqual(routingInfo.templateCollection, templateCollection);
+      assertEqual(app.templateCollection, templateCollection);
     },
 
     testAdditionOfBaseMiddlewareInRoutingInfo: function () {
@@ -70,7 +70,7 @@ function SetRoutesFoxxApplicationSpec () {
       app = new FoxxApplication();
     },
 
-    testSettingRoutesWithoutConstraint: function () {
+    testSettingRoutes: function () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
 
@@ -80,21 +80,12 @@ function SetRoutesFoxxApplicationSpec () {
       assertUndefined(routes[0].url.constraint);
     },
 
-    testSettingRoutesWithConstraint: function () {
-      var myFunc = function () {},
-        routes = app.routingInfo.routes,
-        constraint = { test: "/[a-z]+/" };
-
-      app.get('/simple/route', { constraint: constraint }, myFunc);
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint, constraint);
-    },
-
     testSetMethodToHead: function () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
 
       app.head('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'HEAD');
       assertEqual(routes[0].url.methods, ["head"]);
     },
 
@@ -103,6 +94,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.get('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'GET');
       assertEqual(routes[0].url.methods, ["get"]);
     },
 
@@ -111,6 +103,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.post('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
       assertEqual(routes[0].url.methods, ["post"]);
     },
 
@@ -119,6 +112,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.put('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'PUT');
       assertEqual(routes[0].url.methods, ["put"]);
     },
 
@@ -127,6 +121,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.patch('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'PATCH');
       assertEqual(routes[0].url.methods, ["patch"]);
     },
 
@@ -135,6 +130,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app['delete']('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'DELETE');
       assertEqual(routes[0].url.methods, ["delete"]);
     },
 
@@ -143,6 +139,7 @@ function SetRoutesFoxxApplicationSpec () {
         routes = app.routingInfo.routes;
 
       app.del('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'DELETE');
       assertEqual(routes[0].url.methods, ["delete"]);
     },
 
@@ -212,21 +209,138 @@ function SetRoutesFoxxApplicationSpec () {
         b: 2
       };
       app.get('/simple/route', myFunc);
-      app.start("myContext");
+      app.start({
+        context: "myContext"
+      });
 
       assertEqual(app.routingInfo.routes[0].action.context, "myContext");
       assertEqual(app.routingInfo.routes[0].action.requiresLibs.a, 1);
       assertEqual(app.routingInfo.routes[0].action.requiresModels.b, 2);
+    }
+  };
+}
+
+function DocumentationAndConstraintsSpec () {
+  var app, routes;
+
+  return {
+    setUp: function () {
+      app = new FoxxApplication(),
+        routes = app.routingInfo.routes;
     },
 
-    testStartAddsRequiresAndContext: function () {
-      app.get('/simple/route', function() {});
-      app.start("myContext");
+    testDefinePathParam: function () {
+      app.get('/foxx/:id', function () {
+        //nothing
+      }).pathParam("id", {
+        description: "Id of the Foxx",
+        dataType: "int"
+      });
 
-      assertEqual(app.routingInfo.routes[1].url, "/");
-      assertEqual(app.routingInfo.routes[1].action['do'], "org/arangodb/actions/redirectRequest");
-      assertEqual(app.routingInfo.routes[1].action.options.permanently, true);
-      assertEqual(app.routingInfo.routes[1].action.options.destination, "index.html");
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "id");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].required, true);
+    },
+
+    testDefineMultiplePathParams: function () {
+      app.get('/:foxx/:id', function () {
+        //nothing
+      }).pathParam("foxx", {
+        description: "Kind of Foxx",
+        dataType: "string"
+      }).pathParam("id", {
+        description: "Id of the Foxx",
+        dataType: "int"
+      });
+
+      assertEqual(routes.length, 1);
+
+      assertEqual(routes[0].url.constraint.foxx, "/.+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "foxx");
+      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "string");
+      assertEqual(routes[0].docs.parameters[0].required, true);
+
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[1].paramType, "path");
+      assertEqual(routes[0].docs.parameters[1].name, "id");
+      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+      assertEqual(routes[0].docs.parameters[1].required, true);
+    },
+
+    testDefineQueryParam: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).queryParam("a", {
+        description: "The value of an a",
+        dataType: "int",
+        required: false,
+        allowMultiple: true
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].required, false);
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
+    },
+
+    testDefineMetaData: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).nickname("a").summary("b").notes("c");
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.nickname, "a");
+      assertEqual(routes[0].docs.summary, "b");
+      assertEqual(routes[0].docs.notes, "c");
+    },
+
+    testNicknameFormat: function () {
+      var error;
+
+      try {
+        app.get('/foxx', function () {
+          //nothing
+        }).nickname("a b");
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error.substr(0,31), "Nickname may only contain [a-z]".substr(0,31));
+    },
+
+    testSummaryRestrictedTo60Characters: function () {
+      var error;
+
+      try {
+        app.get('/foxx', function () {
+          //nothing
+        }).summary("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, "Summary can't be longer than 60 characters");
+    },
+
+    testDefineErrorResponse: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).errorResponse(400, "I don't understand a word you're saying");
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.errorResponses.length, 1);
+      assertEqual(routes[0].docs.errorResponses[0].code, 400);
+      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
     }
   };
 }
@@ -506,7 +620,7 @@ function ViewHelperSpec () {
 
       app.helper("testHelper", my_func);
 
-      assertEqual(app.helperCollection["testHelper"], my_func);
+      assertEqual(app.helperCollection.testHelper, my_func);
     },
 
     testUsingTheHelperInATemplate: function () {
@@ -523,7 +637,7 @@ function ViewHelperSpec () {
       });
 
       middleware = new Middleware(myCollection, {
-        testHelper: function() { a = true }
+        testHelper: function() { a = true; }
       }).functionRepresentation;
       middleware(request, response, options, next);
 
@@ -555,7 +669,7 @@ function FormatMiddlewareSpec () {
 
     testRefusesFormatsThatHaveNotBeenAllowed: function () {
       var nextCalled = false,
-        next = function () { nextCalled = true };
+        next = function () { nextCalled = true; };
       middleware = new Middleware(["json"]).functionRepresentation;
       request = { path: "test/1.html", headers: {} };
       middleware(request, response, options, next);
@@ -566,7 +680,7 @@ function FormatMiddlewareSpec () {
 
     testRefuseContradictingURLAndResponseType: function () {
       var nextCalled = false,
-        next = function () { nextCalled = true };
+        next = function () { nextCalled = true; };
       request = { path: "test/1.json", headers: {"accept": "text/html"} };
       middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
@@ -577,7 +691,7 @@ function FormatMiddlewareSpec () {
 
     testRefuseMissingBothURLAndResponseTypeWhenNoDefaultWasGiven: function () {
       var nextCalled = false,
-        next = function () { nextCalled = true };
+        next = function () { nextCalled = true; };
       request = { path: "test/1", headers: {} };
       middleware = new Middleware(["json"]).functionRepresentation;
       middleware(request, response, options, next);
@@ -649,6 +763,7 @@ function FormatMiddlewareSpec () {
 
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
+jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxApplicationSpec);
 jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);

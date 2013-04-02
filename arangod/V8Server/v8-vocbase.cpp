@@ -809,7 +809,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
 
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
   if (barrier == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
@@ -5699,6 +5699,14 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// With properties:
 ///
 /// @verbinclude shell_create-collection-properties
+///
+/// With a key generator:
+///
+/// @verbinclude shell_create-collection-keygen
+///
+/// With a special key option:
+///
+/// @verbinclude shell_create-collection-keyoptions
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
@@ -6677,18 +6685,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCollection", ft->GetFunction());
-
-
-  // .............................................................................
-  // generate the general error template
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(TRI_V8_SYMBOL("ArangoError"));
-
-  rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ft->GetFunction());
 
 
   // .............................................................................

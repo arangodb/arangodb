@@ -28,10 +28,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
 var internal = require("internal");
+
 var fs = require("fs");
 var console = require("console");
+
+var arangodb = require("org/arangodb");
+var foxxManager = require("org/arangodb/foxx-manager");
+
 var moduleExists = function(name) { return module.exists; };
 
 // -----------------------------------------------------------------------------
@@ -48,6 +52,12 @@ var moduleExists = function(name) { return module.exists; };
 ////////////////////////////////////////////////////////////////////////////////
 
 var RoutingCache;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all methods
+////////////////////////////////////////////////////////////////////////////////
+
+var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -164,7 +174,7 @@ function lookupUrl (prefix, url) {
   if (url.hasOwnProperty('match')) {
     return {
       urlParts: splitUrl(prefix + "/" + url.match),
-      methods: url.methods || exports.ALL_METHODS,
+      methods: url.methods || ALL_METHODS,
       constraint: url.constraint || {}
     };
   }
@@ -216,6 +226,7 @@ function lookupCallbackActionCallback (route, action) {
   var env;
   var func;
   var key;
+  var app;
   var appModule;
   var modelModule;
 
@@ -224,16 +235,20 @@ function lookupCallbackActionCallback (route, action) {
 
   try {
     if (action.hasOwnProperty("context")) {
-      appModule = module.appRootModule(action.context.name);
+      app = module.createApp(action.context.appId);
+
+      if (app === null) {
+        throw "cannot locate application '" + action.context.name + "'"
+          + " in version '" + action.context.version + "'";
+      }
+      
+      appModule = app.createAppModule();
 
       if (action.hasOwnProperty("requiresModels")) {
         var cp = action.context.collectionPrefix;
         var me;
 
-        modelModule = module.appRootModule(action.context.name,
-                                           'models',
-                                           appModule._package);
-
+        modelModule = app.createAppModule('models', appModule._package);
         me = modelModule._package._environment = {};
 
         if (cp !== "") {
@@ -299,20 +314,22 @@ function lookupCallbackActionCallback (route, action) {
       func = env.func;
     }
     else {
-      func = notImplementedFunction(route,
-                                    "could not define function '" + action.callback);
+      func = notImplementedFunction(
+        route,
+        "could not define function '" + action.callback);
     }
   }
   catch (err) {
-    func = errorFunction(route,
-                         "an error occurred while loading function '" 
-                         + action.callback + "': " + String(err));
+    func = errorFunction(
+      route,
+      "an error occurred while loading function '" 
+        + action.callback + "': " + String(err));
   }
 
   return {
     controller: func,
     options: action.options || {},
-    methods: action.methods || exports.ALL_METHODS
+    methods: action.methods || ALL_METHODS
   };
 }
 
@@ -368,7 +385,7 @@ function lookupCallbackActionDo (route, action) {
   return {
     controller: func,
     options: action.options || {},
-    methods: action.methods || exports.ALL_METHODS
+    methods: action.methods || ALL_METHODS
   };
 }
 
@@ -425,7 +442,7 @@ function lookupCallbackActionController (route, action) {
         next();
       },
       options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
+      methods: action.methods || ALL_METHODS
     };
   }
   catch (err) {
@@ -529,7 +546,7 @@ function lookupCallbackActionPrefixController (route, action) {
       next();
     },
     options: action.options || {},
-    methods: action.methods || exports.ALL_METHODS
+    methods: action.methods || ALL_METHODS
   };
 }
 
@@ -609,8 +626,8 @@ function intersectMethods (a, b) {
   var j;
   var results = [];
 
-  a = a || exports.ALL_METHODS;
-  b = b || exports.ALL_METHODS;
+  a = a || ALL_METHODS;
+  b = b || ALL_METHODS;
 
   for (i = 0; i < b.length;  i++) {
     d[b[i].toUpperCase()] = true;
@@ -1083,6 +1100,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 
 function reloadRouting () {
   var i;
+  var j;
   var routes;
   var routing;
   var handleRoute;
@@ -1098,8 +1116,8 @@ function reloadRouting () {
   RoutingCache.routes = {};
   RoutingCache.middleware = {};
 
-  for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
-    method = exports.ALL_METHODS[i];
+  for (i = 0;  i < ALL_METHODS.length;  ++i) {
+    method = ALL_METHODS[i];
 
     RoutingCache.routes[method] = {};
     RoutingCache.middleware[method] = {};
@@ -1109,8 +1127,26 @@ function reloadRouting () {
   // lookup all routes
   // .............................................................................
 
+  routes = [];
+
   routing = arangodb.db._collection("_routing");
-  routes = routing.all();
+  i = routing.all();
+
+  while (i.hasNext()) {
+    var n = i.next();
+
+    routes.push(n.shallowCopy);
+  }
+
+  // allow the collection to unload
+  i  = null;
+  routing = null;
+
+  // check development routes
+  if (internal.developmentMode) {
+    i = foxxManager.developmentRoutes();
+    routes = routes.concat(i);
+  }
 
   // .............................................................................
   // defines a new route
@@ -1138,40 +1174,13 @@ function reloadRouting () {
   };
   
   // .............................................................................
-  // deep-copy a route object
-  // .............................................................................
-
-  function clone (obj) {
-    if (obj === null || typeof(obj) !== "object") {
-      return obj;
-    }
-
-    var copy, a; 
-    if (Array.isArray(obj)) {
-      copy = [ ];
-      obj.forEach(function (i) {
-        copy.push(clone(i));
-      });
-    }
-    else if (obj instanceof Object) {
-      copy = { };
-      for (a in obj) {
-        if (obj.hasOwnProperty(a)) {
-          copy[a] = clone(obj[a]);
-        }
-      }
-    }
-
-    return copy;
-  }
-
-  // .............................................................................
   // loop over the routes or routes bundle
   // .............................................................................
 
-  while (routes.hasNext()) {
+  for (j = 0;  j < routes.length;  ++j) {
+
     // clone the route object so the barrier for the collection can be removed soon
-    var route = clone(routes.next());
+    var route = routes[j];
     var r;
 
     if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
@@ -1199,21 +1208,17 @@ function reloadRouting () {
     }
   }
 
-  // allow the collection to unload
-  routes  = null;
-  routing = null;
-
   // .............................................................................
   // compute the flat routes
   // .............................................................................
 
   RoutingCache.flat = {};
 
-  for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
+  for (i = 0;  i < ALL_METHODS.length;  ++i) {
     var a;
     var b;
 
-    method = exports.ALL_METHODS[i];
+    method = ALL_METHODS[i];
 
     a = flattenRouting(RoutingCache.routes[method], "", {}, 0, false);
     b = flattenRouting(RoutingCache.middleware[method], "", {}, 0, false).reverse();
@@ -1824,7 +1829,7 @@ exports.POST                     = "POST";
 exports.PUT                      = "PUT";
 exports.PATCH                    = "PATCH";
 
-exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
+exports.ALL_METHODS              = ALL_METHODS;
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;

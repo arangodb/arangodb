@@ -399,6 +399,7 @@ bool RestDocumentHandler::createDocument () {
 
   TRI_doc_mptr_t document;
   res = trx.createDocument(&document, json, waitForSync, true);
+  const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
   // .............................................................................
@@ -413,7 +414,7 @@ bool RestDocumentHandler::createDocument () {
   assert(document._key != 0);
 
   // generate result
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateCreated(cid, document._key, document._rid);
   }
   else {
@@ -1150,6 +1151,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid, true);
   }
 
+  const bool wasSynchronous = trx.synchronous();
+
   res = trx.finish(res);
 
   // .............................................................................
@@ -1163,7 +1166,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // generate result
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateCreated(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
   }
   else {
@@ -1288,6 +1291,8 @@ bool RestDocumentHandler::deleteDocument () {
 
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid, false);
+  
+  const bool wasSynchronous = trx.synchronous();
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }
@@ -1304,7 +1309,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
   }
   else {

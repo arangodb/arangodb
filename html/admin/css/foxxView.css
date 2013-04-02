@@ -1,0 +1,20 @@
+.foxxList {
+  padding-top: 30px;
+}
+.foxxDescription {
+  width:170px;
+  float: left;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+.foxxIcon {
+  width:64px;
+  height:64px;
+  float:left;  
+  padding:10px;
+}
+
+.badge-foxx {
+  bottom: 0px;
+}

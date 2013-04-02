@@ -3,7 +3,7 @@ var footerView = Backbone.View.extend({
   init: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/footerView.ejs'}),
+  template: new EJS({url: 'js/templates/footerView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);

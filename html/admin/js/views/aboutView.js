@@ -3,7 +3,7 @@ var aboutView = Backbone.View.extend({
   init: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/aboutView.ejs'}),
+  template: new EJS({url: 'js/templates/aboutView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);

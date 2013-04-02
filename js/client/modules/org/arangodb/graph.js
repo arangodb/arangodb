@@ -543,11 +543,8 @@ Graph.prototype.getVertices = function () {
       return cursor.hasNext();
     };
 
-    this._PRINT = function (seen, path, names) {
-      // Ignores the standard arguments
-      seen = path = names = null;
-
-      arangodb.output("[vertex iterator]");
+    this._PRINT = function (context) {
+      context.output += "[vertex iterator]";
     };
   };
 
@@ -611,11 +608,8 @@ Graph.prototype.getEdges = function () {
       return cursor.hasNext();
     };
 
-    this._PRINT = function (seen, path, names) {
-      // Ignores the standard arguments
-      seen = path = names = null;
-
-      arangodb.output("[edge iterator]");
+    this._PRINT = function (context) {
+      context.output += "[edge iterator]";
     };
   };
 
