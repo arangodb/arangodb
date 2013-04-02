@@ -65,7 +65,6 @@
         "../../../html/admin/js/bootstrap/monkeypatches.js",
         "../../../html/admin/js/bootstrap/module-internal.js",
         "../../../html/admin/js/client/bootstrap/module-internal.js",
-        "../../../html/admin/js/shell/print.js",
         "../../../html/admin/js/client/client.js",
         "../../../html/admin/js/models/**",
         "../../../html/admin/js/collections/**",

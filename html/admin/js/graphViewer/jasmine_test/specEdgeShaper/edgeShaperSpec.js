@@ -30,7 +30,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
@@ -142,9 +142,11 @@
       click = function (edge) {
         clicked[edge.source._id] = !clicked[edge.source._id];
       },
-      shaper = new EdgeShaper(d3.select("svg"));
-      
-      shaper.on("click", click);
+      shaper = new EdgeShaper(d3.select("svg"), {
+        actions: {
+          click: click
+        }
+      });
       shaper.drawEdges(edges);
       helper.simulateMouseEvent("click", "1-2");
       helper.simulateMouseEvent("click", "3-4");
@@ -154,6 +156,33 @@
       expect(clicked[3]).toBeTruthy();
       expect(clicked[2]).toBeFalsy();
       expect(clicked[4]).toBeFalsy();
+    });
+    
+    it('should be able to add an arrow on target side', function() {
+      var one = {
+        "_id": 1
+      },
+      two = {
+        "_id": 2
+      },
+      edges = [
+        {
+          "source": one,
+          "target": two
+        }
+      ],
+      shaper = new EdgeShaper(d3.select("svg"), {
+        shape: {
+          type: EdgeShaper.shapes.ARROW
+        }
+      });
+      shaper.drawEdges(edges);
+      
+      expect($("#1-2").attr("marker-end")).toEqual("url(#arrow)");
+      expect($("svg defs marker").length).toEqual(1);
+      expect($("svg defs #arrow").length).toEqual(1);
+      // Orientation is important. Other layout not yet.
+      expect($("svg defs #arrow").attr("orient")).toEqual("auto");
     });
     
     describe('when edges are already drawn', function() {
@@ -180,7 +209,11 @@
       
       it('should be able to add a click event to existing edges', function() {
         expect($("svg .link").length).toEqual(3);
-        shaper.on("click", click);
+        shaper.changeTo({
+          actions: {
+            click: click
+          }
+        });
         helper.simulateMouseEvent("click", "1-2");
         helper.simulateMouseEvent("click", "3-4");
         expect(clicked[1]).toBeTruthy();
@@ -190,7 +223,11 @@
       
       it('should add a click event to newly arriving edges', function() {
         
-        shaper.on("click", click);
+        shaper.changeTo({
+          actions: {
+            click: click
+          }
+        });
         edges.push({_id: 4, source: nodes[3], target: nodes[0]});
         edges.push({_id: 5, source: nodes[0], target: nodes[2]});
         shaper.drawEdges(edges);
@@ -206,11 +243,23 @@
       });
       
       it('should display each edge exactly once if an event is added', function() {
-        shaper.on("click", function() {return 0;});
+        shaper.changeTo({
+          actions: {
+            click: function() {return 0;}
+          }
+        });
         expect($("svg .link").length).toEqual(3);
-        shaper.on("click", function() {return 1;});
+        shaper.changeTo({
+          actions: {
+            click: function() {return 0;}
+          }
+        });
         expect($("svg .link").length).toEqual(3);
-        shaper.on("click", function() {return 2;});
+        shaper.changeTo({
+          actions: {
+            click: function() {return 0;}
+          }
+        });
         expect($("svg .link").length).toEqual(3);
       });
     });
@@ -287,6 +336,31 @@
         expect($("#2-3 text")[0].textContent).toEqual("");
         expect($("#3-4 text")[0].textContent).toEqual("");
         expect($("#4-1 text")[0].textContent).toEqual("correct");
+      });
+      
+      it('should be able to switch to another label', function() {
+        var nodes = [{"_id": 1}, {"_id": 2}],
+        edges = [
+          {
+            "source": nodes[0],
+            "target": nodes[1],
+            "label": "old"
+          },
+          {
+            "source": nodes[1],
+            "target": nodes[0],
+            "new": "new"
+          }
+        ];
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2")[0].textContent).toEqual("old");
+        expect($("#2-1")[0].textContent).toEqual("");
+        
+        shaper.changeTo({label: "new"});
+        
+        expect($("#1-2")[0].textContent).toEqual("");
+        expect($("#2-1")[0].textContent).toEqual("new");
       });
       
     });

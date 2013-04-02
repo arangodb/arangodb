@@ -101,9 +101,14 @@ function buildAssetContent (app, assets) {
   content = "";
 
   for (i = 0; i < files.length; ++i) {
-    var c = fs.read(files[i]);
+    try {
+      var c = fs.read(files[i]);
 
-    content += c;
+      content += c;
+    }
+    catch (err) {
+        console.error("cannot read asset '%s'", files[i]);
+    }
   }
 
   return content;

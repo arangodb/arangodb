@@ -220,7 +220,7 @@
 ///
 /// Formats the arguments according to @FA{format} and logs the result as log
 /// message. Opens a nested block to indent all future messages sent. Call
-/// @{groupEnd} to close the block. Representation of block is up to the
+/// @FN{groupEnd} to close the block. Representation of block is up to the
 /// platform, it can be an interactive block or just a set of indented sub
 /// messages.
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief groupEnd
 ///
-/// @FUN{console.groupEnd(}
+/// @FUN{console.groupEnd()}
 /// 
 /// Closes the most recently opened block created by a call to @FN{group}.
 ////////////////////////////////////////////////////////////////////////////////
