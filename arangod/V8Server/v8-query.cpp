@@ -40,6 +40,7 @@
 #include "Utils/EmbeddableTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
@@ -951,11 +952,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   // expecting index, example, skip, and limit
   if (argv.Length() < 2) {
-    std::string usage("Usage: ");
-    usage += signature;
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               usage)));
+    TRI_V8_EXCEPTION_USAGE(scope, signature.c_str());
   }
 
   if (! argv[1]->IsObject()) {
@@ -967,22 +964,24 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     else {
       msg = "<conditions> must be an object";
     }
-    return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg)));
+
+    TRI_V8_TYPE_ERROR(scope, msg.c_str());
   }
 
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute skiplist query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute skiplist query");
   }
 
   v8::Handle<v8::Object> err;
@@ -1016,11 +1015,12 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a skiplist index");
   }
 
   TRI_index_operator_t* skiplistOperator;
   v8::Handle<v8::Object> values = argv[1]->ToObject();
+
   if (type == QUERY_EXAMPLE) {
     skiplistOperator = SetupExampleSkiplist(idx, shaper, values);
   }
@@ -1029,7 +1029,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (! skiplistOperator) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+    TRI_V8_EXCEPTION_PARAMETER(scope, "setting up skiplist operator failed");
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
@@ -1084,7 +1084,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
   if (error) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   return scope.Close(result);
@@ -1128,9 +1128,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // ...........................................................................
 
   if (argv.Length() < 2) {
-    std::string usage("Usage: ");
-    usage += signature;
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,usage)));
+    TRI_V8_EXCEPTION_USAGE(scope, signature.c_str());
   }
 
 
@@ -1147,7 +1145,8 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     else {
       msg = "<conditions> must be an object";
     }
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg)));
+
+    TRI_V8_EXCEPTION_PARAMETER(scope, msg);
   }
 
 
@@ -1162,16 +1161,18 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1209,7 +1210,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a skiplist index");
   }
 
 
@@ -1222,18 +1223,15 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     indexOperator = SetupConditionsBitarray(idx, shaper, values);
   }
 
-
   if (indexOperator == 0) { // something wrong
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up bitarray index operator failed")));
+    TRI_V8_EXCEPTION_PARAMETER(scope, "setting up bitarray index operator failed");
   }
-
 
   // .............................................................................
   // attempt to locate the documents
   // .............................................................................
 
   TRI_index_iterator_t* indexIterator = TRI_LookupBitarrayIndex(idx, indexOperator, BitarrayFilterExample);
-
 
   // .............................................................................
   // Take care of the case where the index iterator is returned as NULL -- may
@@ -1302,7 +1300,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
   if (error) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   return scope.Close(result);
@@ -1441,22 +1439,22 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   if (col->_type != TRI_COL_TYPE_EDGE) {
-    return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-                                             "invalid collection type for edge query")));
+    TRI_V8_TYPE_ERROR(scope, "invalid collection type for edge query");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch edges", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch edges");
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1465,20 +1463,14 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   if (argv.Length() != 1) {
     switch (direction) {
       case TRI_EDGE_IN:
-        return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "usage: inEdges(<vertices>)")));
+        TRI_V8_EXCEPTION_USAGE(scope, "inEdges(<vertices>)");
 
       case TRI_EDGE_OUT:
-        return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "usage: outEdges(<vertices>)")));
+        TRI_V8_EXCEPTION_USAGE(scope, "outEdges(<vertices>)");
 
       case TRI_EDGE_ANY:
       default: {
-        return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "usage: edges(<vertices>)")));
+        TRI_V8_EXCEPTION_USAGE(scope, "edges(<vertices>)");
       }
     }
   }
@@ -1618,7 +1610,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // .............................................................................
 
   if (error) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   return scope.Close(documents);
@@ -1646,15 +1638,14 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   // expecting two arguments
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: ALL(<skip>, <limit>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "ALL(<skip>, <limit>)");
   }
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   // extract skip and limit
@@ -1670,15 +1661,16 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
   }
 
   res = trx.read(docs, &barrier, skip, limit, &total);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch documents", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch documents");
   }
 
   const size_t n = docs.size();
@@ -1694,8 +1686,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     v8::Handle<v8::Value> document = TRI_WrapShapedJson(resolver, col, &docs[i], barrier);
 
     if (document.IsEmpty()) {
-      // error
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+      TRI_V8_EXCEPTION_MEMORY(scope);
     }
     else {
       documents->Set(count++, document);
@@ -1729,8 +1720,9 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   TRI_barrier_t* barrier = 0;
@@ -1741,15 +1733,16 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");
   }
 
   res = trx.read(&document, &barrier);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot fetch document");
   }
 
   if (document._data == 0 || document._key == 0) {
@@ -1768,31 +1761,29 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   // expecting example, skip, limit
   if (argv.Length() < 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: BY_EXAMPLE(<example>, <skip>, <limit>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "BY_EXAMPLE(<example>, <skip>, <limit>)");
   }
 
   // extract the example
   if (! argv[0]->IsObject()) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "<example> must be an object")));
+    TRI_V8_TYPE_ERROR(scope, "<example> must be an object");
   }
 
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot query by example", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot query by example");
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
@@ -1881,7 +1872,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   CleanupExampleObject(shaper, n, pids, values);
 
   if (error) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   return scope.Close(result);
@@ -1901,16 +1892,12 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
 
   // expecting index, example, skip, and limit
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: BY_EXAMPLE_HASH(<index>, <example>, <skip>, <limit>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "EXAMPLE_HASH(<index>, <example>, <skip>, <limit>)");
   }
 
   // extract the example
   if (! argv[1]->IsObject()) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "<example> must be an object")));
+    TRI_V8_TYPE_ERROR(scope, "<example> must be an object");
   }
 
   v8::Handle<v8::Object> example = argv[1]->ToObject();
@@ -1936,7 +1923,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   }
 
   if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a hash index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a hash index");
   }
 
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
@@ -1996,7 +1983,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
   if (error) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   return scope.Close(result);
@@ -2013,7 +2000,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -2021,7 +2008,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot query by example", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot query by example");
   }
 
   v8::Handle<v8::Object> err;
@@ -2141,9 +2128,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
 
   // expect: FULLTEXT(<index-handle>, <query>)
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: FULLTEXT(<index-handle>, <query>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "FULLTEXT(<index-handle>, <query>)");
   }
 
   // extract the index
@@ -2155,37 +2140,42 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   }
 
   if (idx->_type != TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a fulltext index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a fulltext index");
   }
 
   const string queryString = TRI_ObjectToString(argv[1]);
   bool isSubstringQuery = false;
 
   TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS);
+
   if (! query) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   int res = TRI_ParseQueryFulltextIndex(query, queryString.c_str(), &isSubstringQuery);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeQueryFulltextIndex(query);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "invalid value for <query>")));
+
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "invalid value for <query>");
   }
 
   TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
+
   if (isSubstringQuery && ! fulltextIndex->_indexSubstrings) {
     TRI_FreeQueryFulltextIndex(query);
 
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index does not support substring matching")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "index does not support substring matching");
   }
 
   TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->_fulltextIndex, query);
 
   if (! queryResult) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "internal error in fulltext index query")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "internal error in fulltext index query");
   }
 
   TRI_barrier_t* barrier = 0;
+
   if (queryResult->_numDocuments > 0) {
     barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
   }
@@ -2232,15 +2222,17 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute fulltext query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute fulltext query");
   }
 
   v8::Handle<v8::Object> err;
@@ -2276,9 +2268,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
 
   // expect: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: NEAR(<index-handle>, <latitude>, <longitude>, <limit>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "NEAR(<index-handle>, <latitude>, <longitude>, <limit>)");
   }
 
   // extract the index
@@ -2290,7 +2280,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a geo-index");
   }
 
   // extract latitude and longitude
@@ -2315,7 +2305,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
     int res = StoreGeoResult(collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot add document to geo-index");
     }
   }
 
@@ -2331,15 +2321,17 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute near query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute near query");
   }
 
   v8::Handle<v8::Object> err;
@@ -2391,15 +2383,14 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    std::string usage("Usage: TOP(<index>)");
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,usage)));
+    TRI_V8_EXCEPTION_USAGE(scope, "TOP(<index>)");
   }
   
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
   CollectionNameResolver resolver(col->_vocbase);
@@ -2408,7 +2399,7 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute within query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute pqueue query");
   }
 
   v8::Handle<v8::Object> err;
@@ -2416,14 +2407,14 @@ static v8::Handle<v8::Value> JS_TopQuery (v8::Arguments const& argv) {
 
   if (idx->_type != TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX) {
     trx.finish(res);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a priority queue index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a priority queue index");
   }
 
   PQIndexElements* elms = TRI_LookupPriorityQueueIndex(idx, 1);
 
   if (elms == NULL ) {
     trx.finish(res);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot execute query")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot execute pqueue query");
   }
 
   if (elms->_numElements == 0) {
@@ -2457,9 +2448,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
 
   // expect: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)
   if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)");
   }
 
   // extract the index
@@ -2471,7 +2460,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
+    TRI_V8_TYPE_ERROR(scope, "index must be a geo-index");
   }
 
   // extract latitude and longitude
@@ -2496,7 +2485,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
     int res = StoreGeoResult(collection, cors, documents, distances);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot add document to geo-index");
     }
   }
 
@@ -2512,15 +2501,17 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
   if (col == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
   CollectionNameResolver resolver(col->_vocbase);
   SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot execute within query", true)));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot execute within query");
   }
 
   v8::Handle<v8::Object> err;
