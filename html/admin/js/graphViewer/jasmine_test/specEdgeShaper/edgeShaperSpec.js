@@ -158,6 +158,24 @@
       expect(clicked[4]).toBeFalsy();
     });
     
+    it('should be able to add an arrow on target side', function() {
+      var one = {
+        "_id": 1
+      },
+      two = {
+        "_id": 2
+      },
+      edges = [
+        {
+          "source": one,
+          "target": two
+        }
+      ],
+      shaper = new EdgeShaper(d3.select("svg"), {
+        shape: EdgeShaper.shapes.ARROW
+      });
+    });
+    
     describe('when edges are already drawn', function() {
       var edges,
       nodes,
