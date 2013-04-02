@@ -112,7 +112,7 @@ function clear () {
     special = false;
   }
 
-  if (internal.ARANGO_QUIET !== true && ! special) {
+  if (internal.quiet !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
       if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
         internal.print(arangosh.HELP);
@@ -146,7 +146,7 @@ var arango = require("org/arangodb").arango;
     special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
   }
   catch (err) {
-    special = false;
+    special = true;
   }
   
   if (! special) {  

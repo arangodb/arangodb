@@ -331,23 +331,20 @@ Edge.prototype.properties = function () {
 /// @brief edge printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Edge.prototype._PRINT = function (seen, path, names) {
-  // Ignores the standard arguments
-  seen = path = names = null;
-
+Edge.prototype._PRINT = function (context) {
   if (!this._id) {
-    arangodb.output("[deleted Edge]");
+    context.output += "[deleted Edge]";
   }
   else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      arangodb.output("Edge(\"", this._properties._key, "\")");
+      context.output += "Edge(\"" + this._properties._key + "\")";
     }
     else {
-      arangodb.output("Edge(", this._properties._key, ")");
+      context.output += "Edge(" + this._properties._key + ")";
     }
   }
   else {
-    arangodb.output("Edge(<", this._id, ">)");
+    context.output += "Edge(<" + this._id + ">)";
   }
 };
 
@@ -510,23 +507,20 @@ Vertex.prototype.properties = function () {
 /// @brief vertex representation
 ////////////////////////////////////////////////////////////////////////////////
 
-Vertex.prototype._PRINT = function (seen, path, names) {
-  // Ignores the standard arguments
-  seen = path = names = null;
-
+Vertex.prototype._PRINT = function (context) {
   if (! this._id) {
-    arangodb.output("[deleted Vertex]");
+    context.output += "[deleted Vertex]";
   }
   else if (this._properties._key !== undefined) {
     if (typeof this._properties._key === "string") {
-      arangodb.output("Vertex(\"", this._properties._key, "\")");
+      context.output += "Vertex(\"" + this._properties._key + "\")";
     }
     else {
-      arangodb.output("Vertex(", this._properties._key, ")");
+      context.output += "Vertex(" + this._properties._key + ")";
     }
   }
   else {
-    arangodb.output("Vertex(<", this._id, ">)");
+    context.output += "Vertex(<" + this._id + ">)";
   }
 };
 
@@ -578,16 +572,8 @@ Graph.prototype.getOrAddVertex = function (id) {
 /// @brief graph printing
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._PRINT = function (seen, path, names) {
-  var output;
-
-  // Ignores the standard arguments
-  seen = path = names = null;
-
-  output = "Graph(\"";
-  output += this._properties._key;
-  output += "\")";
-  arangodb.output(output);
+Graph.prototype._PRINT = function (context) {
+  context.output += "Graph(\"" + this._properties._key + "\")";
 };
 
 ////////////////////////////////////////////////////////////////////////////////

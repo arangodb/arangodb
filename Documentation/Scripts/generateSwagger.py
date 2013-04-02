@@ -202,6 +202,16 @@ def restheaderparameters(cargo, r=Regexen()):
 def restheaderparam(cargo, r=Regexen()):
     # TODO 
     fp, last = cargo
+    parametersList = parameters(last).split(',')
+    para = {}
+    para['paramType'] = 'header'
+    para['dataType'] = parametersList[1].capitalize()
+    if parametersList[2] == 'required':
+        para['required'] = 'true'
+    else:
+        para['required'] = 'false'
+    para['name'] = parametersList[0]
+    para['description']=''
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
@@ -209,17 +219,30 @@ def restheaderparam(cargo, r=Regexen()):
         elif r.RESTQUERYPARAMETERS.match(line):      return restqueryparameters, (fp, line)
         elif r.RESTBODYPARAM.match(line):            return restbodyparam, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
-        else:																				 continue
+        elif r.EMPTY_COMMENT.match(line):
+            operation['parameters'].append(para)
+            return restqueryparameters, (fp, line)
+        else:
+            para['description'] += Typography(line[4:-1]) + ' '
 
 def restbodyparam(cargo, r=Regexen()):
-    # TODO see POST processing in comment till PUT
     fp, last = cargo
+    #parameter = {}
+    #parameter['paramType'] = 'body'
+    #parameter['name'] = 'body'
+    #parameter['description'] = 'A valid json document for your data, for instance {"hello": "world"}.'
+    #parameter['dataType'] = 'String'
+    #parameter['required'] = 'false'
+    #operation['parameters'].append(parameter)
+    # wo wuss das hin _operation[] ???
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
         elif r.RESTQUERYPARAM.match(line):           return restqueryparam, (fp, line)
         elif r.RESTDESCRIPTION.match(line):          return restdescription, (fp, line)
+        elif r.EMPTY_COMMENT.match(line):            continue
+        elif len(line) >= 4 and line[:4] == "////":  continue
         else:																				 continue
 
 def restqueryparam(cargo, r=Regexen()):
@@ -309,7 +332,7 @@ def examples(cargo, r=Regexen()):
 def example_arangosh_run(cargo, r=Regexen()):
     fp, last = cargo
     import os
-    # old examples code
+    # old examples code: TODO Should be deleted after last @EXAMPLE_ARANGOSH_RUN in RestSourcefiles added
     verbinclude = last[4:-1].split()[0] == "@verbinclude"
     if verbinclude:
         examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + last[4:-1].split()[1]))

@@ -28,9 +28,11 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var fs = require("fs");
 var internal = require("internal");
+
+var fs = require("fs");
+
+var arangodb = require("org/arangodb");
 
 var guessContentType = arangodb.guessContentType;
 
@@ -109,8 +111,8 @@ ArangoApp.prototype.updateRoute = function (route) {
 /// @brief prints an application
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype._PRINT = function (route) {
-  internal.output('[ArangoApp "', this._name, '" at "', this._description.urlPrefix, '"]');
+ArangoApp.prototype._PRINT = function (context) {
+  context.output += '[ArangoApp "' + this._name + '" at "' + this._description.urlPrefix + '"]';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +386,7 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       continue;
     }
 
-    content = internal.read(file);
+    content = fs.read(file);
 
     if (content === null) {
       continue;
@@ -410,7 +412,7 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       filename: filename
     });
 
-    internal.print("imported '" + subpath + "' of type '" + contentType + "'");
+    arangodb.print("imported '" + subpath + "' of type '" + contentType + "'");
   }
 
   return this;
@@ -483,15 +485,15 @@ exports.uploadModules = function (prefix, path) {
     mpath = re.exec(files[i]);
 
     if (mpath === null) {
-      internal.print("skipping file '" + files[i] + "' of unknown type, expecting .js");
+      arangodb.print("skipping file '" + files[i] + "' of unknown type, expecting .js");
       continue;
     }
     
     mpath = prefix + "/" + mpath[1];
 
-    internal.defineModule(mpath, file);
+    arangodb.defineModule(mpath, file);
 
-    internal.print("imported '" + mpath + "'");
+    arangodb.print("imported '" + mpath + "'");
   }
 
   internal.flushServerModules();
