@@ -67,12 +67,12 @@ exports.ShapedJson = ShapedJson;
 /// @brief prints a shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-ShapedJson.prototype._PRINT = function(seen, path, names, level) {
+ShapedJson.prototype._PRINT = function(context) {
   if (this instanceof ShapedJson) {
-    internal.printObject(this, seen, path, names, level);
+    internal.printObject(this, context);
   }
   else {
-    internal.output(this.toString());
+    context.output += this.toString();
   }
 };
 

@@ -34,6 +34,7 @@ var internal = require("internal");
 var console = require("console");
 var fs = require("fs");
 
+var arangodb = require("org/arangodb");
 var arangosh = require("org/arangodb/arangosh");
 
 var arango = internal.arango;
@@ -151,7 +152,7 @@ function processDirectory (source) {
   source.filename = tempFile;
   source.removeFile = true;
     
-  internal.zipFile(tempFile, location, files);
+  fs.zipFile(tempFile, location, files);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +165,7 @@ function repackZipFile (source) {
   var filename = source.filename;
   var path = fs.getTempFile("zip", false); 
 
-  internal.unzipFile(filename, path, false, true);
+  fs.unzipFile(filename, path, false, true);
 
   // .............................................................................
   // locate the manifest file
@@ -366,7 +367,7 @@ exports.load = function (type, location, version) {
   res = arango.POST("/_admin/foxx/load", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 
-  return { path: res };
+  return { path: res.path };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,93 +421,92 @@ exports.uninstallApp = function (key) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lists all installed FOXX applications
+/// @brief prints all installed FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printInstalled = function (showPrefix) {
-  var pad = [ 10, 35, 25, 6, 6 ];
+  var list = exports.listInstalled(showPrefix);
+
+  arangodb.printTable(list);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all installed FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.listInstalled = function (showPrefix) {
   var aal = getStorage();
   var cursor = aal.byExample({ type: "mount" });
-
-  var padding = function (s, l, p) {
-    if (typeof p === "undefined") {
-      p = ' ';
-    }
-
-    return internal.stringPadding(s, pad[l], p, 'r');
-  };
-
-  internal.printf("\n%s  %s  %s  %s  %s\n",
-                  padding("MountID", 0),
-                  padding("AppID", 1),
-                  padding(showPrefix ? "collection prefix" : "Mount", 2),
-                  padding("Active", 3),
-                  padding("Devel", 4));
-
-  internal.printf("%s  %s  %s  %s  %s\n",
-                  padding("", 0, "="),
-                  padding("", 1, "="),
-                  padding("", 2, "="),
-                  padding("", 3, "="),
-                  padding("", 4, "="));
+  var result = [];
 
   while (cursor.hasNext()) {
     var doc = cursor.next();
+    var res;
 
-    internal.printf("%s  %s  %s  %s  %s\n",
-                    padding(doc._key, 0),
-                    padding(doc.app, 1),
-                    padding(showPrefix ? doc.collectionPrefix : doc.mount, 2),
-                    padding(doc.active ? "yes" : "no", 3),
-                    padding(doc.development ? "yes" : "", 4));
+    if (showPrefix) {
+      res = {
+        MountID: doc._key,
+        AppID: doc.app,
+        CollectionPrefix: doc.collectionPrefix,
+        Active: doc.active ? "yes" : "no",
+        Devel: doc.development ? "yes" : "no"
+      };
+    }
+    else {
+      res = {
+        MountID: doc._key,
+        AppID: doc.app,
+        Mount: doc.mount,
+        Active: doc.active ? "yes" : "no",
+        Devel: doc.development ? "yes" : "no"
+      };
+    }
+
+    result.push(res);
   }
+
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints all loaded FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+exports.printAvailable = function () {
+  var list = exports.listAvailable();
+
+  arangodb.printTable(list);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists all loaded FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.printAvailable = function () {
-  var pad = [ 20, 20, 10, 35 ];
+exports.listAvailable = function () {
   var aal = getStorage();
   var cursor = aal.byExample({ type: "app" });
-
-  var padding = function (s, l, p) {
-    if (typeof p === "undefined") {
-      p = ' ';
-    }
-
-    return internal.stringPadding(s, pad[l], p, 'r');
-  };
-
-  internal.printf("\n%s  %s  %s  %s\n",
-                  padding("AppID", 0),
-                  padding("Name", 1),
-                  padding("Version", 2),
-                  padding("Path", 3));
-
-  internal.printf("%s  %s  %s  %s\n",
-                  padding("", 0, "="),
-                  padding("", 1, "="),
-                  padding("", 2, "="),
-                  padding("", 3, "="));
+  var result = [];
 
   while (cursor.hasNext()) {
     var doc = cursor.next();
+    var res = {
+      AppID: doc.app,
+      Name: doc.name,
+      Version: doc.version,
+      Path: doc.path
+    };
 
-    internal.printf("%s  %s  %s  %s\n",
-                    padding(doc.app, 0),
-                    padding(doc.name, 1),
-                    padding(doc.version, 2),
-                    padding(doc.path, 3));
+    result.push(res);
   }
+
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief searchs for an application
+/// @brief details for an application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.printFishbowl = function (name) {
+exports.details = function (name) {
   'use strict';
 
   var i;

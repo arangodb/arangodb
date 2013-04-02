@@ -331,7 +331,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   }
 
   if (! source->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+    TRI_V8_THROW_TYPE_ERROR(scope, "<script> must be a string");
   }
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
@@ -530,7 +530,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   v8::Handle<v8::Value> filename = argv[2];
 
   if (! source->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+    TRI_V8_THROW_TYPE_ERROR(scope, "<script> must be a string");
   }
 
   bool useSandbox = sandboxValue->IsObject();
@@ -2410,6 +2410,22 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
   TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
+
+  char const* plattform = "unknown";
+
+#ifdef __linux__
+  plattform = "linux";
+#endif
+
+#if defined(_WIN32) && defined(_MSC_VER)
+  plattform = "win32";
+#endif
+
+#ifdef __APPLE__
+  plattform = "darwin";
+#endif
+
+  TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(plattform));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

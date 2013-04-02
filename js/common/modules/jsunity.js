@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var fs = require("fs");
 var console = require("console");
 
 var TOTAL = 0;
@@ -33,9 +34,7 @@ var PASSED = 0;
 var FAILED = 0;
 var DURATION = 0;
 
-var realJsUnityPath = "/jsunity/jsunity";
-var realJsUnity = internal.loadModuleFile(realJsUnityPath).content;
-eval(realJsUnity);
+var jsUnity = require("./jsunity/jsunity").jsUnity;
 
 jsUnity.results.begin = function (total, suiteName) {
   print("Running " + (suiteName || "unnamed test suite"));
@@ -372,7 +371,7 @@ function RunTest (path) {
   var content;
   var f;
 
-  content = internal.read(path);
+  content = fs.read(path);
 
   content = "(function(){require('jsunity').jsUnity.attachAssertions();" + content + "})";
   f = internal.executeScript(content, undefined, path);

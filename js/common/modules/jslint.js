@@ -26,11 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var fs = require("fs");
 var console = require("console");
 
-var realJsLintPath = "/jslint/jslint";
-var realJsLint = internal.loadModuleFile(realJsLintPath).content;
-eval(realJsLint);
+var JSLINT = require("./jslint/jslint").JSLINT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -49,7 +48,7 @@ function RunTest (path, options) {
   var content;
 
   try {
-    content = internal.read(path);
+    content = fs.read(path);
   }
   catch (err) {
     console.error("cannot load test file '%s'", path);
