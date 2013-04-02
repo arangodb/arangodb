@@ -172,8 +172,17 @@
         }
       ],
       shaper = new EdgeShaper(d3.select("svg"), {
-        shape: EdgeShaper.shapes.ARROW
+        shape: {
+          type: EdgeShaper.shapes.ARROW
+        }
       });
+      shaper.drawEdges(edges);
+      
+      expect($("#1-2").attr("marker-end")).toEqual("url(#arrow)");
+      expect($("svg defs marker").length).toEqual(1);
+      expect($("svg defs #arrow").length).toEqual(1);
+      // Orientation is important. Other layout not yet.
+      expect($("svg defs #arrow").attr("orient")).toEqual("auto");
     });
     
     describe('when edges are already drawn', function() {

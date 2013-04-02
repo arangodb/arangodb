@@ -138,7 +138,7 @@ function NodeShaper(parent, flags, idfunc) {
         .filter(function (n) {
           return n._id === node._id;
         });
-      $("#" + node._id.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g,'\\$1')).empty();
+      $("#" + node._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
       addShape(handle);
       addLabel(handle);
       addEvents(handle);
