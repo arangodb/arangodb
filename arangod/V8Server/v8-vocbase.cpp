@@ -453,7 +453,7 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
       error = "invalid attribute name";
 
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
 
     TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
@@ -471,7 +471,7 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
       error = "invalid attribute name";
 
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-      return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
 
     TRI_PushBackVectorPointer(result, cArgument);
@@ -491,7 +491,7 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
         error = "duplicate attribute names";
 
         TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
-        return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
       }
     }
 
@@ -3703,7 +3703,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (! argument->IsString() ) {
         errorString = "invalid parameter -- expected string parameter";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
@@ -3722,11 +3722,10 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (! argument->IsArray() ) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
-
 
       // .........................................................................
       // Attempt to convert the V8 javascript function argument into a TRI_json_t
@@ -3741,7 +3740,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value == 0) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
@@ -3753,7 +3752,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value->_type != TRI_JSON_LIST) {
         errorString = "invalid parameter -- expected an array (list)";
-        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_BAD_PARAMETER;
         ok = false;
         break;
       }
@@ -3772,12 +3771,10 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
     if (attributes._length != values._length) {
       errorString = "invalid parameter -- expected an array (list)";
-      errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      errorCode   = TRI_ERROR_BAD_PARAMETER;
       ok = false;
     }
   }
-
-
 
   // .............................................................................
   // Actually create the index here
@@ -3786,6 +3783,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if (ok) {
     char* errorStr = 0;
     bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(document, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
+
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
          errorString = "index could not be created from Simple Collection";

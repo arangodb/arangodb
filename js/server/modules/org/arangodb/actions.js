@@ -1639,10 +1639,10 @@ function resultException (req, res, err, headers) {
     }
 
     if (msg === "") {
-      msg = String(err) + " " + String(err.stack);
+      msg = String(err) + ": " + String(err.stack);
     }
     else {
-      msg += " " + String(err.stack);
+      msg += ": " + String(err.stack);
     }
     
     switch (num) {
@@ -1659,9 +1659,9 @@ function resultException (req, res, err, headers) {
     resultError(req, res, code, num, msg, headers);
   }
   else if (err instanceof TypeError) {
-    num = arangodb.ERROR_HTTP_BAD_PARAMETER;
+    num = arangodb.ERROR_TYPE_ERROR;
     code = exports.HTTP_BAD;
-    msg = String(err.message) + " " + String(err.stack);
+    msg = String(err.message) + ": " + String(err.stack);
 
     resultError(req, res, code, num, msg, headers);
   }
