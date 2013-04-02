@@ -2780,7 +2780,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
 
     if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
-      *errorNum = TRI_ERROR_ILLEGAL_OPTION;
+      *errorNum = TRI_ERROR_BAD_PARAMETER;
       *errorStr = TRI_DuplicateString("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     }
