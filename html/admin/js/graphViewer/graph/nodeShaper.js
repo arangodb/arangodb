@@ -132,10 +132,16 @@ function NodeShaper(parent, flags, idfunc) {
       addEvents(handle);
     },
     
-    reshapeNode = function () {
-      var handle;
-      handle = self.parent
-        .filter()
+    reshapeNode = function (node) {
+      var handle = self.parent
+        .selectAll(".node")
+        .filter(function (n) {
+          return n._id === node._id;
+        });
+      $("#" + node._id).empty();
+      addShape(handle);
+      addLabel(handle);
+      addEvents(handle);
     },
     
     updateNodes = function () {
@@ -247,7 +253,7 @@ function NodeShaper(parent, flags, idfunc) {
   };
   
   self.reshapeNode = function(node) {
-    
+    reshapeNode(node);
   };
   
   self.reshapeNodes = function() {

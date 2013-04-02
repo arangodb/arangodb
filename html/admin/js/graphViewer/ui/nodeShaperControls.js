@@ -37,8 +37,8 @@ function NodeShaperControls(list, shaper) {
   if (shaper === undefined) {
     throw "The NodeShaper has to be given.";
   }
-  
-  var modalDivTemplate = function (title, idprefix, callback) {
+  var self = this,
+  modalDivTemplate = function (title, idprefix, callback) {
     // Create needed Elements
     var div = document.createElement("div"),
     headerDiv = document.createElement("div"),
@@ -169,8 +169,83 @@ function NodeShaperControls(list, shaper) {
     button.id = prefix;
     button.appendChild(document.createTextNode("Circle"));
     list.appendChild(button);
-    
     button.onclick = callback;
+  };
+  
+  this.addControlOpticShapeRect = function() {
+    var prefix = "control_rect",
+    idprefix = prefix + "_",
+    callback = function() {
+      createModalDialog("Switch to Rectangle",
+        idprefix, [{
+          type: "text",
+          id: "width"
+        },{
+          type: "text",
+          id: "height"
+        }], function () {
+          var w = $("#" + idprefix + "width").attr("value"),
+          h = $("#" + idprefix + "height").attr("value");
+          shaper.changeTo({
+            shape: {
+              type: NodeShaper.shapes.RECT,
+              width: w,
+              height: h
+            }
+          });
+        }
+      );
+    },
+    button = document.createElement("li");
+    button.className = "graph_control " + prefix;
+    button.id = prefix;
+    button.appendChild(document.createTextNode("Rectangle"));
+    list.appendChild(button);
+    button.onclick = callback;
+  };
+  
+  this.addControlOpticLabel = function() {
+    var prefix = "control_label",
+    idprefix = prefix + "_",
+    callback = function() {
+      createModalDialog("Switch Label Attribute",
+        idprefix, [{
+          type: "text",
+          id: "key"
+        }], function () {
+          var key = $("#" + idprefix + "key").attr("value");
+          shaper.changeTo({
+            label: key
+          });
+        }
+      );
+    },
+    button = document.createElement("li");
+    button.className = "graph_control " + prefix;
+    button.id = prefix;
+    button.appendChild(document.createTextNode("Label"));
+    list.appendChild(button);
+    button.onclick = callback;
+  };
+  
+  
+  
+  
+  
+  
+  this.addAllOptics = function () {
+    self.addControlOpticShapeCircle();
+    self.addControlOpticShapeRect();
+    self.addControlOpticLabel();
+  };
+  
+  this.addAllActions = function () {
+  
+  };
+  
+  this.addAll = function () {
+    self.addAllOptics();
+    self.addAllActions();
   };
   
 }
