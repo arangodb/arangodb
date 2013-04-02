@@ -112,6 +112,9 @@
         shaper.changeTo({shape: {type: NodeShaper.shapes.RECT, width: 12, height: 5}});
         expect($("svg circle").length).toEqual(0);
         expect($("svg rect").length).toEqual(3);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.NONE}});
+        expect($("svg circle").length).toEqual(0);
+        expect($("svg rect").length).toEqual(0);
       });
       
       it('should be able to add a click event to existing nodes', function() {

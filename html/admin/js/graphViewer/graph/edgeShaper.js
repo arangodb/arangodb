@@ -30,6 +30,9 @@
 /*
 * flags example format:
 * {
+*   shape: {
+*     type: EdgeShaper.shapes.ARROW
+*   }
 *   label: "key" \\ function(node)
 *   actions: {
 *     click: function(edge)
@@ -115,7 +118,7 @@ function EdgeShaper(parent, flags, idfunc) {
         .filter(function (e) {
           return e._id === edge._id;
         });
-      $("#" + edge._id.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g,'\\$1')).empty();
+      $("#" + edge._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
       addShape(handle);
       addLabel(handle);
       addEvents(handle);
@@ -147,6 +150,29 @@ function EdgeShaper(parent, flags, idfunc) {
     
     parseShapeFlag = function (shape) {
       switch (shape.type) {
+        case EdgeShaper.shapes.NONE:
+          addShape = noop;
+          break;
+        case EdgeShaper.shapes.ARROW:
+          addShape = function (edge) {
+            edge.attr("marker-end", "url(#arrow)");
+          };
+          if (self.parent.selectAll("defs")[0].length === 0) {
+            self.parent.append("defs");
+          }
+          self.parent
+            .select("defs")
+            .append("marker")
+            .attr("id", "arrow")
+            .attr("viewBox", "0 0 10 10")
+            .attr("refX", "0")
+            .attr("refY", "5")
+            .attr("markerUnits", "strokeWidth")
+            .attr("markerHeight", "3")
+            .attr("orient", "auto")
+            .append("path")
+              .attr("d", "M 0 0 L 10 5 L 0 10 z");          
+          break;
         default:
           throw "Sorry given Shape not known!";
       }
@@ -230,4 +256,4 @@ EdgeShaper.shapes = Object.freeze({
 });
 
 // Marker:
-// .attr("marker-end", "url(#arrow)");
+// 
