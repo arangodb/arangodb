@@ -97,7 +97,9 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     bindEvent = function (type, func) {
-      if (events[type] === undefined) {
+      if (type === "update") {
+        addUpdate = func;
+      } else if (events[type] === undefined) {
         throw "Sorry Unknown Event " + type + " cannot be bound.";
       }
       events[type] = func;

@@ -87,7 +87,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         nodeShaper.changeTo({
           actions: actions
         });
-        nodeShaper.drawNodes();
+        //nodeShaper.drawNodes();
         break;
       case "edges":
         edgeShaper.on(event, func);

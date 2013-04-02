@@ -180,10 +180,7 @@
         expect($("#3 text")[0].textContent).toEqual("");
         
         expect($("#2 text").length).toEqual(1);
-        expect($("#2 text")[0].textContent).toEqual("true");
-        console.log(nodes);
-        window.meierei = $("#2 text");
-        
+        expect($("#2 text")[0].textContent).toEqual("true");        
       });
     });
 
