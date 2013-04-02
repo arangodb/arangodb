@@ -115,7 +115,7 @@
       });
       
       waitsFor(function() {
-        return $("#control_rect_modal").length === 0;
+        return $("#control_label_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
       
     });
