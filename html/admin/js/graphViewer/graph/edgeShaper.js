@@ -58,9 +58,7 @@ function EdgeShaper(parent, flags, idfunc) {
     },
     addUpdate = noop,
     addShape = noop,
-    reloadShape = noop,
     addLabel = noop,
-    reloadLabel = noop,
     
     addEvents = function (edges) {
       _.each(events, function (func, type) {
@@ -117,7 +115,7 @@ function EdgeShaper(parent, flags, idfunc) {
         .filter(function (e) {
           return e._id === edge._id;
         });
-      $("#" + edge._id).empty();
+      $("#" + edge._id.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g,'\\$1')).empty();
       addShape(handle);
       addLabel(handle);
       addEvents(handle);
@@ -226,7 +224,10 @@ function EdgeShaper(parent, flags, idfunc) {
   }; 
 }
 
-
+EdgeShaper.shapes = Object.freeze({
+  "NONE": 0,
+  "ARROW": 1
+});
 
 // Marker:
 // .attr("marker-end", "url(#arrow)");

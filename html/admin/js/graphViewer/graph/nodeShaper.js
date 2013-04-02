@@ -79,9 +79,7 @@ function NodeShaper(parent, flags, idfunc) {
     },
     addUpdate = noop,
     addShape = noop,
-    reloadShape = noop,
     addLabel = noop,
-    reloadLabel = noop,
     
     addEvents = function (nodes) {
       _.each(events, function (func, type) {
@@ -140,7 +138,7 @@ function NodeShaper(parent, flags, idfunc) {
         .filter(function (n) {
           return n._id === node._id;
         });
-      $("#" + node._id).empty();
+      $("#" + node._id.replace(/([ #;&,.+*~\':"!^$[\]()=>|\/])/g,'\\$1')).empty();
       addShape(handle);
       addLabel(handle);
       addEvents(handle);
@@ -157,14 +155,13 @@ function NodeShaper(parent, flags, idfunc) {
     parseShapeFlag = function (shape) {
       var radius, width, height;
       switch (shape.type) {
+        case NodeShaper.shapes.NONE:
+          addShape = noop;
+          break;
         case NodeShaper.shapes.CIRCLE:
           radius = shape.radius || 12;
           addShape = function (node) {
             node.append("circle") // Display nodes as circles
-              .attr("r", radius); // Set radius
-          };
-          reloadShape = function (node) {
-            node.select("circle") // Just Change the internal circle
               .attr("r", radius); // Set radius
           };
           break;
@@ -173,11 +170,6 @@ function NodeShaper(parent, flags, idfunc) {
           height = shape.height || 10;
           addShape = function(node) {
             node.append("rect") // Display nodes as rectangles
-              .attr("width", width) // Set width
-              .attr("height", height); // Set height
-          };
-          reloadShape = function(node) {
-            node.select("rect") // Just Change the internal rectangle
               .attr("width", width) // Set width
               .attr("height", height); // Set height
           };
@@ -265,6 +257,7 @@ function NodeShaper(parent, flags, idfunc) {
 }
 
 NodeShaper.shapes = Object.freeze({
+  "NONE": 0,
   "CIRCLE": 1,
   "RECT": 2
 });

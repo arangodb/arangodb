@@ -180,8 +180,6 @@
     layouterConfig;
     
     
-    
-    
     nshape = $("#nodeShape")[0];
     nshape = nshape.options[nshape.selectedIndex].value;
     
@@ -197,19 +195,13 @@
     host = $("#host")[0].value;
     ecol = $("#edgeCollection")[0].value;
     ncol = $("#nodeCollection")[0].value;
-    
-    
-/*    
-    *   shape: nodeShaper.shapes.CIRCLE,
-    *   label: "key" \\ function(node),
-    *   onclick: function(node),
-    *   ondrag: function(node),
-    *   onupdate: function(nodes)
-*/    
+       
     nsconfig = {
-      shape: NodeShaper.shapes[nshape],
-      label: nslabel,
-      size: nsize
+      shape : {
+        type: NodeShaper.shapes[nshape],
+        radius: nsize
+      },
+      label: nslabel 
     };
     
     if (ncentr === "children") {
@@ -220,7 +212,6 @@
       nsconfig.dragable = true;
     }
     
-    
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
@@ -229,8 +220,6 @@
     };
     
     esconfig = {};
-    
-    
     
     evconfig = {
       expand: {target: "nodes", type: "click"},
