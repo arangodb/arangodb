@@ -152,8 +152,8 @@ function POST_api_cursor(req, res) {
   }
    
   // error occurred
-  if (cursor instanceof ArangoError) {
-    actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+  if (cursor instanceof Error) {
+    actions.resultException(req, res, cursor);
     return;
   }
 

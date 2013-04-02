@@ -649,7 +649,7 @@ function CollectionEdgeSuite () {
         var e = c.edges("the fox");
       } 
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+        assertInstanceOf(TypeError, err);
       }
 
       db._drop(dn);

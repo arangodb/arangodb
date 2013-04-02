@@ -841,6 +841,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
       TRI_FreeBarrier(barrier);
     }
 
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    }
+
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "document not found");
   }
 
@@ -849,7 +853,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
       TRI_FreeBarrier(barrier);
     }
 
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "revision not found");
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_ARANGO_CONFLICT, "revision not found");
   }
 
   return scope.Close(result);
@@ -930,7 +934,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope,  res, "cannot replace document");
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
   }
 
   assert(document._key);
@@ -1211,6 +1215,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_doc_mptr_t document;
   // do not acquire an extra lock
   res = trx.read(&document, key, false);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
   }
@@ -1234,6 +1239,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   // do not acquire an extra-lock
   res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision, false);
   res = trx.finish(res);
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
   }

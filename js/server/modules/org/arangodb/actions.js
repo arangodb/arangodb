@@ -1625,10 +1625,14 @@ function indexNotFound (req, res, collection, index, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers) {
+  var code;
+  var msg;
+  var num;
+
   if (err instanceof internal.ArangoError) {
-    var num = err.errorNum;
-    var msg = err.errorMessage;
-    var code = exports.HTTP_BAD;
+    num = err.errorNum;
+    msg = err.errorMessage;
+    code = exports.HTTP_BAD;
 
     if (num === 0) {
       num = arangodb.ERROR_INTERNAL;
@@ -1637,11 +1641,15 @@ function resultException (req, res, err, headers) {
     if (msg === "") {
       msg = String(err) + " " + String(err.stack);
     }
-
+    else {
+      msg += " " + String(err.stack);
+    }
+    
     switch (num) {
       case arangodb.ERROR_INTERNAL: 
         code = exports.HTTP_SERVER_ERROR; 
         break;
+
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
         code = exports.HTTP_CONFLICT; 
@@ -1650,10 +1658,18 @@ function resultException (req, res, err, headers) {
 
     resultError(req, res, code, num, msg, headers);
   }
+  else if (err instanceof TypeError) {
+    num = arangodb.ERROR_HTTP_BAD_PARAMETER;
+    code = exports.HTTP_BAD;
+    msg = String(err.message) + " " + String(err.stack);
+
+    resultError(req, res, code, num, msg, headers);
+  }
+
   else {
     resultError(req, res,
                 exports.HTTP_SERVER_ERROR, arangodb.ERROR_HTTP_SERVER_ERROR,
-                String(err),
+                String(err) + " " + String(err.stack),
                 headers);
   }
 }
