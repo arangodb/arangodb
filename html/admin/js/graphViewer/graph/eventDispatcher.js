@@ -80,8 +80,8 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     if (func === undefined || !_.isFunction(func)) {
       throw "You have to give a function that should be bound as a third argument";
     }
+    var actions = {};
     switch (object) {
-      var actions = {};
       case "nodes":
         actions[event] = func;
         nodeShaper.changeTo({
