@@ -274,4 +274,12 @@ function GraphViewer(svg, width, height,
     bindEventsFromConfig(eventConfig);
   };
   
+  //TODO REMOVE
+  //HACK to view the Controls in the Demo
+  var edgeShaperControls = new EdgeShaperControls($("#controls")[0], edgeShaper);
+  edgeShaperControls.addAll();
+  var nodeShaperControls = new NodeShaperControls($("#controls")[0], nodeShaper);
+  nodeShaperControls.addAll();
+  
+  
 }

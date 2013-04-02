@@ -65,8 +65,8 @@
       ],
       shaper = new EdgeShaper(d3.select("svg"));
       shaper.drawEdges(edges);
-      expect($("svg line.link").length).toEqual(1);
-      expect($("svg line.link")[0]).toBeDefined();
+      expect($("svg .link line").length).toEqual(1);
+      expect($("svg .link line")[0]).toBeDefined();
       expect($("svg #" + 1 + "-" + 2)[0]).toBeDefined();
     });
 
@@ -103,7 +103,7 @@
       ],
       shaper = new EdgeShaper(d3.select("svg"));
       shaper.drawEdges(edges);
-      expect($("svg line.link").length).toEqual(4);
+      expect($("svg .link line").length).toEqual(4);
     });
     
     
@@ -151,7 +151,7 @@
       helper.simulateMouseEvent("click", "1-2");
       helper.simulateMouseEvent("click", "3-4");
       
-      expect($("svg line").length).toEqual(4);
+      expect($("svg .link line").length).toEqual(4);
       expect(clicked[1]).toBeTruthy();
       expect(clicked[3]).toBeTruthy();
       expect(clicked[2]).toBeFalsy();
@@ -178,11 +178,62 @@
       });
       shaper.drawEdges(edges);
       
-      expect($("#1-2").attr("marker-end")).toEqual("url(#arrow)");
+      expect($("#1-2 line").attr("marker-end")).toEqual("url(#arrow)");
       expect($("svg defs marker").length).toEqual(1);
       expect($("svg defs #arrow").length).toEqual(1);
       // Orientation is important. Other layout not yet.
       expect($("svg defs #arrow").attr("orient")).toEqual("auto");
+    });
+    
+    describe('configured for arrow shape', function() {
+      var shaper;
+      
+      beforeEach(function() {
+        var one = {
+          "_id": 1
+        },
+        two = {
+          "_id": 2
+        },
+        edges = [
+          {
+            "source": one,
+            "target": two
+          }
+        ];
+        shaper = new EdgeShaper(d3.select("svg"), {
+          shape: {
+            type: EdgeShaper.shapes.ARROW
+          }
+        });
+        shaper.drawEdges(edges);
+      });
+      
+      
+      it('should clean the defs if a different shape is chosen', function() {
+        shaper.changeTo({
+          shape: {
+            type: EdgeShaper.shapes.NONE
+          }
+        });
+        expect($("#1-2").attr("marker-end")).toBeUndefined();
+        expect($("svg defs marker#arrow").length).toEqual(0);
+      });
+      
+      it('should not append the same marker multiple times', function() {
+        shaper.changeTo({
+          shape: {
+            type: EdgeShaper.shapes.ARROW
+          }
+        });
+        expect($("svg defs marker#arrow").length).toEqual(1);
+        shaper.changeTo({
+          shape: {
+            type: EdgeShaper.shapes.ARROW
+          }
+        });
+        expect($("svg defs marker#arrow").length).toEqual(1);
+      });
     });
     
     describe('when edges are already drawn', function() {
@@ -524,7 +575,7 @@
 
         shaper.drawEdges(edges);
 
-        expect($("svg g svg g line.link").length).toEqual(1);
+        expect($("svg g svg g .link line").length).toEqual(1);
       });
     });
     

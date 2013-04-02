@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _, $*/
+/*global _, $, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -46,10 +46,13 @@ function EdgeShaper(parent, flags, idfunc) {
   "use strict";
   
   var self = this,
+    
+    toplevelSVG,
+    
     idFunction = function(d) {
       return d.source._id + "-" + d.target._id;
     },
-    noop = function (edge) {
+    noop = function (line, g) {
     
     },
     events = {
@@ -63,12 +66,12 @@ function EdgeShaper(parent, flags, idfunc) {
     addShape = noop,
     addLabel = noop,
     
-    addEvents = function (edges) {
+    addEvents = function (line, g) {
       _.each(events, function (func, type) {
         if (type === "update") {
           addUpdate = func;
         } else {
-          edges.on(type, func);
+          g.on(type, func);
         }
         
       });
@@ -83,49 +86,52 @@ function EdgeShaper(parent, flags, idfunc) {
       events[type] = func;
     },
     
-    shapeEdges = function (nodes) {
-      if (nodes !== undefined) {
-        var data, handle;
+    shapeEdges = function (edges) {
+      if (edges !== undefined) {
+        var data, handle, line;
         data = self.parent
           .selectAll(".link")
-          .data(nodes, idFunction);
+          .data(edges, idFunction);
         handle = data
           .enter()
-          .append("line")
+          .append("g")
           .attr("class", "link") // link is CSS class that might be edited
           .attr("id", idFunction);
-        addShape(handle);
-        addLabel(handle);
-        addEvents(handle);
+        line = handle.append("line");
+        addShape(line, handle);
+        addLabel(line, handle);
+        addEvents(line, handle);
         data.exit().remove();
         return handle;
       }
     },
     
     reshapeEdges = function () {
-      var handle;
+      var handle, line;
+      $(".link").empty();
       handle = self.parent
         .selectAll(".link");
-      $(".link").empty();
-      addShape(handle);
-      addLabel(handle);
-      addEvents(handle);
+      line = handle.append("line");
+      addShape(line, handle);
+      addLabel(line, handle);
+      addEvents(line, handle);
     },
     
     reshapeEdge = function (edge) {
+      $("#" + edge._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
       var handle = self.parent
         .selectAll(".link")
         .filter(function (e) {
           return e._id === edge._id;
-        });
-      $("#" + edge._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
-      addShape(handle);
-      addLabel(handle);
-      addEvents(handle);
+        }),
+      line = handle.append("line");
+      addShape(line, handle);
+      addLabel(line, handle);
+      addEvents(line, handle);
     },
     
     updateEdges = function () {
-      var edges = self.parent.selectAll(".link")
+      var edges = self.parent.selectAll(".link line")
         // Set source x coordinate for edge.
         .attr("x1", function(d) {
             return d.source.x; 
@@ -142,25 +148,28 @@ function EdgeShaper(parent, flags, idfunc) {
         .attr("y2", function(d) {
             return d.target.y;
         });
+        /*
         edges.attr("transform", function(d) {
           return "translate(" + d.x + "," + d.y + ")"; 
         });
+        */
       addUpdate(edges);
     },
     
     parseShapeFlag = function (shape) {
+      $("svg defs marker#arrow").remove();
       switch (shape.type) {
         case EdgeShaper.shapes.NONE:
           addShape = noop;
           break;
         case EdgeShaper.shapes.ARROW:
-          addShape = function (edge) {
-            edge.attr("marker-end", "url(#arrow)");
+          addShape = function (line, g) {
+            line.attr("marker-end", "url(#arrow)");
           };
-          if (self.parent.selectAll("defs")[0].length === 0) {
-            self.parent.append("defs");
+          if (toplevelSVG.selectAll("defs")[0].length === 0) {
+            toplevelSVG.append("defs");
           }
-          self.parent
+          toplevelSVG
             .select("defs")
             .append("marker")
             .attr("id", "arrow")
@@ -171,7 +180,7 @@ function EdgeShaper(parent, flags, idfunc) {
             .attr("markerHeight", "3")
             .attr("orient", "auto")
             .append("path")
-              .attr("d", "M 0 0 L 10 5 L 0 10 z");          
+              .attr("d", "M 0 0 L 10 5 L 0 10 z");         
           break;
         default:
           throw "Sorry given Shape not known!";
@@ -180,14 +189,14 @@ function EdgeShaper(parent, flags, idfunc) {
     
     parseLabelFlag = function (label) {
       if (_.isFunction(label)) {
-        addLabel = function (edge) {
-          edge.append("text") // Append a label for the edge
+        addLabel = function (line, g) {
+          g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
             .text(label);
         };
       } else {
-        addLabel = function (edge) {
-          edge.append("text") // Append a label for the edge
+        addLabel = function (line, g) {
+          g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
@@ -216,6 +225,12 @@ function EdgeShaper(parent, flags, idfunc) {
     
   self.parent = parent;  
    
+   
+  toplevelSVG = parent;
+  while (toplevelSVG[0][0] && toplevelSVG[0][0].ownerSVGElement) {
+    toplevelSVG = d3.select(toplevelSVG[0][0].ownerSVGElement);
+  }
+   
   if (flags !== undefined) {
     parseConfig(flags);
   } 
@@ -223,6 +238,7 @@ function EdgeShaper(parent, flags, idfunc) {
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;
   }
+  
   
   /////////////////////////////////////////////////////////
   /// Public functions
@@ -254,6 +270,3 @@ EdgeShaper.shapes = Object.freeze({
   "NONE": 0,
   "ARROW": 1
 });
-
-// Marker:
-// 
