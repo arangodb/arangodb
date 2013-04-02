@@ -5,7 +5,7 @@
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
 /*global helper*/
-/*global NodeShaper, NodeShaperControls*/
+/*global EdgeShaper, EdgeShaperControls*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -38,17 +38,17 @@
 (function () {
   "use strict";
 
-  describe('Node Shaper UI', function () {
+  describe('Edge Shaper UI', function () {
     var svg, shaper, shaperUI, list, spy;
 
     beforeEach(function () {
       svg = document.createElement("svg");
       document.body.appendChild(svg);
-      shaper = new NodeShaper(d3.select("svg"));
+      shaper = new EdgeShaper(d3.select("svg"));
       list = document.createElement("ul");
       document.body.appendChild(list);
       list.id = "control_list";
-      shaperUI = new NodeShaperControls(list, shaper);
+      shaperUI = new EdgeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
     });
 
@@ -59,11 +59,11 @@
 
     it('should throw errors if not setup correctly', function() {
       expect(function() {
-        var e = new NodeShaperControls();
+        var e = new EdgeShaperControls();
       }).toThrow("A list element has to be given.");
       expect(function() {
-        var e = new NodeShaperControls(list);
-      }).toThrow("The NodeShaper has to be given.");
+        var e = new EdgeShaperControls(list);
+      }).toThrow("The EdgeShaper has to be given.");
     });
     
     it('should be able to add a shape none control to the list', function() {
@@ -76,62 +76,27 @@
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
-            type: NodeShaper.shapes.NONE
+            type: EdgeShaper.shapes.NONE
           }
         });
       });      
     });
     
-    it('should be able to add a shape circle control to the list', function() {
+    it('should be able to add a shape arrow control to the list', function() {
       runs(function() {
-        shaperUI.addControlOpticShapeCircle();
+        shaperUI.addControlOpticShapeArrow();
       
-        expect($("#control_list #control_circle").length).toEqual(1);
+        expect($("#control_list #control_arrow").length).toEqual(1);
       
-        helper.simulateMouseEvent("click", "control_circle");
-        expect($("#control_circle_modal").length).toEqual(1);
-      
-        $("#control_circle_radius").attr("value", 42);
-        helper.simulateMouseEvent("click", "control_circle_submit");
+        helper.simulateMouseEvent("click", "control_arrow");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
-            type: NodeShaper.shapes.CIRCLE,
-            radius: "42"
+            type: EdgeShaper.shapes.ARROW
           }
         });
       });
-      
-      waitsFor(function() {
-        return $("#control_circle_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");
-      
-    });
-    
-    it('should be able to add a shape rect control to the list', function() {
-      runs(function() {
-        shaperUI.addControlOpticShapeRect();
-      
-        expect($("#control_list #control_rect").length).toEqual(1);
-      
-        helper.simulateMouseEvent("click", "control_rect");
-        $("#control_rect_width").attr("value", 42);
-        $("#control_rect_height").attr("value", 12);
-        helper.simulateMouseEvent("click", "control_rect_submit");
-      
-        expect(shaper.changeTo).toHaveBeenCalledWith({
-          shape: {
-            type: NodeShaper.shapes.RECT,
-            width: "42",
-            height: "12"
-          }
-        });
-      });
-      
-      waitsFor(function() {
-        return $("#control_rect_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");
-      
+            
     });
     
     it('should be able to add a switch label control to the list', function() {
@@ -159,8 +124,7 @@
       shaperUI.addAllOptics();
       
       expect($("#control_list #control_none").length).toEqual(1);
-      expect($("#control_list #control_circle").length).toEqual(1);
-      expect($("#control_list #control_rect").length).toEqual(1);
+      expect($("#control_list #control_arrow").length).toEqual(1);
       expect($("#control_list #control_label").length).toEqual(1);
       
     });
@@ -174,8 +138,7 @@
       shaperUI.addAll();
       
       expect($("#control_list #control_none").length).toEqual(1);
-      expect($("#control_list #control_circle").length).toEqual(1);
-      expect($("#control_list #control_rect").length).toEqual(1);
+      expect($("#control_list #control_arrow").length).toEqual(1);
       expect($("#control_list #control_label").length).toEqual(1);
       
     });
