@@ -69,8 +69,15 @@
 /// @brief shortcut for throwing a usage exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_USAGE(scope, usage) \
-  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, (string("usage: ") + usage).c_str())))
+#define TRI_V8_EXCEPTION_USAGE(scope, usage)                           \
+  do {                                                                 \
+    string msg = "usage: ";                                            \
+    msg += usage;                                                      \
+    return scope.Close(                                                \
+      v8::ThrowException(                                              \
+        TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg.c_str()))); \
+  }                                                                    \
+  while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an internal exception and returning
@@ -100,10 +107,13 @@
 #define TRI_V8_EXCEPTION_SYS(scope, message)                        \
   do {                                                              \
     TRI_set_errno(TRI_ERROR_SYS_ERROR);                             \
+    string msg = message;                                           \
+    msg += ": ";                                                    \
+    msg += TRI_LAST_ERROR_STR;                                      \
     return scope.Close(v8::ThrowException(                          \
       TRI_CreateErrorObject(                                        \
         TRI_errno(),                                                \
-        (string(message) + ":" + TRI_LAST_ERROR_STR).c_str())));    \
+        msg.c_str())));                                             \
   }                                                                 \
   while (0)
 
