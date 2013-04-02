@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global document, $ */
+/*global document, $, _ */
 var modalDialogHelper = modalDialogHelper || {};
 
 (function dialogHelper() {
@@ -78,6 +78,37 @@ var modalDialogHelper = modalDialogHelper || {};
     
     // Return the table which has to be filled somewhere else
     return bodyTable;
+  };
+  
+  modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
+    var table =  modalDialogHelper.modalDivTemplate(title, idprefix, callback);
+    
+    _.each(objects, function(o) {
+      var tr = document.createElement("tr"),
+      labelTh = document.createElement("th"),
+      contentTh = document.createElement("th"),
+      input;
+      
+      table.appendChild(tr);
+      tr.appendChild(labelTh);
+      labelTh.className = "collectionTh capitalize";
+      labelTh.appendChild(document.createTextNode(o.id + ":"));
+      tr.appendChild(contentTh);
+      contentTh.className = "collectionTh";
+      switch(o.type) {
+        case "text":
+          input = document.createElement("input");
+          input.type = "text";
+          input.id = idprefix + o.id;
+          contentTh.appendChild(input);
+          break;
+        default:
+          //Sorry unknown
+          table.removeChild(tr);
+          break;
+      }
+    });
+    $("#" + idprefix + "modal").modal('show');
   };
   
 }());
