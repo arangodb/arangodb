@@ -503,10 +503,10 @@ exports.listAvailable = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief searchs for an application
+/// @brief details for an application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.search = function (name) {
+exports.details = function (name) {
   'use strict';
 
   var i;
