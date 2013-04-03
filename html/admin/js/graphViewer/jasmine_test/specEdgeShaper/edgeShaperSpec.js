@@ -249,7 +249,105 @@
       expect($("#1-5 line").attr("x2")).toEqual("28.284271247461902");
     });
     
-    
+    describe('testing for colours', function() {
+            
+      it('should be able to use the same colour for all edges', function() {
+        var s = {_id: 1},
+        t = {_id: 2},
+        edges = [{
+          source: s,
+          target: t
+        },{
+          source: t,
+          target: s
+        }],
+        shaper = new EdgeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "single",
+              value: "#123456"
+            }
+          }
+        );
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 line").attr("stroke")).toEqual("#123456");
+        expect($("#2-1 line").attr("stroke")).toEqual("#123456");
+      });
+      
+      it('should be able to use a colour based on attribute value', function() {
+        var n1 = {_id: 1},
+        n2 = {_id: 2},
+        n3 = {_id: 3},
+        n4 = {_id: 4},
+        edges = [{
+          source: n1,
+          target: n2,
+          label: "lbl1"
+        },{
+          source: n2,
+          target: n3,
+          label: "lbl2"
+        },{
+          source: n3,
+          target: n4,
+          label: "lbl3"
+        },{
+          source: n4,
+          target: n1,
+          label: "lbl1"
+        }],
+        shaper = new EdgeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "attribute",
+              value: "label"
+            }
+          }
+        ),
+        c1,c2,c3,c4;
+        shaper.drawEdges(edges);
+        
+        c1 = $("#1-2 line").attr("stroke");
+        c2 = $("#2-3 line").attr("stroke");
+        c3 = $("#3-4 line").attr("stroke");
+        c4 = $("#4-1 line").attr("stroke");
+        
+        expect(c1).toBeDefined();
+        expect(c2).toBeDefined();
+        expect(c3).toBeDefined();
+        expect(c4).toBeDefined();
+        
+        expect(c1).toEqual(c4);
+        expect(c1).not.toEqual(c2);
+        expect(c1).not.toEqual(c3);
+        expect(c2).not.toEqual(c3);
+        
+        
+      });
+      
+      it('should be able to use a gradient colour', function() {
+        var s = {_id: 1},
+        t = {_id: 2},
+        edges = [{
+          source: s,
+          target: t
+        }],
+        shaper = new EdgeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "single",
+              value: "#123456"
+            }
+          }
+        );
+        shaper.drawEdges(edges);
+        
+        throw "Sorry todo";
+        
+      });
+      
+    });
     
     describe('configured for arrow shape', function() {
       var shaper;
