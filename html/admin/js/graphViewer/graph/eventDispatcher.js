@@ -25,7 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 function EventDispatcher(nodeShaper, edgeShaper, config) {
   "use strict";
@@ -80,14 +80,19 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     if (func === undefined || !_.isFunction(func)) {
       throw "You have to give a function that should be bound as a third argument";
     }
+    var actions = {};
     switch (object) {
       case "nodes":
-        nodeShaper.on(event, func);
-        nodeShaper.drawNodes();
+        actions[event] = func;
+        nodeShaper.changeTo({
+          actions: actions
+        });
         break;
       case "edges":
-        edgeShaper.on(event, func);
-        edgeShaper.drawEdges();
+        actions[event] = func;
+        edgeShaper.changeTo({
+          actions: actions
+        });
         break;
       default:
         if (object.bind !== undefined) {

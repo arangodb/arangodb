@@ -164,7 +164,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     LOGGER_TRACE("using backlog size " << _listenBacklog);
     result = ::listen(listenSocket.fileHandle, _listenBacklog);
 
-    if (result == SOCKET_ERROR) {
+    if (result == INVALID_SOCKET) {
       TRI_CLOSE_SOCKET(listenSocket);
       // todo: get the correct error code using WSAGetLastError for windows
       LOGGER_ERROR("listen failed with " << errno << " (" << strerror(errno) << ")");
@@ -181,7 +181,8 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double conne
     setTimeout(listenSocket, connectTimeout);
 
     int result = ::connect(listenSocket.fileHandle, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen);
-    if ( result == SOCKET_ERROR) {
+
+    if (result == INVALID_SOCKET) {
       TRI_CLOSE_SOCKET(listenSocket);
       listenSocket.fileDescriptor = 0;
       listenSocket.fileHandle = 0;
@@ -241,7 +242,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
   memset(&hints, 0, sizeof (struct addrinfo));
   hints.ai_family = getDomain(); // Allow IPv4 or IPv6
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_ALL;
+  hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 
   string portString = StringUtils::itoa(_port);
@@ -311,7 +312,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
   memset(&hints, 0, sizeof (struct addrinfo));
   hints.ai_family = getDomain(); // Allow IPv4 or IPv6
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_ALL;
+  hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 
   string portString = StringUtils::itoa(_port);
