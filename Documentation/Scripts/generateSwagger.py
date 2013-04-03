@@ -67,9 +67,16 @@ def parameters(line):
     line , c , r = line.rpartition('}')
     return line
 
-def FA(txt, wordboundary = ['<b>','</b>']):
+def replaceWordBoundaries(txt, tag=['@FA\{', '\}'],  wordboundary = ['<b>','</b>']):
     # @FA{word} -> <b>word</b>
-    r = rc(r"""([\(\s'/">]|^|.)@FA\{(.*?)\}([<\s\.\),:;'"?!/-]|$)""", MS)
+    r = rc(r"""([\(\s'/">]|^|.)"""+ tag[0] + """(.*?)"""+tag[1]+"""([<\s\.\),:;'"?!/-]|$)""", MS)
+    subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
+    return r.sub(subpattern, txt)
+
+
+def hochkomma(txt, wordboundary = [' <b>','</b>']):
+    # @FA{word} -> <b>word</b>
+    r = rc(r"""([\(\s'/">]|^|.)\`(.*?)\`([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
     return r.sub(subpattern, txt)
 
@@ -86,9 +93,15 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
     return r.sub(subpattern, txt)
 
 def Typography(txt):
-    txt = FN(txt)
-    txt = LIT(txt)
-    txt = FA(txt)
+    # TODO uncomment and test
+
+    txt = replaceWordBoundaries(txt, ["@FN\{","\}"])
+    txt = replaceWordBoundaries(txt, ["@LIT\{","\}"], ['<i>','</i>'])
+    txt = replaceWordBoundaries(txt, ["@FA\{","\}"])
+    txt = hochkomma(txt)
+    # txt = FN(txt)
+    # txt = LIT(txt)
+    # txt = FA(txt)
     return txt
 
 class InitializationError(Exception): pass
@@ -332,7 +345,7 @@ def examples(cargo, r=Regexen()):
 def example_arangosh_run(cargo, r=Regexen()):
     fp, last = cargo
     import os
-    # old examples code: TODO Should be deleted after last @EXAMPLE_ARANGOSH_RUN in RestSourcefiles added
+    # old examples code: TODO should be deleted after last @EXAMPLE_ARANGOSH_RUN in RestSourcefiles added
     verbinclude = last[4:-1].split()[0] == "@verbinclude"
     if verbinclude:
         examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + last[4:-1].split()[1]))
@@ -369,7 +382,7 @@ def comment(cargo, r=Regexen()):
             summary = temp[1]
             '# create new api'
             api = {}
-            api['path'] = FA(path, wordboundary = ['{', '}'])
+            api['path'] = replaceWordBoundaries(path, ["@FA\{","\}"])
             api['operations']=[]
             swagger['apis'].append(api)
             _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [], 
