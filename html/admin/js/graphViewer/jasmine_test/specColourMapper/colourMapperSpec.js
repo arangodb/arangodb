@@ -47,7 +47,6 @@
       var colourRef = mapper.getColour("42");
       
       expect(colourRef).toBeDefined();
-      expect($(colourRef).length).toEqual(1);
     });
     
     it('should return a different colour for different values', function() {
@@ -68,12 +67,8 @@
       var c1 = mapper.getColour(42),
       c2 = mapper.getColour(true);
       
-      expect(c1).toBeDefined();
-      expect($(c1).length).toEqual(1);
-      
+      expect(c1).toBeDefined();      
       expect(c2).toBeDefined();
-      expect($(c2).length).toEqual(1);
-      
       expect(c1).not.toEqual(c2);
     });
     
@@ -114,7 +109,7 @@
       colours.push(mapper.getColour("20"));
       cNew = mapper.getColour("21");
       for (i = 0; i < colours.length; i++) {
-        for (j = i; j < colours.length; j++) {
+        for (j = i + 1; j < colours.length; j++) {
           expect(colours[i]).not.toEqual(colours[j]);
         }
       }
