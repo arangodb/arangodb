@@ -336,14 +336,35 @@
         shaper = new EdgeShaper(d3.select("svg"),
           {
             color: {
-              type: "single",
-              value: "#123456"
+              type: "gradient",
+              source: "#123456",
+              target: "#654321"
             }
           }
-        );
+        ),
+        allStops;
         shaper.drawEdges(edges);
         
-        throw "Sorry todo";
+        expect($("#1-2 line").attr("stroke")).toEqual("url(#gradientEdgeColor)");
+        
+        // Sorry if the line is plain horizontal it is not displayed.
+        expect($("#1-2 line").attr("y2")).toBeDefined();
+        expect($("#1-2 line").attr("y2")).not.toEqual("0");
+        
+        // This check may not work
+        expect($("svg defs linearGradient").length).toEqual(1);
+        expect($("svg defs #gradientEdgeColor").length).toEqual(1);
+        
+        allStops = $("svg defs #gradientEdgeColor stop");
+        expect(allStops[0].getAttribute("offset")).toEqual("0");
+        expect(allStops[1].getAttribute("offset")).toEqual("0.4");
+        expect(allStops[2].getAttribute("offset")).toEqual("0.6");
+        expect(allStops[3].getAttribute("offset")).toEqual("1");
+        
+        expect(allStops[0].getAttribute("stop-color")).toEqual("#123456");
+        expect(allStops[1].getAttribute("stop-color")).toEqual("#123456");
+        expect(allStops[2].getAttribute("stop-color")).toEqual("#654321");
+        expect(allStops[3].getAttribute("stop-color")).toEqual("#654321");
         
       });
       
