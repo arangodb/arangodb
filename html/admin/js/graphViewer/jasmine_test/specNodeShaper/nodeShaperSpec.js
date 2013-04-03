@@ -503,6 +503,8 @@
         expect($("svg .node text")[0]).toBeDefined();
         expect($("svg .node text").length).toEqual(1);
         expect($("svg .node text")[0].textContent).toEqual("MyLabel");
+        expect($("svg .node text").attr("stroke")).toEqual("black");
+        expect($("svg .node text").attr("fill")).toEqual("black");
       });
 
       it('should ignore other attributes', function () {
