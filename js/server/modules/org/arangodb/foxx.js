@@ -28,7 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var FoxxApplication,
+var Application,
   RequestContext,
   BaseMiddleware,
   FormatMiddleware,
@@ -75,19 +75,19 @@ internal.createUrlObject = function (url, constraint, method) {
 /// @fn JSF_foxx_application_initializer
 /// @brief Create a new Application
 ///
-/// And that's FoxxApplication. It's a constructor, so call it like this:
+/// And that's Application. It's a constructor, so call it like this:
 /// It takes two optional arguments as displayed above:
 /// * **The URL Prefix:** All routes you define within will be prefixed with it
 /// * **The Template Collection:** More information in the template section
 ///
 /// @EXAMPLES
-///     app = new FoxxApplication({
+///     app = new Application({
 ///       urlPrefix: "/wiese",
 ///       templateCollection: "my_templates"
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
 
-FoxxApplication = function (options) {
+Application = function (options) {
   'use strict';
   var urlPrefix, templateCollection, myMiddleware;
 
@@ -100,8 +100,7 @@ FoxxApplication = function (options) {
     routes: []
   };
 
-  this.requiresLibs = {};
-  this.requiresModels = {};
+  this.requires = {};
   this.helperCollection = {};
 
   this.routingInfo.urlPrefix = urlPrefix;
@@ -122,7 +121,7 @@ FoxxApplication = function (options) {
   ];
 };
 
-_.extend(FoxxApplication.prototype, {
+_.extend(Application.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_application_start
 /// @brief Start the application
@@ -136,8 +135,7 @@ _.extend(FoxxApplication.prototype, {
 
   start: function (context) {
     'use strict';
-    var models = this.requiresModels,
-      requires = this.requiresLibs,
+    var requires = this.requires,
       prefix = context.prefix;
 
     this.routingInfo.urlPrefix = prefix + "/" + this.routingInfo.urlPrefix;
@@ -145,7 +143,6 @@ _.extend(FoxxApplication.prototype, {
     _.each(this.routingInfo.routes, function (route) {
       route.action.context = context.context;
       route.action.requiresLibs = requires;
-      route.action.requiresModels = models;
     });
 
     context.routingInfo = this.routingInfo;
@@ -672,7 +669,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// @fn JSF_foxx_BaseMiddleware_response_render
 /// @brief The mysterious `render` function
 ///
-/// If you initialize your FoxxApplication with a `templateCollection`,
+/// If you initialize your Application with a `templateCollection`,
 /// you're in luck now.
 /// It expects documents in the following form in this collection:
 ///
@@ -689,14 +686,14 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// from this call. And with the `templateLanguage` you can choose
 /// your template processor. There is only one choice now: `underscore`.
 ///
-/// If you call render, FoxxApplication will look
+/// If you call render, Application will look
 /// into the this collection and search by the path attribute.
 /// It will then render the template with the given data:
 ///
 /// @EXAMPLES
-///     response.render("high/way", {username: 'FoxxApplication'})
+///     response.render("high/way", {username: 'Application'})
 ///
-/// Which would set the body of the response to `hello FoxxApplication` with the
+/// Which would set the body of the response to `hello Application` with the
 /// template defined above. It will also set the `contentType` to
 /// `text/plain` in this case.
 ///
@@ -822,10 +819,10 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   };
 };
 
-/// We finish off with exporting FoxxApplication and the middlewares.
+/// We finish off with exporting Application and the middlewares.
 /// Everything else will remain our secret.
 
-exports.FoxxApplication = FoxxApplication;
+exports.Application = Application;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
 
