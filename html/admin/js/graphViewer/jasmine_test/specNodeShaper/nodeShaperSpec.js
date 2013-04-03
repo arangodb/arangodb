@@ -87,6 +87,104 @@
       expect(clicked[2]).toBeUndefined();
     });
 
+    describe('testing for colours', function() {
+      
+      it('should be able to use the same colour for all nodes', function() {
+        var nodes = [{_id: 1}, {_id: 2}],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "single",
+            fill: "#123456",
+            stroke: "#654321"
+          }
+        });
+        shaper.drawNodes(nodes);
+        
+        expect($("#1").attr("fill")).toEqual("#123456");
+        expect($("#1").attr("stroke")).toEqual("#654321");
+        expect($("#2").attr("fill")).toEqual("#123456");
+        expect($("#2").attr("stroke")).toEqual("#654321");
+        
+      });
+      
+      it('should be able to use a colour based on attribute value', function() {
+        var nodes = [
+          {_id: 1,
+            label: "lbl1"
+          }, {
+            _id: 2,
+            label: "lbl2"
+          }, {
+            _id: 3,
+            label: "lbl3"
+          }, {
+            _id: 4,
+            label: "lbl1"
+          }],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        }),
+        c1, c2, c3, c4;
+        shaper.drawNodes(nodes);
+        
+        c1 = $("#1").attr("fill");
+        c2 = $("#2").attr("fill");
+        c3 = $("#3").attr("fill");
+        c4 = $("#4").attr("fill");
+        
+        expect(c1).toBeDefined();
+        expect(c2).toBeDefined();
+        expect(c3).toBeDefined();
+        expect(c4).toBeDefined();
+        
+        expect(c1).toEqual(c4);
+        expect(c1).not.toEqual(c2);
+        expect(c1).not.toEqual(c3);
+        expect(c2).not.toEqual(c3);
+      });
+      
+      it('should be able to use colours based on _expanded attribute', function() {
+        var nodes = [
+          {
+            _id: 1,
+            _expanded: true
+          }, {
+            _id: 2,
+            _expanded: false
+          }, {
+            _id: 3
+          }],
+        shaper = new NodeShaper(d3.select("svg"),
+        {
+          color: {
+            type: "expand",
+            expanded: "#123456",
+            collapsed: "#654321"
+          }
+        }),
+        c1, c2, c3;
+        shaper.drawNodes(nodes);
+        
+        c1 = $("#1").attr("fill");
+        c2 = $("#2").attr("fill");
+        c3 = $("#3").attr("fill");
+        
+        expect(c1).toBeDefined();
+        expect(c2).toBeDefined();
+        expect(c3).toBeDefined();
+        
+        expect(c1).toEqual("#123456");
+        expect(c2).toEqual("#654321");
+        expect(c3).toEqual("#654321");
+      });
+      
+    });
+
     describe('when nodes are already drawn', function() {
       var nodes,
       clicked,
