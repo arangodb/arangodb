@@ -28,6 +28,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_FILE_NOT_FOUND, "file not found");
   REG_ERROR(ERROR_CANNOT_WRITE_FILE, "cannot write file");
   REG_ERROR(ERROR_CANNOT_OVERWRITE_FILE, "cannot overwrite file");
+  REG_ERROR(ERROR_TYPE_ERROR, "type error");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");

@@ -31,7 +31,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/geo-index.h"

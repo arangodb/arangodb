@@ -30,7 +30,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 using namespace std;
 

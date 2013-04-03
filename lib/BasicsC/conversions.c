@@ -27,7 +27,7 @@
 
 #include "conversions.h"
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 
 // -----------------------------------------------------------------------------

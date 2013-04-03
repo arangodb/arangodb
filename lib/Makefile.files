@@ -57,7 +57,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/random.c \
 	lib/BasicsC/socket-utils.c \
 	lib/BasicsC/string-buffer.c \
-	lib/BasicsC/strings.c \
+	lib/BasicsC/tri-strings.c \
 	lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
 	lib/BasicsC/terminal-utils-posix.c \

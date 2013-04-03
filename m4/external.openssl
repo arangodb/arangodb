@@ -51,8 +51,11 @@ AC_CHECK_LIB([crypto], [CRYPTO_get_ex_data],
 
 AC_CHECK_LIB([ssl], [SSL_get_error],
   OPENSSL_LIBS="-lssl $OPENSSL_LIBS",
-  AC_MSG_ERROR([Please install the OpenSSL library]),
-  [-lcrypto -lz -ldl $LIBS])
+   AC_CHECK_LIB([ssl], [SSL_get_error],
+     OPENSSL_LIBS="-lssl -ldl $OPENSSL_LIBS",
+     AC_MSG_ERROR([Please install the OpenSSL library]),
+     [-lcrypto -lz -ldl $LIBS])
+  [-lcrypto -lz $LIBS])
 
 dnl check if SSLv23_method returns a const method
 AC_MSG_CHECKING([return type of SSLv23_method])

@@ -27,7 +27,7 @@
 
 #include "Ahuacatl/ahuacatl-error.h"
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           defines

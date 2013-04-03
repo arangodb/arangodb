@@ -30,7 +30,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Logger/Logger.h"
 #include "MRuby/mr-utils.h"
 

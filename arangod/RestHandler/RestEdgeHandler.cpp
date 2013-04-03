@@ -29,7 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"

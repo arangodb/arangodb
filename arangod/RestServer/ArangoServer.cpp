@@ -52,7 +52,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/messages.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
