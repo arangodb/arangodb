@@ -202,12 +202,14 @@ function EdgeShaper(parent, flags, idfunc) {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("stroke", "black")
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
             });
@@ -234,7 +236,7 @@ function EdgeShaper(parent, flags, idfunc) {
       switch (color.type) {
         case "single":
           addColor = function (line, g) {
-            line.attr("stroke", color.value);
+            line.attr("stroke", color.stroke);
           };
           break;
         case "gradient":
