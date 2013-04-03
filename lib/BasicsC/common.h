@@ -180,23 +180,24 @@ static inline void* CONST_CAST (void const* ptr) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper for assert()
 ///
-/// This wrapper maps TRI_ASSERT_DEBUG() to (void) 0 for non-maintainers. It
-/// maps TRI_ASSERT_DEBUG() to assert() when TRI_ENABLE_MAINTAINER_MODE is set.
+/// This wrapper maps TRI_ASSERT_MAINTAINER() to (void) 0 for non-maintainers. 
+/// It maps TRI_ASSERT_MAINTAINER() to assert() when TRI_ENABLE_MAINTAINER_MODE 
+/// is set.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT_DEBUG(what) assert(what)
+#define TRI_ASSERT_MAINTAINER(what) assert(what)
 
 #else
 
 #ifdef __cplusplus
 
-#define TRI_ASSERT_DEBUG(what) (static_cast<void> (0))
+#define TRI_ASSERT_MAINTAINER(what) (static_cast<void> (0))
 
 #else
 
-#define TRI_ASSERT_DEBUG(what) ((void) (0))
+#define TRI_ASSERT_MAINTAINER(what) ((void) (0))
 
 #endif
 

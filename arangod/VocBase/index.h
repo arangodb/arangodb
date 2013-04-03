@@ -41,6 +41,7 @@
 #include "PriorityQueue/pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
+#include "VocBase/voc-types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,6 +55,7 @@ struct TRI_collection_s;
 struct TRI_doc_mptr_s;
 struct TRI_shaped_json_s;
 struct TRI_document_collection_s;
+struct TRI_transaction_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types

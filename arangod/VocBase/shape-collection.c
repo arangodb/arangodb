@@ -101,7 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   LOG_TRACE("created a new shape journal '%s'", journal->getName(journal));
 
-  TRI_ASSERT_DEBUG(fid == journal->_fid);
+  assert(fid == journal->_fid);
 
   if (journal->isPhysical(journal)) {
     char* jname;

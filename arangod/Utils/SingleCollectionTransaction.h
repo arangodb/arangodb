@@ -30,16 +30,16 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/voc-errors.h"
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+#include "Utils/Transaction.h"
+
 #include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-#include "BasicsC/voc-errors.h"
-
-#include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
-
-#include "Utils/Transaction.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace arango {
@@ -71,7 +71,7 @@ namespace triagens {
 
         SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
                                      const triagens::arango::CollectionNameResolver& resolver,
-                                     const TRI_transaction_cid_t cid,
+                                     const TRI_voc_cid_t cid,
                                      const TRI_transaction_type_e accessType) :
           Transaction<T>(vocbase, resolver),
           _cid(cid),
@@ -108,11 +108,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_collection_t* trxCollection () {
-          TRI_ASSERT_DEBUG(_cid > 0);
+          TRI_ASSERT_MAINTAINER(_cid > 0);
 
           TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
 
-          TRI_ASSERT_DEBUG(trxCollection != 0);
+          TRI_ASSERT_MAINTAINER(trxCollection != 0);
           return trxCollection;
         }
 
@@ -123,9 +123,9 @@ namespace triagens {
         inline TRI_primary_collection_t* primaryCollection () {
           TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
-          TRI_ASSERT_DEBUG(trxCollection != 0);
-          TRI_ASSERT_DEBUG(trxCollection->_collection != 0);
-          TRI_ASSERT_DEBUG(trxCollection->_collection->_collection != 0);
+          TRI_ASSERT_MAINTAINER(trxCollection != 0);
+          TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
+          TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
           
           return trxCollection->_collection->_collection;
         }
@@ -210,7 +210,7 @@ namespace triagens {
 /// @brief collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_transaction_cid_t _cid;
+        TRI_voc_cid_t _cid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection access type

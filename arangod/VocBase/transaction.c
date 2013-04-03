@@ -31,14 +31,15 @@
 #include "BasicsC/tri-strings.h"
 
 #include "VocBase/primary-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
+
+#define LOG_TRX(trx, level, format, ...) \
+  LOG_TRACE("trx #%llu.%d (%s): " format, (unsigned long long) trx->_id, (int) level, StatusTransaction(trx->_status), __VA_ARGS__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               TRANSACTION CONTEXT
 // -----------------------------------------------------------------------------
-
-#define LOG_TRX(trx, level, format, ...) \
-  LOG_TRACE("trx #%llu.%d (%s): " format, (unsigned long long) trx->_id, (int) level, StatusTransaction(trx->_status), __VA_ARGS__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -54,7 +55,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyCid (TRI_associative_pointer_t* array, void const* key) {
-  TRI_transaction_cid_t const* k = key;
+  TRI_voc_cid_t const* k = key;
 
   return (uint64_t) *k;
 }
@@ -74,7 +75,7 @@ static uint64_t HashElementCid (TRI_associative_pointer_t* array, void const* el
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool EqualKeyCid (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_transaction_cid_t const* k = key;
+  TRI_voc_cid_t const* k = key;
   TRI_transaction_collection_global_t const* e = element;
 
   return *k == e->_cid;
@@ -84,7 +85,7 @@ static bool EqualKeyCid (TRI_associative_pointer_t* array, void const* key, void
 /// @brief create a global instance of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_transaction_collection_global_t* CreateGlobalInstance (TRI_transaction_cid_t cid) {
+static TRI_transaction_collection_global_t* CreateGlobalInstance (TRI_voc_cid_t cid) {
   TRI_transaction_collection_global_t* globalInstance;
 
   globalInstance = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_global_t), false);
@@ -117,7 +118,7 @@ static void FreeGlobalInstance (TRI_transaction_collection_global_t* globalInsta
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_global_t* GetGlobalInstance (TRI_transaction_context_t* context,
-                                                               TRI_transaction_cid_t cid,
+                                                               TRI_voc_cid_t cid,
                                                                const bool create) {
   TRI_transaction_collection_global_t* globalInstance;
   TRI_transaction_collection_global_t* found;
@@ -154,10 +155,10 @@ static TRI_transaction_collection_global_t* GetGlobalInstance (TRI_transaction_c
   if (found != NULL) {
     // someone else inserted another global instance. so we'll return it
     FreeGlobalInstance(globalInstance);
-    return found;
+    globalInstance = found;
   }
 
-  // our own instance has been inserted
+  // return whatever we've got
   return globalInstance;
 }
 
@@ -172,17 +173,22 @@ static int UpdateGlobalStats (const TRI_transaction_t const* trx,
   n = trx->_collections._length;
 
   for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* collection;
+    TRI_transaction_collection_t* trxCollection;
     TRI_transaction_collection_global_t* globalInstance;
 
-    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+    trxCollection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
 
-    globalInstance = collection->_globalInstance;
-    TRI_ASSERT_DEBUG(globalInstance != NULL);
+    globalInstance = trxCollection->_globalInstance;
+    assert(globalInstance != NULL);
+
+    if (globalInstance == NULL) {
+      LOG_ERROR("internal error in UpdateGlobalStats");
+      return TRI_ERROR_INTERNAL;
+    }
 
     TRI_WriteLockReadWriteLock(&globalInstance->_lock);
 
-    if (collection->_accessType == TRI_TRANSACTION_READ) {
+    if (trxCollection->_accessType == TRI_TRANSACTION_READ) {
       if (status == TRI_TRANSACTION_RUNNING) {    
         globalInstance->_stats._lastStartedReader = trx->_id;
       }
@@ -278,7 +284,7 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* context,
-                                             const TRI_transaction_cid_t cid) {
+                                             const TRI_voc_cid_t cid) {
   TRI_transaction_collection_global_t* globalInstance;
 
   globalInstance = GetGlobalInstance(context, cid, false);
@@ -298,7 +304,7 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t* context,
-                                           const TRI_transaction_cid_t cid,
+                                           const TRI_voc_cid_t cid,
                                            TRI_transaction_collection_stats_t* stats) {
   TRI_transaction_collection_global_t* globalInstance;
 
@@ -322,6 +328,32 @@ int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t* context,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       TRANSACTION
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type containing a write operation for a transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct transaction_operation_s {
+  int                      _type;
+  TRI_doc_mptr_t*          _newHeader;
+  TRI_doc_mptr_t           _oldHeader;
+  TRI_df_marker_t*         _marker;
+  size_t                   _markerSize;
+}
+transaction_operation_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -357,27 +389,310 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise operations for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int InitCollectionOperations (TRI_transaction_collection_t* trxCollection) {
+  int res;
+
+  trxCollection->_operations = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_t), false);
+
+  if (trxCollection->_operations == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = TRI_InitVector2(trxCollection->_operations, TRI_UNKNOWN_MEM_ZONE, sizeof(transaction_operation_t), 4);
+   
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all operations for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeCollectionOperations (TRI_transaction_collection_t* trxCollection) {
+  TRI_document_collection_t* document;
+  size_t i, n;
+
+  document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+
+  n = trxCollection->_operations->_length;
+
+  for (i = 0; i < n; ++i) {
+    transaction_operation_t* trxOperation = TRI_AtVector(trxCollection->_operations, i);
+    TRI_document_operation_e type = (TRI_document_operation_e) trxOperation->_type;
+
+    if (type == TRI_DOCUMENT_REMOVE) {
+      document->_headers->release(document->_headers, trxOperation->_newHeader);
+    }
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxOperation->_marker);
+  }
+}
+                
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add an operation for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int AddCollectionOperation (TRI_transaction_collection_t* trxCollection,
+                                   int type,
+                                   TRI_doc_mptr_t* newHeader,
+                                   TRI_doc_mptr_t* oldHeader,
+                                   TRI_df_marker_t* marker,
+                                   size_t totalSize) {
+  transaction_operation_t trxOperation;
+  int res;
+  
+
+  if (trxCollection->_operations == NULL) {
+    res = InitCollectionOperations(trxCollection);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  trxOperation._type       = type;
+  trxOperation._newHeader  = newHeader;
+  trxOperation._marker     = marker;
+  trxOperation._markerSize = totalSize;
+  
+  if (oldHeader != NULL) {
+    trxOperation._oldHeader  = *oldHeader;
+  }
+  else {
+    memset(&trxOperation._oldHeader, 0, sizeof(TRI_doc_mptr_t));
+  }
+
+  res = TRI_PushBackVector(trxCollection->_operations, &trxOperation);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write all operations for a collection, 
+/// wrapped inside begin...commit|abort markers
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteCollectionOperations (TRI_transaction_collection_t* trxCollection,
+                                      int numCollections) {
+  TRI_document_collection_t* document;
+  TRI_transaction_t* trx;
+  TRI_df_marker_t* result;
+  TRI_doc_begin_transaction_marker_t* beginMarker;
+  int res;
+  size_t i, n;
+
+  document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+  trx = trxCollection->_transaction;
+  n = trxCollection->_operations->_length;
+
+  assert(n > 0);
+
+  // create the "start transaction" marker
+  res = TRI_CreateMarkerBeginTransaction(trx, &beginMarker, (uint16_t) numCollections);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+    
+  res = TRI_WriteMarkerDocumentCollection(document, 
+                                          &beginMarker->base,
+                                          beginMarker->base._size,
+                                          NULL,
+                                          &result, 
+                                          false);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, beginMarker);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // write the individual operations
+  for (i = 0; i < n; ++i) {
+    transaction_operation_t* trxOperation;
+    bool waitForSync;
+
+    trxOperation = TRI_AtVector(trxCollection->_operations, i);
+    waitForSync = (trxCollection->_waitForSync && (i == n - 1));
+
+    res = TRI_WriteOperationDocumentCollection(document, 
+                                               (TRI_document_operation_e) trxOperation->_type,
+                                               trxOperation->_newHeader, 
+                                               &trxOperation->_oldHeader, 
+                                               trxOperation->_marker, 
+                                               trxOperation->_markerSize, 
+                                               waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+  }
+
+  // written all markers
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    // no errors happened, now write commit marker
+    TRI_doc_commit_transaction_marker_t* commitMarker;
+  
+    // create the "commit transaction" marker
+    res = TRI_CreateMarkerCommitTransaction(trx, &commitMarker);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  
+    res = TRI_WriteMarkerDocumentCollection(document, 
+                                            &commitMarker->base,
+                                            commitMarker->base._size,
+                                            NULL,
+                                            &result, 
+                                            false);
+    
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, commitMarker);
+  }
+  else {
+    // some error happened, now write abort marker
+    TRI_doc_abort_transaction_marker_t* abortMarker;
+    
+    // create the "commit transaction" marker
+    res = TRI_CreateMarkerAbortTransaction(trx, &abortMarker);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  
+    res = TRI_WriteMarkerDocumentCollection(document, 
+                                            &abortMarker->base,
+                                            abortMarker->base._size,
+                                            NULL,
+                                            &result, 
+                                            false);
+    
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, abortMarker);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all operations for a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeOperations (TRI_transaction_t* trx) {
+  if (trx->_hasOperations) {
+    size_t i, n;
+  
+    n = trx->_collections._length;
+  
+    for (i = 0; i < n; ++i) {
+      TRI_transaction_collection_t* trxCollection;
+
+      trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
+
+      if (trxCollection->_operations == NULL) {
+        continue;
+      }
+
+      FreeCollectionOperations(trxCollection);
+
+      TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, trxCollection->_operations);
+      trxCollection->_operations = NULL;
+    }
+
+    trx->_hasOperations = false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count the number of write collections
+////////////////////////////////////////////////////////////////////////////////
+
+static int CountWriteCollections (TRI_transaction_t* const trx) {
+  int numCollections;
+
+  numCollections = 0;
+
+  if (trx->_hasOperations) {
+    size_t i, n;
+
+    n = trx->_collections._length;
+
+    for (i = 0; i < n; ++i) {
+      TRI_transaction_collection_t* trxCollection;
+
+      trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
+
+      if (trxCollection->_operations != NULL) {
+        numCollections++;
+      }
+    }
+  }
+
+  return numCollections;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write all operations for a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteOperations (TRI_transaction_t* const trx) {
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+  
+  if (trx->_hasOperations) {
+    size_t i, n;
+    int numCollections;
+
+    numCollections = CountWriteCollections(trx);
+
+    n = trx->_collections._length;
+
+    for (i = 0; i < n; ++i) {
+      TRI_transaction_collection_t* trxCollection;
+
+      trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
+
+      if (trxCollection->_operations == NULL) {
+        // no markers available for collection
+        continue;
+      }
+
+      res = WriteCollectionOperations(trxCollection, numCollections);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find a collection in the transaction's list of collections
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* const trx,
-                                                     const TRI_transaction_cid_t cid,
+                                                     const TRI_voc_cid_t cid,
                                                      size_t* position) {
   size_t i, n;
 
   n = trx->_collections._length;
   
   for (i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
+    TRI_transaction_collection_t* trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
     
-    if (cid < collection->_cid) {
+    if (cid < trxCollection->_cid) {
       // collection not found
       break;
     }
 
-    if (cid == collection->_cid) {
+    if (cid == trxCollection->_cid) {
       // found
-      return collection;
+      return trxCollection;
     }
 
     // next
@@ -396,7 +711,7 @@ static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* co
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
-                                                       const TRI_transaction_cid_t cid,
+                                                       const TRI_voc_cid_t cid,
                                                        const TRI_transaction_type_e accessType,
                                                        const int nestingLevel) {
   TRI_transaction_collection_t* trxCollection;
@@ -422,10 +737,9 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_nestingLevel    = nestingLevel;
   trxCollection->_collection      = NULL;
   trxCollection->_globalInstance  = globalInstance;
-  trxCollection->_numWrites       = 0;
+  trxCollection->_operations      = NULL;
   trxCollection->_locked          = false;
   trxCollection->_waitForSync     = false;
-  trxCollection->_hadSyncedWrites = false;
 
   return trxCollection;
 }
@@ -435,7 +749,8 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
-  TRI_ASSERT_DEBUG(trxCollection != NULL);
+  assert(trxCollection != NULL);
+  assert(trxCollection->_operations == NULL);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection);
 }
@@ -449,10 +764,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
                            const int nestingLevel) {
   TRI_primary_collection_t* primary;
 
-  TRI_ASSERT_DEBUG(trxCollection != NULL);
-  TRI_ASSERT_DEBUG(trxCollection->_collection != NULL);
-  TRI_ASSERT_DEBUG(trxCollection->_collection->_collection != NULL);
-  TRI_ASSERT_DEBUG(trxCollection->_locked == false);
+  assert(trxCollection != NULL);
+  assert(trxCollection->_collection != NULL);
+  assert(trxCollection->_collection->_collection != NULL);
+  assert(trxCollection->_locked == false);
 
   primary = trxCollection->_collection->_collection;
 
@@ -479,10 +794,10 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
                              const int nestingLevel) {
   TRI_primary_collection_t* primary;
 
-  TRI_ASSERT_DEBUG(trxCollection != NULL);
-  TRI_ASSERT_DEBUG(trxCollection->_collection != NULL);
-  TRI_ASSERT_DEBUG(trxCollection->_collection->_collection != NULL);
-  TRI_ASSERT_DEBUG(trxCollection->_locked == true);
+  assert(trxCollection != NULL);
+  assert(trxCollection->_collection != NULL);
+  assert(trxCollection->_collection->_collection != NULL);
+  assert(trxCollection->_locked == true);
 
   primary = trxCollection->_collection->_collection;
 
@@ -578,8 +893,8 @@ static int UseCollections (TRI_transaction_t* const trx,
       trxCollection->_waitForSync = trxCollection->_collection->_collection->base._info._waitForSync;
     }
 
-    TRI_ASSERT_DEBUG(trxCollection->_collection != NULL);
-    TRI_ASSERT_DEBUG(trxCollection->_collection->_collection != NULL);
+    assert(trxCollection->_collection != NULL);
+    assert(trxCollection->_collection->_collection != NULL);
     
     if (! trxCollection->_locked &&
         ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0)) {
@@ -639,14 +954,13 @@ static int ReleaseCollections (TRI_transaction_t* const trx,
 
 static int UpdateTransactionStatus (TRI_transaction_t* const trx,
                                     const TRI_transaction_status_e status) {
-
   assert(trx->_status == TRI_TRANSACTION_CREATED || trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_status == TRI_TRANSACTION_CREATED) {
-    TRI_ASSERT_DEBUG(status == TRI_TRANSACTION_RUNNING || status == TRI_TRANSACTION_FAILED);
+    assert(status == TRI_TRANSACTION_RUNNING || status == TRI_TRANSACTION_FAILED);
   }
   else if (trx->_status == TRI_TRANSACTION_RUNNING) {
-    TRI_ASSERT_DEBUG(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
+    assert(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
   }
 
   if (status == TRI_TRANSACTION_RUNNING ||
@@ -691,15 +1005,16 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
     return NULL;
   }
 
-  trx->_context      = context;
+  trx->_context       = context;
 
   // note: the real transaction id will be acquired on transaction start
-  trx->_id           = 0; 
+  trx->_id            = 0; 
   
-  trx->_status       = TRI_TRANSACTION_CREATED;
-  trx->_type         = TRI_TRANSACTION_READ;
-  trx->_hints        = 0;
-  trx->_nestingLevel = 0;
+  trx->_status        = TRI_TRANSACTION_CREATED;
+  trx->_type          = TRI_TRANSACTION_READ;
+  trx->_hints         = 0;
+  trx->_nestingLevel  = 0;
+  trx->_hasOperations = false;
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
@@ -713,7 +1028,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
 void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   size_t i;
 
-  TRI_ASSERT_DEBUG(trx != NULL);
+  assert(trx != NULL);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_AbortTransaction(trx, 0);
@@ -722,9 +1037,9 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   // free all collections
   i = trx->_collections._length;
   while (i-- > 0) {
-    TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
+    TRI_transaction_collection_t* trxCollection = TRI_AtVectorPointer(&trx->_collections, i);
 
-    FreeCollection(collection);
+    FreeCollection(trxCollection);
   }
 
   TRI_DestroyVectorPointer(&trx->_collections);
@@ -744,6 +1059,135 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection from a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const* trx,
+                                              const TRI_voc_cid_t cid) {
+  
+  TRI_transaction_collection_t* trxCollection;
+  
+  assert(trx->_status == TRI_TRANSACTION_RUNNING ||
+         trx->_status == TRI_TRANSACTION_ABORTED ||
+         trx->_status == TRI_TRANSACTION_COMMITTED);
+   
+  trxCollection = FindCollection(trx, cid, NULL);
+  
+  if (trxCollection == NULL || trxCollection->_collection == NULL) {
+    // not found or not opened. probably a mistake made by the caller
+    return false;
+  }
+
+  return trxCollection->_waitForSync;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection from a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t const* trx,
+                                                            const TRI_voc_cid_t cid,
+                                                            const TRI_transaction_type_e accessType) {
+  
+  TRI_transaction_collection_t* trxCollection;
+  
+  assert(trx->_status == TRI_TRANSACTION_CREATED ||
+         trx->_status == TRI_TRANSACTION_RUNNING);
+   
+  trxCollection = FindCollection(trx, cid, NULL);
+  
+  if (trxCollection == NULL || trxCollection->_collection == NULL) {
+    // not found or not opened. probably a mistake made by the caller
+    return NULL;
+  }
+
+  // check if access type matches
+  if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType == TRI_TRANSACTION_READ) {
+    // type doesn't match. probably also a mistake by the caller
+    return NULL;
+  }
+
+  return trxCollection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
+                                  const TRI_voc_cid_t cid,
+                                  const TRI_transaction_type_e accessType,
+                                  const int nestingLevel) {
+
+  TRI_transaction_collection_t* trxCollection;
+  size_t position;
+    
+  LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long) cid);
+          
+  // upgrade transaction type if required
+  if (nestingLevel == 0) {
+    assert(trx->_status == TRI_TRANSACTION_CREATED);
+
+    if (accessType == TRI_TRANSACTION_WRITE && 
+        trx->_type == TRI_TRANSACTION_READ) {
+      // if one collection is written to, the whole transaction becomes a write-transaction
+      trx->_type = TRI_TRANSACTION_WRITE;
+    }
+  }
+
+  // check if we already have got this collection in the _collections vector
+  trxCollection = FindCollection(trx, cid, &position);
+
+  if (trxCollection != NULL) {
+    // collection is already contained in vector
+   
+    if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != accessType) {
+      if (nestingLevel > 0) {
+        // trying to write access a collection that is only marked with read-access 
+        return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+      }
+
+      assert(nestingLevel == 0);
+
+      // upgrade collection type to write-access
+      trxCollection->_accessType = TRI_TRANSACTION_WRITE;
+    } 
+
+    if (nestingLevel < trxCollection->_nestingLevel) {
+      trxCollection->_nestingLevel = nestingLevel;
+    }
+
+    // all correct
+    return TRI_ERROR_NO_ERROR;
+  }
+
+
+  // collection not found.
+
+  if (nestingLevel > 0 && accessType == TRI_TRANSACTION_WRITE) {
+    // trying to write access a collection in an embedded transaction
+    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+  }
+
+  // collection was not contained. now create and insert it
+  trxCollection = CreateCollection(trx, cid, accessType, nestingLevel);
+
+  if (trxCollection == NULL) {
+    // out of memory
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // insert collection at the correct position
+  if (TRI_InsertVectorPointer(&trx->_collections, trxCollection, position) != TRI_ERROR_NO_ERROR) {
+    FreeCollection(trxCollection);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a lock for a collection
@@ -805,144 +1249,68 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollect
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the number of writes done for a collection
+/// @brief add an operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IncreaseWritesCollectionTransaction (TRI_transaction_collection_t* trxCollection,
-                                              bool wasSynchronous) {
-  if (wasSynchronous) {
-    trxCollection->_hadSyncedWrites = true;
+int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxCollection,
+                                           int type,
+                                           TRI_doc_mptr_t* newHeader,
+                                           TRI_doc_mptr_t* oldHeader,
+                                           TRI_df_marker_t* marker,
+                                           size_t totalSize,
+                                           bool syncRequested,
+                                           bool* written) {
+  TRI_transaction_t* trx;
+  int res;
+  
+  trx = trxCollection->_transaction;
+  
+  if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {
+    // just one operation in the transaction. we can write the marker directly
+    // TODO: error checking
+    res = TRI_WriteOperationDocumentCollection((TRI_document_collection_t*) trxCollection->_collection->_collection,
+                                               (TRI_document_operation_e) type,
+                                               newHeader,
+                                               oldHeader,
+                                               marker, 
+                                               totalSize,
+                                               syncRequested || trxCollection->_waitForSync);
+    *written = true;
   }
-  trxCollection->_numWrites++;
-}
+  else {
+    trx->_hasOperations = true;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection from a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const* trx,
-                                              const TRI_transaction_cid_t cid) {
+    res = AddCollectionOperation(trxCollection, type, newHeader, oldHeader, marker, totalSize);
   
-  TRI_transaction_collection_t* collection;
-  
-  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING ||
-                   trx->_status == TRI_TRANSACTION_ABORTED ||
-                   trx->_status == TRI_TRANSACTION_COMMITTED);
-   
-  collection = FindCollection(trx, cid, NULL);
-  
-  if (collection == NULL || collection->_collection == NULL) {
-    // not found or not opened. probably a mistake made by the caller
-    return false;
+    *written = false;
   }
-
-  return collection->_hadSyncedWrites;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection from a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t const* trx,
-                                                            const TRI_transaction_cid_t cid,
-                                                            const TRI_transaction_type_e accessType) {
-  
-  TRI_transaction_collection_t* collection;
-  
-  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED ||
-                   trx->_status == TRI_TRANSACTION_RUNNING);
-   
-  collection = FindCollection(trx, cid, NULL);
-  
-  if (collection == NULL || collection->_collection == NULL) {
-    // not found or not opened. probably a mistake made by the caller
-    return NULL;
-  }
-
-  // check if access type matches
-  if (accessType == TRI_TRANSACTION_WRITE && collection->_accessType == TRI_TRANSACTION_READ) {
-    // type doesn't match. probably also a mistake by the caller
-    return NULL;
-  }
-
-  return collection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a collection to a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
-                                  const TRI_transaction_cid_t cid,
-                                  const TRI_transaction_type_e accessType,
-                                  const int nestingLevel) {
-
-  TRI_transaction_collection_t* collection;
-  size_t position;
     
-  LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long) cid);
-          
-  // upgrade transaction type if required
-  if (nestingLevel == 0) {
-    TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED);
-
-    if (accessType == TRI_TRANSACTION_WRITE && 
-        trx->_type == TRI_TRANSACTION_READ) {
-      // if one collection is written to, the whole transaction becomes a write-transaction
-      trx->_type = TRI_TRANSACTION_WRITE;
-    }
+  if (syncRequested) {
+    trxCollection->_waitForSync = true;
   }
 
-  // check if we already have got this collection in the _collections vector
-  collection = FindCollection(trx, cid, &position);
+  return res;
+}
 
-  if (collection != NULL) {
-    // collection is already contained in vector
-   
-    if (accessType == TRI_TRANSACTION_WRITE && collection->_accessType != accessType) {
-      if (nestingLevel > 0) {
-        // trying to write access a collection that is only marked with read-access 
-        return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a transaction's id
+////////////////////////////////////////////////////////////////////////////////
 
-      TRI_ASSERT_DEBUG(nestingLevel == 0);
+TRI_voc_tid_t TRI_GetIdTransaction (const TRI_transaction_t* trx) {
+  return trx->_id;
+}
 
-      // upgrade collection type to write-access
-      collection->_accessType = TRI_TRANSACTION_WRITE;
-    } 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a transaction's id for writing into a marker
+/// this will return 0 if the operation is standalone
+////////////////////////////////////////////////////////////////////////////////
 
-    if (nestingLevel < collection->_nestingLevel) {
-      collection->_nestingLevel = nestingLevel;
-    }
-
-    // all correct
-    return TRI_ERROR_NO_ERROR;
+TRI_voc_tid_t TRI_GetMarkerIdTransaction (const TRI_transaction_t* trx) {
+  if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {
+    return 0;
   }
 
-
-  // collection not found.
-
-  if (nestingLevel > 0 && accessType == TRI_TRANSACTION_WRITE) {
-    // trying to write access a collection in an embedded transaction
-    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-  }
-
-  // collection was not contained. now create and insert it
-  collection = CreateCollection(trx, cid, accessType, nestingLevel);
-
-  if (collection == NULL) {
-    // out of memory
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // insert collection at the correct position
-  if (TRI_InsertVectorPointer(&trx->_collections, collection, position) != TRI_ERROR_NO_ERROR) {
-    FreeCollection(collection);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return TRI_GetIdTransaction(trx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -957,7 +1325,7 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
   LOG_TRX(trx, nestingLevel, "%s transaction", "beginning");
 
   if (nestingLevel == 0) {
-    TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_CREATED);
+    assert(trx->_status == TRI_TRANSACTION_CREATED);
 
     // get a new id
     trx->_id = TRI_NewTickVocBase();
@@ -974,7 +1342,7 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
     trx->_hints = hints;
   }
   else {
-    TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
+    assert(trx->_status == TRI_TRANSACTION_RUNNING);
   }
 
   res = UseCollections(trx, nestingLevel);
@@ -1008,10 +1376,19 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx,
 
   LOG_TRX(trx, nestingLevel, "%s transaction", "committing");
 
-  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
+  assert(trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (nestingLevel == 0) {
-    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    res = WriteOperations(trx);
+    FreeOperations(trx);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // writing markers has failed
+      res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+    }
+    else {
+      res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    }
   }
   else {
     res = TRI_ERROR_NO_ERROR;
@@ -1032,9 +1409,11 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx,
 
   LOG_TRX(trx, nestingLevel, "%s transaction", "aborting");
 
-  TRI_ASSERT_DEBUG(trx->_status == TRI_TRANSACTION_RUNNING);
+  assert(trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (nestingLevel == 0) {
+    FreeOperations(trx);
+
     res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
   }
   else {
@@ -1044,6 +1423,98 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx,
   ReleaseCollections(trx, nestingLevel);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               TRANSACTION MARKERS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a "begin" marker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CreateMarkerBeginTransaction (TRI_transaction_t* trx,
+                                      TRI_doc_begin_transaction_marker_t** result,
+                                      uint16_t numCollections) {
+  TRI_doc_begin_transaction_marker_t* marker;
+  TRI_voc_tick_t tick;
+
+  *result = NULL;
+  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_begin_transaction_marker_t), false);
+
+  if (marker == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  tick = TRI_NewTickVocBase();
+  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_BEGIN_TRANSACTION, sizeof(TRI_doc_begin_transaction_marker_t), tick);
+
+  marker->_numCollections = numCollections;
+
+  *result = marker;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a "commit" marker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CreateMarkerCommitTransaction (TRI_transaction_t* trx,
+                                       TRI_doc_commit_transaction_marker_t** result) {
+  TRI_doc_commit_transaction_marker_t* marker;
+  TRI_voc_tick_t tick;
+
+  *result = NULL;
+  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_commit_transaction_marker_t), false);
+
+  if (marker == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  tick = TRI_NewTickVocBase();
+  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_COMMIT_TRANSACTION, sizeof(TRI_doc_commit_transaction_marker_t), tick);
+
+  *result = marker;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an "abort" marker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CreateMarkerAbortTransaction (TRI_transaction_t* trx,
+                                      TRI_doc_abort_transaction_marker_t** result) {
+  TRI_doc_abort_transaction_marker_t* marker;
+  TRI_voc_tick_t tick;
+
+  *result = NULL;
+  marker = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_commit_transaction_marker_t), false);
+
+  if (marker == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  tick = TRI_NewTickVocBase();
+  TRI_InitMarker(&marker->base, TRI_DOC_MARKER_ABORT_TRANSACTION, sizeof(TRI_doc_abort_transaction_marker_t), tick);
+
+  *result = marker;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

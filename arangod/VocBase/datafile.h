@@ -166,15 +166,15 @@ typedef enum {
   TRI_DOC_MARKER_HEADER             = 3000,
   TRI_DOC_MARKER_DOCUMENT           = 3001,
   TRI_DOC_MARKER_DELETION           = 3002,
-  TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003, // currently unused
-  TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
-  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
   TRI_DOC_MARKER_EDGE               = 3006,
 
   TRI_DOC_MARKER_KEY_DOCUMENT       = 3007, // new marker with key values
   TRI_DOC_MARKER_KEY_EDGE           = 3008, // new marker with key values
   TRI_DOC_MARKER_KEY_DELETION       = 3009, // new marker with key values
 
+  TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3100, 
+  TRI_DOC_MARKER_COMMIT_TRANSACTION = 3101, 
+  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3102,
 
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for
