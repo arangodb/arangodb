@@ -1,10 +1,9 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect */
-/*global window, eb, loadFixtures, document */
-/*global $, _, d3*/
-/*global helper*/
-/*global NodeShaper*/
+/*global document */
+/*global $, d3*/
+/*global ColourMapper*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -38,52 +37,34 @@
  
   describe('Colour Mapper', function() {
     
-    var svg, mapper;
+    var mapper;
     
     beforeEach(function () {
-      svg = document.createElement("svg");
-      document.body.appendChild(svg);
-      mapper = new ColourMapper(d3.select("svg"));
-    });
-
-    afterEach(function () {
-      document.body.removeChild(svg);
+      mapper = new ColourMapper();
     });
     
-    it('should automatically add the list of colours to svg defs', function() {
-      mapper.getColour("42");
-      expect($("svg defs solidColor").length).toEqual(20);
-    });
-    
-    it('should not add the mapping table twice', function() {
-      mapper.getColour("42");
-      var mapper2 = new ColourMapper(d3.select("svg"));
-      mapper2.getColour("23");
-      expect($("svg defs solidColor").length).toEqual(20);
-    });
-    
-    it('should return a reference to a colour', function() {
+    it('should return a colour', function() {
       var colourRef = mapper.getColour("42");
       
       expect(colourRef).toBeDefined();
       expect($(colourRef).length).toEqual(1);
     });
     
-    it('should return a different reference for different values', function() {
+    it('should return a different colour for different values', function() {
       var c1 = mapper.getColour("42"),
       c2 = mapper.getColour("23");
       
       expect(c1).not.toEqual(c2);
     });
     
-    it('should return the same reference for equal values', function() {
+    it('should return the same colour for equal values', function() {
       var c1 = mapper.getColour("42"),
       c2 = mapper.getColour("42");
       
       expect(c1).toEqual(c2);
     });
     
-    it('should return references for non string values', function() {
+    it('should return colours for non string values', function() {
       var c1 = mapper.getColour(42),
       c2 = mapper.getColour(true);
       
