@@ -65,6 +65,7 @@ function EdgeShaper(parent, flags, idfunc) {
     addUpdate = noop,
     addShape = noop,
     addLabel = noop,
+    addColor = noop,
     
     addEvents = function (line, g) {
       _.each(events, function (func, type) {
@@ -86,48 +87,50 @@ function EdgeShaper(parent, flags, idfunc) {
       events[type] = func;
     },
     
+    addQue = function (line, g) {
+      addShape(line, g);
+      addLabel(line, g);
+      addColor(line, g);
+      addEvents(line, g);
+    },
+    
     shapeEdges = function (edges) {
       if (edges !== undefined) {
-        var data, handle, line;
+        var data, g, line;
         data = self.parent
           .selectAll(".link")
           .data(edges, idFunction);
-        handle = data
+        g = data
           .enter()
           .append("g")
           .attr("class", "link") // link is CSS class that might be edited
           .attr("id", idFunction);
-        line = handle.append("line");
-        addShape(line, handle);
-        addLabel(line, handle);
-        addEvents(line, handle);
+        line = g.append("line");
+        addQue(line, g);
+        
         data.exit().remove();
-        return handle;
+        return g;
       }
     },
     
     reshapeEdges = function () {
-      var handle, line;
+      var g, line;
       $(".link").empty();
-      handle = self.parent
+      g = self.parent
         .selectAll(".link");
-      line = handle.append("line");
-      addShape(line, handle);
-      addLabel(line, handle);
-      addEvents(line, handle);
+      line = g.append("line");
+      addQue(line, g);
     },
     
     reshapeEdge = function (edge) {
       $("#" + edge._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
-      var handle = self.parent
+      var g = self.parent
         .selectAll(".link")
         .filter(function (e) {
           return e._id === edge._id;
         }),
-      line = handle.append("line");
-      addShape(line, handle);
-      addLabel(line, handle);
-      addEvents(line, handle);
+      line = g.append("line");
+      addQue(line, g);
     },
     
     getCorner = function(s, t) {
@@ -224,6 +227,46 @@ function EdgeShaper(parent, flags, idfunc) {
       });
     },
     
+    parseColorFlag = function (color) {
+      $("svg defs #gradientEdgeColor").remove();
+      switch (color.type) {
+        case "single":
+          addColor = function (line, g) {
+            line.attr("stroke", color.value);
+          };
+          break;
+        case "gradient":
+          if (toplevelSVG.selectAll("defs")[0].length === 0) {
+            toplevelSVG.append("defs");
+          }
+          var gradient = toplevelSVG
+            .select("defs")
+            .append("linearGradient")
+            .attr("id", "gradientEdgeColor");
+          gradient.append("stop")
+            .attr("offset", "0")
+            .attr("stop-color", color.source);
+          gradient.append("stop")
+            .attr("offset", "0.4")
+            .attr("stop-color", color.source);
+          gradient.append("stop")
+            .attr("offset", "0.6")
+            .attr("stop-color", color.target);
+          gradient.append("stop")
+            .attr("offset", "1")
+            .attr("stop-color", color.target);
+          addColor = function (line, g) {
+            line.attr("stroke", "url(#gradientEdgeColor)");
+            line.attr("y2", "0.0000000000000001");
+          };
+          break;
+        case "attribute":
+          break; 
+        default:
+          throw "Sorry given colour-scheme not known";
+      }
+    },
+    
     parseConfig = function(config) {
       if (config.shape !== undefined) {
         parseShapeFlag(config.shape);
@@ -233,6 +276,9 @@ function EdgeShaper(parent, flags, idfunc) {
       }
       if (config.actions !== undefined) {
         parseActionFlag(config.actions);
+      }
+      if (config.color !== undefined) {
+        parseColorFlag(config.color);
       }
     };
     

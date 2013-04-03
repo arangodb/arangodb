@@ -352,7 +352,7 @@
         expect($("#1-2 line").attr("y2")).not.toEqual("0");
         
         // This check may not work
-        expect($("svg defs linearGradient").length).toEqual(1);
+        //expect($("svg defs linearGradient").length).toEqual(1);
         expect($("svg defs #gradientEdgeColor").length).toEqual(1);
         
         allStops = $("svg defs #gradientEdgeColor stop");
