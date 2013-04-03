@@ -185,6 +185,72 @@
       expect($("svg defs #arrow").attr("orient")).toEqual("auto");
     });
     
+    it('should position the edges correctly', function() {
+      var center = {
+        _id: 1,
+        x: 20,
+        y: 20
+      },
+      NE = {
+        _id: 2,
+        x: 30,
+        y: 10
+      },
+      SE = {
+        _id: 3,
+        x: 40,
+        y: 30
+      },
+      SW = {
+        _id: 4,
+        x: 10,
+        y: 40
+      },
+      NW = {
+        _id: 5,
+        x: 0,
+        y: 0
+      },
+      edges = [
+        {
+          source: center,
+          target: NE
+        },
+        {
+          source: center,
+          target: SE
+        },
+        {
+          source: center,
+          target: SW
+        },
+        {
+          source: center,
+          target: NW
+        }
+      ],
+      shaper = new EdgeShaper(d3.select("svg"), {
+        shape: {
+          type: EdgeShaper.shapes.ARROW
+        }
+      });
+      shaper.drawEdges(edges);
+      
+      //Check Position and rotation
+      expect($("#1-2").attr("transform")).toEqual("translate(20, 20)rotate(-45)");
+      expect($("#1-3").attr("transform")).toEqual("translate(20, 20)rotate(26.56505117707799)");
+      expect($("#1-4").attr("transform")).toEqual("translate(20, 20)rotate(116.56505117707799)");
+      expect($("#1-5").attr("transform")).toEqual("translate(20, 20)rotate(-135)");
+      
+      //Check length of line
+      expect($("#1-2 line").attr("x2")).toEqual("14.142135623730951");
+      expect($("#1-3 line").attr("x2")).toEqual("22.360679774997898");
+      expect($("#1-4 line").attr("x2")).toEqual("22.360679774997898");
+      expect($("#1-5 line").attr("x2")).toEqual("28.284271247461902");
+    });
+    
+    
+    
     describe('configured for arrow shape', function() {
       var shaper;
       
@@ -354,6 +420,31 @@
         expect($("#2-3 text")[0].textContent).toEqual("second");
         expect($("#3-4 text")[0].textContent).toEqual("third");
         expect($("#4-1 text")[0].textContent).toEqual("fourth");
+      });
+      
+      it('should display the label at the correct position', function() {
+        var nodes = [
+          {
+            _id: 1,
+            x: 20,
+            y: 20
+          },
+          {
+            _id: 2,
+            x: 100,
+            y: 20
+          }
+        ],
+        edges = [
+          {
+            "source": nodes[0],
+            "target": nodes[1],
+            "label": "first"
+          }
+        ];
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 text").attr("transform")).toEqual("translate(40, -3)");
       });
       
       it('should ignore other attributes', function() {
