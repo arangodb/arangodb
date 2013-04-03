@@ -81,7 +81,7 @@
 
 #include <BasicsC/common.h>
 #include <BasicsC/conversions.h>
-#include <BasicsC/strings.h>
+#include <BasicsC/tri-strings.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"

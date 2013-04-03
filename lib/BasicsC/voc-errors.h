@@ -1,6 +1,6 @@
 
-#ifndef TRIAGENS_BASICS_C_ERRORS_H
-#define TRIAGENS_BASICS_C_ERRORS_H 1
+#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H
+#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +45,8 @@ extern "C" {
 ///   Will be raised when a file cannot be written.
 /// - 16: @LIT{cannot overwrite file}
 ///   Will be raised when an attempt is made to overwrite an existing file.
+/// - 17: @LIT{type error}
+///   Will be raised when a type error is unencountered.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -564,6 +566,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CANNOT_OVERWRITE_FILE                                   (16)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 17: ERROR_TYPE_ERROR
+///
+/// type error
+///
+/// Will be raised when a type error is unencountered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TYPE_ERROR                                              (17)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

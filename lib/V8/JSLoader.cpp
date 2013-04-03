@@ -29,7 +29,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "BasicsC/files.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "V8/v8-utils.h"

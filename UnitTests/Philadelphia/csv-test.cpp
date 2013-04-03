@@ -30,7 +30,7 @@
 #include <sstream>
 
 #include "BasicsC/csv.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a parser instance

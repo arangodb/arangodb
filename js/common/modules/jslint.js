@@ -71,9 +71,10 @@ function RunTest (path, options) {
 
 function RunCommandLineTests (options) {
   var result = true;
+  var tests = internal.unitTests();
 
-  for (var i = 0;  i < SYS_UNIT_TESTS.length;  ++i) {
-    var file = SYS_UNIT_TESTS[i];
+  for (var i = 0;  i < tests().length;  ++i) {
+    var file = tests[i];
 
     try {
       var testResult = RunTest(file, options);
@@ -102,7 +103,7 @@ function RunCommandLineTests (options) {
   }
 
 
-  SYS_UNIT_TESTS_RESULT = result;
+  internal.setUnitTestsResult(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

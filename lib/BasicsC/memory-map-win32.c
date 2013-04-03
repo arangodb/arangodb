@@ -31,7 +31,7 @@
 
 #include "Windows.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Memory_map

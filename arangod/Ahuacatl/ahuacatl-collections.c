@@ -28,7 +28,7 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/index.h"
 #include "VocBase/primary-collection.h"
 
