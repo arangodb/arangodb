@@ -14,9 +14,9 @@ So given you want to build an application that sends a plain-text response "Work
 
 First, create a directory `my_app` and save a file called `app.js` in this directory. Write the following content to this file:
 
-    FoxxApplication = require("org/arangodb/foxx").FoxxApplication;
+    Foxx = require("org/arangodb/foxx");
 
-    app = new FoxxApplication();
+    app = new Foxx.Application();
 
     app.get("/wiese", function(req, res) {
       res.set("Content-Type", "text/plain");
@@ -39,19 +39,19 @@ Now your application is done. Start ArangoDB as follows:
 
 Now point your browser to `/my/wiese` and you should see "Worked!". After this short overview, let's get into the details.
 
-## Details on FoxxApplication
+## Details on Foxx.Application
 
-#### new FoxxApplication
+#### new Foxx.Application
 @copydetails JSF_foxx_application_initializer
 
-#### FoxxApplication#start
+#### Foxx.Application#start
 @copydetails JSF_foxx_application_start
 
-#### `requiresLibs` and `requiresModels`
+#### Foxx.Application#requires
 
-Using the base paths defined in the manifest file, you can require libraries (and the special models described later) that you need in this FoxxApplication. So for example:
+Using the base paths defined in the manifest file, you can require modules that you need in this FoxxApplication. So for example:
 
-    app.requiresLibs = {
+    app.requires = {
       "schafspelz": "wolf"
     };
 
@@ -67,22 +67,22 @@ This will require the file `wolf.js` in the libs folder you have defined and mak
 
 If you do not redefine it, all requests that go to the root of your application will be redirected to `index.html`.
 
-#### FoxxApplication#head
+#### Foxx.Application#head
 @copydetails JSF_foxx_application_head
 
-#### FoxxApplication#get
+#### Foxx.Application#get
 @copydetails JSF_foxx_application_get
 
-#### FoxxApplication#post
+#### Foxx.Application#post
 @copydetails JSF_foxx_application_post
 
-#### FoxxApplication#put
+#### Foxx.Application#put
 @copydetails JSF_foxx_application_put
 
-#### FoxxApplication#patch
+#### Foxx.Application#patch
 @copydetails JSF_foxx_application_patch
 
-#### FoxxApplication#delete
+#### Foxx.Application#delete
 @copydetails JSF_foxx_application_delete
 
 ### Documenting and Constraining the Routes
@@ -113,29 +113,19 @@ Furthermore you can describe your API by chaining the following methods onto you
 
 You can use the following two functions to do something before or respectively after the normal routing process is happening. You could use that for logging or to manipulate the request or response (translate it to a certain format for example).
 
-#### FoxxApplication#before
+#### Foxx.Application#before
 @copydetails JSF_foxx_application_before
 
-#### FoxxApplication#after
+#### Foxx.Application#after
 @copydetails JSF_foxx_application_after
 
 ### More functionality
 
-#### FoxxApplication#helper
+#### Foxx.Application#helper
 @copydetails JSF_foxx_application_helper
 
-#### FoxxApplication#accepts
+#### Foxx.Application#accepts
 @copydetails JSF_foxx_application_accepts
-
-## Models
-
-If you do not require a module with `requiresLibs`, but instead use `requiresModels`, you will have three additional functions available in the module (otherwise it will behave the same):
-
-* `var a = requireModel("module")`: Requires the model "module" (which again will have these functions available) and makes it available via the variable `a`.
-* `appCollection("test")`: Returns the collection "test" prefixed with the application prefix
-* `appCollectionName("test")`: Returns the name of the collection "test" prefixed with the application prefix
-
-If you need access to a normal module from this model, just require it as usual.
 
 ## The Request and Response Objects
 
@@ -187,8 +177,7 @@ In the `manifest.json` you define the components of your application: The conten
 * `description`: A short description of the application (Meta information)
 * `thumbnail`: Path to a thumbnail that represents the application (Meta information)
 * `apps`: Map routes to FoxxApplications
-* `lib`: Base path for the models you want to require
-* `models`: Base path for the models you want to require
+* `lib`: Base path for all required modules
 * `files`: Deliver files
 * `assets`: Deliver pre-processed files
 * `system`: Mark an application as a system application
@@ -209,7 +198,6 @@ A more complete example for a Manifest file:
       },
 
       "lib": "lib",
-      "models": "models",
 
       "files": {
         "/images": "images"

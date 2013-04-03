@@ -28,6 +28,7 @@
 #include "Ahuacatl/ahuacatl-functions.h"
 
 #include "BasicsC/associative.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 

@@ -198,7 +198,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
     return NULL;
   }
 
-  TRI_ASSERT_DEBUG(fid == journal->_fid);
+  assert(fid == journal->_fid);
 
 
   // if a physical file, we can rename it from the temporary name to the correct name

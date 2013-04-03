@@ -154,7 +154,7 @@ static int ExtractCurrentFile (unzFile uf,
         }
       }
       else {
-        TRI_ASSERT_DEBUG(result == 0);
+        assert(result == 0);
         break;
       }
     }

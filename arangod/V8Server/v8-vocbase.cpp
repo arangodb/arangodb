@@ -2766,7 +2766,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
     voc_did_t _did;        // this is the tick for a create, but not an update
     TRI_voc_rid_t _rid;    // this is the tick for an create and update
-    TRI_voc_eid_t _sid;
+    TRI_voc_tid_t _sid;
 
     TRI_shape_sid_t _shape;
   }
@@ -2788,7 +2788,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
     voc_did_t _did;        // this is the tick for a create, but not an update
     TRI_voc_rid_t _rid;    // this is the tick for an create and update
-    TRI_voc_eid_t _sid;
+    TRI_voc_tid_t _sid;
   }
   doc_deletion_marker_t_deprecated;
 
@@ -2962,7 +2962,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_CopyString(keyBody, didBuffer, keySize);
 
             newMarker._rid = oldMarker->_rid;
-            newMarker._sid = oldMarker->_sid;
+            newMarker._tid = 0;
             newMarker._shape = oldMarker->_shape;
             newMarker._offsetKey = newMarkerSize;
             newMarker._offsetJson = newMarkerSize + keyBodySize;
@@ -3022,7 +3022,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_CopyString(keyBody + keySize + toSize, fromDidBuffer, fromSize);
 
             newMarker.base._rid = oldMarker->base._rid;
-            newMarker.base._sid = oldMarker->base._sid;
+            newMarker.base._tid = 0;
             newMarker.base._shape = oldMarker->base._shape;
             newMarker.base._offsetKey = newMarkerSize;
             newMarker.base._offsetJson = newMarkerSize + keyBodySize;
@@ -3071,7 +3071,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_CopyString(keyBody, didBuffer, keySize);
 
             newMarker._rid = oldMarker->_rid;
-            newMarker._sid = oldMarker->_sid;
+            newMarker._tid = 0;
             newMarker._offsetKey = newMarkerSize;
 
             newMarker.base._size = newMarkerSize + keyBodySize;

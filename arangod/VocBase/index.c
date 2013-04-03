@@ -69,7 +69,7 @@ void TRI_InitIndex (TRI_index_t* idx,
                     struct TRI_primary_collection_s* primary,
                     bool unique,
                     bool needsFullCoverage) {
-  TRI_ASSERT_DEBUG(idx != NULL);
+  assert(idx != NULL);
 
   idx->_iid               = TRI_NewTickVocBase();
   idx->_type              = type;
