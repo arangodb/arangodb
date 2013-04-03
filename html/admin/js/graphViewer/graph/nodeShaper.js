@@ -189,12 +189,16 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", "black")
+            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", "black")
+            .attr("stroke", "black")
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
             });
