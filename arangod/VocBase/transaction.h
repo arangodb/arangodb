@@ -129,8 +129,10 @@ TRI_transaction_status_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_context_s {
+#if 0  
   TRI_read_write_lock_t     _collectionsLock;
   TRI_associative_pointer_t _collections;
+#endif
 
   struct TRI_vocbase_s*     _vocbase;     
 }
@@ -139,7 +141,9 @@ TRI_transaction_context_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the stats for a global instance of a collection
 ////////////////////////////////////////////////////////////////////////////////
-  
+
+#if 0
+
 typedef struct TRI_transaction_collection_stats_s {
   TRI_voc_tid_t  _lastStartedReader;
   TRI_voc_tid_t  _lastFinishedReader;
@@ -150,9 +154,13 @@ typedef struct TRI_transaction_collection_stats_s {
 }
 TRI_transaction_collection_stats_t;
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global instance of a collection
 ////////////////////////////////////////////////////////////////////////////////
+
+#if 0
 
 typedef struct TRI_transaction_collection_global_s {
   TRI_voc_cid_t         _cid;
@@ -161,6 +169,8 @@ typedef struct TRI_transaction_collection_global_s {
   TRI_transaction_collection_stats_t _stats;
 }
 TRI_transaction_collection_global_t;
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -212,9 +222,13 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t*,
 /// @brief populates a struct with transaction statistics for a collections
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
+
 int TRI_StatsCollectionTransactionContext (TRI_transaction_context_t*,
                                            const TRI_voc_cid_t,
                                            TRI_transaction_collection_stats_t*);
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -278,7 +292,9 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e               _accessType;      // access type (read|write)
   int                                  _nestingLevel;    // the transaction level that added this collection
   struct TRI_vocbase_col_s*            _collection;      // vocbase collection pointer
+#if 0
   TRI_transaction_collection_global_t* _globalInstance;  // pointer to the global instance
+#endif
   TRI_vector_t*                        _operations;      // buffered CRUD operations
   bool                                 _locked;          // collection lock flag
   bool                                 _waitForSync;     // whether or not the collection has waitForSync
