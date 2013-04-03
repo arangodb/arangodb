@@ -34,7 +34,9 @@
 #include "ShapedJson/json-shaper.h"
 #include "VocBase/barrier.h"
 #include "VocBase/marker.h"
+#include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
+#include "VocBase/voc-types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -305,7 +307,7 @@ typedef struct TRI_doc_document_key_marker_s {
   TRI_df_marker_t base;
 
   TRI_voc_rid_t   _rid;        // this is the tick for a create and update
-  TRI_voc_eid_t   _sid;
+  TRI_voc_tid_t   _tid;
 
   TRI_shape_sid_t _shape;
 
@@ -313,7 +315,7 @@ typedef struct TRI_doc_document_key_marker_s {
   uint16_t        _offsetJson;
 
 #ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
+  char            _padding_df_marker[4];
 #endif
 }
 TRI_doc_document_key_marker_t;
@@ -325,14 +327,14 @@ TRI_doc_document_key_marker_t;
 typedef struct TRI_doc_edge_key_marker_s {
   TRI_doc_document_key_marker_t base;
 
-  TRI_voc_cid_t  _toCid;
-  TRI_voc_cid_t  _fromCid;
+  TRI_voc_cid_t   _toCid;
+  TRI_voc_cid_t   _fromCid;
 
-  uint16_t       _offsetToKey;
-  uint16_t       _offsetFromKey;
+  uint16_t        _offsetToKey;
+  uint16_t        _offsetFromKey;
 
 #ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
+  char            _padding_df_marker[4];
 #endif
 }
 TRI_doc_edge_key_marker_t;
@@ -344,45 +346,12 @@ TRI_doc_edge_key_marker_t;
 typedef struct TRI_doc_deletion_key_marker_s {
   TRI_df_marker_t base;
 
-  TRI_voc_rid_t  _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t  _sid;
+  TRI_voc_rid_t   _rid;        // this is the tick for the deletion
+  TRI_voc_tid_t   _tid;
 
-  uint16_t       _offsetKey;
+  uint16_t        _offsetKey;
 }
 TRI_doc_deletion_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile begin transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_begin_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t   _tid;
-}
-TRI_doc_begin_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile commit transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_commit_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-}
-TRI_doc_commit_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile abort transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_abort_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-}
-TRI_doc_abort_transaction_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

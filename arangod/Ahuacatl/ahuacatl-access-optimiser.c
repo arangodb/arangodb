@@ -236,8 +236,8 @@ static or_element_t* FindOrElement (const TRI_vector_pointer_t* const vector,
                                     const char* const name) {
   size_t i, n;
 
-  TRI_ASSERT_DEBUG(vector != NULL);
-  TRI_ASSERT_DEBUG(name != NULL);
+  TRI_ASSERT_MAINTAINER(vector != NULL);
+  TRI_ASSERT_MAINTAINER(name != NULL);
 
   n = vector->_length;
   for (i = 0; i < n; ++i) {
@@ -245,7 +245,7 @@ static or_element_t* FindOrElement (const TRI_vector_pointer_t* const vector,
 
     current = (or_element_t*) TRI_AtVectorPointer(vector, i);
 
-    TRI_ASSERT_DEBUG(current != NULL);
+    TRI_ASSERT_MAINTAINER(current != NULL);
 
     if (TRI_EqualString(name, current->_name)) {
       return current;
@@ -275,8 +275,8 @@ static bool InsertOrs (TRI_aql_context_t* const context,
 
     fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(source, i);
 
-    TRI_ASSERT_DEBUG(fieldAccess != NULL);
-    TRI_ASSERT_DEBUG(fieldAccess->_fullName != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess->_fullName != NULL);
 
     orElement = FindOrElement(dest, fieldAccess->_fullName);
     if (orElement == NULL) {
@@ -336,8 +336,8 @@ static bool InsertOrs (TRI_aql_context_t* const context,
 static void SetNameLength (TRI_aql_field_access_t* const fieldAccess) {
   char* dotPosition;
 
-  TRI_ASSERT_DEBUG(fieldAccess != NULL);
-  TRI_ASSERT_DEBUG(fieldAccess->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
+  TRI_ASSERT_MAINTAINER(fieldAccess->_fullName != NULL);
 
   dotPosition = strchr(fieldAccess->_fullName, '.');
   if (dotPosition == NULL) {
@@ -354,7 +354,7 @@ static void SetNameLength (TRI_aql_field_access_t* const fieldAccess) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeAccessMembers (TRI_aql_field_access_t* const fieldAccess) {
-  TRI_ASSERT_DEBUG(fieldAccess != NULL);
+  TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
 
   switch (fieldAccess->_type) {
     case TRI_AQL_ACCESS_EXACT:
@@ -428,8 +428,8 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
 
 bool IsSameReference (const TRI_aql_field_access_t* const lhs,
                       const TRI_aql_field_access_t* const rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
-  TRI_ASSERT_DEBUG(rhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  TRI_ASSERT_MAINTAINER(rhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
   if (lhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE &&
       rhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
@@ -469,7 +469,7 @@ static TRI_aql_field_access_t* MergeAndImpossible (TRI_aql_context_t* const cont
                                                    TRI_aql_field_access_t* lhs,
                                                    TRI_aql_field_access_t* rhs) {
   // impossible merged with anything just returns impossible
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_IMPOSSIBLE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_IMPOSSIBLE);
   TRI_FreeAccessAql(rhs);
 
   return lhs;
@@ -485,7 +485,7 @@ static TRI_aql_field_access_t* MergeAndAll (TRI_aql_context_t* const context,
                                             TRI_aql_field_access_t* lhs,
                                             TRI_aql_field_access_t* rhs) {
   // all merged with anything just returns the other side
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_ALL);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_ALL);
   TRI_FreeAccessAql(lhs);
 
   return rhs;
@@ -501,7 +501,7 @@ static TRI_aql_field_access_t* MergeAndAll (TRI_aql_context_t* const context,
 static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
                                               TRI_aql_field_access_t* lhs,
                                               TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_EXACT);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_EXACT);
 
   if (rhs->_type == TRI_AQL_ACCESS_EXACT) {
     // check if values are identical
@@ -623,7 +623,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
 static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
                                              TRI_aql_field_access_t* lhs,
                                              TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_LIST);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_LIST);
 
   if (rhs->_type == TRI_AQL_ACCESS_LIST) {
     // make a list of both
@@ -750,7 +750,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
 static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const context,
                                                     TRI_aql_field_access_t* lhs,
                                                     TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE);
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
     TRI_json_t* lhsValue;
@@ -1095,7 +1095,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
                                                     TRI_aql_field_access_t* lhs,
                                                     TRI_aql_field_access_t* rhs) {
 
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
     int compareResult;
@@ -1163,7 +1163,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
 static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const context,
                                                   TRI_aql_field_access_t* lhs,
                                                   TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
@@ -1269,7 +1269,7 @@ static TRI_aql_field_access_t* MergeOrImpossible (TRI_aql_context_t* const conte
                                                   TRI_aql_field_access_t* lhs,
                                                   TRI_aql_field_access_t* rhs) {
   // impossible merged with anything just returns the other side
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_IMPOSSIBLE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_IMPOSSIBLE);
   TRI_FreeAccessAql(lhs);
 
   return rhs;
@@ -1285,7 +1285,7 @@ static TRI_aql_field_access_t* MergeOrAll (TRI_aql_context_t* const context,
                                            TRI_aql_field_access_t* lhs,
                                            TRI_aql_field_access_t* rhs) {
   // all merged with anything just returns all
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_ALL);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_ALL);
   TRI_FreeAccessAql(rhs);
 
   return lhs;
@@ -1301,7 +1301,7 @@ static TRI_aql_field_access_t* MergeOrAll (TRI_aql_context_t* const context,
 static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
                                              TRI_aql_field_access_t* lhs,
                                              TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_EXACT);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_EXACT);
 
   if (rhs->_type == TRI_AQL_ACCESS_EXACT) {
     TRI_json_t* result;
@@ -1448,7 +1448,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
 static TRI_aql_field_access_t* MergeOrList (TRI_aql_context_t* const context,
                                             TRI_aql_field_access_t* lhs,
                                             TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_LIST);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_LIST);
 
   if (rhs->_type == TRI_AQL_ACCESS_LIST) {
     // make a list of both
@@ -1494,7 +1494,7 @@ static TRI_aql_field_access_t* MergeOrList (TRI_aql_context_t* const context,
 static TRI_aql_field_access_t* MergeOrRangeSingle (TRI_aql_context_t* const context,
                                                    TRI_aql_field_access_t* lhs,
                                                    TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE);
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
     TRI_aql_range_e lhsType;
@@ -1594,7 +1594,7 @@ static TRI_aql_field_access_t* MergeOrRangeSingle (TRI_aql_context_t* const cont
 static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const context,
                                                    TRI_aql_field_access_t* lhs,
                                                    TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE);
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
     int compareResult;
@@ -1665,7 +1665,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
 static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const context,
                                                  TRI_aql_field_access_t* lhs,
                                                  TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
+  TRI_ASSERT_MAINTAINER(lhs->_type == TRI_AQL_ACCESS_REFERENCE);
 
   if (rhs->_type == TRI_AQL_ACCESS_REFERENCE) {
     TRI_aql_node_type_e lhsType = lhs->_value._reference._operator;
@@ -1734,11 +1734,11 @@ static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const contex
 static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const context,
                                                         TRI_aql_field_access_t* lhs,
                                                         TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(lhs != NULL);
-  TRI_ASSERT_DEBUG(rhs != NULL);
-  TRI_ASSERT_DEBUG(lhs->_fullName != NULL);
-  TRI_ASSERT_DEBUG(rhs->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(lhs != NULL);
+  TRI_ASSERT_MAINTAINER(rhs != NULL);
+  TRI_ASSERT_MAINTAINER(lhs->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(rhs->_fullName != NULL);
 
   if (lhs->_type > rhs->_type) {
     // swap operands so they are always sorted
@@ -1747,7 +1747,7 @@ static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const
     rhs = tmp;
   }
 
-  TRI_ASSERT_DEBUG(lhs->_type <= rhs->_type);
+  TRI_ASSERT_MAINTAINER(lhs->_type <= rhs->_type);
 
   switch (lhs->_type) {
     case TRI_AQL_ACCESS_IMPOSSIBLE:
@@ -1777,11 +1777,11 @@ static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const
 static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const context,
                                                        TRI_aql_field_access_t* lhs,
                                                        TRI_aql_field_access_t* rhs) {
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(lhs != NULL);
-  TRI_ASSERT_DEBUG(rhs != NULL);
-  TRI_ASSERT_DEBUG(lhs->_fullName != NULL);
-  TRI_ASSERT_DEBUG(rhs->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(lhs != NULL);
+  TRI_ASSERT_MAINTAINER(rhs != NULL);
+  TRI_ASSERT_MAINTAINER(lhs->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(rhs->_fullName != NULL);
 
   if (lhs->_type > rhs->_type) {
     // swap operands so they are always sorted
@@ -1790,7 +1790,7 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
     rhs = tmp;
   }
 
-  TRI_ASSERT_DEBUG(lhs->_type <= rhs->_type);
+  TRI_ASSERT_MAINTAINER(lhs->_type <= rhs->_type);
 
   switch (lhs->_type) {
     case TRI_AQL_ACCESS_IMPOSSIBLE:
@@ -1829,7 +1829,7 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
 static TRI_vector_pointer_t* CreateEmptyVector (TRI_aql_context_t* const context) {
   TRI_vector_pointer_t* result;
 
-  TRI_ASSERT_DEBUG(context != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
 
   result = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
@@ -1852,7 +1852,7 @@ static TRI_vector_pointer_t* Vectorize (TRI_aql_context_t* const context,
                                         TRI_aql_field_access_t* fieldAccess) {
   TRI_vector_pointer_t* vector;
 
-  TRI_ASSERT_DEBUG(context != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
 
   if (fieldAccess == NULL) {
     return NULL;
@@ -1887,8 +1887,8 @@ static TRI_vector_pointer_t* MakeAllVector (TRI_aql_context_t* const context,
     // turn all field access values into an all items access
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
 
-    TRI_ASSERT_DEBUG(fieldAccess != NULL);
-    TRI_ASSERT_DEBUG(fieldAccess->_fullName != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess->_fullName != NULL);
 
     // modify the element in place
     FreeAccessMembers(fieldAccess);
@@ -1910,8 +1910,8 @@ static void MergeVector (TRI_aql_context_t* const context,
                          const TRI_vector_pointer_t* const source) {
   size_t i, n;
 
-  TRI_ASSERT_DEBUG(result != NULL);
-  TRI_ASSERT_DEBUG(source != NULL);
+  TRI_ASSERT_MAINTAINER(result != NULL);
+  TRI_ASSERT_MAINTAINER(source != NULL);
 
   n = source->_length;
   for (i = 0; i < n; ++i) {
@@ -1919,8 +1919,8 @@ static void MergeVector (TRI_aql_context_t* const context,
     size_t j, len;
     bool found = false;
 
-    TRI_ASSERT_DEBUG(fieldAccess != NULL);
-    TRI_ASSERT_DEBUG(fieldAccess->_fullName != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess->_fullName != NULL);
 
     // check if element is in result vector already
     len = result->_length;
@@ -1963,16 +1963,16 @@ static void InsertVector (TRI_aql_context_t* const context,
                           const TRI_vector_pointer_t* const source) {
   size_t i, n;
 
-  TRI_ASSERT_DEBUG(result != NULL);
-  TRI_ASSERT_DEBUG(source != NULL);
+  TRI_ASSERT_MAINTAINER(result != NULL);
+  TRI_ASSERT_MAINTAINER(source != NULL);
 
   n = source->_length;
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(source, i);
     TRI_aql_field_access_t* copy;
     
-    TRI_ASSERT_DEBUG(fieldAccess != NULL);
-    TRI_ASSERT_DEBUG(fieldAccess->_fullName != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess->_fullName != NULL);
 
     copy = TRI_CloneAccessAql(context, fieldAccess);
 
@@ -1998,8 +1998,8 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
   TRI_vector_pointer_t* result;
   TRI_vector_pointer_t* orElements;
 
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND || mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND || mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR);
 
   // first check if we can get away without copying/merging the vectors
   if (inheritedRestrictions == NULL) {
@@ -2084,7 +2084,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
       or_element_t* orElement;
 
       fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(result, i);
-      TRI_ASSERT_DEBUG(fieldAccess != NULL);
+      TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
 
       if (fieldAccess->_type == TRI_AQL_ACCESS_ALL) {
         continue;
@@ -2103,7 +2103,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
       or_element_t* orElement;
 
       orElement = (or_element_t*) TRI_AtVectorPointer(orElements, i);
-      TRI_ASSERT_DEBUG(orElement != NULL);
+      TRI_ASSERT_MAINTAINER(orElement != NULL);
 
       // free members
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, orElement->_name);
@@ -2141,10 +2141,10 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   TRI_aql_field_access_t* fieldAccess;
   TRI_json_t* value;
 
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(field != NULL);
-  TRI_ASSERT_DEBUG(field->_name._buffer != NULL);
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(field != NULL);
+  TRI_ASSERT_MAINTAINER(field->_name._buffer != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
   if (fieldAccess == NULL) {
@@ -2227,7 +2227,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_json_t* list;
 
-    TRI_ASSERT_DEBUG(value->_type == TRI_JSON_LIST);
+    TRI_ASSERT_MAINTAINER(value->_type == TRI_JSON_LIST);
 
     // create a list access
     fieldAccess->_type = TRI_AQL_ACCESS_LIST;
@@ -2266,8 +2266,8 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
                                                    const TRI_aql_node_t* const node) {
   TRI_aql_field_access_t* fieldAccess;
 
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   if (field == NULL || ! field->_name._buffer) {
     // this is ok if the node type is not supported
@@ -2291,8 +2291,8 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
 
 static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const context,
                                                    const TRI_aql_node_t* const node) {
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   if (node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     TRI_aql_attribute_name_t* field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(node, 0));
@@ -2362,13 +2362,13 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                                           TRI_aql_node_t* node,
                                           bool* changed,
                                           const TRI_vector_pointer_t* const inheritedRestrictions) {
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   if (node->_type == TRI_AQL_NODE_OPERATOR_UNARY_NOT) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
 
-    TRI_ASSERT_DEBUG(lhs != NULL);
+    TRI_ASSERT_MAINTAINER(lhs != NULL);
 
     // can ignore inherited restrictions here
     return MakeAllVector(context, ProcessNode(context, lhs, changed, NULL));
@@ -2380,8 +2380,8 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
     TRI_vector_pointer_t* result;
 
-    TRI_ASSERT_DEBUG(lhs != NULL);
-    TRI_ASSERT_DEBUG(rhs != NULL);
+    TRI_ASSERT_MAINTAINER(lhs != NULL);
+    TRI_ASSERT_MAINTAINER(rhs != NULL);
 
     // recurse into next level
     result = MergeVectors(context,
@@ -2449,7 +2449,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
     
-      TRI_ASSERT_DEBUG(operator != TRI_AQL_NODE_NOP);
+      TRI_ASSERT_MAINTAINER(operator != TRI_AQL_NODE_NOP);
 
       if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) {
         // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
@@ -2575,7 +2575,7 @@ bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const fieldAccesses)
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
 
-    TRI_ASSERT_DEBUG(fieldAccess != NULL);
+    TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
 
     if (fieldAccess->_type == TRI_AQL_ACCESS_IMPOSSIBLE) {
       // impossible range found
@@ -2614,7 +2614,7 @@ TRI_vector_pointer_t* TRI_CloneAccessesAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeAccessAql (TRI_aql_field_access_t* const fieldAccess) {
-  TRI_ASSERT_DEBUG(fieldAccess != NULL);
+  TRI_ASSERT_MAINTAINER(fieldAccess != NULL);
 
   FreeAccessMembers(fieldAccess);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName);
@@ -2629,8 +2629,8 @@ TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const context,
                                             TRI_aql_field_access_t* const source) {
   TRI_aql_field_access_t* fieldAccess;
 
-  TRI_ASSERT_DEBUG(source != NULL);
-  TRI_ASSERT_DEBUG(source->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(source != NULL);
+  TRI_ASSERT_MAINTAINER(source->_fullName != NULL);
 
   fieldAccess = CreateFieldAccess(context, source->_type, source->_fullName);
   if (fieldAccess == NULL) {
@@ -2771,9 +2771,9 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
   size_t i, n;
   bool found;
 
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(candidate != NULL);
-  TRI_ASSERT_DEBUG(candidate->_fullName != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(candidate != NULL);
+  TRI_ASSERT_MAINTAINER(candidate->_fullName != NULL);
 
   if (previous != NULL) {
     // use existing vector if already available
@@ -2788,7 +2788,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
     }
   }
 
-  TRI_ASSERT_DEBUG(accesses != NULL);
+  TRI_ASSERT_MAINTAINER(accesses != NULL);
 
   found = false;
   n = accesses->_length;
@@ -2809,7 +2809,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
       TRI_aql_field_access_t* copy;
 
       // free existing field access
-      TRI_ASSERT_DEBUG(existing != NULL);
+      TRI_ASSERT_MAINTAINER(existing != NULL);
       TRI_FreeAccessAql(existing);
       copy = TRI_CloneAccessAql(context, candidate);
       if (copy == NULL) {

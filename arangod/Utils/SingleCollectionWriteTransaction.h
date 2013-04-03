@@ -34,6 +34,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace arango {
@@ -70,7 +71,7 @@ namespace triagens {
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
                                           const triagens::arango::CollectionNameResolver& resolver,
-                                          const TRI_transaction_cid_t cid) :
+                                          const TRI_voc_cid_t cid) :
           SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_WRITE),
           _numWrites(0) {
 

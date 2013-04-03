@@ -65,7 +65,7 @@ namespace triagens {
 
         SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
                                              const triagens::arango::CollectionNameResolver& resolver,
-                                             const TRI_transaction_cid_t cid) :
+                                             const TRI_voc_cid_t cid) :
           SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_READ) {
         }
 
