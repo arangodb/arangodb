@@ -696,7 +696,7 @@ static v8::Handle<v8::Value> JS_SizeFile (v8::Arguments const& argv) {
 ///
 /// @FUN{console.getline()}
 ///
-/// Reads in a line from the console.
+/// Reads in a line from the console and returns it as string.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
