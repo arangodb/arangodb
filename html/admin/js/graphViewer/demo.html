@@ -8,6 +8,7 @@
   <script src="../lib/d3.v3.min.js"></script>
   <script src="../lib/underscore.js"></script>
   <script src="../lib/jquery-1.8.3.js"></script>
+  <script type="text/javascript" src="../lib/bootstrap.js"></script>
   <script src="../lib/jquery.livequery.js"></script>
   <script src="graph/forceLayouter.js"></script>
   <script src="graph/eventLibrary.js"></script>
@@ -15,6 +16,11 @@
   <script src="graph/nodeShaper.js"></script>
   <script src="graph/edgeShaper.js"></script>
   <script src="graph/arangoAdapter.js"></script>
+  
+  <script type="text/javascript" src="ui/modalDialogHelper.js"></script>
+  <script type="text/javascript" src="ui/nodeShaperControls.js"></script>
+  <script type="text/javascript" src="ui/edgeShaperControls.js"></script>
+  
   <script src="graphViewer.js"></script>
   <script>
   
@@ -339,8 +345,10 @@
     </div>
   </fieldset>
 </form>
+<ul id="controls"></ul>
+<svg width="980" height="640" id="svg">
 
-<svg width="980" height="640" id="svg"/>
+</svg>
 <br />
 <form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog">
   <fieldset>
