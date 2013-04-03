@@ -40,7 +40,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
 #include "BasicsC/random.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"

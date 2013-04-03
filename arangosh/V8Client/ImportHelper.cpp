@@ -34,7 +34,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
 #include "BasicsC/json.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

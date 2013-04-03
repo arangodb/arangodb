@@ -936,8 +936,8 @@ function post_graph_all_vertices (req, res, g) {
                           (json.batchSize === undefined));
 
     // error occurred
-    if (cursor instanceof ArangoError) {
-      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+    if (cursor instanceof Error) {
+      actions.resultBad(req, res, cursor);
       return;
     }
 
@@ -1060,8 +1060,8 @@ function post_graph_vertex_vertices (req, res, g) {
                           (json.batchSize === undefined));
 
     // error occurred
-    if (cursor instanceof ArangoError) {
-      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+    if (cursor instanceof Error) {
+      actions.resultBad(req, res, cursor);
       return;
     }
 
@@ -1546,8 +1546,8 @@ function post_graph_all_edges (req, res, g) {
                           (json.batchSize === undefined));
 
     // error occurred
-    if (cursor instanceof ArangoError) {
-      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+    if (cursor instanceof Error) {
+      actions.resultBad(req, res, cursor);
       return;
     }
 
@@ -1668,8 +1668,8 @@ function post_graph_vertex_edges (req, res, g) {
                        (json.batchSize === undefined));
 
     // error occurred
-    if (cursor instanceof ArangoError) {
-      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+    if (cursor instanceof Error) {
+      actions.resultException(req, res, cursor);
       return;
     }
 

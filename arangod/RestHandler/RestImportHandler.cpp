@@ -29,7 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Utilities/ResourceHolder.h"
 #include "VocBase/document-collection.h"

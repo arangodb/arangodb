@@ -36,7 +36,7 @@
 #include "VocBase/voc-shaper.h"
 
 #include "BasicsC/random.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"

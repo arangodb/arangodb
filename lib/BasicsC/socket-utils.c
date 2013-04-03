@@ -147,7 +147,7 @@ bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
   int res;
   DWORD ul = 1;
   res = ioctlsocket(s.fileHandle, FIONBIO, &ul);
-  return (res != SOCKET_ERROR);
+  return (res != INVALID_SOCKET);
 }
 
 #else

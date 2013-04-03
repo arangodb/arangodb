@@ -19,6 +19,7 @@ ERROR_CORRUPTED_CSV,13,"csv is corrupt","Will be raised when encountering a corr
 ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not found."
 ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file cannot be written."
 ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
+ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is unencountered."
 
 ################################################################################
 ## HTTP standard errors

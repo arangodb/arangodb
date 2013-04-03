@@ -286,7 +286,13 @@ exports.printTable = function  (list, columns, framed) {
         fixedLength = columns[col] >= pad.length ? columns[col] : pad.length;
       }
 
-      descriptions.push({ id: col, name: col, fixedLength: fixedLength, length: fixedLength || col.length });
+      descriptions.push({
+        id: col,
+        name: col,
+        fixedLength: fixedLength,
+        length: fixedLength || col.length
+      });
+
       matrix[0][j++] = col;
     }
   }

@@ -145,7 +145,7 @@ ArangoCollection.prototype._PRINT = function (context) {
     case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
   }
 
-  var colors = require("internal").colors;
+  var colors = require("internal").COLORS;
   var useColor = context.useColor;
 
   context.output += "[ArangoCollection ";

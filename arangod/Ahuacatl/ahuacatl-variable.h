@@ -29,7 +29,7 @@
 #define TRIAGENS_AHUACATL_AHUACATL_VARIABLE_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/associative.h"

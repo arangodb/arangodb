@@ -155,6 +155,10 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
 static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
 
+  if (header == NULL) {
+    return;
+  }
+
   ClearSimpleHeaders(header, headers->_headerSize);
 
   header->_data = headers->_freelist;

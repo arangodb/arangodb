@@ -30,7 +30,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -70,9 +70,13 @@
       click = function (node) {
         clicked[node._id] = !clicked[node._id];
       },
-      shaper = new NodeShaper(d3.select("svg"));
+      shaper = new NodeShaper(d3.select("svg"),
+      {
+        actions: {
+          click: click
+        }
+      });
       
-      shaper.on("click", click);
       shaper.drawNodes(nodes);
       helper.simulateMouseEvent("click", "1");
       helper.simulateMouseEvent("click", "3");
@@ -99,9 +103,25 @@
         expect($("svg .node").length).toEqual(3);
       });
       
+      it('should be able to change display formats', function() {
+        expect($("svg circle").length).toEqual(0);
+        expect($("svg rect").length).toEqual(0);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.CIRCLE, radius: 12}});
+        expect($("svg circle").length).toEqual(3);
+        expect($("svg rect").length).toEqual(0);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.RECT, width: 12, height: 5}});
+        expect($("svg circle").length).toEqual(0);
+        expect($("svg rect").length).toEqual(3);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.NONE}});
+        expect($("svg circle").length).toEqual(0);
+        expect($("svg rect").length).toEqual(0);
+      });
+      
       it('should be able to add a click event to existing nodes', function() {
         expect($("svg .node").length).toEqual(3);
-        shaper.on("click", click);
+        shaper.changeTo({actions: {
+          click: click
+        }});
         helper.simulateMouseEvent("click", "1");
         helper.simulateMouseEvent("click", "3");
         expect($("svg .node").length).toEqual(3);
@@ -112,7 +132,9 @@
       
       it('should add a click event to newly arriving nodes', function() {
         
-        shaper.on("click", click);
+        shaper.changeTo({actions: {
+          click: click
+        }});
         nodes.push({_id: 4});
         nodes.push({_id: 5});
         shaper.drawNodes(nodes);
@@ -128,12 +150,40 @@
       });
       
       it('should display each node exactly once if an event is added', function() {
-        shaper.on("click", function() {return 0;});
+        shaper.changeTo({actions: {
+          click: function() {return 0;}
+        }});
         expect($("svg .node").length).toEqual(3);
-        shaper.on("click", function() {return 1;});
+        shaper.changeTo({actions: {
+          click: function() {return 1;}
+        }});
         expect($("svg .node").length).toEqual(3);
-        shaper.on("click", function() {return 2;});
+        shaper.changeTo({actions: {
+          click: function() {return 2;}
+        }});
         expect($("svg .node").length).toEqual(3);
+      });
+      
+      it('should be able to reshape a single node only', function() {
+        shaper.changeTo({label: "label"});
+        nodes[0].label = "false";
+        nodes[1].label = "true";
+        nodes[2].label = "false_again";
+        expect($("#1 text").length).toEqual(1);
+        expect($("#2 text").length).toEqual(1);
+        expect($("#3 text").length).toEqual(1);
+        expect($("#1 text")[0].textContent).toEqual("");
+        expect($("#2 text")[0].textContent).toEqual("");
+        expect($("#3 text")[0].textContent).toEqual("");
+        
+        shaper.reshapeNode(nodes[1]);
+        expect($("#1 text").length).toEqual(1);
+        expect($("#3 text").length).toEqual(1);
+        expect($("#1 text")[0].textContent).toEqual("");
+        expect($("#3 text")[0].textContent).toEqual("");
+        
+        expect($("#2 text").length).toEqual(1);
+        expect($("#2 text")[0].textContent).toEqual("true");        
       });
     });
 
@@ -143,7 +193,12 @@
       var shaper;
 
       beforeEach(function () {
-        shaper = new NodeShaper(d3.select("svg"), {"shape": NodeShaper.shapes.CIRCLE});
+        var config = {
+          shape: {
+            type: NodeShaper.shapes.CIRCLE
+          }
+        };
+        shaper = new NodeShaper(d3.select("svg"), config);
       });
 
       it('should draw circle elements', function () {
@@ -161,8 +216,10 @@
       it('should be able to use a fixed radius', function() {
         shaper = new NodeShaper(d3.select("svg"),
         {
-          "shape": NodeShaper.shapes.CIRCLE,
-          "size": 15
+          shape: {
+            type: NodeShaper.shapes.CIRCLE,
+            radius: 15
+          }
         });
         var nodes = [
           {_id: 1},
@@ -192,8 +249,10 @@
         ];
         shaper = new NodeShaper(d3.select("svg"),
         {
-          "shape": NodeShaper.shapes.CIRCLE,
-          "size": radiusFunction
+          shape: {
+            type: NodeShaper.shapes.CIRCLE,
+            radius: radiusFunction
+          } 
         });
         shaper.drawNodes(nodes);
         expect($("svg #1 circle")[0].attributes.r.value).toEqual("11");
@@ -205,30 +264,28 @@
       });
     
       it('should display each node exactly once if an event is added', function() {
-        var radiusFunction = function (node) {
-          return 10;
-        },
-        nodes = [
+        var nodes = [
           {_id: 1},
           {_id: 2},
           {_id: 3},
           {_id: 4},
           {_id: 5}
         ];
-        shaper = new NodeShaper(d3.select("svg"),
-        {
-          "shape": NodeShaper.shapes.CIRCLE,
-          "size": radiusFunction
-        });
         shaper.drawNodes(nodes);
         
-        expect($("circle").length).toEqual(5);
-        shaper.on("click", function() {return 0;});
-        expect($("circle").length).toEqual(5);
-        shaper.on("click", function() {return 1;});
-        expect($("circle").length).toEqual(5);
-        shaper.on("click", function() {return 2;});
-        expect($("circle").length).toEqual(5);
+        expect($("svg circle").length).toEqual(5);
+        shaper.changeTo({actions: {
+          click: function() {return 0;}
+        }});
+        expect($("svg circle").length).toEqual(5);
+        shaper.changeTo({actions: {
+          click: function() {return 1;}
+        }});
+        expect($("svg circle").length).toEqual(5);
+        shaper.changeTo({actions: {
+          click: function() {return 2;}
+        }});
+        expect($("svg circle").length).toEqual(5);
       });
     
     });
@@ -237,7 +294,11 @@
       var shaper;
 
       beforeEach(function () {
-        shaper = new NodeShaper(d3.select("svg"), {"shape": NodeShaper.shapes.RECT});
+        shaper = new NodeShaper(d3.select("svg"), {
+          shape: {
+            type: NodeShaper.shapes.RECT
+          }
+        });
       });
 
       it('should draw rect elements', function () {
@@ -255,9 +316,11 @@
       it('should be able to use a fixed size', function() {
         shaper = new NodeShaper(d3.select("svg"),
         {
-          "shape": NodeShaper.shapes.RECT,
-          "width": 15,
-          "height": 10
+          shape: {
+            type: NodeShaper.shapes.RECT,
+            width: 15,
+            height: 10
+          }
         });
         var nodes = [
           {_id: 1},
@@ -297,10 +360,13 @@
         ];
         shaper = new NodeShaper(d3.select("svg"),
         {
-          "shape": NodeShaper.shapes.RECT,
-          "width": widthFunction,
-          "height": heightFunction
+          shape:  {
+            type: NodeShaper.shapes.RECT,
+            width: widthFunction,
+            height: heightFunction
+          }
         });
+        
         shaper.drawNodes(nodes);
         expect($("svg #1 rect")[0].attributes.width.value).toEqual("11");
         expect($("svg #2 rect")[0].attributes.width.value).toEqual("12");
@@ -314,9 +380,7 @@
         expect($("svg #4 rect")[0].attributes.height.value).toEqual("6");
         expect($("svg #5 rect")[0].attributes.height.value).toEqual("5");
         
-        
       });
-    
     });
     
     
@@ -362,6 +426,21 @@
         expect($("svg .node text")[0]).toBeDefined();
         expect($("svg .node text").length).toEqual(1);
         expect($("svg .node text")[0].textContent).toEqual("0");
+      });
+
+      it('should be able to switch to another label during runtime', function() {
+        var node = [{
+          _id: 1,
+          label: "before",
+          switched: "after"
+        }];
+        shaper.drawNodes(node);
+        expect($("svg .node text")[0].textContent).toEqual("before");
+        shaper.changeTo({label: "switched"});
+        expect($("svg .node text")[0]).toBeDefined();
+        expect($("svg .node text").length).toEqual(1);
+        expect($("svg .node text")[0].textContent).toEqual("after");
+        
       });
 
     });
@@ -481,8 +560,10 @@
       beforeEach(function () {
         shaper = new NodeShaper(d3.select("svg"),
             {
-              "shape": NodeShaper.shapes.CIRCLE,
-              "label": "label"
+              shape: {
+                type: NodeShaper.shapes.CIRCLE
+              },
+              label: "label"
             }
           );
       });
