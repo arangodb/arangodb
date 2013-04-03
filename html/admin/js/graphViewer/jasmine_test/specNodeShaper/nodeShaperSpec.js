@@ -162,8 +162,9 @@
         shaper = new NodeShaper(d3.select("svg"),
         {
           color: {
-            type: "attribute",
-            key: "label"
+            type: "expand",
+            expanded: "#123456",
+            collapsed: "#654321"
           }
         }),
         c1, c2, c3;
@@ -177,8 +178,9 @@
         expect(c2).toBeDefined();
         expect(c3).toBeDefined();
         
-        expect(c1).not.toEqual(c2);
-        expect(c1).toEqual(c3);
+        expect(c1).toEqual("#123456");
+        expect(c2).toEqual("#654321");
+        expect(c3).toEqual("#654321");
       });
       
     });
