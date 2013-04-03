@@ -78,6 +78,7 @@ function NodeShaper(parent, flags, idfunc) {
       return d._id;
     },
     addUpdate = noop,
+    addColor = noop,
     addShape = noop,
     addLabel = noop,
     
@@ -94,6 +95,13 @@ function NodeShaper(parent, flags, idfunc) {
       });
     },
     
+    addQue = function (g) {
+      addShape(g);
+      addLabel(g);
+      addColor(g);
+      addEvents(g);
+    },
+    
     bindEvent = function (type, func) {
       if (type === "update") {
         addUpdate = func;
@@ -105,43 +113,36 @@ function NodeShaper(parent, flags, idfunc) {
     
     shapeNodes = function (nodes) {
       if (nodes !== undefined) {
-        var data, handle;
+        var data, g;
         data = self.parent
           .selectAll(".node")
           .data(nodes, idFunction);
-        handle = data
+        g = data
           .enter()
           .append("g")
           .attr("class", "node") // node is CSS class that might be edited
           .attr("id", idFunction);
-        addShape(handle);
-        addLabel(handle);
-        addEvents(handle);
+        addQue(g);
         data.exit().remove();
-        return handle;
+        return g;
       }
     },
     
     reshapeNodes = function () {
-      var handle;
-      handle = self.parent
+      var g = self.parent
         .selectAll(".node");
       $(".node").empty();
-      addShape(handle);
-      addLabel(handle);
-      addEvents(handle);
+      addQue(g);
     },
     
     reshapeNode = function (node) {
-      var handle = self.parent
+      var g = self.parent
         .selectAll(".node")
         .filter(function (n) {
           return n._id === node._id;
         });
       $("#" + node._id.toString().replace(/([ #;&,.+*~\':"!\^$\[\]()=>|\/])/g,'\\$1')).empty();
-      addShape(handle);
-      addLabel(handle);
-      addEvents(handle);
+      addQue(g);
     },
     
     updateNodes = function () {
@@ -205,6 +206,31 @@ function NodeShaper(parent, flags, idfunc) {
       });
     },
     
+    parseColorFlag = function (color) {
+      switch (color.type) {
+        case "single":
+          addColor = function (g) {
+            g.attr("stroke", color.stroke);
+            g.attr("fill", color.fill);
+          };
+          break;
+        case "expand":
+          addColor = function (g) {
+            g.attr("fill", function(n) {
+              if (n._expanded) {
+                return color.expanded;
+              }
+              return color.collapsed;
+            });
+          };
+          break;
+        case "attribute":
+          break; 
+        default:
+          throw "Sorry given colour-scheme not known";
+      }
+    },
+    
     parseConfig = function(config) {
       if (config.shape !== undefined) {
         parseShapeFlag(config.shape);
@@ -214,6 +240,9 @@ function NodeShaper(parent, flags, idfunc) {
       }
       if (config.actions !== undefined) {
         parseActionFlag(config.actions);
+      }
+      if (config.color !== undefined) {
+        parseColorFlag(config.color);
       }
     };
     
