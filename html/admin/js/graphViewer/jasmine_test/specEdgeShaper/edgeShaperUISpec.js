@@ -177,7 +177,7 @@
         helper.simulateMouseEvent("click", "control_gradientcolour");
         $("#control_gradientcolour_source").attr("value", "#123456");
         $("#control_gradientcolour_target").attr("value", "#654321");
-        helper.simulateMouseEvent("click", "control_expandcolour_submit");
+        helper.simulateMouseEvent("click", "control_gradientcolour_submit");
       
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
