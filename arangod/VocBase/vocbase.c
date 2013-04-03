@@ -233,6 +233,8 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
 
+  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
+
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   return true;
