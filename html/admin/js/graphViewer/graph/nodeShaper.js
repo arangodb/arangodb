@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
+/*global ColourMapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -66,6 +67,7 @@ function NodeShaper(parent, flags, idfunc) {
     noop = function (node) {
     
     },
+    colourMapper = new ColourMapper(),
     events = {
       click: noop,
       dblclick: noop,
@@ -225,6 +227,11 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case "attribute":
+          addColor = function (g) {
+             g.attr("fill", function(n) {
+               return colourMapper.getColour(n[color.key]);
+             });
+          };
           break; 
         default:
           throw "Sorry given colour-scheme not known";
