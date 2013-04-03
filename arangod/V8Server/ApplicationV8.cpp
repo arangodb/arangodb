@@ -779,6 +779,13 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     context->_isolate->Exit();
     delete context->_locker;
 
+    // regular shutdown... wait for all threads to finish
+    _vocbase->_state = 2;
+    TRI_JoinThread(&_vocbase->_synchroniser);
+    TRI_JoinThread(&_vocbase->_compactor);
+    _vocbase->_state = 3;
+    TRI_JoinThread(&_vocbase->_cleanup);
+
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
