@@ -96,10 +96,21 @@
       expect(c1).not.toEqual(c2);
     });
     
+    it('should be able to manually reset the returned colours', function() {
+      var c1 = mapper.getColour("1"),
+      c2 = mapper.getColour("2"),
+      c3;
+      
+      mapper.reset();
+      
+      c3 = mapper.getColour("3");
+      
+      expect(c1).toEqual(c3);
+    });
     
     it('should return 20 different colours and than restart', function() {
       var colours = [],
-      i, j;
+      i, j, cNew;
       colours.push(mapper.getColour("1"));
       colours.push(mapper.getColour("2"));
       colours.push(mapper.getColour("3"));
@@ -120,12 +131,13 @@
       colours.push(mapper.getColour("18"));
       colours.push(mapper.getColour("19"));
       colours.push(mapper.getColour("20"));
-      
+      cNew = mapper.getColour("21");
       for (i = 0; i < colours.length; i++) {
         for (j = i; j < colours.length; j++) {
           expect(colours[i]).not.toEqual(colours[j]);
         }
       }
+      expect(colours[0]).toEqual(cNew);
     });
     
   });
