@@ -130,29 +130,34 @@ function EdgeShaper(parent, flags, idfunc) {
       addEvents(line, handle);
     },
     
+    getCorner = function(s, t) {
+      return Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
+    },
+    
+    getDistance = function(s, t) {
+      return Math.sqrt(
+        (t.y - s.y)
+        * (t.y - s.y)
+        + (t.x - s.x)
+        * (t.x - s.x)
+      );
+    },
+    
     updateEdges = function () {
-      var edges = self.parent.selectAll(".link line")
+      var edges = self.parent.selectAll(".link")
         // Set source x coordinate for edge.
-        .attr("x1", function(d) {
-            return d.source.x; 
-        })
-        // Set source y coordinate for edge.
-        .attr("y1", function(d) {
-            return d.source.y; 
-        })
-        // Set target x coordinate for edge.
-        .attr("x2", function(d) {
-            return d.target.x; 
-        })
-        // Set target y coordinate for edge.
-        .attr("y2", function(d) {
-            return d.target.y;
+        .attr("transform", function(d) {
+          return "translate("
+            + d.source.x + ", "
+            + d.source.y + ")"
+            + "rotate("
+            + getCorner(d.source, d.target)
+            + ")";
         });
-        /*
-        edges.attr("transform", function(d) {
-          return "translate(" + d.x + "," + d.y + ")"; 
-        });
-        */
+      edges.select("line")
+          .attr("x2", function(d) {
+            return getDistance(d.source, d.target);
+          });
       addUpdate(edges);
     },
     
@@ -203,6 +208,14 @@ function EdgeShaper(parent, flags, idfunc) {
             });
         };
       }
+      addUpdate = function (edges) {
+        edges.select("text")
+          .attr("transform", function(d) {
+            return "translate("
+              + getDistance(d.source, d.target) / 2
+              + ", -3)";
+          });
+      };
     },
     
     parseActionFlag = function (actions) {
@@ -247,10 +260,13 @@ function EdgeShaper(parent, flags, idfunc) {
   self.changeTo = function(config) {
     parseConfig(config);
     reshapeEdges();
+    updateEdges();
   };
   
   self.drawEdges = function (edges) {
-    return shapeEdges(edges);
+    var res = shapeEdges(edges);
+    updateEdges();
+    return res;
   };
   
   self.updateEdges = function () {
