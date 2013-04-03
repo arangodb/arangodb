@@ -289,23 +289,15 @@
 /// log message.
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.log = function () {
-    'use strict';
-
-    var msg;
-
-    try {
-      msg = sprintf.apply(sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    log("info", msg);
-  };
+  exports.log = exports.info;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time
+///
+/// @FUN{console.time(@FA{name})}
+///
+/// Creates a new timer under the given name. Call @FN{timeEnd} with the same
+/// name to stop the timer and log the time elapsed.
 ////////////////////////////////////////////////////////////////////////////////
 
   exports.time = function (label) {
@@ -316,6 +308,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeEnd
+///
+/// @FUN{console.timeEnd(@FA{name})}
+///
+/// Stops a timer created by a call to @FN{time} and logs the time elapsed. 
 ////////////////////////////////////////////////////////////////////////////////
 
   exports.timeEnd = function(label) {
@@ -332,6 +328,23 @@
     var duration = Date.now() - time;
     exports.log('%s: %dms', label, duration);
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trace
+/// 
+/// @FUN{console.trace()}
+///
+/// Logs a static stack trace of JavaScript execution at the point where it is
+/// called. 
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.trace = function () {
+    var err = new Error();
+    err.name = 'trace';
+    err.message = sprintf.apply(sprintf, arguments);
+    Error.captureStackTrace(err, arguments.callee);
+    exports.log(err.stack);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief warn
