@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $, d3*/
+/*global ColourMapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -55,6 +56,7 @@ function EdgeShaper(parent, flags, idfunc) {
     noop = function (line, g) {
     
     },
+    colourMapper = new ColourMapper(),
     events = {
       click: noop,
       dblclick: noop,
@@ -261,6 +263,11 @@ function EdgeShaper(parent, flags, idfunc) {
           };
           break;
         case "attribute":
+          addColor = function (line, g) {
+             g.attr("stroke", function(e) {
+               return colourMapper.getColour(e[color.key]);
+             });
+          };
           break; 
         default:
           throw "Sorry given colour-scheme not known";
