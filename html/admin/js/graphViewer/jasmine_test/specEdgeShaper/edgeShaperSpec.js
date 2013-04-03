@@ -65,8 +65,8 @@
       ],
       shaper = new EdgeShaper(d3.select("svg"));
       shaper.drawEdges(edges);
-      expect($("svg line.link").length).toEqual(1);
-      expect($("svg line.link")[0]).toBeDefined();
+      expect($("svg .link line").length).toEqual(1);
+      expect($("svg .link line")[0]).toBeDefined();
       expect($("svg #" + 1 + "-" + 2)[0]).toBeDefined();
     });
 
@@ -103,7 +103,7 @@
       ],
       shaper = new EdgeShaper(d3.select("svg"));
       shaper.drawEdges(edges);
-      expect($("svg line.link").length).toEqual(4);
+      expect($("svg .link line").length).toEqual(4);
     });
     
     
@@ -151,7 +151,7 @@
       helper.simulateMouseEvent("click", "1-2");
       helper.simulateMouseEvent("click", "3-4");
       
-      expect($("svg line").length).toEqual(4);
+      expect($("svg .link line").length).toEqual(4);
       expect(clicked[1]).toBeTruthy();
       expect(clicked[3]).toBeTruthy();
       expect(clicked[2]).toBeFalsy();
@@ -178,11 +178,247 @@
       });
       shaper.drawEdges(edges);
       
-      expect($("#1-2").attr("marker-end")).toEqual("url(#arrow)");
+      expect($("#1-2 line").attr("marker-end")).toEqual("url(#arrow)");
       expect($("svg defs marker").length).toEqual(1);
       expect($("svg defs #arrow").length).toEqual(1);
       // Orientation is important. Other layout not yet.
       expect($("svg defs #arrow").attr("orient")).toEqual("auto");
+    });
+    
+    it('should position the edges correctly', function() {
+      var center = {
+        _id: 1,
+        x: 20,
+        y: 20
+      },
+      NE = {
+        _id: 2,
+        x: 30,
+        y: 10
+      },
+      SE = {
+        _id: 3,
+        x: 40,
+        y: 30
+      },
+      SW = {
+        _id: 4,
+        x: 10,
+        y: 40
+      },
+      NW = {
+        _id: 5,
+        x: 0,
+        y: 0
+      },
+      edges = [
+        {
+          source: center,
+          target: NE
+        },
+        {
+          source: center,
+          target: SE
+        },
+        {
+          source: center,
+          target: SW
+        },
+        {
+          source: center,
+          target: NW
+        }
+      ],
+      shaper = new EdgeShaper(d3.select("svg"), {
+        shape: {
+          type: EdgeShaper.shapes.ARROW
+        }
+      });
+      shaper.drawEdges(edges);
+      
+      //Check Position and rotation
+      expect($("#1-2").attr("transform")).toEqual("translate(20, 20)rotate(-45)");
+      expect($("#1-3").attr("transform")).toEqual("translate(20, 20)rotate(26.56505117707799)");
+      expect($("#1-4").attr("transform")).toEqual("translate(20, 20)rotate(116.56505117707799)");
+      expect($("#1-5").attr("transform")).toEqual("translate(20, 20)rotate(-135)");
+      
+      //Check length of line
+      expect($("#1-2 line").attr("x2")).toEqual("14.142135623730951");
+      expect($("#1-3 line").attr("x2")).toEqual("22.360679774997898");
+      expect($("#1-4 line").attr("x2")).toEqual("22.360679774997898");
+      expect($("#1-5 line").attr("x2")).toEqual("28.284271247461902");
+    });
+    
+    describe('testing for colours', function() {
+            
+      it('should be able to use the same colour for all edges', function() {
+        var s = {_id: 1},
+        t = {_id: 2},
+        edges = [{
+          source: s,
+          target: t
+        },{
+          source: t,
+          target: s
+        }],
+        shaper = new EdgeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "single",
+              value: "#123456"
+            }
+          }
+        );
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 line").attr("stroke")).toEqual("#123456");
+        expect($("#2-1 line").attr("stroke")).toEqual("#123456");
+      });
+      
+      it('should be able to use a colour based on attribute value', function() {
+        var n1 = {_id: 1},
+        n2 = {_id: 2},
+        n3 = {_id: 3},
+        n4 = {_id: 4},
+        edges = [{
+          source: n1,
+          target: n2,
+          label: "lbl1"
+        },{
+          source: n2,
+          target: n3,
+          label: "lbl2"
+        },{
+          source: n3,
+          target: n4,
+          label: "lbl3"
+        },{
+          source: n4,
+          target: n1,
+          label: "lbl1"
+        }],
+        shaper = new EdgeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "attribute",
+              value: "label"
+            }
+          }
+        ),
+        c1,c2,c3,c4;
+        shaper.drawEdges(edges);
+        
+        c1 = $("#1-2 line").attr("stroke");
+        c2 = $("#2-3 line").attr("stroke");
+        c3 = $("#3-4 line").attr("stroke");
+        c4 = $("#4-1 line").attr("stroke");
+        
+        expect(c1).toBeDefined();
+        expect(c2).toBeDefined();
+        expect(c3).toBeDefined();
+        expect(c4).toBeDefined();
+        
+        expect(c1).toEqual(c4);
+        expect(c1).not.toEqual(c2);
+        expect(c1).not.toEqual(c3);
+        expect(c2).not.toEqual(c3);
+        
+        
+      });
+      
+      it('should be able to use a gradient colour', function() {
+        var s = {_id: 1},
+        t = {_id: 2},
+        edges = [{
+          source: s,
+          target: t
+        }],
+        shaper = new EdgeShaper(d3.select("svg"),
+          {
+            color: {
+              type: "gradient",
+              source: "#123456",
+              target: "#654321"
+            }
+          }
+        ),
+        allStops;
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 line").attr("stroke")).toEqual("url(#gradientEdgeColor)");
+        
+        // Sorry if the line is plain horizontal it is not displayed.
+        expect($("#1-2 line").attr("y2")).toBeDefined();
+        expect($("#1-2 line").attr("y2")).not.toEqual("0");
+        
+        // This check may not work
+        //expect($("svg defs linearGradient").length).toEqual(1);
+        expect($("svg defs #gradientEdgeColor").length).toEqual(1);
+        
+        allStops = $("svg defs #gradientEdgeColor stop");
+        expect(allStops[0].getAttribute("offset")).toEqual("0");
+        expect(allStops[1].getAttribute("offset")).toEqual("0.4");
+        expect(allStops[2].getAttribute("offset")).toEqual("0.6");
+        expect(allStops[3].getAttribute("offset")).toEqual("1");
+        
+        expect(allStops[0].getAttribute("stop-color")).toEqual("#123456");
+        expect(allStops[1].getAttribute("stop-color")).toEqual("#123456");
+        expect(allStops[2].getAttribute("stop-color")).toEqual("#654321");
+        expect(allStops[3].getAttribute("stop-color")).toEqual("#654321");
+        
+      });
+      
+    });
+    
+    describe('configured for arrow shape', function() {
+      var shaper;
+      
+      beforeEach(function() {
+        var one = {
+          "_id": 1
+        },
+        two = {
+          "_id": 2
+        },
+        edges = [
+          {
+            "source": one,
+            "target": two
+          }
+        ];
+        shaper = new EdgeShaper(d3.select("svg"), {
+          shape: {
+            type: EdgeShaper.shapes.ARROW
+          }
+        });
+        shaper.drawEdges(edges);
+      });
+      
+      
+      it('should clean the defs if a different shape is chosen', function() {
+        shaper.changeTo({
+          shape: {
+            type: EdgeShaper.shapes.NONE
+          }
+        });
+        expect($("#1-2").attr("marker-end")).toBeUndefined();
+        expect($("svg defs marker#arrow").length).toEqual(0);
+      });
+      
+      it('should not append the same marker multiple times', function() {
+        shaper.changeTo({
+          shape: {
+            type: EdgeShaper.shapes.ARROW
+          }
+        });
+        expect($("svg defs marker#arrow").length).toEqual(1);
+        shaper.changeTo({
+          shape: {
+            type: EdgeShaper.shapes.ARROW
+          }
+        });
+        expect($("svg defs marker#arrow").length).toEqual(1);
+      });
     });
     
     describe('when edges are already drawn', function() {
@@ -303,6 +539,31 @@
         expect($("#2-3 text")[0].textContent).toEqual("second");
         expect($("#3-4 text")[0].textContent).toEqual("third");
         expect($("#4-1 text")[0].textContent).toEqual("fourth");
+      });
+      
+      it('should display the label at the correct position', function() {
+        var nodes = [
+          {
+            _id: 1,
+            x: 20,
+            y: 20
+          },
+          {
+            _id: 2,
+            x: 100,
+            y: 20
+          }
+        ],
+        edges = [
+          {
+            "source": nodes[0],
+            "target": nodes[1],
+            "label": "first"
+          }
+        ];
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 text").attr("transform")).toEqual("translate(40, -3)");
       });
       
       it('should ignore other attributes', function() {
@@ -524,7 +785,7 @@
 
         shaper.drawEdges(edges);
 
-        expect($("svg g svg g line.link").length).toEqual(1);
+        expect($("svg g svg g .link line").length).toEqual(1);
       });
     });
     

@@ -3,7 +3,7 @@ require("internal").flushModuleCache();
 var jsunity = require("jsunity"),
   console = require("console"),
   arangodb = require("org/arangodb"),
-  FoxxApplication = require("org/arangodb/foxx").FoxxApplication,
+  FoxxApplication = require("org/arangodb/foxx").Application,
   db = arangodb.db;
 
 function CreateFoxxApplicationSpec () {
@@ -202,11 +202,8 @@ function SetRoutesFoxxApplicationSpec () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
 
-      app.requiresLibs = {
+      app.requires = {
         a: 1
-      };
-      app.requiresModels = {
-        b: 2
       };
       app.get('/simple/route', myFunc);
       app.start({
@@ -215,7 +212,6 @@ function SetRoutesFoxxApplicationSpec () {
 
       assertEqual(app.routingInfo.routes[0].action.context, "myContext");
       assertEqual(app.routingInfo.routes[0].action.requiresLibs.a, 1);
-      assertEqual(app.routingInfo.routes[0].action.requiresModels.b, 2);
     }
   };
 }
