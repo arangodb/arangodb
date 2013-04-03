@@ -782,8 +782,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
   char* ptr;
 
   // sanity checks
-  TRI_ASSERT_DEBUG(json->_type == TRI_JSON_ARRAY);
-  TRI_ASSERT_DEBUG(json->_value._objects._length % 2 == 0);
+  assert(json->_type == TRI_JSON_ARRAY);
+  assert(json->_value._objects._length % 2 == 0);
 
   // number of attributes
   n = json->_value._objects._length / 2;
@@ -807,8 +807,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper, TRI_shape_value_t* dst, T
     key = TRI_AtVector(&json->_value._objects, 2 * i);
     val = TRI_AtVector(&json->_value._objects, 2 * i + 1);
 
-    TRI_ASSERT_DEBUG(key != NULL);
-    TRI_ASSERT_DEBUG(val != NULL);
+    assert(key != NULL);
+    assert(val != NULL);
 
     if (key->_value._string.data == NULL ||
         key->_value._string.length == 1 ||
