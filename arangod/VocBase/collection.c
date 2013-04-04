@@ -572,6 +572,36 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a set of datafiles
+/// note: the files will be opened and closed 
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IterateFiles (TRI_vector_string_t* vector,
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+  size_t i, n;
+  
+  n = vector->_length;
+
+  for (i = 0; i < n ; ++i) {
+    TRI_datafile_t* datafile;
+    char* filename;
+
+    filename = TRI_AtVectorString(vector, i);
+    LOG_DEBUG("iterating over collection journal file '%s'", filename);
+    datafile = TRI_OpenDatafile(filename);
+
+    if (datafile != NULL) {
+      TRI_IterateDatafile(datafile, iterator, NULL, true);
+      TRI_CloseDatafile(datafile);
+      TRI_FreeDatafile(datafile);
+    }
+  }
+
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1290,36 +1320,22 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers incollection journals journal
 ///
-/// we do this on startup to find the most recent tick values
+/// this function is called on server startup for all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateJournalsCollection (const char* const path,
-                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+bool TRI_IterateStartupCollection (const char* const path,
+                                   bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
-  TRI_vector_string_t* vector = &structure._journals;
-  size_t n = vector->_length;
+  bool result;
 
-  if (n > 0) {
-    size_t i;
-
-    for (i = 0; i < n ; ++i) {
-      TRI_datafile_t* datafile;
-      char* filename;
-
-      filename = TRI_AtVectorString(vector, i);
-      LOG_DEBUG("iterating over collection journal file '%s'", filename);
-      datafile = TRI_OpenDatafile(filename);
-      if (datafile != NULL) {
-        TRI_IterateDatafile(datafile, iterator, NULL, true);
-        TRI_CloseDatafile(datafile);
-        TRI_FreeDatafile(datafile);
-      }
-    }
-  }
-
+  // iterate of journals & compactors, not datafiles
+  result  = IterateFiles(&structure._journals, iterator);
+  result &= IterateFiles(&structure._compactors, iterator);
+  
   TRI_DestroyFileStructureCollection(&structure);
 
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
