@@ -36,7 +36,7 @@
   
   exports.Repository = Foxx.Repository.extend({
     // Define the functionality to create a new foxx
-    store = function (content) {
+    store: function (content) {
       throw {
         code: 501,
         message: "To be implemented."
@@ -75,6 +75,6 @@
         code: 501,
         message: "To be implemented."
       };
-    };
+    }
   });
 }());
