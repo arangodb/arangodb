@@ -34,6 +34,7 @@ var fs = require("fs");
 var console = require("console");
 
 var arangodb = require("org/arangodb");
+var foxx = require("org/arangodb/foxx");
 var foxxManager = require("org/arangodb/foxx-manager");
 
 var moduleExists = function(name) { return module.exists; };
@@ -79,7 +80,7 @@ var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ]
 function notImplementedFunction (route, message) {
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
-  console.error(message);
+  console.error("%s", message);
 
   return function (req, res, options, next) {
     res.responseCode = exports.HTTP_NOT_IMPLEMENTED;
@@ -95,7 +96,7 @@ function notImplementedFunction (route, message) {
 function errorFunction (route, message) {
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
-  console.error(message);
+  console.error("%s", message);
 
   return function (req, res, options, next) {
     res.responseCode = exports.HTTP_SERVER_ERROR;
@@ -221,91 +222,29 @@ function lookupCallbackStatic (content) {
 /// @brief looks up a callback for a callback action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionCallback (route, action) {
+function lookupCallbackActionCallback (route, action, context) {
   var defn;
   var env;
   var func;
   var key;
   var app;
   var appModule;
-  var modelModule;
 
   defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
   env = {};
 
   try {
-    if (action.hasOwnProperty("context")) {
-      app = module.createApp(action.context.appId);
-
-      if (app === null) {
-        throw "cannot locate application '" + action.context.name + "'"
-          + " in version '" + action.context.version + "'";
-      }
-      
-      appModule = app.createAppModule();
-
-      if (action.hasOwnProperty("requiresModels")) {
-        var cp = action.context.collectionPrefix;
-        var me;
-
-        modelModule = app.createAppModule('models', appModule._package);
-        me = modelModule._package._environment = {};
-
-        if (cp !== "") {
-          me.appCollectionName = function (name) {
-            return cp + "_" + name;
-          };
-
-          me.appCollection = function (name) {
-            return arangodb.db._collection(cp + "_" + name);
-          };
-        }
-        else {
-          me.appCollectionName = function (name) {
-            return name;
-          };
-
-          me.appCollection = function (name) {
-            return arangodb.db._collection(name);
-          };
-        }
-
-        me.requireModel = function (path) {
-          modelModule.require(path);
-        };
-      }
-      else {
-        modelModule = appModule;
-      }
-    }
-    else {
-      appModule = module.root;
-      modelModule = appModule;
-    }
-
-    if (action.hasOwnProperty("requiresLibs")) {
-      var requires = action.requiresLibs;
-
-      for (key in requires) {
-        if (requires.hasOwnProperty(key)) {
-          env[key] = appModule.require(requires[key]);
-        }
-      }
-    }
-
-    if (action.hasOwnProperty("requiresModels")) {
-      var models = action.requiresModels;
-
-      for (key in models) {
-        if (models.hasOwnProperty(key)) {
-          env[key] = modelModule.require(models[key]);
-        }
+    for (key in context.requires) {
+      if (context.requires.hasOwnProperty(key)) {
+        env[key] = context.requires[key];
       }
     }
 
     env.module = module.root;
+    env.repositories = context.repositories;
+
     env.require = function (path) {
-      return appModule.require(path);
+      return context.appModule.require(path);
     };
 
     internal.executeScript(defn, env, route);
@@ -316,7 +255,7 @@ function lookupCallbackActionCallback (route, action) {
     else {
       func = notImplementedFunction(
         route,
-        "could not define function '" + action.callback);
+        "could not define function for '" + action.callback + "'");
     }
   }
   catch (err) {
@@ -554,7 +493,7 @@ function lookupCallbackActionPrefixController (route, action) {
 /// @brief looks up a callback for an action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackAction (route, action) {
+function lookupCallbackAction (route, action, context) {
 
   // .............................................................................
   // short-cut for prefix controller
@@ -569,7 +508,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('callback')) {
-    return lookupCallbackActionCallback(route, action);
+    return lookupCallbackActionCallback(route, action, context);
   }
 
   // .............................................................................
@@ -603,14 +542,51 @@ function lookupCallbackAction (route, action) {
 /// @brief looks up a callback
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallback (route) {
+function lookupCallback (route, context) {
   var result = null;
 
   if (route.hasOwnProperty('content')) {
     result = lookupCallbackStatic(route.content);
   }
   else if (route.hasOwnProperty('action')) {
-    result = lookupCallbackAction(route, route.action);
+    result = lookupCallbackAction(route, route.action, context);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates all contexts
+////////////////////////////////////////////////////////////////////////////////
+
+function createContexts (appModule, appContext, desc) {
+  var key;
+  var c;
+
+  var result = {};
+
+  for (key in desc) {
+    if (desc.hasOwnProperty(key)) {
+      var d = desc[key];
+      var collectionPrefix = appContext.connectionPrefix;
+
+      result[key] = {
+        appModule: appModule,
+        repositories: {},
+        requires: {}
+      };
+
+      if (d.hasOwnProperty('requires')) {
+        for (c in d.requires) {
+          if (d.requires.hasOwnProperty(c)) {
+            var name = d.requires[c];
+            var m = appModule.require(name);
+
+            result[key].requires[c] = m;
+          }
+        }
+      }
+    }
   }
 
   return result;
@@ -1101,10 +1077,6 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 function reloadRouting () {
   var i;
   var j;
-  var routes;
-  var routing;
-  var handleRoute;
-  var handleMiddleware;
   var method;
 
   // .............................................................................
@@ -1127,9 +1099,9 @@ function reloadRouting () {
   // lookup all routes
   // .............................................................................
 
-  routes = [];
+  var routes = [];
+  var routing = arangodb.db._collection("_routing");
 
-  routing = arangodb.db._collection("_routing");
   i = routing.all();
 
   while (i.hasNext()) {
@@ -1144,15 +1116,14 @@ function reloadRouting () {
 
   // check development routes
   if (internal.developmentMode) {
-    i = foxxManager.developmentRoutes();
-    routes = routes.concat(i);
+    routes = routes.concat(foxxManager.developmentRoutes());
   }
 
   // .............................................................................
   // defines a new route
   // .............................................................................
 
-  handleRoute = function (storage, urlPrefix, modulePrefix, route) {
+  var installRoute = function (storage, urlPrefix, modulePrefix, context, route) {
     var url;
     var callback;
 
@@ -1163,7 +1134,7 @@ function reloadRouting () {
       return;
     }
 
-    callback = lookupCallback(route);
+    callback = lookupCallback(route, context);
 
     if (callback === null) {
       console.error("route '%s' has an unknown callback, ignoring", JSON.stringify(route));
@@ -1174,6 +1145,59 @@ function reloadRouting () {
   };
   
   // .............................................................................
+  // analyses a new route
+  // .............................................................................
+
+  var analyseRoute = function (routes) {
+    var urlPrefix = routes.urlPrefix || "";
+    var modulePrefix = routes.modulePrefix || "";
+    var keys = [ 'routes', 'middleware' ];
+    var repositories = {};
+    var j;
+
+    // create the application context
+    var appModule = module.root;
+    var appContext = {
+      collectionPrefix: ""
+    };
+
+    if (routes.hasOwnProperty('appContext')) {
+      appContext = routes.appContext;
+      appModule = module.createApp(routes.appContext.appId).createAppModule();
+    }
+
+    // create the route contexts
+    var contexts = createContexts(appModule, appContext, routes.context || {});
+
+    // install the routes
+    for (j = 0;  j < keys.length;  ++j) {
+      var key = keys[j];
+
+      if (routes.hasOwnProperty(key)) {
+        var r = routes[key];
+
+        for (i = 0;  i < r.length;  ++i) {
+          var route = r[i];
+          var context = {};
+
+          if (route.hasOwnProperty('context')) {
+            var cn = route.context;
+
+            if (contexts.hasOwnProperty(cn)) {
+              context = contexts[cn];
+            }
+            else {
+              throw new Error("unknown context '" + cn + "'");
+            }
+          }
+
+          installRoute(RoutingCache[key], urlPrefix, modulePrefix, context, r[i]);
+        }
+      }
+    }
+  };
+
+  // .............................................................................
   // loop over the routes or routes bundle
   // .............................................................................
 
@@ -1183,28 +1207,19 @@ function reloadRouting () {
     var route = routes[j];
     var r;
 
-    if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
-      var urlPrefix = route.urlPrefix || "";
-      var modulePrefix = route.modulePrefix || "";
-
-      if (route.hasOwnProperty('routes')) {
-        r = route.routes;
-
-        for (i = 0;  i < r.length;  ++i) {
-          handleRoute(RoutingCache.routes, urlPrefix, modulePrefix, r[i]);
-        }
+    try {
+      if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
+        analyseRoute(route);
       }
-
-      if (route.hasOwnProperty('middleware')) {
-        r = route.middleware;
-
-        for (i = 0;  i < r.length;  ++i) {
-          handleRoute(RoutingCache.middleware, urlPrefix, modulePrefix, r[i]);
-        }
+      else {
+        installRoute(RoutingCache.routes, "", "", {}, route);
       }
     }
-    else {
-      handleRoute(RoutingCache.routes, "", "", route);
+    catch (err) {
+      console.error("cannot install route '%s': %s - %s",
+                    JSON.stringify(route),
+                    String(err),
+                    String(err.stack));
     }
   }
 

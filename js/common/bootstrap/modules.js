@@ -1200,7 +1200,7 @@ function require (path) {
 /// @brief createAppModule
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.createAppModule = function (type, rootPackage) {
+  ArangoApp.prototype.createAppModule = function (type) {
     'use strict';
 
     if (type === undefined) {
@@ -1218,7 +1218,7 @@ function require (path) {
 
     var pkg = new Package("application",
                           {name: "application '" + this._name + "'"},
-                          rootPackage,
+                          undefined,
                           [ libpath ]);
 
     return new Module("application", 'application', pkg);
