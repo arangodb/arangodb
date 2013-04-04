@@ -58,6 +58,19 @@ function CreateFoxxApplicationSpec () {
 
       assertEqual(routingInfo.middleware.length, 1);
       assertEqual(hopefully_base.url.match, "/*");
+    },
+
+    testAdditionOfRepositoryInRoutingInfo: function () {
+      var app = new FoxxApplication(),
+        routingInfo = app.routingInfo;
+
+      app.registerRepository("todos", {
+        model: "models/todo",
+        repository: "repositories/todos"
+      });
+
+      assertEqual(routingInfo.repositories.todos.model, "models/todo");
+      assertEqual(routingInfo.repositories.todos.repository, "repositories/todos");
     }
   };
 }
@@ -835,6 +848,39 @@ function ModelSpec () {
   };
 }
 
+function RepositorySpec () {
+  var FoxxRepository, TestRepository, instance, prefix, collection, modelPrototype;
+
+  return {
+    setUp: function () {
+      FoxxRepository = require('org/arangodb/foxx').Repository;
+      prefix = "myApp";
+      collection = function () {};
+      modelPrototype = function () {};
+    },
+
+    testWasInitialized: function () {
+      instance = new FoxxRepository(prefix, collection, modelPrototype);
+
+      assertEqual(instance.prefix, prefix);
+      assertEqual(instance.collection, collection);
+      assertEqual(instance.modelPrototype, modelPrototype);
+    },
+
+    testAddingAMethodWithExtend: function () {
+      TestRepository = FoxxRepository.extend({
+        test: function() {
+          return "test";
+        }
+      });
+
+      instance = new TestRepository(prefix, collection, modelPrototype);
+
+      assertEqual(instance.test(), "test");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
@@ -844,5 +890,6 @@ jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);
 jsunity.run(FormatMiddlewareSpec);
 jsunity.run(ModelSpec);
+jsunity.run(RepositorySpec);
 
 return jsunity.done();
