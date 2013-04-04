@@ -56,7 +56,7 @@
     },
     
     // Get details of one specific installed foxx. 
-    show = function(appname) {
+    show: function(appname) {
       var result = {},
       apis = [],
       key,
