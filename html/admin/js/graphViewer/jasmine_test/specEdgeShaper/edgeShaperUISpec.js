@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Edge Shaper UI', function () {
-    var svg, shaper, shaperUI, list, spy;
+    var svg, shaper, shaperUI, list;
 
     beforeEach(function () {
       svg = document.createElement("svg");
