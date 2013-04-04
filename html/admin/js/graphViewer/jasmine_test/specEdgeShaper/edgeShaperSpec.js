@@ -250,7 +250,23 @@
     });
     
     describe('testing for colours', function() {
-            
+      
+      it('should have a default colouring of no colour flag is given', function() {
+        var nodes = [{_id: 1}, {_id: 2}],
+        edges = [{
+          source: nodes[0],
+          target: nodes[1]
+        },{
+          source: nodes[1],
+          target: nodes[0]
+        }],
+        shaper = new EdgeShaper(d3.select("svg"));
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 line").attr("stroke")).toEqual("#686766");
+        expect($("#2-1 line").attr("stroke")).toEqual("#686766");
+      });
+      
       it('should be able to use the same colour for all edges', function() {
         var s = {_id: 1},
         t = {_id: 2},

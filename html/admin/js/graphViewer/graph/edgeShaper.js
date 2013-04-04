@@ -298,10 +298,24 @@ function EdgeShaper(parent, flags, idfunc) {
   while (toplevelSVG[0][0] && toplevelSVG[0][0].ownerSVGElement) {
     toplevelSVG = d3.select(toplevelSVG[0][0].ownerSVGElement);
   }
-   
-  if (flags !== undefined) {
-    parseConfig(flags);
-  } 
+  
+  if (flags === undefined) {
+    flags = {
+      color: {
+        type: "single",
+        stroke: "#686766"
+      }
+    };
+  }
+  
+  if (flags.color === undefined) {
+    flags.color = {
+      type: "single",
+      stroke: "#686766"
+    };
+  }
+
+  parseConfig(flags);
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;
