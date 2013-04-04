@@ -247,6 +247,9 @@ extern "C" {
 /// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
+/// - 1655: @LIT{disallowed operation inside a transaction}
+///   Will be raised when a disallowed operation is carried out in a
+///   transaction.
 /// - 1700: @LIT{invalid user name}
 ///   Will be raised when an invalid user name is used
 /// - 1701: @LIT{invalid password}
@@ -1433,6 +1436,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1655: ERROR_TRANSACTION_DISALLOWED_OPERATION
+///
+/// disallowed operation inside a transaction
+///
+/// Will be raised when a disallowed operation is carried out in a transaction.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1655)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME

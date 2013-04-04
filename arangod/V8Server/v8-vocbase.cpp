@@ -81,6 +81,28 @@ using namespace triagens::arango;
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief macro to make sure we won't continue if we are inside a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+#define PREVENT_EMBEDDED_TRANSACTION(scope)                               \
+  if (V8TransactionContext::isEmbedded()) {                               \
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);  \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
@@ -510,6 +532,10 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
                                               bool create,
                                               TRI_idx_type_e type) {
   v8::HandleScope scope;
+  
+  if (create) {
+    PREVENT_EMBEDDED_TRANSACTION(scope);
+  }
 
   // .............................................................................
   // Check that we have a valid collection
@@ -566,7 +592,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     ReleaseCollection(collection);
     TRI_V8_EXCEPTION_MESSAGE(scope, res, errorString);
   }
-
+  
   // .............................................................................
   // Actually create the index here
   // .............................................................................
@@ -655,8 +681,10 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "ensureFulltext(<attribute>, <minLength>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "ensureFulltextIndex(<attribute>, <minLength>)");
   }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   string attributeName = TRI_ObjectToString(argv[0]);
 
@@ -1351,6 +1379,8 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
   }
 
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
+
   // set default journal size
   TRI_voc_size_t effectiveSize = vocbase->_defaultMaximalSize;
 
@@ -1433,6 +1463,8 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 
 static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv, bool constraint) {
   v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -3447,6 +3479,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
 
@@ -3477,6 +3511,8 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -3484,7 +3520,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-
+  
   CollectionNameResolver resolver(collection->_vocbase);
 
   TRI_primary_collection_t* primary = collection->_collection;
@@ -3560,6 +3596,8 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
 static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -3636,6 +3674,8 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   TRI_index_t* bitarrayIndex = 0;
   bool indexCreated;
   v8::Handle<v8::Value> theIndex;
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // .............................................................................
   // Check that we have a valid collection
@@ -4104,6 +4144,7 @@ static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& 
   return EnsurePathIndex("lookupHashIndex", argv, false, false, TRI_IDX_TYPE_HASH_INDEX);
 }
 
+#if 0
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a priority queue index exists
 ///
@@ -4223,6 +4264,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   ReleaseCollection(collection);
   return scope.Close(index);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
@@ -4808,6 +4850,8 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   if (collection == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
 
@@ -6561,7 +6605,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
+#if 0
   TRI_AddMethodVocbase(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);

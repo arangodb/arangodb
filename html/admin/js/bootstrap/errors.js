@@ -116,6 +116,7 @@
     "ERROR_TRANSACTION_NESTED"     : { "code" : 1652, "message" : "nested transactions detected" }, 
     "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1653, "message" : "internal transaction error" }, 
     "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1654, "message" : "unregistered collection used in transaction" }, 
+    "ERROR_TRANSACTION_DISALLOWED_OPERATION" : { "code" : 1655, "message" : "disallowed operation inside a transaction" }, 
     "ERROR_USER_INVALID_NAME"      : { "code" : 1700, "message" : "invalid user name" }, 
     "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" }, 
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" }, 

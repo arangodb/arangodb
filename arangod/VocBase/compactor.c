@@ -220,6 +220,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_document_collection_t* doc;
   TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
+  TRI_voc_tid_t tid;
   int res;
 
   doc = data;
@@ -228,20 +229,10 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
     bool deleted;
 
-    TRI_voc_size_t markerSize = 0;
-    TRI_voc_size_t keyBodySize = 0;
-    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-      markerSize = sizeof(TRI_doc_document_key_marker_t);
-    }
-    else {
-      markerSize = sizeof(TRI_doc_edge_key_marker_t);
-    }
-
-    keyBodySize = d->_offsetJson - d->_offsetKey;
+    tid = d->_tid;
 
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -266,7 +257,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // check if the document is still active
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, ((char*) d + d->_offsetKey));
     deleted = found == NULL || found->_validTo != 0;
 
     // update datafile
@@ -274,7 +265,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     if (deleted) {
       dfi->_numberDead += 1;
-      dfi->_sizeDead += marker->_size - markerSize - keyBodySize;
+      dfi->_sizeDead += marker->_size;
 
       LOG_DEBUG("found a stale document after copying: %s", ((char*) d + d->_offsetKey));
       TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -283,7 +274,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     found2 = CONST_CAST(found);
-    found2->_fid = datafile->_fid;
+    found2->_fid = fid;
 
     // let marker point to the new position
     found2->_data = result;
@@ -293,7 +284,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     // update datafile info
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += marker->_size - markerSize - keyBodySize;
+    dfi->_sizeAlive += marker->_size;
 
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
@@ -301,6 +292,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     TRI_doc_deletion_key_marker_t const* d = (TRI_doc_deletion_key_marker_t const*) marker;
+    tid = d->_tid;
 
     // write to compactor files
     res = CopyDocument(doc, marker, &result, &fid);
@@ -312,7 +304,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // update datafile info
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, ((char*) d + d->_offsetKey));
 
     if (found != NULL) {
       found2 = CONST_CAST(found);
@@ -327,6 +319,11 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     dfi->_numberDeletion += 1;
 
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  }
+  else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION ||
+           marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
+           marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION) {
+    // these marker types are intentionally not copied
   }
 
   return true;

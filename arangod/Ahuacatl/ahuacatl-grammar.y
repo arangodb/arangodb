@@ -211,7 +211,7 @@ for_statement:
       }
       
       node = TRI_CreateNodeForAql(context, $2, $4);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -224,7 +224,7 @@ for_statement:
 filter_statement:
     T_FILTER expression {
       TRI_aql_node_t* node = TRI_CreateNodeFilterAql(context, $2);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -237,7 +237,7 @@ filter_statement:
 let_statement:
     T_LET variable_name T_ASSIGN expression {
       TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, $2, $4);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -251,14 +251,14 @@ collect_statement:
     T_COLLECT {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
       TRI_PushStackParseAql(context, node);
     } collect_list optional_into {
       TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackParseAql(context), $4);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -278,7 +278,7 @@ collect_list:
 collect_element:
     variable_name T_ASSIGN expression {
       TRI_aql_node_t* node = TRI_CreateNodeAssignAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -301,7 +301,7 @@ sort_statement:
     T_SORT {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -309,7 +309,7 @@ sort_statement:
     } sort_list {
       TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -335,7 +335,7 @@ sort_list:
 sort_element:
     expression sort_direction {
       TRI_aql_node_t* node = TRI_CreateNodeSortElementAql(context, $1, $2);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -358,7 +358,7 @@ sort_direction:
 limit_statement: 
     T_LIMIT integer_value {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), $2); 
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -369,7 +369,7 @@ limit_statement:
     }
   | T_LIMIT integer_value T_COMMA integer_value {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, $2, $4);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -382,7 +382,7 @@ limit_statement:
 return_statement:
     T_RETURN expression {
       TRI_aql_node_t* node = TRI_CreateNodeReturnAql(context, $2);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -469,7 +469,7 @@ function_call:
       }
 
       node = TRI_CreateNodeListAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -477,7 +477,7 @@ function_call:
     } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackParseAql(context), list);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -488,7 +488,7 @@ function_call:
 operator_unary:
     T_PLUS expression %prec UPLUS {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryPlusAql(context, $2);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -496,7 +496,7 @@ operator_unary:
     }
   | T_MINUS expression %prec UMINUS {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryMinusAql(context, $2);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -504,7 +504,7 @@ operator_unary:
     }
   | T_NOT expression %prec T_NOT { 
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryNotAql(context, $2);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -515,7 +515,7 @@ operator_unary:
 operator_binary:
     expression T_OR expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryOrAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -523,7 +523,7 @@ operator_binary:
     }
   | expression T_AND expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryAndAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -531,7 +531,7 @@ operator_binary:
     }
   | expression T_PLUS expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryPlusAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -539,7 +539,7 @@ operator_binary:
     }
   | expression T_MINUS expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryMinusAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -547,7 +547,7 @@ operator_binary:
     }
   | expression T_TIMES expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryTimesAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -555,7 +555,7 @@ operator_binary:
     }
   | expression T_DIV expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryDivAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -563,7 +563,7 @@ operator_binary:
     }
   | expression T_MOD expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryModAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -571,7 +571,7 @@ operator_binary:
     }
   | expression T_EQ expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryEqAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -579,7 +579,7 @@ operator_binary:
     }
   | expression T_NE expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryNeAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -587,7 +587,7 @@ operator_binary:
     }
   | expression T_LT expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryLtAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -595,7 +595,7 @@ operator_binary:
     }
   | expression T_GT expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryGtAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -603,7 +603,7 @@ operator_binary:
     } 
   | expression T_LE expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryLeAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -611,7 +611,7 @@ operator_binary:
     }
   | expression T_GE expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryGeAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -619,7 +619,7 @@ operator_binary:
     }
   | expression T_IN expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryInAql(context, $1, $3);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -630,7 +630,7 @@ operator_binary:
 operator_ternary:
     expression T_QUESTION expression T_COLON expression {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorTernaryAql(context, $1, $3, $5);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -666,7 +666,7 @@ compound_type:
 list: 
     T_LIST_OPEN {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -699,7 +699,7 @@ list_elements_list:
 array:
     T_DOC_OPEN {
       TRI_aql_node_t* node = TRI_CreateNodeArrayAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -754,7 +754,7 @@ reference:
       // create a temporary variable for the row iterator (will be popped by "expansion" rule")
       node = TRI_CreateNodeReferenceAql(context, varname);
 
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -800,7 +800,7 @@ single_reference:
         node = TRI_CreateNodeCollectionAql(context, $1);
       }
 
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -880,7 +880,7 @@ atomic_value:
 value_literal: 
     T_QUOTED_STRING {
       TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, $1);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -904,7 +904,7 @@ value_literal:
       }
       
       node = TRI_CreateNodeValueDoubleAql(context, value);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -912,7 +912,7 @@ value_literal:
     }
   | T_NULL {
       TRI_aql_node_t* node = TRI_CreateNodeValueNullAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -920,7 +920,7 @@ value_literal:
     }
   | T_TRUE {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, true);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -928,7 +928,7 @@ value_literal:
     }
   | T_FALSE {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, false);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -939,7 +939,7 @@ value_literal:
 bind_parameter:
     T_PARAMETER {
       TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, $1);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -981,7 +981,7 @@ integer_value:
       }
 
       node = TRI_CreateNodeValueIntAql(context, value);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
