@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $, d3*/
+/*global ColourMapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -55,6 +56,7 @@ function EdgeShaper(parent, flags, idfunc) {
     noop = function (line, g) {
     
     },
+    colourMapper = new ColourMapper(),
     events = {
       click: noop,
       dblclick: noop,
@@ -181,11 +183,11 @@ function EdgeShaper(parent, flags, idfunc) {
             .select("defs")
             .append("marker")
             .attr("id", "arrow")
-            .attr("viewBox", "0 0 10 10")
-            .attr("refX", "0")
+            .attr("refX", "22")
             .attr("refY", "5")
             .attr("markerUnits", "strokeWidth")
-            .attr("markerHeight", "3")
+            .attr("markerHeight", "10")
+            .attr("markerWidth", "10")
             .attr("orient", "auto")
             .append("path")
               .attr("d", "M 0 0 L 10 5 L 0 10 z");         
@@ -200,12 +202,14 @@ function EdgeShaper(parent, flags, idfunc) {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("stroke", "black")
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
             });
@@ -232,7 +236,7 @@ function EdgeShaper(parent, flags, idfunc) {
       switch (color.type) {
         case "single":
           addColor = function (line, g) {
-            line.attr("stroke", color.value);
+            line.attr("stroke", color.stroke);
           };
           break;
         case "gradient":
@@ -261,6 +265,11 @@ function EdgeShaper(parent, flags, idfunc) {
           };
           break;
         case "attribute":
+          addColor = function (line, g) {
+             g.attr("stroke", function(e) {
+               return colourMapper.getColour(e[color.key]);
+             });
+          };
           break; 
         default:
           throw "Sorry given colour-scheme not known";

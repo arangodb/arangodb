@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
+/*global ColourMapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -66,6 +67,7 @@ function NodeShaper(parent, flags, idfunc) {
     noop = function (node) {
     
     },
+    colourMapper = new ColourMapper(),
     events = {
       click: noop,
       dblclick: noop,
@@ -187,12 +189,16 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", "black")
+            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", "black")
+            .attr("stroke", "black")
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
             });
@@ -225,6 +231,11 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case "attribute":
+          addColor = function (g) {
+             g.attr("fill", function(n) {
+               return colourMapper.getColour(n[color.key]);
+             });
+          };
           break; 
         default:
           throw "Sorry given colour-scheme not known";
@@ -251,7 +262,26 @@ function NodeShaper(parent, flags, idfunc) {
   
   if (flags !== undefined) {
     parseConfig(flags);
-  } 
+    /*
+    flags = {
+      color: {
+        type: "single",
+        stroke: "#FF8F35",
+        fill: "#8AA051"
+      }
+    };
+    */
+  }
+  /*
+  if (flags.color === undefined) {
+    flags.color = {
+      type: "single",
+      stroke: "#FF8F35",
+      fill: "#8AA051"
+    };
+    
+  }
+  */
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;

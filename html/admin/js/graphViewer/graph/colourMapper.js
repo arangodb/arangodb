@@ -38,7 +38,7 @@ function ColourMapper() {
   colours.push("navy");
   colours.push("green");
   colours.push("gold");
-  colours.push("indigo");
+  colours.push("red");
   colours.push("saddlebrown");
   colours.push("skyblue");
   colours.push("olive");

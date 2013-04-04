@@ -44,16 +44,22 @@ var Application,
   internal = {};
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_createUrlObject
 /// @brief create a new url object
 ///
+/// This creates a new `UrlObject`.
 /// ArangoDB uses a certain structure we refer to as `UrlObject`.
 /// With the following function (which is only internal, and not
 /// exported) you can create an UrlObject with a given URL,
 /// a constraint and a method. For example:
 ///
 /// @EXAMPLES
-///     internal.createUrlObject('/lecker/gans', null, 'get')
+///     internal.createUrlObject('/lecker/gans', null, 'get');
 ////////////////////////////////////////////////////////////////////////////////
 
 internal.createUrlObject = function (url, constraint, method) {
@@ -78,8 +84,7 @@ internal.createUrlObject = function (url, constraint, method) {
 /// @fn JSF_foxx_application_initializer
 /// @brief Create a new Application
 ///
-/// And that's Application. It's a constructor, so call it like this:
-/// It takes two optional arguments as displayed above:
+/// This creates a new Application. It takes two optional arguments as displayed above:
 /// * **The URL Prefix:** All routes you define within will be prefixed with it
 /// * **The Template Collection:** More information in the template section
 ///
@@ -169,6 +174,7 @@ _.extend(Application.prototype, {
 ///       //handle the request
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = {
@@ -278,7 +284,7 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give.
 /// **A word of warning:** Do not forget that `delete` is
 /// a reserved word in JavaScript and therefore needs to be
-/// called as `app['delete']`. There is also an alias `del`
+/// called as app['delete']. There is also an alias `del`
 /// for this very reason.
 ///
 /// @EXAMPLES
@@ -290,6 +296,7 @@ _.extend(Application.prototype, {
 ///       // Take this request and deal with it!
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
   'delete': function (route, callback) {
     'use strict';
     return this.handleRequest("delete", route, callback);
@@ -316,6 +323,7 @@ _.extend(Application.prototype, {
 ///       //Do some crazy request logging
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
   before: function (path, func) {
     'use strict';
     if (_.isUndefined(func)) {
@@ -346,6 +354,7 @@ _.extend(Application.prototype, {
 ///       //Do some crazy response logging
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
   after: function (path, func) {
     'use strict';
     if (_.isUndefined(func)) {
@@ -366,16 +375,17 @@ _.extend(Application.prototype, {
 /// @brief The ViewHelper concept
 ///
 /// If you want to use a function inside your templates, the ViewHelpers
-/// will come to rescue you. Define them on your app like this:
+/// will come to rescue you. Define them on your app like in the example.
+///
+/// Then you can just call this function in your template's JavaScript
+/// blocks.
 ///
 /// @EXAMPLES
 ///     app.helper("link_to", function (identifier) {
 ///       return urlRepository[identifier];
 ///     });
-///
-/// Then you can just call this function in your template's JavaScript
-/// blocks.
 ////////////////////////////////////////////////////////////////////////////////
+
   helper: function (name, func) {
     'use strict';
     this.helperCollection[name] = func;
@@ -385,12 +395,14 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_accepts
 /// @brief Shortform for using the FormatMiddleware
 ///
+/// Shortform for using the FormatMiddleware
 /// More information about the FormatMiddleware in the corresponding section.
 /// This is a shortcut to add the middleware to your application:
 ///
 /// @EXAMPLES
 ///     app.accepts(["json"], "json");
 ////////////////////////////////////////////////////////////////////////////////
+
   accepts: function (allowedFormats, defaultFormat) {
     'use strict';
 
@@ -409,6 +421,7 @@ _.extend(Application.prototype, {
 ///
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
+
 RequestContext = function (route) {
   'use strict';
   this.route = route;
@@ -423,6 +436,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_pathParam
 /// @brief Describe a Path Parameter
 ///
+/// Describe a Path Paramter:
 /// If you defined a route "/foxx/:id", you can constrain which format the id
 /// can have by giving a type. We currently support the following types:
 ///
@@ -439,6 +453,7 @@ _.extend(RequestContext.prototype, {
 ///       dataType: "int"
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
   pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
@@ -462,6 +477,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_queryParam
 /// @brief Describe a Query Parameter
 ///
+/// Describe a Query Parameter:
 /// If you defined a route "/foxx", you can constrain which format a query
 /// parameter (`/foxx?a=12`) can have by giving it a type.
 /// We currently support the following types:
@@ -499,7 +515,7 @@ _.extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_nickname
-/// @brief Set the nickname for this route in the documentation
+/// Set the nickname for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
 
   nickname: function (nickname) {
@@ -515,6 +531,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
+/// Set the summary for this route in the documentation
 /// Can't be longer than 60 characters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -530,6 +547,8 @@ _.extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_notes
 /// @brief Set the notes for this route in the documentation
+///
+/// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
@@ -563,6 +582,7 @@ _.extend(RequestContext.prototype, {
 /// The `BaseMiddleware` manipulates the request and response
 /// objects to give you a nicer API.
 ////////////////////////////////////////////////////////////////////////////////
+
 BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
@@ -577,6 +597,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 ///
 /// Get the body of the request
 ////////////////////////////////////////////////////////////////////////////////
+
       body: function () {
         return this.requestBody;
       },
@@ -594,6 +615,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// So for example if the user requested `/test?a=2`, the call
 /// `params("a")` will return `2`.
 ////////////////////////////////////////////////////////////////////////////////
+
       params: function (key) {
         var ps = {};
         _.extend(ps, this.urlParameters);
@@ -626,14 +648,14 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 ///     response.set("Content-Length", 123);
 ///     response.set("Content-Type", "text/plain");
 ///
-/// or alternatively:
+///     // or alternatively:
 ///
-/// @EXAMPLES
 ///     response.set({
 ///       "Content-Length": "123",
 ///       "Content-Type": "text/plain"
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
       set: function (key, value) {
         var attributes = {};
         if (_.isUndefined(value)) {
@@ -663,6 +685,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// @EXAMPLES
 ///     response.json({'born': 'December 12, 1915'});
 ////////////////////////////////////////////////////////////////////////////////
+
       json: function (obj) {
         this.contentType = "application/json";
         this.body = JSON.stringify(obj);
@@ -676,7 +699,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// you're in luck now.
 /// It expects documents in the following form in this collection:
 ///
-/// @EXAMPLES
 ///     {
 ///       path: "high/way",
 ///       content: "hallo <%= username %>",
@@ -693,8 +715,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// into the this collection and search by the path attribute.
 /// It will then render the template with the given data:
 ///
-/// @EXAMPLES
-///     response.render("high/way", {username: 'Application'})
 ///
 /// Which would set the body of the response to `hello Application` with the
 /// template defined above. It will also set the `contentType` to
@@ -703,6 +723,9 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// In addition to the attributes you provided, you also have access to
 /// all your view helpers. How to define them? Read above in the
 /// ViewHelper section.
+///
+/// @EXAMPLES
+///     response.render("high/way", {username: 'Application'})
 ////////////////////////////////////////////////////////////////////////////////
       render: function (templatePath, data) {
         var template;
@@ -834,13 +857,10 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 ///       a: 1
 ///     });
 ////////////////////////////////////////////////////////////////////////////////
+
 Model = function (attributes) {
   'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_attributes
-/// @brief The attributes property is the internal hash containing the model's state.
-////////////////////////////////////////////////////////////////////////////////
   this.attributes = attributes || {};
 };
 
@@ -849,6 +869,7 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_get
 /// @brief Get the value of an attribute
 ///
+/// Get the value of an attribute
 /// @EXAMPLES
 ///     instance = new Model({
 ///       a: 1
@@ -856,6 +877,7 @@ _.extend(Model.prototype, {
 ///
 ///     instance.get("a");
 ////////////////////////////////////////////////////////////////////////////////
+
   get: function (attributeName) {
     return this.attributes[attributeName];
   },
@@ -864,6 +886,7 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_set
 /// @brief Set the value of an attribute
 ///
+/// Set the value of an attribute
 /// @EXAMPLES
 ///     instance = new Model({
 ///       a: 1
@@ -871,6 +894,7 @@ _.extend(Model.prototype, {
 ///
 ///     instance.set("a", 2);
 ////////////////////////////////////////////////////////////////////////////////
+
   set: function (attributeName, value) {
     this.attributes[attributeName] = value;
   },
@@ -879,6 +903,7 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_has
 /// @brief Returns true if the attribute is set to a non-null or non-undefined value.
 ///
+/// Returns true if the attribute is set to a non-null or non-undefined value.
 /// @EXAMPLES
 ///     instance = new Model({
 ///       a: 1
@@ -887,6 +912,7 @@ _.extend(Model.prototype, {
 ///     instance.has("a"); //=> true
 ///     instance.has("b"); //=> false
 ////////////////////////////////////////////////////////////////////////////////
+
   has: function (attributeName) {
     return !(_.isUndefined(this.attributes[attributeName]) ||
              _.isNull(this.attributes[attributeName]));
@@ -894,8 +920,12 @@ _.extend(Model.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_toJSON
-/// @brief Return a copy of the model which can be saved into ArangoDB (or send to the client).
+/// @brief Return a copy of the model which can be saved into ArangoDB
+///
+/// Return a copy of the model which can be saved into ArangoDB
+/// (or send to the client).
 ////////////////////////////////////////////////////////////////////////////////
+
   toJSON: function () {
     return this.attributes;
   }
@@ -904,45 +934,39 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_extend
 /// @brief Extend the Model prototype to add or overwrite methods.
+///
+/// Extend the Model prototype to add or overwrite methods.
 ////////////////////////////////////////////////////////////////////////////////
+
 Model.extend = backbone_helpers.extend;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_initializer
 /// @brief Create a new instance of Repository
 ///
+/// Create a new instance of Repository
 /// A Foxx Repository is always initialized with the prefix, the collection and the modelPrototype.
 /// If you initialize a model, you can give it initial data as an object.
 ///
 /// @EXAMPLES
 ///     instance = new Repository(prefix, collection, modelPrototype);
 ////////////////////////////////////////////////////////////////////////////////
+
 Repository = function (prefix, collection, modelPrototype) {
   'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_prefix
-/// @brief The prefix of the application.
-////////////////////////////////////////////////////////////////////////////////
   this.prefix = prefix;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_collection
-/// @brief The collection object.
-////////////////////////////////////////////////////////////////////////////////
   this.collection = collection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_modelPrototype
-/// @brief The prototype of the according model.
-////////////////////////////////////////////////////////////////////////////////
   this.modelPrototype = modelPrototype;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_extend
 /// @brief Extend the Repository prototype to add or overwrite methods.
+///
+/// Extend the Repository prototype to add or overwrite methods.
 ////////////////////////////////////////////////////////////////////////////////
+
 Repository.extend = backbone_helpers.extend;
 
 exports.Application = Application;
