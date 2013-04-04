@@ -78,6 +78,8 @@ var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ]
 ////////////////////////////////////////////////////////////////////////////////
         
 function notImplementedFunction (route, message) {
+  'use strict';
+
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error("%s", message);
@@ -94,6 +96,8 @@ function notImplementedFunction (route, message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function errorFunction (route, message) {
+  'use strict';
+
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error("%s", message);
@@ -110,6 +114,8 @@ function errorFunction (route, message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function splitUrl (url) {
+  'use strict';
+
   var cleaned;
   var i;
   var parts;
@@ -160,6 +166,8 @@ function splitUrl (url) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupUrl (prefix, url) {
+  'use strict';
+
   if (url === undefined || url === '') {
     return null;
   }
@@ -188,6 +196,8 @@ function lookupUrl (prefix, url) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackStatic (content) {
+  'use strict';
+
   var type;
   var body;
   var methods;
@@ -223,6 +233,8 @@ function lookupCallbackStatic (content) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackActionCallback (route, action, context) {
+  'use strict';
+
   var defn;
   var env;
   var func;
@@ -277,6 +289,8 @@ function lookupCallbackActionCallback (route, action, context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackActionDo (route, action) {
+  'use strict';
+
   var func;
   var joined;
   var name;
@@ -333,6 +347,8 @@ function lookupCallbackActionDo (route, action) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackActionController (route, action) {
+  'use strict';
+
   var func;
   var mdl;
   var httpMethods = { 
@@ -404,6 +420,8 @@ function lookupCallbackActionController (route, action) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackActionPrefixController (route, action) {
+  'use strict';
+
   var prefixController = action.prefixController;
   var httpMethods = { 
     'get': exports.GET,
@@ -494,6 +512,7 @@ function lookupCallbackActionPrefixController (route, action) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackAction (route, action, context) {
+  'use strict';
 
   // .............................................................................
   // short-cut for prefix controller
@@ -543,6 +562,8 @@ function lookupCallbackAction (route, action, context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallback (route, context) {
+  'use strict';
+
   var result = null;
 
   if (route.hasOwnProperty('content')) {
@@ -560,6 +581,8 @@ function lookupCallback (route, context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createContexts (appModule, appContext, desc) {
+  'use strict';
+
   var key;
   var c;
 
@@ -576,6 +599,10 @@ function createContexts (appModule, appContext, desc) {
         requires: {}
       };
 
+      // .............................................................................
+      // requires
+      // .............................................................................
+
       if (d.hasOwnProperty('requires')) {
         for (c in d.requires) {
           if (d.requires.hasOwnProperty(c)) {
@@ -583,6 +610,56 @@ function createContexts (appModule, appContext, desc) {
             var m = appModule.require(name);
 
             result[key].requires[c] = m;
+          }
+        }
+      }
+
+      // .............................................................................
+      // repositories
+      // .............................................................................
+
+      if (d.hasOwnProperty('repositories')) {
+        for (c in d.repositories) {
+          if (d.repositories.hasOwnProperty(c)) {
+            var rep = d.repositories[c];
+            var model;
+            var Repo;
+
+            if (rep.hasOwnProperty('model')) {
+              model = appModule.require(rep.model).Model;
+
+              if (model === undefined) {
+                throw new Error("module '" + rep.model + "' does not define a model");
+              }
+            }
+            else {
+              model = foxx.Model;
+            }
+
+            if (rep.hasOwnProperty('repository')) {
+              Repo = appModule.require(rep.repository).Repository;
+
+              if (Repo === undefined) {
+                throw new Error("module '" + rep.repository + "' does not define a repository");
+              }
+            }
+            else {
+              Repo = foxx.Repository;
+            }
+
+            var prefix = appContext.collectionPrefix;
+            var cname;
+
+            if (prefix === "") {
+              cname = c;
+            }
+            else {
+              cname = prefix + "_" + c;
+            }
+
+            var collection = arangodb.db._collection(cname);
+
+            result[key].repositories[c] = new Repo(prefix, collection, model);
           }
         }
       }
@@ -597,6 +674,8 @@ function createContexts (appModule, appContext, desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function intersectMethods (a, b) {
+  'use strict';
+
   var d = {};
   var i;
   var j;
@@ -625,6 +704,8 @@ function intersectMethods (a, b) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
+  'use strict';
+
   var i;
   var p;
   var part;
@@ -714,6 +795,8 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineRoute (route, where, url, callback) {
+  'use strict';
+
   var methods;
   var branch;
   var i;
@@ -733,6 +816,8 @@ function defineRoute (route, where, url, callback) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function flattenRouting (routes, path, urlParameters, depth, prefix) {
+  'use strict';
+
   var cur;
   var i;
   var k;
@@ -903,6 +988,8 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
+  'use strict';
+
   var url = options.url;
   var contexts = options.context;
   var callback = options.callback;
@@ -968,6 +1055,8 @@ function defineHttp (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getErrorMessage (code) {
+  'use strict';
+
   var key;
 
   for (key in internal.errors) {
@@ -986,6 +1075,8 @@ function getErrorMessage (code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getJsonBody (req, res, code) {
+  'use strict';
+
   var body;
   var err;
 
@@ -1028,6 +1119,8 @@ function getJsonBody (req, res, code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
+  'use strict';
+
   var i;
   var msg;
 
@@ -1075,6 +1168,8 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 ////////////////////////////////////////////////////////////////////////////////
 
 function reloadRouting () {
+  'use strict';
+
   var i;
   var j;
   var method;
@@ -1217,7 +1312,7 @@ function reloadRouting () {
     }
     catch (err) {
       console.error("cannot install route '%s': %s - %s",
-                    JSON.stringify(route),
+                    route.toString(),
                     String(err),
                     String(err.stack));
     }
@@ -1247,6 +1342,8 @@ function reloadRouting () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function nextRouting (state) {
+  'use strict';
+
   var i;
   var k;
 
@@ -1294,6 +1391,8 @@ function nextRouting (state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function firstRouting (type, parts) {
+  'use strict';
+
   var url = parts;
 
   if (typeof url === 'string') {
@@ -1326,22 +1425,6 @@ function firstRouting (type, parts) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if development mode is allowed in general
-////////////////////////////////////////////////////////////////////////////////
-
-function developmentModeAllowed () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if development mode is activated for an application
-////////////////////////////////////////////////////////////////////////////////
-
-function developmentModeActivated (application) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1359,6 +1442,8 @@ function developmentModeActivated (application) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function badParameter (req, res, name) {
+  'use strict';
+
   resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, 
               "invalid value for parameter '" + name + "'");
 }
@@ -1376,6 +1461,8 @@ function badParameter (req, res, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultOk (req, res, httpReturnCode, result, headers) {  
+  'use strict';
+
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
   
@@ -1403,6 +1490,8 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
+  'use strict';
+
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
@@ -1415,6 +1504,8 @@ function resultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotFound (req, res, code, msg, headers) {
+  'use strict';
+
   resultError(req, res, exports.HTTP_NOT_FOUND, code, msg, headers);
 }
 
@@ -1427,6 +1518,8 @@ function resultNotFound (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
+  'use strict';
+
   resultError(req, 
               res,
               exports.HTTP_NOT_IMPLEMENTED,
@@ -1444,6 +1537,8 @@ function resultNotImplemented (req, res, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
+  'use strict';
+
   resultError(req, res,
               exports.HTTP_METHOD_NOT_ALLOWED,
               arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
@@ -1460,6 +1555,8 @@ function resultUnsupported (req, res, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
+  'use strict';
+
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
   res.contentType = "text/html";
 
@@ -1489,6 +1586,8 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
+  'use strict';
+
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
   res.contentType = "text/html";
 
@@ -1527,6 +1626,8 @@ function resultTemporaryRedirect (req, res, destination, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultCursor (req, res, cursor, code, options) {
+  'use strict';
+
   var rows;
   var count;
   var hasCount;
@@ -1590,6 +1691,8 @@ function resultCursor (req, res, cursor, code, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
+  'use strict';
+
   if (collection === undefined) {
     resultError(req, res,
                 exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
@@ -1612,6 +1715,8 @@ function collectionNotFound (req, res, collection, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
+  'use strict';
+
   if (collection === undefined) {
     resultError(req, res,
                 exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
@@ -1640,6 +1745,8 @@ function indexNotFound (req, res, collection, index, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers) {
+  'use strict';
+
   var code;
   var msg;
   var num;
@@ -1707,6 +1814,8 @@ function resultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function echoRequest (req, res, options, next) {
+  'use strict';
+
   var result;
 
   result = { request : req, options : options };
@@ -1721,6 +1830,8 @@ function echoRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function logRequest (req, res, options, next) {
+  'use strict';
+
   var log;
   var level;
   var token;
@@ -1768,6 +1879,8 @@ function logRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function redirectRequest (req, res, options, next) {
+  'use strict';
+
   if (options.permanently) {
     resultPermanentRedirect(req, res, options.destination);
   }
@@ -1781,10 +1894,23 @@ function redirectRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function pathHandler (req, res, options, next) {
+  'use strict';
+
   var filename;
   var result;
 
   filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
+
+  if (options.hasOwnProperty('root')) {
+    var root = options.root;
+
+    if (root.substr(0, 4) === "app:") {
+      filename = fs.join(module.appPath(), filename);
+    }
+    else if (root.substr(0, 4) === "dev:") {
+      filename = fs.join(module.devAppPath(), filename);
+    }
+  }
 
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
@@ -1820,8 +1946,6 @@ exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.routingCache             = function() { return RoutingCache; };
-exports.developmentModeAllowed   = developmentModeAllowed;
-exports.developmentModeActivated = developmentModeActivated;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;

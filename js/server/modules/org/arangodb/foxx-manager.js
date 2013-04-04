@@ -161,6 +161,7 @@ function installAssets (app, routes) {
           action: {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
+              root: app._id,
               path: fs.join(app._path, directory)
             }
           }
