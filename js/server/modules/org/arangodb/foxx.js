@@ -139,16 +139,11 @@ _.extend(Application.prototype, {
 
   start: function (context) {
     'use strict';
-    var requires = this.requires,
-      prefix = context.prefix;
+    var prefix = context.prefix;
 
     this.routingInfo.urlPrefix = prefix + "/" + this.routingInfo.urlPrefix;
 
-    _.each(this.routingInfo.routes, function (route) {
-      route.action.context = context.context;
-      route.action.requiresLibs = requires;
-    });
-
+    context.requires = this.requires;
     context.routingInfo = this.routingInfo;
   },
 

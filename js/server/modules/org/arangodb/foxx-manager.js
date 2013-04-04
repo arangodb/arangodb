@@ -332,11 +332,25 @@ function routingAalApp (app, mount, prefix) {
       throw "mount point must be absolute";
     }
 
+    // compute the collection prefix
+    if (prefix === undefined) {
+      prefix = mount.substr(1).replace(/\//g, "_");
+    }
+
     // setup the routes
     routes = {
       urlPrefix: mount,
       routes: [],
-      middleware: []
+      middleware: [],
+      context: {},
+
+      appContext: {
+        name: app._name,                        // app name
+        version: app._version,                  // app version
+        appId: app._id,                         // app identifier
+        mount: mount,                           // global mount
+        collectionPrefix: prefix                // collection prefix
+      }
     };
 
     routes.routes.push({
@@ -350,11 +364,6 @@ function routingAalApp (app, mount, prefix) {
       }
     });
 
-    // compute the collection prefix
-    if (prefix === undefined) {
-      prefix = mount.substr(1).replace(/\//g, "_");
-    }
-
     // mount all applications
     apps = app._manifest.apps;
 
@@ -362,51 +371,67 @@ function routingAalApp (app, mount, prefix) {
       if (apps.hasOwnProperty(i)) {
         var file = apps[i];
 
-        // set up a context for the applications
+
+        // set up a context for the routing table
+        routes.context[i] = {
+          repositories: {},
+          requires: {}
+        };
+
+        // set up a context for the application start function
         context = {
           prefix: arangodb.normalizeURL("/" + i),   // app mount
-
-          context: {
-            name: app._name,                        // app name
-            version: app._version,                  // app version
-            appId: app._id,                         // app identifier
-            mount: mount,                           // global mount
-            collectionPrefix: prefix                // collection prefix
-          }
+          requires: {},
+          routingInfo: {}
         };
 
         app.loadAppScript(app.createAppModule(), file, context);
 
-        if (context.routingInfo !== undefined) {
-          var ri = context.routingInfo;
-          var p = ri.urlPrefix;
-          var route;
-          var j;
+        // .............................................................................
+        // routingInfo
+        // .............................................................................
 
-          if (ri.hasOwnProperty("routes")) {
-            for (j = 0;  j < ri.routes.length;  ++j) {
-              route = ri.routes[j];
+        var ri = context.routingInfo;
+        var p = ri.urlPrefix;
+        var route;
+        var j;
+        var k;
+
+        var rm = [ "routes", "middleware" ];
+
+        for (k = 0;  k < rm.length;  ++k) {
+          var key = rm[k];
+
+          if (ri.hasOwnProperty(key)) {
+            var rt = ri[key];
+
+            for (j = 0;  j < rt.length;  ++j) {
+              route = rt[j];
 
               if (route.hasOwnProperty("url")) {
                 route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
               }
 
-              routes.routes.push(route);
+              route.context = i;
+
+              routes[key].push(route);
             }
           }
 
-          if (ri.hasOwnProperty("middleware")) {
-            for (j = 0;  j < ri.middleware.length;  ++j) {
-              route = ri.middleware[j];
+          // .............................................................................
+          // repositories
+          // .............................................................................
 
-              if (route.hasOwnProperty("url")) {
-                route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
-              }
-
-              routes.middleware.push(route);
-            }
+          if (ri.hasOwnProperty("repositories")) {
+            routes.context[i].repositories = ri.repositories;
           }
         }
+
+        // .............................................................................
+        // requires
+        // .............................................................................
+
+        routes.context[i].requires = context.requires;
       }
     }
 
