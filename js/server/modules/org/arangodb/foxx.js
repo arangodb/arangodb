@@ -33,6 +33,7 @@ var Application,
   BaseMiddleware,
   FormatMiddleware,
   Model,
+  Repository,
   _ = require("underscore"),
   backbone_helpers = require("backbone"),
   db = require("org/arangodb").db,
@@ -121,6 +122,7 @@ Application = function (options) {
       action: {callback: myMiddleware.stringRepresentation}
     }
   ];
+  this.routingInfo.repositories = {};
 };
 
 _.extend(Application.prototype, {
@@ -148,6 +150,10 @@ _.extend(Application.prototype, {
     });
 
     context.routingInfo = this.routingInfo;
+  },
+
+  registerRepository: function (name, opts) {
+    this.routingInfo.repositories[name] = opts;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -900,25 +906,53 @@ _.extend(Model.prototype, {
   }
 });
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_extend
 /// @brief Extend the Model prototype to add or overwrite methods.
-///
-/// @EXAMPLES
-///     instance = new Model({
-///       a: 1
-///     });
-///
-///     instance.set("a", 2);
 ////////////////////////////////////////////////////////////////////////////////
 Model.extend = backbone_helpers.extend;
 
-/// We finish off with exporting Application and the middlewares.
-/// Everything else will remain our secret.
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_initializer
+/// @brief Create a new instance of Repository
+///
+/// A Foxx Repository is always initialized with the prefix, the collection and the modelPrototype.
+/// If you initialize a model, you can give it initial data as an object.
+///
+/// @EXAMPLES
+///     instance = new Repository(prefix, collection, modelPrototype);
+////////////////////////////////////////////////////////////////////////////////
+Repository = function (prefix, collection, modelPrototype) {
+  'use strict';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_prefix
+/// @brief The prefix of the application.
+////////////////////////////////////////////////////////////////////////////////
+  this.prefix = prefix;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_collection
+/// @brief The collection object.
+////////////////////////////////////////////////////////////////////////////////
+  this.collection = collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_modelPrototype
+/// @brief The prototype of the according model.
+////////////////////////////////////////////////////////////////////////////////
+  this.modelPrototype = modelPrototype;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_extend
+/// @brief Extend the Repository prototype to add or overwrite methods.
+////////////////////////////////////////////////////////////////////////////////
+Repository.extend = backbone_helpers.extend;
 
 exports.Application = Application;
 exports.Model = Model;
+exports.Repository = Repository;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
 

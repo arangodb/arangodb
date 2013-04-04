@@ -76,9 +76,9 @@ Use this method to register a repository and a corresponding model. They can the
       repository: "repositories/todos"
     });
 
-If you do not give a repository, it will default to the `Foxx.Repository`. If you need more than the methods provided by it, you must give the path to your repository module there. Then you can extend the Foxx.Repository prototype and add your own methods.
+If you do not give a repository, it will default to the `Foxx.Repository`. If you need more than the methods provided by it, you must give the path (relative to your lib directory) to your repository module there. Then you can extend the Foxx.Repository prototype and add your own methods.
 
-If you do not give a model, it will default to the path `models/:name` where name is the name you registered (in this case "todos").
+If you do not give a model, it will default to the `Foxx.Model`. If you need more than the methods provided by it, you must give the path (relative to your lib directory) to your model module there. Then you can extend the Foxx.Model prototype and add your own methods.
 
 If you don't need either of those, you don't need to give an empty object. You can then just call:
 
@@ -198,7 +198,7 @@ You provide your response body as a String here.
 
   exports.model = TodoModel;
 
-The model doesn't know anything about the database. It is just a representation of the data as an JavaScript object. You can add and overwrite the methods of the prototype in your model prototype via the object you give to extend.
+The model doesn't know anything about the database. It is just a representation of the data as an JavaScript object. You can add and overwrite the methods of the prototype in your model prototype via the object you give to extend. In your model file, export the model as `model`.
 
 A Foxx Model can be initialized with an object of attributes and their values.
 
@@ -225,75 +225,78 @@ A Foxx Model can be initialized with an object of attributes and their values.
 
 ## Foxx.Repository
 
-A Foxx Repository is always initialized with the prefix, the collectionName and the model.
+A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as `repository`.
 
-```js
-Foxx = require("org/arangodb/foxx");
+  Foxx = require("org/arangodb/foxx");
 
-TodosRepository = Foxx.Repository.extend({
-});
+  TodosRepository = Foxx.Repository.extend({
+  });
 
-exports.repository = TodosRepository;
-```
+  exports.repository = TodosRepository;
+
+#### new Foxx.Repository
+@copydetails JSF_foxx_repository_initializer
 
 #### Foxx.Repository.extend
-
-Extend the Repository prototype to add or overwrite methods.
+@copydetails JSF_foxx_repository_extend
 
 #### Foxx.Repository#collection
-
-The collection object.
-
-#### Foxx.Repository#collectionName
-
-The name of the collection as a String (already includes the prefix).
+@copydetails JSF_foxx_repository_collection
 
 #### Foxx.Repository#prefix
-
-The prefix of the application.
+@copydetails JSF_foxx_repository_prefix
 
 #### Foxx.Repository#modelPrototype
-
-The prototype of the according model.
+@copydetails JSF_foxx_repository_modelPrototype
 
 #### Foxx.Repository#save
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#remove
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#replace
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#update
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#removeByExample
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#replaceByExample
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#updateByExample
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#all
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#byExample
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 #### Foxx.Repository#firstExample
 
+**Not implemented**
 See the documentation of collection (will be delegated to the collection).
 
 ## The Manifest File
