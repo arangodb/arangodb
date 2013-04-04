@@ -265,7 +265,7 @@
           {
             color: {
               type: "single",
-              value: "#123456"
+              stroke: "#123456"
             }
           }
         );
@@ -301,17 +301,17 @@
           {
             color: {
               type: "attribute",
-              value: "label"
+              key: "label"
             }
           }
         ),
         c1,c2,c3,c4;
         shaper.drawEdges(edges);
         
-        c1 = $("#1-2 line").attr("stroke");
-        c2 = $("#2-3 line").attr("stroke");
-        c3 = $("#3-4 line").attr("stroke");
-        c4 = $("#4-1 line").attr("stroke");
+        c1 = $("#1-2").attr("stroke");
+        c2 = $("#2-3").attr("stroke");
+        c3 = $("#3-4").attr("stroke");
+        c4 = $("#4-1").attr("stroke");
         
         expect(c1).toBeDefined();
         expect(c2).toBeDefined();
@@ -539,6 +539,13 @@
         expect($("#2-3 text")[0].textContent).toEqual("second");
         expect($("#3-4 text")[0].textContent).toEqual("third");
         expect($("#4-1 text")[0].textContent).toEqual("fourth");
+        
+        // All labels should be printed in black
+        expect($("#1-2 text").attr("stroke")).toEqual("black");
+        expect($("#2-3 text").attr("stroke")).toEqual("black");
+        expect($("#3-4 text").attr("stroke")).toEqual("black");
+        expect($("#4-1 text").attr("stroke")).toEqual("black");
+        
       });
       
       it('should display the label at the correct position', function() {
@@ -735,7 +742,7 @@
         expect($("svg #3-4")[0]).toBeUndefined();
       });
 
-      it('should be able to add some edges and remove other egdes', function () {
+      it('should be able to add some edges and remove other edges', function () {
         edges.splice(2, 1);
         edges.splice(0, 1);
         edges.push(

@@ -33,17 +33,25 @@
   "use strict";
 
   // Initialise a new FoxxApplication called app under the urlPrefix: "foxxes".
-  var FoxxApplication = require("org/arangodb/foxx").FoxxApplication,
+  var FoxxApplication = require("org/arangodb/foxx").Application,
     app = new FoxxApplication();
   
-  app.requiresModels = {
-    foxxes: "foxxes",
-    swagger: "swagger"
-  };
-
+  app.registerRepository(
+    "foxxes",
+    {
+      repository: "repositories/foxxes"
+    }
+  );
+  
+  app.registerRepository(
+    "docus",
+    {
+      repository: "repositories/swagger"
+    }
+  );
   
   app.del("/foxxes/:key", function (req, res) {
-    res.json(foxxes.uninstall(req.params("key")));
+    res.json(repositories.foxxes.uninstall(req.params("key")));
   }).pathParam("key", {
     description: "The _key attribute, where the information of this Foxx-Install is stored.",
     dataType: "string",
@@ -58,9 +66,9 @@
     active = content.active;
     // TODO: Other changes applied to foxx! e.g. Mount
     if (active) {
-      res.json(foxxes.activate());
+      res.json(repositories.foxxes.activate());
     } else {
-      res.json(foxxes.deactivate());
+      res.json(repositories.foxxes.deactivate());
     }
   }).pathParam("key", {
     description: "The _key attribute, where the information of this Foxx-Install is stored.",
@@ -74,20 +82,20 @@
   
   
   app.get('/foxxes', function (req, res) {
-    res.json(foxxes.viewAll());
+    res.json(repositories.foxxes.viewAll());
   }).nickname("foxxes")
   .summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
-  app.get('/swagger', function (req, res) {
-    res.json(swagger.list());
+  app.get('/docus', function (req, res) {
+    res.json(repositories.docus.list());
   }).nickname("swaggers")
   .summary("List of all foxxes.")
   .notes("This function simply returns the list of all running"
    + " foxxes and supplies the paths for the swagger documentation");
   
-  app.get('/swagger/:appname', function(req, res) {
-    res.json(swagger.show(req.params("appname")))
+  app.get('/docus/:appname', function(req, res) {
+    res.json(repositories.docus.show(req.params("appname")))
   }).pathParam("appname", {
     description: "The mount point of the App the documentation should be requested for",
     dataType: "string",

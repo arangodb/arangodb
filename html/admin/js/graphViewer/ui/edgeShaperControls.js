@@ -101,10 +101,102 @@ function EdgeShaperControls(list, shaper) {
     button.onclick = callback;
   };
   
+  
+  
+  
+  this.addControlOpticSingleColour = function() {
+    var prefix = "control_singlecolour",
+    idprefix = prefix + "_",
+    callback = function() {
+      modalDialogHelper.createModalDialog("Switch to Colour",
+        idprefix, [{
+          type: "text",
+          id: "stroke"
+        }], function () {
+          var stroke = $("#" + idprefix + "stroke").attr("value");
+          shaper.changeTo({
+            color: {
+              type: "single",
+              stroke: stroke
+            }
+          });
+        }
+      );
+    },
+    button = document.createElement("li");
+    button.className = "graph_control " + prefix;
+    button.id = prefix;
+    button.appendChild(document.createTextNode("Single Colour"));
+    list.appendChild(button);
+    button.onclick = callback;
+  };
+  
+  this.addControlOpticAttributeColour = function() {
+    var prefix = "control_attributecolour",
+    idprefix = prefix + "_",
+    callback = function() {
+      modalDialogHelper.createModalDialog("Display colour by attribute",
+        idprefix, [{
+          type: "text",
+          id: "key"
+        }], function () {
+          var key = $("#" + idprefix + "key").attr("value");
+          shaper.changeTo({
+            color: {
+              type: "attribute",
+              key: key
+            }
+          });
+        }
+      );
+    },
+    button = document.createElement("li");
+    button.className = "graph_control " + prefix;
+    button.id = prefix;
+    button.appendChild(document.createTextNode("Colour by Attribute"));
+    list.appendChild(button);
+    button.onclick = callback;
+  };
+  
+  this.addControlOpticGradientColour = function() {
+    var prefix = "control_gradientcolour",
+    idprefix = prefix + "_",
+    callback = function() {
+      modalDialogHelper.createModalDialog("Change colours for gradient",
+        idprefix, [{
+          type: "text",
+          id: "source"
+        },{
+          type: "text",
+          id: "target"
+        }], function () {
+          var source = $("#" + idprefix + "source").attr("value"),
+          target = $("#" + idprefix + "target").attr("value");
+          shaper.changeTo({
+            color: {
+              type: "gradient",
+              source: source,
+              target: target
+            }
+          });
+        }
+      );
+    },
+    button = document.createElement("li");
+    button.className = "graph_control " + prefix;
+    button.id = prefix;
+    button.appendChild(document.createTextNode("Gradient Colour"));
+    list.appendChild(button);
+    button.onclick = callback;
+  };
+  
   this.addAllOptics = function () {
     self.addControlOpticShapeNone();
     self.addControlOpticShapeArrow();
     self.addControlOpticLabel();
+    self.addControlOpticSingleColour();
+    self.addControlOpticAttributeColour();
+    self.addControlOpticGradientColour();
   };
   
   this.addAllActions = function () {
