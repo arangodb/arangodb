@@ -431,7 +431,8 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateStartupCollection (const char* const,
-                                    bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool));
+                                   bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                   void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name
