@@ -34,7 +34,7 @@
   // Define the Repository
   var Foxx = require("org/arangodb/foxx");
   
-  exports.repository = Foxx.Repository.extend({
+  exports.Repository = Foxx.Repository.extend({
     // Define the functionality to create a new foxx
     store = function (content) {
       throw {
