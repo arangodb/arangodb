@@ -212,6 +212,18 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the tick counter, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void UpdateTick (TRI_voc_tick_t tick) {
+  TRI_voc_tick_t s = tick >> 16;
+
+  if (CurrentTick < s) {
+    CurrentTick = s;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief free the memory associated with a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -232,6 +244,8 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
+
+  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -610,6 +624,24 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief this iterator is called on startup for journal and compactor file
+/// of a collection
+/// it will check the ticks of all markers and update the internal tick 
+/// counter accordingly
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+static bool StartupIterator (TRI_df_marker_t const* marker, 
+                             void* data, 
+                             TRI_datafile_t* datafile, 
+                             bool journal) {
+  UpdateTick(marker->_tick);
+  
+  return true;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief scans a directory and loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -665,7 +697,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
       res = TRI_LoadCollectionInfo(file, &info, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UpdateTickVocBase(info._cid);
+        UpdateTick(info._cid);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -722,6 +754,8 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           TRI_vocbase_col_t* c;
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
+          
+          // TRI_IterateStartupCollection(file, StartupIterator, NULL);
 
           if (c == NULL) {
             LOG_ERROR("failed to add document collection from '%s'", file);
@@ -969,14 +1003,8 @@ TRI_voc_tick_t TRI_NewTickVocBase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UpdateTickVocBase (TRI_voc_tick_t tick) {
-  TRI_voc_tick_t s = tick >> 16;
-
   TRI_LockSpin(&TickLock);
-
-  if (CurrentTick < s) {
-    CurrentTick = s;
-  }
-
+  UpdateTick(tick);
   TRI_UnlockSpin(&TickLock);
 }
 
