@@ -52,13 +52,14 @@ var Application,
 /// @fn JSF_foxx_createUrlObject
 /// @brief create a new url object
 ///
+/// This creates a new `UrlObject`.
 /// ArangoDB uses a certain structure we refer to as `UrlObject`.
 /// With the following function (which is only internal, and not
 /// exported) you can create an UrlObject with a given URL,
 /// a constraint and a method. For example:
 ///
 /// @EXAMPLES
-///     internal.createUrlObject('/lecker/gans', null, 'get')
+///     internal.createUrlObject('/lecker/gans', null, 'get');
 ////////////////////////////////////////////////////////////////////////////////
 
 internal.createUrlObject = function (url, constraint, method) {
@@ -83,8 +84,7 @@ internal.createUrlObject = function (url, constraint, method) {
 /// @fn JSF_foxx_application_initializer
 /// @brief Create a new Application
 ///
-/// And that's Application. It's a constructor, so call it like this:
-/// It takes two optional arguments as displayed above:
+/// This creates a new Application. It takes two optional arguments as displayed above:
 /// * **The URL Prefix:** All routes you define within will be prefixed with it
 /// * **The Template Collection:** More information in the template section
 ///
@@ -289,7 +289,7 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give.
 /// **A word of warning:** Do not forget that `delete` is
 /// a reserved word in JavaScript and therefore needs to be
-/// called as `app['delete']`. There is also an alias `del`
+/// called as app['delete']. There is also an alias `del`
 /// for this very reason.
 ///
 /// @EXAMPLES
@@ -400,6 +400,7 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_accepts
 /// @brief Shortform for using the FormatMiddleware
 ///
+/// Shortform for using the FormatMiddleware
 /// More information about the FormatMiddleware in the corresponding section.
 /// This is a shortcut to add the middleware to your application:
 ///
@@ -440,6 +441,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_pathParam
 /// @brief Describe a Path Parameter
 ///
+/// Describe a Path Paramter:
 /// If you defined a route "/foxx/:id", you can constrain which format the id
 /// can have by giving a type. We currently support the following types:
 ///
@@ -480,6 +482,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_queryParam
 /// @brief Describe a Query Parameter
 ///
+/// Describe a Query Parameter:
 /// If you defined a route "/foxx", you can constrain which format a query
 /// parameter (`/foxx?a=12`) can have by giving it a type.
 /// We currently support the following types:
@@ -517,7 +520,7 @@ _.extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_nickname
-/// @brief Set the nickname for this route in the documentation
+/// Set the nickname for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
 
   nickname: function (nickname) {
@@ -533,6 +536,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
+/// Set the summary for this route in the documentation
 /// Can't be longer than 60 characters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -548,6 +552,8 @@ _.extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_notes
 /// @brief Set the notes for this route in the documentation
+///
+/// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
@@ -860,11 +866,6 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 Model = function (attributes) {
   'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_attributes
-/// @brief The attributes property is the internal hash containing the model's state.
-////////////////////////////////////////////////////////////////////////////////
-
   this.attributes = attributes || {};
 };
 
@@ -873,6 +874,7 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_get
 /// @brief Get the value of an attribute
 ///
+/// Get the value of an attribute
 /// @EXAMPLES
 ///     instance = new Model({
 ///       a: 1
@@ -889,6 +891,7 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_set
 /// @brief Set the value of an attribute
 ///
+/// Set the value of an attribute
 /// @EXAMPLES
 ///     instance = new Model({
 ///       a: 1
@@ -905,6 +908,7 @@ _.extend(Model.prototype, {
 /// @fn JSF_foxx_model_has
 /// @brief Returns true if the attribute is set to a non-null or non-undefined value.
 ///
+/// Returns true if the attribute is set to a non-null or non-undefined value.
 /// @EXAMPLES
 ///     instance = new Model({
 ///       a: 1
@@ -921,7 +925,10 @@ _.extend(Model.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_toJSON
-/// @brief Return a copy of the model which can be saved into ArangoDB (or send to the client).
+/// @brief Return a copy of the model which can be saved into ArangoDB
+///
+/// Return a copy of the model which can be saved into ArangoDB
+/// (or send to the client).
 ////////////////////////////////////////////////////////////////////////////////
 
   toJSON: function () {
@@ -932,6 +939,8 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_extend
 /// @brief Extend the Model prototype to add or overwrite methods.
+///
+/// Extend the Model prototype to add or overwrite methods.
 ////////////////////////////////////////////////////////////////////////////////
 
 Model.extend = backbone_helpers.extend;
@@ -940,6 +949,7 @@ Model.extend = backbone_helpers.extend;
 /// @fn JSF_foxx_repository_initializer
 /// @brief Create a new instance of Repository
 ///
+/// Create a new instance of Repository
 /// A Foxx Repository is always initialized with the prefix, the collection and the modelPrototype.
 /// If you initialize a model, you can give it initial data as an object.
 ///
@@ -950,31 +960,16 @@ Model.extend = backbone_helpers.extend;
 Repository = function (prefix, collection, modelPrototype) {
   'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_prefix
-/// @brief The prefix of the application.
-////////////////////////////////////////////////////////////////////////////////
-
   this.prefix = prefix;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_collection
-/// @brief The collection object.
-////////////////////////////////////////////////////////////////////////////////
-
   this.collection = collection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_modelPrototype
-/// @brief The prototype of the according model.
-////////////////////////////////////////////////////////////////////////////////
-
   this.modelPrototype = modelPrototype;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_repository_extend
 /// @brief Extend the Repository prototype to add or overwrite methods.
+///
+/// Extend the Repository prototype to add or overwrite methods.
 ////////////////////////////////////////////////////////////////////////////////
 
 Repository.extend = backbone_helpers.extend;
