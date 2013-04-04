@@ -274,7 +274,7 @@ function lookupCallbackActionCallback (route, action, context) {
     func = errorFunction(
       route,
       "an error occurred while loading function '" 
-        + action.callback + "': " + String(err));
+        + action.callback + "': " + String(err.stack || err));
   }
 
   return {
@@ -318,13 +318,13 @@ function lookupCallbackActionDo (route, action) {
       func = notImplementedFunction(
         route, 
         "an error occurred while loading action named '" + name 
-          + "' in module '" + joined + "': " + String(err));
+          + "' in module '" + joined + "': " + String(err.stack || err));
     }
     else {
       func = errorFunction(
         route,
         "an error occurred while loading action named '" + name 
-          + "' in module '" + joined + "': " + String(err));
+          + "' in module '" + joined + "': " + String(err.stack || err));
     }
   }
 
@@ -405,13 +405,13 @@ function lookupCallbackActionController (route, action) {
       return notImplementedFunction(
         route, 
         "cannot load/execute action controller module '" 
-          + action.controller + ": " + String(err));
+          + action.controller + ": " + String(err.stack || err));
     }
 
     return errorFunction(
       route, 
       "cannot load/execute action controller module '" 
-        + action.controller + ": " + String(err));
+        + action.controller + ": " + String(err.stack || err));
   }
 }
 
@@ -460,7 +460,7 @@ function lookupCallbackActionPrefixController (route, action) {
         }
 
         return efunc(route,
-                     "cannot load prefix controller: " + String(err1))(
+                     "cannot load prefix controller: " + String(err1.stack || err1))(
           req, res, options, next);
       }
 
@@ -496,7 +496,7 @@ function lookupCallbackActionPrefixController (route, action) {
         return errorFunction(
           route, 
           "Cannot load/execute prefix controller '"
-            + action.prefixController + "': " + String(err2))(
+            + action.prefixController + "': " + String(err2.stack || err2))(
           req, res, options, next);
       }
 
@@ -1258,7 +1258,15 @@ function reloadRouting () {
 
     if (routes.hasOwnProperty('appContext')) {
       appContext = routes.appContext;
-      appModule = module.createApp(routes.appContext.appId).createAppModule();
+
+      var appId = appContext.appId;
+      var app = module.createApp(appId);
+
+      if (app === null) {
+        throw new Error("unknown application '" + appId + "'");
+      }
+
+      appModule = app.createAppModule();
     }
 
     // create the route contexts
@@ -1311,10 +1319,9 @@ function reloadRouting () {
       }
     }
     catch (err) {
-      console.error("cannot install route '%s': %s - %s",
+      console.error("cannot install route '%s': %s",
                     route.toString(),
-                    String(err),
-                    String(err.stack));
+                    String(err.stack || err));
     }
   }
 
@@ -1761,10 +1768,10 @@ function resultException (req, res, err, headers) {
     }
 
     if (msg === "") {
-      msg = String(err) + ": " + String(err.stack);
+      msg = String(err.stack || err);
     }
     else {
-      msg += ": " + String(err.stack);
+      msg += ": " + String(err.stack || err);
     }
     
     switch (num) {
@@ -1783,7 +1790,7 @@ function resultException (req, res, err, headers) {
   else if (err instanceof TypeError) {
     num = arangodb.ERROR_TYPE_ERROR;
     code = exports.HTTP_BAD;
-    msg = String(err.message) + ": " + String(err.stack);
+    msg = String(err.stack || err);
 
     resultError(req, res, code, num, msg, headers);
   }
@@ -1791,7 +1798,7 @@ function resultException (req, res, err, headers) {
   else {
     resultError(req, res,
                 exports.HTTP_SERVER_ERROR, arangodb.ERROR_HTTP_SERVER_ERROR,
-                String(err) + " " + String(err.stack),
+                String(err.stack || err),
                 headers);
   }
 }

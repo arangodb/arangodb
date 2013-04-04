@@ -418,7 +418,6 @@ function require (path) {
     }
 
     if (mp === null) {
-      console.error("unknown application '%s'", appId);
       return null;
     }
 
