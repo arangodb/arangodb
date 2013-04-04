@@ -89,6 +89,17 @@
 
     describe('testing for colours', function() {
       
+      it('should have a default colouring of no colour flag is given', function() {
+        var nodes = [{_id: 1}, {_id: 2}],
+        shaper = new NodeShaper(d3.select("svg"));
+        shaper.drawNodes(nodes);
+        
+        expect($("#1").attr("fill")).toEqual("#8AA051");
+        expect($("#1").attr("stroke")).toEqual("#FF8F35");
+        expect($("#2").attr("fill")).toEqual("#8AA051");
+        expect($("#2").attr("stroke")).toEqual("#FF8F35");
+      });
+      
       it('should be able to use the same colour for all nodes', function() {
         var nodes = [{_id: 1}, {_id: 2}],
         shaper = new NodeShaper(d3.select("svg"),
