@@ -262,7 +262,26 @@ function NodeShaper(parent, flags, idfunc) {
   
   if (flags !== undefined) {
     parseConfig(flags);
-  } 
+    /*
+    flags = {
+      color: {
+        type: "single",
+        stroke: "#FF8F35",
+        fill: "#8AA051"
+      }
+    };
+    */
+  }
+  /*
+  if (flags.color === undefined) {
+    flags.color = {
+      type: "single",
+      stroke: "#FF8F35",
+      fill: "#8AA051"
+    };
+    
+  }
+  */
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;

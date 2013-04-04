@@ -31,37 +31,50 @@
 (function () {
   "use strict";
   
-  // Define the functionality to create a new foxx
-  /*
-  exports.store = function (content) {
-    throw "To be implemented.";
-  };
-  */
+  // Define the Repository
+  var Foxx = require("org/arangodb/foxx");
   
-  // Define the functionality to uninstall an installed foxx
-  exports.uninstall = function (key) {
-    return require("org/arangodb/foxx").uninstallApp(key);
-  };
-  
-  exports.deactivate = function (key) {
-    // Sorry not implemented yet
-    return false;
-  };
-  
-  exports.activate = function (key) {
-    // Sorry not implemented yet
-    return false;
-  };
-  
-  // Define the functionality to display all foxxes
-  exports.viewAll = function () {
-    return require("internal").db._collection("_aal").toArray();
-  };
-  
-  // Define the functionality to update one foxx.
-  /*
-  exports.update = function (id, content) {
-    throw "To be implemented.";
-  };
-  */
+  exports.repository = Foxx.Repository.extend({
+    // Define the functionality to create a new foxx
+    store = function (content) {
+      throw {
+        code: 501,
+        message: "To be implemented."
+      };
+    },
+    
+    // Define the functionality to uninstall an installed foxx
+    uninstall: function (key) {
+      return Foxx.uninstallApp(key);
+    },
+    
+    // Define the functionality to deactivate an installed foxx.
+    deactivate: function (key) {
+      throw {
+        code: 501,
+        message: "To be implemented."
+      };
+    },
+    
+    // Define the functionality to activate an installed foxx.
+    activate: function (key) {
+      throw {
+        code: 501,
+        message: "To be implemented."
+      };
+    },
+    
+    // Define the functionality to display all foxxes
+    viewAll: function () {
+      return require("internal").db._collection("_aal").toArray();
+    },
+    
+    // Define the functionality to update one foxx.
+    update: function (id, content) {
+      throw {
+        code: 501,
+        message: "To be implemented."
+      };
+    };
+  });
 }());
