@@ -32,7 +32,9 @@ var Application,
   RequestContext,
   BaseMiddleware,
   FormatMiddleware,
+  Model,
   _ = require("underscore"),
+  backbone_helpers = require("backbone"),
   db = require("org/arangodb").db,
   fs = require("fs"),
   console = require("console"),
@@ -819,10 +821,104 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   };
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_initializer
+/// @brief Create a new instance of Model
+///
+/// If you initialize a model, you can give it initial data
+/// as an object.
+///
+/// @EXAMPLES
+///     instance = new Model({
+///       a: 1
+///     });
+////////////////////////////////////////////////////////////////////////////////
+Model = function (attributes) {
+  'use strict';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_attributes
+/// @brief The attributes property is the internal hash containing the model's state.
+////////////////////////////////////////////////////////////////////////////////
+  this.attributes = attributes || {};
+};
+
+_.extend(Model.prototype, {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_get
+/// @brief Get the value of an attribute
+///
+/// @EXAMPLES
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.get("a");
+////////////////////////////////////////////////////////////////////////////////
+  get: function (attributeName) {
+    return this.attributes[attributeName];
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_set
+/// @brief Set the value of an attribute
+///
+/// @EXAMPLES
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.set("a", 2);
+////////////////////////////////////////////////////////////////////////////////
+  set: function (attributeName, value) {
+    this.attributes[attributeName] = value;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_has
+/// @brief Returns true if the attribute is set to a non-null or non-undefined value.
+///
+/// @EXAMPLES
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.has("a"); //=> true
+///     instance.has("b"); //=> false
+////////////////////////////////////////////////////////////////////////////////
+  has: function (attributeName) {
+    return !(_.isUndefined(this.attributes[attributeName]) ||
+             _.isNull(this.attributes[attributeName]));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_toJSON
+/// @brief Return a copy of the model which can be saved into ArangoDB (or send to the client).
+////////////////////////////////////////////////////////////////////////////////
+  toJSON: function () {
+    return this.attributes;
+  }
+});
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_extend
+/// @brief Extend the Model prototype to add or overwrite methods.
+///
+/// @EXAMPLES
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.set("a", 2);
+////////////////////////////////////////////////////////////////////////////////
+Model.extend = backbone_helpers.extend;
+
 /// We finish off with exporting Application and the middlewares.
 /// Everything else will remain our secret.
 
 exports.Application = Application;
+exports.Model = Model;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
 
