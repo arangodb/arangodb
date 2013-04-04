@@ -27,9 +27,49 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function ColourMapper(svg) {
+function ColourMapper() {
   "use strict";
   
+  var mapCreated = false,
+  mapping = {},
+  colours = [],
+  nextColour = 0;
   
+  colours.push("navy");
+  colours.push("green");
+  colours.push("gold");
+  colours.push("indigo");
+  colours.push("saddlebrown");
+  colours.push("skyblue");
+  colours.push("olive");
+  colours.push("deeppink");
+  colours.push("orange");
+  colours.push("silver");
+  colours.push("blue");
+  colours.push("yellowgreen");
+  colours.push("firebrick");
+  colours.push("rosybrown");
+  colours.push("hotpink");
+  colours.push("purple");
+  colours.push("cyan");
+  colours.push("teal");
+  colours.push("peru");
+  colours.push("maroon");
+  
+  this.getColour = function(value) {
+    if (mapping[value] === undefined) {
+      mapping[value] = colours[nextColour];
+      nextColour++;
+      if (nextColour === colours.length) {
+        nextColour = 0;
+      }
+    }
+    return mapping[value];
+  };
+  
+  this.reset = function() {
+    mapping = {};
+    nextColour = 0;
+  };
   
 }
