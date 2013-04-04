@@ -427,9 +427,10 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over markers in collection journals
+/// this function is called on server startup for all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateJournalsCollection (const char* const,
+bool TRI_IterateStartupCollection (const char* const,
                                     bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool));
 
 ////////////////////////////////////////////////////////////////////////////////
