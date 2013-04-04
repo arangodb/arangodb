@@ -203,28 +203,25 @@ The model doesn't know anything about the database. It is just a representation 
 A Foxx Model can be initialized with an object of attributes and their values.
 
 #### Foxx.Model.extend
+@copydetails JSF_foxx_model_extend
 
-Extend the Model prototype to add or overwrite methods.
+#### new Foxx.Model
+@copydetails JSF_foxx_model_initializer
 
 #### Foxx.Model#get
-
-Get the current value of an attribute.
+@copydetails JSF_foxx_model_get
 
 #### Foxx.Model#set
-
-Set the value of an attribute.
+@copydetails JSF_foxx_model_set
 
 #### Foxx.Model#has
-
-Returns true if the attribute is set to a non-null or non-undefined value.
+@copydetails JSF_foxx_model_has
 
 #### Foxx.Model#attributes
-
-The attributes property is the internal hash containing the model's state.
+@copydetails JSF_foxx_model_attributes
 
 #### Foxx.Model#toJSON
-
-Return a copy of the model which can be saved into ArangoDB (or send to the client).
+@copydetails JSF_foxx_model_toJSON
 
 ## Foxx.Repository
 
