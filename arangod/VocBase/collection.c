@@ -572,12 +572,14 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over a set of datafiles
+/// @brief iterate over a set of datafiles, identified by filenames
 /// note: the files will be opened and closed 
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IterateFiles (TRI_vector_string_t* vector,
-                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                          void* data,
+                          bool journal) {
   size_t i, n;
   
   n = vector->_length;
@@ -591,7 +593,7 @@ static bool IterateFiles (TRI_vector_string_t* vector,
     datafile = TRI_OpenDatafile(filename);
 
     if (datafile != NULL) {
-      TRI_IterateDatafile(datafile, iterator, NULL, true);
+      TRI_IterateDatafile(datafile, iterator, data, journal);
       TRI_CloseDatafile(datafile);
       TRI_FreeDatafile(datafile);
     }
@@ -1324,14 +1326,16 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateStartupCollection (const char* const path,
-                                   bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+                                   bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                   void* data) {
 
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
   bool result;
 
   // iterate of journals & compactors, not datafiles
-  result  = IterateFiles(&structure._journals, iterator);
-  result &= IterateFiles(&structure._compactors, iterator);
+  result  = IterateFiles(&structure._journals, iterator, data, true);
+  result &= IterateFiles(&structure._compactors, iterator, data, false);
+  result &= IterateFiles(&structure._datafiles, iterator, data, false);
   
   TRI_DestroyFileStructureCollection(&structure);
 

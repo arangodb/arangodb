@@ -239,7 +239,8 @@ static size_t LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
   void const* data = mptr->_data;
 
   if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      ((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      ((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_EDGE ||
+      ((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_DELETION) {
     return ((TRI_df_marker_t*) data)->_size;
   }
 
