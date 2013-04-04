@@ -156,6 +156,7 @@ ERROR_TRANSACTION_INVALID_STATE,1651,"invalid transaction state","Will be raised
 ERROR_TRANSACTION_NESTED,1652,"nested transactions detected","Will be raised when transactions are nested."
 ERROR_TRANSACTION_INTERNAL,1653,"internal transaction error","Will be raised when a wrong usage of transactions is detected. this is an internal error and indicates a bug in ArangoDB."
 ERROR_TRANSACTION_UNREGISTERED_COLLECTION,1654,"unregistered collection used in transaction","Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start."
+ERROR_TRANSACTION_DISALLOWED_OPERATION,1655,"disallowed operation inside a transaction","Will be raised when a disallowed operation is carried out in a transaction."
 
 ################################################################################
 ## User management
