@@ -237,8 +237,6 @@ A repository is a gateway to the database. It gets data from the database, updat
 #### new Foxx.Repository
 @copydetails JSF_foxx_repository_initializer
 
-#### Foxx.Repository.extend
-@copydetails JSF_foxx_repository_extend
 
 #### Foxx.Repository#collection
 @copydetails JSF_foxx_repository_collection
