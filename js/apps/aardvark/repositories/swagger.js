@@ -38,7 +38,7 @@
   
   // Define the functionality to receive the documentation.
   // And transform it into swagger format.
-  exports.repository = Foxx.Repository.extend({
+  exports.Repository = Foxx.Repository.extend({
     
     // Get the overview of all installed foxxes.
     list: function() {
