@@ -916,7 +916,7 @@ int TRI_LoadCollectionInfo (char const* path,
         parameter->_type = value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
-        parameter->_cid = value->_value._number;
+        parameter->_cid = (TRI_voc_cid_t) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
         parameter->_maximalSize = value->_value._number;
@@ -927,6 +927,9 @@ int TRI_LoadCollectionInfo (char const* path,
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
 
         parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
+      }
+      else if (value->_type == TRI_JSON_STRING) {
+        parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
     }
     else if (value->_type == TRI_JSON_BOOLEAN) {
@@ -974,16 +977,18 @@ int TRI_SaveCollectionInfo (char const* path,
                             const bool forceSync) {
   TRI_json_t* json;
   char* filename;
+  char* cidString;
   bool ok;
 
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  cidString = TRI_StringUInt64((uint64_t) info->_cid);
 
   // create a json info object
   json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_cid));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
@@ -993,6 +998,8 @@ int TRI_SaveCollectionInfo (char const* path,
   if (info->_keyOptions) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
   }
+  
+  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
 
   // save json info to file
   ok = TRI_SaveJson(filename, json, forceSync);
