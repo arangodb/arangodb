@@ -34,8 +34,6 @@ var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
-var RegexCache = { 'i' : { }, '' : { } };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -44,6 +42,18 @@ var RegexCache = { 'i' : { }, '' : { } };
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cache for compiled regexes
+////////////////////////////////////////////////////////////////////////////////
+
+var RegexCache = { };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user functions cache
+////////////////////////////////////////////////////////////////////////////////
+
+var UserFunctions = { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
@@ -210,6 +220,44 @@ function CLONE (obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief box a value into the AQL datatype system
+////////////////////////////////////////////////////////////////////////////////
+
+function FIX_VALUE (value) {
+  var type = typeof(value), i;
+
+  if (value === undefined || 
+      value === null || 
+      (type === 'number' && (isNaN(value) || ! isFinite(value)))) {
+    return null;
+  }
+  
+  if (type === 'boolean' || type === 'string' || type === 'number') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    for (i = 0; i < value.length; ++i) {
+      value[i] = FIX_VALUE(value[i]);
+    }
+
+    return value;
+  }
+
+  if (type === 'object') {
+    for (i in value) {
+      if (value.hasOwnProperty(i)) {
+        value[i] = FIX_VALUE(value[i]);
+      }
+    }
+
+    return value;
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the sort type of an operand
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,6 +363,20 @@ function COMPILE_REGEX (regex, modifiers) {
 
 function FCALL (name, parameters) {
   return name.apply(null, parameters);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief call a user function
+////////////////////////////////////////////////////////////////////////////////
+
+function FCALL_USER (name, parameters) {
+  if (UserFunctions.hasOwnProperty(name)) {
+    var result = UserFunctions[name].func.apply(null, parameters);
+
+    return FIX_VALUE(result);
+  }
+
+  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3221,6 +3283,71 @@ function GRAPH_EDGES (edgeCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           setup / reset functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the regex cache
+////////////////////////////////////////////////////////////////////////////////
+
+function resetRegexCache () {
+  RegexCache = { 'i' : { }, '' : { } };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the user functions and reload them from the database
+////////////////////////////////////////////////////////////////////////////////
+
+function reloadUserFunctions () {
+  var c;
+
+  UserFunctions = { };
+
+  c = INTERNAL.db._collection("_aqlfunctions");
+  if (c === null) {
+    return;
+  }
+
+  c.toArray().forEach(function (f) {
+    var code;
+
+    code = "(function() { var callback = " + f.code + "; return callback; })();";
+
+    try {
+      var res = INTERNAL.executeScript(code, undefined, "(user function " + f._key + ")"); 
+
+      UserFunctions[f._key.toUpperCase()] = {
+        name: f._key,
+        func: res,
+        isDeterministic: f.isDeterministic || false
+      }; 
+  
+    }
+    catch (err) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+    }
+  });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reset the query engine
+////////////////////////////////////////////////////////////////////////////////
+
+function resetEngine () {
+  resetRegexCache();
+  reloadUserFunctions();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -3230,6 +3357,7 @@ function GRAPH_EDGES (edgeCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.FCALL = FCALL;
+exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
@@ -3331,9 +3459,15 @@ exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.FAIL = FAIL;
 
+exports.reload = reloadUserFunctions;
+
+// initialise the query engine
+resetEngine();
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

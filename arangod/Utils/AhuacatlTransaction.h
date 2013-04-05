@@ -75,11 +75,11 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
 
-            TRI_transaction_cid_t cid = 0;
+            TRI_voc_cid_t cid = 0;
             TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name);
 
             if (col != 0) {
-              cid = (TRI_transaction_cid_t) col->_cid;
+              cid = col->_cid;
             }
 
             int res = this->addCollection(cid, TRI_TRANSACTION_READ);

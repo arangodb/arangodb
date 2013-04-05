@@ -30,7 +30,7 @@
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "VocBase/marker.h"
 
@@ -101,7 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   LOG_TRACE("created a new shape journal '%s'", journal->getName(journal));
 
-  TRI_ASSERT_DEBUG(fid == journal->_fid);
+  assert(fid == journal->_fid);
 
   if (journal->isPhysical(journal)) {
     char* jname;
@@ -132,7 +132,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
 
   // create a collection header
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create document header in journal '%s': %s",
@@ -262,7 +262,7 @@ static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
   datafile = collection->base._journals._buffer[0];
 
   // try to reserve space
-  res = TRI_ReserveElementDatafile(datafile, size, result);
+  res = TRI_ReserveElementDatafile(datafile, size, result, 0);
 
   while (res == TRI_ERROR_ARANGO_DATAFILE_FULL) {
     ok = CloseJournal(collection, datafile);
@@ -280,7 +280,7 @@ static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
 
     datafile = collection->base._journals._buffer[0];
 
-    res = TRI_ReserveElementDatafile(datafile, size, result);
+    res = TRI_ReserveElementDatafile(datafile, size, result, 0);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

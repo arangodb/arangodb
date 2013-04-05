@@ -2,7 +2,7 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include <BasicsC/common.h>
 #include "./lib/BasicsC/voc-errors.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,6 +26,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_OUT_OF_MEMORY_MMAP, "out of memory in mmap");
   REG_ERROR(ERROR_CORRUPTED_CSV, "csv is corrupt");
   REG_ERROR(ERROR_FILE_NOT_FOUND, "file not found");
+  REG_ERROR(ERROR_CANNOT_WRITE_FILE, "cannot write file");
+  REG_ERROR(ERROR_CANNOT_OVERWRITE_FILE, "cannot overwrite file");
+  REG_ERROR(ERROR_TYPE_ERROR, "type error");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
@@ -103,16 +106,24 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_FAIL_CALLED, "FAIL(%s) called");
   REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
   REG_ERROR(ERROR_QUERY_FULLTEXT_INDEX_MISSING, "no suitable fulltext index found for fulltext query on '%s'");
+  REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
+  REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
+  REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function not found");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_TRANSACTION_INCOMPLETE, "transaction definition is incomplete");
   REG_ERROR(ERROR_TRANSACTION_INVALID_STATE, "invalid transaction state");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
+  REG_ERROR(ERROR_TRANSACTION_DISALLOWED_OPERATION, "disallowed operation inside a transaction");
   REG_ERROR(ERROR_USER_INVALID_NAME, "invalid user name");
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
+  REG_ERROR(ERROR_APPLICATION_NOT_FOUND, "application not found");
+  REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
+  REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
+  REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");

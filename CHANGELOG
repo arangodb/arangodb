@@ -1,6 +1,16 @@
 v1.3 (XXXX-XX-XX)
 -----------------
 
+* cleanup of Module, Package, ArangoApp and modules "internal", "fs", "console"
+
+* use Error instead of string in throw to allow stack-trace
+
+* issue #454: error while creation of Collection
+
+* make `collection.count()` not recalculate the number of documents on the fly, but
+  use some internal document counters. This will work at least for non-transactional
+  collections.
+
 * issue #457: invalid string value in web interface
 
 * make datafile id (datafile->_fid) identical to the numeric part of the filename.
@@ -83,8 +93,23 @@ v1.3 (XXXX-XX-XX)
   arangob is now always included in the build
 
 
-v1.2.2 (XXXX-XX-XX)
+v1.2.3 (XXXX-XX-XX)
 -------------------
+
+* fixed firstExample() query with `_id` and `_key` attributes
+
+* issue triAGENS/ArangoDB-PHP#55: AQL optimiser may have mis-optimised duplicate 
+  filter statements with limit
+
+
+v1.2.2 (2013-03-26)
+-------------------
+
+* fixed save of objects with common sub-objects
+
+* issue #459: fulltext internal memory allocation didn't scale well
+  This fix improves loading times for collections with fulltext indexes that have
+  lots of equal words indexed.
 
 * issue #212: auto-increment support
 

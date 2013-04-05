@@ -50,8 +50,8 @@ var ArangoError = require("org/arangodb/arango-error").ArangoError;
 /// @brief prints the object
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoError.prototype._PRINT = function () {
-  arangodb.output(this.toString());
+ArangoError.prototype._PRINT = function (context) {
+  context.output += this.toString();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

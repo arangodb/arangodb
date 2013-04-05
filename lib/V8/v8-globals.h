@@ -52,6 +52,86 @@
 #define TRI_V8_SYMBOL(name) v8::String::NewSymbol(name, strlen(name))
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing an exception with an error code
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION(scope, code) \
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(code)))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing an exception and returning
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_MESSAGE(scope, code, message) \
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(code, message, true)))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing a usage exception and returning
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_USAGE(scope, usage)                           \
+  do {                                                                 \
+    string msg = "usage: ";                                            \
+    msg += usage;                                                      \
+    return scope.Close(                                                \
+      v8::ThrowException(                                              \
+        TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg.c_str()))); \
+  }                                                                    \
+  while (0)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing an internal exception and returning
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_INTERNAL(scope, message) \
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, message)));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing a parameter exception and returning
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_PARAMETER(scope, message) \
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, message)));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing an out-of-memory exception and returning
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_MEMORY(scope) \
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing an exception for an system error
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_SYS(scope, message)                        \
+  do {                                                              \
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);                             \
+    string msg = message;                                           \
+    msg += ": ";                                                    \
+    msg += TRI_LAST_ERROR_STR;                                      \
+    return scope.Close(v8::ThrowException(                          \
+      TRI_CreateErrorObject(                                        \
+        TRI_errno(),                                                \
+        msg.c_str())));                                             \
+  }                                                                 \
+  while (0)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing a type error
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_TYPE_ERROR(scope, message) \
+  return scope.Close(v8::ThrowException(v8::Exception::TypeError(v8::String::New(message))))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing a syntax error
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_SYNTAX_ERROR(scope, message) \
+  return scope.Close(v8::ThrowException(v8::Exception::SyntaxError(v8::String::New(message))))
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -89,6 +169,7 @@ typedef struct TRI_v8_global_s {
       RevKey(),
       ToKey(),
       BodyKey(),
+      BodyFromFileKey(),
       ContentTypeKey(),
       IsSystemKey(),
       IsVolatileKey(),
@@ -293,6 +374,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> BodyKey;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "bodyFromFile" key name
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> BodyFromFileKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "contentType" key name

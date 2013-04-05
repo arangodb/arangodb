@@ -25,6 +25,7 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
 	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
+	html/admin/js/modules/org/arangodb/mimetypes.js \
 	html/admin/js/modules/org/arangodb/simple-query-common.js \
 	\
 	html/admin/js/bootstrap/errors.js \
@@ -54,11 +55,11 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/html/admin/js/arangodb/browser.js \
+	@srcdir@/html/admin/js/shell/browser.js \
 	\
-	@srcdir@/js/actions/system/api-collection.js \
-	@srcdir@/js/actions/system/api-structure.js \
-	@srcdir@/js/actions/system/api-system.js
+	@srcdir@/js/actions/api-collection.js \
+	@srcdir@/js/actions/api-structure.js \
+	@srcdir@/js/actions/api-system.js
 
 ################################################################################
 ### @brief executes jslint

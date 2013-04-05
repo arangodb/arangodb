@@ -28,7 +28,7 @@
 #include "cap-constraint.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
@@ -99,7 +99,8 @@ static int InsertCapConstraint (TRI_index_t* idx,
 /// @brief post processing of insert
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PostInsertCapConstraint (TRI_index_t* idx,
+static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
+                                    TRI_index_t* idx,
                                     TRI_doc_mptr_t const* doc) {
   TRI_cap_constraint_t* cap;
   TRI_primary_collection_t* primary;
@@ -108,7 +109,6 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
   primary = idx->_collection;
 
   while (cap->_size < cap->_array._array._nrUsed) {
-    TRI_doc_operation_context_t rollbackContext;
     TRI_doc_mptr_t* oldest;
     int res;
 
@@ -122,8 +122,7 @@ static int PostInsertCapConstraint (TRI_index_t* idx,
 
     LOG_DEBUG("removing document '%s' because of cap constraint", (char*) oldest->_key);
 
-    TRI_InitContextPrimaryCollection(&rollbackContext, primary);
-    res = TRI_DeleteDocumentDocumentCollection(&rollbackContext, NULL, oldest);
+    res = TRI_DeleteDocumentDocumentCollection(trxCollection, NULL, oldest);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("cannot cap collection: %s", TRI_last_error());
@@ -174,9 +173,9 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
   idx = &cap->base;
 
+  idx->typeName = TypeNameCapConstraint;
   TRI_InitIndex(idx, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false, true);
 
-  idx->typeName    = TypeNameCapConstraint;
   idx->json        = JsonCapConstraint;
   idx->removeIndex = RemoveIndexCapConstraint;
   idx->insert      = InsertCapConstraint;

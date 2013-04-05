@@ -100,6 +100,7 @@ namespace triagens {
           LENGTH_REQUIRED      = 411,
           PRECONDITION_FAILED  = 412,
           ENTITY_TOO_LARGE     = 413,
+          I_AM_A_TEAPOT        = 418,
           UNPROCESSABLE_ENTITY = 422,
           HEADER_TOO_LARGE     = 431,
 
@@ -204,6 +205,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpResponseCode responseCode () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the response code
+////////////////////////////////////////////////////////////////////////////////
+
+        void setResponseCode (HttpResponseCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the content length

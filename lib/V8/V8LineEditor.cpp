@@ -30,7 +30,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "V8/v8-utils.h"
 
 #if RL_READLINE_VERSION >= 0x0500
@@ -432,6 +432,10 @@ bool V8LineEditor::isComplete (string const& source, size_t, size_t) {
 
         case '}':
           --openBraces;
+          break;
+
+        case '\\':
+          ++ptr;
           break;
       }
 

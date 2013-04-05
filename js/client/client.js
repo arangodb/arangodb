@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, SYS_UNIT_TESTS */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, nonpropdel: true, white: true, plusplus: true, evil: true */
+/*global require, IS_EXECUTE_SCRIPT, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -94,6 +94,7 @@ function clear () {
 (function() {
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
+  var special;
 
   if (internal.db !== undefined) {
     try {
@@ -103,12 +104,18 @@ function clear () {
     }
   }
 
-  if (internal.ARANGO_QUIET !== true) {
+  try {
+    // these variables don't exist in the browser context
+    special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+  }
+  catch (err2) {
+    special = false;
+  }
+
+  if (internal.quiet !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
-      if (typeof internal.arango.isConnected !== "undefined") {
-        if (internal.arango.isConnected() && typeof SYS_UNIT_TESTS === "undefined") {
-          internal.print(arangosh.HELP);
-        }
+      if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
+        internal.print(arangosh.HELP);
       }
     }
   }
@@ -125,6 +132,48 @@ var db = require("org/arangodb").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 var arango = require("org/arangodb").arango;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read rc file
+////////////////////////////////////////////////////////////////////////////////
+
+
+(function () {
+  var __special__;
+
+  try {
+    // these variables are not defined in the browser context
+    __special__ = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+  }
+  catch (err) {
+    __special__ = true;
+  }
+  
+  if (! __special__) {  
+    try {
+      // this will not work from within a browser
+      var __fs__ = require("fs");
+      var __rcf__ = __fs__.join(__fs__.home(), ".arangosh.rc");
+
+      if (__fs__.exists(__rcf__)) {
+        var __content__ = __fs__.read(__rcf__);
+        eval(__content__);
+      }
+    } 
+    catch (err2) {
+      require("console").warn("arangosh.rc: %s", String(err2));
+    }
+  }
+
+  try {
+    delete IS_EXECUTE_SCRIPT;
+    delete IS_CHECK_SCRIPT;
+    delete IS_UNIT_TESTS;
+    delete IS_JS_LINT;
+  }
+  catch (err3) {
+  }
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

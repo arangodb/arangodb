@@ -1,0 +1,9 @@
+arango> db._create("users", { keyOptions: { type: "autoincrement", offset: 10, increment: 5 } });
+[ArangoCollection 1533103587969, "users" (type document, status loaded)]
+
+arango> db.users.save({ name: "user 1" });
+{ "_id" : "users/10", "_rev" : "1533104964225", "_key" : "10" }
+arango> db.users.save({ name: "user 2" });
+{ "_id" : "users/15", "_rev" : "1533105095297", "_key" : "15" }
+arango> db.users.save({ name: "user 3" });
+{ "_id" : "users/20", "_rev" : "1533105226369", "_key" : "20" }

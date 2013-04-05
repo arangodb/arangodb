@@ -78,12 +78,12 @@ SERVER_OPT := \
 	--database.maximal-journal-size 1048576 \
 	--database.force-sync-shapes false \
 	--database.force-sync-properties false \
-	--javascript.action-directory @top_srcdir@/js/actions/system \
+	--javascript.action-directory @top_srcdir@/js/actions \
 	--javascript.gc-interval 1 \
 	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
 	--javascript.package-path @top_srcdir@/js/common/test-data/modules \
 	--javascript.startup-directory @top_srcdir@/js \
-	--ruby.action-directory @top_srcdir@/mr/actions/system \
+	--ruby.action-directory @top_srcdir@/mr/actions \
 	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
 	--server.threads 4 \
 	--server.admin-directory ./html/admin \
@@ -205,22 +205,69 @@ unittests-boost:
 	@echo
 endif
 
+################################################################################
+### @brief SHELL SERVER TESTS (BASICS)
+################################################################################
 
-################################################################################
-### @brief SHELL SERVER TESTS (SERVER-ONLY)
-################################################################################
+SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
+               @top_srcdir@/js/common/tests/shell-attributes.js \
+               @top_srcdir@/js/common/tests/shell-collection.js \
+               @top_srcdir@/js/common/tests/shell-collection-volatile.js \
+               @top_srcdir@/js/common/tests/shell-compactor.js \
+               @top_srcdir@/js/common/tests/shell-crypto.js \
+               @top_srcdir@/js/common/tests/shell-database.js \
+               @top_srcdir@/js/common/tests/shell-document.js \
+               @top_srcdir@/js/common/tests/shell-edge.js \
+               @top_srcdir@/js/common/tests/shell-fs.js \
+               @top_srcdir@/js/common/tests/shell-keygen.js \
+               @top_srcdir@/js/common/tests/shell-simple-query.js \
+               @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-users.js \
+               @top_srcdir@/js/common/tests/shell-index.js \
+               @top_srcdir@/js/common/tests/shell-index-geo.js \
+               @top_srcdir@/js/common/tests/shell-cap-constraint.js \
+               @top_srcdir@/js/common/tests/shell-unique-constraint.js \
+               @top_srcdir@/js/common/tests/shell-hash-index.js \
+               @top_srcdir@/js/common/tests/shell-fulltext.js \
+               @top_srcdir@/js/common/tests/shell-graph.js
+
+SHELL_SERVER_ONLY = \
+               @top_srcdir@/js/server/tests/transactions.js \
+               @top_srcdir@/js/server/tests/routing.js \
+               @top_srcdir@/js/common/tests/shell-foxx.js \
+               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
+               @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
+               @top_srcdir@/js/common/tests/shell-graph-measurement.js \
+               @top_srcdir@/js/common/tests/shell-skiplist-index.js
+
+SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
+
+.PHONY: unittests-shell-server
+
+UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
+
+
+unittests-shell-server:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL SERVER TESTS (ALL)                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
 
 .PHONY: unittests-shell-server-only
 
-SHELL_SERVER_ONLY = @top_srcdir@/js/server/tests/routing.js \
-                    @top_srcdir@/js/common/tests/shell-fuxx.js \
-                    @top_srcdir@/js/common/tests/shell-graph-traversal.js \
-                    @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
-                    @top_srcdir@/js/common/tests/shell-graph-measurement.js \
-                    @top_srcdir@/js/common/tests/shell-skiplist-index.js \
-                    @top_srcdir@/js/server/tests/transactions.js
-
 UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY))
+
 
 unittests-shell-server-only:
 	@echo
@@ -233,55 +280,6 @@ unittests-shell-server-only:
 	@mkdir "$(VOCDIR)"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
-
-	@rm -rf "$(VOCDIR)"
-	@echo
-
-
-################################################################################
-### @brief SHELL SERVER TESTS (COMMON)
-################################################################################
-
-SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
-               @top_srcdir@/js/common/tests/shell-attributes.js \
-               @top_srcdir@/js/common/tests/shell-document.js \
-               @top_srcdir@/js/common/tests/shell-edge.js \
-               @top_srcdir@/js/common/tests/shell-database.js \
-               @top_srcdir@/js/common/tests/shell-collection.js \
-               @top_srcdir@/js/common/tests/shell-collection-volatile.js \
-               @top_srcdir@/js/common/tests/shell-compactor.js \
-               @top_srcdir@/js/common/tests/shell-keygen.js \
-               @top_srcdir@/js/common/tests/shell-simple-query.js \
-               @top_srcdir@/js/common/tests/shell-statement.js \
-               @top_srcdir@/js/common/tests/shell-crypto.js \
-               @top_srcdir@/js/common/tests/shell-users.js \
-               @top_srcdir@/js/common/tests/shell-index.js \
-               @top_srcdir@/js/common/tests/shell-index-geo.js \
-               @top_srcdir@/js/common/tests/shell-cap-constraint.js \
-               @top_srcdir@/js/common/tests/shell-unique-constraint.js \
-               @top_srcdir@/js/common/tests/shell-hash-index.js \
-               @top_srcdir@/js/common/tests/shell-fulltext.js \
-               @top_srcdir@/js/common/tests/shell-graph.js
-
-
-.PHONY: unittests-shell-server
-
-SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
-
-UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
-
-
-unittests-shell-server:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (COMMON & SERVER-ONLY)                                  >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir "$(VOCDIR)"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo

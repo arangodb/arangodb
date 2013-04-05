@@ -29,7 +29,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -261,8 +261,6 @@
         
         runs(function() {
           expect(created).toBeDefined();
-          expect(created._inboundCounter).toEqual(0);
-          expect(created._outboundCounter).toEqual(0);
           expect(reshaped[0]).toEqual(created);
         });
         

@@ -26,7 +26,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -258,8 +258,29 @@ function GraphViewer(svg, width, height,
     });
   };
   
+  self.loadGraphWithAttributeValue = function(attribute, value) {
+    nodes.length = 0;
+    edges.length = 0;
+    adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
+      node._expanded = true;
+      node.x = width / 2;
+      node.y = height / 2;
+      node.fixed = true;
+      start();
+    });
+  };
+  
   self.rebind = function(eventConfig) {
     bindEventsFromConfig(eventConfig);
   };
+  
+  //TODO REMOVE
+  //HACK to view the Controls in the Demo
+  
+  var edgeShaperControls = new EdgeShaperControls($("#controls")[0], edgeShaper);
+  edgeShaperControls.addAll();
+  var nodeShaperControls = new NodeShaperControls($("#controls")[0], nodeShaper);
+  nodeShaperControls.addAll();
+  
   
 }

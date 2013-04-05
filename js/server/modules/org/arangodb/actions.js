@@ -28,9 +28,15 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
 var internal = require("internal");
+
+var fs = require("fs");
 var console = require("console");
+
+var arangodb = require("org/arangodb");
+var foxx = require("org/arangodb/foxx");
+var foxxManager = require("org/arangodb/foxx-manager");
+
 var moduleExists = function(name) { return module.exists; };
 
 // -----------------------------------------------------------------------------
@@ -47,6 +53,12 @@ var moduleExists = function(name) { return module.exists; };
 ////////////////////////////////////////////////////////////////////////////////
 
 var RoutingCache;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all methods
+////////////////////////////////////////////////////////////////////////////////
+
+var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -66,9 +78,11 @@ var RoutingCache;
 ////////////////////////////////////////////////////////////////////////////////
         
 function notImplementedFunction (route, message) {
+  'use strict';
+
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
-  console.error(message);
+  console.error("%s", message);
 
   return function (req, res, options, next) {
     res.responseCode = exports.HTTP_NOT_IMPLEMENTED;
@@ -82,9 +96,11 @@ function notImplementedFunction (route, message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function errorFunction (route, message) {
+  'use strict';
+
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
-  console.error(message);
+  console.error("%s", message);
 
   return function (req, res, options, next) {
     res.responseCode = exports.HTTP_SERVER_ERROR;
@@ -98,6 +114,8 @@ function errorFunction (route, message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function splitUrl (url) {
+  'use strict';
+
   var cleaned;
   var i;
   var parts;
@@ -148,6 +166,8 @@ function splitUrl (url) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupUrl (prefix, url) {
+  'use strict';
+
   if (url === undefined || url === '') {
     return null;
   }
@@ -163,7 +183,7 @@ function lookupUrl (prefix, url) {
   if (url.hasOwnProperty('match')) {
     return {
       urlParts: splitUrl(prefix + "/" + url.match),
-      methods: url.methods || exports.ALL_METHODS,
+      methods: url.methods || ALL_METHODS,
       constraint: url.constraint || {}
     };
   }
@@ -176,6 +196,8 @@ function lookupUrl (prefix, url) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackStatic (content) {
+  'use strict';
+
   var type;
   var body;
   var methods;
@@ -207,17 +229,136 @@ function lookupCallbackStatic (content) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a callback for an action
+/// @brief looks up a callback for a callback action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackAction (route, action) {
-  var path;
-  var name;
+function lookupCallbackActionCallback (route, action, context) {
+  'use strict';
+
   var func;
-  var module;
+  var key;
+
+  try {
+    var sandbox = {};
+
+    for (key in context.requires) {
+      if (context.requires.hasOwnProperty(key)) {
+        sandbox[key] = context.requires[key];
+      }
+    }
+
+    sandbox.module = module.root;
+    sandbox.repositories = context.repositories;
+
+    sandbox.require = function (path) {
+      return context.appModule.require(path);
+    };
+
+    var content = "(function(__myenv__) {";
+
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
+    }
+
+    content += "delete __myenv__;"
+             + "return (" + action.callback + ")"
+             + "\n});";
+
+    func = internal.executeScript(content, undefined, route);
+
+    if (func !== undefined) {
+      func = func(sandbox);
+    }
+
+    if (func === undefined) {
+      func = notImplementedFunction(
+        route,
+        "could not define function for '" + action.callback + "'");
+    }
+  }
+  catch (err) {
+    func = errorFunction(
+      route,
+      "an error occurred while loading function '" 
+        + action.callback + "': " + String(err.stack || err));
+  }
+
+  return {
+    controller: func,
+    options: action.options || {},
+    methods: action.methods || ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a module action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionDo (route, action) {
+  'use strict';
+
+  var func;
   var joined;
-  var defn;
-  var env;
+  var name;
+  var path;
+  var mdl;
+
+  path = action['do'].split("/");
+  name = path.pop();
+  func = null;
+  joined = path.join("/");
+
+  try {
+    mdl = require(joined);
+
+    if (mdl.hasOwnProperty(name)) {
+      func = mdl[name];
+    }
+    else {
+      func = notImplementedFunction(route, "could not find action named '"
+                                    + name + "' in module '" + joined + "'");
+    }
+  }
+  catch (err) {
+    if (! moduleExists(joined)) {
+      func = notImplementedFunction(
+        route, 
+        "an error occurred while loading action named '" + name 
+          + "' in module '" + joined + "': " + String(err.stack || err));
+    }
+    else {
+      func = errorFunction(
+        route,
+        "an error occurred while loading action named '" + name 
+          + "' in module '" + joined + "': " + String(err.stack || err));
+    }
+  }
+
+  if (func === null || typeof func !== 'function') {
+    func = errorFunction(
+      route, 
+      "invalid definition for the action named '" + name 
+        + "' in module '" + joined + "'");
+  }
+
+  return {
+    controller: func,
+    options: action.options || {},
+    methods: action.methods || ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a controller action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionController (route, action) {
+  'use strict';
+
+  var func;
+  var mdl;
   var httpMethods = { 
     'get': exports.GET,
     'head': exports.HEAD,
@@ -227,6 +368,159 @@ function lookupCallbackAction (route, action) {
     'options': exports.OPTIONS,
     'patch': exports.PATCH
   };
+
+  try {
+    mdl = require(action.controller);
+
+    return {
+      controller: function (req, res, options, next) {
+        var m;
+
+        // enum all HTTP methods
+        for (m in httpMethods) {
+          if (httpMethods.hasOwnProperty(m)) {
+            if (req.requestType === httpMethods[m] && mdl.hasOwnProperty(m)) {
+              func = mdl[m]
+                || errorFunction(
+                     route, 
+                     "invalid definition for " + m 
+                       + " action in action controller module '" 
+                       + action.controller + "'");
+
+              return func(req, res, options, next); 
+            }
+          }
+        }
+
+        if (mdl.hasOwnProperty('do')) {
+          func = mdl['do']
+            || errorFunction(
+                 route,
+                   "invalid definition for do action in action controller module '"
+                   + action.controller + "'");
+
+          return func(req, res, options, next);
+        }
+
+        next();
+      },
+      options: action.options || {},
+      methods: action.methods || ALL_METHODS
+    };
+  }
+  catch (err) {
+    if (! moduleExists(action.controller)) {
+      return notImplementedFunction(
+        route, 
+        "cannot load/execute action controller module '" 
+          + action.controller + ": " + String(err.stack || err));
+    }
+
+    return errorFunction(
+      route, 
+      "cannot load/execute action controller module '" 
+        + action.controller + ": " + String(err.stack || err));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a prefix controller action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackActionPrefixController (route, action) {
+  'use strict';
+
+  var prefixController = action.prefixController;
+  var httpMethods = { 
+    'get': exports.GET,
+    'head': exports.HEAD,
+    'put': exports.PUT,
+    'post': exports.POST,
+    'delete': exports.DELETE,
+    'options': exports.OPTIONS,
+    'patch': exports.PATCH
+  };
+
+  return {
+    controller: function (req, res, options, next) {
+      var mdl;
+      var path;
+      var efunc;
+      var func;
+
+      // determine path
+      if (req.hasOwnProperty('suffix')) {
+        path = prefixController + "/" + req.suffix.join("/");
+      }
+      else {
+        path = prefixController;
+      }
+
+      // load module
+      try {
+        require(path);
+      }
+      catch (err1) {
+        efunc = errorFunction;
+
+        if (! moduleExists(path)) {
+          efunc = notImplementedFunction;
+        }
+
+        return efunc(route,
+                     "cannot load prefix controller: " + String(err1.stack || err1))(
+          req, res, options, next);
+      }
+
+      try {
+        var m;
+
+        // enum all HTTP methods
+        for (m in httpMethods) {
+          if (httpMethods.hasOwnProperty(m)) {
+            if (req.requestType === httpMethods[m] && mdl.hasOwnProperty(m)) {
+              func = mdl[m]
+                || errorFunction(
+                     route,
+                     "Invalid definition for " + m + " action in prefix controller '"
+                       + action.prefixController + "'");
+
+              return func(req, res, options, next);
+            }
+          }
+        }
+  
+        if (mdl.hasOwnProperty('do')) {
+          func = mdl['do']
+            || errorFunction(
+                 route, 
+                 "Invalid definition for do action in prefix controller '"
+                   + action.prefixController + "'");
+
+          return func(req, res, options, next);
+        }
+      }
+      catch (err2) {
+        return errorFunction(
+          route, 
+          "Cannot load/execute prefix controller '"
+            + action.prefixController + "': " + String(err2.stack || err2))(
+          req, res, options, next);
+      }
+
+      next();
+    },
+    options: action.options || {},
+    methods: action.methods || ALL_METHODS
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for an action
+////////////////////////////////////////////////////////////////////////////////
+
+function lookupCallbackAction (route, action, context) {
+  'use strict';
 
   // .............................................................................
   // short-cut for prefix controller
@@ -241,31 +535,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('callback')) {
-    defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
-    env = {};
-
-    try {
-      internal.execute(defn, env, route);
-
-      if (env.hasOwnProperty("func")) {
-        func = env.func;
-      }
-      else {
-        func = notImplementedFunction(route,
-                                      "could not define function '" + action.callback);
-      }
-    }
-    catch (err) {
-      func = errorFunction(route,
-                           "an error occurred while loading function '" 
-                           + action.callback + "': " + String(err));
-    }
-
-    return {
-      controller: func,
-      options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
-    };
+    return lookupCallbackActionCallback(route, action, context);
   }
 
   // .............................................................................
@@ -273,46 +543,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('do')) {
-    path = action['do'].split("/");
-    name = path.pop();
-    func = null;
-    joined = path.join("/");
-
-    try {
-      module = require(joined);
-
-      if (module.hasOwnProperty(name)) {
-        func = module[name];
-      }
-      else {
-        func = notImplementedFunction(route, "could not find action named '"
-                                             + name + "' in module '" + joined + "'");
-      }
-    }
-    catch (err1) {
-      if (! moduleExists(joined)) {
-        func = notImplementedFunction(route, 
-                                      "an error occurred while loading action named '" + name 
-                                        + "' in module '" + joined + "': " + String(err1));
-      }
-      else {
-        func = errorFunction(route,
-                             "an error occurred while loading action named '" + name 
-                               + "' in module '" + joined + "': " + String(err1));
-      }
-    }
-
-    if (func === null || typeof func !== 'function') {
-      func = errorFunction(route, 
-                           "invalid definition for the action named '" + name 
-                             + "' in module '" + joined + "'");
-    }
-
-    return {
-      controller: func,
-      options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
-    };
+    return lookupCallbackActionDo(route, action);
   }
 
   // .............................................................................
@@ -320,54 +551,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('controller')) {
-    try {
-      module = require(action.controller);
-
-      return {
-        controller: function (req, res, options, next) {
-          var m;
-
-          // enum all HTTP methods
-          for (m in httpMethods) {
-            if (httpMethods.hasOwnProperty(m)) {
-              if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
-                func = module[m]
-                  || errorFunction(route, 
-                                   "invalid definition for " + m 
-                                     + " action in action controller module '" 
-                                     + action.controller + "'");
-
-                return func(req, res, options, next); 
-              }
-            }
-          }
-
-          if (module.hasOwnProperty('do')) {
-            func = module['do']
-              || errorFunction(route,
-                               "invalid definition for do action in action controller module '"
-                                 + action.controller + "'");
-
-            return func(req, res, options, next);
-          }
-
-          next();
-        },
-        options: action.options || {},
-        methods: action.methods || exports.ALL_METHODS
-      };
-    }
-    catch (err2) {
-      if (! moduleExists(action.controller)) {
-        return notImplementedFunction(route, 
-                                      "cannot load/execute action controller module '" 
-                                        + action.controller + ": " + String(err2));
-      }
-
-      return errorFunction(route, 
-                           "cannot load/execute action controller module '" 
-                             + action.controller + ": " + String(err2));
-    }
+    return lookupCallbackActionController(route, action);
   }
 
   // .............................................................................
@@ -375,75 +559,7 @@ function lookupCallbackAction (route, action) {
   // .............................................................................
 
   if (action.hasOwnProperty('prefixController')) {
-    var prefixController = action.prefixController;
-
-    return {
-      controller: function (req, res, options, next) {
-        var module;
-        var path;
-        var efunc;
-
-        // determine path
-        if (req.hasOwnProperty('suffix')) {
-          path = prefixController + "/" + req.suffix.join("/");
-        }
-        else {
-          path = prefixController;
-        }
-
-        // load module
-        try {
-          require(path);
-        }
-        catch (err) {
-          efunc = errorFunction;
-
-          if (! moduleExists(path)) {
-            efunc = notImplementedFunction;
-          }
-
-          return efunc(route, "cannot load prefix controller: " + String(err))(
-                   req, res, options, next);
-        }
-
-        try {
-          var m;
-
-          // enum all HTTP methods
-          for (m in httpMethods) {
-            if (httpMethods.hasOwnProperty(m)) {
-              if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
-                func = module[m]
-                  || errorFunction(route,
-                                   "Invalid definition for " + m + " action in prefix controller '"
-                                     + action.prefixController + "'");
-
-                return func(req, res, options, next);
-              }
-            }
-          }
-  
-          if (module.hasOwnProperty('do')) {
-            func = module['do']
-              || errorFunction(route, 
-                               "Invalid definition for do action in prefix controller '"
-                                 + action.prefixController + "'");
-
-            return func(req, res, options, next);
-          }
-        }
-        catch (err2) {
-          return errorFunction(route, 
-                               "Cannot load/execute prefix controller '"
-                                 + action.prefixController + "': " + String(err2))(
-                   req, res, options, next);
-        }
-
-        next();
-      },
-      options: action.options || {},
-      methods: action.methods || exports.ALL_METHODS
-    };
+    return lookupCallbackActionPrefixController(route, action);
   }
 
   return null;
@@ -453,14 +569,109 @@ function lookupCallbackAction (route, action) {
 /// @brief looks up a callback
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallback (route) {
+function lookupCallback (route, context) {
+  'use strict';
+
   var result = null;
 
   if (route.hasOwnProperty('content')) {
     result = lookupCallbackStatic(route.content);
   }
   else if (route.hasOwnProperty('action')) {
-    result = lookupCallbackAction(route, route.action);
+    result = lookupCallbackAction(route, route.action, context);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates all contexts
+////////////////////////////////////////////////////////////////////////////////
+
+function createContexts (appModule, appContext, desc) {
+  'use strict';
+
+  var key;
+  var c;
+
+  var result = {};
+
+  for (key in desc) {
+    if (desc.hasOwnProperty(key)) {
+      var d = desc[key];
+      var collectionPrefix = appContext.connectionPrefix;
+
+      result[key] = {
+        appModule: appModule,
+        repositories: {},
+        requires: {}
+      };
+
+      // .............................................................................
+      // requires
+      // .............................................................................
+
+      if (d.hasOwnProperty('requires')) {
+        for (c in d.requires) {
+          if (d.requires.hasOwnProperty(c)) {
+            var name = d.requires[c];
+            var m = appModule.require(name);
+
+            result[key].requires[c] = m;
+          }
+        }
+      }
+
+      // .............................................................................
+      // repositories
+      // .............................................................................
+
+      if (d.hasOwnProperty('repositories')) {
+        for (c in d.repositories) {
+          if (d.repositories.hasOwnProperty(c)) {
+            var rep = d.repositories[c];
+            var model;
+            var Repo;
+
+            if (rep.hasOwnProperty('model')) {
+              model = appModule.require(rep.model).Model;
+
+              if (model === undefined) {
+                throw new Error("module '" + rep.model + "' does not define a model");
+              }
+            }
+            else {
+              model = foxx.Model;
+            }
+
+            if (rep.hasOwnProperty('repository')) {
+              Repo = appModule.require(rep.repository).Repository;
+
+              if (Repo === undefined) {
+                throw new Error("module '" + rep.repository + "' does not define a repository");
+              }
+            }
+            else {
+              Repo = foxx.Repository;
+            }
+
+            var prefix = appContext.collectionPrefix;
+            var cname;
+
+            if (prefix === "") {
+              cname = c;
+            }
+            else {
+              cname = prefix + "_" + c;
+            }
+
+            var collection = arangodb.db._collection(cname);
+
+            result[key].repositories[c] = new Repo(prefix, collection, model);
+          }
+        }
+      }
+    }
   }
 
   return result;
@@ -471,13 +682,15 @@ function lookupCallback (route) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function intersectMethods (a, b) {
+  'use strict';
+
   var d = {};
   var i;
   var j;
   var results = [];
 
-  a = a || exports.ALL_METHODS;
-  b = b || exports.ALL_METHODS;
+  a = a || ALL_METHODS;
+  b = b || ALL_METHODS;
 
   for (i = 0; i < b.length;  i++) {
     d[b[i].toUpperCase()] = true;
@@ -499,6 +712,8 @@ function intersectMethods (a, b) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
+  'use strict';
+
   var i;
   var p;
   var part;
@@ -588,6 +803,8 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineRoute (route, where, url, callback) {
+  'use strict';
+
   var methods;
   var branch;
   var i;
@@ -607,6 +824,8 @@ function defineRoute (route, where, url, callback) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function flattenRouting (routes, path, urlParameters, depth, prefix) {
+  'use strict';
+
   var cur;
   var i;
   var k;
@@ -777,6 +996,8 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
+  'use strict';
+
   var url = options.url;
   var contexts = options.context;
   var callback = options.callback;
@@ -842,6 +1063,8 @@ function defineHttp (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getErrorMessage (code) {
+  'use strict';
+
   var key;
 
   for (key in internal.errors) {
@@ -860,6 +1083,8 @@ function getErrorMessage (code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getJsonBody (req, res, code) {
+  'use strict';
+
   var body;
   var err;
 
@@ -902,6 +1127,8 @@ function getJsonBody (req, res, code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
+  'use strict';
+
   var i;
   var msg;
 
@@ -949,11 +1176,10 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 ////////////////////////////////////////////////////////////////////////////////
 
 function reloadRouting () {
+  'use strict';
+
   var i;
-  var routes;
-  var routing;
-  var handleRoute;
-  var handleMiddleware;
+  var j;
   var method;
 
   // .............................................................................
@@ -965,8 +1191,8 @@ function reloadRouting () {
   RoutingCache.routes = {};
   RoutingCache.middleware = {};
 
-  for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
-    method = exports.ALL_METHODS[i];
+  for (i = 0;  i < ALL_METHODS.length;  ++i) {
+    method = ALL_METHODS[i];
 
     RoutingCache.routes[method] = {};
     RoutingCache.middleware[method] = {};
@@ -976,14 +1202,31 @@ function reloadRouting () {
   // lookup all routes
   // .............................................................................
 
-  routing = internal.db._collection("_routing");
-  routes = routing.all();
+  var routes = [];
+  var routing = arangodb.db._collection("_routing");
+
+  i = routing.all();
+
+  while (i.hasNext()) {
+    var n = i.next();
+
+    routes.push(n.shallowCopy);
+  }
+
+  // allow the collection to unload
+  i  = null;
+  routing = null;
+
+  // check development routes
+  if (internal.developmentMode) {
+    routes = routes.concat(foxxManager.developmentRoutes());
+  }
 
   // .............................................................................
   // defines a new route
   // .............................................................................
 
-  handleRoute = function (storage, urlPrefix, modulePrefix, route) {
+  var installRoute = function (storage, urlPrefix, modulePrefix, context, route) {
     var url;
     var callback;
 
@@ -994,7 +1237,7 @@ function reloadRouting () {
       return;
     }
 
-    callback = lookupCallback(route);
+    callback = lookupCallback(route, context);
 
     if (callback === null) {
       console.error("route '%s' has an unknown callback, ignoring", JSON.stringify(route));
@@ -1005,70 +1248,90 @@ function reloadRouting () {
   };
   
   // .............................................................................
-  // deep-copy a route object
+  // analyses a new route
   // .............................................................................
 
-  function clone (obj) {
-    if (obj === null || typeof(obj) !== "object") {
-      return obj;
+  var analyseRoute = function (routes) {
+    var urlPrefix = routes.urlPrefix || "";
+    var modulePrefix = routes.modulePrefix || "";
+    var keys = [ 'routes', 'middleware' ];
+    var repositories = {};
+    var j;
+
+    // create the application context
+    var appModule = module.root;
+    var appContext = {
+      collectionPrefix: ""
+    };
+
+    if (routes.hasOwnProperty('appContext')) {
+      appContext = routes.appContext;
+
+      var appId = appContext.appId;
+      var app = module.createApp(appId);
+
+      if (app === null) {
+        throw new Error("unknown application '" + appId + "'");
+      }
+
+      appModule = app.createAppModule();
     }
 
-    var copy, a; 
-    if (Array.isArray(obj)) {
-      copy = [ ];
-      obj.forEach(function (i) {
-        copy.push(clone(i));
-      });
-    }
-    else if (obj instanceof Object) {
-      copy = { };
-      for (a in obj) {
-        if (obj.hasOwnProperty(a)) {
-          copy[a] = clone(obj[a]);
+    // create the route contexts
+    var contexts = createContexts(appModule, appContext, routes.context || {});
+
+    // install the routes
+    for (j = 0;  j < keys.length;  ++j) {
+      var key = keys[j];
+
+      if (routes.hasOwnProperty(key)) {
+        var r = routes[key];
+
+        for (i = 0;  i < r.length;  ++i) {
+          var route = r[i];
+          var context = {};
+
+          if (route.hasOwnProperty('context')) {
+            var cn = route.context;
+
+            if (contexts.hasOwnProperty(cn)) {
+              context = contexts[cn];
+            }
+            else {
+              throw new Error("unknown context '" + cn + "'");
+            }
+          }
+
+          installRoute(RoutingCache[key], urlPrefix, modulePrefix, context, r[i]);
         }
       }
     }
-
-    return copy;
-  }
+  };
 
   // .............................................................................
   // loop over the routes or routes bundle
   // .............................................................................
 
-  while (routes.hasNext()) {
+  for (j = 0;  j < routes.length;  ++j) {
+
     // clone the route object so the barrier for the collection can be removed soon
-    var route = clone(routes.next());
+    var route = routes[j];
     var r;
 
-    if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
-      var urlPrefix = route.urlPrefix || "";
-      var modulePrefix = route.modulePrefix || "";
-
-      if (route.hasOwnProperty('routes')) {
-        r = route.routes;
-
-        for (i = 0;  i < r.length;  ++i) {
-          handleRoute(RoutingCache.routes, urlPrefix, modulePrefix, r[i]);
-        }
+    try {
+      if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
+        analyseRoute(route);
       }
-
-      if (route.hasOwnProperty('middleware')) {
-        r = route.middleware;
-
-        for (i = 0;  i < r.length;  ++i) {
-          handleRoute(RoutingCache.middleware, urlPrefix, modulePrefix, r[i]);
-        }
+      else {
+        installRoute(RoutingCache.routes, "", "", {}, route);
       }
     }
-    else {
-      handleRoute(RoutingCache.routes, "", "", route);
+    catch (err) {
+      console.error("cannot install route '%s': %s",
+                    route.toString(),
+                    String(err.stack || err));
     }
   }
-
-  // allow the collection to unload
-  routes  = null;
-  routing = null;
 
   // .............................................................................
   // compute the flat routes
@@ -1076,11 +1339,11 @@ function reloadRouting () {
 
   RoutingCache.flat = {};
 
-  for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
+  for (i = 0;  i < ALL_METHODS.length;  ++i) {
     var a;
     var b;
 
-    method = exports.ALL_METHODS[i];
+    method = ALL_METHODS[i];
 
     a = flattenRouting(RoutingCache.routes[method], "", {}, 0, false);
     b = flattenRouting(RoutingCache.middleware[method], "", {}, 0, false).reverse();
@@ -1094,6 +1357,8 @@ function reloadRouting () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function nextRouting (state) {
+  'use strict';
+
   var i;
   var k;
 
@@ -1141,6 +1406,8 @@ function nextRouting (state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function firstRouting (type, parts) {
+  'use strict';
+
   var url = parts;
 
   if (typeof url === 'string') {
@@ -1173,22 +1440,6 @@ function firstRouting (type, parts) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if development mode is allowed in general
-////////////////////////////////////////////////////////////////////////////////
-
-function developmentModeAllowed () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if development mode is activated for an application
-////////////////////////////////////////////////////////////////////////////////
-
-function developmentModeActivated (application) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1206,6 +1457,8 @@ function developmentModeActivated (application) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function badParameter (req, res, name) {
+  'use strict';
+
   resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, 
               "invalid value for parameter '" + name + "'");
 }
@@ -1223,6 +1476,8 @@ function badParameter (req, res, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultOk (req, res, httpReturnCode, result, headers) {  
+  'use strict';
+
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
   
@@ -1250,6 +1505,8 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
+  'use strict';
+
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
@@ -1262,6 +1519,8 @@ function resultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotFound (req, res, code, msg, headers) {
+  'use strict';
+
   resultError(req, res, exports.HTTP_NOT_FOUND, code, msg, headers);
 }
 
@@ -1274,6 +1533,8 @@ function resultNotFound (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
+  'use strict';
+
   resultError(req, 
               res,
               exports.HTTP_NOT_IMPLEMENTED,
@@ -1291,6 +1552,8 @@ function resultNotImplemented (req, res, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
+  'use strict';
+
   resultError(req, res,
               exports.HTTP_METHOD_NOT_ALLOWED,
               arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
@@ -1307,6 +1570,8 @@ function resultUnsupported (req, res, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
+  'use strict';
+
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
   res.contentType = "text/html";
 
@@ -1336,6 +1601,8 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
+  'use strict';
+
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
   res.contentType = "text/html";
 
@@ -1374,6 +1641,8 @@ function resultTemporaryRedirect (req, res, destination, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultCursor (req, res, cursor, code, options) {
+  'use strict';
+
   var rows;
   var count;
   var hasCount;
@@ -1437,6 +1706,8 @@ function resultCursor (req, res, cursor, code, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
+  'use strict';
+
   if (collection === undefined) {
     resultError(req, res,
                 exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
@@ -1459,6 +1730,8 @@ function collectionNotFound (req, res, collection, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
+  'use strict';
+
   if (collection === undefined) {
     resultError(req, res,
                 exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
@@ -1487,23 +1760,33 @@ function indexNotFound (req, res, collection, index, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers) {
+  'use strict';
+
+  var code;
+  var msg;
+  var num;
+
   if (err instanceof internal.ArangoError) {
-    var num = err.errorNum;
-    var msg = err.errorMessage;
-    var code = exports.HTTP_BAD;
+    num = err.errorNum;
+    msg = err.errorMessage;
+    code = exports.HTTP_BAD;
 
     if (num === 0) {
       num = arangodb.ERROR_INTERNAL;
     }
 
     if (msg === "") {
-      msg = String(err) + " " + String(err.stack);
+      msg = String(err.stack || err);
     }
-
+    else {
+      msg += ": " + String(err.stack || err);
+    }
+    
     switch (num) {
       case arangodb.ERROR_INTERNAL: 
         code = exports.HTTP_SERVER_ERROR; 
         break;
+
       case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
       case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
         code = exports.HTTP_CONFLICT; 
@@ -1512,10 +1795,18 @@ function resultException (req, res, err, headers) {
 
     resultError(req, res, code, num, msg, headers);
   }
+  else if (err instanceof TypeError) {
+    num = arangodb.ERROR_TYPE_ERROR;
+    code = exports.HTTP_BAD;
+    msg = String(err.stack || err);
+
+    resultError(req, res, code, num, msg, headers);
+  }
+
   else {
     resultError(req, res,
                 exports.HTTP_SERVER_ERROR, arangodb.ERROR_HTTP_SERVER_ERROR,
-                String(err),
+                String(err.stack || err),
                 headers);
   }
 }
@@ -1538,9 +1829,9 @@ function resultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function echoRequest (req, res, options, next) {
-  var result;
+  'use strict';
 
-  result = { request : req, options : options };
+  var result = { request : req, options : options };
 
   res.responseCode = exports.HTTP_OK;
   res.contentType = "application/json; charset=utf-8";
@@ -1552,6 +1843,8 @@ function echoRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function logRequest (req, res, options, next) {
+  'use strict';
+
   var log;
   var level;
   var token;
@@ -1599,11 +1892,48 @@ function logRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function redirectRequest (req, res, options, next) {
+  'use strict';
+
   if (options.permanently) {
     resultPermanentRedirect(req, res, options.destination);
   }
   else {
     resultTemporaryRedirect(req, res, options.destination);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief redirects a request
+////////////////////////////////////////////////////////////////////////////////
+
+function pathHandler (req, res, options, next) {
+  'use strict';
+
+  var filename;
+  var result;
+
+  filename = fs.join(options.path, fs.join.apply(fs.join, req.suffix));
+
+  if (options.hasOwnProperty('root')) {
+    var root = options.root;
+
+    if (root.substr(0, 4) === "app:") {
+      filename = fs.join(module.appPath(), filename);
+    }
+    else if (root.substr(0, 4) === "dev:") {
+      filename = fs.join(module.devAppPath(), filename);
+    }
+  }
+
+  if (fs.exists(filename)) {
+    res.responseCode = exports.HTTP_OK;
+    res.contentType = arangodb.guessContentType(filename);
+    res.bodyFromFile = filename;
+  }
+  else {
+    res.responseCode = exports.HTTP_NOT_FOUND;
+    res.contentType = "text/plain";
+    res.body = "cannot find file '" + filename + "'";
   }
 }
 
@@ -1629,8 +1959,6 @@ exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.routingCache             = function() { return RoutingCache; };
-exports.developmentModeAllowed   = developmentModeAllowed;
-exports.developmentModeActivated = developmentModeActivated;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;
@@ -1653,6 +1981,7 @@ exports.resultException          = resultException;
 exports.echoRequest              = echoRequest;
 exports.logRequest               = logRequest;
 exports.redirectRequest          = redirectRequest;
+exports.pathHandler              = pathHandler;
 
 // some useful constants
 exports.COLLECTION               = "collection";
@@ -1668,7 +1997,7 @@ exports.POST                     = "POST";
 exports.PUT                      = "PUT";
 exports.PATCH                    = "PATCH";
 
-exports.ALL_METHODS              = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
+exports.ALL_METHODS              = ALL_METHODS;
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
@@ -1693,7 +2022,10 @@ exports.HTTP_NOT_FOUND           = 404;
 exports.HTTP_METHOD_NOT_ALLOWED  = 405;
 exports.HTTP_CONFLICT            = 409;
 exports.HTTP_PRECONDITION_FAILED = 412;
+exports.HTTP_ENTITY_TOO_LARGE    = 413;
+exports.HTTP_I_AM_A_TEAPOT       = 418;
 exports.HTTP_UNPROCESSABLE_ENTIT = 422;
+exports.HTTP_HEADER_TOO_LARGE    = 431;
 
 // HTTP 5xx
 exports.HTTP_SERVER_ERROR        = 500;

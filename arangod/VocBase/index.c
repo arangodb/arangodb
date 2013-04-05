@@ -33,7 +33,7 @@
 #include "BasicsC/linked-list.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "CapConstraint/cap-constraint.h"
 #include "GeoIndex/geo-index.h"
@@ -69,7 +69,7 @@ void TRI_InitIndex (TRI_index_t* idx,
                     struct TRI_primary_collection_s* primary,
                     bool unique,
                     bool needsFullCoverage) {
-  TRI_ASSERT_DEBUG(idx != NULL);
+  assert(idx != NULL);
 
   idx->_iid               = TRI_NewTickVocBase();
   idx->_type              = type;
@@ -288,10 +288,16 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone, TRI_index_t* idx) {
   TRI_json_t* json;
 
   json = TRI_CreateArrayJson(zone);
+
   if (json != NULL) {
-    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateNumberJson(zone, idx->_iid));
+    char* number;
+    
+    number = TRI_StringUInt64(idx->_iid);
+    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
     TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, idx->typeName(idx)));
     TRI_Insert3ArrayJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   }
 
   return json;
@@ -477,12 +483,12 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
+  idx->typeName = TypeNamePrimary;
   TRI_InitIndex(idx, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true, true);
 
   // override iid
   idx->_iid     = 0;
 
-  idx->typeName = TypeNamePrimary;
   idx->json     = JsonPrimary;
   idx->insert   = InsertPrimary;
   idx->remove   = RemovePrimary;
@@ -772,9 +778,9 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary) {
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_from");
   TRI_PushBackVectorString(&idx->_fields, id);
  
+  idx->typeName = TypeNameEdge;
   TRI_InitIndex(idx, TRI_IDX_TYPE_EDGE_INDEX, primary, false, true); 
 
-  idx->typeName = TypeNameEdge;
   idx->json     = JsonEdge;
   idx->insert   = InsertEdge;
   idx->remove   = RemoveEdge;
@@ -1127,9 +1133,9 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* prim
   pqIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_priorityqueue_index_t), false);
   idx = &pqIndex->base;
   
+  idx->typeName = TypeNamePriorityQueueIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, primary, unique, true);
    
-  idx->typeName = TypeNamePriorityQueueIndex;
   idx->json     = JsonPriorityQueueIndex;
   idx->insert   = InsertPriorityQueueIndex;
   idx->remove   = RemovePriorityQueueIndex;
@@ -1770,9 +1776,9 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* primary,
   skiplistIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
   idx = &skiplistIndex->base;
 
+  idx->typeName = TypeNameSkiplistIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique, false);
 
-  idx->typeName = TypeNameSkiplistIndex;
   idx->json     = JsonSkiplistIndex;
   idx->insert   = InsertSkiplistIndex;
   idx->remove   = RemoveSkiplistIndex;
@@ -2107,9 +2113,9 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   idx = &fulltextIndex->base;
 
+  idx->typeName = TypeNameFulltextIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false, true); 
 
-  idx->typeName = TypeNameFulltextIndex;
   idx->json     = JsonFulltextIndex;
   idx->insert   = InsertFulltextIndex;
   idx->remove   = RemoveFulltextIndex;
@@ -2774,7 +2780,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
 
     if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
-      *errorNum = TRI_ERROR_ILLEGAL_OPTION;
+      *errorNum = TRI_ERROR_BAD_PARAMETER;
       *errorStr = TRI_DuplicateString("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     }
@@ -2800,9 +2806,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   baIndex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false);
   idx = &baIndex->base;
 
+  idx->typeName = TypeNameBitarrayIndex;
   TRI_InitIndex(idx, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false, false);
 
-  idx->typeName = TypeNameBitarrayIndex;
   idx->json     = JsonBitarrayIndex;
   idx->insert   = InsertBitarrayIndex;
   idx->remove   = RemoveBitarrayIndex;

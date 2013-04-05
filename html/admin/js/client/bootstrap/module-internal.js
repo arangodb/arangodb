@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, ArangoConnection, print, SYS_ARANGO */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,13 +81,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the AQL user functions
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.reloadAqlFunctions = function () {
+    if (typeof internal.arango !== 'undefined') {
+      internal.arango.POST("/_admin/aql/reload", "");
+      return;
+    }
+
+    throw "not connected";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes the module cache of the server
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.flushServerModules = function () {
     if (typeof internal.arango !== 'undefined') {
       internal.arango.POST("/_admin/modules/flush", "");
+      return;
     }
+
+    throw "not connected";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +113,10 @@
   internal.reloadRouting = function () {
     if (typeof internal.arango !== 'undefined') {
       internal.arango.POST("/_admin/routing/reload", "");
+      return;
     }
+
+    throw "not connected";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,13 +124,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.routingCache = function () {
-    var result;
-
     if (typeof internal.arango !== 'undefined') {
-      result = internal.arango.GET("/_admin/routing/routes", "");
+      return internal.arango.GET("/_admin/routing/routes", "");
+      
     }
 
-    return result;
+    throw "not connected";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +139,22 @@
   internal.reloadAuth = function () {
     if (typeof internal.arango !== 'undefined') {
       internal.arango.POST("/_admin/auth/reload", "");
+      return;
     }
+
+    throw "not connected";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute javascript file on the server
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.executeServer = function (body) {
+    if (typeof internal.arango !== 'undefined') {
+      return internal.arango.POST("/_admin/execute", body);
+    }
+
+    throw "not connected";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +162,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.appendCurlRequest = function (appender) {
-    return function (method, url, body) {
+    return function (method, url, body, headers) {
       var response;
       var curl;
 
@@ -158,9 +191,17 @@
         response = internal.arango.PATCH_RAW(url, body);
         curl += "-X " + method + " ";
       }
+      else if (method === 'HEAD') {
+        response = internal.arango.HEAD_RAW(url, body);
+        curl += "-X " + method + " ";
+      }
       else if (method === 'OPTION') {
         response = internal.arango.OPTION_RAW(url, body);
         curl += "-X " + method + " ";
+      }
+
+      if (headers !== undefined && headers !== "") {
+        curl += "--header \'" + headers + "\' ";
       }
 
       if (body !== undefined && body !== "") {

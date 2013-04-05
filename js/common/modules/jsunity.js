@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var fs = require("fs");
 var console = require("console");
 
 var TOTAL = 0;
@@ -33,8 +34,7 @@ var PASSED = 0;
 var FAILED = 0;
 var DURATION = 0;
 
-internal.loadFile("jsunity/jsunity");
-//jsUnity.log = console;
+var jsUnity = require("./jsunity/jsunity").jsUnity;
 
 jsUnity.results.begin = function (total, suiteName) {
   print("Running " + (suiteName || "unnamed test suite"));
@@ -371,16 +371,16 @@ function RunTest (path) {
   var content;
   var f;
 
-  content = internal.read(path);
+  content = fs.read(path);
 
-  content = "(function(jsUnity){jsUnity.attachAssertions();" + content + "})";
-  f = internal.execute(content, undefined, path);
+  content = "(function(){require('jsunity').jsUnity.attachAssertions();" + content + "})";
+  f = internal.executeScript(content, undefined, path);
   
   if (f == undefined) {
     throw "cannot create context function";
   }
 
-  return f(exports.jsUnity);
+  return f();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,9 +400,10 @@ function RunCoverage (path, files) {
 
 function RunCommandLineTests () {
   var result = true;
+  var unitTests = internal.unitTests();
 
-  for (var i = 0;  i < SYS_UNIT_TESTS.length;  ++i) {
-    var file = SYS_UNIT_TESTS[i];
+  for (var i = 0;  i < unitTests.length;  ++i) {
+    var file = unitTests[i];
     print();
     print("running tests from file '" + file + "'");
 
@@ -420,7 +421,7 @@ function RunCommandLineTests () {
     internal.wait(0); // force GC
   }
 
-  SYS_UNIT_TESTS_RESULT = result;
+  internal.setUnitTestsResult(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

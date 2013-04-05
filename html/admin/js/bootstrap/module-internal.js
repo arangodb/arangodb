@@ -1,17 +1,18 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE,
-  SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_RAND,
-  SYS_READ, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
-  SYS_GETLINE, SYS_PARSE, SYS_SAVE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, PACKAGE_PATH,
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
+/*global require, module, Module, SYS_DOWNLOAD, 
+  SYS_EXECUTE, SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STAT, 
+  SYS_RAND, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT,
+  SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
-  SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS,
-  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, MODULES_PATH, COLORS, COLOR_OUTPUT,
+  SYS_CHECK_AND_MARK_NONCE, SYS_REQUEST_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
+  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, COLORS, COLOR_OUTPUT,
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION */
+  REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, THREAD_NUMBER,
+  SYS_PLATFORM */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -40,210 +41,15 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+(function () {
+  // cannot use strict here as we are going to delete globals
+
+  var exports = require("internal");
+  var fs = require("fs");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var internal = require("internal");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hide global variables
-////////////////////////////////////////////////////////////////////////////////
-
-  // system functions
-  if (typeof SYS_EXECUTE !== "undefined") {
-    internal.execute = SYS_EXECUTE;
-    delete SYS_EXECUTE;
-  }
-
-  if (typeof SYS_GETLINE !== "undefined") {
-    internal.getline = SYS_GETLINE;
-    delete SYS_GETLINE;
-  }
-
-  if (typeof SYS_LOAD !== "undefined") {
-    internal.load = SYS_LOAD;
-    delete SYS_LOAD;
-  }
-
-  if (typeof SYS_LOG !== "undefined") {
-    internal.log = SYS_LOG;
-    delete SYS_LOG;
-  }
-
-  if (typeof SYS_LOG_LEVEL !== "undefined") {
-    internal.logLevel = SYS_LOG_LEVEL;
-    delete SYS_LOG_LEVEL;
-  }
-
-  if (typeof SYS_MD5 !== "undefined") {
-    internal.md5 = SYS_MD5;
-    delete SYS_MD5;
-  }
-
-  if (typeof SYS_GEN_RANDOM_NUMBERS !== "undefined") {
-    internal.genRandomNumbers = SYS_GEN_RANDOM_NUMBERS;
-    delete SYS_GEN_RANDOM_NUMBERS;
-  }
-
-  if (typeof SYS_GEN_RANDOM_ALPHA_NUMBERS !== "undefined") {
-    internal.genRandomAlphaNumbers = SYS_GEN_RANDOM_ALPHA_NUMBERS;
-    delete SYS_GEN_RANDOM_ALPHA_NUMBERS;
-  }
-
-  if (typeof SYS_GEN_RANDOM_SALT !== "undefined") {
-    internal.genRandomSalt = SYS_GEN_RANDOM_SALT;
-    delete SYS_GEN_RANDOM_SALT;
-  }
-
-  if (typeof SYS_CREATE_NONCE !== "undefined") {
-    internal.createNonce = SYS_CREATE_NONCE;
-    delete SYS_CREATE_NONCE;
-  }
-
-  if (typeof SYS_CHECK_AND_MARK_NONCE !== "undefined") {
-    internal.checkAndMarkNonce = SYS_CHECK_AND_MARK_NONCE;
-    delete SYS_CHECK_AND_MARK_NONCE;
-  }
-
-  if (typeof SYS_OUTPUT !== "undefined") {
-    internal.stdOutput = SYS_OUTPUT;
-    internal.output = internal.stdOutput;
-    delete SYS_OUTPUT;
-  }
-
-  if (typeof SYS_PARSE !== "undefined") {
-    internal.parse= SYS_PARSE;
-    delete SYS_PARSE;
-  }
-
-  if (typeof SYS_PROCESS_STAT !== "undefined") {
-    internal.processStat = SYS_PROCESS_STAT;
-    delete SYS_PROCESS_STAT;
-  }
-
-  if (typeof SYS_RAND !== "undefined") {
-    internal.rand = SYS_RAND;
-    delete SYS_RAND;
-  }
-
-  if (typeof SYS_READ !== "undefined") {
-    internal.read = SYS_READ;
-    delete SYS_READ;
-  }
-
-  if (typeof SYS_SAVE !== "undefined") {
-    internal.write = SYS_SAVE;
-    delete SYS_SAVE;
-  }
-
-  if (typeof SYS_SHA256 !== "undefined") {
-    internal.sha256 = SYS_SHA256;
-    delete SYS_SHA256;
-  }
-
-  if (typeof SYS_SPRINTF !== "undefined") {
-    internal.sprintf = SYS_SPRINTF;
-    delete SYS_SPRINTF;
-  }
-
-  if (typeof SYS_TIME !== "undefined") {
-    internal.time = SYS_TIME;
-    delete SYS_TIME;
-  }
-
-  if (typeof SYS_WAIT !== "undefined") {
-    internal.wait = SYS_WAIT;
-    delete SYS_WAIT;
-  }
-
-  if (typeof FS_EXISTS !== "undefined") {
-    internal.exists = FS_EXISTS;
-    delete FS_EXISTS;
-  }
-
-  if (typeof FS_IS_DIRECTORY !== "undefined") {
-    internal.isDirectory = FS_IS_DIRECTORY;
-    delete FS_IS_DIRECTORY;
-  }
-
-  if (typeof FS_LIST_TREE !== "undefined") {
-    internal.listTree = FS_LIST_TREE;
-    delete FS_LIST_TREE;
-  }
-
-  if (typeof FS_MOVE !== "undefined") {
-    internal.move = FS_MOVE;
-    delete FS_MOVE;
-  }
-
-  if (typeof FS_REMOVE !== "undefined") {
-    internal.remove = FS_REMOVE;
-    delete FS_REMOVE;
-  }
-
-  if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {
-    internal.importCsvFile = SYS_IMPORT_CSV_FILE;
-    delete SYS_IMPORT_CSV_FILE;
-  }
-
-  if (typeof SYS_IMPORT_JSON_FILE !== "undefined") {
-    internal.importJsonFile = SYS_IMPORT_JSON_FILE;
-    delete SYS_IMPORT_JSON_FILE;
-  }
-
-  if (typeof SYS_PROCESS_CSV_FILE !== "undefined") {
-    internal.processCsvFile = SYS_PROCESS_CSV_FILE;
-    delete SYS_PROCESS_CSV_FILE;
-  }
-
-  if (typeof SYS_PROCESS_JSON_FILE !== "undefined") {
-    internal.processJsonFile = SYS_PROCESS_JSON_FILE;
-    delete SYS_PROCESS_JSON_FILE;
-  }
-
-  internal.bytesSentDistribution = [];
-
-  if (typeof BYTES_SENT_DISTRIBUTION !== "undefined") {
-    internal.bytesSentDistribution = BYTES_SENT_DISTRIBUTION;
-    delete BYTES_SENT_DISTRIBUTION;
-  }
-
-  internal.bytesReceivedDistribution = [];
-
-  if (typeof BYTES_RECEIVED_DISTRIBUTION !== "undefined") {
-    internal.bytesReceivedDistribution = BYTES_RECEIVED_DISTRIBUTION;
-    delete BYTES_RECEIVED_DISTRIBUTION;
-  }
-
-  internal.connectionTimeDistribution = [];
-
-  if (typeof CONNECTION_TIME_DISTRIBUTION !== "undefined") {
-    internal.connectionTimeDistribution = CONNECTION_TIME_DISTRIBUTION;
-    delete CONNECTION_TIME_DISTRIBUTION;
-  }
-
-  internal.requestTimeDistribution = [];
-
-  if (typeof REQUEST_TIME_DISTRIBUTION !== "undefined") {
-    internal.requestTimeDistribution = REQUEST_TIME_DISTRIBUTION;
-    delete REQUEST_TIME_DISTRIBUTION;
-  }
-
-  if (typeof SYS_REQUEST_STATISTICS !== "undefined") {
-    internal.requestStatistics = SYS_REQUEST_STATISTICS;
-    delete SYS_REQUEST_STATISTICS;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -255,57 +61,432 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief modules path
+/// @brief threadNumber
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.MODULES_PATH = "";
+  exports.threadNumber = 0;
 
-  if (typeof MODULES_PATH !== "undefined") {
-    internal.MODULES_PATH = MODULES_PATH;
-    delete MODULES_PATH;
+  if (typeof THREAD_NUMBER !== "undefined") {
+    exports.threadNumber = THREAD_NUMBER;
+    delete THREAD_NUMBER;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief node modules path
+/// @brief developmentMode
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.PACKAGE_PATH = "";
+  exports.developmentMode = false;
 
-  if (typeof PACKAGE_PATH !== "undefined") {
-    internal.PACKAGE_PATH = PACKAGE_PATH;
-    delete PACKAGE_PATH;
+  if (typeof DEVELOPMENT_MODE !== "undefined") {
+    exports.developmentMode = DEVELOPMENT_MODE;
+    delete DEVELOPMENT_MODE;
+  }
+
+  if (exports.developmentMode && exports.threadNumber === 0) {
+    SYS_LOG("warning", "################################################################################");
+    SYS_LOG("warning", "development mode is active, never use this in production");
+    SYS_LOG("warning", "################################################################################");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief quiet flag
+/// @brief quiet
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.ARANGO_QUIET = false;
+  exports.quiet = false;
 
   if (typeof ARANGO_QUIET !== "undefined") {
-    internal.ARANGO_QUIET = ARANGO_QUIET;
+    exports.quiet = ARANGO_QUIET;
     delete ARANGO_QUIET;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pretty print flag
+/// @brief valgrind
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.PRETTY_PRINT = false;
+  exports.valgrind = false;
 
-  if (typeof PRETTY_PRINT !== "undefined") {
-    internal.PRETTY_PRINT = PRETTY_PRINT;
-    delete PRETTY_PRINT;
+  if (typeof VALGRIND !== "undefined") {
+    exports.valgrind = VALGRIND;
+    delete VALGRIND;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief color constants
+/// @brief version
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.COLORS = { };
+  exports.version = "unknown";
+
+  if (typeof VERSION !== "undefined") {
+    exports.version = VERSION;
+    delete VERSION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.upgrade = "unknown";
+
+  if (typeof UPGRADE !== "undefined") {
+    exports.upgrade = UPGRADE;
+    delete UPGRADE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief plattform
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.plattform = "unknown";
+
+  if (typeof SYS_PLATFORM !== "undefined") {
+    exports.plattform = SYS_PLATFORM;
+    delete SYS_PLATFORM;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bytesSentDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.bytesSentDistribution = [];
+
+  if (typeof BYTES_SENT_DISTRIBUTION !== "undefined") {
+    exports.bytesSentDistribution = BYTES_SENT_DISTRIBUTION;
+    delete BYTES_SENT_DISTRIBUTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bytesReceivedDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.bytesReceivedDistribution = [];
+
+  if (typeof BYTES_RECEIVED_DISTRIBUTION !== "undefined") {
+    exports.bytesReceivedDistribution = BYTES_RECEIVED_DISTRIBUTION;
+    delete BYTES_RECEIVED_DISTRIBUTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connectionTimeDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.connectionTimeDistribution = [];
+
+  if (typeof CONNECTION_TIME_DISTRIBUTION !== "undefined") {
+    exports.connectionTimeDistribution = CONNECTION_TIME_DISTRIBUTION;
+    delete CONNECTION_TIME_DISTRIBUTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief requestTimeDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.requestTimeDistribution = [];
+
+  if (typeof REQUEST_TIME_DISTRIBUTION !== "undefined") {
+    exports.requestTimeDistribution = REQUEST_TIME_DISTRIBUTION;
+    delete REQUEST_TIME_DISTRIBUTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief download
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_DOWNLOAD !== "undefined") {
+    exports.download = SYS_DOWNLOAD;
+    delete SYS_DOWNLOAD;
+  }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executeScript
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_EXECUTE !== "undefined") {
+    exports.executeScript = SYS_EXECUTE;
+    delete SYS_EXECUTE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_LOAD !== "undefined") {
+    exports.load = SYS_LOAD;
+    delete SYS_LOAD;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logLevel
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_LOG_LEVEL !== "undefined") {
+    exports.logLevel = SYS_LOG_LEVEL;
+    delete SYS_LOG_LEVEL;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief md5
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_MD5 !== "undefined") {
+    exports.md5 = SYS_MD5;
+    delete SYS_MD5;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief genRandomNumbers
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GEN_RANDOM_NUMBERS !== "undefined") {
+    exports.genRandomNumbers = SYS_GEN_RANDOM_NUMBERS;
+    delete SYS_GEN_RANDOM_NUMBERS;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief genRandomAlphaNumbers
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GEN_RANDOM_ALPHA_NUMBERS !== "undefined") {
+    exports.genRandomAlphaNumbers = SYS_GEN_RANDOM_ALPHA_NUMBERS;
+    delete SYS_GEN_RANDOM_ALPHA_NUMBERS;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief genRandomSalt
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_GEN_RANDOM_SALT !== "undefined") {
+    exports.genRandomSalt = SYS_GEN_RANDOM_SALT;
+    delete SYS_GEN_RANDOM_SALT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createNonce
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_CREATE_NONCE !== "undefined") {
+    exports.createNonce = SYS_CREATE_NONCE;
+    delete SYS_CREATE_NONCE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checkAndMarkNonce
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_CHECK_AND_MARK_NONCE !== "undefined") {
+    exports.checkAndMarkNonce = SYS_CHECK_AND_MARK_NONCE;
+    delete SYS_CHECK_AND_MARK_NONCE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_OUTPUT !== "undefined") {
+    exports.stdOutput = SYS_OUTPUT;
+    exports.output = exports.stdOutput;
+    delete SYS_OUTPUT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_PARSE !== "undefined") {
+    exports.parse = SYS_PARSE;
+    delete SYS_PARSE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processStat
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_PROCESS_STAT !== "undefined") {
+    exports.processStat = SYS_PROCESS_STAT;
+    delete SYS_PROCESS_STAT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rand
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_RAND !== "undefined") {
+    exports.rand = SYS_RAND;
+    delete SYS_RAND;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha256
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA256 !== "undefined") {
+    exports.sha256 = SYS_SHA256;
+    delete SYS_SHA256;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_TIME !== "undefined") {
+    exports.time = SYS_TIME;
+    delete SYS_TIME;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_WAIT !== "undefined") {
+    exports.wait = SYS_WAIT;
+    delete SYS_WAIT;
+  }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief importCsvFile
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {
+    exports.importCsvFile = SYS_IMPORT_CSV_FILE;
+    delete SYS_IMPORT_CSV_FILE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief importJsonFile
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_IMPORT_JSON_FILE !== "undefined") {
+    exports.importJsonFile = SYS_IMPORT_JSON_FILE;
+    delete SYS_IMPORT_JSON_FILE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processCsvFile
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_PROCESS_CSV_FILE !== "undefined") {
+    exports.processCsvFile = SYS_PROCESS_CSV_FILE;
+    delete SYS_PROCESS_CSV_FILE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processJsonFile
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_PROCESS_JSON_FILE !== "undefined") {
+    exports.processJsonFile = SYS_PROCESS_JSON_FILE;
+    delete SYS_PROCESS_JSON_FILE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief requestStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_REQUEST_STATISTICS !== "undefined") {
+    exports.requestStatistics = SYS_REQUEST_STATISTICS;
+    delete SYS_REQUEST_STATISTICS;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushModuleCache
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.flushModuleCache = function() {
+    'use strict';
+
+    module.unloadAll();
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unitTests
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.unitTests = function () {
+    'use strict';
+
+    return SYS_UNIT_TESTS;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setUnitTestsResult
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.setUnitTestsResult = function (value) {
+    // do not use strict here
+    SYS_UNIT_TESTS_RESULT = value;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extend
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.extend = function (target, source) {
+    'use strict';
+
+    Object.getOwnPropertyNames(source)
+      .forEach(function(propName) {
+        Object.defineProperty(target, propName,
+                              Object.getOwnPropertyDescriptor(source, propName));
+      });
+
+    return target;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+}());
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          PRINTING
+// -----------------------------------------------------------------------------
+
+(function () {
+  var exports = require("internal");
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         public printing variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief COLORS
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.COLORS = {};
 
   if (typeof COLORS !== "undefined") {
-    internal.COLORS = COLORS;
+    exports.COLORS = COLORS;
     delete COLORS;
   }
   else {
@@ -314,70 +495,31 @@
       'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_CYAN', 'COLOR_BOLD_CYAN', 
       'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA', 'COLOR_BLACK', 'COLOR_BOLD_BLACK', 
       'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
-        internal.COLORS[color] = '';
+        exports.COLORS[color] = '';
       });
   }
 
-  internal.COLORS.COLOR_PUNCTUATION = internal.COLORS.COLOR_RESET;
-  internal.COLORS.COLOR_STRING = internal.COLORS.COLOR_BRIGHT;
-  internal.COLORS.COLOR_NUMBER = internal.COLORS.COLOR_BRIGHT;
-  internal.COLORS.COLOR_INDEX = internal.COLORS.COLOR_BRIGHT;
-  internal.COLORS.COLOR_TRUE = internal.COLORS.COLOR_BRIGHT;
-  internal.COLORS.COLOR_FALSE = internal.COLORS.COLOR_BRIGHT;
-  internal.COLORS.COLOR_NULL = internal.COLORS.COLOR_BRIGHT;
-  internal.COLORS.COLOR_UNDEFINED = internal.COLORS.COLOR_BRIGHT;
-
-  internal.NOCOLORS = { };
-
-  var i;
-
-  for (i in internal.COLORS) {
-    if (internal.COLORS.hasOwnProperty(i)) {
-      internal.NOCOLORS[i] = '';
-    }
-  }
-
-  internal.COLOR_OUTPUT = false;
-
-  if (typeof COLOR_OUTPUT !== "undefined") {
-    internal.COLOR_OUTPUT = COLOR_OUTPUT;
-    delete COLOR_OUTPUT;
-  }
-
-  internal.colors = (internal.COLOR_OUTPUT ? internal.COLORS : internal.NOCOLORS);
+  exports.COLORS.COLOR_PUNCTUATION = exports.COLORS.COLOR_RESET;
+  exports.COLORS.COLOR_STRING = exports.COLORS.COLOR_BRIGHT;
+  exports.COLORS.COLOR_NUMBER = exports.COLORS.COLOR_BRIGHT;
+  exports.COLORS.COLOR_INDEX = exports.COLORS.COLOR_BRIGHT;
+  exports.COLORS.COLOR_TRUE = exports.COLORS.COLOR_BRIGHT;
+  exports.COLORS.COLOR_FALSE = exports.COLORS.COLOR_BRIGHT;
+  exports.COLORS.COLOR_NULL = exports.COLORS.COLOR_BRIGHT;
+  exports.COLORS.COLOR_UNDEFINED = exports.COLORS.COLOR_BRIGHT;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief valgrind flag
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.VALGRIND = false;
-
-  if (typeof VALGRIND !== "undefined") {
-    internal.VALGRIND = VALGRIND;
-    delete VALGRIND;
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                        private printing variables
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version number
+/// @addtogroup ArangoShell
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-  internal.VERSION = "unknown";
-
-  if (typeof VERSION !== "undefined") {
-    internal.VERSION = VERSION;
-    delete VERSION;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade number
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.UPGRADE = "unknown";
-
-  if (typeof UPGRADE !== "undefined") {
-    internal.UPGRADE = UPGRADE;
-    delete UPGRADE;
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quote cache
@@ -394,11 +536,39 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief colors
+////////////////////////////////////////////////////////////////////////////////
+
+  var colors = exports.COLORS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief useColor
+////////////////////////////////////////////////////////////////////////////////
+
+  var useColor = false;
+
+  if (typeof COLOR_OUTPUT !== "undefined") {
+    useColor = COLOR_OUTPUT;
+    delete COLOR_OUTPUT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief usePrettyPrint
+////////////////////////////////////////////////////////////////////////////////
+
+  var usePrettyPrint = false;
+
+  if (typeof PRETTY_PRINT !== "undefined") {
+    usePrettyPrint = PRETTY_PRINT;
+    delete PRETTY_PRINT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                        private printing functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,83 +576,15 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  var printArray;
-  var printIndent;
-  var printObject;
   var printRecursive;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief outputs text to shell window
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.bufferOutput = function () {
-    var i;
-
-    for (i = 0;  i < arguments.length;  ++i) {
-      var value = arguments[i];
-      var text;
-
-      if (value === null) {
-        text = "null";
-      }
-      else if (value === undefined) {
-        text = "undefined";
-      }
-      else if (typeof(value) === "object") {
-        try {
-          text = JSON.stringify(value);
-        }
-        catch (err) {
-          text = String(value);
-        }
-      }
-      else {
-        text = String(value);
-      }
-
-      internal.outputBuffer += text;
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints objects to standard output
-///
-/// @FUN{internal.printShell(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
-///
-/// Only available in shell mode.
-///
-/// Prints the arguments. If an argument is an object having a
-/// function @FN{_PRINT}, then this function is called. Otherwise @FN{toJson} is
-/// used.  A final newline is printed
-///
-/// @verbinclude fluent40
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.printShell = function () {
-    var output = internal.output;
-    var i;
-
-    for (i = 0;  i < arguments.length;  ++i) {
-      if (0 < i) {
-        output(" ");
-      }
-
-      if (typeof(arguments[i]) === "string") {
-        output(arguments[i]);
-      }
-      else {
-        printRecursive(arguments[i], [], "~", [], 0);
-      }
-    }
-
-    output("\n");
-  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a single character
 ////////////////////////////////////////////////////////////////////////////////
 
-  var quoteSingleJsonCharacter = function (c) {
+  function quoteSingleJsonCharacter (c) {
+    'use strict';
+
     if (characterQuoteCache.hasOwnProperty(c)) {
       return characterQuoteCache[c];
     }
@@ -507,7 +609,7 @@
     characterQuoteCache[c] = result;
 
     return result;
-  };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a string character
@@ -515,218 +617,407 @@
 
   var quotable = /[\\\"\x00-\x1f]/g;
 
-  var quoteJsonString = function (str) {
+  function quoteJsonString (str) {
+    'use strict';
+
     return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints objects to standard output without a new-line
-////////////////////////////////////////////////////////////////////////////////
-
-  printRecursive = function (value, seen, path, names, level) {
-    var output = internal.output;
-    var p;
-
-    if (seen === undefined) {
-      seen = [];
-      names = [];
-    }
-
-    p = seen.indexOf(value);
-
-    if (0 <= p) {
-      output(names[p]);
-    }
-    else {
-      if (value instanceof Object) {
-        seen.push(value);
-        names.push(path);
-      }
-
-      if (value instanceof Object) {
-        if (typeof value._PRINT === "function") {
-          value._PRINT(seen, path, names, level);
-        }
-        else if (value instanceof Array) {
-          printArray(value, seen, path, names, level);
-        }
-        else if (value.__proto__ === Object.prototype) {
-          printObject(value, seen, path, names, level);
-        }
-        else if (typeof value.toString === "function") {
-          // it's possible that toString() throws, and this looks quite ugly
-          try {
-            output(value.toString());
-          }
-          catch (e) {
-          }
-        }
-        else {
-          printObject(value, seen, path, names, level);
-        }
-      }
-      else if (value === undefined) {
-        output(internal.colors.COLOR_UNDEFINED);
-        output("undefined");
-        output(internal.colors.COLOR_RESET);
-      }
-      else {
-        if (typeof(value) === "string") {
-          output(internal.colors.COLOR_STRING);
-          output(quoteJsonString(value));
-          output(internal.colors.COLOR_RESET);
-        }
-        else if (typeof(value) === "boolean") {
-          output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
-          output(String(value));
-          output(internal.colors.COLOR_RESET);
-        }
-        else if (typeof(value) === "number") {
-          output(internal.colors.COLOR_NUMBER);
-          output(String(value));
-          output(internal.colors.COLOR_RESET);
-        }
-        else if (value === null) {
-          output(internal.colors.COLOR_NULL);
-          output(String(value));
-          output(internal.colors.COLOR_RESET);
-        }
-        else {
-          output(String(value));
-        }
-      }
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the JSON representation of an array
-////////////////////////////////////////////////////////////////////////////////
-
-  printArray = function (object, seen, path, names, level) {
-    var output = internal.output;
-
-    if (object.length === 0) {
-      output(internal.colors.COLOR_PUNCTUATION);
-      output("[ ]");
-      output(internal.colors.COLOR_RESET);
-    }
-    else {
-      var i;
-      var sep = " ";
-
-      output(internal.colors.COLOR_PUNCTUATION);
-      output("[");
-      output(internal.colors.COLOR_RESET);
-
-      var newLevel = level + 1;
-
-      for (i = 0;  i < object.length;  i++) {
-        output(internal.colors.COLOR_PUNCTUATION);
-        output(sep);
-        output(internal.colors.COLOR_RESET);
-
-        printIndent(newLevel);
-
-        printRecursive(object[i],
-                       seen,
-                       path + "[" + i + "]",
-                       names,
-                       newLevel);
-        sep = ", ";
-      }
-
-      output(" ");
-
-      printIndent(level);
-
-      output(internal.colors.COLOR_PUNCTUATION);
-      output("]");
-      output(internal.colors.COLOR_RESET);
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an object
-////////////////////////////////////////////////////////////////////////////////
-
-  printObject = function (object, seen, path, names, level) {
-    var output = internal.output;
-    var colors = internal.colors;
-    var sep = " ";
-    var k;
-
-    output(colors.COLOR_PUNCTUATION);
-    output("{");
-    output(colors.COLOR_RESET);
-
-    var newLevel = level + 1;
-
-    for (k in object) {
-      if (object.hasOwnProperty(k)) {
-        var val = object[k];
-
-        output(colors.COLOR_PUNCTUATION);
-        output(sep);
-        output(colors.COLOR_RESET);
-
-        printIndent(newLevel);
-
-        output(colors.COLOR_INDEX);
-        output(quoteJsonString(k));
-        output(colors.COLOR_RESET);
-        output(" : ");
-
-        printRecursive(val,
-                       seen,
-                       path + "[" + k + "]",
-                       names,
-                       newLevel);
-        sep = ", ";
-      }
-    }
-
-    output(" ");
-
-    printIndent(level);
-
-    output(colors.COLOR_PUNCTUATION);
-    output("}");
-    output(colors.COLOR_RESET);
-  };
-
-  internal.printObject = printObject;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the ident for pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  printIndent = function (level) {
-    var output = internal.output;
+  function printIndent (context) {
+    'use strict';
+
     var j;
+    var indent = "";
 
-    if (internal.PRETTY_PRINT) {
-      output("\n");
+    if (context.prettyPrint) {
+      indent += "\n";
 
-      for (j = 0; j < level; ++j) {
-        output("  ");
+      for (j = 0; j < context.level; ++j) {
+        indent += "  ";
+      }
+    }
+
+    context.output += indent;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the JSON representation of an array
+////////////////////////////////////////////////////////////////////////////////
+
+  function printArray (object, context) {
+    'use strict';
+
+    var useColor = context.useColor;
+
+    if (object.length === 0) {
+      if (useColor) {
+        context.output += colors.COLOR_PUNCTUATION;
+      }
+
+      context.output += "[ ]";
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else {
+      var i;
+
+      if (useColor) {
+        context.output += colors.COLOR_PUNCTUATION;
+      }
+
+      context.output += "[";
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+
+      var newLevel = context.level + 1;
+      var sep = " ";
+
+      context.level = newLevel;
+
+      for (i = 0;  i < object.length;  i++) {
+        if (useColor) {
+          context.output += colors.COLOR_PUNCTUATION;
+        }
+
+        context.output += sep;
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+
+        printIndent(context);
+
+        var path = context.path;
+        context.path += "[" + i + "]";
+
+        printRecursive(object[i], context);
+
+        context.path = path;
+        sep = ", ";
+      }
+
+      context.level = newLevel - 1;
+      context.output += " ";
+
+      printIndent(context);
+
+      if (useColor) {
+        context.output += colors.COLOR_PUNCTUATION;
+      }
+
+      context.output += "]";
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an object
+////////////////////////////////////////////////////////////////////////////////
+
+  function printObject (object, context) {
+    'use strict';
+
+    var useColor = context.useColor;
+    var sep = " ";
+    var k;
+
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += "{";
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+
+    var newLevel = context.level + 1;
+
+    context.level = newLevel;
+
+    for (k in object) {
+      if (object.hasOwnProperty(k)) {
+        var val = object[k];
+
+        if (useColor) {
+          context.output += colors.COLOR_PUNCTUATION;
+        }
+
+        context.output += sep;
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+
+        printIndent(context);
+
+        if (useColor) {
+          context.output += colors.COLOR_INDEX;
+        }
+
+        context.output += quoteJsonString(k);
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+
+        context.output += " : ";
+
+        var path = context.path;
+        context.path += "[" + k + "]";
+
+        printRecursive(val, context);
+
+        context.path = path;
+        sep = ", ";
+      }
+    }
+
+    context.level = newLevel - 1;
+    context.output += " ";
+
+    printIndent(context);
+
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += "}";
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints objects to standard output without a new-line
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.printRecursive = printRecursive = function (value, context) {
+    'use strict';
+
+    var useColor = context.useColor;
+    var customInspect = context.customInspect;
+
+    if (typeof context.seen === "undefined") {
+      context.seen = [];
+      context.names = [];
+    }
+
+    var p = context.seen.indexOf(value);
+
+    if (0 <= p) {
+      context.output += context.names[p];
+    }
+    else {
+      if (value instanceof Object) {
+        context.seen.push(value);
+        context.names.push(context.path);
+      }
+
+      if (value instanceof Object) {
+        if (customInspect && typeof value._PRINT === "function") {
+          value._PRINT(context);
+        }
+        else if (value instanceof Array) {
+          printArray(value, context);
+        }
+        else if (value.__proto__ === Object.prototype) {
+          printObject(value, context);
+        }
+        else if (typeof value.toString === "function") {
+
+          // it's possible that toString() throws, and this looks quite ugly
+          try {
+            var s = value.toString();
+
+            if (0 < context.level) {
+              var a = s.split("\n");
+              var f = a[0];
+
+              if (f === "function () { [native code] }") {
+                f = "native code";
+              }
+              else {
+                f = f.substr(8, f.length - 10).trim();
+              }
+
+              context.output += '[Function "' + f + '"]';
+            }
+            else {
+              context.output += s;
+            }
+          }
+          catch (e) {
+            context.output += "[Function]";
+          }
+        }
+        else {
+          printObject(value, context);
+        }
+      }
+      else if (value === undefined) {
+        if (useColor) {
+          context.output += colors.COLOR_UNDEFINED;
+        }
+
+        context.output += "undefined";
+
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+      }
+      else {
+        if (typeof(value) === "string") {
+          if (useColor) {
+            context.output += colors.COLOR_STRING;
+          }
+
+          context.output += quoteJsonString(value);
+
+          if (useColor) {
+            context.output += colors.COLOR_RESET;
+          }
+        }
+        else if (typeof(value) === "boolean") {
+          if (useColor) {
+            context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
+          }
+
+          context.output += String(value);
+
+          if (useColor) {
+            context.output += colors.COLOR_RESET;
+          }
+        }
+        else if (typeof(value) === "number") {
+          if (useColor) {
+            context.output += colors.COLOR_NUMBER;
+          }
+
+          context.output += String(value);
+
+          if (useColor) {
+            context.output += colors.COLOR_RESET;
+          }
+        }
+        else if (value === null) {
+          if (useColor) {
+            context.output += colors.COLOR_NULL;
+          }
+
+          context.output += String(value);
+
+          if (useColor) {
+            context.output += colors.COLOR_RESET;
+          }
+        }
+        else {
+          context.output += String(value);
+        }
       }
     }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the module cache
+/// @brief buffers output instead of printing it
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.flushModuleCache = function() {
-    module.unloadAll();
-  };
+  function bufferOutput () {
+    'use strict';
+
+    var i;
+
+    for (i = 0;  i < arguments.length;  ++i) {
+      var value = arguments[i];
+      var text;
+
+      if (value === null) {
+        text = "null";
+      }
+      else if (value === undefined) {
+        text = "undefined";
+      }
+      else if (typeof(value) === "object") {
+        try {
+          text = JSON.stringify(value);
+        }
+        catch (err) {
+          text = String(value);
+        }
+      }
+      else {
+        text = String(value);
+      }
+
+      exports.outputBuffer += text;
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints all arguments
+///
+/// @FUN{exports.printShell(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
+///
+/// Only available in shell mode.
+///
+/// Prints the arguments. If an argument is an object having a function
+/// @FN{_PRINT}, then this function is called. A final newline is printed.
+////////////////////////////////////////////////////////////////////////////////
+
+  function printShell () {
+    'use strict';
+
+    var output = exports.output;
+    var i;
+
+    for (i = 0;  i < arguments.length;  ++i) {
+      if (0 < i) {
+        output(" ");
+      }
+
+      if (typeof(arguments[i]) === "string") {
+        output(arguments[i]);
+      }
+      else {
+        var context = {
+          names: [],
+          seen: [],
+          path: "~",
+          level: 0,
+          output: "",
+          prettyPrint: usePrettyPrint,
+          useColor: useColor,
+          customInspect: true
+        };
+
+        printRecursive(arguments[i], context);
+
+        output(context.output);
+      }
+    }
+
+    output("\n");
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                         public printing functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -735,117 +1026,169 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global print
+/// @brief inspect
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.print = internal.printShell;
+  exports.inspect = function (object, options) {
+    'use strict';
 
-  if (typeof internal.printBrowser === "function") {
-    internal.print = internal.printBrowser;
+    var context = {
+      names: [],
+      seen: [],
+      path: "~",
+      level: 0,
+      output: "",
+      prettyPrint: true,
+      useColor: false,
+      customInspect: options && options.customInspect
+    };
+
+    printRecursive(object, context);
+
+    return context.output;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sprintf
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SPRINTF !== "undefined") {
+    exports.sprintf = SYS_SPRINTF;
+    delete SYS_SPRINTF;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global printf
+/// @brief printf
 ////////////////////////////////////////////////////////////////////////////////
 
-  var sprintf = internal.sprintf;
+  var sprintf = exports.sprintf;
 
-  internal.printf = function () {
-    internal.output(sprintf.apply(sprintf, arguments));
+  exports.printf = function () {
+    'use strict';
+
+    exports.output(sprintf.apply(sprintf, arguments));
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start pager
+/// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.startPager = function () {};
-
-  if (typeof SYS_START_PAGER !== "undefined") {
-    internal.startPager = SYS_START_PAGER;
-    delete SYS_START_PAGER;
+  if (typeof exports.printBrowser === "function") {
+    exports.printShell = printShell;
+    exports.print = exports.printBrowser;
+  }
+  else {
+    exports.print = printShell;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pager
+/// @brief printObject
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stopPager = function () {};
-
-  if (typeof SYS_STOP_PAGER !== "undefined") {
-    internal.stopPager = SYS_STOP_PAGER;
-    delete SYS_STOP_PAGER;
-  }
+  exports.printObject = printObject;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start pretty printing
+/// @brief startCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.startPrettyPrint = function (silent) {
-    if (! internal.PRETTY_PRINT && ! silent) {
-      internal.print("using pretty printing");
-    }
+  exports.startCaptureMode = function () {
+    'use strict';
 
-    internal.PRETTY_PRINT = true;
+    exports.outputBuffer = "";
+    exports.output = bufferOutput;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop pretty printing
+/// @brief stopCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stopPrettyPrint = function (silent) {
-    if (internal.PRETTY_PRINT && ! silent) {
-      internal.print("disabled pretty printing");
-    }
+  exports.stopCaptureMode = function () {
+    'use strict';
 
-    internal.PRETTY_PRINT = false;
-  };
+    var buffer = exports.outputBuffer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start capture mode
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.startCaptureMode = function () {
-    internal.outputBuffer = "";
-    internal.output = internal.bufferOutput;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop capture mode
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.stopCaptureMode = function () {
-    var buffer = internal.outputBuffer;
-
-    internal.outputBuffer = "";
-    internal.output = internal.stdOutput;
+    exports.outputBuffer = "";
+    exports.output = exports.stdOutput;
 
     return buffer;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start color printing
+/// @brief startPager
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.startColorPrint = function (color, silent) {
+  exports.startPager = function () {};
+
+  if (typeof SYS_START_PAGER !== "undefined") {
+    exports.startPager = SYS_START_PAGER;
+    delete SYS_START_PAGER;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopPager
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.stopPager = function () {};
+
+  if (typeof SYS_STOP_PAGER !== "undefined") {
+    exports.stopPager = SYS_STOP_PAGER;
+    delete SYS_STOP_PAGER;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startPrettyPrint
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.startPrettyPrint = function (silent) {
+    'use strict';
+
+    if (! usePrettyPrint && ! silent) {
+      exports.print("using pretty printing");
+    }
+
+    usePrettyPrint = true;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopPrettyPrint
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.stopPrettyPrint = function (silent) {
+    'use strict';
+
+    if (usePrettyPrint && ! silent) {
+      exports.print("disabled pretty printing");
+    }
+
+    usePrettyPrint = false;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startColorPrint
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.startColorPrint = function (color, silent) {
+    'use strict';
+
     var schemes = {
       arangodb: {
-        COLOR_PUNCTUATION: internal.COLORS.COLOR_RESET,
-        COLOR_STRING: internal.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_NUMBER: internal.COLORS.COLOR_BOLD_GREEN,
-        COLOR_INDEX: internal.COLORS.COLOR_BOLD_CYAN,
-        COLOR_TRUE: internal.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_FALSE: internal.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_NULL: internal.COLORS.COLOR_BOLD_YELLOW,
-        COLOR_UNDEFINED: internal.COLORS.COLOR_BOLD_YELLOW
+        COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
+        COLOR_STRING: exports.COLORS.COLOR_BOLD_MAGENTA,
+        COLOR_NUMBER: exports.COLORS.COLOR_BOLD_GREEN,
+        COLOR_INDEX: exports.COLORS.COLOR_BOLD_CYAN,
+        COLOR_TRUE: exports.COLORS.COLOR_BOLD_MAGENTA,
+        COLOR_FALSE: exports.COLORS.COLOR_BOLD_MAGENTA,
+        COLOR_NULL: exports.COLORS.COLOR_BOLD_YELLOW,
+        COLOR_UNDEFINED: exports.COLORS.COLOR_BOLD_YELLOW
       }
     };
 
-    if (! internal.COLOR_OUTPUT && ! silent) {
-      internal.print("starting color printing");
+    if (! useColor && ! silent) {
+      exports.print("starting color printing");
     }
 
     if (color === undefined || color === null) {
-      internal.colors = internal.COLORS;
+      color = null;
     }
     else if (typeof color === "string") {
       var c;
@@ -853,25 +1196,26 @@
       color = color.toLowerCase();
 
       if (schemes.hasOwnProperty(color)) {
-        internal.colors = schemes[color];
-        for (c in internal.COLORS) {
-          if (internal.COLORS.hasOwnProperty(c) && ! internal.colors.hasOwnProperty(c)) {
-            internal.colors[c] = internal.COLORS[c];
+        colors = schemes[color];
+
+        for (c in exports.COLORS) {
+          if (exports.COLORS.hasOwnProperty(c) && ! colors.hasOwnProperty(c)) {
+            colors[c] = exports.COLORS[c];
           }
         }
       }
       else {
-        internal.colors = internal.COLORS;
+        colors = exports.COLORS;
 
         var setColor = function (key) {
           [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
             'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
-            internal.colors[what] = internal.COLORS[key];
+            colors[what] = exports.COLORS[key];
           });
         };
 
-        for (c in internal.COLORS) {
-          if (internal.COLORS.hasOwnProperty(c) &&
+        for (c in exports.COLORS) {
+          if (exports.COLORS.hasOwnProperty(c) &&
               c.replace(/^COLOR_/, '').toLowerCase() === color) {
             setColor(c);
             break;
@@ -880,121 +1224,21 @@
       }
     }
 
-    internal.COLOR_OUTPUT = true;
+    useColor = true;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop color printing
+/// @brief stopColorPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stopColorPrint = function (silent) {
-    if (internal.COLOR_OUTPUT && ! silent) {
-      internal.print("disabled color printing");
+  exports.stopColorPrint = function (silent) {
+    'use strict';
+
+    if (useColor && ! silent) {
+      exports.print("disabled color printing");
     }
 
-    internal.COLOR_OUTPUT = false;
-    internal.colors = internal.NOCOLORS;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debug print function
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.dump = function () {
-    var i;
-    var oldPretty = internal.PRETTY_PRINT;
-    var oldColor = internal.COLOR_OUTPUT;
-
-    internal.startPrettyPrint(true);
-
-    if (! oldColor) {
-      internal.startColorPrint(undefined, true);
-    }
-
-    for (i = 0; i < arguments.length; ++i) {
-      internal.print(arguments[i]);
-    }
-
-    if (! oldPretty) {
-      internal.stopPrettyPrint(true);
-    }
-    if (! oldColor) {
-      internal.stopColorPrint(true);
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extends a prototype
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.extend = function (target, source) {
-    Object.getOwnPropertyNames(source)
-      .forEach(function(propName) {
-        Object.defineProperty(target, propName,
-                              Object.getOwnPropertyDescriptor(source, propName));
-      });
-
-    return target;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file from the file-system
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.loadFile = function (path) {
-    var i;
-
-    // try to load the file
-    var paths = internal.MODULES_PATH;
-
-    for (i = 0;  i < paths.length;  ++i) {
-      var p = paths[i];
-      var n;
-
-      if (p === "") {
-        n = "." + path + ".js";
-      }
-      else {
-        n = p + "/" + path + ".js";
-      }
-
-      if (internal.exists(n)) {
-        return internal.load(n);
-      }
-    }
-
-    throw "cannot find a file named '"
-        + path
-        + "' using the module path(s) '"
-        + internal.MODULES_PATH + "'";
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a module
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.defineModule = function (path, file) {
-    var content;
-    var m;
-    var mc;
-
-    content = internal.read(file);
-
-    mc = internal.db._collection("_modules");
-
-    if (mc === null) {
-      mc = internal.db._create("_modules", { isSystem: true });
-    }
-
-    path = module.normalize(path);
-    m = mc.firstExample({ path: path });
-
-    if (m === null) {
-      mc.save({ path: path, content: content });
-    }
-    else {
-      mc.replace(m, { path: path, content: content });
-    }
+    useColor = false;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1002,6 +1246,121 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 }());
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         global printing functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print
+////////////////////////////////////////////////////////////////////////////////
+
+function print () {
+  'use strict';
+
+  var internal = require("internal");
+  internal.print.apply(internal.print, arguments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief printf
+////////////////////////////////////////////////////////////////////////////////
+
+function printf () {
+  'use strict';
+
+  var internal = require("internal");
+  internal.printf.apply(internal.printf, arguments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn off pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function print_plain () {
+  'use strict';
+
+  var output = require("internal").output;
+  var printRecursive = require("internal").printRecursive;
+  var i;
+
+  for (i = 0;  i < arguments.length;  ++i) {
+    if (0 < i) {
+      output(" ");
+    }
+
+    if (typeof(arguments[i]) === "string") {
+      output(arguments[i]);
+    }
+    else {
+      var context = {
+        names: [],
+        seen: [],
+        path: "~",
+        level: 0,
+        output: "",
+        prettyPrint: false,
+        useColor: false,
+        customInspect: true
+      };
+
+      printRecursive(arguments[i], context);
+
+      output(context.output);
+    }
+  }
+
+  output("\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function start_pretty_print () {
+  'use strict';
+
+  require("internal").startPrettyPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function stop_pretty_print () {
+  'use strict';
+
+  require("internal").stopPrettyPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start pretty printing with optional color
+////////////////////////////////////////////////////////////////////////////////
+
+function start_color_print (color) {
+  'use strict';
+
+  require("internal").startColorPrint(color, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function stop_color_print () {
+  'use strict';
+
+  require("internal").stopColorPrint();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

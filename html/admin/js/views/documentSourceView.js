@@ -7,7 +7,7 @@ var documentSourceView = Backbone.View.extend({
     "click #saveSourceDoc" :   "saveSourceDoc",
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/documentSourceView.ejs'}),
+  template: new EJS({url: 'js/templates/documentSourceView.ejs'}),
 
   render: function() {
     $(this.el).html(this.template.text);

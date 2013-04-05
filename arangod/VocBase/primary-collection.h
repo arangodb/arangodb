@@ -34,7 +34,9 @@
 #include "ShapedJson/json-shaper.h"
 #include "VocBase/barrier.h"
 #include "VocBase/marker.h"
+#include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
+#include "VocBase/voc-types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -100,17 +102,6 @@ struct TRI_primary_collection_s;
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for arbitrary collection operation parameters
-///
-/// the context struct needs to be passed as a parameter for CRUD operations
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_operation_context_s {
-  struct TRI_primary_collection_s* _collection;        // collection to be used
-}
-TRI_doc_operation_context_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
@@ -284,8 +275,9 @@ typedef struct TRI_primary_collection_s {
 
   TRI_associative_pointer_t _primaryIndex;
   struct TRI_key_generator_s* _keyGenerator;
-
   struct TRI_cap_constraint_s* _capConstraint;
+
+  int64_t _numberDocuments;
 
   int (*beginRead) (struct TRI_primary_collection_s*);
   int (*endRead) (struct TRI_primary_collection_s*);
@@ -295,12 +287,12 @@ typedef struct TRI_primary_collection_s {
 
   int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
 
-  int (*insert) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);
+  int (*insert) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);
 
-  int (*read) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
+  int (*read) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
 
-  int (*update) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, const bool, const bool);
-  int (*destroy) (struct TRI_doc_operation_context_s*, const TRI_voc_key_t, struct TRI_doc_update_policy_s const*, const bool, const bool);
+  int (*update) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, const bool, const bool);
+  int (*remove) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, struct TRI_doc_update_policy_s const*, const bool, const bool);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);
@@ -315,7 +307,7 @@ typedef struct TRI_doc_document_key_marker_s {
   TRI_df_marker_t base;
 
   TRI_voc_rid_t   _rid;        // this is the tick for a create and update
-  TRI_voc_eid_t   _sid;
+  TRI_voc_tid_t   _tid;
 
   TRI_shape_sid_t _shape;
 
@@ -323,7 +315,7 @@ typedef struct TRI_doc_document_key_marker_s {
   uint16_t        _offsetJson;
 
 #ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
+  char            _padding_df_marker[4];
 #endif
 }
 TRI_doc_document_key_marker_t;
@@ -335,14 +327,14 @@ TRI_doc_document_key_marker_t;
 typedef struct TRI_doc_edge_key_marker_s {
   TRI_doc_document_key_marker_t base;
 
-  TRI_voc_cid_t  _toCid;
-  TRI_voc_cid_t  _fromCid;
+  TRI_voc_cid_t   _toCid;
+  TRI_voc_cid_t   _fromCid;
 
-  uint16_t       _offsetToKey;
-  uint16_t       _offsetFromKey;
+  uint16_t        _offsetToKey;
+  uint16_t        _offsetFromKey;
 
 #ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
+  char            _padding_df_marker[4];
 #endif
 }
 TRI_doc_edge_key_marker_t;
@@ -354,45 +346,12 @@ TRI_doc_edge_key_marker_t;
 typedef struct TRI_doc_deletion_key_marker_s {
   TRI_df_marker_t base;
 
-  TRI_voc_rid_t  _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t  _sid;
+  TRI_voc_rid_t   _rid;        // this is the tick for the deletion
+  TRI_voc_tid_t   _tid;
 
-  uint16_t       _offsetKey;
+  uint16_t        _offsetKey;
 }
 TRI_doc_deletion_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile begin transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_begin_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t   _tid;
-}
-TRI_doc_begin_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile commit transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_commit_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-}
-TRI_doc_commit_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile abort transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_abort_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-}
-TRI_doc_abort_transaction_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -464,13 +423,6 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t*)
 
 bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t*,
                                           size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
-                                       TRI_primary_collection_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

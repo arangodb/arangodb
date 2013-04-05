@@ -206,7 +206,7 @@ typedef struct TRI_col_header_marker_s {
   char _padding_col_header_marker[4];
 #endif
 
-  TRI_voc_cid_t _cid;                   //  8 bytes
+  TRI_voc_cid_t  _cid;                   //  8 bytes
 }
 TRI_col_header_marker_t;
 
@@ -427,10 +427,12 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over markers in collection journals
+/// this function is called on server startup for all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateJournalsCollection (const char* const,
-                                    bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool));
+bool TRI_IterateStartupCollection (const char* const,
+                                   bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                   void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection name is a system collection name

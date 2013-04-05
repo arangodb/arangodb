@@ -3,6 +3,7 @@
 /*global describe, it, expect */
 /*global runs, spyOn, waitsFor */
 /*global window, document, $, d3, _*/
+/*global helper*/
 /*global EventDispatcher, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +30,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -48,14 +49,7 @@
     expandConfig,
     nodeEditorConfig,
     edgeEditorConfig,
-    svg,
-    simulateMouseEvent = function (type, objectId) {
-      var evt = document.createEvent("MouseEvents"),
-      testee = document.getElementById(objectId); 
-      evt.initMouseEvent(type, true, true, window,
-        0, 0, 0, 0, 0, false, false, false, false, 0, null);
-      testee.dispatchEvent(evt);
-    };
+    svg;
     
     beforeEach(function() {
       svg = document.createElement("svg");
@@ -175,7 +169,7 @@
         runs(function() {
           var target = $("svg");
           dispatcher.bind(target, "click", callback);
-          simulateMouseEvent("click", "svg");
+          helper.simulateMouseEvent("click", "svg");
         });
         
         waitsFor(function() {
@@ -200,8 +194,8 @@
           called = 0;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", callback);
-          simulateMouseEvent("click", "1");
-          simulateMouseEvent("click", "2");
+          helper.simulateMouseEvent("click", "1");
+          helper.simulateMouseEvent("click", "2");
         });
         
         waitsFor(function() {
@@ -233,8 +227,8 @@
           called = 0;
           edgeShaper.drawEdges(edges);
           dispatcher.bind("edges", "click", callback);
-          simulateMouseEvent("click", "1-2");
-          simulateMouseEvent("click", "2-3");
+          helper.simulateMouseEvent("click", "1-2");
+          helper.simulateMouseEvent("click", "2-3");
         });
         
         waitsFor(function() {
@@ -263,7 +257,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", callback);
-          simulateMouseEvent("click", "1");
+          helper.simulateMouseEvent("click", "1");
         });
         
         waitsFor(function() {
@@ -287,7 +281,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "dblclick", callback);
-          simulateMouseEvent("dblclick", "1");
+          helper.simulateMouseEvent("dblclick", "1");
         });
         
         waitsFor(function() {
@@ -311,7 +305,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "mousedown", callback);
-          simulateMouseEvent("mousedown", "1");
+          helper.simulateMouseEvent("mousedown", "1");
         });
         
         waitsFor(function() {
@@ -335,7 +329,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "mouseup", callback);
-          simulateMouseEvent("mouseup", "1");
+          helper.simulateMouseEvent("mouseup", "1");
         });
         
         waitsFor(function() {
@@ -360,7 +354,7 @@
           called = false;
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "mousemove", callback);
-          simulateMouseEvent("mousemove", "1");
+          helper.simulateMouseEvent("mousemove", "1");
         });
         
         waitsFor(function() {
@@ -401,7 +395,7 @@
           var target = $("svg");
           dispatcher.bind(target, "click", falseCallback);
           dispatcher.bind(target, "click", callback);
-          simulateMouseEvent("click", "svg");
+          helper.simulateMouseEvent("click", "svg");
         });
         
         waitsFor(function() {
@@ -430,7 +424,7 @@
           nodeShaper.drawNodes(nodes);
           dispatcher.bind("nodes", "click", falseCallback);
           dispatcher.bind("nodes", "click", callback);
-          simulateMouseEvent("click", "1");
+          helper.simulateMouseEvent("click", "1");
         });
         
         waitsFor(function() {
@@ -464,7 +458,7 @@
           edgeShaper.drawEdges(edges);
           dispatcher.bind("edges", "click", falseCallback);
           dispatcher.bind("edges", "click", callback);
-          simulateMouseEvent("click", "1-2");
+          helper.simulateMouseEvent("click", "1-2");
         });
         
         waitsFor(function() {

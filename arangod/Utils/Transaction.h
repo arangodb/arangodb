@@ -33,12 +33,14 @@
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-shaper.h"
 
 #include "BasicsC/random.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/DocumentHelper.h"
 
 namespace triagens {
   namespace arango {
@@ -86,15 +88,15 @@ namespace triagens {
         Transaction (TRI_vocbase_t* const vocbase,
                      const triagens::arango::CollectionNameResolver& resolver) :
           T(),
-          _trx(0),
           _setupState(TRI_ERROR_NO_ERROR),
           _nestingLevel(0),
           _readOnly(true),
           _hints(0),
+          _trx(0),
           _vocbase(vocbase),
           _resolver(resolver) {
 
-          TRI_ASSERT_DEBUG(_vocbase != 0);
+          TRI_ASSERT_MAINTAINER(_vocbase != 0);
 
           this->setupTransaction();
         }
@@ -251,10 +253,36 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a collection's primary collection
+////////////////////////////////////////////////////////////////////////////////
+         
+         TRI_primary_collection_t* primaryCollection (TRI_transaction_collection_t const* trxCollection) const {
+           TRI_ASSERT_MAINTAINER(_trx != 0);
+           TRI_ASSERT_MAINTAINER(getStatus() == TRI_TRANSACTION_RUNNING);
+           TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
+           TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
+
+           return trxCollection->_collection->_collection;
+         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a collection's shaper
+////////////////////////////////////////////////////////////////////////////////
+         
+         TRI_shaper_t* shaper (TRI_transaction_collection_t const* trxCollection) const {
+           TRI_ASSERT_MAINTAINER(_trx != 0);
+           TRI_ASSERT_MAINTAINER(getStatus() == TRI_TRANSACTION_RUNNING);
+           TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
+           TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
+
+           return trxCollection->_collection->_collection->_shaper;
+         }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection by id
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollection (TRI_transaction_cid_t cid,
+        int addCollection (TRI_voc_cid_t cid,
                            TRI_transaction_type_e type) {
           if (_trx == 0) {
             return registerError(TRI_ERROR_INTERNAL);
@@ -311,13 +339,14 @@ namespace triagens {
 /// @brief read- or write-lock a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lockExplicit (TRI_primary_collection_t* const primary,
-                          const TRI_transaction_type_e type) {
+        int lock (TRI_transaction_collection_t* trxCollection,
+                  const TRI_transaction_type_e type) {
+
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
-          int res = TRI_LockCollectionTransaction(_trx, (TRI_transaction_cid_t) primary->base._info._cid, type, _nestingLevel);
+          int res = TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
 
           return res;
         }
@@ -326,13 +355,14 @@ namespace triagens {
 /// @brief read- or write-unlock a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int unlockExplicit (TRI_primary_collection_t* const primary,
-                            const TRI_transaction_type_e type) {
+        int unlock (TRI_transaction_collection_t* trxCollection,
+                    const TRI_transaction_type_e type) {
+
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
 
-          int res = TRI_UnlockCollectionTransaction(_trx, (TRI_transaction_cid_t) primary->base._info._cid, type, _nestingLevel);
+          int res = TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
 
           return res;
         }
@@ -341,13 +371,13 @@ namespace triagens {
 /// @brief read- or write-unlock a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isLocked (TRI_primary_collection_t* const primary,
+        bool isLocked (TRI_transaction_collection_t* const trxCollection,
                        const TRI_transaction_type_e type) {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             return false;
           }
 
-          const bool locked = TRI_IsLockedCollectionTransaction(_trx, (TRI_transaction_cid_t) primary->base._info._cid, type, _nestingLevel);
+          const bool locked = TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
 
           return locked;
         }
@@ -356,16 +386,19 @@ namespace triagens {
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readCollectionAny (TRI_primary_collection_t* const primary,
-                               TRI_doc_mptr_t* mptr,
-                               TRI_barrier_t** barrier) {
+        int readAny (TRI_transaction_collection_t* trxCollection,
+                     TRI_doc_mptr_t* mptr,
+                     TRI_barrier_t** barrier) {
+
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+
           *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
           if (*barrier == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
           // READ-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_READ);
+          this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (primary->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
@@ -387,7 +420,7 @@ namespace triagens {
             *mptr = *((TRI_doc_mptr_t*) beg[pos]);
           }
 
-          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 
           return TRI_ERROR_NO_ERROR;
@@ -397,17 +430,17 @@ namespace triagens {
 /// @brief read a single document, identified by key
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readCollectionDocument (TRI_primary_collection_t* const primary,
-                                    TRI_doc_mptr_t* mptr,
-                                    const string& key,
-                                    const bool lock) {
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
+        int readSingle (TRI_transaction_collection_t* trxCollection,
+                        TRI_doc_mptr_t* mptr,
+                        const string& key,
+                        const bool lock) {
+          
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
-          int res = primary->read(&context, 
+          int res = primary->read(trxCollection,
                                   (TRI_voc_key_t) key.c_str(), 
                                   mptr,
-                                  lock && ! isLocked(primary, TRI_TRANSACTION_READ));
+                                  lock && ! isLocked(trxCollection, TRI_TRANSACTION_READ));
 
           return res;
         }
@@ -416,13 +449,13 @@ namespace triagens {
 /// @brief read all documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readCollectionDocuments (TRI_primary_collection_t* const primary,
-                                     vector<string>& ids) {
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
+        int readAll (TRI_transaction_collection_t* trxCollection,
+                     vector<string>& ids) {
+
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           // READ-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_READ);
+          this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
@@ -439,7 +472,7 @@ namespace triagens {
             }
           }
 
-          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 
           return TRI_ERROR_NO_ERROR;
@@ -449,14 +482,14 @@ namespace triagens {
 /// @brief read all master pointers, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readCollectionPointers (TRI_primary_collection_t* const primary,
-                                    vector<TRI_doc_mptr_t>& docs,
-                                    TRI_barrier_t** barrier,
-                                    TRI_voc_ssize_t skip,
-                                    TRI_voc_size_t limit,
-                                    uint32_t* total) {
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
+        int readSlice (TRI_transaction_collection_t* trxCollection,
+                       vector<TRI_doc_mptr_t>& docs,
+                       TRI_barrier_t** barrier,
+                       TRI_voc_ssize_t skip,
+                       TRI_voc_size_t limit,
+                       uint32_t* total) {
+          
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           if (limit == 0) {
             // nothing to do
@@ -464,12 +497,12 @@ namespace triagens {
           }
 
           // READ-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_READ);
+          this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (primary->_primaryIndex._nrUsed == 0) {
             // nothing to do
 
-            this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
             // READ-LOCK END
             return TRI_ERROR_NO_ERROR;
           }
@@ -534,7 +567,7 @@ namespace triagens {
             }
           }
 
-          this->unlockExplicit(primary, TRI_TRANSACTION_READ);
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 
           if (count == 0) {
@@ -549,36 +582,37 @@ namespace triagens {
 /// @brief create a single document, using JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createCollectionDocument (TRI_primary_collection_t* const primary,
-                                      const TRI_df_marker_type_e markerType,
-                                      TRI_doc_mptr_t* mptr,
-                                      TRI_json_t const* json,
-                                      void const* data,
-                                      const bool forceSync,
-                                      const bool lock) {
+        int create (TRI_transaction_collection_t* trxCollection,
+                    const TRI_df_marker_type_e markerType,
+                    TRI_doc_mptr_t* mptr,
+                    TRI_json_t const* json,
+                    void const* data,
+                    const bool forceSync,
+                    const bool lock) {
+
           TRI_voc_key_t key = 0;
-          int res = this->getKey(json, &key);
+          int res = DocumentHelper::getKey(json, &key);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
 
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper(trxCollection), json);
 
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
-          res = createCollectionShaped(primary, 
-                                       markerType, 
-                                       key, 
-                                       mptr, 
-                                       shaped, 
-                                       data, 
-                                       forceSync, 
-                                       lock);
+          res = create(trxCollection, 
+                       markerType, 
+                       key, 
+                       mptr, 
+                       shaped, 
+                       data, 
+                       forceSync, 
+                       lock);
 
-          TRI_FreeShapedJson(primary->_shaper, shaped);
+          TRI_FreeShapedJson(shaper(trxCollection), shaped);
 
           return res;
         }
@@ -587,25 +621,24 @@ namespace triagens {
 /// @brief create a single document, using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int createCollectionShaped (TRI_primary_collection_t* const primary,
-                                           const TRI_df_marker_type_e markerType,
-                                           TRI_voc_key_t key,
-                                           TRI_doc_mptr_t* mptr,
-                                           TRI_shaped_json_t const* shaped,
-                                           void const* data,
-                                           const bool forceSync,
-                                           const bool lock) {
-          
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
-
-          int res = primary->insert(&context, 
+        inline int create (TRI_transaction_collection_t* trxCollection,
+                           const TRI_df_marker_type_e markerType,
+                           const TRI_voc_key_t key,
+                           TRI_doc_mptr_t* mptr,
+                           TRI_shaped_json_t const* shaped,
+                           void const* data,
+                           const bool forceSync,
+                           const bool lock) {
+         
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+           
+          int res = primary->insert(trxCollection,
                                     key, 
                                     mptr, 
                                     markerType, 
                                     shaped, 
                                     data, 
-                                    (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), 
+                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
                                     forceSync);
 
           return res;
@@ -615,33 +648,33 @@ namespace triagens {
 /// @brief update a single document, using JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        int updateCollectionDocument (TRI_primary_collection_t* const primary,
-                                      const string& key,
-                                      TRI_doc_mptr_t* mptr,
-                                      TRI_json_t* const json,
-                                      const TRI_doc_update_policy_e policy,
-                                      const TRI_voc_rid_t expectedRevision,
-                                      TRI_voc_rid_t* actualRevision,
-                                      const bool forceSync,
-                                      const bool lock) {
+        int update (TRI_transaction_collection_t* trxCollection,
+                    const string& key,
+                    TRI_doc_mptr_t* mptr,
+                    TRI_json_t* const json,
+                    const TRI_doc_update_policy_e policy,
+                    const TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t* actualRevision,
+                    const bool forceSync,
+                    const bool lock) {
 
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper(trxCollection), json);
 
           if (shaped == 0) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
-          int res = updateCollectionShaped(primary, 
-                                           key, 
-                                           mptr, 
-                                           shaped, 
-                                           policy, 
-                                           expectedRevision, 
-                                           actualRevision, 
-                                           forceSync, 
-                                           lock);
+          int res = update(trxCollection, 
+                           key, 
+                           mptr, 
+                           shaped, 
+                           policy, 
+                           expectedRevision, 
+                           actualRevision, 
+                           forceSync, 
+                           lock);
 
-          TRI_FreeShapedJson(primary->_shaper, shaped);
+          TRI_FreeShapedJson(shaper(trxCollection), shaped);
 
           return res;
         }
@@ -650,28 +683,27 @@ namespace triagens {
 /// @brief update a single document, using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int updateCollectionShaped (TRI_primary_collection_t* const primary,
-                                           const string& key,
-                                           TRI_doc_mptr_t* mptr,
-                                           TRI_shaped_json_t* const shaped,
-                                           const TRI_doc_update_policy_e policy,
-                                           const TRI_voc_rid_t expectedRevision,
-                                           TRI_voc_rid_t* actualRevision,
-                                           const bool forceSync,
-                                           const bool lock) {
-
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
+        inline int update (TRI_transaction_collection_t* const trxCollection,
+                           const string& key,
+                           TRI_doc_mptr_t* mptr,
+                           TRI_shaped_json_t* const shaped,
+                           const TRI_doc_update_policy_e policy,
+                           const TRI_voc_rid_t expectedRevision,
+                           TRI_voc_rid_t* actualRevision,
+                           const bool forceSync,
+                           const bool lock) {
 
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
-          int res = primary->update(&context, 
-                                    (TRI_voc_key_t) key.c_str(), 
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          
+          int res = primary->update(trxCollection, 
+                                    (const TRI_voc_key_t) key.c_str(), 
                                     mptr, 
                                     shaped, 
                                     &updatePolicy, 
-                                    (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), 
+                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
                                     forceSync);
           
           return res;
@@ -681,24 +713,24 @@ namespace triagens {
 /// @brief delete a single document
 ////////////////////////////////////////////////////////////////////////////////
 
-        int deleteCollectionDocument (TRI_primary_collection_t* const primary,
-                                      const string& key,
-                                      const TRI_doc_update_policy_e policy,
-                                      const TRI_voc_rid_t expectedRevision,
-                                      TRI_voc_rid_t* actualRevision,
-                                      const bool forceSync,
-                                      const bool lock) {
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
+        int remove (TRI_transaction_collection_t* trxCollection,
+                    const string& key,
+                    const TRI_doc_update_policy_e policy,
+                    const TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t* actualRevision,
+                    const bool forceSync,
+                    const bool lock) {
           
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
+          
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
-          int res = primary->destroy(&context, 
-                                     (TRI_voc_key_t) key.c_str(), 
-                                     &updatePolicy, 
-                                     (lock && ! isLocked(primary, TRI_TRANSACTION_WRITE)), 
-                                     forceSync);
+          int res = primary->remove(trxCollection,
+                                    (TRI_voc_key_t) key.c_str(), 
+                                    &updatePolicy, 
+                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
+                                    forceSync);
 
           return res;
         }
@@ -707,38 +739,36 @@ namespace triagens {
 /// @brief truncate a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int truncateCollection (TRI_primary_collection_t* const primary,
-                                const bool forceSync) {
+        int removeAll (TRI_transaction_collection_t* const trxCollection,
+                       const bool forceSync) {
 
           vector<string> ids;
+          
+          int res = readAll(trxCollection, ids);
 
-          int res = readCollectionDocuments(primary, ids);
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
 
-          TRI_doc_operation_context_t context;
-          TRI_InitContextPrimaryCollection(&context, primary);
-          
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, TRI_DOC_UPDATE_LAST_WRITE, 0, NULL);
 
           size_t n = ids.size();
 
+          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
           res = TRI_ERROR_NO_ERROR;
 
           // WRITE-LOCK START
-          this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
-          // TODO: fix locks
+          this->lock(trxCollection, TRI_TRANSACTION_WRITE);
 
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
           
-            res = primary->destroy(&context, 
-                                   (TRI_voc_key_t) id.c_str(), 
-                                   &updatePolicy, 
-                                   false,
-                                   forceSync);
+            res = primary->remove(trxCollection,
+                                  (TRI_voc_key_t) id.c_str(), 
+                                  &updatePolicy, 
+                                  false,
+                                  forceSync);
 
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error
@@ -746,19 +776,10 @@ namespace triagens {
             }
           }
 
-          this->unlockExplicit(primary, TRI_TRANSACTION_WRITE);
+          this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
           // WRITE-LOCK END
 
           return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the pointer to the C transaction struct 
-/// DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_t* getTrx () {
-          return this->_trx;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,13 +802,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int registerError (int errorNum) {
-          TRI_ASSERT_DEBUG(errorNum != TRI_ERROR_NO_ERROR);
+          TRI_ASSERT_MAINTAINER(errorNum != TRI_ERROR_NO_ERROR);
 
           if (_setupState == TRI_ERROR_NO_ERROR) {
             _setupState = errorNum;
           }
 
-          TRI_ASSERT_DEBUG(_setupState != TRI_ERROR_NO_ERROR);
+          TRI_ASSERT_MAINTAINER(_setupState != TRI_ERROR_NO_ERROR);
 
           return errorNum;
         }
@@ -797,7 +818,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int addCollectionEmbedded (TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-          TRI_ASSERT_DEBUG(_trx != 0);
+          TRI_ASSERT_MAINTAINER(_trx != 0);
 
           int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
 
@@ -813,7 +834,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int addCollectionToplevel (TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-          TRI_ASSERT_DEBUG(_trx != 0);
+          TRI_ASSERT_MAINTAINER(_trx != 0);
           
           int res;
 
@@ -860,7 +881,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int setupEmbedded () {
-          TRI_ASSERT_DEBUG(_nestingLevel == 0);
+          TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           _nestingLevel = ++_trx->_nestingLevel;
             
@@ -879,7 +900,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int setupToplevel () {
-          TRI_ASSERT_DEBUG(_nestingLevel == 0);
+          TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
           _trx = TRI_CreateTransaction(_vocbase->_transactionContext);
@@ -897,7 +918,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int freeTransaction () {
-          TRI_ASSERT_DEBUG(! isEmbeddedTransaction());
+          TRI_ASSERT_MAINTAINER(! isEmbeddedTransaction());
 
           if (_trx != 0) {
             this->unregisterTransaction();
@@ -909,36 +930,6 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the "_key" attribute from a JSON object
-/// TODO: move out of this class
-////////////////////////////////////////////////////////////////////////////////
-
-        int getKey (TRI_json_t const* json, TRI_voc_key_t* key) {
-          *key = 0;
-
-          // check type of json
-          if (json == 0 || json->_type != TRI_JSON_ARRAY) {
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          // check _key is there
-          const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
-
-          if (k == 0) {
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (k->_type != TRI_JSON_STRING) {
-            // _key is there but not a string
-            return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-          }
-
-          // _key is there and a string
-          *key = k->_value._string.data;
-
-          return TRI_ERROR_NO_ERROR;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -954,12 +945,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the C transaction struct
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_t* _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error that occurred on transaction initialisation (before begin())
@@ -999,6 +984,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the C transaction struct
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_t* _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the vocbase

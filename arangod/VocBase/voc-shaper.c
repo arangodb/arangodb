@@ -32,7 +32,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 
 // -----------------------------------------------------------------------------
@@ -1859,9 +1859,11 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // check the weight and if equal check the values. Notice that numWeightedList
           // below MUST be greater or equal to 1.
           // ..............................................................................
-          
+
           numWeightedList = (leftNumWeightedList < rightNumWeightedList ? leftNumWeightedList: rightNumWeightedList);          
           
+          result = 0;
+
           for (i = 0; i < numWeightedList; ++i) {
             if (leftWeightedList[i]._weight != rightWeightedList[i]._weight) {
               result = (leftWeightedList[i]._weight < rightWeightedList[i]._weight ? -1: 1);

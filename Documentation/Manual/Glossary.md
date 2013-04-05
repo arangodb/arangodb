@@ -42,3 +42,5 @@ Glossary {#GlossaryIntro}
 @copydoc GlossaryIndexPrioQueue
 
 @copydoc GlossaryIndexSkiplist
+
+@copydoc GlossaryKeyGenerator

@@ -13,7 +13,7 @@ var queryView = Backbone.View.extend({
     $('#queryOutput').empty();
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/queryView.ejs'}),
+  template: new EJS({url: 'js/templates/queryView.ejs'}),
 
   render: function() {
 
@@ -24,8 +24,8 @@ var queryView = Backbone.View.extend({
     editor2.setReadOnly(true);
     editor2.setHighlightActiveLine(false);
 
-    editor.getSession().setMode("ace/mode/javascript");
-    editor2.getSession().setMode("ace/mode/javascript");
+    editor.getSession().setMode("ace/mode/aql");
+    editor2.getSession().setMode("ace/mode/json");
     editor.setTheme("ace/theme/merbivore_soft");
     editor.resize();
     editor2.setValue('');

@@ -47,7 +47,7 @@ var documentView = Backbone.View.extend({
     }
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/documentView.ejs'}),
+  template: new EJS({url: 'js/templates/documentView.ejs'}),
 
   typeCheck: function (type) {
     if (type === 'edge') {
@@ -70,7 +70,7 @@ var documentView = Backbone.View.extend({
     }
   },
   clicked: function (a) {
-    self = a.currentTarget;
+    var self = a.currentTarget;
     var checkData = $(this.table).dataTable().fnGetData(self);
     try {
       if (checkData[0] === '<div class="notwriteable"></div>') {
@@ -146,7 +146,7 @@ var documentView = Backbone.View.extend({
       '<a class="add" class="notwriteable" id="addDocumentLine"> </a>',
       '<div class="notwriteable"></div>',
       '<div class="notwriteable"></div>',
-      '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="/_admin/html/img/plus_icon.png"></button>'
+      '<button class="enabled" id="addRow"><img id="addDocumentLine" class="plusIcon" src="img/plus_icon.png"></button>'
     ]);
     $.each(window.arangoDocumentStore.models[0].attributes, function(key, value) {
       if (arangoHelper.isSystemAttribute(key)) {
@@ -167,7 +167,7 @@ var documentView = Backbone.View.extend({
             self.value2html(value),
             JSON.stringify(value),
             '<i class="icon-edit" id="editSecondRow"></i>',
-            '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+            '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png" width="16" height="16"></button>'
         ]);
       }
     });
@@ -176,11 +176,12 @@ var documentView = Backbone.View.extend({
 
   },
 
-  addLine: function () {
+  addLine: function (event) {
     if ($('#addRow').hasClass('disabledBtn') === true) {
       return;
     }
     $('#addRow').addClass('disabledBtn');
+    //event.stopPropagation();
     var randomKey = arangoHelper.getRandomToken();
     var self = this;
     self.currentKey = "zkey" + randomKey;
@@ -191,7 +192,7 @@ var documentView = Backbone.View.extend({
         this.value2html("editme"),
         JSON.stringify("editme"),
         '<i class="icon-edit" id="editSecondRow"></i>',
-        '<button class="enabled" id="deleteRow"><img src="/_admin/html/img/icon_delete.png" width="16" height="16"></button>'
+        '<button class="enabled" id="deleteRow"><img src="img/icon_delete.png" width="16" height="16"></button>'
       ]
     );
     this.makeEditable();
@@ -287,7 +288,7 @@ var documentView = Backbone.View.extend({
       if (aPos[0] === 0) {
         $(this).removeClass('writeable');
       }
-      if ( i == 1) {
+      if ( i === 1) {
         $(this).removeClass('writeable');
         i = 0;
       }
@@ -320,6 +321,7 @@ var documentView = Backbone.View.extend({
       }
     },{
       data: function() {
+        $(".btn-success").click()
         var aPos = documentEditTable.fnGetPosition(this);
         var value = documentEditTable.fnGetData(aPos[0], aPos[1]);
         if (aPos[1] == 0) {
@@ -346,7 +348,7 @@ var documentView = Backbone.View.extend({
       cssclass : 'jediTextarea',
       submitcssclass: 'btn btn-success pull-right',
       cancelcssclass: 'btn btn-danger pull-right',
-      cancel: '<button class="cancelButton btn btn-danger pull-right">Cancel</button">',
+      cancel: 'Cancel',
       submit: 'Save',
       onblur: 'cancel',
       onsubmit: self.validate

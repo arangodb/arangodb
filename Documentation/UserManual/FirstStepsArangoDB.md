@@ -184,7 +184,7 @@ you can skip this section.
   good to check its contain because it might contain relevant error context
   information.
 
-* check the configuration: the server looks for a coniguration file 
+* check the configuration: the server looks for a configuration file 
   named `arangod.conf` on startup. The contents of this file will be used
   as a base configuration that can optionally be overridden with command-line 
   configuration parameters. You should check the config file for the most

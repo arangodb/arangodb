@@ -1,0 +1,29 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "body",
+                            "required": "false",
+                            "name": "body",
+                            "description": "A valid json document for your data, for instance {\"hello\": \"world\"}."
+                        }
+                    ],
+                    "notes": "",
+                    "summary": "creates an edge",
+                    "httpMethod": "POST",
+                    "examples": "",
+                    "nickname": "createsAnEdge"
+                }
+            ],
+            "path": "/_api/edge"
+        }
+    ]
+}

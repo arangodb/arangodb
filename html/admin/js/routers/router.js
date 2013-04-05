@@ -13,7 +13,12 @@ $(document).ready(function() {
       "dashboard"                           : "dashboard",
       "query"                               : "query",
       "logs"                                : "logs",
-      "about"                               : "about"
+      "about"                               : "about",
+      "application/:key"                    : "applicationEdit",
+      "applications/installed"              : "applicationsInstalled",
+      "applications/available"              : "applicationsAvailable",
+      "applications/documentation"          : "applicationsDocumentation"
+      
     },
     initialize: function () {
       window.arangoCollectionsStore = new window.arangoCollections();
@@ -149,6 +154,57 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
+    },
+    
+    applicationsAvailable: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsInstalledView === undefined) {
+        this.applicationsInstalledView = new FoxxInstalledListView({
+          collection: this.foxxList
+        });
+      }
+      this.applicationsInstalledView.reload();
+      this.naviView.selectMenuItem('applications-menu');
+    },
+    
+    applicationsInstalled: function() {
+      if (this.foxxList === undefined) {
+        this.foxxList = new window.FoxxCollection();
+      }
+      if (this.applicationsActiveView === undefined) {
+        this.applicationsActiveView = new FoxxActiveListView({
+          collection: this.foxxList
+        });
+      }
+      this.applicationsActiveView.reload();
+      this.naviView.selectMenuItem('applications-menu');
+    },
+    
+    applicationEdit: function(appkey) {
+      if (this.foxxList === undefined) {
+        var self = this;
+        this.foxxList = new window.FoxxCollection();
+        this.foxxList.fetch({
+          success: function() {
+            var editAppView = new window.foxxEditView({model: self.foxxList.findWhere({_key: appkey})});
+            editAppView.render();
+          }
+        });
+      } else {
+        var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
+        editAppView.render();
+      }
+      
+    },
+    
+    applicationsDocumentation: function() {
+      if (this.appDocuView === undefined) {
+        this.appDocuView = new window.AppDocumentationView();
+      }
+      this.appDocuView.render();
+      this.naviView.selectMenuItem('applications-menu');
     }
 
   });

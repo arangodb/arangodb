@@ -29,6 +29,8 @@
 #include "BasicsC/win-utils.h"
 #endif
 
+#include "build.h"
+
 #include "v8-utils.h"
 
 #include <fstream>
@@ -44,17 +46,26 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "BasicsC/zip.h"
+#include "Basics/FileUtils.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 
 #include "unicode/normalizer2.h"
 
+#include "3rdParty/valgrind/valgrind.h"
+
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::httpclient;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
@@ -72,6 +83,38 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public classes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Utils
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Converts an object to a UTF-8-encoded and normalized character array.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
+  _str(0), _length(0), _memoryZone(memoryZone) {
+
+   v8::String::Value str(obj);
+   size_t str_len = str.length();
+
+   _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);
+}
+
+TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC () {
+  if (_str) {
+    TRI_Free(_memoryZone, _str);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -85,26 +128,23 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& message) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-  v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str());
-
+  v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), message.size());
+  
   v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
-  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
-
+  
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
+  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
   if (! proto.IsEmpty()) {
     errorObject->SetPrototype(proto);
   }
 
   return scope.Close(errorObject);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +156,7 @@ static bool LoadJavaScriptFile (char const* filename,
                                 bool useGlobalContext) {
   v8::HandleScope handleScope;
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
 
   if (content == 0) {
     LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
@@ -211,33 +251,6 @@ static bool LoadJavaScriptDirectory (char const* path,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates the path list
-//
-/// The spilt has been modified -- only except semicolon, previously we excepted
-/// a colon as well. So as not to break existing configurations, we only make
-/// the modification for windows version -- since there isn't one yet!
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Array> PathList (string const& modules) {
-  v8::HandleScope scope;
-
-#ifdef _WIN32
-  vector<string> paths = StringUtils::split(modules, ";", '\0');
-#else
-  vector<string> paths = StringUtils::split(modules, ";:");
-#endif
-
-  const uint32_t n = (uint32_t) paths.size();
-  v8::Handle<v8::Array> result = v8::Array::New(n);
-
-  for (uint32_t i = 0;  i < n;  ++i) {
-    result->Set(i, v8::String::New(paths[i].c_str(), paths[i].size()));
-  }
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -304,7 +317,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
 
   if (argv.Length() < 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: parse(<script>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "parse(<script>)");
   }
 
   v8::Handle<v8::Value> source = argv[0];
@@ -318,7 +331,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   }
 
   if (! source->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<script> must be a string");
   }
 
   v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
@@ -326,7 +339,8 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
     string err = TRI_StringifyV8Exception(&tryCatch);
-    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+
+    TRI_V8_SYNTAX_ERROR(scope, err.c_str());
   }
 
   // compilation failed, we don't know why
@@ -335,6 +349,161 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads data from a URL
+///
+/// @FUN{internal.download(@FA{url}, @FA{method}, @FA{outfile}, @FA{timeout})}
+///
+/// Downloads the data from the URL specified by @FA{url} and saves the 
+/// response body to @FA{outfile}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  if (argv.Length() < 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "download(<url>, <method>, <outfile>, <timeout>)");
+  }
+
+  string url = TRI_ObjectToString(argv[0]);
+
+  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
+  const string methodString = TRI_ObjectToString(argv[1]);
+
+  if (methodString == "head") {
+    method = HttpRequest::HTTP_REQUEST_HEAD;
+  }
+  else if (methodString == "delete") {
+    method = HttpRequest::HTTP_REQUEST_DELETE;
+  }
+
+  const string outfile = TRI_ObjectToString(argv[2]);
+
+  double timeout = 10.0;
+  if (argv.Length() > 3) {
+    timeout = TRI_ObjectToDouble(argv[3]);
+  }
+
+  if (TRI_ExistsFile(outfile.c_str())) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_CANNOT_OVERWRITE_FILE);
+  }
+
+  int numRedirects = 0;
+
+  while (numRedirects++ < 5) {
+    string endpoint;
+    string relative;
+
+    if (url.substr(0, 7) == "http://") {
+      size_t found = url.find('/', 7);
+
+      relative = "/";
+      if (found != string::npos) {
+        relative.append(url.substr(found + 1));
+        endpoint = "tcp://" + url.substr(7, found - 7) + ":80";
+      }
+      else {
+        endpoint = "tcp://" + url.substr(7) + ":80";
+      }
+    }
+    else if (url.substr(0, 8) == "https://") {
+      size_t found = url.find('/', 8);
+
+      relative = "/";
+      if (found != string::npos) {
+        relative.append(url.substr(found + 1));
+        endpoint = "ssl://" + url.substr(8, found - 8) + ":443";
+      }
+      else {
+        endpoint = "ssl://" + url.substr(8) + ":443";
+      }
+    }
+    else {
+      TRI_V8_SYNTAX_ERROR(scope, "unsupported URL specified");
+    }
+    
+    LOGGER_TRACE("downloading file. endpoint: " << endpoint << ", relative URL: " << url);
+
+    GeneralClientConnection* connection = GeneralClientConnection::factory(Endpoint::clientFactory(endpoint), timeout, timeout, 3);
+
+    if (connection == 0) {
+      TRI_V8_EXCEPTION_MEMORY(scope);
+    }
+
+    SimpleHttpClient client(connection, timeout, false);
+
+    v8::Handle<v8::Object> result = v8::Object::New();
+
+    // connect to server and get version number
+    map<string, string> headerFields;
+    SimpleHttpResult* response = client.request(method, relative, 0, 0, headerFields);
+
+    int returnCode;
+    string returnMessage;
+
+    if (! response || ! response->isComplete()) {
+      // save error message
+      returnMessage = client.getErrorMessage();
+      returnCode = 500;
+
+      if (response && response->getHttpReturnCode() > 0) {
+        returnCode = response->getHttpReturnCode();
+      }
+    }
+    else {
+      returnMessage = response->getHttpReturnMessage();
+      returnCode = response->getHttpReturnCode();
+
+      if (returnCode == 301 || returnCode == 302) {
+        bool found;
+        url = response->getHeaderField(string("location"), found);
+
+        delete response;
+        delete connection;
+
+        if (! found) {
+          TRI_V8_EXCEPTION_INTERNAL(scope, "caught invalid redirect URL");
+        }
+
+        continue;
+      }
+
+      result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
+      result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
+
+      const map<string, string> responseHeaders = response->getHeaderFields();
+      map<string, string>::const_iterator it;
+
+      v8::Handle<v8::Object> headers = v8::Object::New();
+      for (it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
+        headers->Set(v8::String::New((*it).first.c_str()), v8::String::New((*it).second.c_str()));
+      }
+      result->Set(v8::String::New("headers"), headers);
+
+      if (returnCode >= 200 && returnCode <= 299) {
+        try {
+          FileUtils::spit(outfile, response->getBody().str());
+        }
+        catch (...) {
+
+        }
+      }
+    }
+      
+    result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
+    result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
+
+    if (response) {
+      delete response;
+    }
+
+    delete connection;
+    return scope.Close(result);
+  }
+  
+  TRI_V8_EXCEPTION_INTERNAL(scope, "too many redirects");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +525,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 3) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: execute(<script>, <sandbox>, <filename>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "execute(<script>, <sandbox>, <filename>)");
   }
 
   v8::Handle<v8::Value> source = argv[0];
@@ -364,7 +533,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
   v8::Handle<v8::Value> filename = argv[2];
 
   if (! source->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<script> must be a string");
   }
 
   bool useSandbox = sandboxValue->IsObject();
@@ -475,12 +644,51 @@ static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: exists(<filename>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "exists(<path>)");
   }
 
-  string filename = TRI_ObjectToString(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
-  return scope.Close(TRI_ExistsFile(filename.c_str()) ? v8::True() : v8::False());;
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  return scope.Close(TRI_ExistsFile(*name) ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the size of a file
+///
+/// @FUN{fs.size(@FA{path})}
+///
+/// Returns the size of the file specified by @FA{path}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SizeFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "size(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  if (! TRI_ExistsFile(*name) || TRI_IsDirectory(*name)) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FILE_NOT_FOUND);
+  }
+
+  int64_t size = TRI_SizeFile(*name);
+
+  if (size < 0) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FILE_NOT_FOUND);
+  }
+
+  return scope.Close(v8::Number::New((double) size));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +696,7 @@ static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
 ///
 /// @FUN{console.getline()}
 ///
-/// Reads in a line from the console.
+/// Reads in a line from the console and returns it as string.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
@@ -498,6 +706,69 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
   getline(cin, line);
 
   return scope.Close(v8::String::New(line.c_str(), line.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the temporary directory
+///
+/// @FUN{fs.getTempPath()}
+///
+/// Returns the absolute path of the temporary directory
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getTempPath()");
+  }
+
+  // return result
+  return scope.Close(v8::String::New(TempPath.c_str(), TempPath.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name for a (new) temporary file
+///
+/// @FUN{fs.getTempFile(@FA{directory}, @FA{createFile})}
+///
+/// Returns the name for a new temporary file in directory @FA{directory}. 
+/// If @FA{createFile} is @LIT{true}, an empty file will be created so no other 
+/// process can create a file of the same name.
+///
+/// Note that the directory @FA{directory} must exist.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetTempFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getTempFile(<directory>, <createFile>)");
+  }
+
+  const char* p = NULL;
+  string path;
+  if (argv.Length() > 0) {
+    path = TRI_ObjectToString(argv[0]);
+    p = path.c_str();
+  }
+
+  bool create = false;
+  if (argv.Length() > 1) {
+    create = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  char* result = 0;
+
+  if (TRI_GetTempName(p, &result, create) != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "could not create temp file");
+  }
+
+  const string tempfile(result);
+  TRI_Free(TRI_CORE_MEM_ZONE, result);
+
+  // return result
+  return scope.Close(v8::String::New(tempfile.c_str(), tempfile.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,17 +784,87 @@ static v8::Handle<v8::Value> JS_IsDirectory (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: isDirectory(<path>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "isDirectory(<path>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<path> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
   }
 
   // return result
   return scope.Close(TRI_IsDirectory(*name) ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if path is a file
+///
+/// @FUN{fs.isFile(@FA{path})}
+///
+/// Returns true if the @FA{path} points to a file.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "isFile(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  // return result
+  return scope.Close((TRI_ExistsFile(*name) && ! TRI_IsDirectory(*name)) ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the directory tree
+///
+/// @FUN{fs.list(@FA{path})}
+///
+/// The functions returns the names of all the files in a directory, in
+/// lexically sorted order. Throws an exception if the directory cannot be
+/// traversed (or path is not a directory).
+///
+/// Note: this means that list("x") of a directory containing "a" and "b" would
+/// return ["a", "b"], not ["x/a", "x/b"].
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_List (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "listTree(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  // constructed listing
+  v8::Handle<v8::Array> result = v8::Array::New();
+  TRI_vector_string_t list = TRI_FilesDirectory(*name);
+
+  uint32_t j = 0;
+
+  for (size_t i = 0;  i < list._length;  ++i) {
+    const char* f = list._buffer[i]; 
+    result->Set(j++, v8::String::New(f));
+  }
+
+  TRI_DestroyVectorString(&list);
+
+  // return result
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -543,27 +884,184 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: listTree(<path>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "listTree(<path>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<path> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
   }
 
   // constructed listing
   v8::Handle<v8::Array> result = v8::Array::New();
   TRI_vector_string_t list = TRI_FullTreeDirectory(*name);
 
+  uint32_t j = 0;
+
   for (size_t i = 0;  i < list._length;  ++i) {
-    result->Set(i, v8::String::New(list._buffer[i]));
+    const char* f = list._buffer[i]; 
+    result->Set(j++, v8::String::New(f));
   }
 
   TRI_DestroyVectorString(&list);
 
   // return result
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a directory
+///
+/// @FUN{fs.makeDirectory(@FA{path})}
+///
+/// Creates the directory specified by @FA{path}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  // 2nd argument (permissions) are ignored for now
+
+  // extract arguments
+  if (argv.Length() != 1 && argv.Length() != 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "makeDirectory(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  bool result = TRI_CreateDirectory(*name);
+
+  if (! result) {
+    TRI_V8_EXCEPTION_SYS(scope, "cannot create directory");
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unzips a file
+///
+/// @FUN{fs.unzip(@FA{filename}, @FA{outpath}, @FA{skipPaths}, @FA{overwrite}, @FA{password})}
+///
+/// Unzips the zip file specified by @FA{filename} into the path specified by
+/// @FA{outpath}. Overwrites any existing target files if @FA{overwrite} is set
+/// to @LIT{true}.
+///
+/// Returns @LIT{true} if the file was unzipped successfully.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() < 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "unzip(<filename>, <outPath>, <skipPaths>, <overwrite>, <password>)");
+  }
+
+  const string filename = TRI_ObjectToString(argv[0]);
+  const string outPath = TRI_ObjectToString(argv[1]);
+
+  bool skipPaths = false;
+  if (argv.Length() > 2) {
+    skipPaths = TRI_ObjectToBoolean(argv[2]);
+  }
+
+  bool overwrite = false;
+  if (argv.Length() > 3) {
+    overwrite = TRI_ObjectToBoolean(argv[3]);
+  }
+
+  const char* p;
+  string password;
+  if (argv.Length() > 4) {
+    password = TRI_ObjectToString(argv[4]);
+    p = password.c_str();
+  }
+  else {
+    p = NULL;
+  }
+
+  int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::True());
+  }
+
+  TRI_V8_EXCEPTION(scope, res);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief zips a file
+///
+/// @FUN{fs.zip(@FA{filename}, @FA{files})}
+///
+/// Stores the files specified by @FA{files} in the zip file @FA{filename}.
+///
+/// Returns @LIT{true} if the file was zipped successfully.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() < 3 || argv.Length() > 4) {
+    TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <chdir>, <files>, <password>)");
+  }
+
+  const string filename = TRI_ObjectToString(argv[0]);
+  const string dir = TRI_ObjectToString(argv[1]);
+
+  if (! argv[2]->IsArray()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <chdir>, <files>, <password>)");
+  }
+
+  v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(argv[2]);
+ 
+  int res = TRI_ERROR_NO_ERROR; 
+  TRI_vector_string_t filenames;
+  TRI_InitVectorString(&filenames, TRI_UNKNOWN_MEM_ZONE);
+
+  for (uint32_t i = 0 ; i < files->Length(); ++i) {
+    v8::Handle<v8::Value> file = files->Get(i);
+    if (file->IsString()) {
+      string fname = TRI_ObjectToString(file);
+      TRI_PushBackVectorString(&filenames, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
+    }
+    else {
+      res = TRI_ERROR_BAD_PARAMETER;
+      break;
+    }
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorString(&filenames);
+
+    TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <files>, <password>)");
+  }
+ 
+  const char* p; 
+  string password;
+  if (argv.Length() == 4) {
+    password = TRI_ObjectToString(argv[3]);
+    p = password.c_str();
+  }
+  else {
+    p = NULL;
+  }
+
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), &filenames, p);
+  TRI_DestroyVectorString(&filenames);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::True());
+  }
+
+  TRI_V8_EXCEPTION(scope, res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -579,19 +1077,19 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: load(<filename>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "load(<filename>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a string");
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
 
   if (content == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot read file");
   }
 
   TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false);
@@ -621,19 +1119,19 @@ static v8::Handle<v8::Value> JS_Log (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: log(<level>, <message>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "log(<level>, <message>)");
   }
 
   TRI_Utf8ValueNFC level(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*level == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<level> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<level> must be a string");
   }
 
   TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*message == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<message> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<message> must be a string");
   }
 
   if (TRI_CaseEqualString(*level, "fatal")) {
@@ -709,7 +1207,7 @@ static v8::Handle<v8::Value> JS_Md5 (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1 || ! argv[0]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: md5(<text>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "md5(<text>)");
   }
 
   string key = TRI_ObjectToString(argv[0]);
@@ -749,7 +1247,7 @@ static v8::Handle<v8::Value> JS_RandomNumbers (v8::Arguments const& argv) {
   v8::TryCatch tryCatch;
 
   if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomNumbers(<length>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "genRandomNumbers(<length>)");
   }
 
   int length = (int) TRI_ObjectToInt64(argv[0]);
@@ -770,7 +1268,7 @@ static v8::Handle<v8::Value> JS_RandomAlphaNum (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1 || ! argv[0]->IsNumber()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomAlphaNumbers(<length>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "genRandomAlphaNumbers(<length>)");
   }
 
   int length = (int) TRI_ObjectToInt64(argv[0]);
@@ -791,7 +1289,7 @@ static v8::Handle<v8::Value> JS_RandomSalt (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: genRandomSalt()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "genRandomSalt()");
   }
 
   string str = JSSaltGenerator.random(8);
@@ -810,7 +1308,7 @@ static v8::Handle<v8::Value> JS_CreateNonce (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: createNonce()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "createNonce()");
   }
 
   string str =  Nonce::createNonce();
@@ -830,19 +1328,19 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1 || ! argv[0]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: checkAndMarkNonce(<nonce>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "checkAndMarkNonce(<nonce>)");
   }
 
   TRI_Utf8ValueNFC base64u(TRI_CORE_MEM_ZONE, argv[0]);
 
   if (base64u.length() != 16) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting 16-Byte base64url-encoded nonce")));
+    TRI_V8_TYPE_ERROR(scope, "expecting 16-Byte base64url-encoded nonce");
   }
 
   string raw = StringUtils::decodeBase64U(*base64u);
 
   if (raw.size() != 12) {
-    return scope.Close(v8::ThrowException(v8::String::New("expecting 12-Byte nonce")));
+    TRI_V8_TYPE_ERROR(scope, "expecting 12-Byte nonce");
   }
 
   bool valid = Nonce::checkAndMark(raw);
@@ -865,7 +1363,7 @@ static v8::Handle<v8::Value> JS_Move (v8::Arguments const& argv) {
 
   // extract two arguments
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: move(<source>, <destination>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "move(<source>, <destination>)");
   }
 
   string source = TRI_ObjectToString(argv[0]);
@@ -874,10 +1372,10 @@ static v8::Handle<v8::Value> JS_Move (v8::Arguments const& argv) {
   int res = TRI_RenameFile(source.c_str(), destination.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot move file")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot move file");
   }
 
-  return scope.Close(v8::Undefined());;
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -986,7 +1484,7 @@ static v8::Handle<v8::Value> JS_Rand (v8::Arguments const& argv) {
 
   // check arguments
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: rand()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "rand()");
   }
 
   int iterations = 0;
@@ -1016,28 +1514,29 @@ static v8::Handle<v8::Value> JS_Rand (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
 ///
-/// @FUN{internal.read(@FA{filename})}
+/// @FUN{fs.read(@FA{filename})}
 ///
-/// Reads in a file and returns the content as string.
+/// Reads in a file and returns the content as string. Please note that the
+/// file content must be encoded in UTF-8.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "read(<filename>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name);
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
 
   if (content == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(TRI_last_error())));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
   v8::Handle<v8::String> result = v8::String::New(content);
@@ -1045,6 +1544,41 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a file as base64
+///
+/// @FUN{fs.read64(@FA{filename})}
+///
+/// Reads in a file and returns the content as string. The file content is
+/// Base64 encoded.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "read(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
+  }
+
+  string base64;
+
+  try {
+    string content = FileUtils::slurp(*name);
+    base64 = StringUtils::encodeBase64(content);
+  }
+  catch (...) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
+  }
+
+  return scope.Close(v8::String::New(base64.c_str()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1059,31 +1593,32 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: save(<filename>, <content>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "save(<filename>, <content>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a string");
   }
 
   TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*content == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<content> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<content> must be a string");
   }
 
   ofstream file;
 
   file.open(*name, ios::out | ios::binary);
+
   if (file.is_open()) {
     file << *content;
     file.close();
     return scope.Close(v8::True());
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New("cannot write to file")));
+  TRI_V8_EXCEPTION_SYS(scope, "cannot write file");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1099,20 +1634,106 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  // extract two arguments
+  // extract the arguments
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: remove(<filename>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<filename>)");
+  }
+  
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
   }
 
-  string filename = TRI_ObjectToString(argv[1]);
-
-  int res = TRI_UnlinkFile(filename.c_str());
+  int res = TRI_UnlinkFile(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot remove file")));
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot remove file");
   }
 
-  return scope.Close(v8::Undefined());;
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an empty directory
+///
+/// @FUN{fs.removeDirectory(@FA{path})}
+///
+/// Removes a directory if it is empty. Throws an exception if the path is not
+/// an empty directory.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RemoveDirectory (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "removeDirectory(<path>)");
+  }
+  
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  if (! TRI_IsDirectory(*name)) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<path> must be a valid directory name");
+  }
+
+  int res = TRI_RemoveEmptyDirectory(*name);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot remove directory");
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a directory
+///
+/// @FUN{fs.removeDirectoryRecursive(@FA{path})}
+///
+/// Removes a directory with all subelements. Throws an exception if the path 
+/// is not a directory.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "removeDirectoryRecursive(<path>)");
+  }
+  
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<path> must be a string");
+  }
+
+  if (! TRI_IsDirectory(*name)) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "<path> must be a valid directory name");
+  }
+  
+  if (TempPath.size() < 8) {
+    // some security measure so we don't accidently delete all our files
+    TRI_V8_EXCEPTION_PARAMETER(scope, "temporary directory name is too short. will not remove directory");
+  }
+
+  const string path(*name);
+  if (path.substr(0, TempPath.size()) != TempPath) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "directory to be removed is outside of temporary path");
+  }
+
+  int res = TRI_RemoveDirectory(*name);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot remove directory");
+  }
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1135,7 +1756,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
   TRI_Utf8ValueNFC format(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*format == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<format> must be a string")));
+    TRI_V8_TYPE_ERROR(scope, "<format> must be a UTF-8 string");
   }
 
   string result;
@@ -1155,7 +1776,8 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         case 'f':
         case 'i': {
           if (len <= p) {
-            return scope.Close(v8::ThrowException(v8::String::New("not enough arguments")));
+            string msg = string("not enough arguments for ") + *ptr;
+            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
           bool e;
@@ -1163,7 +1785,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 
           if (e) {
             string msg = StringUtils::itoa(p) + ".th argument must be a number";
-            return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
           char b[1024];
@@ -1185,14 +1807,15 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         case 'o':
         case 's': {
           if (len <= p) {
-            return scope.Close(v8::ThrowException(v8::String::New("not enough arguments")));
+            string msg = string("not enough arguments for ") + *ptr;
+            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
           TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[p]);
 
           if (*text == 0) {
             string msg = StringUtils::itoa(p) + ".th argument must be a string";
-            return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
           ++p;
@@ -1204,7 +1827,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 
         default: {
           string msg = "found illegal format directive '" + string(1, *ptr) + "'";
-          return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+          TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
         }
       }
     }
@@ -1218,7 +1841,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 
     if (*text == 0) {
       string msg = StringUtils::itoa(i) + ".th argument must be a string";
-      return scope.Close(v8::ThrowException(v8::String::New(msg.c_str())));
+      TRI_V8_TYPE_ERROR(scope, msg.c_str());
     }
 
     result += " ";
@@ -1241,7 +1864,7 @@ static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1 || ! argv[0]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: sha256(<text>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "sha256(<text>)");
   }
 
   string key = TRI_ObjectToString(argv[0]);
@@ -1297,7 +1920,7 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: wait(<seconds>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "wait(<seconds>)");
   }
 
   double n = TRI_ObjectToDouble(argv[0]);
@@ -1643,7 +2266,9 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber) {
-  return CreateErrorObject(errorNumber, TRI_errno_string(errorNumber));
+  v8::HandleScope scope;
+
+  return scope.Close(CreateErrorObject(errorNumber, TRI_errno_string(errorNumber)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1651,7 +2276,9 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber) {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message) {
-  return CreateErrorObject(errorNumber, message);
+  v8::HandleScope scope;
+
+  return scope.Close(CreateErrorObject(errorNumber, message));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1659,97 +2286,19 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& mes
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message, bool autoPrepend) {
-  if (autoPrepend) {
-    return CreateErrorObject(errorNumber, message + ": " + string(TRI_errno_string(errorNumber)));
-  }
-  else {
-    return CreateErrorObject(errorNumber, message);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 utils functions inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Utils (v8::Handle<v8::Context> context,
-                      string const& modules,
-                      string const& nodes) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::ObjectTemplate> rt;
-
-  // check the isolate
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
-
-  if (v8g == 0) {
-    // this check is necessary because when building arangosh, we do not include v8-vocbase and
-    // this init function is the first one we call
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
+  if (autoPrepend) {
+    return scope.Close(CreateErrorObject(errorNumber, message + ": " + string(TRI_errno_string(errorNumber))));
   }
-
-  // .............................................................................
-  // create the global functions
-  // .............................................................................
-
-  TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
-  TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
-  TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
-  TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
-  TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
-
-  TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
-
-  // .............................................................................
-  // create the global variables
-  // .............................................................................
-
-  TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", PathList(modules));
-  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", PathList(nodes));
-
-  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
-  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
-}
-
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
-  _str(0), _length(0), _memoryZone(memoryZone) {
-
-   v8::String::Value str(obj);
-   size_t str_len = str.length();
-
-   _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);
-}
-
-TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
-  if (_str) {
-    TRI_Free(_memoryZone, _str);
+  else {
+    return scope.Close(CreateErrorObject(errorNumber, message));
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a v8 object
+////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
   v8::HandleScope scope;
@@ -1783,6 +2332,131 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
   else {
     return scope.Close(v8::String::New(""));
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the path list
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Array> TRI_V8PathList (string const& modules) {
+  v8::HandleScope scope;
+
+#ifdef _WIN32
+  vector<string> paths = StringUtils::split(modules, ";", '\0');
+#else
+  vector<string> paths = StringUtils::split(modules, ";:");
+#endif
+
+  const uint32_t n = (uint32_t) paths.size();
+  v8::Handle<v8::Array> result = v8::Array::New(n);
+
+  for (uint32_t i = 0;  i < n;  ++i) {
+    result->Set(i, v8::String::New(paths[i].c_str(), paths[i].size()));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores the V8 utils functions inside the global variable
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitV8Utils (v8::Handle<v8::Context> context,
+                      string const& modules,
+                      string const& nodes,
+                      string const& tempPath) {
+  v8::HandleScope scope;
+
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::ObjectTemplate> rt;
+
+  // check the isolate
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (v8g == 0) {
+    // this check is necessary because when building arangosh, we do not include v8-vocbase and
+    // this init function is the first one we call
+    v8g = new TRI_v8_global_t;
+    isolate->SetData(v8g);
+  }
+
+  TempPath = tempPath;
+
+  // .............................................................................
+  // generate the general error template
+  // .............................................................................
+  
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(TRI_V8_SYMBOL("ArangoError"));
+
+  rt = ft->InstanceTemplate();
+  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ft->GetFunction());
+
+  // .............................................................................
+  // create the global functions
+  // .............................................................................
+
+  TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
+  TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_FILE", JS_GetTempFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_GET_TEMP_PATH", JS_GetTempPath);
+  TRI_AddGlobalFunctionVocbase(context, "FS_IS_DIRECTORY", JS_IsDirectory);
+  TRI_AddGlobalFunctionVocbase(context, "FS_IS_FILE", JS_IsFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_LIST", JS_List);
+  TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
+  TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
+  TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE_DIRECTORY", JS_RemoveDirectory);
+  TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE_RECURSIVE_DIRECTORY", JS_RemoveRecursiveDirectory);
+  TRI_AddGlobalFunctionVocbase(context, "FS_FILESIZE", JS_SizeFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_UNZIP_FILE", JS_UnzipFile);
+  TRI_AddGlobalFunctionVocbase(context, "FS_ZIP_FILE", JS_ZipFile);
+
+  TRI_AddGlobalFunctionVocbase(context, "SYS_DOWNLOAD", JS_Download);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_ALPHA_NUMBERS", JS_RandomAlphaNum);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NONCE", JS_CreateNonce);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_CHECK_AND_MARK_NONCE", JS_MarkNonce);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
+
+  // .............................................................................
+  // create the global variables
+  // .............................................................................
+
+  TRI_AddGlobalVariableVocbase(context, "HOME", v8::String::New(FileUtils::homeDirectory().c_str()));
+
+  TRI_AddGlobalVariableVocbase(context, "MODULES_PATH", TRI_V8PathList(modules));
+  TRI_AddGlobalVariableVocbase(context, "PACKAGE_PATH", TRI_V8PathList(nodes));
+  TRI_AddGlobalVariableVocbase(context, "PATH_SEPARATOR", v8::String::New(TRI_DIR_SEPARATOR_STR));
+  TRI_AddGlobalVariableVocbase(context, "VALGRIND", RUNNING_ON_VALGRIND > 0 ? v8::True() : v8::False());
+  TRI_AddGlobalVariableVocbase(context, "VERSION", v8::String::New(TRIAGENS_VERSION));
+
+  TRI_AddGlobalVariableVocbase(context, "CONNECTION_TIME_DISTRIBUTION", DistributionList(ConnectionTimeDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "REQUEST_TIME_DISTRIBUTION", DistributionList(RequestTimeDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_SENT_DISTRIBUTION", DistributionList(BytesSentDistributionVector));
+  TRI_AddGlobalVariableVocbase(context, "BYTES_RECEIVED_DISTRIBUTION", DistributionList(BytesReceivedDistributionVector));
+
+  TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(TRI_PLATFORM));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

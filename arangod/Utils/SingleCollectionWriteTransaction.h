@@ -34,6 +34,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace arango {
@@ -70,10 +71,9 @@ namespace triagens {
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
                                           const triagens::arango::CollectionNameResolver& resolver,
-                                          const TRI_transaction_cid_t cid) :
+                                          const TRI_voc_cid_t cid) :
           SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_WRITE),
-          _numWrites(0),
-          _synchronous(false) {
+          _numWrites(0) {
 
           if (N == 1) {
             this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
@@ -88,8 +88,7 @@ namespace triagens {
                                           const triagens::arango::CollectionNameResolver& resolver,
                                           const string& name) :
           SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_WRITE),
-          _numWrites(0),
-          _synchronous(false) {
+          _numWrites(0) {
 
           if (N == 1) {
             this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
@@ -119,11 +118,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the last write in a transaction was synchronous
+/// @brief return whether a write in the transaction was synchronous
 ////////////////////////////////////////////////////////////////////////////////
 
         inline bool synchronous () const {
-          return _synchronous;
+          return TRI_WasSynchronousCollectionTransaction(this->_trx, this->cid());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,9 +130,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int lockWrite () {
-          TRI_primary_collection_t* primary = this->primaryCollection();
-
-          return this->lockExplicit(primary, TRI_TRANSACTION_WRITE);
+          return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,10 +145,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->createCollectionDocument(primary, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,10 +161,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->createCollectionDocument(primary, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,10 +177,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,10 +194,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,10 +214,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->updateCollectionDocument(primary, key, mptr, json, policy, expectedRevision, actualRevision, forceSync, lock);
+          return this->update(this->trxCollection(), key, mptr, json, policy, expectedRevision, actualRevision, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,10 +234,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->updateCollectionShaped(primary, key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync, lock);
+          return this->update(this->trxCollection(), key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,10 +251,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->deleteCollectionDocument(primary, key, policy, expectedRevision, actualRevision, forceSync, lock);
+          return this->remove(this->trxCollection(), key, policy, expectedRevision, actualRevision, forceSync, lock);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,10 +263,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = this->primaryCollection();
-          _synchronous = forceSync || primary->base._info._waitForSync;
-
-          return this->truncateCollection(primary, forceSync);
+          return this->removeAll(this->trxCollection(), forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,12 +288,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _numWrites;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether of not the last write action was executed synchronously
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _synchronous;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
