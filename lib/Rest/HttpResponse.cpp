@@ -51,7 +51,6 @@ using namespace std;
 
 string HttpResponse::responseString (HttpResponseCode code) {
   switch (code) {
-
     //  Success 2xx
     case OK:                   return "200 OK";
     case CREATED:              return "201 Created";
@@ -77,6 +76,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case LENGTH_REQUIRED:      return "411 Length Required";
     case PRECONDITION_FAILED:  return "412 Precondition Failed";
     case ENTITY_TOO_LARGE:     return "413 Request Entity Too Large";
+    case I_AM_A_TEAPOT:        return "418 I'm a teapot";
     case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
     case HEADER_TOO_LARGE:     return "431 Request Header Fields Too Large";
 
@@ -120,6 +120,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
     case 405: return METHOD_NOT_ALLOWED;
     case 409: return CONFLICT;
     case 412: return PRECONDITION_FAILED;
+    case 418: return I_AM_A_TEAPOT;
     case 422: return UNPROCESSABLE_ENTITY;
 
     case 500: return SERVER_ERROR;

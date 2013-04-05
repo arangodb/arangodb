@@ -2016,7 +2016,10 @@ exports.HTTP_NOT_FOUND           = 404;
 exports.HTTP_METHOD_NOT_ALLOWED  = 405;
 exports.HTTP_CONFLICT            = 409;
 exports.HTTP_PRECONDITION_FAILED = 412;
+exports.HTTP_ENTITY_TOO_LARGE    = 413;
+exports.HTTP_I_AM_A_TEAPOT       = 418;
 exports.HTTP_UNPROCESSABLE_ENTIT = 422;
+exports.HTTP_HEADER_TOO_LARGE    = 431;
 
 // HTTP 5xx
 exports.HTTP_SERVER_ERROR        = 500;
