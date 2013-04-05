@@ -139,25 +139,25 @@ var arango = require("org/arangodb").arango;
 
 
 (function () {
-  var special;
+  var __special__;
 
   try {
     // these variables are not defined in the browser context
-    special = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
+    __special__ = IS_EXECUTE_SCRIPT || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
   }
   catch (err) {
-    special = true;
+    __special__ = true;
   }
   
-  if (! special) {  
+  if (! __special__) {  
     try {
       // this will not work from within a browser
-      var fs = require("fs");
-      var rcf = fs.join(fs.home(), ".arangosh.rc");
+      var __fs__ = require("fs");
+      var __rcf__ = __fs__.join(__fs__.home(), ".arangosh.rc");
 
-      if (fs.exists(rcf)) {
-        var content = fs.read(rcf);
-        eval(content);
+      if (__fs__.exists(__rcf__)) {
+        var __content__ = __fs__.read(__rcf__);
+        eval(__content__);
       }
     } 
     catch (err2) {
