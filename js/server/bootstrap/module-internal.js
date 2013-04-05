@@ -195,10 +195,17 @@
 /// @brief reloads the AQL user functions
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.reloadAqlFunctions = function () {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/ahuacatl\").reload();");
-    require("org/arangodb/ahuacatl").reload();
-  };
+  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
+    internal.reloadAqlFunctions = function () {
+      require("org/arangodb/ahuacatl").reload();
+    };
+  }
+  else {
+    internal.reloadAqlFunctions = function () {
+      internal.executeGlobalContextFunction("require(\"org/arangodb/ahuacatl\").reload();");
+      require("org/arangodb/ahuacatl").reload();
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string in all V8 contexts
