@@ -59,7 +59,10 @@ var Application,
 /// a constraint and a method. For example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     internal.createUrlObject('/lecker/gans', null, 'get');
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 internal.createUrlObject = function (url, constraint, method) {
@@ -89,10 +92,13 @@ internal.createUrlObject = function (url, constraint, method) {
 /// * **The Template Collection:** More information in the template section
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app = new Application({
 ///       urlPrefix: "/wiese",
 ///       templateCollection: "my_templates"
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 Application = function (options) {
@@ -170,9 +176,12 @@ _.extend(Application.prototype, {
 /// object).
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.handleRequest("get", "/gaense", function (req, res) {
 ///       //handle the request
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   handleRequest: function (method, route, callback) {
@@ -216,9 +225,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.get('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   get: function (route, callback) {
     'use strict';
@@ -233,9 +245,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.post('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   post: function (route, callback) {
     'use strict';
@@ -250,9 +265,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.put('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   put: function (route, callback) {
     'use strict';
@@ -267,9 +285,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.patch('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   patch: function (route, callback) {
     'use strict';
@@ -288,6 +309,8 @@ _.extend(Application.prototype, {
 /// for this very reason.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app['delete']('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
@@ -295,6 +318,7 @@ _.extend(Application.prototype, {
 ///     app.del('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   'delete': function (route, callback) {
@@ -319,9 +343,12 @@ _.extend(Application.prototype, {
 /// An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.before('/high/way', function(req, res) {
 ///       //Do some crazy request logging
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   before: function (path, func) {
@@ -350,9 +377,12 @@ _.extend(Application.prototype, {
 /// An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.after('/high/way', function(req, res) {
 ///       //Do some crazy response logging
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   after: function (path, func) {
@@ -381,9 +411,12 @@ _.extend(Application.prototype, {
 /// blocks.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.helper("link_to", function (identifier) {
 ///       return urlRepository[identifier];
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   helper: function (name, func) {
@@ -400,7 +433,10 @@ _.extend(Application.prototype, {
 /// This is a shortcut to add the middleware to your application:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.accepts(["json"], "json");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   accepts: function (allowedFormats, defaultFormat) {
@@ -446,12 +482,15 @@ _.extend(RequestContext.prototype, {
 /// You can also provide a description of this parameter.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.get("/foxx/:id", function {
 ///       // Do something
 ///     }).pathParam("id", {
 ///       description: "Id of the Foxx",
 ///       dataType: "int"
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
@@ -489,6 +528,8 @@ _.extend(RequestContext.prototype, {
 ///  if you can provide the parameter multiple times.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.get("/foxx", function {
 ///       // Do something
 ///     }).queryParam("id", {
@@ -497,6 +538,7 @@ _.extend(RequestContext.prototype, {
 ///       required: true,
 ///       allowMultiple: false
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   queryParam: function (paramName, attributes) {
@@ -632,7 +674,10 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// Set the status code of your response, for example:
 ///
 /// @EXAMPLES
-///     response.status(404);
+///
+/// @code
+///    response.status(404);
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
       status: function (code) {
         this.responseCode = code;
@@ -645,6 +690,8 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// Set a header attribute, for example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     response.set("Content-Length", 123);
 ///     response.set("Content-Type", "text/plain");
 ///
@@ -654,6 +701,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 ///       "Content-Length": "123",
 ///       "Content-Type": "text/plain"
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
       set: function (key, value) {
@@ -683,7 +731,10 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// JSON encoded object you provided.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     response.json({'born': 'December 12, 1915'});
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
       json: function (obj) {
@@ -725,7 +776,10 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// ViewHelper section.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     response.render("high/way", {username: 'Application'})
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
       render: function (templatePath, data) {
         var template;
@@ -853,9 +907,12 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
 /// as an object.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     instance = new Model({
 ///       a: 1
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 Model = function (attributes) {
@@ -871,11 +928,14 @@ _.extend(Model.prototype, {
 ///
 /// Get the value of an attribute
 /// @EXAMPLES
+///
+/// @code
 ///     instance = new Model({
 ///       a: 1
 ///     });
 ///
 ///     instance.get("a");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   get: function (attributeName) {
@@ -888,11 +948,14 @@ _.extend(Model.prototype, {
 ///
 /// Set the value of an attribute
 /// @EXAMPLES
+///
+/// @code
 ///     instance = new Model({
 ///       a: 1
 ///     });
 ///
 ///     instance.set("a", 2);
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   set: function (attributeName, value) {
@@ -905,12 +968,15 @@ _.extend(Model.prototype, {
 ///
 /// Returns true if the attribute is set to a non-null or non-undefined value.
 /// @EXAMPLES
+///
+/// @code
 ///     instance = new Model({
 ///       a: 1
 ///     });
 ///
 ///     instance.has("a"); //=> true
 ///     instance.has("b"); //=> false
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   has: function (attributeName) {
@@ -949,7 +1015,10 @@ Model.extend = backbone_helpers.extend;
 /// If you initialize a model, you can give it initial data as an object.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     instance = new Repository(prefix, collection, modelPrototype);
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 Repository = function (prefix, collection, modelPrototype) {

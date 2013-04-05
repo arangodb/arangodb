@@ -164,6 +164,32 @@ function CollectionVolatileSuite () {
       internal.wait(4);
       assertEqual(true, c.properties().isVolatile);
       assertEqual(0, c.count());
+      assertEqual([ ], c.toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testCompaction : function () {
+      var c = internal.db._create(cn, { isVolatile : true, journalSize: 1024 * 1024 });
+      assertEqual(true, c.properties().isVolatile);
+
+      for (var i = 0; i < 10000; ++i) {
+        c.save({"test": "the quick brown fox jumped over the lazy dog", "foo" : "bar"});
+      }
+      
+      assertEqual(10000, c.count());
+      c.truncate();
+      c.save({"test": 1});
+      assertEqual(1, c.count());
+      c.truncate();
+      
+      c.unload();
+      
+      internal.wait(5);
+      assertEqual(0, c.count());
+      assertEqual([ ], c.toArray());
     }
 
   };
