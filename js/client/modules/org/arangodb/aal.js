@@ -427,7 +427,16 @@ exports.uninstallApp = function (key) {
 exports.printInstalled = function (showPrefix) {
   var list = exports.listInstalled(showPrefix);
 
-  arangodb.printTable(list);
+  if (showPrefix) {
+    arangodb.printTable(
+      list,
+      ["MountID", "AppID", "CollectionPrefix", "Active", "Devel"]);
+  }
+  else {
+    arangodb.printTable(
+      list,
+      ["MountID", "AppID", "Mount", "Active", "Devel"]);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -475,7 +484,9 @@ exports.listInstalled = function (showPrefix) {
 exports.printAvailable = function () {
   var list = exports.listAvailable();
 
-  arangodb.printTable(list);
+  arangodb.printTable(
+    list,
+    ["AppID", "Name", "Version", "Path"]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
