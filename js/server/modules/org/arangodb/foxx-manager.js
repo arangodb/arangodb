@@ -500,7 +500,7 @@ exports.scanAppDirectory = function () {
         var thumbnail;
         var mf = JSON.parse(fs.read(m));
 
-        if (mf.hasOwnProperty('thumbnail')) {
+        if (mf.hasOwnProperty('thumbnail') && mf.thumbnail !== null && mf.thumbnail !== '') {
           var p = fs.join(path, files[j], mf.thumbnail);
 
           try {
@@ -618,8 +618,8 @@ exports.installDevApp = function (name, mount, options) {
 
   var path = module.devAppPath();
 
-  if (typeof path === "undefined") {
-    throw "dev-app-path is not set, cannot instal development app '" + name + "'";
+  if (typeof path === "undefined" || path === "") {
+    throw "dev-app-path is not set, cannot install development app '" + name + "'";
   }
 
   var appId = null;
