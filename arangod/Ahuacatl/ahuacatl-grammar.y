@@ -149,6 +149,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <node> operator_binary;
 %type <node> operator_ternary;
 %type <node> function_call;
+%type <strval> function_name;
 %type <node> optional_function_call_arguments;
 %type <node> function_arguments_list;
 %type <node> compound_type;
@@ -459,10 +460,30 @@ expression:
     }
   ;
 
-function_call:
+function_name:
     T_STRING {
+      $$ = $1;
+
+      if ($$ == NULL) {
+        ABORT_OOM
+      }
+    }
+  | function_name T_COLON T_STRING {
+      if ($1 == NULL || $3 == NULL) {
+        ABORT_OOM
+      }
+
+      $$ = TRI_RegisterString3Aql(context, $1, ":", $3);
+
+      if ($$ == NULL) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+function_call:
+    function_name {
       TRI_aql_node_t* node;
-      /* function call */
 
       if (! TRI_PushStackParseAql(context, $1)) {
         ABORT_OOM

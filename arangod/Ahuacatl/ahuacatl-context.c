@@ -423,7 +423,57 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
 
-  TRI_PushBackVectorPointer(&context->_memory._strings, copy);
+  if (TRI_PushBackVectorPointer(&context->_memory._strings, copy) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    ABORT_OOM
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a combined string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_RegisterString2Aql (TRI_aql_context_t* const context,
+                              const char* const s1,
+                              const char* const s2) {
+  char* copy;
+  
+  copy = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, s1, s2);
+  
+  if (copy == NULL) {
+    ABORT_OOM
+  }
+
+  if (TRI_PushBackVectorPointer(&context->_memory._strings, copy) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    ABORT_OOM
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a combined string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_RegisterString3Aql (TRI_aql_context_t* const context,
+                              const char* const s1,
+                              const char* const s2,
+                              const char* const s3) {
+  char* copy;
+  
+  copy = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, s1, s2, s3);
+  
+  if (copy == NULL) {
+    ABORT_OOM
+  }
+
+  if (TRI_PushBackVectorPointer(&context->_memory._strings, copy) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    ABORT_OOM
+  }
 
   return copy;
 }

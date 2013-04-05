@@ -230,6 +230,12 @@ extern "C" {
 /// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
 ///   Will be raised when a fulltext query is performed on a collection without
 ///   a suitable fulltext index.
+/// - 1580: @LIT{invalid user function name}
+///   Will be raised when a user function with an invalid name is registered.
+/// - 1581: @LIT{invalid user function code}
+///   Will be raised when a user function is registered with invalid code.
+/// - 1582: @LIT{user function not found}
+///   Will be raised when a user function is accessed but not found.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1371,6 +1377,36 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
+///
+/// invalid user function name
+///
+/// Will be raised when a user function with an invalid name is registered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_NAME                             (1580)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1581: ERROR_QUERY_FUNCTION_INVALID_CODE
+///
+/// invalid user function code
+///
+/// Will be raised when a user function is registered with invalid code.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_CODE                             (1581)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1582: ERROR_QUERY_FUNCTION_NOT_FOUND
+///
+/// user function not found
+///
+/// Will be raised when a user function is accessed but not found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND                                (1582)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

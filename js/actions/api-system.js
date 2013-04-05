@@ -159,6 +159,21 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the AQL user functions
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/aql/reload",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    internal.reloadAqlFunctions();
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_routing_reloads
 /// @brief reloads the routing information
 ///
