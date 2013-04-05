@@ -106,7 +106,6 @@
       expect($("svg .link line").length).toEqual(4);
     });
     
-    
     it('should be able to add an event', function () {
       var one = {
         "_id": 1
@@ -154,6 +153,63 @@
       expect($("svg .link line").length).toEqual(4);
       expect(clicked[1]).toBeTruthy();
       expect(clicked[3]).toBeTruthy();
+      expect(clicked[2]).toBeFalsy();
+      expect(clicked[4]).toBeFalsy();
+    });
+    
+    it('should be able to unbind all events', function() {
+      var one = {
+        "_id": 1
+      },
+      two = {
+        "_id": 2
+      },
+      three = {
+        "_id": 3
+      },
+      four = {
+        "_id": 4
+      },
+      edges = [
+        {
+          "source": one,
+          "target": two
+        },
+        {
+          "source": two,
+          "target": three
+        },
+        {
+          "source": three,
+          "target": four
+        },
+        {
+          "source": four,
+          "target": one
+        }
+      ],
+      clicked = [],
+      click = function (edge) {
+        clicked[edge.source._id] = !clicked[edge.source._id];
+      },
+      shaper = new EdgeShaper(d3.select("svg"), {
+        actions: {
+          click: click
+        }
+      });
+      shaper.drawEdges(edges);
+      shaper.changeTo({
+        actions: {
+          reset: true
+        }
+      });
+      
+      helper.simulateMouseEvent("click", "1-2");
+      helper.simulateMouseEvent("click", "3-4");
+      
+      expect($("svg .link line").length).toEqual(4);
+      expect(clicked[1]).toBeFalsy();
+      expect(clicked[3]).toBeFalsy();
       expect(clicked[2]).toBeFalsy();
       expect(clicked[4]).toBeFalsy();
     });
