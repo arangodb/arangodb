@@ -86,6 +86,36 @@
       expect(clicked[3]).toBeTruthy();
       expect(clicked[2]).toBeUndefined();
     });
+    
+    it('should be able to unbind all events', function () {
+      var nodes = [{_id: 1}, {_id: 2}, {_id: 3}],
+      clicked = [],
+      click = function (node) {
+        clicked[node._id] = !clicked[node._id];
+      },
+      shaper = new NodeShaper(d3.select("svg"),
+      {
+        actions: {
+          click: click
+        }
+      });
+      
+      shaper.drawNodes(nodes);
+      
+      shaper.changeTo({
+        actions: {
+          reset: true
+        }
+      });
+      
+      helper.simulateMouseEvent("click", "1");
+      helper.simulateMouseEvent("click", "3");
+      
+      expect($("svg .node").length).toEqual(3);
+      expect(clicked[1]).toBeUndefined();
+      expect(clicked[3]).toBeUndefined();
+      expect(clicked[2]).toBeUndefined();
+    });
 
     describe('testing for colours', function() {
       
@@ -94,10 +124,10 @@
         shaper = new NodeShaper(d3.select("svg"));
         shaper.drawNodes(nodes);
         
-        expect($("#1").attr("fill")).toEqual("#8AA051");
-        expect($("#1").attr("stroke")).toEqual("#FF8F35");
-        expect($("#2").attr("fill")).toEqual("#8AA051");
-        expect($("#2").attr("stroke")).toEqual("#FF8F35");
+        expect($("#1").attr("stroke")).toEqual("#8AA051");
+        expect($("#1").attr("fill")).toEqual("#FF8F35");
+        expect($("#2").attr("stroke")).toEqual("#8AA051");
+        expect($("#2").attr("fill")).toEqual("#FF8F35");
       });
       
       it('should be able to use the same colour for all nodes', function() {

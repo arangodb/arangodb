@@ -41,16 +41,23 @@
   exports.Repository = Foxx.Repository.extend({
     
     // Get the overview of all installed foxxes.
-    list: function() {
+    list: function(basePath) {
       var result = {},
       apis = [],
       routes = db._collection("_routing"),
       res = db._collection("_aal").byExample({"type": "mount"});
       result.swaggerVersion = "1.1";
-      result.basePath = "http://127.0.0.1:8529/aardvark/docus/";
+      result.basePath = basePath;
       result.apis = apis;
       while (res.hasNext()) {
-        apis.push({path: res.next().mount});
+        var m = res.next().mount;
+        if (m === "/aardvark") {
+        
+        } else {
+          apis.push({
+            path: m
+          });
+        }
       }
       return result;
     },
@@ -59,7 +66,6 @@
     show: function(appname) {
       var result = {},
       apis = [],
-      key,
       pathes,
       regex = /(:)([^\/]*)/,
       i,
@@ -67,7 +73,7 @@
       api,
       ops,
       routes = db._collection("_routing"),
-      key = db._collection("_aal").firstExample({"mount": "/" + appname})._key,
+      key = db._collection("_aal").firstExample({"mount": appname})._key,
       app = routes.firstExample({"foxxMount": key});
       result.swaggerVersion = "1.1";
       result.basePath = app.urlPrefix;
