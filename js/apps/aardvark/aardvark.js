@@ -76,26 +76,31 @@
     required: true,
     allowMultiple: false
   }).nickname("foxxes")
-  .summary("List of all foxxes.")
-  .notes("This function simply returns the list of all running"
-   + " foxxes and supplies the paths for the swagger documentation");
+  .summary("Update a foxx.")
+  .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
   
   app.get('/foxxes', function (req, res) {
     res.json(repositories.foxxes.viewAll());
   }).nickname("foxxes")
-  .summary("Update a foxx.")
-  .notes("Used to either activate/deactivate a foxx, or change the mount point.");
+  .summary("List of all foxxes.")
+  .notes("This function simply returns the list of all running foxxes");
   
   app.get('/docus', function (req, res) {
-    res.json(repositories.docus.list());
+    res.json(repositories.docus.list("http://" + req.headers.host + req.path + "/"));
   }).nickname("swaggers")
-  .summary("List of all foxxes.")
+  .summary("List documentation of all foxxes.")
   .notes("This function simply returns the list of all running"
    + " foxxes and supplies the paths for the swagger documentation");
   
-  app.get('/docus/:appname', function(req, res) {
-    res.json(repositories.docus.show(req.params("appname")))
+  app.get('/docus/*', function(req, res) {
+    var mountPoint = "";
+    require("underscore").each(req.suffix, function(part) {
+      mountPoint += "/" + part;
+    });
+    
+    //require("console").log(JSON.stringify(req));
+    res.json(repositories.docus.show(mountPoint))
   }).pathParam("appname", {
     description: "The mount point of the App the documentation should be requested for",
     dataType: "string",
