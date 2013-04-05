@@ -180,6 +180,9 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ################################################################################
 
 ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an application is not found or not present in the specified version."
+ERROR_APPLICATION_INVALID_NAME,1751,"invalid application name","Will be raised when an invalid application name is specified."
+ERROR_APPLICATION_INVALID_MOUNT,1752,"invalid mount","Will be raised when an invalid mount is specified."
+ERROR_APPLICATION_DOWNLOAD_FAILED,1753,"application download failed","Will be raised when an application download from the central repository failed."
 
 ################################################################################
 ## Key value access

@@ -121,6 +121,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
   REG_ERROR(ERROR_APPLICATION_NOT_FOUND, "application not found");
+  REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
+  REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
+  REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");

@@ -107,7 +107,7 @@ function buildAssetContent (app, assets) {
       content += c;
     }
     catch (err) {
-        console.error("cannot read asset '%s'", files[i]);
+      console.error("cannot read asset '%s'", files[i]);
     }
   }
 
@@ -126,6 +126,9 @@ function installAssets (app, routes) {
   var route;
 
   desc = app._manifest;
+  if (! desc) {
+    throw "invalid application manifest";
+  }
 
   if (desc.hasOwnProperty('assets')) {
     for (path in desc.assets) {
@@ -190,6 +193,10 @@ function executeAppScript (app, name, mount, prefix) {
   };
 
   desc = app._manifest;
+  
+  if (! desc) {
+    throw "invalid application manifest";
+  }
 
   if (desc.hasOwnProperty(name)) {
     var cp = appContext.collectionPrefix;
