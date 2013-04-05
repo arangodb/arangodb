@@ -44,6 +44,7 @@
 
 (function() {
   var internal = require("internal");
+  var fs = require("fs");
   var console = require("console");
   var userManager = require("org/arangodb/users");
   var db = internal.db;
@@ -96,9 +97,9 @@
     }
 
 
-    if (internal.exists(versionFile)) {
+    if (fs.exists(versionFile)) {
       // VERSION file exists, read its contents
-      var versionInfo = internal.read(versionFile);
+      var versionInfo = fs.read(versionFile);
 
       if (versionInfo !== '') {
         var versionValues = JSON.parse(versionInfo);
@@ -322,7 +323,32 @@
         structures.ensureUniqueConstraint("collection");
 
         return true;
-      });
+    });
+
+    // set up the collection _aal
+    addTask("setupAal", "setup _aal collection", function () {
+      return createSystemCollection("_aal", { waitForSync : false });
+    });
+    
+    // create a unique index on collection attribute in _aal
+    addTask("createAalIndex",
+            "create index on collection attribute in _aal collection",
+      function () {
+        var aal = getCollection("_aal");
+
+        if (! aal) {
+          return false;
+        }
+
+        aal.ensureUniqueConstraint("name", "version");
+
+        return true;
+    });
+    
+    // set up the collection _aqlfunctions
+    addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
+      return createSystemCollection("_aqlfunctions", { waitForSync : false });
+    });
 
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "
@@ -354,8 +380,9 @@
           lastTasks[task.name] = true;
 
           // save/update version info
-          internal.write(versionFile,
-                         JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+          fs.write(
+            versionFile,
+            JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
           console.log("Task successful");
         }
@@ -368,7 +395,9 @@
     }
 
     // save file so version gets saved even if there are no tasks
-    internal.write(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+    fs.write(
+      versionFile,
+      JSON.stringify({ version: currentVersion, tasks: lastTasks }));
 
     console.log("Upgrade successfully finished");
 
@@ -401,13 +430,13 @@
   
   var currentVersion = parseFloat(currentServerVersion[1]);
   
-  if (! internal.exists(versionFile)) {
+  if (! fs.exists(versionFile)) {
     console.info("No version information file found in database directory.");
     return runUpgrade(currentVersion);
   }
 
    // VERSION file exists, read its contents
-  var versionInfo = internal.read(versionFile);
+  var versionInfo = fs.read(versionFile);
   if (versionInfo !== '') {
     var versionValues = JSON.parse(versionInfo);
     if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
@@ -422,6 +451,9 @@
 
   if (lastVersion === currentVersion) {
     // version match!
+    if (internal.upgrade) {
+      runUpgrade(currentVersion);
+    }
     applyFixes();
     return true;
   }
@@ -441,7 +473,7 @@
 
   if (lastVersion < currentVersion) {
     // upgrade
-    if (internal.UPGRADE) {
+    if (internal.upgrade) {
       return runUpgrade(currentVersion);
     }
 

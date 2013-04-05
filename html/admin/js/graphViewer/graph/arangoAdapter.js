@@ -24,7 +24,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, width, height) {
@@ -102,6 +102,23 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       if ( nodes[i] === node ) {
         nodes.splice( i, 1 );
         return;
+      }
+    }
+  },
+  
+  removeEdgesForNode = function (node) {
+    var i;
+    for ( i = 0; i < edges.length; i++ ) {
+      if (edges[i].source === node) {
+        node._outboundCounter--;
+        edges[i].target._inboundCounter--;
+        edges.splice( i, 1 );
+        i--;
+      } else if (edges[i].target === node) {
+        node._inboundCounter--;
+        edges[i].source._outboundCounter--;
+        edges.splice( i, 1 );
+        i--;
       }
     }
   },
@@ -203,6 +220,16 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
         callback(n);
       }
     });
+  },
+  
+  permanentlyRemoveEdgesOfNode = function (nodeId) {
+    var query = "FOR e IN " + edgeCollection
+     + " FILTER e._to == " + JSON.stringify(nodeId)
+     + " || e._from == " + JSON.stringify(nodeId)
+     + " RETURN e";
+     sendQuery(query, function(res) {
+       _.each(res, self.deleteEdge);
+     });
   };
   
   api.base = arangodb.lastIndexOf("http://", 0) === 0
@@ -213,7 +240,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   api.document = api.base + "document/";
   api.node = api.base + "document?collection=" + nodeCollection; 
   api.edge = api.base + "edge?collection=" + edgeCollection; 
-  
   
   
   initialX.range = width / 2;
@@ -251,7 +277,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     + edgeCollection + ", "
     + "\"" + nodeId + "\", "
     + "\"outbound\", {"
-    + "startegy: \"depthfirst\","
+    + "strategy: \"depthfirst\","
     + "maxDepth: 1,"
     + "paths: true"
     + "})";
@@ -261,20 +287,21 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   };
   
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
-    var loadNodeQuery =
-        "FOR n IN " + nodeCollection
-      + "FILTER n." + attribute + " == \"" + value + "\""
-      + "LET links = ("
-      + "  FOR l IN " + edgeCollection
-      + "  FILTER n._id == l._from"
-      + "   FOR t IN " + nodeCollection
-      + "   FILTER t._id == l._to"
-      + "   RETURN t._id"
-      + ")"
-      + "RETURN MERGE(n, {\"children\" : links})";
-
-    sendQuery(loadNodeQuery, function(res) {
-      parseResultOfQuery(res, callback);
+    var traversal = "FOR n in "
+      + nodeCollection
+      + " FILTER n." + attribute
+      + " == " + JSON.stringify(value)
+      + " RETURN TRAVERSAL("
+      + nodeCollection + ", "
+      + edgeCollection + ", "
+      + "n._id, "
+      + "\"outbound\", {"
+      + "strategy: \"depthfirst\","
+      + "maxDepth: 1,"
+      + "paths: true"
+      + "})";
+    sendQuery(traversal, function(res) {
+      parseResultOfTraversal(res, callback);
     });
   };  
   
@@ -286,7 +313,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       + " filter l._from == u._id"
       + " return 1 )"
       + " return length(g)";
-    
     sendQuery(requestChildren, function(res) {
       callback(res[0]);
     });
@@ -322,7 +348,9 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       dataType: "json",
       processData: false,
       success: function() {
-        callback();
+        if (callback !== undefined && _.isFunction(callback)) {
+          callback();
+        }
       },
       error: function(data) {
         throw data.statusText;
@@ -370,15 +398,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
   };
   
   self.deleteNode = function (nodeToRemove, callback) {
-    var semaphore = 1,
-    semaphoreCallback = function() {
-      semaphore--;
-      if (semaphore === 0) {
-        if (callback) {
-          callback();
-        }
-      }
-    };
     $.ajax({
       cache: false,
       type: "DELETE",
@@ -387,13 +406,10 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function() {
-        var edges = removeOutboundEdgesFromNode(nodeToRemove);    
-        _.each(edges, function (e) {
-          semaphore++;
-          self.deleteEdge(e, semaphoreCallback);
-        });
+        removeEdgesForNode(nodeToRemove);
+        permanentlyRemoveEdgesOfNode(nodeToRemove._id);    
         removeNode(nodeToRemove);
-        semaphoreCallback();
+        callback();
       },
       error: function(data) {
         throw data.statusText;

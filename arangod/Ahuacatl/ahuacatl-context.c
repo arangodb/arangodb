@@ -29,7 +29,7 @@
 
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
@@ -167,8 +167,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                          const char* const query) {
   TRI_aql_context_t* context;
 
-  TRI_ASSERT_DEBUG(vocbase != NULL);
-  TRI_ASSERT_DEBUG(query != NULL);
+  TRI_ASSERT_MAINTAINER(vocbase != NULL);
+  TRI_ASSERT_MAINTAINER(query != NULL);
 
   LOG_TRACE("creating context");
 
@@ -248,7 +248,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextAql (TRI_aql_context_t* const context) {
-  TRI_ASSERT_DEBUG(context != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
 
   LOG_TRACE("freeing context");
 
@@ -388,8 +388,8 @@ bool TRI_SetupCollectionsContextAql (TRI_aql_context_t* const context) {
 
 bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
                                  void* const node) {
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(node != NULL);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(node != NULL);
 
   TRI_PushBackVectorPointer(&context->_memory._nodes, node);
 
@@ -423,7 +423,57 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
 
-  TRI_PushBackVectorPointer(&context->_memory._strings, copy);
+  if (TRI_PushBackVectorPointer(&context->_memory._strings, copy) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    ABORT_OOM
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a combined string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_RegisterString2Aql (TRI_aql_context_t* const context,
+                              const char* const s1,
+                              const char* const s2) {
+  char* copy;
+  
+  copy = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, s1, s2);
+  
+  if (copy == NULL) {
+    ABORT_OOM
+  }
+
+  if (TRI_PushBackVectorPointer(&context->_memory._strings, copy) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    ABORT_OOM
+  }
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a combined string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_RegisterString3Aql (TRI_aql_context_t* const context,
+                              const char* const s1,
+                              const char* const s2,
+                              const char* const s3) {
+  char* copy;
+  
+  copy = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, s1, s2, s3);
+  
+  if (copy == NULL) {
+    ABORT_OOM
+  }
+
+  if (TRI_PushBackVectorPointer(&context->_memory._strings, copy) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    ABORT_OOM
+  }
 
   return copy;
 }
@@ -436,8 +486,8 @@ void TRI_SetErrorContextAql (TRI_aql_context_t* const context,
                              const int code,
                              const char* const data) {
 
-  TRI_ASSERT_DEBUG(context != NULL);
-  TRI_ASSERT_DEBUG(code > 0);
+  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT_MAINTAINER(code > 0);
 
   if (context->_error._code == 0) {
     // do not overwrite previous error

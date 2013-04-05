@@ -31,7 +31,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-functions.h"
@@ -589,6 +589,22 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       TRI_aql_function_t* function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
 
       if (TRI_AppendStringStringBuffer(buffer, function->_externalName) != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (TRI_AppendStringStringBuffer(buffer, "(") != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+
+      return TRI_AppendStringStringBuffer(buffer, ")") == TRI_ERROR_NO_ERROR;
+    }
+
+    case TRI_AQL_NODE_FCALL_USER: {
+      if (TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) != TRI_ERROR_NO_ERROR) {
         return false;
       }
 

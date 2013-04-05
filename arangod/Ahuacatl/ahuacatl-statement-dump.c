@@ -148,8 +148,12 @@ static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker,
     case TRI_AQL_NODE_ATTRIBUTE_ACCESS:
       DumpString(state, node);
       break;
+
     case TRI_AQL_NODE_FCALL:
       printf("name: %s\n", TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
+      break;
+    case TRI_AQL_NODE_FCALL_USER:
+      printf("name: %s\n", TRI_AQL_NODE_STRING(node));
       break;
 
     case TRI_AQL_NODE_SORT_ELEMENT:

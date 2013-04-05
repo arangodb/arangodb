@@ -94,7 +94,7 @@ static size_t GetBlockSize (const size_t blockNumber) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClearSimpleHeaders (TRI_doc_mptr_t* header, size_t headerSize) {
-  TRI_ASSERT_DEBUG(header);
+  assert(header != NULL);
 
   memset(header, 0, headerSize);
 }
@@ -114,7 +114,7 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
     size_t blockSize;
 
     blockSize = GetBlockSize(headers->_blocks._length);
-    TRI_ASSERT_DEBUG(blockSize > 0);
+    TRI_ASSERT_MAINTAINER(blockSize > 0);
 
     begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * headers->_headerSize, true);
 
@@ -133,13 +133,13 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
       header = ptr;
     }
 
-    TRI_ASSERT_DEBUG(headers != NULL);
+    TRI_ASSERT_MAINTAINER(headers != NULL);
     headers->_freelist = (TRI_doc_mptr_t*) header;
 
     TRI_PushBackVectorPointer(&headers->_blocks, begin);
   }
   
-  TRI_ASSERT_DEBUG(headers->_freelist != NULL);
+  assert(headers->_freelist != NULL);
 
   result = CONST_CAST(headers->_freelist);
   headers->_freelist = result->_data;
@@ -154,6 +154,10 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
 
 static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
+
+  if (header == NULL) {
+    return;
+  }
 
   ClearSimpleHeaders(header, headers->_headerSize);
 

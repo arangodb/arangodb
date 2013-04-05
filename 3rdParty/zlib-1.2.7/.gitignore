@@ -1,0 +1,8 @@
+*.lo
+configure.log
+*.dylib
+zconf.h
+minigzip
+minigzipsh
+example
+examplesh

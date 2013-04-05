@@ -29,7 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
@@ -212,6 +212,7 @@ bool RestEdgeHandler::createDocument () {
   // will hold the result
   TRI_doc_mptr_t document;
   res = trx.createEdge(&document, json, waitForSync, &edge, true);
+  const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
   // .............................................................................
@@ -226,7 +227,7 @@ bool RestEdgeHandler::createDocument () {
   assert(document._key != 0);
 
   // generate result
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateCreated(cid, document._key, document._rid);
   }
   else {

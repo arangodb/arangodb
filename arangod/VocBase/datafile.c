@@ -34,7 +34,7 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
 
 #include "VocBase/marker.h"
@@ -804,7 +804,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   header._fid         = fid;
 
   // reserve space and write header to file
-  result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
+  result = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
 
   if (result == TRI_ERROR_NO_ERROR) {
     result = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, true);
@@ -1119,11 +1119,16 @@ void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserves room for an element, advances the pointer
+///
+/// note: maximalJournalSize is the collection's maximalJournalSize property,
+/// which may be different from the size of the current datafile
+/// some callers do not set the value of maximalJournalSize
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
-                                TRI_df_marker_t** position) {
+                                TRI_df_marker_t** position,
+                                TRI_voc_size_t maximalJournalSize) {
   *position = 0;
   size = TRI_DF_ALIGN_BLOCK(size);
 
@@ -1139,7 +1144,25 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
   // check the maximal size
   if (size + TRI_JOURNAL_OVERHEAD > datafile->_maximalSize) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    // marker is bigger than journal size.
+    // adding the marker to this datafile will not work
+
+    if (maximalJournalSize <= datafile->_maximalSize) {
+      // the collection property 'maximalJournalSize' is equal to 
+      // or smaller than the size of this datafile
+      // creating a new file and writing the marker into it will not work either
+      return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    }
+
+    // if we get here, the collection's 'maximalJournalSize' property is
+    // higher than the size of this datafile.
+    // maybe the marker will fit into a new datafile with the bigger size?
+    if (size + TRI_JOURNAL_OVERHEAD > maximalJournalSize) {
+      // marker still won't fit
+      return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    }
+  
+    // fall-through intentional
   }
 
   // add the marker, leave enough room for the footer
@@ -1457,7 +1480,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   // reserve space and write footer to file
   datafile->_footerSize = 0;
 
-  res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position);
+  res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, footer.base._size, true);

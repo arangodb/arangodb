@@ -243,7 +243,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: true });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -258,11 +257,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// `waitForSync` value of `false`.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
-///     var cn = "productsNoWait";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -277,11 +275,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// value of `false`, but using the `waitForSync` URL parameter.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
-///     var cn = "productsNoWait";
+///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn, { waitForSync: false });
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn + "&waitForSync=true";
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -298,7 +295,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn + "&createCollection=true";
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -312,10 +308,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// Unknown collection name:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
-///     var cn = "productsUnknown";
+///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ "Hello": "World" }';
 ///
@@ -332,7 +327,6 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var collection = db._collection(cn);
 ///     var url = "/_api/document?collection=" + cn;
 ///     var body = '{ 1: "World" }';
 ///
@@ -405,6 +399,7 @@ bool RestDocumentHandler::createDocument () {
 
   TRI_doc_mptr_t document;
   res = trx.createDocument(&document, json, waitForSync, true);
+  const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
   // .............................................................................
@@ -419,7 +414,7 @@ bool RestDocumentHandler::createDocument () {
   assert(document._key != 0);
 
   // generate result
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateCreated(cid, document._key, document._rid);
   }
   else {
@@ -462,31 +457,32 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document,reads a document}
+/// @RESTHEADER{GET /_api/document/@FA{document-handle},reads a document}
 ///
-/// @REST{GET /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
-/// Returns the document identified by @FA{document-handle}. The returned
-/// document contains two special attributes: @LIT{_id} containing the document
-/// handle and @LIT{_rev} containing the revision.
+/// @RESTURLPARAM{document-handle,string,required}
 ///
-/// If the document exists, then a @LIT{HTTP 200} is returned and the JSON
-/// representation of the document is the body of the response.
+/// @RESTHEADERPARAMETERS
 ///
-/// If the @FA{document-handle} points to a non-existing document, then a
-/// @LIT{HTTP 404} is returned and the body contains an error document.
-///
+/// @RESTHEADERPARAM{If-None-Match,string}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
 /// given etag. Otherwise a @LIT{HTTP 304} is returned.
 ///
+/// @RESTHEADERPARAM{If-Match,string}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
 /// given etag. Otherwise a @LIT{HTTP 412} is returned. As an alternative
 /// you can supply the etag in an attribute @LIT{rev} in the URL.
 ///
-/// @RESTRETURNCODES
+/// @RESTDESCRIPTION
+/// Returns the document identified by @FA{document-handle}. The returned
+/// document contains two special attributes: @LIT{_id} containing the document
+/// handle and @LIT{_rev} containing the revision.
 ///
+/// @RESTRETURNCODES
+/// 
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -505,15 +501,50 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// Use a document handle:
 ///
-/// @verbinclude rest-read-document
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Use a document handle and an etag:
 ///
-/// @verbinclude rest-read-document-if-none-match
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentIfNoneMatch}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+///     var header = "if-none-match: \"" + document._rev + "\"";
+/// 
+///     var response = logCurlRequest('GET', url, "", header);
+/// 
+///     assert(response.code === 304);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-read-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentUnknownHandle}
+///     var url = "/_api/document/products/unknownhandle";
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
@@ -601,18 +632,36 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all documents
+/// @brief reads all documents from collection
 ///
-/// @RESTHEADER{GET /_api/document,reads all document}
+/// @RESTHEADER{GET /_api/document,reads all documents from collection}
 ///
-/// @REST{GET /_api/document?collection=@FA{collection-name}}
+/// @RESTQUERYPARAMETERS
 ///
+/// @RESTQUERYPARAM{collection,string,required}
+///
+/// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
-/// by @FA{collection-name}.
+/// by @FA{collection}.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest-read-document-all
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentAll}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hallo1":"world1"});
+///     db.products.save({"hallo2":"world1"});
+///     db.products.save({"hallo3":"world1"});
+///     var url = "/_api/document/?collection=" + cn;
+/// 
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -680,17 +729,33 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document,reads a document header}
+/// @RESTHEADER{HEAD /_api/document/@FA{document-handle},reads a document header}
 ///
-/// @REST{HEAD /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{document-handle,string,required}
+///
+/// @RESTDESCRIPTION
 /// Like @FN{GET}, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude rest-read-document-head
+/// @EXAMPLE_ARANGOSH_RUN{RestReadDocumentHead}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('HEAD', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
@@ -709,10 +774,13 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document,replaces a document}
+/// @RESTHEADER{PUT /_api/document/@FA{document-handle},replaces a document}
 ///
-/// @REST{PUT /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{document-handle,string,required}
+/// 
+/// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by @FA{document-handle}.
 /// If the document exists and can be updated, then a @LIT{HTTP 201} is returned
 /// and the "ETag" header field contains the new revision of the document.
@@ -803,24 +871,89 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// Using document handle:
 ///
-/// @verbinclude rest-update-document
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocument}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
 ///
-/// @verbinclude rest-update-document-unknown-handle
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentUnknownHandle}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Produce a revision conflict:
 ///
-/// @verbinclude rest-update-document-if-match-other
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOther}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Last write wins:
 ///
-/// @verbinclude rest-update-document-if-match-other-last-write
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentIfMatchOtherLastWrite}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Alternative to header field:
 ///
-/// @verbinclude rest-update-document-rev-other
-////////////////////////////////////////////////////////////////////////////////
+/// @EXAMPLE_ARANGOSH_RUN{RestUpdateDocumentRevOther}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     var document = db.products.save({"hallo":"world"});
+///     var url = "/_api/document/" + document._id;
+/// 
+///     var response = logCurlRequest('PUT', url, "{}");
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::replaceDocument () {
   return modifyDocument(false);
@@ -829,10 +962,13 @@ bool RestDocumentHandler::replaceDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document,patches a document}
+/// @RESTHEADER{PATCH /_api/document/@FA{document-handle},patches a document}
 ///
-/// @REST{PATCH /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{document-handle,string,required}
+///
+/// @RESTDESCRIPTION
 /// Partially updates the document identified by @FA{document-handle}.
 /// The body of the request must contain a JSON document with the attributes
 /// to patch (the patch document). All attributes from the patch document will
@@ -1015,6 +1151,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid, true);
   }
 
+  const bool wasSynchronous = trx.synchronous();
+
   res = trx.finish(res);
 
   // .............................................................................
@@ -1028,7 +1166,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // generate result
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateCreated(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
   }
   else {
@@ -1041,10 +1179,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document,deletes a document}
+/// @RESTHEADER{DELETE /_api/document/@FA{documenthandle},deletes a document}
 ///
-/// @REST{DELETE /_api/document/@FA{document-handle}}
+/// @RESTURLPARAMETERS
 ///
+/// @RESTURLPARAM{documenthandle,string,required}
+/// 
+/// @RESTDESCRIPTION
 /// Deletes the document identified by @FA{document-handle}. If the document
 /// exists and could be deleted, then a @LIT{HTTP 200} is returned.
 ///
@@ -1150,6 +1291,8 @@ bool RestDocumentHandler::deleteDocument () {
 
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid, false);
+  
+  const bool wasSynchronous = trx.synchronous();
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }
@@ -1166,7 +1309,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  if (trx.synchronous()) {
+  if (wasSynchronous) {
     generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
   }
   else {

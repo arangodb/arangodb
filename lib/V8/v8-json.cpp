@@ -30,8 +30,8 @@
 
 #include "V8/v8-globals.h"
 
-#include <BasicsC/strings.h>
-#include <BasicsC/logging.h>
+#include "BasicsC/tri-strings.h"
+#include "BasicsC/logging.h"
 
 #define YY_NO_INPUT
 

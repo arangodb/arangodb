@@ -68,6 +68,7 @@ ArangoCollection.STATUS_CORRUPTED = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is new born
+/// @deprecated
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.STATUS_NEW_BORN = 1;
@@ -125,7 +126,7 @@ ArangoCollection.TYPE_EDGE = 3;
 /// @brief prints a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._PRINT = function () {
+ArangoCollection.prototype._PRINT = function (context) {
   var status = "unknown";
   var type = "unknown";
 
@@ -143,13 +144,18 @@ ArangoCollection.prototype._PRINT = function () {
     case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
   }
 
-  var colors = require("internal").colors;
+  var colors = require("internal").COLORS;
+  var useColor = context.useColor;
 
-  output("[ArangoCollection ", 
-         colors.COLOR_NUMBER, this._id, colors.COLOR_RESET,
-         ", \"", 
-         colors.COLOR_STRING, this.name(), colors.COLOR_RESET, 
-         "\" (type ", type, ", status ", status, ")]");
+  context.output += "[ArangoCollection ";
+  if (useColor) { context.output += colors.COLOR_NUMBER; }
+  context.output += this._id;
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += ", \"";
+  if (useColor) { context.output += colors.COLOR_STRING; }
+  context.output += this.name();
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += "\" (type " + type + ", status " + status + ")]";
 };
 
 ////////////////////////////////////////////////////////////////////////////////

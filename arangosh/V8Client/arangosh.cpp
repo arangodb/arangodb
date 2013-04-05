@@ -1,3 +1,4 @@
+////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 shell
 ///
 /// @file
@@ -24,14 +25,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "BasicsC/common.h"
+
 #include <v8.h>
 
 #include <stdio.h>
 #include <fstream>
-
-#include "build.h"
-
-#include "3rdParty/valgrind/valgrind.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "BasicsC/messages.h"
@@ -44,7 +43,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/shell-colors.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -56,6 +55,10 @@
 #include "V8/v8-utils.h"
 #include "V8Client/ImportHelper.h"
 #include "V8Client/V8ClientConnection.h"
+
+#include "build.h"
+
+#include "3rdParty/valgrind/valgrind.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -247,20 +250,20 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: importCsvFile(<filename>, <collection>[, <options>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "importCsvFile(<filename>, <collection>[, <options>])");
   }
 
   // extract the filename
   v8::String::Utf8Value filename(argv[0]);
 
   if (*filename == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF-8 filename");
   }
 
   v8::String::Utf8Value collection(argv[1]);
 
   if (*collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<collection> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<collection> must be an UTF-8 filename");
   }
 
   // extract the options
@@ -277,7 +280,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
       separator = TRI_ObjectToString(options->Get(separatorKey));
 
       if (separator.length() < 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
+        TRI_V8_EXCEPTION_PARAMETER(scope, "<options>.separator must be at least one character");
       }
     }
 
@@ -286,7 +289,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
       quote = TRI_ObjectToString(options->Get(quoteKey));
 
       if (quote.length() > 1) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
+        TRI_V8_EXCEPTION_PARAMETER(scope, "<options>.quote must be at most one character");
       }
     }
   }
@@ -307,7 +310,7 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
     return scope.Close(result);
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
+  TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_FAILED, ih.getErrorMessage().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,20 +326,20 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: importJsonFile(<filename>, <collection>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "importJsonFile(<filename>, <collection>)");
   }
 
   // extract the filename
   v8::String::Utf8Value filename(argv[0]);
 
   if (*filename == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF-8 filename");
   }
 
   v8::String::Utf8Value collection(argv[1]);
 
   if (*collection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<collection> must be an UTF8 filename")));
+    TRI_V8_TYPE_ERROR(scope, "<collection> must be an UTF8 filename");
   }
 
 
@@ -353,7 +356,7 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
     return scope.Close(result);
   }
 
-  return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
+  TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_FAILED, ih.getErrorMessage().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,9 +372,7 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: NORMALIZE_STRING(<string>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "NORMALIZE_STRING(<string>)");
   }
 
   return scope.Close(TRI_normalize_V8_Obj(argv[0]));
@@ -385,9 +386,7 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: COMPARE_STRING(<left string>, <right string>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "COMPARE_STRING(<left string>, <right string>)");
   }
 
   v8::String::Value left(argv[0]);
@@ -534,7 +533,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
     if (BaseClient.endpointServer() == 0) {
       string errorMessage = "error in '" + definition + "'";
-      return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));
+      TRI_V8_EXCEPTION_PARAMETER(scope, errorMessage.c_str());
     }
   }
 
@@ -551,7 +550,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
     delete connection;
-    return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, errorMessage.c_str());
   }
 
   return scope.Close(wrapV8ClientConnection(connection));
@@ -568,12 +567,12 @@ static v8::Handle<v8::Value> ClientConnection_httpGetAny (v8::Arguments const& a
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: get(<url>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "get(<url>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -615,12 +614,12 @@ static v8::Handle<v8::Value> ClientConnection_httpHeadAny (v8::Arguments const& 
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: head(<url>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "head(<url>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -662,12 +661,12 @@ static v8::Handle<v8::Value> ClientConnection_httpDeleteAny (v8::Arguments const
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 1 || argv.Length() > 2 || ! argv[0]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<url>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "delete(<url>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -708,12 +707,12 @@ static v8::Handle<v8::Value> ClientConnection_httpOptionsAny (v8::Arguments cons
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: options(<url>, <body>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "options(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -755,12 +754,12 @@ static v8::Handle<v8::Value> ClientConnection_httpPostAny (v8::Arguments const& 
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: post(<url>, <body>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "post(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -802,12 +801,12 @@ static v8::Handle<v8::Value> ClientConnection_httpPutAny (v8::Arguments const& a
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: put(<url>, <body>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "put(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -849,12 +848,12 @@ static v8::Handle<v8::Value> ClientConnection_httpPatchAny (v8::Arguments const&
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() < 2 || argv.Length() > 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
+    TRI_V8_EXCEPTION_USAGE(scope, "patch(<url>, <body>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -886,6 +885,55 @@ static v8::Handle<v8::Value> ClientConnection_httpPatchRaw (v8::Arguments const&
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection send file helper
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
+  }
+
+  // check params
+  if (argv.Length() != 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sendFile(<url>, <file>)");
+  }
+
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  
+  const string infile = TRI_ObjectToString(argv[1]);
+
+  if (! TRI_ExistsFile(infile.c_str())) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FILE_NOT_FOUND);
+  }
+  
+  size_t bodySize;
+  char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
+
+  if (body == 0) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "could not read file");
+  }
+    
+  v8::TryCatch tryCatch;
+
+  // check header fields
+  map<string, string> headerFields;
+
+  v8::Handle<v8::Value> result = connection->postData(*url, body, bodySize, headerFields);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, body);
+  
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -896,12 +944,12 @@ static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode (v8::Arguments 
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: lastHttpReturnCode()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "lastHttpReturnCode()");
   }
 
   return scope.Close(v8::Integer::New(connection->getLastHttpReturnCode()));
@@ -918,12 +966,12 @@ static v8::Handle<v8::Value> ClientConnection_lastErrorMessage (v8::Arguments co
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   // check params
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: lastErrorMessage()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "lastErrorMessage()");
   }
 
   return scope.Close(v8::String::New(connection->getErrorMessage().c_str()));
@@ -940,11 +988,11 @@ static v8::Handle<v8::Value> ClientConnection_isConnected (v8::Arguments const& 
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: isConnected()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "isConnected()");
   }
 
   return scope.Close(v8::Boolean::New(connection->isConnected()));
@@ -961,11 +1009,11 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "toString()");
   }
 
   string result = "[object ArangoConnection:" + BaseClient.endpointServer()->getSpecification();
@@ -993,11 +1041,11 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
   if (connection == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+    TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
   if (argv.Length() != 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: getVersion()")));
+    TRI_V8_EXCEPTION_USAGE(scope, "getVersion()");
   }
 
   return scope.Close(v8::String::New(connection->getVersion().c_str()));
@@ -1139,8 +1187,8 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(UnitTests[i].c_str()));
   }
 
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
 
   // run tests
   char const* input = "require(\"jsunity\").runCommandLineTests();";
@@ -1217,8 +1265,8 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
     sysTestFiles->Set((uint32_t) i, v8::String::New(JsLint[i].c_str()));
   }
 
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
-  context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS", sysTestFiles);
+  TRI_AddGlobalVariableVocbase(context, "SYS_UNIT_TESTS_RESULT", v8::True());
 
   // run tests
   char const* input = "require(\"jslint\").runCommandLineTests({ });";
@@ -1329,7 +1377,6 @@ static void arangoshExitFunction(int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-
   int ret = EXIT_SUCCESS;
 
   arangoshEntryFunction();
@@ -1392,17 +1439,15 @@ int main (int argc, char* argv[]) {
   context->Enter();
 
   // set pretty print default: (used in print.js)
-  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
-  // add colors for print.js
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::Boolean::New(BaseClient.colors()));
+  TRI_AddGlobalVariableVocbase(context, "PRETTY_PRINT", v8::Boolean::New(BaseClient.prettyPrint()));
 
+  // add colors for print.js
+  TRI_AddGlobalVariableVocbase(context, "COLOR_OUTPUT", v8::Boolean::New(BaseClient.colors()));
 
   // add function SYS_OUTPUT to use pager
-  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
-                         v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
-                         v8::ReadOnly);
+  TRI_AddGlobalVariableVocbase(context, "SYS_OUTPUT", v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction());
 
-  TRI_InitV8Utils(context, StartupModules, StartupNodeModules);
+  TRI_InitV8Utils(context, StartupModules, StartupNodeModules, BaseClient.tempPath());
   TRI_InitV8Shell(context);
 
   // reset the prompt error flag (will determine prompt colors)
@@ -1432,6 +1477,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("POST_RAW", v8::FunctionTemplate::New(ClientConnection_httpPostRaw));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
     connection_proto->Set("PUT_RAW", v8::FunctionTemplate::New(ClientConnection_httpPutRaw));
+    connection_proto->Set("SEND_FILE", v8::FunctionTemplate::New(ClientConnection_httpSendFile));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
@@ -1440,46 +1486,21 @@ int main (int argc, char* argv[]) {
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
 
     v8::Handle<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
-    connection_inst->SetInternalFieldCount(2);
-
-    context->Global()->Set(v8::String::New("ArangoConnection"), connection_proto->NewInstance());
+    connection_inst->SetInternalFieldCount(2);    
+    
+    TRI_AddGlobalVariableVocbase(context, "ArangoConnection", connection_proto->NewInstance());
     ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
 
     // add the client connection to the context:
-    context->Global()->Set(v8::String::New("SYS_ARANGO"),
-                           wrapV8ClientConnection(ClientConnection),
-                           v8::ReadOnly);
+    TRI_AddGlobalVariableVocbase(context, "SYS_ARANGO", wrapV8ClientConnection(ClientConnection));
   }
-
-  context->Global()->Set(v8::String::New("SYS_START_PAGER"),
-                         v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction(),
-                         v8::ReadOnly);
-  context->Global()->Set(v8::String::New("SYS_STOP_PAGER"),
-                         v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_IMPORT_CSV_FILE"),
-                         v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction(),
-                         v8::ReadOnly);
-  context->Global()->Set(v8::String::New("SYS_IMPORT_JSON_FILE"),
-                         v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
-                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COMPARE_STRING"),
-                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("HAS_ICU"),
-#ifdef TRI_ICU_VERSION
-                         v8::Boolean::New(true),
-#else
-                         v8::Boolean::New(false),
-#endif
-                         v8::ReadOnly);
+    
+  TRI_AddGlobalVariableVocbase(context, "SYS_START_PAGER", v8::FunctionTemplate::New(JS_StartOutputPager)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_STOP_PAGER", v8::FunctionTemplate::New(JS_StopOutputPager)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_CSV_FILE", v8::FunctionTemplate::New(JS_ImportCsvFile)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "SYS_IMPORT_JSON_FILE", v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "NORMALIZE_STRING", v8::FunctionTemplate::New(JS_normalize_string)->GetFunction());
+  TRI_AddGlobalVariableVocbase(context, "COMPARE_STRING", v8::FunctionTemplate::New(JS_compare_string)->GetFunction());
 
   // .............................................................................
   // banner
@@ -1621,8 +1642,31 @@ int main (int argc, char* argv[]) {
   LOGGER_DEBUG("using JavaScript startup files at '" << StartupPath << "'");
   StartupLoader.setDirectory(StartupPath);
 
-  context->Global()->Set(v8::String::New("ARANGO_QUIET"), v8::Boolean::New(BaseClient.quiet()), v8::ReadOnly);
-  context->Global()->Set(v8::String::New("VALGRIND"), v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
+  TRI_AddGlobalVariableVocbase(context, "ARANGO_QUIET", v8::Boolean::New(BaseClient.quiet()));
+  TRI_AddGlobalVariableVocbase(context, "VALGRIND", v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
+
+  bool isExecuteScript = false;
+  bool isCheckScripts = false;
+  bool isUnitTests = false;
+  bool isJsLint = false;
+
+  if (! ExecuteScripts.empty()) {
+    isExecuteScript = true;
+  }
+  else if (! CheckScripts.empty()) {
+    isCheckScripts = true;
+  }
+  else if (! UnitTests.empty()) {
+    isUnitTests = true;
+  }
+  else if (! JsLint.empty()) {
+    isJsLint = true;
+  }
+
+  TRI_AddGlobalVariableVocbase(context, "IS_EXECUTE_SCRIPT", v8::Boolean::New(isExecuteScript));
+  TRI_AddGlobalVariableVocbase(context, "IS_CHECK_SCRIPT", v8::Boolean::New(isCheckScripts));
+  TRI_AddGlobalVariableVocbase(context, "IS_UNIT_TESTS", v8::Boolean::New(isUnitTests));
+  TRI_AddGlobalVariableVocbase(context, "IS_JS_LINT", v8::Boolean::New(isJsLint));
 
   // load all init files
   vector<string> files;
@@ -1633,7 +1677,7 @@ int main (int argc, char* argv[]) {
   files.push_back("common/bootstrap/module-console.js");  // needs internal
   files.push_back("common/bootstrap/errors.js");
 
-  if (JsLint.empty()) {
+  if (! isJsLint) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 
@@ -1653,12 +1697,11 @@ int main (int argc, char* argv[]) {
 
   BaseClient.openLog();
 
-
   // .............................................................................
   // run normal shell
   // .............................................................................
 
-  if (ExecuteScripts.empty() && CheckScripts.empty() && UnitTests.empty() && JsLint.empty()) {
+  if (! (isExecuteScript || isCheckScripts || isUnitTests || isJsLint)) {
     RunShell(context, promptError);
   }
 
@@ -1669,19 +1712,19 @@ int main (int argc, char* argv[]) {
   else {
     bool ok = false;
 
-    if (! ExecuteScripts.empty()) {
+    if (isExecuteScript) {
       // we have scripts to execute or syntax check
       ok = RunScripts(context, ExecuteScripts, true);
     }
-    else if (! CheckScripts.empty()) {
+    else if (isCheckScripts) {
       // we have scripts to syntax check
       ok = RunScripts(context, CheckScripts, false);
     }
-    else if (! UnitTests.empty()) {
+    else if (isUnitTests) {
       // we have unit tests
       ok = RunUnitTests(context);
     }
-    else if (! JsLint.empty()) {
+    else if (isJsLint) {
       // we don't have unittests, but we have files to jslint
       ok = RunJsLint(context);
     }

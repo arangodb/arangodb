@@ -8,13 +8,20 @@
   <script src="../lib/d3.v3.min.js"></script>
   <script src="../lib/underscore.js"></script>
   <script src="../lib/jquery-1.8.3.js"></script>
+  <script type="text/javascript" src="../lib/bootstrap.js"></script>
   <script src="../lib/jquery.livequery.js"></script>
+  <script src="graph/colourMapper.js"></script>
   <script src="graph/forceLayouter.js"></script>
   <script src="graph/eventLibrary.js"></script>
   <script src="graph/eventDispatcher.js"></script>
   <script src="graph/nodeShaper.js"></script>
   <script src="graph/edgeShaper.js"></script>
   <script src="graph/arangoAdapter.js"></script>
+  
+  <script type="text/javascript" src="ui/modalDialogHelper.js"></script>
+  <script type="text/javascript" src="ui/nodeShaperControls.js"></script>
+  <script type="text/javascript" src="ui/edgeShaperControls.js"></script>
+  
   <script src="graphViewer.js"></script>
   <script>
   
@@ -156,6 +163,10 @@
     viewer.loadGraph($("#startNode").attr("value"));
   }
 
+  function loadGraphFromAttribute() {
+    viewer.loadGraphWithAttributeValue($("#attribute").attr("value"), $("#value").attr("value"));
+  }
+
   function createViewer() {
     var nshape,
     nlabel,
@@ -176,8 +187,6 @@
     layouterConfig;
     
     
-    
-    
     nshape = $("#nodeShape")[0];
     nshape = nshape.options[nshape.selectedIndex].value;
     
@@ -193,19 +202,13 @@
     host = $("#host")[0].value;
     ecol = $("#edgeCollection")[0].value;
     ncol = $("#nodeCollection")[0].value;
-    
-    
-/*    
-    *   shape: nodeShaper.shapes.CIRCLE,
-    *   label: "key" \\ function(node),
-    *   onclick: function(node),
-    *   ondrag: function(node),
-    *   onupdate: function(nodes)
-*/    
+       
     nsconfig = {
-      shape: NodeShaper.shapes[nshape],
-      label: nslabel,
-      size: nsize
+      shape : {
+        type: NodeShaper.shapes[nshape],
+        radius: nsize
+      },
+      label: nslabel 
     };
     
     if (ncentr === "children") {
@@ -216,7 +219,6 @@
       nsconfig.dragable = true;
     }
     
-    
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
@@ -225,8 +227,6 @@
     };
     
     esconfig = {};
-    
-    
     
     evconfig = {
       expand: {target: "nodes", type: "click"},
@@ -346,8 +346,10 @@
     </div>
   </fieldset>
 </form>
+<ul id="controls"></ul>
+<svg width="980" height="640" id="svg">
 
-<svg width="980" height="640" id="svg"/>
+</svg>
 <br />
 <form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog">
   <fieldset>
@@ -368,6 +370,32 @@
     </div>
   </fieldset>
 </form>
+<br />
+<form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog2">
+  <fieldset>
+    <div class="control-group">
+      <div class="controls">
+        <input type="text" id="attribute" placeholder="Attribute" />
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <input type="text" id="value" placeholder="Value" />
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button type="submit" class="btn btn-primary" onclick="loadGraphFromAttribute()">Load</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="controls">
+        <button id="createNode" type="submit" class="btn btn-primary">Create Node</button>
+      </div>
+    </div>
+  </fieldset>
+</form>
+
 
 </body>
 </html>

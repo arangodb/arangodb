@@ -30,7 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/DocumentHelper.h"
@@ -104,6 +104,12 @@ string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief upload path
+////////////////////////////////////////////////////////////////////////////////
+
+string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,7 +181,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
     return true;
   }
 
-  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrBearVocBase(_vocbase, name.c_str(), type);
+  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name.c_str(), type);
   if (collection == 0) {
     generateTransactionError(name, TRI_errno());
     return false;

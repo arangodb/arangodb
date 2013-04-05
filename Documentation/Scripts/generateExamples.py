@@ -267,12 +267,14 @@ def generateArangoshRun():
         value = ArangoshRun[key]
 
         print "(function() {"
+        print "internal.output('\\n%s\\nRUN STARTING: %s\\n%s\\n');" % ('#' * 80, key, '#' * 80)
         print "var output = '';"
         print "var appender = function(text) { output += text; };"
-        print "var logCurlRequest = require('internal').appendCurlRequest(appender);"
+        print "var logCurlRequestRaw = require('internal').appendCurlRequest(appender);"
+        print "var logCurlRequest = function () { var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments); db._collections(); return r; };"
         print "var logJsonResponse = require('internal').appendJsonResponse(appender);"
-        print "var assert = function(a) { if (! a) internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); };" % ('#' * 80, key, '#' * 80)
-        print "try { %s } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, '#' * 80, key, '#' * 80)
+        print "var assert = function(a) { if (! a) { internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); } };" % ('#' * 80, key, '#' * 80)
+        print "try { %s internal.output('\\n%s\\nRUN SUCCEEDED: %s\\n%s\\n'); } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, '#' * 80, key, '#' * 80, '#' * 80, key, '#' * 80)
         print "ArangoshRun['%s'] = output;" % key
         if JS_DEBUG:
             print "internal.output('%s', ':\\n', output, '\\n%s\\n');" % (key, '-' * 80)

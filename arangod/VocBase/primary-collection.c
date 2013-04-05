@@ -31,7 +31,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
@@ -171,7 +171,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
 
   // create a collection header, still in the temporary file
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
+  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, primary->base._info._maximalSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
@@ -184,8 +184,8 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
 
 
   TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
-  cm._cid  = collection->_info._cid;
   cm._type = (TRI_col_type_t) collection->_info._type;
+  cm._cid  = collection->_info._cid;
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
 
@@ -198,7 +198,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary,
     return NULL;
   }
 
-  TRI_ASSERT_DEBUG(fid == journal->_fid);
+  assert(fid == journal->_fid);
 
 
   // if a physical file, we can rename it from the temporary name to the correct name
@@ -410,26 +410,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
-  TRI_doc_mptr_t const* mptr;
-  TRI_voc_size_t result;
-  void** end;
-  void** ptr;
-
-  ptr = primary->_primaryIndex._table;
-  end = ptr + primary->_primaryIndex._nrAlloc;
-  result = 0;
-
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr != NULL) {
-      mptr = *ptr;
-
-      if (mptr->_validTo == 0) {
-        ++result;
-      }
-    }
-  }
-
-  return result;
+  return (TRI_voc_size_t) primary->_numberDocuments;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,12 +432,13 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 
 int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
-  primary->_shaper = shaper;
-  primary->_capConstraint = NULL;
-  primary->_keyGenerator = NULL;
+  primary->_shaper          = shaper;
+  primary->_capConstraint   = NULL;
+  primary->_keyGenerator    = NULL;
+  primary->_numberDocuments = 0;
 
-  primary->figures = Figures;
-  primary->size    = Count;
+  primary->figures          = Figures;
+  primary->size             = Count;
 
   TRI_InitBarrierList(&primary->_barrierList, primary);
 
@@ -584,15 +566,6 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* 
 bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
                                       size_t position) {
   return CloseJournalPrimaryCollection(primary, position, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new operation context
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context,
-                                       TRI_primary_collection_t* const primary) {
-  context->_collection = primary;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

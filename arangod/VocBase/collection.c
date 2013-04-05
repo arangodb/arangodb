@@ -33,7 +33,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"
@@ -572,6 +572,38 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over a set of datafiles, identified by filenames
+/// note: the files will be opened and closed 
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IterateFiles (TRI_vector_string_t* vector,
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                          void* data,
+                          bool journal) {
+  size_t i, n;
+  
+  n = vector->_length;
+
+  for (i = 0; i < n ; ++i) {
+    TRI_datafile_t* datafile;
+    char* filename;
+
+    filename = TRI_AtVectorString(vector, i);
+    LOG_DEBUG("iterating over collection journal file '%s'", filename);
+    datafile = TRI_OpenDatafile(filename);
+
+    if (datafile != NULL) {
+      TRI_IterateDatafile(datafile, iterator, data, journal);
+      TRI_CloseDatafile(datafile);
+      TRI_FreeDatafile(datafile);
+    }
+  }
+
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -916,7 +948,7 @@ int TRI_LoadCollectionInfo (char const* path,
         parameter->_type = value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
-        parameter->_cid = value->_value._number;
+        parameter->_cid = (TRI_voc_cid_t) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
         parameter->_maximalSize = value->_value._number;
@@ -927,6 +959,9 @@ int TRI_LoadCollectionInfo (char const* path,
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
 
         parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
+      }
+      else if (value->_type == TRI_JSON_STRING) {
+        parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
     }
     else if (value->_type == TRI_JSON_BOOLEAN) {
@@ -974,16 +1009,18 @@ int TRI_SaveCollectionInfo (char const* path,
                             const bool forceSync) {
   TRI_json_t* json;
   char* filename;
+  char* cidString;
   bool ok;
 
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
+  cidString = TRI_StringUInt64((uint64_t) info->_cid);
 
   // create a json info object
   json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_version));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_type));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_cid));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_maximalSize));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
@@ -993,6 +1030,8 @@ int TRI_SaveCollectionInfo (char const* path,
   if (info->_keyOptions) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
   }
+  
+  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
 
   // save json info to file
   ok = TRI_SaveJson(filename, json, forceSync);
@@ -1283,36 +1322,24 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers incollection journals journal
 ///
-/// we do this on startup to find the most recent tick values
+/// this function is called on server startup for all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateJournalsCollection (const char* const path,
-                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool)) {
+bool TRI_IterateStartupCollection (const char* const path,
+                                   bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                   void* data) {
+
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
-  TRI_vector_string_t* vector = &structure._journals;
-  size_t n = vector->_length;
+  bool result;
 
-  if (n > 0) {
-    size_t i;
-
-    for (i = 0; i < n ; ++i) {
-      TRI_datafile_t* datafile;
-      char* filename;
-
-      filename = TRI_AtVectorString(vector, i);
-      LOG_DEBUG("iterating over collection journal file '%s'", filename);
-      datafile = TRI_OpenDatafile(filename);
-      if (datafile != NULL) {
-        TRI_IterateDatafile(datafile, iterator, NULL, true);
-        TRI_CloseDatafile(datafile);
-        TRI_FreeDatafile(datafile);
-      }
-    }
-  }
-
+  // iterate of journals & compactors, not datafiles
+  result  = IterateFiles(&structure._journals, iterator, data, true);
+  result &= IterateFiles(&structure._compactors, iterator, data, false);
+  result &= IterateFiles(&structure._datafiles, iterator, data, false);
+  
   TRI_DestroyFileStructureCollection(&structure);
 
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

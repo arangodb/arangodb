@@ -32,12 +32,17 @@
 
 #include <iostream>
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 
+// TODO need to this in another way
+#ifdef GLOBAL_TIMEZONE
 extern long GLOBAL_TIMEZONE;
+#else
+static long GLOBAL_TIMEZONE = 0;
+#endif
 
 using namespace std;
 
@@ -2971,9 +2976,9 @@ namespace triagens {
         return ok;
       }
 
-// -----------------------------------------------------------------------------
+      // -----------------------------------------------------------------------------
       // BASE64
-// -----------------------------------------------------------------------------
+      // -----------------------------------------------------------------------------
 
       string encodeBase64 (string const& in) {
         unsigned char charArray3[3];

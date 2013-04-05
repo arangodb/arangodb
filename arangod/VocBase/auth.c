@@ -28,7 +28,7 @@
 #include "auth.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "ShapedJson/shape-accessor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"

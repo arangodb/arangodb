@@ -36,7 +36,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -118,7 +118,7 @@ int TRI_ReadServerId (char const* filename) {
   }
 
   foundId = TRI_UInt64String(idString->_value._string.data);
-  LOG_INFO("using existing server id: %llu", (unsigned long long) foundId);
+  LOG_TRACE("using existing server id: %llu", (unsigned long long) foundId);
 
   if (foundId == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -170,7 +170,7 @@ int TRI_WriteServerId (char const* filename) {
   ok = TRI_SaveJson(filename, json, true);
 
   if (! ok) {
-    LOG_ERROR("could not save shutdown information in file '%s': %s", filename, TRI_last_error());
+    LOG_ERROR("could not save server id in file '%s': %s", filename, TRI_last_error());
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     return TRI_ERROR_INTERNAL;

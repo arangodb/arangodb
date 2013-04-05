@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_DOCUMENT_HELPER_H
 #define TRIAGENS_UTILS_DOCUMENT_HELPER_H 1
 
+#include "BasicsC/json.h"
+
 namespace triagens {
   namespace arango {
 
@@ -87,6 +89,36 @@ namespace triagens {
           }
 
           return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the "_key" attribute from a JSON object
+////////////////////////////////////////////////////////////////////////////////
+
+        static int getKey (TRI_json_t const* json, TRI_voc_key_t* key) {
+          *key = 0;
+
+          // check type of json
+          if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          // check _key is there
+          const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
+
+          if (k == 0) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (k->_type != TRI_JSON_STRING) {
+            // _key is there but not a string
+            return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+          }
+
+          // _key is there and a string
+          *key = k->_value._string.data;
+
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

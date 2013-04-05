@@ -28,7 +28,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "BasicsC/utf8-helper.h"
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 
 // -----------------------------------------------------------------------------

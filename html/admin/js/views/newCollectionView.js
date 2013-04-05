@@ -3,7 +3,7 @@ var newCollectionView = Backbone.View.extend({
   initialize: function () {
   },
 
-  template: new EJS({url: '/_admin/html/js/templates/newCollectionView.ejs'}),
+  template: new EJS({url: 'js/templates/newCollectionView.ejs'}),
 
   render: function() {
     var self = this;
@@ -38,7 +38,6 @@ var newCollectionView = Backbone.View.extend({
   },
 
   hidden: function () {
-    window.App.navigate("#"); 
   },
 
   saveNewCollection: function() {
@@ -74,17 +73,12 @@ var newCollectionView = Backbone.View.extend({
       self.hidden();
       $("#add-collection").modal('hide');
       arangoHelper.arangoNotification("Collection created");
+
+      window.App.navigate("collection/" + collName + "/documents/1", {trigger: true});
     }
     else {
-      self.hidden();
-      $("#add-collection").modal('hide');
       arangoHelper.arangoError(returnobj.errorMessage);
     }
-    window.arangoCollectionsStore.fetch({
-      success: function () {
-        window.collectionsView.render();
-      }
-    });
   }
 
 });

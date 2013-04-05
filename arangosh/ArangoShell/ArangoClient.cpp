@@ -27,8 +27,10 @@
 
 #include "ArangoClient.h"
 
+#include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/messages.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -92,6 +94,7 @@ char const * ArangoClient::PROMPT_IGNORE_END = "\002";
 
 ArangoClient::ArangoClient ()
   : _configFile(),
+    _tempPath(),
     _logLevel("info"),
     _quiet(false),
 
@@ -121,6 +124,13 @@ ArangoClient::ArangoClient ()
     _hasPassword(false),
     _connectTimeout(DEFAULT_CONNECTION_TIMEOUT),
     _requestTimeout(DEFAULT_REQUEST_TIMEOUT) {
+
+  char* p = TRI_GetTempPath();
+ 
+  if (p != NULL) {
+    _tempPath = string(p);
+    TRI_Free(TRI_CORE_MEM_ZONE, p); 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,6 +160,7 @@ void ArangoClient::setupGeneral (ProgramOptionsDescription& description) {
   description
     ("configuration,c", &_configFile, "read configuration file")
     ("help,h", "help message")
+    ("temp-path", &_tempPath, "path for temporary files")
     ("quiet,s", "no banner")
     (loggingOptions, false)
   ;
@@ -655,6 +666,14 @@ bool ArangoClient::usePager () const {
 
 void ArangoClient::setUsePager (bool value) {
   _usePager = value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the temporary path
+////////////////////////////////////////////////////////////////////////////////
+
+string const& ArangoClient::tempPath () const {
+  return _tempPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

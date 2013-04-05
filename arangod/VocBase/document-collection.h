@@ -31,8 +31,6 @@
 
 #include "VocBase/primary-collection.h"
 
-#include "BasicsC/associative-multi.h"
-
 #include "VocBase/headers.h"
 #include "VocBase/index.h"
 
@@ -41,6 +39,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_df_marker_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               DOCUMENT COLLECTION
@@ -173,6 +177,17 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enum for write operations
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_DOCUMENT_INSERT = 1,
+  TRI_DOCUMENT_UPDATE,
+  TRI_DOCUMENT_REMOVE
+}
+TRI_document_operation_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief primary collection with global read-write lock
 ///
 /// A primary collection is a collection with a single read-write lock. This
@@ -256,6 +271,29 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a marker into the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteMarkerDocumentCollection (TRI_document_collection_t*,
+                                       struct TRI_df_marker_s*,
+                                       const TRI_voc_size_t,
+                                       TRI_voc_fid_t*,
+                                       struct TRI_df_marker_s**,
+                                       const bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a document operation marker into the datafile
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_WriteOperationDocumentCollection (TRI_document_collection_t*,
+                                          TRI_document_operation_e,
+                                          TRI_doc_mptr_t*,
+                                          TRI_doc_mptr_t*,
+                                          TRI_df_marker_t*,
+                                          TRI_voc_size_t,
+                                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
@@ -620,7 +658,7 @@ struct TRI_index_s* TRI_EnsurePriorityQueueIndexDocumentCollection (TRI_document
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
+TRI_vector_t TRI_SelectByExample (struct TRI_transaction_collection_s*,
                                   size_t,
                                   TRI_shape_pid_t*,
                                   TRI_shaped_json_t**);
@@ -629,7 +667,7 @@ TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection (TRI_doc_operation_context_t*,
+int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
                                           struct TRI_doc_update_policy_s const*,
                                           TRI_doc_mptr_t*);
 

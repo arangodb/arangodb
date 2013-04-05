@@ -27,8 +27,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative.h"
-#include "hashes.h"
-#include "strings.h"
+
+#include "BasicsC/hashes.h"
+#include "BasicsC/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY

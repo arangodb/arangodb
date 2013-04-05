@@ -41,7 +41,7 @@
 #include <mach/vm_map.h>
 #endif
 
-#include "BasicsC/strings.h"
+#include "BasicsC/tri-strings.h"
 #include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------

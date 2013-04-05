@@ -11,11 +11,9 @@ window.arangoCollections = Backbone.Collection.extend({
         includeDocument: true,
         includeEdge: true,
         includeLoaded: true,
-        includeUnloaded: true
-      },
-
-      comparator : function(model) {
-        return model.get('name').toLowerCase();
+        includeUnloaded: true,
+        sortBy: 'name',
+        sortOrder: 1
       },
 
       translateStatus : function (status) {
@@ -82,17 +80,28 @@ window.arangoCollections = Backbone.Collection.extend({
 
       getFiltered : function (options) {
         var result = [ ];
+        var searchPhrases = [ ];
           
-        var searchPhrase = '';
         if (options.searchPhrase !== null) {
-          searchPhrase = options.searchPhrase.toLowerCase();
+          var searchPhrase = options.searchPhrase.toLowerCase();
+          // kick out whitespace
+          searchPhrase = searchPhrase.replace(/\s+/g, ' ').replace(/(^\s+|\s+$)/g, '');
+          searchPhrases = searchPhrase.split(' ');
         }
 
         this.models.forEach(function (model) {
-          if (searchPhrase !== '' && model.get('name').toLowerCase().indexOf(searchPhrase) === -1) {
-            // search phrase entered but current collection does not match?
-            return;
+          // search for name(s) entered
+          if (searchPhrases.length > 0) {
+            var lowerName = model.get('name').toLowerCase(), i;
+            // all phrases must match!
+            for (i = 0; i < searchPhrases.length; ++i) {
+              if (lowerName.indexOf(searchPhrases[i]) === -1) {
+                // search phrase entered but current collection does not match?
+                return;
+              }
+            }
           }
+
           if (options.includeSystem === false && model.get('isSystem')) {
             // system collection?
             return;
@@ -111,6 +120,24 @@ window.arangoCollections = Backbone.Collection.extend({
           }
 
           result.push(model);
+        });
+
+        result.sort(function (l, r) {
+          var lValue, rValue;
+          if (options.sortBy === 'type') {
+            // we'll use first type, then name as the sort criteria
+            // this is because when sorting by type, we need a 2nd criterion (type is not unique)
+            lValue = l.get('type') + ' ' + l.get('name').toLowerCase();
+            rValue = r.get('type') + ' ' + r.get('name').toLowerCase();
+          }
+          else {
+            lValue = l.get('name').toLowerCase();
+            rValue = r.get('name').toLowerCase();
+          }
+          if (lValue != rValue) {
+            return options.sortOrder * (lValue < rValue ? -1 : 1);
+          }
+          return 0;
         });
 
         return result;
@@ -149,6 +176,7 @@ window.arangoCollections = Backbone.Collection.extend({
           async: false,
           success: function(data) {
             returnobj.status = true;
+            returnobj.data = data;
           },
           error: function(data) {
             returnobj.status = false;
@@ -212,6 +240,7 @@ window.arangoCollections = Backbone.Collection.extend({
       },
       deleteCollection: function (id) {
         var returnval = false;
+        var self = this;
         $.ajax({
           cache: false,
           type: 'DELETE',
@@ -219,6 +248,8 @@ window.arangoCollections = Backbone.Collection.extend({
           async: false,
           success: function () {
             returnval = true;
+            self.remove(self.findWhere({name: id}));
+            window.collectionsView.render();
           },
           error: function () {
             returnval = false;

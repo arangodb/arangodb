@@ -32,6 +32,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
+#include "BasicsC/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -39,7 +41,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
-#include "3rdParty/V8/include/v8.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -125,7 +126,7 @@ class v8_action_t : public TRI_action_t {
 ////////////////////////////////////////////////////////////////////////////////
 
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
-      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext();
+      ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(false);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
@@ -517,6 +518,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       response->setContentType(TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
     }
 
+    // .............................................................................
+    // body
+    // .............................................................................
+
     if (res->Has(v8g->BodyKey)) {
       // check if we should apply result transformations
       // transformations turn the result from one type into another
@@ -524,10 +529,11 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       // putting a list of transformations into the res.transformations
       // array, e.g. res.transformations = [ "base64encode" ]
       v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
+
       if (val->IsArray()) {
         string out(TRI_ObjectToString(res->Get(v8g->BodyKey)));
-
         v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+
         for (uint32_t i = 0; i < transformations->Length(); i++) {
           v8::Handle<v8::Value> transformator = transformations->Get(v8::Integer::New(i));
           string name = TRI_ObjectToString(transformator);
@@ -553,6 +559,31 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
         response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
       }
     }
+
+    // .............................................................................
+    // body from file
+    // .............................................................................
+
+    else if (res->Has(v8g->BodyFromFileKey)) {
+      TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(v8g->BodyFromFileKey));
+      size_t length;
+      char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
+
+      if (content != 0) {
+        response->body().appendText(content, length);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+      }
+      else {
+        string msg = string("cannot read file '") + *filename + "': " + TRI_last_error();
+
+        response->body().appendText(msg.c_str());
+        response->setResponseCode(HttpResponse::SERVER_ERROR);
+      }
+    }
+
+    // .............................................................................
+    // headers
+    // .............................................................................
 
     if (res->Has(v8g->HeadersKey)) {
       v8::Handle<v8::Value> val = res->Get(v8g->HeadersKey);
@@ -601,21 +632,21 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   v8g = (TRI_v8_global_t*) isolate->GetData();
 
   if (argv.Length() != 4) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_DEFINE_ACTION(<name>, <callback>, <parameter>, <contexts>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "defineAction(<name>, <callback>, <parameter>, <contexts>)");
   }
 
   // extract the action name
   TRI_Utf8ValueNFC utf8name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*utf8name == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
+    TRI_V8_TYPE_ERROR(scope, "<name> must be an UTF-8 string");
   }
 
   string name = *utf8name;
 
   // extract the action callback
   if (! argv[1]->IsFunction()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<callback> must be a function")));
+    TRI_V8_TYPE_ERROR(scope, "<callback> must be a function");
   }
 
   v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(argv[1]);
@@ -634,7 +665,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   set<string> contexts;
 
   if (! argv[3]->IsArray()) {
-    return scope.Close(v8::ThrowException(v8::String::New("<contexts> must be a list of contexts")));
+    TRI_V8_TYPE_ERROR(scope, "<contexts> must be a list of contexts");
   }
 
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[3]);
@@ -682,14 +713,14 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION(<function-definition>)")));
+    TRI_V8_EXCEPTION_USAGE(scope, "executeGlobalContextFunction(<function-definition>)");
   }
 
   // extract the action name
   v8::String::Utf8Value utf8def(argv[0]);
 
   if (*utf8def == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("<defition> must be a UTF8 function definition")));
+    TRI_V8_TYPE_ERROR(scope, "<defition> must be a UTF-8 function definition");
   }
 
   string def = *utf8def;
@@ -740,6 +771,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   // .............................................................................
 
   v8g->BodyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("body"));
+  v8g->BodyFromFileKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("bodyFromFile"));
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("contentType"));
   v8g->HeadersKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("parameters"));
