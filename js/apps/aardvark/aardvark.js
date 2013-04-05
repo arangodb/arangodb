@@ -79,6 +79,11 @@
   .summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
+  app.get("/foxxes/thumbnail/:app", function (req, res) {
+    res.transformations = [ "base64decode" ];
+    res.body = repositories.foxxes.thumbnail(req.params("app"));
+  });
+  
   
   app.get('/foxxes', function (req, res) {
     res.json(repositories.foxxes.viewAll());
