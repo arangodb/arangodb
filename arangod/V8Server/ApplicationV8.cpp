@@ -28,9 +28,10 @@
 #include "ApplicationV8.h"
 
 #include "Basics/ConditionLocker.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/Mutex.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
@@ -579,8 +580,21 @@ bool ApplicationV8::prepare () {
 
     LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
   }
+  
+  // check whether app-paths exist
+  if (! _appPath.empty() && ! FileUtils::isDirectory(_appPath.c_str())) {
+    LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
+  }
+
+  if (! _devAppPath.empty() && ! FileUtils::isDirectory(_devAppPath.c_str())) {
+    LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
+  }
+
 
   _startupLoader.setDirectory(_startupPath);
+  
 
   // check for development mode
   if (! _devAppPath.empty()) {
