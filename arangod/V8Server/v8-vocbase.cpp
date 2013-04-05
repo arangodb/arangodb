@@ -488,10 +488,13 @@ int AttributeNamesFromArguments (v8::Arguments const& argv,
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     }
 
+    TRI_ASSERT_MAINTAINER(cArgument != 0);
+
     // cannot index internal attributes such as _key, _rev, _id, _from, _to...
     if (! ValidateAttributeName(cArgument, false)) {
       error = "invalid attribute name";
 
+      TRI_Free(TRI_CORE_MEM_ZONE, cArgument);
       TRI_FreeContentVectorPointer(TRI_CORE_MEM_ZONE, result);
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }

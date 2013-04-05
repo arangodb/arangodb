@@ -151,9 +151,16 @@ static TRI_aql_node_t* CreateNodeUserFcall (TRI_aql_context_t* const context,
                                             const TRI_aql_node_t* const parameters) {
   CREATE_NODE(TRI_AQL_NODE_FCALL_USER)
 
-  // we'll take ownership of the function name now
-  TRI_AQL_NODE_STRING(node) = internalName;
-  ADD_MEMBER(parameters)
+  {
+    char* copy = TRI_RegisterStringAql(context, internalName, strlen(internalName), false);
+
+    if (copy == NULL) {
+      ABORT_OOM
+    }
+
+    TRI_AQL_NODE_STRING(node) = copy;
+    ADD_MEMBER(parameters)
+  }
 
   return node;
 }
@@ -1003,7 +1010,9 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
     upperName = TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, name);
   }
   else {
-    upperName = TRI_Concatenate2String(TRI_AQL_DEFAULT_PREFIX, TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, name));
+    char* tempName = TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, name);
+    upperName = TRI_Concatenate2String(TRI_AQL_DEFAULT_PREFIX, tempName);
+    TRI_Free(TRI_CORE_MEM_ZONE, tempName);
   }
 
   if (upperName == NULL) {
@@ -1013,13 +1022,12 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
   if (*upperName == '_') {
     // default internal namespace
     node = CreateNodeInternalFcall(context, name, upperName, parameters);
-    TRI_Free(TRI_CORE_MEM_ZONE, upperName);
   }
   else {
     // user namespace
     node = CreateNodeUserFcall(context, name, upperName, parameters);
-    // upperName intentionally not freed!
   }
+  TRI_Free(TRI_CORE_MEM_ZONE, upperName);
 
   return node;
 }
