@@ -94,10 +94,13 @@ namespace triagens {
           }
 
           if (n < 0) {
-            TRI_CLOSE(fd);
+            TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
             LOGGER_TRACE("read failed for '" << filename
                          << "' with " << strerror(errno) << " and result " << n
                          << " on fd " << fd);
+
+            TRI_CLOSE(fd);
             THROW_FILE_FUNC_ERROR("read", "", errno);
           }
 
@@ -106,7 +109,7 @@ namespace triagens {
 
         TRI_CLOSE(fd);
 
-        string r(result.c_str());
+        string r(result.c_str(), result.length());
 
         return r;
       }
