@@ -142,6 +142,14 @@ ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restrict
 ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fulltext query on '%s'","Will be raised when a fulltext query is performed on a collection without a suitable fulltext index."
 
 ################################################################################
+## AQL user functions
+################################################################################
+
+ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be raised when a user function with an invalid name is registered."
+ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
+ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function not found","Will be raised when a user function is accessed but not found."
+
+################################################################################
 ## ArangoDB cursor errors
 ################################################################################
 

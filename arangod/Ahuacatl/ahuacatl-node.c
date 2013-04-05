@@ -183,6 +183,8 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "parameter";
     case TRI_AQL_NODE_FCALL:
       return "function call";
+    case TRI_AQL_NODE_FCALL_USER:
+      return "function call (user)";
   }
 
   assert(false);
