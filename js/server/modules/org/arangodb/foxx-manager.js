@@ -238,7 +238,7 @@ function teardownApp (app, mount, prefix) {
 /// @brief creates an app entry for aal
 ////////////////////////////////////////////////////////////////////////////////
 
-function upsertAalAppEntry (manifest, path) {
+function upsertAalAppEntry (manifest, thumbnail, path) {
   var aal = getStorage();
   var doc = aal.firstExample({ name: manifest.name, version: manifest.version });
 
@@ -248,12 +248,14 @@ function upsertAalAppEntry (manifest, path) {
       app: "app:" + manifest.name + ":" + manifest.version,
       name: manifest.name,
       version: manifest.version,
-      path: path
+      path: path,
+      thumbnail: thumbnail
     });
   }
   else {
-    if (doc.path !== path) {
+    if (doc.path !== path || doc.thumbnail !== thumbnail) {
       doc.path = path;
+      doc.thumbnail = thumbnail;
       aal.replace(doc, doc);
     }
   }
@@ -488,12 +490,24 @@ exports.scanAppDirectory = function () {
 
     if (fs.exists(m)) {
       try {
+        var thumbnail;
         var mf = JSON.parse(fs.read(m));
 
-        upsertAalAppEntry(mf, files[j]);
+        if (mf.hasOwnProperty('thumbnail')) {
+          var p = fs.join(path, files[j], mf.thumbnail);
+
+          try {
+            thumbnail = fs.read64(p);
+          }
+          catch (err2) {
+            console.error("cannot read thumbnail: %s", String(err2.stack || err2));
+          }
+        }
+
+        upsertAalAppEntry(mf, thumbnail, files[j]);
       }
       catch (err) {
-        console.error("cannot read app manifest '%s': %s", m, String(err));
+        console.error("cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
