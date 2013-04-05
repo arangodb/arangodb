@@ -36,6 +36,7 @@ var fs = require("fs");
 
 var arangodb = require("org/arangodb");
 var arangosh = require("org/arangodb/arangosh");
+var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 var arango = internal.arango;
 var db = internal.db;
@@ -78,25 +79,47 @@ function buildGithubFishbowlUrl (name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validates the source type specified by the user
+/// @brief thrown an error in case a download failed
 ////////////////////////////////////////////////////////////////////////////////
-  
-function validateSource (origin) {
-  var type, location;
-  
-  if (origin === undefined || origin === null) {
-    throw "no application name specified";
+
+function throwDownloadError (msg) {
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code;
+  err.errorMessage = arangodb.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg);
+
+  throw err;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate an app name and fail if it is invalid
+////////////////////////////////////////////////////////////////////////////////
+
+function validateAppName (name) {
+  if (typeof name === 'string' && name.length > 0) {
+    return;
   }
 
-  if (origin && origin.location && origin.type) {
-    type     = origin.type;
-    location = origin.location;
-  }
-  else {
-    throw "invalid application declaration";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_APPLICATION_INVALID_NAME.code;
+  err.errorMessage = arangodb.errors.ERROR_APPLICATION_INVALID_NAME.message;
+
+  throw err;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate a mount and fail if it is invalid
+////////////////////////////////////////////////////////////////////////////////
+
+function validateMount (mnt) {
+  if (typeof mnt === 'string' && mnt.substr(0, 1) === '/') {
+    return;
   }
 
-  return { location: location, type: type };
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_APPLICATION_INVALID_MOUNT.code;
+  err.errorMessage = arangodb.errors.ERROR_APPLICATION_INVALID_MOUNT.message;
+
+  throw err;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,11 +294,11 @@ function processGithubRepository (source) {
       source.removeFile = true;
     }
     else {
-      throw "github download failed";
+      throwDownloadError("could not download from repository '" + url + "'");
     }
   }
   catch (err) {
-    throw "could not download from repository '" + url + "'";
+    throwDownloadError("could not download from repository '" + url + "': " + String(err));
   }
 
   repackZipFile(source);
@@ -351,11 +374,11 @@ exports.load = function (type, location, version) {
   filename = processSource(source);
 
   if (typeof source.name === "undefined") {
-    throw "name is missing for '" + JSON.stringify(source);
+    throw "name is missing for '" + JSON.stringify(source) + "'";
   }
 
   if (typeof source.version === "undefined") {
-    throw "version is missing for '" + JSON.stringify(source);
+    throw "version is missing for '" + JSON.stringify(source) + "'";
   }
 
   req = {
@@ -381,6 +404,9 @@ exports.installApp = function (appId, mount, options) {
     mount: mount,
     options: options
   };
+  
+  validateAppName(appId);
+  validateMount(mount);
 
   res = arango.POST("/_admin/foxx/install", JSON.stringify(req));
   arangosh.checkRequestResult(res);
@@ -399,6 +425,9 @@ exports.installDevApp = function (name, mount, options) {
     mount: mount,
     options: options
   };
+  
+  validateAppName(name);
+  validateMount(mount);
 
   res = arango.POST("/_admin/foxx/dev-install", JSON.stringify(req));
   arangosh.checkRequestResult(res);
@@ -415,6 +444,8 @@ exports.uninstallApp = function (key) {
   var req = {
     key: key
   };
+
+  validateAppName(key);
 
   res = arango.POST("/_admin/foxx/uninstall", JSON.stringify(req));
   arangosh.checkRequestResult(res);
@@ -520,6 +551,8 @@ exports.listAvailable = function () {
 exports.details = function (name) {
   'use strict';
 
+  validateAppName(name);
+
   var i;
 
   var tempFile = fs.getTempFile("downloads", false); 
@@ -530,15 +563,21 @@ exports.details = function (name) {
     var result = internal.download(url, "get", tempFile);
 
     if (result.code < 200 || result.code > 299) {
-      throw "github download failed";
+      throwDownloadError("could not download from repository '" + url + "'");
     }
 
     content = fs.read(tempFile);
     fs.remove(tempFile);
   }
   catch (err1) {
-    fs.remove(tempFile);
-    throw "could not download from repository '" + url + "': " + String(err1);
+    if (fs.exists(tempFile)) {
+      try {
+        fs.remove(tempFile);
+      }
+      catch (err2) {
+      }
+    }
+    throwDownloadError("could not download from repository '" + url + "': " + String(err1));
   }
 
   var desc;
