@@ -220,7 +220,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_document_collection_t* doc;
   TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
-  TRI_voc_tid_t tid;
+//  TRI_voc_tid_t tid;
   int res;
 
   doc = data;
@@ -232,7 +232,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
     bool deleted;
 
-    tid = d->_tid;
+//    tid = d->_tid;
 
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -292,7 +292,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     TRI_doc_deletion_key_marker_t const* d = (TRI_doc_deletion_key_marker_t const*) marker;
-    tid = d->_tid;
+//    tid = d->_tid;
 
     // write to compactor files
     res = CopyDocument(doc, marker, &result, &fid);

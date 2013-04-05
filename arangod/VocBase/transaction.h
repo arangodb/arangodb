@@ -467,7 +467,10 @@ typedef struct TRI_doc_begin_transaction_marker_s {
   TRI_df_marker_t base;
 
   TRI_voc_tid_t   _tid;
-  uint16_t        _numCollections;
+  uint32_t        _numCollections;
+#ifdef TRI_PADDING_32
+  char            _padding_begin_marker[4];
+#endif
 }
 TRI_doc_begin_transaction_marker_t;
 
