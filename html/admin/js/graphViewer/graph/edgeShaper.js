@@ -57,26 +57,27 @@ function EdgeShaper(parent, flags, idfunc) {
     
     },
     colourMapper = new ColourMapper(),
-    events = {
-      click: noop,
-      dblclick: noop,
-      mousedown: noop,
-      mouseup: noop,
-      mousemove: noop
-    },
-    addUpdate = noop,
+    events,
+    addUpdate,
     addShape = noop,
     addLabel = noop,
     addColor = noop,
     
+    
+    unbindEvents = function() {
+     events = {
+       click: noop,
+       dblclick: noop,
+       mousedown: noop,
+       mouseup: noop,
+       mousemove: noop
+     };
+     addUpdate = noop;
+    },
+    
     addEvents = function (line, g) {
       _.each(events, function (func, type) {
-        if (type === "update") {
-          addUpdate = func;
-        } else {
-          g.on(type, func);
-        }
-        
+        g.on(type, func);
       });
     },
     
@@ -85,8 +86,9 @@ function EdgeShaper(parent, flags, idfunc) {
         addUpdate = func;
       } else if (events[type] === undefined) {
         throw "Sorry Unknown Event " + type + " cannot be bound.";
+      } else {
+        events[type] = func;
       }
-      events[type] = func;
     },
     
     addQue = function (line, g) {
@@ -226,8 +228,13 @@ function EdgeShaper(parent, flags, idfunc) {
     },
     
     parseActionFlag = function (actions) {
+      if (actions.reset !== undefined && actions.reset) {
+        unbindEvents();
+      }
       _.each(actions, function(func, type) {
-        bindEvent(type, func);
+        if (type !== "reset") {
+          bindEvent(type, func);
+        }
       });
     },
     
@@ -293,7 +300,8 @@ function EdgeShaper(parent, flags, idfunc) {
     
   self.parent = parent;  
    
-   
+  unbindEvents();
+  
   toplevelSVG = parent;
   while (toplevelSVG[0][0] && toplevelSVG[0][0].ownerSVGElement) {
     toplevelSVG = d3.select(toplevelSVG[0][0].ownerSVGElement);
