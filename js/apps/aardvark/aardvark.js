@@ -50,6 +50,17 @@
     }
   );
   
+  app.put("/foxxes/install", function (req, res) {
+    var content = JSON.parse(req.requestBody),
+      name = content.name,
+      mount = content.mount,
+      version = content.version;
+      res.json(repositories.foxxes.install(name, mount, version));
+  }).nickname("foxxinstall")
+  .summary("Installs a new foxx")
+  .notes("This function is used to install a new foxx.");
+  
+  
   app.del("/foxxes/:key", function (req, res) {
     res.json(repositories.foxxes.uninstall(req.params("key")));
   }).pathParam("key", {

@@ -13,7 +13,7 @@ window.FoxxActiveView = Backbone.View.extend({
   
   editFoxx: function(event) {
     event.stopPropagation();
-    window.App.navigate("application/" + encodeURIComponent(this.model.get("_key")), {trigger: true});
+    window.App.navigate("application/installed/" + encodeURIComponent(this.model.get("_key")), {trigger: true});
   },
     
   render: function(){
