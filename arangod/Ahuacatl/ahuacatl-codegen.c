@@ -1427,7 +1427,8 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ", ");
     }
 
-    if (parameter->_type == TRI_AQL_NODE_COLLECTION &&
+    if (function != NULL && 
+        parameter->_type == TRI_AQL_NODE_COLLECTION &&
         TRI_ConvertParameterFunctionAql(function, i)) {
       // collection arguments will be created as string argument => e.g. "users"
       TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(parameter, 0);
@@ -1880,13 +1881,26 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
 /// @brief generate code for function calls
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessFcall (TRI_aql_codegen_js_t* const generator,
-                          const TRI_aql_node_t* const node) {
+static void ProcessFcallInternal (TRI_aql_codegen_js_t* const generator,
+                                  const TRI_aql_node_t* const node) {
   ScopeOutput(generator, "aql.");
   ScopeOutput(generator, TRI_GetInternalNameFunctionAql((TRI_aql_function_t*) TRI_AQL_NODE_DATA(node)));
   ScopeOutput(generator, "(");
   ProcessArgList(generator, (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node), TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for function calls
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessFcallUser (TRI_aql_codegen_js_t* const generator,
+                                  const TRI_aql_node_t* const node) {
+  ScopeOutput(generator, "aql.FCALL_USER(");
+  ScopeOutputQuoted(generator, TRI_AQL_NODE_STRING(node));
+  ScopeOutput(generator, ", [");
+  ProcessArgList(generator, NULL, TRI_AQL_NODE_MEMBER(node, 0));
+  ScopeOutput(generator, "])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2402,7 +2416,10 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
       ProcessTernary(generator, node);
       break;
     case TRI_AQL_NODE_FCALL:
-      ProcessFcall(generator, node);
+      ProcessFcallInternal(generator, node);
+      break;
+    case TRI_AQL_NODE_FCALL_USER:
+      ProcessFcallUser(generator, node);
       break;
     case TRI_AQL_NODE_FOR:
       ProcessFor(generator, node);

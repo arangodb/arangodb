@@ -433,6 +433,10 @@ bool V8LineEditor::isComplete (string const& source, size_t, size_t) {
         case '}':
           --openBraces;
           break;
+
+        case '\\':
+          ++ptr;
+          break;
       }
 
       ++ptr;

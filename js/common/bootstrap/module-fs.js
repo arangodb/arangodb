@@ -2,7 +2,7 @@
 /*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
   FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_FILESIZE, 
   FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
-  SYS_READ, SYS_SAVE, PATH_SEPARATOR, HOME */
+  SYS_READ, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "js"
@@ -418,6 +418,15 @@
   if (typeof SYS_READ !== "undefined") {
     exports.read = SYS_READ;
     delete SYS_READ;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read64
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_READ64 !== "undefined") {
+    exports.read64 = SYS_READ64;
+    delete SYS_READ64;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
