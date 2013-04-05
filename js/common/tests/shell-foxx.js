@@ -213,18 +213,17 @@ function SetRoutesFoxxApplicationSpec () {
 
     testStartAddsRequiresAndContext: function () {
       var myFunc = function () {},
-        routes = app.routingInfo.routes;
+        routingInfo = app.routingInfo,
+        context = {};
 
       app.requires = {
         a: 1
       };
       app.get('/simple/route', myFunc);
-      app.start({
-        context: "myContext"
-      });
+      app.start(context);
 
-      assertEqual(app.routingInfo.routes[0].action.context, "myContext");
-      assertEqual(app.routingInfo.routes[0].action.requiresLibs.a, 1);
+      assertEqual(context.requires.a, 1);
+      assertEqual(context.routingInfo, routingInfo);
     }
   };
 }
