@@ -8,7 +8,7 @@ window.Foxx = Backbone.Model.extend({
   },
   
   url: function() {
-    return "../../aardvark/foxxes/" + this.get("_key");
+    return "../aardvark/foxxes/" + this.get("_key");
   },
   
   isNew: function() {

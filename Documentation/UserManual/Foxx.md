@@ -118,16 +118,16 @@ Furthermore you can describe your API by chaining the following methods onto you
 #### Describing a queryParam
 @copydetails JSF_foxx_RequestContext_queryParam
 
-### Documenting the nickname of a route
+#### Documenting the nickname of a route
 @copydetails JSF_foxx_RequestContext_nickname
 
-### Documenting the summary of a route
+#### Documenting the summary of a route
 @copydetails JSF_foxx_RequestContext_summary
 
-### Documenting the notes of a route
+#### Documenting the notes of a route
 @copydetails JSF_foxx_RequestContext_notes
 
-### Documenting the error response of a route
+#### Documenting the error response of a route
 @copydetails JSF_foxx_RequestContext_errorResponse
 
 ### Before and After Hooks
@@ -218,10 +218,11 @@ A Foxx Model can be initialized with an object of attributes and their values.
 @copydetails JSF_foxx_model_has
 
 #### Foxx.Model#attributes
-@copydetails JSF_foxx_model_attributes
+
+The attributes property is the internal hash containing the model's state.
 
 #### Foxx.Model#toJSON
-@copydetails JSF_foxx_model_toJSON
+@copydetails jsf_foxx_model_toJSON
 
 ## Foxx.Repository
 
@@ -237,15 +238,17 @@ A repository is a gateway to the database. It gets data from the database, updat
 #### new Foxx.Repository
 @copydetails JSF_foxx_repository_initializer
 
-
 #### Foxx.Repository#collection
-@copydetails JSF_foxx_repository_collection
+
+The collection object.
 
 #### Foxx.Repository#prefix
-@copydetails JSF_foxx_repository_prefix
+
+The prefix of the application.
 
 #### Foxx.Repository#modelPrototype
-@copydetails JSF_foxx_repository_modelPrototype
+
+The prototype of the according model.
 
 #### Foxx.Repository#save
 
