@@ -1,5 +1,5 @@
-v1.3 (XXXX-XX-XX)
------------------
+v1.3.alpha1 (2013-04-05)
+------------------------
 
 * cleanup of Module, Package, ArangoApp and modules "internal", "fs", "console"
 
