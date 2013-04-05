@@ -235,36 +235,44 @@ function lookupCallbackStatic (content) {
 function lookupCallbackActionCallback (route, action, context) {
   'use strict';
 
-  var defn;
-  var env;
   var func;
   var key;
-  var app;
-  var appModule;
-
-  defn = "func = (function() { var callback = " + action.callback + "; return callback;})();";
-  env = {};
 
   try {
+    var sandbox = {};
+
     for (key in context.requires) {
       if (context.requires.hasOwnProperty(key)) {
-        env[key] = context.requires[key];
+        sandbox[key] = context.requires[key];
       }
     }
 
-    env.module = module.root;
-    env.repositories = context.repositories;
+    sandbox.module = module.root;
+    sandbox.repositories = context.repositories;
 
-    env.require = function (path) {
+    sandbox.require = function (path) {
       return context.appModule.require(path);
     };
 
-    internal.executeScript(defn, env, route);
+    var content = "(function(__myenv__) {";
 
-    if (env.hasOwnProperty("func")) {
-      func = env.func;
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
     }
-    else {
+
+    content += "delete __myenv__;"
+             + "return (" + action.callback + ")"
+             + "\n});";
+
+    func = internal.executeScript(content, undefined, route);
+
+    if (func !== undefined) {
+      func = func(sandbox);
+    }
+
+    if (func === undefined) {
       func = notImplementedFunction(
         route,
         "could not define function for '" + action.callback + "'");
@@ -1823,9 +1831,7 @@ function resultException (req, res, err, headers) {
 function echoRequest (req, res, options, next) {
   'use strict';
 
-  var result;
-
-  result = { request : req, options : options };
+  var result = { request : req, options : options };
 
   res.responseCode = exports.HTTP_OK;
   res.contentType = "application/json; charset=utf-8";
