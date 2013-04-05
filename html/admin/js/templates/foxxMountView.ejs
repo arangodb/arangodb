@@ -1,0 +1,33 @@
+<div id="install-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3>Mount Application</h3>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><strong><%=attributes.name %></strong></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">&nbsp;</th>
+        <th class="collectionTh">&nbsp;</th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Mount-Point:</th>
+        <th class="collectionTh"><input type="text" id="mount-point" name="mountpoint" value="" placeholder="mount-path"/></th>
+        <th><a class="modalTooltips" title="The path where the App can be reached."><i class="icon-info-sign"></i></a></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Version:</th>
+        <th class="collectionTh">
+          <strong><%=attributes.version %></strong>
+        <th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="cancel" class="btn btn-danger pull-left">Cancel</button>
+    <button id="install" class="btn btn-success pull-right">Install</button>    
+  </div>
+</div>
