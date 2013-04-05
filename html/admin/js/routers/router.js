@@ -14,7 +14,8 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "application/:key"                    : "applicationEdit",
+      "application/installed/:key"          : "applicationEdit",
+      "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
       "applications/documentation"          : "applicationsDocumentation"
@@ -196,8 +197,25 @@ $(document).ready(function() {
         var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
         editAppView.render();
       }
+    },
+    
+    applicationInstall: function(appkey) {
+      if (this.foxxList === undefined) {
+        var self = this;
+        this.foxxList = new window.FoxxCollection();
+        this.foxxList.fetch({
+          success: function() {
+            var installAppView = new window.foxxMountView({model: self.foxxList.findWhere({_key: appkey})});
+            installAppView.render();
+          }
+        });
+      } else {
+        var installAppView = new window.foxxMountView({model: this.foxxList.findWhere({_key: appkey})});
+        installAppView.render();
+      }
       
     },
+    
     
     applicationsDocumentation: function() {
       if (this.appDocuView === undefined) {
