@@ -65,6 +65,9 @@
       edgeShaper.drawEdges(edges);
       
       dispatcherUI = new EventDispatcherControls(list, dispatcher);
+      spyOn(nodeShaper, "changeTo").andCallThrough();
+      spyOn(edgeShaper, "changeTo").andCallThrough();
+      
     });
 
     afterEach(function () {
