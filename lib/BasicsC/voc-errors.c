@@ -106,6 +106,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_FAIL_CALLED, "FAIL(%s) called");
   REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
   REG_ERROR(ERROR_QUERY_FULLTEXT_INDEX_MISSING, "no suitable fulltext index found for fulltext query on '%s'");
+  REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
+  REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
+  REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function not found");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_TRANSACTION_INCOMPLETE, "transaction definition is incomplete");
   REG_ERROR(ERROR_TRANSACTION_INVALID_STATE, "invalid transaction state");

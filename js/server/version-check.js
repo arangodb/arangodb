@@ -344,6 +344,11 @@
 
         return true;
     });
+    
+    // set up the collection _aqlfunctions
+    addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
+      return createSystemCollection("_aqlfunctions", { waitForSync : false });
+    });
 
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "

@@ -2254,17 +2254,17 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next x rows from the cursor in one go
+/// @brief return all following rows from the cursor in one go
 ///
 /// This function constructs multiple rows at once and should be preferred over
 /// hasNext()...next() when iterating over bigger result sets
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "getRows()");
+    TRI_V8_EXCEPTION_USAGE(scope, "toArray()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -2317,6 +2317,15 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
   }
 
   TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief alias for toArray()
+/// @deprecated
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv) {
+  return JS_ToArrayGeneralCursor(argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6658,6 +6667,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddProtoMethodVocbase(pt, "id", JS_IdGeneralCursor);
   TRI_AddProtoMethodVocbase(pt, "next", JS_NextGeneralCursor);
   TRI_AddProtoMethodVocbase(pt, "persist", JS_PersistGeneralCursor);
+  TRI_AddProtoMethodVocbase(pt, "toArray", JS_ToArrayGeneralCursor);
   TRI_AddProtoMethodVocbase(pt, "unuse", JS_UnuseGeneralCursor);
 
   rt = ft->InstanceTemplate();

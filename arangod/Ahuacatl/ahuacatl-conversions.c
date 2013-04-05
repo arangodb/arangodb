@@ -603,6 +603,22 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
       return TRI_AppendStringStringBuffer(buffer, ")") == TRI_ERROR_NO_ERROR;
     }
 
+    case TRI_AQL_NODE_FCALL_USER: {
+      if (TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (TRI_AppendStringStringBuffer(buffer, "(") != TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+        return false;
+      }
+
+      return TRI_AppendStringStringBuffer(buffer, ")") == TRI_ERROR_NO_ERROR;
+    }
+
     case TRI_AQL_NODE_EXPAND: {
       return TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 3));
     }
