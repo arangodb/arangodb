@@ -15,3 +15,5 @@ db.demo.save({
   ]
 });
 
+db._drop("animals");
+db._create("animals");
