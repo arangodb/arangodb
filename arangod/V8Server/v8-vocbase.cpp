@@ -1022,12 +1022,12 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     bool lock) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 2 || argv.Length() > 3) {
+  if (argv.Length() < 1 || argv.Length() > 2) {
     if (replace) {
-      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, <waitForSync>)");
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>])");
     }
     else {
-      TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, <waitForSync>)");
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
     }
   }
 
