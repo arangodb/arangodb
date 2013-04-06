@@ -13,8 +13,6 @@ AC_ARG_WITH(icu-config,
   [ICU_CONFIG="$withval"]
 )
 
-dnl TR_STATIC_ENABLE([ICU])
-
 if test "x$tr_ICU" = xyes;  then
   AC_MSG_NOTICE([--------------------------------------------------------------------------------])
   AC_MSG_NOTICE([CHECKING FOR ICU])
