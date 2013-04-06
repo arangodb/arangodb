@@ -16,8 +16,6 @@ AC_ARG_WITH(libev-lib,
   [LIBEV_LDFLAGS="-L$withval"]
 )
 
-TR_STATIC_ENABLE([libev])
-
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 AC_MSG_NOTICE([CHECKING FOR LIBEV])
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
@@ -55,15 +53,11 @@ ch_LIBEV="$tr_LIBEV"
 AC_CHECK_HEADERS(ev.h, [tr_LIBEV="yes"], [tr_LIBEV="no"])
 
 if test "x$tr_LIBEV" = xyes;  then
-  AC_CHECK_LIB([rt], [clock_gettime], [LIBEV_LIBS="-lrt $LIBEV_LIBS" LIBS="-lrt $LIBS"], )
-
-  TR_FIND_C_LIBRARY([libev], [ev], [LIBEV_LIBS], [ev_now])
-  tr_LIBEV=$tr_library_found
+  AC_CHECK_LIB([rt], [clock_gettime], [LIBEV_LIBS="-lrt" LIBS="-lrt $LIBS"], )
+  AC_CHECK_LIB([libev], [ev_now], [LIBEV_LIBS="-lev $LIBEV_LIBS" tr_LIBEV="yes"], )
 fi
 
-if test "x$tr_LIBEV" = xyes;  then
-  TR_STATIC_LIBRARY([libev], [LIBEV_LIBS])
-else
+if test "x$tr_LIBEV" != xyes;  then
   AC_MSG_ERROR([Please install libev from http://software.schmorp.de/pkg/libev.html])
 fi
 
