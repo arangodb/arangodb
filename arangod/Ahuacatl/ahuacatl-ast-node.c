@@ -101,6 +101,71 @@ inline static void InitNode (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST function call node
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* CreateNodeInternalFcall (TRI_aql_context_t* const context,
+                                                const char* const name,
+                                                const char* const internalName,
+                                                const TRI_aql_node_t* const parameters) {
+  CREATE_NODE(TRI_AQL_NODE_FCALL)
+
+  TRI_AQL_NODE_DATA(node) = 0;
+
+  {
+    TRI_aql_function_t* function;
+    TRI_associative_pointer_t* functions;
+    
+    assert(context->_vocbase);
+    functions = context->_vocbase->_functions;
+    assert(functions);
+
+    function = TRI_GetByExternalNameFunctionAql(functions, internalName);
+
+    if (function == NULL) {
+      // function name is unknown
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
+      return NULL;
+    }
+
+    // validate function call arguments
+    if (! TRI_ValidateArgsFunctionAql(context, function, parameters)) {
+      return NULL;
+    }
+  
+    // initialise
+    ADD_MEMBER(parameters)
+    TRI_AQL_NODE_DATA(node) = function;
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST function call node
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* CreateNodeUserFcall (TRI_aql_context_t* const context,
+                                            const char* const name,
+                                            char* const internalName,
+                                            const TRI_aql_node_t* const parameters) {
+  CREATE_NODE(TRI_AQL_NODE_FCALL_USER)
+
+  {
+    char* copy = TRI_RegisterStringAql(context, internalName, strlen(internalName), false);
+
+    if (copy == NULL) {
+      ABORT_OOM
+    }
+
+    TRI_AQL_NODE_STRING(node) = copy;
+    ADD_MEMBER(parameters)
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -934,39 +999,35 @@ TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
                                         const char* const name,
                                         const TRI_aql_node_t* const parameters) {
-  CREATE_NODE(TRI_AQL_NODE_FCALL)
-
-  // initialise
-  TRI_AQL_NODE_DATA(node) = NULL;
+  TRI_aql_node_t* node;
+  char* upperName;
 
   if (name == NULL) {
     ABORT_OOM
   }
 
-  {
-    TRI_aql_function_t* function;
-    TRI_associative_pointer_t* functions;
-
-    assert(context->_vocbase);
-    functions = context->_vocbase->_functions;
-    assert(functions);
-
-    function = TRI_GetByExternalNameFunctionAql(functions, name);
-
-    if (! function) {
-      // function name is unknown
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
-      return NULL;
-    }
-
-    // validate function call arguments
-    if (! TRI_ValidateArgsFunctionAql(context, function, parameters)) {
-      return NULL;
-    }
-
-    ADD_MEMBER(parameters)
-    TRI_AQL_NODE_DATA(node) = function;
+  if (strchr(name, TRI_AQL_NAMESPACE_SEPARATOR_CHAR) != NULL) {
+    upperName = TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, name);
   }
+  else {
+    char* tempName = TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, name);
+    upperName = TRI_Concatenate2String(TRI_AQL_DEFAULT_PREFIX, tempName);
+    TRI_Free(TRI_CORE_MEM_ZONE, tempName);
+  }
+
+  if (upperName == NULL) {
+    ABORT_OOM
+  }
+ 
+  if (*upperName == '_') {
+    // default internal namespace
+    node = CreateNodeInternalFcall(context, name, upperName, parameters);
+  }
+  else {
+    // user namespace
+    node = CreateNodeUserFcall(context, name, upperName, parameters);
+  }
+  TRI_Free(TRI_CORE_MEM_ZONE, upperName);
 
   return node;
 }

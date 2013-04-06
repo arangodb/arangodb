@@ -4,11 +4,16 @@ window.FoxxInstalledView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/foxxInstalledView.ejs'}),
   
   events: {
-    // 'click button#add': 'callback'
+    'click #install': 'installFoxx'
   },
   
   initialize: function(){
     _.bindAll(this, 'render');
+  },
+  
+  installFoxx: function(event) {
+    event.stopPropagation();
+    window.App.navigate("application/available/" + encodeURIComponent(this.model.get("_key")), {trigger: true});
   },
   
   render: function(){

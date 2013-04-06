@@ -5,7 +5,8 @@ window.AppDocumentationView = Backbone.View.extend({
   
   initialize: function() {
     this.swaggerUi = new SwaggerUi({
-        discoveryUrl:"../../aardvark/swagger",
+        discoveryUrl:"../aardvark/docus",
+
         apiKey: false,
         dom_id:"swagger-ui-container",
         supportHeaderParams: true,

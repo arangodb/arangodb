@@ -58,6 +58,19 @@ function CreateFoxxApplicationSpec () {
 
       assertEqual(routingInfo.middleware.length, 1);
       assertEqual(hopefully_base.url.match, "/*");
+    },
+
+    testAdditionOfRepositoryInRoutingInfo: function () {
+      var app = new FoxxApplication(),
+        routingInfo = app.routingInfo;
+
+      app.registerRepository("todos", {
+        model: "models/todo",
+        repository: "repositories/todos"
+      });
+
+      assertEqual(routingInfo.repositories.todos.model, "models/todo");
+      assertEqual(routingInfo.repositories.todos.repository, "repositories/todos");
     }
   };
 }
@@ -200,18 +213,17 @@ function SetRoutesFoxxApplicationSpec () {
 
     testStartAddsRequiresAndContext: function () {
       var myFunc = function () {},
-        routes = app.routingInfo.routes;
+        routingInfo = app.routingInfo,
+        context = {};
 
       app.requires = {
         a: 1
       };
       app.get('/simple/route', myFunc);
-      app.start({
-        context: "myContext"
-      });
+      app.start(context);
 
-      assertEqual(app.routingInfo.routes[0].action.context, "myContext");
-      assertEqual(app.routingInfo.routes[0].action.requiresLibs.a, 1);
+      assertEqual(context.requires.a, 1);
+      assertEqual(context.routingInfo, routingInfo);
     }
   };
 }
@@ -757,6 +769,117 @@ function FormatMiddlewareSpec () {
   };
 }
 
+function ModelSpec () {
+  var FoxxModel, TestModel, instance;
+
+  return {
+    setUp: function () {
+      FoxxModel = require('org/arangodb/foxx').Model;
+    },
+
+    testWithInitialData: function () {
+      instance = new FoxxModel({
+        a: 1
+      });
+
+      assertEqual(instance.get("a"), 1);
+      instance.set("a", 2);
+      assertEqual(instance.get("a"), 2);
+    },
+
+    testWithoutInitialData: function () {
+      instance = new FoxxModel();
+
+      assertEqual(instance.get("a"), undefined);
+      instance.set("a", 1);
+      assertEqual(instance.get("a"), 1);
+    },
+
+    testAddingAMethodWithExtend: function () {
+      TestModel = FoxxModel.extend({
+        getA: function() {
+          return this.get("a");
+        }
+      });
+
+      instance = new TestModel({
+        a: 5
+      });
+
+      assertEqual(instance.getA(), 5);
+    },
+
+    testOverwritingAMethodWithExtend: function () {
+      TestModel = FoxxModel.extend({
+        get: function() {
+          return 1;
+        }
+      });
+
+      instance = new TestModel({
+        a: 5
+      });
+
+      assertEqual(instance.get(), 1);
+    },
+
+    testHas: function () {
+      instance = new FoxxModel({
+        a: 1,
+        b: null
+      });
+
+      assertTrue(instance.has("a"));
+      assertFalse(instance.has("b"));
+      assertFalse(instance.has("c"));
+    },
+
+    testToJson: function () {
+      var raw = {
+        a: 1,
+        b: 2
+      };
+
+      instance = new FoxxModel(raw);
+
+      assertEqual(instance.toJSON(), raw);
+    }
+  };
+}
+
+function RepositorySpec () {
+  var FoxxRepository, TestRepository, instance, prefix, collection, modelPrototype;
+
+  return {
+    setUp: function () {
+      FoxxRepository = require('org/arangodb/foxx').Repository;
+      prefix = "myApp";
+      collection = function () {};
+      modelPrototype = function () {};
+    },
+
+    testWasInitialized: function () {
+      instance = new FoxxRepository(prefix, collection, modelPrototype);
+
+      assertEqual(instance.prefix, prefix);
+      assertEqual(instance.collection, collection);
+      assertEqual(instance.modelPrototype, modelPrototype);
+    },
+
+    testAddingAMethodWithExtend: function () {
+      TestRepository = FoxxRepository.extend({
+        test: function() {
+          return "test";
+        }
+      });
+
+      instance = new TestRepository(prefix, collection, modelPrototype);
+
+      assertEqual(instance.test(), "test");
+    }
+  };
+}
+
 jsunity.run(CreateFoxxApplicationSpec);
 jsunity.run(SetRoutesFoxxApplicationSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
@@ -765,5 +888,7 @@ jsunity.run(BaseMiddlewareWithoutTemplateSpec);
 jsunity.run(BaseMiddlewareWithTemplateSpec);
 jsunity.run(ViewHelperSpec);
 jsunity.run(FormatMiddlewareSpec);
+jsunity.run(ModelSpec);
+jsunity.run(RepositorySpec);
 
 return jsunity.done();

@@ -32,7 +32,10 @@ var Application,
   RequestContext,
   BaseMiddleware,
   FormatMiddleware,
+  Model,
+  Repository,
   _ = require("underscore"),
+  backbone_helpers = require("backbone"),
   db = require("org/arangodb").db,
   fs = require("fs"),
   console = require("console"),
@@ -41,16 +44,25 @@ var Application,
   internal = {};
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_createUrlObject
 /// @brief create a new url object
 ///
+/// This creates a new `UrlObject`.
 /// ArangoDB uses a certain structure we refer to as `UrlObject`.
 /// With the following function (which is only internal, and not
 /// exported) you can create an UrlObject with a given URL,
 /// a constraint and a method. For example:
 ///
 /// @EXAMPLES
-///     internal.createUrlObject('/lecker/gans', null, 'get')
+///
+/// @code
+///     internal.createUrlObject('/lecker/gans', null, 'get');
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 internal.createUrlObject = function (url, constraint, method) {
@@ -75,16 +87,18 @@ internal.createUrlObject = function (url, constraint, method) {
 /// @fn JSF_foxx_application_initializer
 /// @brief Create a new Application
 ///
-/// And that's Application. It's a constructor, so call it like this:
-/// It takes two optional arguments as displayed above:
+/// This creates a new Application. It takes two optional arguments as displayed above:
 /// * **The URL Prefix:** All routes you define within will be prefixed with it
 /// * **The Template Collection:** More information in the template section
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app = new Application({
 ///       urlPrefix: "/wiese",
 ///       templateCollection: "my_templates"
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 Application = function (options) {
@@ -119,6 +133,7 @@ Application = function (options) {
       action: {callback: myMiddleware.stringRepresentation}
     }
   ];
+  this.routingInfo.repositories = {};
 };
 
 _.extend(Application.prototype, {
@@ -135,17 +150,16 @@ _.extend(Application.prototype, {
 
   start: function (context) {
     'use strict';
-    var requires = this.requires,
-      prefix = context.prefix;
+    var prefix = context.prefix;
 
     this.routingInfo.urlPrefix = prefix + "/" + this.routingInfo.urlPrefix;
 
-    _.each(this.routingInfo.routes, function (route) {
-      route.action.context = context.context;
-      route.action.requiresLibs = requires;
-    });
-
+    context.requires = this.requires;
     context.routingInfo = this.routingInfo;
+  },
+
+  registerRepository: function (name, opts) {
+    this.routingInfo.repositories[name] = opts;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,10 +176,14 @@ _.extend(Application.prototype, {
 /// object).
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.handleRequest("get", "/gaense", function (req, res) {
 ///       //handle the request
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = {
@@ -207,9 +225,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.get('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   get: function (route, callback) {
     'use strict';
@@ -224,9 +245,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.post('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   post: function (route, callback) {
     'use strict';
@@ -241,9 +265,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.put('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   put: function (route, callback) {
     'use strict';
@@ -258,9 +285,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give. An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.patch('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   patch: function (route, callback) {
     'use strict';
@@ -275,10 +305,12 @@ _.extend(Application.prototype, {
 /// See above for the arguments you can give.
 /// **A word of warning:** Do not forget that `delete` is
 /// a reserved word in JavaScript and therefore needs to be
-/// called as `app['delete']`. There is also an alias `del`
+/// called as app['delete']. There is also an alias `del`
 /// for this very reason.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app['delete']('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
@@ -286,7 +318,9 @@ _.extend(Application.prototype, {
 ///     app.del('/gaense/stall', function (req, res) {
 ///       // Take this request and deal with it!
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   'delete': function (route, callback) {
     'use strict';
     return this.handleRequest("delete", route, callback);
@@ -309,10 +343,14 @@ _.extend(Application.prototype, {
 /// An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.before('/high/way', function(req, res) {
 ///       //Do some crazy request logging
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   before: function (path, func) {
     'use strict';
     if (_.isUndefined(func)) {
@@ -339,10 +377,14 @@ _.extend(Application.prototype, {
 /// An example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.after('/high/way', function(req, res) {
 ///       //Do some crazy response logging
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   after: function (path, func) {
     'use strict';
     if (_.isUndefined(func)) {
@@ -363,16 +405,20 @@ _.extend(Application.prototype, {
 /// @brief The ViewHelper concept
 ///
 /// If you want to use a function inside your templates, the ViewHelpers
-/// will come to rescue you. Define them on your app like this:
-///
-/// @EXAMPLES
-///     app.helper("link_to", function (identifier) {
-///       return urlRepository[identifier];
-///     });
+/// will come to rescue you. Define them on your app like in the example.
 ///
 /// Then you can just call this function in your template's JavaScript
 /// blocks.
+///
+/// @EXAMPLES
+///
+/// @code
+///     app.helper("link_to", function (identifier) {
+///       return urlRepository[identifier];
+///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   helper: function (name, func) {
     'use strict';
     this.helperCollection[name] = func;
@@ -382,12 +428,17 @@ _.extend(Application.prototype, {
 /// @fn JSF_foxx_application_accepts
 /// @brief Shortform for using the FormatMiddleware
 ///
+/// Shortform for using the FormatMiddleware
 /// More information about the FormatMiddleware in the corresponding section.
 /// This is a shortcut to add the middleware to your application:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.accepts(["json"], "json");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   accepts: function (allowedFormats, defaultFormat) {
     'use strict';
 
@@ -406,6 +457,7 @@ _.extend(Application.prototype, {
 ///
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
+
 RequestContext = function (route) {
   'use strict';
   this.route = route;
@@ -420,6 +472,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_pathParam
 /// @brief Describe a Path Parameter
 ///
+/// Describe a Path Paramter:
 /// If you defined a route "/foxx/:id", you can constrain which format the id
 /// can have by giving a type. We currently support the following types:
 ///
@@ -429,13 +482,17 @@ _.extend(RequestContext.prototype, {
 /// You can also provide a description of this parameter.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.get("/foxx/:id", function {
 ///       // Do something
 ///     }).pathParam("id", {
 ///       description: "Id of the Foxx",
 ///       dataType: "int"
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
   pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
@@ -459,6 +516,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_queryParam
 /// @brief Describe a Query Parameter
 ///
+/// Describe a Query Parameter:
 /// If you defined a route "/foxx", you can constrain which format a query
 /// parameter (`/foxx?a=12`) can have by giving it a type.
 /// We currently support the following types:
@@ -470,6 +528,8 @@ _.extend(RequestContext.prototype, {
 ///  if you can provide the parameter multiple times.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     app.get("/foxx", function {
 ///       // Do something
 ///     }).queryParam("id", {
@@ -478,6 +538,7 @@ _.extend(RequestContext.prototype, {
 ///       required: true,
 ///       allowMultiple: false
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
   queryParam: function (paramName, attributes) {
@@ -496,7 +557,7 @@ _.extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_nickname
-/// @brief Set the nickname for this route in the documentation
+/// Set the nickname for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
 
   nickname: function (nickname) {
@@ -512,6 +573,7 @@ _.extend(RequestContext.prototype, {
 /// @fn JSF_foxx_RequestContext_summary
 /// @brief Set the summary for this route in the documentation
 ///
+/// Set the summary for this route in the documentation
 /// Can't be longer than 60 characters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -527,6 +589,8 @@ _.extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_notes
 /// @brief Set the notes for this route in the documentation
+///
+/// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
@@ -560,6 +624,7 @@ _.extend(RequestContext.prototype, {
 /// The `BaseMiddleware` manipulates the request and response
 /// objects to give you a nicer API.
 ////////////////////////////////////////////////////////////////////////////////
+
 BaseMiddleware = function (templateCollection, helperCollection) {
   'use strict';
   var middleware = function (request, response, options, next) {
@@ -574,6 +639,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 ///
 /// Get the body of the request
 ////////////////////////////////////////////////////////////////////////////////
+
       body: function () {
         return this.requestBody;
       },
@@ -591,6 +657,7 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// So for example if the user requested `/test?a=2`, the call
 /// `params("a")` will return `2`.
 ////////////////////////////////////////////////////////////////////////////////
+
       params: function (key) {
         var ps = {};
         _.extend(ps, this.urlParameters);
@@ -607,7 +674,10 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// Set the status code of your response, for example:
 ///
 /// @EXAMPLES
-///     response.status(404);
+///
+/// @code
+///    response.status(404);
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
       status: function (code) {
         this.responseCode = code;
@@ -620,17 +690,20 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// Set a header attribute, for example:
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     response.set("Content-Length", 123);
 ///     response.set("Content-Type", "text/plain");
 ///
-/// or alternatively:
+///     // or alternatively:
 ///
-/// @EXAMPLES
 ///     response.set({
 ///       "Content-Length": "123",
 ///       "Content-Type": "text/plain"
 ///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
       set: function (key, value) {
         var attributes = {};
         if (_.isUndefined(value)) {
@@ -658,8 +731,12 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// JSON encoded object you provided.
 ///
 /// @EXAMPLES
+///
+/// @code
 ///     response.json({'born': 'December 12, 1915'});
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+
       json: function (obj) {
         this.contentType = "application/json";
         this.body = JSON.stringify(obj);
@@ -673,7 +750,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// you're in luck now.
 /// It expects documents in the following form in this collection:
 ///
-/// @EXAMPLES
 ///     {
 ///       path: "high/way",
 ///       content: "hallo <%= username %>",
@@ -690,8 +766,6 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// into the this collection and search by the path attribute.
 /// It will then render the template with the given data:
 ///
-/// @EXAMPLES
-///     response.render("high/way", {username: 'Application'})
 ///
 /// Which would set the body of the response to `hello Application` with the
 /// template defined above. It will also set the `contentType` to
@@ -700,6 +774,12 @@ BaseMiddleware = function (templateCollection, helperCollection) {
 /// In addition to the attributes you provided, you also have access to
 /// all your view helpers. How to define them? Read above in the
 /// ViewHelper section.
+///
+/// @EXAMPLES
+///
+/// @code
+///     response.render("high/way", {username: 'Application'})
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
       render: function (templatePath, data) {
         var template;
@@ -819,10 +899,148 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
   };
 };
 
-/// We finish off with exporting Application and the middlewares.
-/// Everything else will remain our secret.
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_initializer
+/// @brief Create a new instance of Model
+///
+/// If you initialize a model, you can give it initial data
+/// as an object.
+///
+/// @EXAMPLES
+///
+/// @code
+///     instance = new Model({
+///       a: 1
+///     });
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+Model = function (attributes) {
+  'use strict';
+
+  this.attributes = attributes || {};
+};
+
+_.extend(Model.prototype, {
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_get
+/// @brief Get the value of an attribute
+///
+/// Get the value of an attribute
+/// @EXAMPLES
+///
+/// @code
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.get("a");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+  get: function (attributeName) {
+    return this.attributes[attributeName];
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_set
+/// @brief Set the value of an attribute
+///
+/// Set the value of an attribute
+/// @EXAMPLES
+///
+/// @code
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.set("a", 2);
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+  set: function (attributeName, value) {
+    this.attributes[attributeName] = value;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_has
+/// @brief Returns true if the attribute is set to a non-null or non-undefined value.
+///
+/// Returns true if the attribute is set to a non-null or non-undefined value.
+/// @EXAMPLES
+///
+/// @code
+///     instance = new Model({
+///       a: 1
+///     });
+///
+///     instance.has("a"); //=> true
+///     instance.has("b"); //=> false
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+  has: function (attributeName) {
+    return !(_.isUndefined(this.attributes[attributeName]) ||
+             _.isNull(this.attributes[attributeName]));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_toJSON
+/// @brief Return a copy of the model which can be saved into ArangoDB
+///
+/// Return a copy of the model which can be saved into ArangoDB
+/// (or send to the client).
+////////////////////////////////////////////////////////////////////////////////
+
+  toJSON: function () {
+    return this.attributes;
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_model_extend
+/// @brief Extend the Model prototype to add or overwrite methods.
+///
+/// Extend the Model prototype to add or overwrite methods.
+////////////////////////////////////////////////////////////////////////////////
+
+Model.extend = backbone_helpers.extend;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_initializer
+/// @brief Create a new instance of Repository
+///
+/// Create a new instance of Repository
+/// A Foxx Repository is always initialized with the prefix, the collection and the modelPrototype.
+/// If you initialize a model, you can give it initial data as an object.
+///
+/// @EXAMPLES
+///
+/// @code
+///     instance = new Repository(prefix, collection, modelPrototype);
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+Repository = function (prefix, collection, modelPrototype) {
+  'use strict';
+
+  this.prefix = prefix;
+  this.collection = collection;
+  this.modelPrototype = modelPrototype;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_repository_extend
+/// @brief Extend the Repository prototype to add or overwrite methods.
+///
+/// Extend the Repository prototype to add or overwrite methods.
+////////////////////////////////////////////////////////////////////////////////
+
+Repository.extend = backbone_helpers.extend;
 
 exports.Application = Application;
+exports.Model = Model;
+exports.Repository = Repository;
 exports.BaseMiddleware = BaseMiddleware;
 exports.FormatMiddleware = FormatMiddleware;
 

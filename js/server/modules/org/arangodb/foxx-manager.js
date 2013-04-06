@@ -107,7 +107,7 @@ function buildAssetContent (app, assets) {
       content += c + "\n";
     }
     catch (err) {
-        console.error("cannot read asset '%s'", files[i]);
+      console.error("cannot read asset '%s'", files[i]);
     }
   }
 
@@ -126,6 +126,9 @@ function installAssets (app, routes) {
   var route;
 
   desc = app._manifest;
+  if (! desc) {
+    throw "invalid application manifest";
+  }
 
   if (desc.hasOwnProperty('assets')) {
     for (path in desc.assets) {
@@ -161,6 +164,7 @@ function installAssets (app, routes) {
           action: {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
+              root: app._id,
               path: fs.join(app._path, directory)
             }
           }
@@ -189,6 +193,10 @@ function executeAppScript (app, name, mount, prefix) {
   };
 
   desc = app._manifest;
+  
+  if (! desc) {
+    throw "invalid application manifest";
+  }
 
   if (desc.hasOwnProperty(name)) {
     var cp = appContext.collectionPrefix;
@@ -237,7 +245,7 @@ function teardownApp (app, mount, prefix) {
 /// @brief creates an app entry for aal
 ////////////////////////////////////////////////////////////////////////////////
 
-function upsertAalAppEntry (manifest, path) {
+function upsertAalAppEntry (manifest, thumbnail, path) {
   var aal = getStorage();
   var doc = aal.firstExample({ name: manifest.name, version: manifest.version });
 
@@ -247,12 +255,14 @@ function upsertAalAppEntry (manifest, path) {
       app: "app:" + manifest.name + ":" + manifest.version,
       name: manifest.name,
       version: manifest.version,
-      path: path
+      path: path,
+      thumbnail: thumbnail
     });
   }
   else {
-    if (doc.path !== path) {
+    if (doc.path !== path || doc.thumbnail !== thumbnail) {
       doc.path = path;
+      doc.thumbnail = thumbnail;
       aal.replace(doc, doc);
     }
   }
@@ -332,11 +342,25 @@ function routingAalApp (app, mount, prefix) {
       throw "mount point must be absolute";
     }
 
+    // compute the collection prefix
+    if (prefix === undefined) {
+      prefix = mount.substr(1).replace(/\//g, "_");
+    }
+
     // setup the routes
     routes = {
       urlPrefix: mount,
       routes: [],
-      middleware: []
+      middleware: [],
+      context: {},
+
+      appContext: {
+        name: app._name,                        // app name
+        version: app._version,                  // app version
+        appId: app._id,                         // app identifier
+        mount: mount,                           // global mount
+        collectionPrefix: prefix                // collection prefix
+      }
     };
 
     routes.routes.push({
@@ -350,11 +374,6 @@ function routingAalApp (app, mount, prefix) {
       }
     });
 
-    // compute the collection prefix
-    if (prefix === undefined) {
-      prefix = mount.substr(1).replace(/\//g, "_");
-    }
-
     // mount all applications
     apps = app._manifest.apps;
 
@@ -362,51 +381,67 @@ function routingAalApp (app, mount, prefix) {
       if (apps.hasOwnProperty(i)) {
         var file = apps[i];
 
-        // set up a context for the applications
+
+        // set up a context for the routing table
+        routes.context[i] = {
+          repositories: {},
+          requires: {}
+        };
+
+        // set up a context for the application start function
         context = {
           prefix: arangodb.normalizeURL("/" + i),   // app mount
-
-          context: {
-            name: app._name,                        // app name
-            version: app._version,                  // app version
-            appId: app._id,                         // app identifier
-            mount: mount,                           // global mount
-            collectionPrefix: prefix                // collection prefix
-          }
+          requires: {},
+          routingInfo: {}
         };
 
         app.loadAppScript(app.createAppModule(), file, context);
 
-        if (context.routingInfo !== undefined) {
-          var ri = context.routingInfo;
-          var p = ri.urlPrefix;
-          var route;
-          var j;
+        // .............................................................................
+        // routingInfo
+        // .............................................................................
 
-          if (ri.hasOwnProperty("routes")) {
-            for (j = 0;  j < ri.routes.length;  ++j) {
-              route = ri.routes[j];
+        var ri = context.routingInfo;
+        var p = ri.urlPrefix;
+        var route;
+        var j;
+        var k;
+
+        var rm = [ "routes", "middleware" ];
+
+        for (k = 0;  k < rm.length;  ++k) {
+          var key = rm[k];
+
+          if (ri.hasOwnProperty(key)) {
+            var rt = ri[key];
+
+            for (j = 0;  j < rt.length;  ++j) {
+              route = rt[j];
 
               if (route.hasOwnProperty("url")) {
                 route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
               }
 
-              routes.routes.push(route);
+              route.context = i;
+
+              routes[key].push(route);
             }
           }
 
-          if (ri.hasOwnProperty("middleware")) {
-            for (j = 0;  j < ri.middleware.length;  ++j) {
-              route = ri.middleware[j];
+          // .............................................................................
+          // repositories
+          // .............................................................................
 
-              if (route.hasOwnProperty("url")) {
-                route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
-              }
-
-              routes.middleware.push(route);
-            }
+          if (ri.hasOwnProperty("repositories")) {
+            routes.context[i].repositories = ri.repositories;
           }
         }
+
+        // .............................................................................
+        // requires
+        // .............................................................................
+
+        routes.context[i].requires = context.requires;
       }
     }
 
@@ -462,12 +497,24 @@ exports.scanAppDirectory = function () {
 
     if (fs.exists(m)) {
       try {
+        var thumbnail;
         var mf = JSON.parse(fs.read(m));
 
-        upsertAalAppEntry(mf, files[j]);
+        if (mf.hasOwnProperty('thumbnail') && mf.thumbnail !== null && mf.thumbnail !== '') {
+          var p = fs.join(path, files[j], mf.thumbnail);
+
+          try {
+            thumbnail = fs.read64(p);
+          }
+          catch (err2) {
+            console.error("cannot read thumbnail: %s", String(err2.stack || err2));
+          }
+        }
+
+        upsertAalAppEntry(mf, thumbnail, files[j]);
       }
       catch (err) {
-        console.error("cannot read app manifest '%s': %s", m, String(err));
+        console.error("cannot read app manifest '%s': %s", m, String(err.stack || err));
       }
     }
   }
@@ -571,8 +618,8 @@ exports.installDevApp = function (name, mount, options) {
 
   var path = module.devAppPath();
 
-  if (typeof path === "undefined") {
-    throw "dev-app-path is not set, cannot instal development app '" + name + "'";
+  if (typeof path === "undefined" || path === "") {
+    throw "dev-app-path is not set, cannot install development app '" + name + "'";
   }
 
   var appId = null;

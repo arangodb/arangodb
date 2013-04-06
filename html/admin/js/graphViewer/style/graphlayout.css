@@ -1,36 +1,9 @@
-.link {
-  fill: none;
-  stroke: #666;
-  stroke-width: 1px;
-}
-
-.edgegradient {
-  stroke: url("#edgegradient");
-}
-
-.node circle {
-  cursor: pointer;
-  fill: #ccc;
-  stroke: #fff;
-  stroke-width: 1px;
-}
-
-circle.expanded {
-  fill: #8AA051;
-}
-
-circle.collapsed {
-  fill: #FF8F35;
-}
-
 text {
   font: 10px sans-serif;
   pointer-events: none;
+  stroke: #fff;
+  stroke-width: 1px;
 }
-marker#arrow {
-  fill: #666;
-}
-
 
 capitalize {
     text-transform:capitalize;
