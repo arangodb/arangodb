@@ -344,6 +344,11 @@
 
         return true;
     });
+    
+    // set up the collection _aqlfunctions
+    addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
+      return createSystemCollection("_aqlfunctions", { waitForSync : false });
+    });
 
     // set up the collection _aalFishbowl
     addTask("setupAalFishbowl", "setup _aalFishbowl collection", function () {

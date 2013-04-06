@@ -143,6 +143,14 @@ ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restrict
 ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fulltext query on '%s'","Will be raised when a fulltext query is performed on a collection without a suitable fulltext index."
 
 ################################################################################
+## AQL user functions
+################################################################################
+
+ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be raised when a user function with an invalid name is registered."
+ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
+ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function not found","Will be raised when a user function is accessed but not found."
+
+################################################################################
 ## ArangoDB cursor errors
 ################################################################################
 
@@ -157,6 +165,7 @@ ERROR_TRANSACTION_INVALID_STATE,1651,"invalid transaction state","Will be raised
 ERROR_TRANSACTION_NESTED,1652,"nested transactions detected","Will be raised when transactions are nested."
 ERROR_TRANSACTION_INTERNAL,1653,"internal transaction error","Will be raised when a wrong usage of transactions is detected. this is an internal error and indicates a bug in ArangoDB."
 ERROR_TRANSACTION_UNREGISTERED_COLLECTION,1654,"unregistered collection used in transaction","Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start."
+ERROR_TRANSACTION_DISALLOWED_OPERATION,1655,"disallowed operation inside a transaction","Will be raised when a disallowed operation is carried out in a transaction."
 
 ################################################################################
 ## User management
@@ -172,6 +181,9 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ################################################################################
 
 ERROR_APPLICATION_NOT_FOUND,1750,"application not found","Will be raised when an application is not found or not present in the specified version."
+ERROR_APPLICATION_INVALID_NAME,1751,"invalid application name","Will be raised when an invalid application name is specified."
+ERROR_APPLICATION_INVALID_MOUNT,1752,"invalid mount","Will be raised when an invalid mount is specified."
+ERROR_APPLICATION_DOWNLOAD_FAILED,1753,"application download failed","Will be raised when an application download from the central repository failed."
 
 ################################################################################
 ## Key value access

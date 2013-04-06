@@ -232,6 +232,12 @@ extern "C" {
 /// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
 ///   Will be raised when a fulltext query is performed on a collection without
 ///   a suitable fulltext index.
+/// - 1580: @LIT{invalid user function name}
+///   Will be raised when a user function with an invalid name is registered.
+/// - 1581: @LIT{invalid user function code}
+///   Will be raised when a user function is registered with invalid code.
+/// - 1582: @LIT{user function not found}
+///   Will be raised when a user function is accessed but not found.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -249,6 +255,9 @@ extern "C" {
 /// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
+/// - 1655: @LIT{disallowed operation inside a transaction}
+///   Will be raised when a disallowed operation is carried out in a
+///   transaction.
 /// - 1700: @LIT{invalid user name}
 ///   Will be raised when an invalid user name is used
 /// - 1701: @LIT{invalid password}
@@ -260,6 +269,13 @@ extern "C" {
 /// - 1750: @LIT{application not found}
 ///   Will be raised when an application is not found or not present in the
 ///   specified version.
+/// - 1751: @LIT{invalid application name}
+///   Will be raised when an invalid application name is specified.
+/// - 1752: @LIT{invalid mount}
+///   Will be raised when an invalid mount is specified.
+/// - 1753: @LIT{application download failed}
+///   Will be raised when an application download from the central repository
+///   failed.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -1382,6 +1398,36 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
+///
+/// invalid user function name
+///
+/// Will be raised when a user function with an invalid name is registered.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_NAME                             (1580)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1581: ERROR_QUERY_FUNCTION_INVALID_CODE
+///
+/// invalid user function code
+///
+/// Will be raised when a user function is registered with invalid code.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_INVALID_CODE                             (1581)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1582: ERROR_QUERY_FUNCTION_NOT_FOUND
+///
+/// user function not found
+///
+/// Will be raised when a user function is accessed but not found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND                                (1582)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
 ///
 /// cursor not found
@@ -1447,6 +1493,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1655: ERROR_TRANSACTION_DISALLOWED_OPERATION
+///
+/// disallowed operation inside a transaction
+///
+/// Will be raised when a disallowed operation is carried out in a transaction.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1655)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME
 ///
 /// invalid user name
@@ -1496,6 +1552,37 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1751: ERROR_APPLICATION_INVALID_NAME
+///
+/// invalid application name
+///
+/// Will be raised when an invalid application name is specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1751)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1752: ERROR_APPLICATION_INVALID_MOUNT
+///
+/// invalid mount
+///
+/// Will be raised when an invalid mount is specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1752)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1753: ERROR_APPLICATION_DOWNLOAD_FAILED
+///
+/// application download failed
+///
+/// Will be raised when an application download from the central repository
+/// failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

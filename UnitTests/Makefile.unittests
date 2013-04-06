@@ -210,6 +210,7 @@ endif
 ################################################################################
 
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
+               @top_srcdir@/js/common/tests/shell-aqlfunctions.js \
                @top_srcdir@/js/common/tests/shell-attributes.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-collection-volatile.js \
@@ -231,13 +232,16 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-require.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
 
-SHELL_SERVER = $(SHELL_COMMON) \
+SHELL_SERVER_ONLY = \
+               @top_srcdir@/js/server/tests/transactions.js \
                @top_srcdir@/js/server/tests/routing.js \
                @top_srcdir@/js/common/tests/shell-foxx.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
                @top_srcdir@/js/common/tests/shell-skiplist-index.js
+
+SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
 
 .PHONY: unittests-shell-server
 
@@ -247,7 +251,7 @@ UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 unittests-shell-server:
 	@echo
 	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (BASICS)                                                >>"
+	@echo "<< SHELL SERVER TESTS (ALL)                                                   >>"
 	@echo "================================================================================"
 	@echo
 
@@ -258,6 +262,28 @@ unittests-shell-server:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
+
+
+.PHONY: unittests-shell-server-only
+
+UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY))
+
+
+unittests-shell-server-only:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL SERVER TESTS (SERVER-ONLY)                                           >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir "$(VOCDIR)"
+
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_ONLY) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (AHUACATL)

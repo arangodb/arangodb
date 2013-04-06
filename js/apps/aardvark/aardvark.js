@@ -33,17 +33,36 @@
   "use strict";
 
   // Initialise a new FoxxApplication called app under the urlPrefix: "foxxes".
-  var FoxxApplication = require("org/arangodb/foxx").FoxxApplication,
+  var FoxxApplication = require("org/arangodb/foxx").Application,
     app = new FoxxApplication();
   
-  app.requiresModels = {
-    foxxes: "foxxes",
-    swagger: "swagger"
-  };
-
+  app.registerRepository(
+    "foxxes",
+    {
+      repository: "repositories/foxxes"
+    }
+  );
+  
+  app.registerRepository(
+    "docus",
+    {
+      repository: "repositories/swagger"
+    }
+  );
+  
+  app.put("/foxxes/install", function (req, res) {
+    var content = JSON.parse(req.requestBody),
+      name = content.name,
+      mount = content.mount,
+      version = content.version;
+      res.json(repositories.foxxes.install(name, mount, version));
+  }).nickname("foxxinstall")
+  .summary("Installs a new foxx")
+  .notes("This function is used to install a new foxx.");
+  
   
   app.del("/foxxes/:key", function (req, res) {
-    res.json(foxxes.uninstall(req.params("key")));
+    res.json(repositories.foxxes.uninstall(req.params("key")));
   }).pathParam("key", {
     description: "The _key attribute, where the information of this Foxx-Install is stored.",
     dataType: "string",
@@ -58,9 +77,9 @@
     active = content.active;
     // TODO: Other changes applied to foxx! e.g. Mount
     if (active) {
-      res.json(foxxes.activate());
+      res.json(repositories.foxxes.activate());
     } else {
-      res.json(foxxes.deactivate());
+      res.json(repositories.foxxes.deactivate());
     }
   }).pathParam("key", {
     description: "The _key attribute, where the information of this Foxx-Install is stored.",
@@ -68,26 +87,36 @@
     required: true,
     allowMultiple: false
   }).nickname("foxxes")
-  .summary("List of all foxxes.")
-  .notes("This function simply returns the list of all running"
-   + " foxxes and supplies the paths for the swagger documentation");
-  
-  
-  app.get('/foxxes', function (req, res) {
-    res.json(foxxes.viewAll());
-  }).nickname("foxxes")
   .summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
   
-  app.get('/swagger', function (req, res) {
-    res.json(swagger.list());
-  }).nickname("swaggers")
+  app.get("/foxxes/thumbnail/:app", function (req, res) {
+    res.transformations = [ "base64decode" ];
+    res.body = repositories.foxxes.thumbnail(req.params("app"));
+  });
+  
+  
+  app.get('/foxxes', function (req, res) {
+    res.json(repositories.foxxes.viewAll());
+  }).nickname("foxxes")
   .summary("List of all foxxes.")
+  .notes("This function simply returns the list of all running foxxes");
+  
+  app.get('/docus', function (req, res) {
+    res.json(repositories.docus.list("http://" + req.headers.host + req.path + "/"));
+  }).nickname("swaggers")
+  .summary("List documentation of all foxxes.")
   .notes("This function simply returns the list of all running"
    + " foxxes and supplies the paths for the swagger documentation");
   
-  app.get('/swagger/:appname', function(req, res) {
-    res.json(swagger.show(req.params("appname")))
+  app.get('/docus/*', function(req, res) {
+    var mountPoint = "";
+    require("underscore").each(req.suffix, function(part) {
+      mountPoint += "/" + part;
+    });
+    
+    //require("console").log(JSON.stringify(req));
+    res.json(repositories.docus.show(mountPoint))
   }).pathParam("appname", {
     description: "The mount point of the App the documentation should be requested for",
     dataType: "string",

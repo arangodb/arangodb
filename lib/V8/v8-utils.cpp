@@ -1491,9 +1491,10 @@ static v8::Handle<v8::Value> JS_Rand (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
 ///
-/// @FUN{internal.read(@FA{filename})}
+/// @FUN{fs.read(@FA{filename})}
 ///
-/// Reads in a file and returns the content as string.
+/// Reads in a file and returns the content as string. Please note that the
+/// file content must be encoded in UTF-8.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
@@ -1520,6 +1521,41 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a file as base64
+///
+/// @FUN{fs.read64(@FA{filename})}
+///
+/// Reads in a file and returns the content as string. The file content is
+/// Base64 encoded.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "read(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
+  }
+
+  string base64;
+
+  try {
+    string content = FileUtils::slurp(*name);
+    base64 = StringUtils::encodeBase64(content);
+  }
+  catch (...) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
+  }
+
+  return scope.Close(v8::String::New(base64.c_str()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2363,6 +2399,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_STATISTICS", JS_RequestStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);

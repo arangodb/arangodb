@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Edge Shaper UI', function () {
-    var svg, shaper, shaperUI, list, spy;
+    var svg, shaper, shaperUI, list;
 
     beforeEach(function () {
       svg = document.createElement("svg");
@@ -120,12 +120,93 @@
       
     });
     
+    it('should be able to add a switch single colour control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticSingleColour();
+      
+        expect($("#control_list #control_singlecolour").length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_singlecolour");
+        $("#control_singlecolour_stroke").attr("value", "#123456");
+        helper.simulateMouseEvent("click", "control_singlecolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "single",
+            stroke: "#123456"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_singlecolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    it('should be able to add a switch colour on attribute control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticAttributeColour();
+      
+        expect($("#control_list #control_attributecolour").length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_attributecolour");
+        $("#control_attributecolour_key").attr("value", "label");
+        helper.simulateMouseEvent("click", "control_attributecolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_attributecolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    it('should be able to add a switch colour to gradient control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticGradientColour();
+      
+        expect($("#control_list #control_gradientcolour").length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_gradientcolour");
+        $("#control_gradientcolour_source").attr("value", "#123456");
+        $("#control_gradientcolour_target").attr("value", "#654321");
+        helper.simulateMouseEvent("click", "control_gradientcolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "gradient",
+            source: "#123456",
+            target: "#654321"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_gradientcolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    
+    
+    
+    
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
       expect($("#control_list #control_none").length).toEqual(1);
       expect($("#control_list #control_arrow").length).toEqual(1);
       expect($("#control_list #control_label").length).toEqual(1);
+      expect($("#control_list #control_singlecolour").length).toEqual(1);
+      expect($("#control_list #control_attributecolour").length).toEqual(1);
+      expect($("#control_list #control_gradientcolour").length).toEqual(1);
       
     });
     
@@ -140,6 +221,9 @@
       expect($("#control_list #control_none").length).toEqual(1);
       expect($("#control_list #control_arrow").length).toEqual(1);
       expect($("#control_list #control_label").length).toEqual(1);
+      expect($("#control_list #control_singlecolour").length).toEqual(1);
+      expect($("#control_list #control_attributecolour").length).toEqual(1);
+      expect($("#control_list #control_gradientcolour").length).toEqual(1);
       
     });
   });

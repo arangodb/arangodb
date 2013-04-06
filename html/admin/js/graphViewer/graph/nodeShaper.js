@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
+/*global ColourMapper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -66,28 +67,32 @@ function NodeShaper(parent, flags, idfunc) {
     noop = function (node) {
     
     },
-    events = {
-      click: noop,
-      dblclick: noop,
-      drag: noop,
-      mousedown: noop,
-      mouseup: noop,
-      mousemove: noop
-    },
+    colourMapper = new ColourMapper(),
+    events,
+    addUpdate,
     idFunction = function(d) {
       return d._id;
     },
-    addUpdate = noop,
     addColor = noop,
     addShape = noop,
     addLabel = noop,
+    
+    unbindEvents = function() {
+     events = {
+       click: noop,
+       dblclick: noop,
+       drag: noop,
+       mousedown: noop,
+       mouseup: noop,
+       mousemove: noop
+     };
+     addUpdate = noop;
+    },
     
     addEvents = function (nodes) {
       _.each(events, function (func, type) {
         if (type === "drag") {
           nodes.call(func);
-        } else if (type === "update") {
-          addUpdate = func;
         } else {
           nodes.on(type, func);
         }
@@ -107,8 +112,9 @@ function NodeShaper(parent, flags, idfunc) {
         addUpdate = func;
       } else if (events[type] === undefined) {
         throw "Sorry Unknown Event " + type + " cannot be bound.";
+      } else {
+        events[type] = func;
       }
-      events[type] = func;
     },
     
     shapeNodes = function (nodes) {
@@ -187,12 +193,16 @@ function NodeShaper(parent, flags, idfunc) {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", "black")
+            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (node) {
           node.append("text") // Append a label for the node
             .attr("text-anchor", "middle") // Define text-anchor
+            .attr("fill", "black")
+            .attr("stroke", "black")
             .text(function(d) { 
               return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
             });
@@ -201,8 +211,13 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     parseActionFlag = function (actions) {
+      if (actions.reset !== undefined && actions.reset) {
+        unbindEvents();
+      }
       _.each(actions, function(func, type) {
-        bindEvent(type, func);
+        if (type !== "reset") {
+          bindEvent(type, func);
+        }
       });
     },
     
@@ -225,6 +240,11 @@ function NodeShaper(parent, flags, idfunc) {
           };
           break;
         case "attribute":
+          addColor = function (g) {
+             g.attr("fill", function(n) {
+               return colourMapper.getColour(n[color.key]);
+             });
+          };
           break; 
         default:
           throw "Sorry given colour-scheme not known";
@@ -249,9 +269,26 @@ function NodeShaper(parent, flags, idfunc) {
     
   self.parent = parent;
   
-  if (flags !== undefined) {
-    parseConfig(flags);
-  } 
+  unbindEvents();
+  
+  if (flags === undefined) {
+    flags = {
+      color: {
+        type: "single",
+        fill: "#FF8F35",
+        stroke: "#8AA051"
+      }
+    };
+  }
+  
+  if (flags.color === undefined) {
+    flags.color = {
+      type: "single",
+      fill: "#FF8F35",
+      stroke: "#8AA051"
+    }; 
+  }
+  parseConfig(flags);
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;

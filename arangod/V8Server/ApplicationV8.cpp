@@ -28,6 +28,9 @@
 #include "ApplicationV8.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/FileUtils.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
@@ -121,6 +124,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
+  MUTEX_LOCKER(_globalMethodsLock);
+
   _globalMethods.push_back(method);
 }
 
@@ -130,6 +135,8 @@ void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
   v8::HandleScope scope;
+  
+  MUTEX_LOCKER(_globalMethodsLock);
 
   for (vector<string>::iterator i = _globalMethods.begin();  i != _globalMethods.end();  ++i) {
     string const& func = *i;
@@ -278,6 +285,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
   context->_isolate->Enter();
   context->_context->Enter();
 
+  LOGGER_TRACE("entering V8 context " << context->_id);
   context->handleGlobalContextMethods();
 
   if (_developmentMode && ! initialise) {
@@ -300,6 +308,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   assert(gc != 0);
 
+  LOGGER_TRACE("leaving V8 context " << context->_id);
   double lastGc = gc->getLastGcStamp();
 
   CONDITION_LOCKER(guard, _contextCondition);
@@ -337,24 +346,8 @@ void ApplicationV8::exitContext (V8Context* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::addGlobalContextMethod (string const& method) {
-  CONDITION_LOCKER(guard, _contextCondition);
-
-  for (vector<V8Context*>::iterator i = _freeContexts.begin();  i != _freeContexts.end();  ++i) {
-    V8Context* context = *i;
-
-    context->addGlobalContextMethod(method);
-  }
-
-  for (vector<V8Context*>::iterator i = _dirtyContexts.begin();  i != _dirtyContexts.end();  ++i) {
-    V8Context* context = *i;
-
-    context->addGlobalContextMethod(method);
-  }
-
-  for (set<V8Context*>::iterator i = _busyContexts.begin();  i != _busyContexts.end();  ++i) {
-    V8Context* context = *i;
-
-    context->addGlobalContextMethod(method);
+  for (size_t i = 0; i < _nrInstances; ++i) {
+    _contexts[i]->addGlobalContextMethod(method);
   }
 }
 
@@ -587,8 +580,21 @@ bool ApplicationV8::prepare () {
 
     LOGGER_INFO("JavaScript using " << StringUtils::join(paths, ", "));
   }
+  
+  // check whether app-paths exist
+  if (! _appPath.empty() && ! FileUtils::isDirectory(_appPath.c_str())) {
+    LOGGER_ERROR("specified app-path '" << _appPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
+  }
+
+  if (! _devAppPath.empty() && ! FileUtils::isDirectory(_devAppPath.c_str())) {
+    LOGGER_ERROR("specified dev-app-path '" << _devAppPath << "' does not exist.");
+    // TODO: decide if we want to abort server start here
+  }
+
 
   _startupLoader.setDirectory(_startupPath);
+  
 
   // check for development mode
   if (! _devAppPath.empty()) {

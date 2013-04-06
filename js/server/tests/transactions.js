@@ -130,7 +130,8 @@ function transactionCollectionsSuite () {
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
-  var c1, c2;
+  var c1 = null;
+  var c2 = null;
 
   return {
 
@@ -373,6 +374,327 @@ function transactionCollectionsSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function transactionOperationsSuite () {
+  var cn1 = "UnitTestsTransaction1";
+  var cn2 = "UnitTestsTransaction2";
+
+  var c1 = null;
+  var c2 = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      if (c1 !== null) {
+        c1.drop();
+      }
+
+      c1 = null;
+      
+      if (c2 !== null) {
+        c2.drop();
+      }
+
+      c2 = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreate : function () {
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          db._create(cn1);
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with drop operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDrop : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.drop();
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with rename operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testRename : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.rename(cn2);
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateHashConstraint : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureUniqueConstraint("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateHashIndex : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureHashIndex("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateSkiplistIndex : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureSkiplist("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateSkiplistConstraint : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureUniqueSkiplist("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateFulltextIndex : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureFulltextIndex("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateGeoIndex : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureGeoIndex("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateGeoConstraint : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensureGeoConstraint("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with drop index operation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndex : function () {
+      c1 = db._create(cn1);
+      var idx = c1.ensureUniqueConstraint("foo");
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.dropIndex(idx.id);
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
@@ -382,6 +704,7 @@ function transactionCollectionsSuite () {
 
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
+jsunity.run(transactionOperationsSuite);
 
 return jsunity.done();
 

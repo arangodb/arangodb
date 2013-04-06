@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Node Shaper UI', function () {
-    var svg, shaper, shaperUI, list, spy;
+    var svg, shaper, shaperUI, list;
 
     beforeEach(function () {
       svg = document.createElement("svg");
@@ -155,6 +155,83 @@
       
     });
     
+    it('should be able to add a switch single colour control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticSingleColour();
+      
+        expect($("#control_list #control_singlecolour").length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_singlecolour");
+        $("#control_singlecolour_fill").attr("value", "#123456");
+        $("#control_singlecolour_stroke").attr("value", "#654321");
+        helper.simulateMouseEvent("click", "control_singlecolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "single",
+            fill: "#123456",
+            stroke: "#654321"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_singlecolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    it('should be able to add a switch colour on attribute control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticAttributeColour();
+      
+        expect($("#control_list #control_attributecolour").length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_attributecolour");
+        $("#control_attributecolour_key").attr("value", "label");
+        helper.simulateMouseEvent("click", "control_attributecolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "attribute",
+            key: "label"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_attributecolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    it('should be able to add a switch colour on expand status control to the list', function() {
+      runs(function() {
+        shaperUI.addControlOpticExpandColour();
+      
+        expect($("#control_list #control_expandcolour").length).toEqual(1);
+      
+        helper.simulateMouseEvent("click", "control_expandcolour");
+        $("#control_expandcolour_expanded").attr("value", "#123456");
+        $("#control_expandcolour_collapsed").attr("value", "#654321");
+        helper.simulateMouseEvent("click", "control_expandcolour_submit");
+      
+        expect(shaper.changeTo).toHaveBeenCalledWith({
+          color: {
+            type: "expand",
+            expanded: "#123456",
+            collapsed: "#654321"
+          }
+        });
+      });
+      
+      waitsFor(function() {
+        return $("#control_expandcolour_modal").length === 0;
+      }, 2000, "The modal dialog should disappear.");
+      
+    });
+    
+    
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
       
@@ -162,7 +239,9 @@
       expect($("#control_list #control_circle").length).toEqual(1);
       expect($("#control_list #control_rect").length).toEqual(1);
       expect($("#control_list #control_label").length).toEqual(1);
-      
+      expect($("#control_list #control_singlecolour").length).toEqual(1);
+      expect($("#control_list #control_attributecolour").length).toEqual(1);
+      expect($("#control_list #control_expandcolour").length).toEqual(1);
     });
     
     it('should be able to add all action controls to the list', function () {
@@ -177,7 +256,9 @@
       expect($("#control_list #control_circle").length).toEqual(1);
       expect($("#control_list #control_rect").length).toEqual(1);
       expect($("#control_list #control_label").length).toEqual(1);
-      
+      expect($("#control_list #control_singlecolour").length).toEqual(1);
+      expect($("#control_list #control_attributecolour").length).toEqual(1);
+      expect($("#control_list #control_expandcolour").length).toEqual(1);
     });
   });
 
