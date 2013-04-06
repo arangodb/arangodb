@@ -39,7 +39,7 @@ var arangosh = require("org/arangodb/arangosh");
 var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 var arango = internal.arango;
-var db = internal.db;
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -59,6 +59,14 @@ function getStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the fishbow repository
+////////////////////////////////////////////////////////////////////////////////
+
+function getFishbowl (version) {
+  return "triAGENS/ArangoDB-Apps";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +83,7 @@ function buildGithubUrl (repository, version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildGithubFishbowlUrl (name) {
-  return "https://raw.github.com/triAGENS/ArangoDB-Apps/master/Fishbowl/" + name + ".json";
+  return "https://raw.github.com/" + getFishbowl() + "/master/Fishbowl/" + name + ".json";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,6 +348,54 @@ function processSource (src) {
 
   return response.filename;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads the fishbowl repository
+////////////////////////////////////////////////////////////////////////////////
+
+function updateFishbowl () {
+  var i;
+
+  var url = buildGithubUrl(getFishbowl());
+  var filename = fs.getTempFile("downloads", false); 
+  var path = fs.getTempFile("zip", false); 
+
+  try {
+    var result = internal.download(url, "get", filename);
+
+    if (result.code < 200 || result.code > 299) {
+      throw "github download failed";
+    }
+
+    fs.unzipFile(filename, path, false, true);
+    fs.remove(filename);
+
+    filename = undefined;
+  }
+  catch (err) {
+    if (filename !== undefined) {
+      fs.remove(filename);
+    }
+
+    fs.removeDirectoryRecursive(path);
+
+    throw new Error("could not download from repository '" + url + "':" + String(err));
+  }
+
+  var files = fs.list(fs.join(path, "ArangoDB-Apps-master/Fishbowl"));
+
+  for (i = 0;  i < files.length;  ++i) {
+    var file = files[i];
+    
+    if (/\.json$/.test(file)) {
+      console.log(file);
+    }
+  }
+
+  fs.removeDirectoryRecursive(path);
+}
+
+exports.updateFishbowl = updateFishbowl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
