@@ -50,7 +50,7 @@
   var db = internal.db;
 
   // path to the VERSION file
-  var versionFile = internal.DATABASEPATH + "/VERSION";
+  var versionFile = internal.db._path + "/VERSION";
 
   function runUpgrade (currentVersion) {
     var allTasks = [ ];
