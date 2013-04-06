@@ -1810,7 +1810,7 @@ yyreduce:
       }
       
       node = TRI_CreateNodeForAql(context, (yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -1826,7 +1826,7 @@ yyreduce:
 #line 225 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeFilterAql(context, (yyvsp[(2) - (2)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -1842,7 +1842,7 @@ yyreduce:
 #line 238 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeLetAql(context, (yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -1859,7 +1859,7 @@ yyreduce:
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -1873,7 +1873,7 @@ yyreduce:
 #line 259 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackParseAql(context), (yyvsp[(4) - (4)].strval));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -1905,7 +1905,7 @@ yyreduce:
 #line 279 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeAssignAql(context, (yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -1940,7 +1940,7 @@ yyreduce:
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
       
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -1955,7 +1955,7 @@ yyreduce:
     {
       TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -1993,7 +1993,7 @@ yyreduce:
 #line 336 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeSortElementAql(context, (yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].boolval));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2034,7 +2034,7 @@ yyreduce:
 #line 359 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), (yyvsp[(2) - (2)].node)); 
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -2051,7 +2051,7 @@ yyreduce:
 #line 370 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, (yyvsp[(2) - (4)].node), (yyvsp[(4) - (4)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -2067,7 +2067,7 @@ yyreduce:
 #line 383 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeReturnAql(context, (yyvsp[(2) - (2)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
       
@@ -2208,7 +2208,7 @@ yyreduce:
       }
 
       node = TRI_CreateNodeListAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2223,7 +2223,7 @@ yyreduce:
     {
       TRI_aql_node_t* list = TRI_PopStackParseAql(context);
       TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackParseAql(context), list);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2237,7 +2237,7 @@ yyreduce:
 #line 489 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryPlusAql(context, (yyvsp[(2) - (2)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2251,7 +2251,7 @@ yyreduce:
 #line 497 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryMinusAql(context, (yyvsp[(2) - (2)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2265,7 +2265,7 @@ yyreduce:
 #line 505 "arangod/Ahuacatl/ahuacatl-grammar.y"
     { 
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryNotAql(context, (yyvsp[(2) - (2)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2279,7 +2279,7 @@ yyreduce:
 #line 516 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryOrAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2293,7 +2293,7 @@ yyreduce:
 #line 524 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryAndAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2307,7 +2307,7 @@ yyreduce:
 #line 532 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryPlusAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2321,7 +2321,7 @@ yyreduce:
 #line 540 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryMinusAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2335,7 +2335,7 @@ yyreduce:
 #line 548 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryTimesAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2349,7 +2349,7 @@ yyreduce:
 #line 556 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryDivAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2363,7 +2363,7 @@ yyreduce:
 #line 564 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryModAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2377,7 +2377,7 @@ yyreduce:
 #line 572 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryEqAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2391,7 +2391,7 @@ yyreduce:
 #line 580 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryNeAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2405,7 +2405,7 @@ yyreduce:
 #line 588 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryLtAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2419,7 +2419,7 @@ yyreduce:
 #line 596 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryGtAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2433,7 +2433,7 @@ yyreduce:
 #line 604 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryLeAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2447,7 +2447,7 @@ yyreduce:
 #line 612 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryGeAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2461,7 +2461,7 @@ yyreduce:
 #line 620 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorBinaryInAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2475,7 +2475,7 @@ yyreduce:
 #line 631 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorTernaryAql(context, (yyvsp[(1) - (5)].node), (yyvsp[(3) - (5)].node), (yyvsp[(5) - (5)].node));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2541,7 +2541,7 @@ yyreduce:
 #line 667 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2602,7 +2602,7 @@ yyreduce:
 #line 700 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeArrayAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2694,7 +2694,7 @@ yyreduce:
       // create a temporary variable for the row iterator (will be popped by "expansion" rule")
       node = TRI_CreateNodeReferenceAql(context, varname);
 
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2750,7 +2750,7 @@ yyreduce:
         node = TRI_CreateNodeCollectionAql(context, (yyvsp[(1) - (1)].strval));
       }
 
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2881,7 +2881,7 @@ yyreduce:
 #line 881 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueStringAql(context, (yyvsp[(1) - (1)].strval));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2917,7 +2917,7 @@ yyreduce:
       }
       
       node = TRI_CreateNodeValueDoubleAql(context, value);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2931,7 +2931,7 @@ yyreduce:
 #line 913 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueNullAql(context);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2945,7 +2945,7 @@ yyreduce:
 #line 921 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, true);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2959,7 +2959,7 @@ yyreduce:
 #line 929 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, false);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -2973,7 +2973,7 @@ yyreduce:
 #line 940 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeParameterAql(context, (yyvsp[(1) - (1)].strval));
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
@@ -3031,7 +3031,7 @@ yyreduce:
       }
 
       node = TRI_CreateNodeValueIntAql(context, value);
-      if (! node) {
+      if (node == NULL) {
         ABORT_OOM
       }
 
