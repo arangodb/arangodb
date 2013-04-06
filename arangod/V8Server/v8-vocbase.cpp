@@ -5139,6 +5139,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -5216,6 +5217,7 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
 
   return scope.Close(result);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a parameter attribute of a collection
@@ -6803,7 +6805,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
+#if 0
   TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
@@ -6857,7 +6861,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create global variables
   // .............................................................................
   
-  TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
   TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
 
   // current thread number
