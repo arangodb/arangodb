@@ -59,6 +59,9 @@
         spyOn(adapter, "createNode");
         spyOn(adapter, "patchNode");
         spyOn(adapter, "deleteNode");
+        spyOn(adapter, "createEdge");
+        spyOn(adapter, "patchEdge");
+        spyOn(adapter, "deleteEdge");
       };
     
     beforeEach(function() {
@@ -161,8 +164,10 @@
           t = new EventDispatcher(nodeShaper, edgeShaper, config);
         
         expect(t.events).toBeDefined();
-        expect(_.keys(t.events).length).toEqual(3);
-        expect(t.events.CREATEEDGE).toBeDefined();
+        expect(_.keys(t.events).length).toEqual(5);
+        expect(t.events.STARTCREATEEDGE).toBeDefined();
+        expect(t.events.FINISHCREATEEDGE).toBeDefined();
+        expect(t.events.CANCELCREATEEDGE).toBeDefined();
         expect(t.events.PATCHEDGE).toBeDefined();
         expect(t.events.DELETEEDGE).toBeDefined();
       });
@@ -412,7 +417,6 @@
       
     });
 
-    
     describe('checking different events', function() {
       
       it('should be able to bind the expand event', function() {
@@ -461,10 +465,10 @@
       });
       
       it('should be able to bind the patch node event', function() {
-        nodes = [{_id: 1}];
         
         runs(function() {
-          var patchy = dispatcher.events.PATCHNODE(
+          nodes = [{_id: 1}];          
+          dispatcher.bind($("svg"), "click", dispatcher.events.PATCHNODE(
             nodes[0],
             function() {
               return {
@@ -475,9 +479,7 @@
               // Never reached as the spy stops propagation
               return 0;
             }
-          );
-          
-          dispatcher.bind($("svg"), "click", patchy);
+          ));
           
           helper.simulateMouseEvent("click", "svg");
         });
@@ -519,10 +521,95 @@
         });
       });
       
+      it('should be able to bind the create edge event', function() {
+        runs(function() {
+          dispatcher.bind($("svg"), "click", dispatcher.events.CREATEEDGE(
+            function() {
+              // Never reached as the spy stops propagation
+              return 0;
+            }
+          ));
+          
+          helper.simulateMouseEvent("click", "svg");
+        });
+        
+        waitsFor(function() {
+          return adapter.createEdge.wasCalled;
+        }, 1000, "The event should have been triggered.");
+        
+        runs(function() {
+          expect(true).toBeTruthy();
+        });
+      });
       
+      it('should be able to bind the patch edge event', function() {
+        
+        runs(function() {
+          nodes = [{
+            _id: 1
+          },{
+            _id: 2
+          }];
+          edges = [{source: nodes[0], target: nodes[1]}];       
+          dispatcher.bind($("svg"), "click", dispatcher.events.PATCHEDGE(
+            edges[0],
+            function() {
+              return {
+                name: "Alice"
+              };
+            },
+            function() {
+              // Never reached as the spy stops propagation
+              return 0;
+            }
+          ));
+          
+          helper.simulateMouseEvent("click", "svg");
+        });
+        
+        waitsFor(function() {
+          return adapter.patchEdge.wasCalled;
+        }, 1000, "The event should have been triggered.");
+        
+        runs(function() {
+          expect(adapter.patchEdge).toHaveBeenCalledWith(
+            edges[0],
+            { name: "Alice" },
+            jasmine.any(Function));
+        });
+      });
+      
+      it('should be able to bind the delete edge event', function() {
+        runs(function() {
+          nodes = [{
+            _id: 1
+          },{
+            _id: 2
+          }];
+          edges = [{source: nodes[0], target: nodes[1]}]; 
+          edgeShaper.drawEdges(edges);
+          dispatcher.bind("edges", "click", dispatcher.events.DELETEEDGE(
+            function(edge) {
+              // Never reached as the spy stops propagation
+              return 0;
+            }
+          ));
+          
+          helper.simulateMouseEvent("click", "1-2");
+        });
+        
+        waitsFor(function() {
+          return adapter.deleteEdge.wasCalled;
+        }, 1000, "The event should have been triggered.");
+        
+        runs(function() {
+          expect(adapter.deleteEdge).toHaveBeenCalledWith(
+            edges[0],
+            jasmine.any(Function));
+        });
+      });      
       
     });
-    
     
     describe('checking overwriting of events', function() {
       
