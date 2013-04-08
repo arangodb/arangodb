@@ -809,6 +809,7 @@
 
     var useColor = context.useColor;
     var customInspect = context.customInspect;
+    var useToString = context.useToString;
 
     if (typeof context.seen === "undefined") {
       context.seen = [];
@@ -836,7 +837,7 @@
         else if (value.__proto__ === Object.prototype) {
           printObject(value, context);
         }
-        else if (typeof value.toString === "function") {
+        else if (typeof value === "function") {
 
           // it's possible that toString() throws, and this looks quite ugly
           try {
@@ -863,8 +864,20 @@
             context.output += "[Function]";
           }
         }
+        else if (useToString && typeof value.toString === "function") {
+          try {
+            context.output += value.toString();
+          }
+          catch (e) {
+            context.output += "[Object ";
+            printObject(value, context);
+            context.output += "]";
+          }
+        }
         else {
+          context.output += "[Object ";
           printObject(value, context);
+          context.output += "]";
         }
       }
       else if (value === undefined) {
@@ -879,54 +892,52 @@
           context.output += colors.COLOR_RESET;
         }
       }
+      else if (typeof(value) === "string") {
+        if (useColor) {
+          context.output += colors.COLOR_STRING;
+        }
+
+        context.output += quoteJsonString(value);
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+      }
+      else if (typeof(value) === "boolean") {
+        if (useColor) {
+          context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
+        }
+
+        context.output += String(value);
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+      }
+      else if (typeof(value) === "number") {
+        if (useColor) {
+          context.output += colors.COLOR_NUMBER;
+        }
+
+        context.output += String(value);
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+      }
+      else if (value === null) {
+        if (useColor) {
+          context.output += colors.COLOR_NULL;
+        }
+
+        context.output += String(value);
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+      }
       else {
-        if (typeof(value) === "string") {
-          if (useColor) {
-            context.output += colors.COLOR_STRING;
-          }
-
-          context.output += quoteJsonString(value);
-
-          if (useColor) {
-            context.output += colors.COLOR_RESET;
-          }
-        }
-        else if (typeof(value) === "boolean") {
-          if (useColor) {
-            context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
-          }
-
-          context.output += String(value);
-
-          if (useColor) {
-            context.output += colors.COLOR_RESET;
-          }
-        }
-        else if (typeof(value) === "number") {
-          if (useColor) {
-            context.output += colors.COLOR_NUMBER;
-          }
-
-          context.output += String(value);
-
-          if (useColor) {
-            context.output += colors.COLOR_RESET;
-          }
-        }
-        else if (value === null) {
-          if (useColor) {
-            context.output += colors.COLOR_NULL;
-          }
-
-          context.output += String(value);
-
-          if (useColor) {
-            context.output += colors.COLOR_RESET;
-          }
-        }
-        else {
-          context.output += String(value);
-        }
+        context.output += String(value);
       }
     }
   };
@@ -1000,7 +1011,8 @@
           output: "",
           prettyPrint: usePrettyPrint,
           useColor: useColor,
-          customInspect: true
+          customInspect: true,
+          useToString: true
         };
 
         printRecursive(arguments[i], context);
@@ -1040,7 +1052,8 @@
       output: "",
       prettyPrint: true,
       useColor: false,
-      customInspect: options && options.customInspect
+      customInspect: options && options.customInspect,
+      useToString: false
     };
 
     printRecursive(object, context);
