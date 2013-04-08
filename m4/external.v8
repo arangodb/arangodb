@@ -22,8 +22,6 @@ AC_ARG_WITH(v8-lib,
    V8_LIB_PATH="$withval"]
 )
 
-TR_STATIC_ENABLE([v8])
-
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 AC_MSG_NOTICE([CHECKING FOR GOOGLE V8])
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
