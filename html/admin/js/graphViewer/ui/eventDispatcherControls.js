@@ -57,26 +57,18 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       );
     },
     rebindNodes = function(actions) {
-      actions = actions || {};
-      actions.reset = true;
-      nodeShaper.changeTo({
-        actions: actions
-      });
+      dispatcher.rebind("nodes", actions);
     },
     rebindEdges = function(actions) {
-      actions = actions || {};
-      actions.reset = true;
-      edgeShaper.changeTo({
-        actions: actions
-      });
-    }
+      dispatcher.rebind("edges", actions);
+    };
   
   this.addControlDrag = function() {
     var prefix = "control_drag",
       idprefix = prefix + "_",
       callback = function() {
         rebindNodes( {
-          drag: function() {console.log("Not implemented");}
+          drag: dispatcher.events.DRAG
         });
         rebindEdges();
         
@@ -88,9 +80,33 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   this.addControlEdit = function() {
     var prefix = "control_edit",
       idprefix = prefix + "_",
+      nodeCallback = function(n) {
+        modalDialogHelper.createModalEditDialog(
+          "Edit Node " + n._id,
+          "control_node_edit_",
+          n,
+          function(newData) {
+            dispatcher.events.PATCHNODE(n, newData, function() {
+              $("#control_node_edit_modal").modal('hide');
+            })();
+          }
+        );
+      },
+      edgeCallback = function(e) {
+        modalDialogHelper.createModalEditDialog(
+          "Edit Edge " + e.source._id + "->" + e.target._id,
+          "control_edge_edit_",
+          e,
+          function(newData) {
+            dispatcher.events.PATCHEDGE(e, newData, function() {
+              $("#control_edge_edit_modal").modal('hide');
+            })();
+          }
+        );
+      },
       callback = function() {
-        dispatcher.bind("nodes", "click", function () { console.log("Not Impl");} );
-        dispatcher.bind("edges", "click", function () { console.log("Not Impl");} );
+        dispatcher.bind("nodes", "click", nodeCallback );
+        dispatcher.bind("edges", "click", edgeCallback );
       };
     createButton("edit", callback);
   };

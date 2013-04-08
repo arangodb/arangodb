@@ -82,7 +82,6 @@
         reshapeNode: function() {}
       };
       
-      
       dragConfig = {
         layouter: layouter
       };
