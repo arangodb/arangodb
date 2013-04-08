@@ -183,6 +183,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   };
   
   self.rebind = function (object, actions) {
+    actions = actions || {};
     actions.reset = true;
     switch (object) {
       case "nodes":
@@ -196,12 +197,13 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         });
         break;
       default:
-          throw "Sorry cannot bind to object. Please give either "
+          throw "Sorry cannot rebind to object. Please give either "
           + "\"nodes\" or \"edges\"";
     }
   };
-  
+  /*
   self.unbind = function () {
     throw "Not implemented";
   };
+  */
 }
