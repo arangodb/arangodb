@@ -68,22 +68,6 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "If the document exists, this is returned and the JSON representation of the document is the body of the response. ",
-                            "code": "200"
-                        },
-                        {
-                            "reason": "If the <b>document-handle</b> points to a non-existing document, then a <b>HTTP 404</b> is returned and the body contains an error document. ",
-                            "code": "404"
-                        },
-                        {
-                            "reason": "If the \"If-None-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a <b>HTTP 304</b> is returned. ",
-                            "code": "304"
-                        },
-                        {
-                            "reason": "If the \"If-Match\" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a <b>HTTP 412</b> is returned. As an alternative you can supply the etag in an attribute <b>rev</b> in the URL. ",
-                            "code": "412"
-                        },
-                        {
                             "reason": "is returned if the document was found ",
                             "code": "200"
                         },
@@ -156,7 +140,7 @@
                     "notes": "Like <b>GET</b>, but only returns the header fields and not the body. You can use this call to get the current revision of a document or check if the document was deleted. <br><br>",
                     "summary": "reads a document header",
                     "httpMethod": "HEAD",
-                    "examples": "<br><br><pre><code class=\"json\" >> curl -X HEAD --dump - http://localhost:8529/_api/document/73482/29591342\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"29591342\"\n</code></pre><br>    var cn = \"productshead\";     db._drop(cn);     db._create(cn);     var collection = db._collection(cn);     var document = db.productshead.save({\"hallo\":\"world\"});     var url = \"/_api/document/\" + document._id;     var response = logCurlRequest('HEAD', url, \"{}\");     assert(response.code === 200);     logJsonResponse(response);     db._drop(cn); @END_EXAMPLE_ARANGOSH_RUN ",
+                    "examples": "<br><br><pre><code class=\"json\" >unix> curl --data @- --dump - http://localhost:8529/_api/document/productshead/32256602\n{}\n\n</code></pre><br>",
                     "nickname": "readsADocumentHeader"
                 }
             ],
