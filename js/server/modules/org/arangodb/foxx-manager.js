@@ -90,7 +90,7 @@ function buildAssetContent (app, assets) {
       match = reAll.exec(asset);
 
       if (match !== null) {
-        throw "not implemented";
+        throw new Error("not implemented");
       }
       else {
         files.push(fs.join(rootDir, asset));
@@ -104,7 +104,7 @@ function buildAssetContent (app, assets) {
     try {
       var c = fs.read(files[i]);
 
-      content += c;
+      content += c + "\n";
     }
     catch (err) {
       console.error("cannot read asset '%s'", files[i]);
@@ -126,8 +126,9 @@ function installAssets (app, routes) {
   var route;
 
   desc = app._manifest;
+
   if (! desc) {
-    throw "invalid application manifest";
+    throw new Error("invalid application manifest");
   }
 
   if (desc.hasOwnProperty('assets')) {
@@ -195,31 +196,44 @@ function executeAppScript (app, name, mount, prefix) {
   desc = app._manifest;
   
   if (! desc) {
-    throw "invalid application manifest";
+    throw new Error("invalid application manifest, app " + internal.inspect(app));
+  }
+
+  var root;
+
+  if (app._id.substr(0,4) === "app:") {
+    root = module.appPath();
+  }
+  else if (app._id.substr(0,4) === "dev:") {
+    root = module.devAppPath();
+  }
+  else {
+    throw new Error("cannot extract root path for app '" + app._id + "', unknown type");
   }
 
   if (desc.hasOwnProperty(name)) {
     var cp = appContext.collectionPrefix;
-    var context = {};
+    var cname = "";
 
     if (cp !== "") {
-      context.appCollectionName = function (name) {
-        return cp + "_" + name;
-      };
-
-      context.appCollection = function (name) {
-        return internal.db._collection(cp + "_" + name);
-      };
+      cname = cp + "_";
     }
-    else {
-      context.appCollectionName = function (name) {
-        return name;
-      };
 
-      context.appCollection = function (name) {
-        return internal.db._collection(name);
-      };
-    }
+    var context = {};
+
+    context.app = {
+      collectionName: function (name) {
+        return cname + name;
+      },
+
+      path: function (name) {
+        return fs.join(root, app._path, name);
+      }
+    };
+
+    context.appCollectionName = function (name) {
+      return name;
+    };
 
     app.loadAppScript(app.createAppModule(), desc[name], appContext, context);
   }
@@ -288,8 +302,8 @@ function installAalApp (app, mount, prefix, development) {
   find = aal.firstExample({ type: "mount", mount: mount, active: true });
 
   if (find !== null) {
-    throw "cannot use mount path '" + mount + "', already used by '" 
-      + find.app + "' (" + find._key + ")";
+    throw new Error("cannot use mount path '" + mount + "', already used by '" 
+                    + find.app + "' (" + find._key + ")");
   }
 
   // .............................................................................
@@ -339,7 +353,7 @@ function routingAalApp (app, mount, prefix) {
     }
 
     if (mount[0] !== "/") {
-      throw "mount point must be absolute";
+      throw new Error("mount point must be absolute");
     }
 
     // compute the collection prefix
@@ -548,7 +562,7 @@ exports.installApp = function (appId, mount, options) {
   app = module.createApp(appId);
 
   if (app === null) {
-    throw "cannot find application '" + appId + "'";
+    throw new Error("cannot find application '" + appId + "'");
   }
 
   // .............................................................................
@@ -559,8 +573,8 @@ exports.installApp = function (appId, mount, options) {
   routes = routingAalApp(app, mount, prefix);
 
   if (routes === null) {
-    throw "cannot compute the routing table for fox application '" 
-      + app._id + "', check the log file for errors!";
+    throw new Error("cannot compute the routing table for fox application '" 
+                    + app._id + "', check the log file for errors!");
   }
 
   // .............................................................................
@@ -604,7 +618,6 @@ exports.installDevApp = function (name, mount, options) {
   'use strict';
 
   var aal;
-  var app;
   var desc;
   var doc;
   var prefix;
@@ -619,7 +632,7 @@ exports.installDevApp = function (name, mount, options) {
   var path = module.devAppPath();
 
   if (typeof path === "undefined" || path === "") {
-    throw "dev-app-path is not set, cannot install development app '" + name + "'";
+    throw new Error("dev-app-path is not set, cannot install development app '" + name + "'");
   }
 
   var appId = null;
@@ -628,11 +641,18 @@ exports.installDevApp = function (name, mount, options) {
   if (fs.exists(filename)) {
     appId = "dev:" + name + ":" + name;
   }
+  else {
+    throw new Error("not manifest found at '" + filename + "'");
+  }
 
-  app = appId !== null && module.createApp(appId);
+  var app = null;
+
+  if (appId !== null) {
+    app = module.createApp(appId);
+  }
 
   if (app === null) {
-    throw "cannot find development application '" + name + "'";
+    throw new Error("cannot find development application '" + appId + "'");
   }
 
   // .............................................................................
@@ -680,7 +700,7 @@ exports.uninstallApp = function (key) {
   }
 
   if (doc === null) {
-    throw "key '" + key + "' is neither a mount id nor a mount point";
+    throw new Error("key '" + key + "' is neither a mount id nor a mount point");
   }
 
   var appId = doc.app;
@@ -690,7 +710,7 @@ exports.uninstallApp = function (key) {
       appDoc = aal.firstExample({ app: appId, type: "app" });
 
       if (appDoc === null) {
-        throw "cannot find app '" + appId + "' in _aal collection";
+        throw new Error("cannot find app '" + appId + "' in _aal collection");
       }
     }
 

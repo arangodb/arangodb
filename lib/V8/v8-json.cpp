@@ -26,7 +26,7 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
 #include "V8/v8-globals.h"
 
@@ -2249,15 +2249,18 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
       else {
         // string is not empty
         ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-      }
 
-      if (ptr == NULL) {
-        yyextra._message = "out-of-memory";
-        return scope.Close(v8::Undefined());
+        if (ptr == NULL || outLength == 0) {
+          yyextra._message = "out-of-memory";
+          return scope.Close(v8::Undefined());
+        }
       }
 
       str = v8::String::New(ptr, outLength);
-      TRI_FreeString(yyextra._memoryZone, ptr);
+
+      if (0 < outLength) {
+        TRI_FreeString(yyextra._memoryZone, ptr);
+      }
 
       return scope.Close(str);
 
@@ -2321,6 +2324,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error) {
   tri_v8_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
 
+  yyextra._memoryZone = TRI_CORE_MEM_ZONE;
   buf = tri_v8__scan_string(text,scanner);
 
   c = tri_v8_lex(scanner);

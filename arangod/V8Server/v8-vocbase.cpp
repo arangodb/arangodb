@@ -330,14 +330,12 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
   }
 
   // string handle
-
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
   char const* s = *str;
 
   if (s == 0) {
     return false;
   }
-
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   regmatch_t matches[3];
@@ -356,6 +354,37 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a document key from a document
+////////////////////////////////////////////////////////////////////////////////
+
+static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
+                               TRI_voc_key_t& key) {
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (arg->IsObject()) {
+    v8::Handle<v8::Object> obj = arg->ToObject();
+
+    if (obj->Has(v8g->KeyKey)) {
+      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
+
+      if (v->IsString()) {
+        // string key
+        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+        key = TRI_DuplicateString2(*str, str.length());
+      }
+      else {
+        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      }
+    }
+  }
+  else {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,11 +487,11 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
 /// @brief converts argument strings to TRI_vector_pointer_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int AttributeNamesFromArguments (v8::Arguments const& argv,
-                                 TRI_vector_pointer_t* result,
-                                 size_t start,
-                                 size_t end,
-                                 string& error) {
+static int AttributeNamesFromArguments (v8::Arguments const& argv,
+                                        TRI_vector_pointer_t* result,
+                                        size_t start,
+                                        size_t end,
+                                        string& error) {
 
   // ...........................................................................
   // convert the arguments into a "C" string and stuff them into a vector
@@ -985,13 +1014,21 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 /// @brief saves a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
-                                             TRI_vocbase_col_t* col,
-                                             v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveVocbaseCol (
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    TRI_vocbase_col_t* col,
+    v8::Arguments const& argv,
+    bool replace,
+    bool lock) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, <waitForSync>)");
+    if (replace) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>])");
+    }
+    else {
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
+    }
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -1000,20 +1037,16 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   // set document key
   TRI_voc_key_t key = 0;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  int res;
 
   if (argv[0]->IsObject()) {
-    v8::Handle<v8::Object> obj = argv[0]->ToObject();
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-      if (v->IsString()) {
-        // string key
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
-        holder.registerString(TRI_CORE_MEM_ZONE, key);
-      }
-      else {
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-      }
+    res = ExtractDocumentKey(argv[0]->ToObject(), key);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    else if (key != 0) {
+      holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
 
@@ -1027,7 +1060,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   const bool forceSync = ExtractForceSync(argv, 2);
 
   TRI_doc_mptr_t document;
-  int res = trx->createDocument(key, &document, shaped, forceSync, true);
+  res = trx->createDocument(key, &document, shaped, forceSync, lock);
 
   res = trx->finish(res);
 
@@ -1047,38 +1080,24 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new edge document
-///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
-///
-/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
-/// must be documents or document references.
-///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
-///
-/// The optional @FA{waitForSync} parameter can be used to force
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
-///
-/// @EXAMPLES
-///
-/// @TINYEXAMPLE{shell_create-edge,create an edge}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
-                                          TRI_vocbase_col_t* col,
-                                          v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveEdgeCol (
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    TRI_vocbase_col_t* col,
+    v8::Arguments const& argv,
+    bool replace,
+    bool lock) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() < 3 || argv.Length() > 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, <waitForSync>)");
+    if (replace) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>])");
+    }
+    else {
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
+    }
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -1086,19 +1105,16 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
   // set document key
   TRI_voc_key_t key = 0;
+  int res;
 
   if (argv[2]->IsObject()) {
-    v8::Handle<v8::Object> obj = argv[2]->ToObject();
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-      if (v->IsString()) {
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
-        holder.registerString(TRI_CORE_MEM_ZONE, key);
-      }
-      else {
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-      }
+    res = ExtractDocumentKey(argv[2]->ToObject(), key);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    else if (key != 0) {
+      holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
 
@@ -1150,7 +1166,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
 
   TRI_doc_mptr_t document;
-  int res = trx->createEdge(key, &document, shaped, forceSync, &edge, true);
+  res = trx->createEdge(key, &document, shaped, forceSync, &edge, lock);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -5030,7 +5046,6 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 /// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
 
-
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -5052,14 +5067,157 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, col, argv);
+    result = SaveVocbaseCol(&trx, col, argv, false, true);
   }
   else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, col, argv);
+    result = SaveEdgeCol(&trx, col, argv, false, true);
   }
 
   return scope.Close(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn SaveEdgeCol
+/// @brief saves a new edge document
+///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
+///
+/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
+/// must be documents or document references.
+///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @EXAMPLES
+///
+/// @TINYEXAMPLE{shell_create-edge,create an edge}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves or replaces a document
+///
+/// @FUN{@FA{collection}.saveOrReplace(@FA{data})}
+///
+/// Creates a new document with in the @FA{collection} from the given @FA{data}
+/// or replaces an existing document. The @FA{data} must be a hash array. It
+/// must not contain attributes starting with `_`, expect the document key
+/// stored in `_key`. If there already exists a document with the given key it
+/// is replaced.
+///
+/// The method returns a document with the attributes `_key`, `_id` and `_rev`.
+/// The attribute `_id` contains the document handle of the newly created or
+/// replaced document; the attribute `_key` contains the document key; the
+/// attribute `_rev` contains the document revision.
+///
+/// @FUN{@FA{collection}.saveOrReplace(@FA{data}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document creation operation to disk even in case that the
+/// `waitForSync` flag had been disabled for the entire collection.  Thus, the
+/// `waitForSync` parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the `waitForSync` parameter to
+/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
+/// then the collection's default `waitForSync` behavior is applied. The
+/// `waitForSync` parameter cannot be used to disable synchronisation for
+/// collections that have a default `waitForSync` value of `true`.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{ShellSaveOrReplace1}
+/// doc = db.saveOrReplace("aardvark", { german: "Erdferkell" });
+/// doc = db.saveOrReplace("aardvark", { german: "Erdferkel" });
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  size_t pos;
+
+  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+    if (argv.length < 1) {
+      TRI_V8_EXCEPTION_USAGE("saveOrReplace(<data>, <waitForSync>");
+    }
+
+    pos = 0;
+  }
+  else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+    if (argv.length < 1) {
+      TRI_V8_EXCEPTION_USAGE("saveOrReplace(<from>, <to>, <data>, <waitForSync>");
+    }
+
+    pos = 2;
+  }
+  else {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
+  }
+
+  ResourceHolder holder;
+
+  TRI_voc_key_t key;
+  int res = ExtractDocumentKey(argv[pos], key);
+
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  else if (key != 0) {
+    holder.registerString(TRI_CORE_MEM_ZONE, key);
+  }
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.begin failed");
+  }
+
+  res = trx.lockWrite();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.lockWrite failed");
+  }
+
+  TRI_doc_mptr_t document;
+  res = trx.read(&document, key, false);
+
+  v8::Handle<v8::Value> result;
+
+  if (res == TRI_ERROR_NO_ERROR) {
+  }
+  else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+      result = SaveVocbaseCol(&trx, col, argv, true, false);
+    }
+    else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+      result = SaveEdgeCol(&trx, col, argv, true, false);
+    }
+  }
+  else {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.read failed");
+  }
+
+  return scope.Close(result);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a parameter attribute of a collection
@@ -6647,6 +6805,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
+#if 0
+  TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
+#endif
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
@@ -6700,7 +6861,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create global variables
   // .............................................................................
   
-  TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
   TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
 
   // current thread number

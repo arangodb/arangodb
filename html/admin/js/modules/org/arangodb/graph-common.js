@@ -332,7 +332,7 @@ Edge.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype._PRINT = function (context) {
-  if (!this._id) {
+  if (!this._properties._id) {
     context.output += "[deleted Edge]";
   }
   else if (this._properties._key !== undefined) {
@@ -508,7 +508,7 @@ Vertex.prototype.properties = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype._PRINT = function (context) {
-  if (! this._id) {
+  if (! this._properties._id) {
     context.output += "[deleted Vertex]";
   }
   else if (this._properties._key !== undefined) {
