@@ -52,14 +52,39 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         self.events.EXPAND = new eventlib.Expand(config.expand);
       }
     }
+    if (config.drag !== undefined) {
+      if (eventlib.checkDragConfig(config.drag)) {
+        self.events.DRAG = new eventlib.Drag(config.drag);
+      }
+    }
     if (config.nodeEditor !== undefined) {
       if (config.nodeEditor.shaper === undefined) {
         config.nodeEditor.shaper = nodeShaper;
       }
       if (eventlib.checkNodeEditorConfig(config.nodeEditor)) {
-        self.events.CREATENODE = new eventlib.InsertNode(config.nodeEditor);
-        self.events.PATCHNODE = new eventlib.PatchNode(config.nodeEditor);
-        self.events.DELETENODE = new eventlib.DeleteNode(config.nodeEditor);
+        var insert = new eventlib.InsertNode(config.nodeEditor),
+          patch = new eventlib.PatchNode(config.nodeEditor),
+          del = new eventlib.DeleteNode(config.nodeEditor);
+        
+        self.events.CREATENODE = function(callback) {
+          return function() {
+            insert(callback);
+          }
+        };
+        self.events.PATCHNODE = function(node, getNewData, callback) {
+          if (!_.isFunction(getNewData)) {
+            throw "Please give a function to extract the new node data";
+          }
+          return function() {
+            patch(node, getNewData(), callback);
+          }
+        };
+        
+        self.events.DELETENODE = function(callback) {
+          return function(node) {
+            del(node, callback);
+          }
+        };
       }
     }
     if (config.edgeEditor !== undefined) {
@@ -67,6 +92,14 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         config.edgeEditor.shaper = edgeShaper;
       }
       if (eventlib.checkEdgeEditorConfig(config.edgeEditor)) {
+        /*
+        var insert = new eventlib.InsertEdge(config.edgeEditor);
+        self.events.CREATEEDGE = function(callback) {
+          return function() {
+            insert(callback);
+          }
+        };
+        */
         self.events.CREATEEDGE = new eventlib.InsertEdge(config.edgeEditor);
         self.events.PATCHEDGE = new eventlib.PatchEdge(config.edgeEditor);
         self.events.DELETEEDGE = new eventlib.DeleteEdge(config.edgeEditor);

@@ -3,7 +3,7 @@
 /*global describe, it, expect */
 /*global runs, spyOn, waitsFor */
 /*global window, document, $, d3, _*/
-/*global helper*/
+/*global helper, mocks*/
 /*global EventDispatcher, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,22 +40,33 @@
   describe('Event Dispatcher', function () {
 
     var dispatcher,
-    nodes,
-    edges,
-    adapter,
-    nodeShaper,
-    edgeShaper,
-    completeConfig,
-    expandConfig,
-    nodeEditorConfig,
-    edgeEditorConfig,
-    svg;
+      nodes,
+      edges,
+      adapter = mocks.adapter,
+      layouter = mocks.layouter,
+      nodeShaper,
+      edgeShaper,
+      completeConfig,
+      expandConfig,
+      dragConfig,
+      nodeEditorConfig,
+      edgeEditorConfig,
+      svg,
+    
+    
+      bindSpies = function() {
+        spyOn(layouter, "drag");
+        spyOn(adapter, "createNode");
+        spyOn(adapter, "patchNode");
+        spyOn(adapter, "deleteNode");
+      };
     
     beforeEach(function() {
       svg = document.createElement("svg");
       svg.id = "svg";
       document.body.appendChild(svg);
-      adapter = null;
+      
+      bindSpies();
       
       nodes = [];
       edges = [];
@@ -66,6 +77,11 @@
         startCallback: function() {},
         loadNode: function() {},
         reshapeNode: function() {}
+      };
+      
+      
+      dragConfig = {
+        layouter: layouter
       };
       
       nodeEditorConfig = {
@@ -80,15 +96,12 @@
       
       completeConfig = {
         expand: expandConfig,
+        drag: dragConfig,
         nodeEditor: nodeEditorConfig,
         edgeEditor: edgeEditorConfig
       };
       
-      nodeShaper = new NodeShaper(d3.select("svg"),
-            {
-              "shape": NodeShaper.shapes.CIRCLE
-            }
-          );
+      nodeShaper = new NodeShaper(d3.select("svg"));
       edgeShaper = new EdgeShaper(d3.select("svg"));
       dispatcher = new EventDispatcher(nodeShaper, edgeShaper, completeConfig);
     });
@@ -124,7 +137,7 @@
       
       it('should offer the expand event if config is correct', function() {
         var config = {expand: expandConfig},
-        t = new EventDispatcher(nodeShaper, edgeShaper, config);
+          t = new EventDispatcher(nodeShaper, edgeShaper, config);
         
         expect(t.events).toBeDefined();
         expect(_.keys(t.events).length).toEqual(1);
@@ -135,7 +148,7 @@
       
       it('should offer node editing events if config is correct', function() {
         var config = {nodeEditor: nodeEditorConfig},
-        t = new EventDispatcher(nodeShaper, edgeShaper, config);
+          t = new EventDispatcher(nodeShaper, edgeShaper, config);
         expect(t.events).toBeDefined();
         expect(_.keys(t.events).length).toEqual(3);
         expect(t.events.CREATENODE).toBeDefined();
@@ -145,13 +158,22 @@
       
       it('should offer edge editing events if config is correct', function() {
         var config = {edgeEditor: edgeEditorConfig},
-        t = new EventDispatcher(nodeShaper, edgeShaper, config);
+          t = new EventDispatcher(nodeShaper, edgeShaper, config);
         
         expect(t.events).toBeDefined();
         expect(_.keys(t.events).length).toEqual(3);
         expect(t.events.CREATEEDGE).toBeDefined();
         expect(t.events.PATCHEDGE).toBeDefined();
         expect(t.events.DELETEEDGE).toBeDefined();
+      });
+      
+      it('should offer the drag event if config is correct', function() {
+        var config = {drag: dragConfig},
+          t = new EventDispatcher(nodeShaper, edgeShaper, config);
+        
+        expect(t.events).toBeDefined();
+        expect(_.keys(t.events).length).toEqual(1);
+        expect(t.events.DRAG).toBeDefined();
       });
     });
     
@@ -364,17 +386,143 @@
         });
       });
       
+      it('should be able to bind to drag', function() {
+        var called;
+        
+        runs(function() {
+          var nodes = [{_id: 1}],
+          callback = function() {
+            called = true;
+          };
+          called = false;
+          nodeShaper.drawNodes(nodes);
+          dispatcher.bind("nodes", "drag", callback);
+          helper.simulateMouseEvent("drag", "1");
+        });
+        
+        waitsFor(function() {
+          return called;
+        }, 1000, "The drag event should have been triggered.");
+        
+        runs(function() {
+          // Just display that everything had worked
+          expect(true).toBeTruthy();
+        });
+      });
+      
     });
 
-    /*
+    
     describe('checking different events', function() {
       
       it('should be able to bind the expand event', function() {
         
       });
       
+      it('should be able to bind the drag event', function() {
+        runs(function() {
+          nodes = [{_id: 1}];
+          nodeShaper.drawNodes(nodes);
+          
+          dispatcher.bind("nodes", "drag", dispatcher.events.DRAG);
+          helper.simulateMouseEvent("drag", "1");
+          window.meierei = layouter.drag;
+        });
+        
+        waitsFor(function() {
+          return layouter.drag.wasCalled;
+        }, 1000, "The drag event should have been triggered.");
+        
+        runs(function() {
+          expect(true).toBeTruthy();
+        });
+        
+      });
+      
+      it('should be able to bind the create node event', function() {
+        runs(function() {
+          dispatcher.bind($("svg"), "click", dispatcher.events.CREATENODE(
+            function() {
+              // Never reached as the spy stops propagation
+              return 0;
+            }
+          ));
+          
+          helper.simulateMouseEvent("click", "svg");
+        });
+        
+        waitsFor(function() {
+          return adapter.createNode.wasCalled;
+        }, 1000, "The event should have been triggered.");
+        
+        runs(function() {
+          expect(true).toBeTruthy();
+        });
+      });
+      
+      it('should be able to bind the patch node event', function() {
+        nodes = [{_id: 1}];
+        
+        runs(function() {
+          var patchy = dispatcher.events.PATCHNODE(
+            nodes[0],
+            function() {
+              return {
+                name: "Alice"
+              };
+            },
+            function() {
+              // Never reached as the spy stops propagation
+              return 0;
+            }
+          );
+          
+          dispatcher.bind($("svg"), "click", patchy);
+          
+          helper.simulateMouseEvent("click", "svg");
+        });
+        
+        waitsFor(function() {
+          return adapter.patchNode.wasCalled;
+        }, 1000, "The event should have been triggered.");
+        
+        runs(function() {
+          expect(adapter.patchNode).toHaveBeenCalledWith(
+            nodes[0],
+            { name: "Alice" },
+            jasmine.any(Function));
+        });
+      });
+      
+      it('should be able to bind the delete node event', function() {
+        runs(function() {
+          nodes = [{_id: 1}];
+          nodeShaper.drawNodes(nodes);
+          dispatcher.bind("nodes", "click", dispatcher.events.DELETENODE(
+            function(node) {
+              // Never reached as the spy stops propagation
+              return 0;
+            }
+          ));
+          
+          helper.simulateMouseEvent("click", "1");
+        });
+        
+        waitsFor(function() {
+          return adapter.deleteNode.wasCalled;
+        }, 1000, "The event should have been triggered.");
+        
+        runs(function() {
+          expect(adapter.deleteNode).toHaveBeenCalledWith(
+            nodes[0],
+            jasmine.any(Function));
+        });
+      });
+      
+      
+      
     });
-    */
+    
     
     describe('checking overwriting of events', function() {
       
