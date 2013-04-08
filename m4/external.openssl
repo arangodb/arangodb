@@ -14,8 +14,6 @@ AC_ARG_WITH(openssl-lib,
   OPENSSL_LDFLAGS="-L$withval"
 )
 
-TR_STATIC_ENABLE([ssl])
-
 dnl -----------------------------------------------------------------------------------------
 dnl check for OpenSSL
 dnl -----------------------------------------------------------------------------------------
@@ -72,43 +70,11 @@ else
   AC_MSG_RESULT([SSL_METHOD*])
 fi
 
-dnl check if openssl was compiled using zlib 
-if test "x$tr_STATIC_PROGRAMS" = xyes;  then
-  LDFLAGS="$LDFLAGS $lt_prog_compiler_static"
-
-  AC_MSG_CHECKING([if OpenSSL requires static zlib])
-
-  AC_LINK_IFELSE([AC_LANG_PROGRAM(
-  [[
-#include <openssl/ssl.h>
-  ]],
-  [[
-    SSL_library_init();
-  ]])],
-  [tr_OPENSSL_NEEDS_ZLIB=no],
-  [tr_OPENSSL_NEEDS_ZLIB=yes])
-
-  AC_MSG_RESULT($tr_OPENSSL_NEEDS_ZLIB)
-
-  if test "x$tr_OPENSSL_NEEDS_ZLIB" = "xyes";  then
-    AC_CHECK_LIB([z], [zError],
-        OPENSSL_LIBS="$OPENSSL_LIBS -lz",
-        AC_MSG_ERROR([please install the static zlib library]))
-  fi
-fi
-
-TR_ABSOLUTE_LIBRARIES([ssl], [OPENSSL_LIBS])
-
-if test "x$tr_libraries_found" != xyes;  then
-  AC_MSG_ERROR([Please install the OpenSSL library])
-fi
-
 dnl -----------------------------------------------------------------------------------------
 dnl fix include and static libraries
 dnl -----------------------------------------------------------------------------------------
 
 TR_INCLUDE([OPENSSL_CPPFLAGS])
-TR_STATIC_LIBRARY([ssl], [OPENSSL_LIBS])
 
 dnl -----------------------------------------------------------------------------------------
 dnl add substitutions

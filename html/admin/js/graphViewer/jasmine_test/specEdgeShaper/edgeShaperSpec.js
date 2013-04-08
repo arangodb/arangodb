@@ -106,7 +106,6 @@
       expect($("svg .link line").length).toEqual(4);
     });
     
-    
     it('should be able to add an event', function () {
       var one = {
         "_id": 1
@@ -154,6 +153,63 @@
       expect($("svg .link line").length).toEqual(4);
       expect(clicked[1]).toBeTruthy();
       expect(clicked[3]).toBeTruthy();
+      expect(clicked[2]).toBeFalsy();
+      expect(clicked[4]).toBeFalsy();
+    });
+    
+    it('should be able to unbind all events', function() {
+      var one = {
+        "_id": 1
+      },
+      two = {
+        "_id": 2
+      },
+      three = {
+        "_id": 3
+      },
+      four = {
+        "_id": 4
+      },
+      edges = [
+        {
+          "source": one,
+          "target": two
+        },
+        {
+          "source": two,
+          "target": three
+        },
+        {
+          "source": three,
+          "target": four
+        },
+        {
+          "source": four,
+          "target": one
+        }
+      ],
+      clicked = [],
+      click = function (edge) {
+        clicked[edge.source._id] = !clicked[edge.source._id];
+      },
+      shaper = new EdgeShaper(d3.select("svg"), {
+        actions: {
+          click: click
+        }
+      });
+      shaper.drawEdges(edges);
+      shaper.changeTo({
+        actions: {
+          reset: true
+        }
+      });
+      
+      helper.simulateMouseEvent("click", "1-2");
+      helper.simulateMouseEvent("click", "3-4");
+      
+      expect($("svg .link line").length).toEqual(4);
+      expect(clicked[1]).toBeFalsy();
+      expect(clicked[3]).toBeFalsy();
       expect(clicked[2]).toBeFalsy();
       expect(clicked[4]).toBeFalsy();
     });
@@ -250,7 +306,23 @@
     });
     
     describe('testing for colours', function() {
-            
+      
+      it('should have a default colouring of no colour flag is given', function() {
+        var nodes = [{_id: 1}, {_id: 2}],
+        edges = [{
+          source: nodes[0],
+          target: nodes[1]
+        },{
+          source: nodes[1],
+          target: nodes[0]
+        }],
+        shaper = new EdgeShaper(d3.select("svg"));
+        shaper.drawEdges(edges);
+        
+        expect($("#1-2 line").attr("stroke")).toEqual("#686766");
+        expect($("#2-1 line").attr("stroke")).toEqual("#686766");
+      });
+      
       it('should be able to use the same colour for all edges', function() {
         var s = {_id: 1},
         t = {_id: 2},

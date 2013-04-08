@@ -162,6 +162,8 @@ extern "C" {
 ///   current user.
 /// - 1225: @LIT{out of keys}
 ///   Will be raised when a key generator runs out of keys.
+/// - 1226: @LIT{missing document key}
+///   Will be raised when a document key is missing.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -267,6 +269,13 @@ extern "C" {
 /// - 1750: @LIT{application not found}
 ///   Will be raised when an application is not found or not present in the
 ///   specified version.
+/// - 1751: @LIT{invalid application name}
+///   Will be raised when an invalid application name is specified.
+/// - 1752: @LIT{invalid mount}
+///   Will be raised when an invalid mount is specified.
+/// - 1753: @LIT{application download failed}
+///   Will be raised when an application download from the central repository
+///   failed.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}
@@ -1099,6 +1108,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_OUT_OF_KEYS                                      (1225)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1226: ERROR_ARANGO_DOCUMENT_KEY_MISSING
+///
+/// missing document key
+///
+/// Will be raised when a document key is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING                             (1226)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -1533,6 +1552,37 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APPLICATION_NOT_FOUND                                   (1750)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1751: ERROR_APPLICATION_INVALID_NAME
+///
+/// invalid application name
+///
+/// Will be raised when an invalid application name is specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_INVALID_NAME                                (1751)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1752: ERROR_APPLICATION_INVALID_MOUNT
+///
+/// invalid mount
+///
+/// Will be raised when an invalid mount is specified.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_INVALID_MOUNT                               (1752)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1753: ERROR_APPLICATION_DOWNLOAD_FAILED
+///
+/// application download failed
+///
+/// Will be raised when an application download from the central repository
+/// failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APPLICATION_DOWNLOAD_FAILED                             (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

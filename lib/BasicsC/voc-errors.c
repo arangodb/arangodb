@@ -79,6 +79,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INDEX_NEEDS_RESIZE, "index needs resizing");
   REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "database directory not writable");
   REG_ERROR(ERROR_ARANGO_OUT_OF_KEYS, "out of keys");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_MISSING, "missing document key");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
@@ -121,6 +122,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
   REG_ERROR(ERROR_APPLICATION_NOT_FOUND, "application not found");
+  REG_ERROR(ERROR_APPLICATION_INVALID_NAME, "invalid application name");
+  REG_ERROR(ERROR_APPLICATION_INVALID_MOUNT, "invalid mount");
+  REG_ERROR(ERROR_APPLICATION_DOWNLOAD_FAILED, "application download failed");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");

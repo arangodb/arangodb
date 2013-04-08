@@ -1,3 +1,20 @@
+.sorting_1 textarea {
+  display: inline !important;
+}
+
+.textInline {
+  display:inline !important;
+}
+
+.validateError {
+  border: 2px solid red !important;
+}
+
+.disabledBtn {
+  opacity: 0.4 !important;
+  cursor: default !important;
+}
+
 #collectionPrev, #collectionNext{
   cursor: pointer;
 }
