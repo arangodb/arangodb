@@ -220,6 +220,62 @@
       
     });
     
+    describe('Drag', function() {
+      
+      describe('setup process', function() {
+        
+        it('should throw an error if layouter is not given', function() {
+          var testConfig = {};
+          
+          expect(
+            function() {
+              eventLib.checkDragConfig(testConfig);
+            }
+          ).toThrow("A layouter has to be defined");
+          
+          expect(
+            function() {
+              eventLib.Drag(testConfig);
+            }
+          ).toThrow("A layouter has to be defined");
+        });
+        
+        it('should throw an error if the layouter does not offer a drag function', function() {
+          var testConfig = {
+            layouter: {}
+          };
+          
+          expect(
+            function() {
+              eventLib.checkDragConfig(testConfig);
+            }
+          ).toThrow("The layouter has to offer a drag function");
+          
+          expect(
+            function() {
+              eventLib.Drag(testConfig);
+            }
+          ).toThrow("The layouter has to offer a drag function");
+          
+          testConfig.layouter.drag = 42;
+          
+          expect(
+            function() {
+              eventLib.checkDragConfig(testConfig);
+            }
+          ).toThrow("The layouter has to offer a drag function");
+          
+          expect(
+            function() {
+              eventLib.Drag(testConfig);
+            }
+          ).toThrow("The layouter has to offer a drag function");
+        });
+        
+      });
+      
+    });
+    
     describe('Insert Node', function() {
       
       it('should create an event to add a node', function() {
