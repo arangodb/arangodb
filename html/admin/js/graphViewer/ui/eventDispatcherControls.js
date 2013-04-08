@@ -41,6 +41,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   if (edgeShaper === undefined) {
     throw "The EdgeShaper has to be given.";
   }
+  
   var self = this,
     baseClass = "event",
     eventlib = new EventLibrary(),
@@ -105,8 +106,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         );
       },
       callback = function() {
-        dispatcher.bind("nodes", "click", nodeCallback );
-        dispatcher.bind("edges", "click", edgeCallback );
+        rebindNodes({click: nodeCallback});
+        rebindEdges({click: edgeCallback});
       };
     createButton("edit", callback);
   };
@@ -115,7 +116,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     var prefix = "control_expand",
       idprefix = prefix + "_",
       callback = function() {
-        console.log("Not implemented");
+        rebindNodes({click: dispatcher.events.EXPAND});
+        rebindEdges();
       };
     createButton("expand", callback);
   };
@@ -124,7 +126,12 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     var prefix = "control_delete",
       idprefix = prefix + "_",
       callback = function() {
-        console.log("Not implemented");
+        rebindNodes({click: dispatcher.events.DELETENODE(function() {
+          nodeShaper.reshapeNodes();
+        })});
+        rebindEdges({click: dispatcher.events.DELETEEDGE(function() {
+          edgeShaper.reshapeEdges();
+        })});
       };
     createButton("delete", callback);
   };
@@ -133,7 +140,14 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
     var prefix = "control_connect",
       idprefix = prefix + "_",
       callback = function() {
-        console.log("Not implemented");
+        
+        rebindNodes({
+          mousedown: dispatcher.events.STARTCREATEEDGE(),
+          mouseup: dispatcher.events.FINISHCREATEEDGE(function(){
+            edgeShaper.reshapeEdges();
+          })
+        });
+        rebindEdges();
       };
     createButton("connect", callback);
   };
