@@ -41,7 +41,7 @@
   describe('Event Dispatcher UI', function () {
     var svg, dispatcher, dispatcherUI, list,
     nodeShaper, edgeShaper, layouter,
-    nodes, edges;
+    nodes, edges, adapter;
 
     beforeEach(function () {
       nodes = [{
@@ -53,18 +53,47 @@
         source: nodes[0],
         target: nodes[1]
       }];
+      adapter = {
+      
+      };
+      var expandConfig = {
+          edges: edges,
+          nodes: nodes,
+          startCallback: function() {},
+          loadNode: function() {},
+          reshapeNode: function() {}
+        },
+      
+        nodeEditorConfig = {
+          nodes: nodes,
+          adapter: adapter
+        },
+      
+        edgeEditorConfig = {
+          edges: edges,
+          adapter: adapter
+        },
+      
+        completeConfig = {
+          expand: expandConfig,
+          nodeEditor: nodeEditorConfig,
+          edgeEditor: edgeEditorConfig
+        };
+      
+      layouter = {
+        drag: function() {return 0;}
+      };
       svg = document.createElement("svg");
       document.body.appendChild(svg);
       nodeShaper = new NodeShaper(d3.select("svg"));
       edgeShaper = new EdgeShaper(d3.select("svg"));
-      dispatcher = new EventDispatcher(nodeShaper, edgeShaper);
       list = document.createElement("ul");
       document.body.appendChild(list);
       list.id = "control_list";
       nodeShaper.drawNodes(nodes);
       edgeShaper.drawEdges(edges);
       
-      dispatcherUI = new EventDispatcherControls(list, dispatcher);
+      dispatcherUI = new EventDispatcherControls(list, nodeShaper, edgeShaper, completeConfig);
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
       
@@ -80,7 +109,10 @@
       }).toThrow("A list element has to be given.");
       expect(function() {
         var e = new EventDispatcherControls(list);
-      }).toThrow("The Dispatcher has to be given.");
+      }).toThrow("The NodeShaper has to be given.");
+      expect(function() {
+        var e = new EventDispatcherControls(list, nodeShaper);
+      }).toThrow("The EdgeShaper has to be given.");
     });
     
     it('should be able to add a drag control to the list', function() {
@@ -106,7 +138,7 @@
       });      
     });
     
-    it('should be able to add a edit control to the list', function() {
+    it('should be able to add an edit control to the list', function() {
       runs(function() {
         dispatcherUI.addControlEdit();
       

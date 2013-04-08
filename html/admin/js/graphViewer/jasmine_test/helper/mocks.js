@@ -38,7 +38,9 @@ var mocks = mocks || {};
   };
   
   mocks.adapter = {
-  
+    createNode: function(){},
+    deleteNode: function(){},
+    patchNode: function(){}
   };
     
 }());
