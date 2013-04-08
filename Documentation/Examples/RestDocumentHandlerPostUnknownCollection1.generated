@@ -1,4 +1,4 @@
-unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=productsUnknown
+unix> curl -X POST --data @- --dump - http://localhost:8529/_api/document?collection=products
 { "Hello": "World" }
 
 HTTP/1.1 404 Not Found
@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "collection /_api/collection/productsUnknown not found", 
+  "errorMessage" : "collection /_api/collection/products not found", 
   "code" : 404, 
   "errorNum" : 1203 
 }

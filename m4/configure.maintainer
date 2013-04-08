@@ -4,23 +4,19 @@ dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                  MAINTAINER MODE
 dnl ----------------------------------------------------------------------------
 
-AC_ARG_ENABLE(maintainer-mode,
-  AS_HELP_STRING([--enable-maintainer-mode], [enable maintainer mode (default: no)]),
-  [tr_MAINTAINER_MODE="${enableval:-yes}"],
-  [tr_MAINTAINER_MODE=no]
-)
+AM_MAINTAINER_MODE
 
-if test "x$tr_MAINTAINER_MODE" = "xyes";  then
+if test "x$USE_MAINTAINER_MODE" = "xyes";  then
   AC_DEFINE_UNQUOTED(TRI_ENABLE_MAINTAINER_MODE, 1, [true if maintainer mode is enabled])
 fi
 
-AM_CONDITIONAL(ENABLE_MAINTAINER_MODE, test "x$tr_MAINTAINER_MODE" = xyes)
+AM_CONDITIONAL(ENABLE_MAINTAINER_MODE, test "x$USE_MAINTAINER_MODE" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl check for bison
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_MAINTAINER_MODE" = xyes;  then
+if test "x$USE_MAINTAINER_MODE" = xyes;  then
   AC_MSG_NOTICE([................................................................................])
   AC_MSG_NOTICE([CHECKING BISON])
   AC_MSG_NOTICE([................................................................................])
@@ -58,7 +54,7 @@ dnl ----------------------------------------------------------------------------
 dnl check for flex
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_MAINTAINER_MODE" = xyes;  then
+if test "x$USE_MAINTAINER_MODE" = xyes;  then
   AC_MSG_NOTICE([................................................................................])
   AC_MSG_NOTICE([CHECKING FLEX])
   AC_MSG_NOTICE([................................................................................])
