@@ -50,7 +50,7 @@
   var db = internal.db;
 
   // path to the VERSION file
-  var versionFile = internal.DATABASEPATH + "/VERSION";
+  var versionFile = internal.db._path + "/VERSION";
 
   function runUpgrade (currentVersion) {
     var allTasks = [ ];
@@ -327,7 +327,7 @@
 
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { waitForSync : false });
+      return createSystemCollection("_aal", { waitForSync : true });
     });
     
     // create a unique index on collection attribute in _aal
@@ -348,6 +348,26 @@
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
       return createSystemCollection("_aqlfunctions", { waitForSync : false });
+    });
+
+    // set up the collection _aalFishbowl
+    addTask("setupAalFishbowl", "setup _aalFishbowl collection", function () {
+      return createSystemCollection("_aalFishbowl", { waitForSync : true });
+    });
+    
+    // create a unique index on collection attribute in _aal
+    addTask("createAalFisbowlIndex",
+            "create indexes on collection attribute in _aalFishbowl collection",
+      function () {
+        var aal = getCollection("_aal");
+
+        if (! aal) {
+          return false;
+        }
+
+        aal.ensureUniqueConstraint("name");
+
+        return true;
     });
 
     // loop through all tasks and execute them

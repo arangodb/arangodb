@@ -9,7 +9,7 @@ MRUBY_LDLAGS=""
 MRUBY_LIBSLAGS=""
 
 AC_ARG_ENABLE(mruby,
-  AS_HELP_STRING([--enable-mruby], [enable MRUBY]),
+  AS_HELP_STRING([--enable-mruby], [enable MRUBY (default: no)]),
   [tr_MRUBY="${enableval:-yes}"],
   [tr_MRUBY=no]
 )
