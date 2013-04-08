@@ -31,8 +31,84 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
   "use strict";
   
   var eventlib,
-  expandConfig,
-  self = this;
+    expandConfig,
+    self = this,
+    parseNodeEditorConfig = function(config) {
+      if (config.shaper === undefined) {
+        config.shaper = nodeShaper;
+      }
+      if (eventlib.checkNodeEditorConfig(config)) {
+        var insert = new eventlib.InsertNode(config),
+          patch = new eventlib.PatchNode(config),
+          del = new eventlib.DeleteNode(config);
+        
+        self.events.CREATENODE = function(callback) {
+          return function() {
+            insert(callback);
+          }
+        };
+        self.events.PATCHNODE = function(node, getNewData, callback) {
+          if (!_.isFunction(getNewData)) {
+            throw "Please give a function to extract the new node data";
+          }
+          return function() {
+            patch(node, getNewData(), callback);
+          }
+        };
+        
+        self.events.DELETENODE = function(callback) {
+          return function(node) {
+            del(node, callback);
+          }
+        };
+      }
+    },
+    
+    parseEdgeEditorConfig = function(config) {
+      if (config.shaper === undefined) {
+        config.shaper = edgeShaper;
+      }
+      if (eventlib.checkEdgeEditorConfig(config)) {
+        var insert = new eventlib.InsertEdge(config),
+          patch = new eventlib.PatchEdge(config),
+          del = new eventlib.DeleteEdge(config);
+          /*
+        self.events.CREATEEDGE = function(callback) {
+          return function() {
+            insert(callback);
+          }
+        };
+        */
+        self.events.PATCHEDGE = function(edge, getNewData, callback) {
+          if (!_.isFunction(getNewData)) {
+            throw "Please give a function to extract the new node data";
+          }
+          return function() {
+            patch(edge, getNewData(), callback);
+          }
+        };
+        
+        self.events.DELETEEDGE = function(callback) {
+          return function(edge) {
+            del(edge, callback);
+          }
+        };
+
+        /*
+        var insert = new eventlib.InsertEdge(config.edgeEditor);
+        self.events.CREATEEDGE = function(callback) {
+          return function() {
+            insert(callback);
+          }
+        };
+        */
+        self.events.CREATEEDGE = new eventlib.InsertEdge(config);
+        /*
+        self.events.PATCHEDGE = new eventlib.PatchEdge(config.edgeEditor);
+        self.events.DELETEEDGE = new eventlib.DeleteEdge(config.edgeEditor);
+        */
+      }
+    };
   
   if (nodeShaper === undefined) {
     throw "NodeShaper has to be given.";
@@ -58,52 +134,10 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
       }
     }
     if (config.nodeEditor !== undefined) {
-      if (config.nodeEditor.shaper === undefined) {
-        config.nodeEditor.shaper = nodeShaper;
-      }
-      if (eventlib.checkNodeEditorConfig(config.nodeEditor)) {
-        var insert = new eventlib.InsertNode(config.nodeEditor),
-          patch = new eventlib.PatchNode(config.nodeEditor),
-          del = new eventlib.DeleteNode(config.nodeEditor);
-        
-        self.events.CREATENODE = function(callback) {
-          return function() {
-            insert(callback);
-          }
-        };
-        self.events.PATCHNODE = function(node, getNewData, callback) {
-          if (!_.isFunction(getNewData)) {
-            throw "Please give a function to extract the new node data";
-          }
-          return function() {
-            patch(node, getNewData(), callback);
-          }
-        };
-        
-        self.events.DELETENODE = function(callback) {
-          return function(node) {
-            del(node, callback);
-          }
-        };
-      }
+      parseNodeEditorConfig(config.nodeEditor);
     }
     if (config.edgeEditor !== undefined) {
-      if (config.edgeEditor.shaper === undefined) {
-        config.edgeEditor.shaper = edgeShaper;
-      }
-      if (eventlib.checkEdgeEditorConfig(config.edgeEditor)) {
-        /*
-        var insert = new eventlib.InsertEdge(config.edgeEditor);
-        self.events.CREATEEDGE = function(callback) {
-          return function() {
-            insert(callback);
-          }
-        };
-        */
-        self.events.CREATEEDGE = new eventlib.InsertEdge(config.edgeEditor);
-        self.events.PATCHEDGE = new eventlib.PatchEdge(config.edgeEditor);
-        self.events.DELETEEDGE = new eventlib.DeleteEdge(config.edgeEditor);
-      }
+      parseEdgeEditorConfig(config.edgeEditor);
     }
   }
   Object.freeze(self.events);

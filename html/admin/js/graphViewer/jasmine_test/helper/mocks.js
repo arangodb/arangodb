@@ -40,7 +40,10 @@ var mocks = mocks || {};
   mocks.adapter = {
     createNode: function(){},
     deleteNode: function(){},
-    patchNode: function(){}
+    patchNode: function(){},
+    createEdge: function(){},
+    deleteEdge: function(){},
+    patchEdge: function(){}
   };
     
 }());
