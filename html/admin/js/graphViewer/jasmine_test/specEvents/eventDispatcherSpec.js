@@ -157,7 +157,6 @@
     
     describe('checking objects to bind events to', function() {
       
-      
       it('should be able to bind to any DOM-element', function() {
         var called = false,
         callback = function() {
@@ -470,6 +469,89 @@
         });
       });
       
+    });
+    
+    describe('checking rebinding of events', function() {
+      
+      it('should be able to bind only the given events and unbind all other for nodes', function() {
+        var falseCalls, called;
+        
+        runs(function() {
+          var nodes = [{_id: 1}, {_id:2}],
+            callback = function() {
+              called++;
+            },
+            falseCallback = function() {
+              falseCalls++;
+            };
+          falseCalls = 0;
+          called = 0;
+          nodeShaper.drawNodes(nodes);
+          dispatcher.bind("nodes", "click", falseCallback);
+          dispatcher.bind("nodes", "mousedown", falseCallback);
+          dispatcher.bind("nodes", "mouseup", falseCallback);
+          dispatcher.rebind("nodes", {
+            click: callback
+          });
+          helper.simulateMouseEvent("mousedown", "2");
+          helper.simulateMouseEvent("mouseup", "2");
+          helper.simulateMouseEvent("click", "1");
+          helper.simulateMouseEvent("click", "2");
+        });
+        
+        waitsFor(function() {
+          return called === 2;
+        }, 1000, "The two click events should have been triggered.");
+        
+        runs(function() {
+          // Just display that everything had worked
+          expect(falseCalls).toEqual(0);
+        });
+        
+      });
+      
+      it('should be able to bind only the given events and unbind all other for edges', function() {
+        var falseCalls, called;
+        
+        runs(function() {
+          var n1 = {_id: 1},
+            n2 = {_id: 2},
+            n3 = {_id: 3},
+            edges = [
+              {source: n1, target: n2},
+              {source: n2, target: n3}
+            ],
+            callback = function() {
+              called++;
+            },
+            falseCallback = function() {
+              falseCalls++;
+            };
+          falseCalls = 0;
+          called = 0;
+          edgeShaper.drawEdges(edges);
+          dispatcher.bind("edges", "click", falseCallback);
+          dispatcher.bind("edges", "mousedown", falseCallback);
+          dispatcher.bind("edges", "mouseup", falseCallback);
+          dispatcher.rebind("edges", {
+            click: callback
+          });
+          helper.simulateMouseEvent("mousedown", "1-2");
+          helper.simulateMouseEvent("mouseup", "1-2");
+          helper.simulateMouseEvent("click", "1-2");
+          helper.simulateMouseEvent("click", "2-3");
+        });
+        
+        waitsFor(function() {
+          return called === 2;
+        }, 1000, "The two click events should have been triggered.");
+        
+        runs(function() {
+          // Just display that everything had worked
+          expect(falseCalls).toEqual(0);
+        });
+        
+      });
     });
   });
 

@@ -101,7 +101,26 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         } else {
           throw "Sorry cannot bind to object. Please give either "
           + "\"nodes\", \"edges\" or a jQuery-selected DOM-Element";
-      }
+        }
+    }
+  };
+  
+  self.rebind = function (object, actions) {
+    actions.reset = true;
+    switch (object) {
+      case "nodes":
+        nodeShaper.changeTo({
+          actions: actions
+        });
+        break;
+      case "edges":
+        edgeShaper.changeTo({
+          actions: actions
+        });
+        break;
+      default:
+          throw "Sorry cannot bind to object. Please give either "
+          + "\"nodes\" or \"edges\"";
     }
   };
   
