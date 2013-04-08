@@ -521,16 +521,44 @@
         });
       });
       
-      it('should be able to bind the create edge event', function() {
+      it('should be able to bind the events to create an edge', function() {
+        nodes = [{_id: 1}, {_id: 2}, {_id: 3}];
+        edges = [{source: nodes[0], target: nodes[2]}];
+        nodeShaper.drawNodes(nodes);
+        edgeShaper.drawEdges(edges);
+        
+        var started = 0,
+          canceled = 0;
+        
         runs(function() {
-          dispatcher.bind($("svg"), "click", dispatcher.events.CREATEEDGE(
+          dispatcher.bind("nodes", "mousedown", dispatcher.events.STARTCREATEEDGE(
+            function() {
+              started++;
+            }
+          ));
+          dispatcher.bind("nodes", "mouseup", dispatcher.events.FINISHCREATEEDGE(
             function() {
               // Never reached as the spy stops propagation
               return 0;
             }
           ));
+          dispatcher.bind($("svg"), "mouseup", dispatcher.events.CANCELCREATEEDGE(
+            function() {
+              return canceled++;
+            }
+          ));
+          helper.simulateMouseEvent("mousedown", "1");
+          helper.simulateMouseEvent("mouseup", "svg");
           
-          helper.simulateMouseEvent("click", "svg");
+          helper.simulateMouseEvent("mousedown", "1");
+          helper.simulateMouseEvent("mouseup", "1-3");
+          
+          helper.simulateMouseEvent("mousedown", "1");
+          helper.simulateMouseEvent("mouseup", "1");
+          
+          helper.simulateMouseEvent("mousedown", "1");
+          helper.simulateMouseEvent("mouseup", "2");
+          
         });
         
         waitsFor(function() {
@@ -538,7 +566,13 @@
         }, 1000, "The event should have been triggered.");
         
         runs(function() {
-          expect(true).toBeTruthy();
+          expect(started).toEqual(4);
+          expect(canceled).toEqual(3);
+          expect(adapter.createEdge.calls.length).toEqual(1);
+          expect(adapter.createEdge).toHaveBeenCalledWith({
+            source: nodes[0],
+            target: nodes[1]
+          }, jasmine.any(Function));
         });
       });
       

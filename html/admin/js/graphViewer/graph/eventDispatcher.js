@@ -71,14 +71,38 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
       if (eventlib.checkEdgeEditorConfig(config)) {
         var insert = new eventlib.InsertEdge(config),
           patch = new eventlib.PatchEdge(config),
-          del = new eventlib.DeleteEdge(config);
-          /*
-        self.events.CREATEEDGE = function(callback) {
-          return function() {
-            insert(callback);
+          del = new eventlib.DeleteEdge(config),
+          edgeStart = null,
+          didInsert = false;
+        
+        self.events.STARTCREATEEDGE = function(callback) {
+          return function(node) {
+            edgeStart = node;
+            didInsert = false;
+            if (callback !== undefined) {
+              callback();
+            }
           }
         };
-        */
+        
+        self.events.CANCELCREATEEDGE = function(callback) {
+          return function() {
+            edgeStart = null;
+            if (callback !== undefined && !didInsert) {
+              callback();
+            }
+          }
+        };
+        
+        self.events.FINISHCREATEEDGE = function(callback) {
+          return function(node) {
+            if (edgeStart !== null && node !== edgeStart) {
+              insert(edgeStart, node, callback);
+              didInsert = true;
+            }
+          }
+        };
+        
         self.events.PATCHEDGE = function(edge, getNewData, callback) {
           if (!_.isFunction(getNewData)) {
             throw "Please give a function to extract the new node data";
@@ -93,20 +117,6 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             del(edge, callback);
           }
         };
-
-        /*
-        var insert = new eventlib.InsertEdge(config.edgeEditor);
-        self.events.CREATEEDGE = function(callback) {
-          return function() {
-            insert(callback);
-          }
-        };
-        */
-        self.events.CREATEEDGE = new eventlib.InsertEdge(config);
-        /*
-        self.events.PATCHEDGE = new eventlib.PatchEdge(config.edgeEditor);
-        self.events.DELETEEDGE = new eventlib.DeleteEdge(config.edgeEditor);
-        */
       }
     };
   
