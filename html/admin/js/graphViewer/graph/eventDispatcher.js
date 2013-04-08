@@ -45,7 +45,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         self.events.CREATENODE = function(callback) {
           return function() {
             insert(callback);
-          }
+          };
         };
         self.events.PATCHNODE = function(node, getNewData, callback) {
           if (!_.isFunction(getNewData)) {
@@ -53,13 +53,13 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           }
           return function() {
             patch(node, getNewData(), callback);
-          }
+          };
         };
         
         self.events.DELETENODE = function(callback) {
           return function(node) {
             del(node, callback);
-          }
+          };
         };
       }
     },
@@ -82,7 +82,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             if (callback !== undefined) {
               callback();
             }
-          }
+          };
         };
         
         self.events.CANCELCREATEEDGE = function(callback) {
@@ -91,7 +91,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             if (callback !== undefined && !didInsert) {
               callback();
             }
-          }
+          };
         };
         
         self.events.FINISHCREATEEDGE = function(callback) {
@@ -100,7 +100,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
               insert(edgeStart, node, callback);
               didInsert = true;
             }
-          }
+          };
         };
         
         self.events.PATCHEDGE = function(edge, getNewData, callback) {
@@ -109,13 +109,13 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           }
           return function() {
             patch(edge, getNewData(), callback);
-          }
+          };
         };
         
         self.events.DELETEEDGE = function(callback) {
           return function(edge) {
             del(edge, callback);
-          }
+          };
         };
       }
     };

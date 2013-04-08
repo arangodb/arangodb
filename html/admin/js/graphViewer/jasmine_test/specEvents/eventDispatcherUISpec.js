@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper*/
+/*global helper, mocks*/
 /*global EventDispatcher, EventDispatcherControls, NodeShaper, EdgeShaper*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +53,8 @@
         source: nodes[0],
         target: nodes[1]
       }];
-      adapter = {
-      
-      };
+      adapter = mocks.adapter;
+      layouter = mocks.layouter;
       var expandConfig = {
           edges: edges,
           nodes: nodes,
@@ -80,9 +79,6 @@
           edgeEditor: edgeEditorConfig
         };
       
-      layouter = {
-        drag: function() {return 0;}
-      };
       svg = document.createElement("svg");
       document.body.appendChild(svg);
       nodeShaper = new NodeShaper(d3.select("svg"));
