@@ -77,7 +77,7 @@
           edges: edges,
           nodes: nodes,
           startCallback: function() {},
-          loadNode: function() {},
+          loadNode: this.loadNode,
           reshapeNode: function() {}
         },
       
@@ -170,6 +170,20 @@
       
         helper.simulateMouseEvent("click", "control_edit");
       
+        expect(nodeShaper.changeTo).toHaveBeenCalledWith({
+          actions: {
+            reset: true,
+            click: jasmine.any(Function)
+          }
+        });
+        
+        expect(edgeShaper.changeTo).toHaveBeenCalledWith({
+          actions: {
+            reset: true,
+            click: jasmine.any(Function)
+          }
+        });
+      
         helper.simulateMouseEvent("click", "1");
       
         expect($("#control_node_edit_modal").length).toEqual(1);
@@ -198,7 +212,7 @@
       
         $("#control_edge_edit_label_value").val("newLabel");
         helper.simulateMouseEvent("click", "control_edge_edit_submit");
-        // Todo check adapter call
+
         expect(adapter.patchEdge).toHaveBeenCalledWith(
           edges[0],
           {
@@ -223,7 +237,7 @@
       
         helper.simulateMouseEvent("click", "control_expand");
       
-        expect(edgeShaper.changeTo).toHaveBeenCalledWith({
+        expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
             click: jasmine.any(Function)
@@ -238,7 +252,7 @@
 
         helper.simulateMouseEvent("click", "1");
         
-        expect(this.loadNode).toHaveBeenCalledWith(nodes[0]);
+        expect(this.loadNode).toHaveBeenCalledWith(nodes[0]._id, jasmine.any(Function));
         
       });      
     });
@@ -250,6 +264,20 @@
         expect($("#control_list #control_delete").length).toEqual(1);
       
         helper.simulateMouseEvent("click", "control_delete");
+      
+        expect(edgeShaper.changeTo).toHaveBeenCalledWith({
+          actions: {
+            reset: true,
+            click: jasmine.any(Function)
+          }
+        });
+      
+        expect(edgeShaper.changeTo).toHaveBeenCalledWith({
+          actions: {
+            reset: true,
+            click: jasmine.any(Function)
+          }
+        });
       
         helper.simulateMouseEvent("click", "1");
         
@@ -280,7 +308,7 @@
           actions: {
             reset: true,
             mousedown: jasmine.any(Function),
-            mouseup: jasmine.any(Function),
+            mouseup: jasmine.any(Function)
           }
         });
         
