@@ -84,8 +84,6 @@
         edgeEditor: edgeEditorConfig
       };
       
-      
-      
       nodeShaper = new NodeShaper(d3.select("svg"),
             {
               "shape": NodeShaper.shapes.CIRCLE
