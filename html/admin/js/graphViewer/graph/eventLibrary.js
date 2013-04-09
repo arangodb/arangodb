@@ -142,6 +142,22 @@ function EventLibrary() {
     };
   };
   
+  this.checkDragConfig = function (config) {
+    if (config.layouter === undefined) {
+      throw "A layouter has to be defined";
+    }
+    if (config.layouter.drag === undefined || !_.isFunction(config.layouter.drag)) {
+      throw "The layouter has to offer a drag function";
+    }
+    return true;
+  };
+  
+  this.Drag = function (config) {
+    self.checkDragConfig(config);
+    return config.layouter.drag;
+  };
+  
+  
   this.checkNodeEditorConfig = function (config) {
     if (config.nodes === undefined) {
       throw "Nodes have to be defined";

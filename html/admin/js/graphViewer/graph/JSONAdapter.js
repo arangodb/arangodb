@@ -45,13 +45,20 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
     }
     throw "Too many nodes with the same ID, should never happen";
   },
-  insertNode = function(node) {
+  insertNode = function(data) {
+    var node = {
+      _data: data,
+      _id: data._id,
+      children: data.children
+    };
+    delete data.children;
     initialY.getStart();
     node.x = initialX.getStart();
     node.y = initialY.getStart();
     nodes.push(node);
     node._outboundCounter = 0;
     node._inboundCounter = 0;
+    return node;
   },
   
   insertEdge = function(source, target) {
@@ -81,8 +88,7 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       }
       var n = findNode(node);
       if (!n) {
-        insertNode(node);
-        n = node;
+        n = insertNode(node);
       } else {
         n.children = node.children;
       }

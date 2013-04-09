@@ -1099,10 +1099,10 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   if (argv.Length() < 3 || argv.Length() > 4) {
     if (replace) {
-      TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, <waitForSync>)");
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>])");
     }
     else {
-      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, <waitForSync>)");
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
     }
   }
 
