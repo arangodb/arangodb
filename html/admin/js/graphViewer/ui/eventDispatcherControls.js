@@ -85,7 +85,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         modalDialogHelper.createModalEditDialog(
           "Edit Node " + n._id,
           "control_node_edit_",
-          n,
+          n._data,
           function(newData) {
             dispatcher.events.PATCHNODE(n, newData, function() {
               $("#control_node_edit_modal").modal('hide');
@@ -95,9 +95,9 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       },
       edgeCallback = function(e) {
         modalDialogHelper.createModalEditDialog(
-          "Edit Edge " + e.source._id + "->" + e.target._id,
+          "Edit Edge " + e._data._from + "->" + e._data._to,
           "control_edge_edit_",
-          e,
+          e._data,
           function(newData) {
             dispatcher.events.PATCHEDGE(e, newData, function() {
               $("#control_edge_edit_modal").modal('hide');
