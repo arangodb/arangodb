@@ -1,6 +1,10 @@
 v1.2.3 (XXXX-XX-XX)
 -------------------
 
+* added optional parameter `edgexamples` for AQL function EDGES() and NEIGHBORS()
+
+* added AQL function NEIGHBORS()
+
 * added freebsd support
 
 * fixed firstExample() query with `_id` and `_key` attributes

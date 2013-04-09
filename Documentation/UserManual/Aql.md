@@ -971,7 +971,8 @@ AQL supports the following functions to operate on document values:
   continue the comparison with the next example until there are no more examples left.
 
   The @FA{examples} must be a list of 1..n example documents, with any number of attributes
-  each. 
+  each. Note: specifying an empty list of examples is not allowed.
+   
   Example usage:
 
     RETURN MATCHES({ "test" : 1 }, [ 
@@ -1251,16 +1252,39 @@ If no bounds are set, a traversal might run into an endless loop in a cyclic gra
 and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
 time and memory for the result set.
 
-- @FN{EDGES(@FA{edgecollection}\, @FA{startvertex}\, @FA{direction})}:
+- @FN{EDGES(@FA{edgecollection}\, @FA{startvertex}\, @FA{direction}, @FA{edgeexamples})}:
   return all edges connected to the vertex @FA{startvertex} as a list. The possible values for
-  direction are:
+  @FA{direction} are:
+  - `outbound`: return all outbound edges
+  - `inbound`: return all inbound edges
+  - `any`: return outbound and inbound edges
+  
+  The @FA{edgeexamples} parameter can optionally be used to restrict the results to specific
+  edge connections only. The matching is then done via the @LIT{MATCHES} function.
+  To not restrict the result to specific connections, @FA{edgeexamples} should be left
+  unspecified. 
+
+Example calls:
+
+    EDGES(friendrelations, "friends/john", "outbound")
+    EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
+
+- @FN{NEIGHBORS(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startvertex}\, @FA{direction}, @FA{edgeexamples})}:
+  return all neighbors that are directly connected to the vertex @FA{startvertex} as a list. 
+  The possible values for @FA{direction} are:
   - `outbound`: return all outbound edges
   - `inbound`: return all inbound edges
   - `any`: return outbound and inbound edges
 
+  The @FA{edgeexamples} parameter can optionally be used to restrict the results to specific
+  edge connections only. The matching is then done via the @LIT{MATCHES} function.
+  To not restrict the result to specific connections, @FA{edgeexamples} should be left
+  unspecified.
+
 Example calls:
 
-    EDGES(friendrelations, "friends/john", "outgoing")
+    NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
+    NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
 
 @subsubsection AqlFunctionsControl Control flow functions
 
