@@ -350,22 +350,23 @@
       return createSystemCollection("_aqlfunctions", { waitForSync : false });
     });
 
-    // set up the collection _aalFishbowl
-    addTask("setupAalFishbowl", "setup _aalFishbowl collection", function () {
-      return createSystemCollection("_aalFishbowl", { waitForSync : true });
+    // set up the collection _fishbowl
+    addTask("setupFishbowl", "setup _fishbowl collection", function () {
+      return createSystemCollection("_fishbowl", { waitForSync : true });
     });
     
     // create a unique index on collection attribute in _aal
-    addTask("createAalFisbowlIndex",
-            "create indexes on collection attribute in _aalFishbowl collection",
+    addTask("createFisbowlIndex",
+            "create indexes on collection attribute in _fishbowl collection",
       function () {
-        var aal = getCollection("_aal");
+        var fishbowl = getCollection("_fishbowl");
 
-        if (! aal) {
+        if (! fishbowl) {
           return false;
         }
 
-        aal.ensureUniqueConstraint("name");
+        fishbowl.ensureFulltextIndex("description");
+        fishbowl.ensureFulltextIndex("name");
 
         return true;
     });
