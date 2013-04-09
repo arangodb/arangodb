@@ -380,7 +380,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        edgeToPatch = $.extend(edgeToPatch, patchData);
+        edgeToPatch._data = $.extend(edgeToPatch._data, patchData);
         callback();
       },
       error: function(data) {
