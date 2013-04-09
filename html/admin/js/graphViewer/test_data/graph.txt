@@ -7,3 +7,8 @@ Node: Children
 4: 5 12
 
 42: 43 44 45
+
+1337: {
+  name: "Alice",
+  age: 42
+}

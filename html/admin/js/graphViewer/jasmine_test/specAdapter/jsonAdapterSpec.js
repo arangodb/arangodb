@@ -125,6 +125,29 @@
       });
     });
     
+    it('should encapsulate all attributes of nodes in _data', function() {
+      var callbackCheck;
+      
+      runs(function() {
+        adapter.loadNodeFromTreeById(1337, function() {
+          callbackCheck = true;
+        });
+      });
+      
+      waitsFor(function() {
+        return callbackCheck;
+      });
+      
+      runs(function() {
+        expect(nodes[0]._data).toEqual({
+          _id: 1337,
+          name: "Alice",
+          age: 42
+        });
+      });
+      
+    });
+    
     describe('that has already loaded one file', function() {
       
       beforeEach(function() {
