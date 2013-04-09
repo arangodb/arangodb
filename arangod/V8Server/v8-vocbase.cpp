@@ -374,17 +374,23 @@ static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
         // string key
         TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
         key = TRI_DuplicateString2(*str, str.length());
+
+        return TRI_ERROR_NO_ERROR;
       }
       else {
+        key = 0;
         return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
       }
     }
+    else {
+      key = 0;
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+    }
   }
   else {
+    key = 0;
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4172,7 +4178,6 @@ static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& 
   return EnsurePathIndex("lookupHashIndex", argv, false, false, TRI_IDX_TYPE_HASH_INDEX);
 }
 
-#if 0
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a priority queue index exists
 ///
@@ -4292,7 +4297,6 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   ReleaseCollection(collection);
   return scope.Close(index);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
@@ -5139,7 +5143,6 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
 static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -5152,15 +5155,15 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
   size_t pos;
 
   if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    if (argv.length < 1) {
-      TRI_V8_EXCEPTION_USAGE("saveOrReplace(<data>, <waitForSync>");
+    if (argv.Length() < 1) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>]");
     }
 
     pos = 0;
   }
   else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    if (argv.length < 1) {
-      TRI_V8_EXCEPTION_USAGE("saveOrReplace(<from>, <to>, <data>, <waitForSync>");
+    if (argv.Length() < 1) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>]");
     }
 
     pos = 2;
@@ -5196,12 +5199,46 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.lockWrite failed");
   }
 
-  TRI_doc_mptr_t document;
-  res = trx.read(&document, key, false);
+  if (key != 0) {
+    TRI_doc_mptr_t document;
+    res = trx.read(&document, key, false);
+  }
+  else {
+    res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
 
   v8::Handle<v8::Value> result;
 
   if (res == TRI_ERROR_NO_ERROR) {
+    TRI_primary_collection_t* primary = trx.primaryCollection();
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[pos], primary->_shaper);
+
+    if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
+    }
+
+    const bool forceSync = ExtractForceSync(argv, pos + 1);
+
+    TRI_doc_mptr_t document;
+    TRI_voc_rid_t rid = 0;
+    TRI_voc_rid_t actualRevision = 0;
+    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision, true);
+
+    res = trx.finish(res);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
+    }
+
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+    v8::Handle<v8::Object> r = v8::Object::New();
+    r->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+    r->Set(v8g->RevKey, V8RevisionId(document._rid));
+    r->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
+    r->Set(v8g->KeyKey, v8::String::New(document._key));
+
+    result = r;
   }
   else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
@@ -5217,7 +5254,6 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
 
   return scope.Close(result);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a parameter attribute of a collection
@@ -6775,9 +6811,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
-#if 0
   TRI_AddMethodVocbase(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
-#endif
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
@@ -6805,9 +6839,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
-#if 0
   TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
-#endif
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
