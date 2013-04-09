@@ -159,7 +159,7 @@ _.extend(Application.prototype, {
   },
 
   registerRepository: function (name, opts) {
-    this.routingInfo.repositories[name] = opts;
+    this.routingInfo.repositories[name] = opts || {};
   },
 
 ////////////////////////////////////////////////////////////////////////////////

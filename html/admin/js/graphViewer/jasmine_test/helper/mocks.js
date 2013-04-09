@@ -28,17 +28,22 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var helper = helper || {};
+var mocks = mocks || {};
 
-(function eventHelper() {
+(function mocksCreator() {
   "use strict";
   
-  helper.simulateMouseEvent = function (type, objectId) {
-    var evt = document.createEvent("MouseEvents"),
-    testee = document.getElementById(objectId); 
-    evt.initMouseEvent(type, true, true, window,
-      0, 0, 0, 0, 0, false, false, false, false, 0, null);
-    testee.dispatchEvent(evt);
+  mocks.layouter = {
+    drag: function(){}
   };
   
+  mocks.adapter = {
+    createNode: function(){},
+    deleteNode: function(){},
+    patchNode: function(){},
+    createEdge: function(){},
+    deleteEdge: function(){},
+    patchEdge: function(){}
+  };
+    
 }());

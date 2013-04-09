@@ -40,6 +40,8 @@ var modalDialogHelper = modalDialogHelper || {};
     
     bodyDiv.className = "modal_body";
     
+    bodyTable.id = idprefix + "table";
+    
     footerDiv.className = "modal_footer";
     
     buttonCancel.id = idprefix + "cancel";
@@ -108,6 +110,50 @@ var modalDialogHelper = modalDialogHelper || {};
           break;
       }
     });
+    $("#" + idprefix + "modal").modal('show');
+  };
+  
+  modalDialogHelper.createModalEditDialog = function(title, idprefix, object, callback) {
+    var tableToJSON,
+      callbackCapsule = function() {
+        callback(tableToJSON);
+      },
+      table =  modalDialogHelper.modalDivTemplate(title, idprefix, callbackCapsule);
+      
+    tableToJSON = function() {
+      var result = {};
+      _.each($("#" + idprefix + "table tr"), function(tr) {
+        var key = tr.children[0].children[0].value,
+          value = tr.children[1].children[0].value;
+        result[key] = value;
+      });
+      return result;
+    };
+    _.each(object, function(value, key) {
+      var tr = document.createElement("tr"),
+      keyTh = document.createElement("th"),
+      valueTh = document.createElement("th"),
+      keyInput,
+      valueInput;
+      
+      table.appendChild(tr);
+      tr.appendChild(keyTh);
+      keyTh.className = "collectionTh";
+      keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.id = idprefix + key + "_key";
+      keyInput.value = key;
+      keyTh.appendChild(keyInput);
+      
+      tr.appendChild(valueTh);
+      valueTh.className = "collectionTh";
+      valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.id = idprefix + key + "_value";
+      valueInput.value = value;
+      valueTh.appendChild(valueInput);
+      }
+    );
     $("#" + idprefix + "modal").modal('show');
   };
   
