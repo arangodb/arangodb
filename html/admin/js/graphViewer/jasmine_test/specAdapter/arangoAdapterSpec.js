@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
@@ -50,28 +50,6 @@
       nodesCollId,
       edgesCollection,
       edgesCollId,
-      c0,
-      c1,
-      c2,
-      c3,
-      c4,
-      c5,
-      c6,
-      c7,
-      c8,
-      c9,
-      c10,
-      c11,
-      c12,
-      c42,
-      c43,
-      c44,
-      c45,
-      delTriple1,
-      delTriple2,
-      delTriple3,
-      e1_5,
-      e2_8,
       callbackCheck,
       checkCallbackFunction = function() {
         callbackCheck = true;
@@ -158,14 +136,15 @@
           }
         });
       },
-      insertEdge = function (collectionID, from, to) {
+      insertEdge = function (collectionID, from, to, cont) {
         var id;
+        cont = cont || {};
         $.ajax({
           cache: false,
           type: "POST",
           async: false,
           url: arangodb + "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
-          data: JSON.stringify({}),
+          data: JSON.stringify(cont),
           contentType: "application/json",
           processData: false,
           success: function(data) {
@@ -177,14 +156,16 @@
         });
         return id;
       },
-      insertNode = function (collectionID, nodeId) {
+      insertNode = function (collectionID, nodeId, cont) {
         var id;
+        cont = cont || {};
+        cont.id = nodeId;
         $.ajax({
           cache: false,
           type: "POST",
           async: false,
           url: arangodb + "/_api/document?collection=" + collectionID,
-          data: JSON.stringify({id: nodeId}),
+          data: JSON.stringify(cont),
           contentType: "application/json",
           processData: false,
           success: function(data) {
@@ -238,11 +219,7 @@
     
     it('should be able to load a tree node from ArangoDB by internal _id attribute', function() {
       
-      var c0,
-      c1,
-      c2,
-      c3,
-      c4;
+      var c0, c1, c2, c3, c4;
       
       runs(function() {
         c0 = insertNode(nodesCollection, 0);
@@ -299,6 +276,52 @@
       runs(function() {
         expect(children).toEqual(4);
       });
+    });
+   
+    it('should encapsulate all attributes of nodes and edges in _data', function() {
+      var c0, c1, e1_2;
+      
+      runs(function() {
+        c0 = insertNode(nodesCollection, 0, {name: "Alice", age: 42});
+        c1 = insertNode(nodesCollection, 1, {name: "Bob", age: 1337});
+        e1_2 = insertEdge(edgesCollection, c0, c1, {label: "knows"});
+        
+        callbackCheck = false;
+        adapter.loadNodeFromTreeById(c0, checkCallbackFunction);
+      });
+      
+      waitsFor(function() {
+        return callbackCheck;
+      });
+      
+      runs(function() {
+        expect(nodes[0]._data).toEqual({
+          _id: c0,
+          _key: jasmine.any(String),
+          _rev: jasmine.any(String),
+          id: 0,
+          name: "Alice",
+          age: 42
+        });
+        expect(nodes[1]._data).toEqual({
+          _id: c1,
+          _key: jasmine.any(String),
+          _rev: jasmine.any(String),
+          id: 1,
+          name: "Bob",
+          age: 1337
+        });
+        expect(edges[0]._data).toEqual({
+          _id: e1_2,
+          _from: c0,
+          _to: c1,
+          _key: jasmine.any(String),
+          _rev: jasmine.any(String),
+          label: "knows"
+        });
+      });
+       
+      
     });
    
     describe('that has already loaded one graph', function() {
@@ -503,7 +526,7 @@
       });
     
       describe('that has loaded several queries', function() {
-        var c8, c9;
+        var c8, c9, e2_8;
       
         beforeEach(function() {
       

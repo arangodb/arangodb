@@ -61,28 +61,38 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     throw "Too many nodes with the same ID, should never happen";
   },
   
-  insertNode = function(node) {
-    var n = findNode(node._id);
+  insertNode = function(data) {
+    var node = {
+      _data: data,
+      _id: data._id
+    },
+      n = findNode(node._id);
     if (n) {
       return n;
     }
+    
     initialY.getStart();
     node.x = initialX.getStart();
     node.y = initialY.getStart();
     nodes.push(node);
     node._outboundCounter = 0;
     node._inboundCounter = 0;
+    return node;
   },
   
-  insertEdge = function(edge) {
+  insertEdge = function(data) {
     var source,
-    target,
-    e = findEdge(edge._id);
+      target,
+      edge = {
+        _data: data,
+        _id: data._id
+      },
+      e = findEdge(edge._id);
     if (e) {
       return e;
     }
-    source = findNode(edge._from);
-    target = findNode(edge._to);
+    source = findNode(data._from);
+    target = findNode(data._to);
     if (!source) {
       throw "Unable to insert Edge, source node not existing " + edge._from;
     }
@@ -94,6 +104,7 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     edges.push(edge);
     source._outboundCounter++;
     target._inboundCounter++;
+    return edge;
   },
   
   removeNode = function (node) {
