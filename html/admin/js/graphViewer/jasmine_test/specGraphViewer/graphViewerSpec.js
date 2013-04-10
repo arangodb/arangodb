@@ -362,7 +362,7 @@ describe("Graph Viewer", function() {
         
           // Wait a gentle second for all nodes to expand properly
           waits(1000);
-        
+
           runs(function() {
             clickOnNode(1);
             clickOnNode(4);

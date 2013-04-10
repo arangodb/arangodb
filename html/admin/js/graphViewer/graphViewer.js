@@ -95,13 +95,6 @@ function GraphViewer(svg, width, height,
     
     if (checkDefs(conf.expand)) {
       dispatcher.bind(conf.expand.target, conf.expand.type, dispatcher.events.EXPAND);
-      dispatcher.bind("nodes", "update", function(node) {
-        node.selectAll("circle")
-        .attr("class", function(d) {
-          return d._expanded ? "expanded" : 
-            d._centrality === 0 ? "single" : "collapsed";
-        });
-      });
     }
   
     if (checkDefs(conf.createNode)
