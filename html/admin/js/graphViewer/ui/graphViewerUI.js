@@ -27,8 +27,63 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphViewerUI(list, shaper) {
+function GraphViewerUI(container) {
   "use strict";
+  
+  if (container === undefined) {
+    throw "A parent element has to be given.";
+  }
+  if (!container.id) {
+    throw "The parent element needs an unique id.";
+  }
+  
+  var makeBootstrapDropdown = function (div, id, title) {
+      var btn, caret, list;
+      div.className = "dropdown";
+      btn = document.createElement("a");
+      btn.className = "dropdown-toggle";
+      btn.id = id;
+      btn.role = "button";
+      btn["data-toggle"] = "dropdown";
+      btn["data-target"] = "#";
+      btn.appendChild(document.createTextNode(title));
+      caret = document.createElement("b");
+      caret.className = "caret";
+      btn.appendChild(caret);
+      list = document.createElement("ul");
+      list.className = "dropdown-menu";
+      list.role = "menu";
+      list["aria-labelledby"] = id;
+      div.appendChild(btn);
+      div.appendChild(list);
+      return list;
+    },
+    svg = document.createElement("svg"),
+    toolbox = document.createElement("div"),
+    menucontainer = document.createElement("div"),
+    menubar = document.createElement("ul"),
+    nodeShaperDropDown = document.createElement("div"),
+    
+    nodeShaperList = makeBootstrapDropdown(nodeShaperDropDown, "nodeshaperdropdown", "Node Shaper"),
+    
+    edgeShaperDropDown = document.createElement("div"),
+    edgeShaperList = makeBootstrapDropdown(edgeShaperDropDown, "edgeshaperdropdown", "Edge Shaper");
+    
+  
+  toolbox.id = "toolbox";
+  toolbox.className = "toolbox";
+  menubar.id = "menubar";
+  nodeShaperDropDown.id = "nodeshapermenu";
+  edgeShaperDropDown.id = "edgeshapermenu";
+  
+
+  // Append all elements
+  container.appendChild(svg);
+  container.appendChild(toolbox);
+  container.appendChild(menucontainer);
+  menucontainer.appendChild(menubar);
+  menubar.appendChild(nodeShaperDropDown);
+  menubar.appendChild(edgeShaperDropDown);
   
   
 }

@@ -48,10 +48,82 @@
       div.id = "contentDiv";
       document.body.appendChild(div);
       ui = new GraphViewerUI(div);
+      this.addMatchers({
+        
+        toBeADropdownMenu: function() {
+          var div = this.actual,
+            btn = div.children[0],
+            list = div.children[1],
+            msg = "";
+          this.message = function() {
+            return msg;
+          };
+          if (div.className !== "dropdown") {
+            msg = "div class to be dropdown";
+            return false;
+          }
+          // Check the toggle button
+          if (btn === undefined || btn.tagName.toLowerCase() !== "a") {
+            msg = "first element has to be a link";
+            return false;
+          }
+          if (btn.className !== "dropdown-toggle") {
+            msg = "first elements class to be dropdown-toggle";
+            return false;
+          }
+          if (btn.role !== "button") {
+            msg = "first elements role to be button";
+            return false;
+          }
+          if (btn["data-toggle"] !== "dropdown") {
+            msg = "first elements data-toggle to be dropdown";
+            return false;
+          }
+          if (btn["data-target"] !== "#") {
+            msg = "first elements data-target to be a link";
+            return false;
+          }
+          if (btn.children[0].tagName.toLowerCase() !== "b" && btn.children[0].className !== "caret") {
+            msg = "first element to contain a caret";
+            return false;
+          }
+
+          // Check the list
+          if (list.className !== "dropdown-menu") {
+            msg = "list element to be of class dropdown-menu";
+            return false;
+          }
+          if (list.role !== "menu") {
+            msg = "list elements role to be menu";
+            return false;
+          }
+          if (list["aria-labelledby"] !== btn.id) {
+            msg = "list elements aria-labelledby to be same as button id";
+            return false;
+          }
+          return true;
+        }
+      });
     });
     
     afterEach(function() {
-      document.removeChild(div);
+      document.body.removeChild(div);
+    });
+    
+    it('should throw an error if no container element is given', function() {
+      expect(
+        function() {
+          var t = new GraphViewerUI();
+        }
+      ).toThrow("A parent element has to be given.");
+    });
+    
+    it('should throw an error if the container element has no id', function() {
+      expect(
+        function() {
+          var t = new GraphViewerUI(document.createElement("div"));
+        }
+      ).toThrow("The parent element needs an unique id.");
     });
     
     it('should append a svg to the given parent', function() {
@@ -66,7 +138,6 @@
       });
       
       it('should contain the objects from eventDispatcher', function() {
-        
         expect($(toolboxSelector + " #control_drag").length).toEqual(1);
         expect($(toolboxSelector + " #control_edit").length).toEqual(1);
         expect($(toolboxSelector + " #control_expand").length).toEqual(1);
@@ -84,6 +155,7 @@
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
         expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector +  " #control_none").length).toEqual(1);
         expect($(menuSelector +  " #control_circle").length).toEqual(1);
         expect($(menuSelector +  " #control_rect").length).toEqual(1);
@@ -96,6 +168,7 @@
       it('should contain a menu for the edge shapes', function() {
         var menuSelector = "#contentDiv #menubar #edgeshapermenu";
         expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
         expect($(menuSelector + " #control_none").length).toEqual(1);
         expect($(menuSelector + " #control_arrow").length).toEqual(1);
         expect($(menuSelector + " #control_label").length).toEqual(1);
@@ -107,7 +180,7 @@
       it('should contain a menu for the adapter', function() {
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
-        
+        expect($(menuSelector)[0]).toBeADropdownMenu();
         expect(false).toBeTruthy();
       });
       
