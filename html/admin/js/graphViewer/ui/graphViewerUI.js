@@ -1,6 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -28,18 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var uiComponentsHelper = uiComponentsHelper || {};
-
-(function componentsHelper() {
+function GraphViewerUI(list, shaper) {
   "use strict";
   
-  uiComponentsHelper.createButton = function(baseclass, list, title, prefix, callback) {
-    var  button = document.createElement("li");
-    button.className = baseclass + "_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode(title));
-    list.appendChild(button);
-    button.onclick = callback;
-  };
   
-}());
+}
