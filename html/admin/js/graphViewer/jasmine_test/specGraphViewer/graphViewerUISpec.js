@@ -172,7 +172,6 @@
         expect(btn.tagName.toLowerCase()).toEqual("img");
         expect(btn.width).toEqual(16);
         expect(btn.height).toEqual(16);
-        expect(btn.src).toEqual("img/enter_icon");
       });
       
       it('should contain a menu for the node shapes', function() {
