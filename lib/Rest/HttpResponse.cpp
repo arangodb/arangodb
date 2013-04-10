@@ -496,7 +496,7 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief swaps data
+/// @brief add a cookie
 ////////////////////////////////////////////////////////////////////////////////
 void HttpResponse::setCookie (string const& name, string const& value, 
         int lifeTimeSeconds, string const& path, string const& domain,
@@ -511,13 +511,18 @@ void HttpResponse::setCookie (string const& name, string const& value,
   tmp = StringUtils::urlEncode(value);
   buffer->appendText(tmp.c_str(), tmp.length());
   
-  if (lifeTimeSeconds > 0) {
+  if (lifeTimeSeconds != 0) {
     time_t rawtime;
     struct tm * timeinfo;
     char buffer2 [80];
 
-    time(&rawtime);
-    rawtime += lifeTimeSeconds;
+    time(&rawtime);    
+    if (lifeTimeSeconds > 0) {
+      rawtime += lifeTimeSeconds;      
+    }
+    else {
+      rawtime = 1;
+    }
 
     if (rawtime > 0) {
       timeinfo = gmtime(&rawtime);
@@ -549,7 +554,6 @@ void HttpResponse::setCookie (string const& name, string const& value,
   char const* l = StringUtils::duplicate(buffer->c_str());
   buffer->clear();
   free(buffer);
-  
   _cookies.push_back(l);
   
   _freeables.push_back(l);
