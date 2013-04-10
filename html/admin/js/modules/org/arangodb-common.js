@@ -9,7 +9,7 @@ module.define("org/arangodb-common", function(exports, module) {
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ module.define("org/arangodb-common", function(exports, module) {
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -42,11 +42,6 @@ var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief errors
@@ -66,18 +61,19 @@ var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 
 exports.errors = internal.errors;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
+
+exports.ArangoError = internal.ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a module
@@ -119,16 +115,16 @@ exports.guessContentType = function (filename) {
 
   if (match !== null) {
     var extension = match[1];
-  
+
     if (mimetypes.hasOwnProperty(extension)) {
       var type = mimetypes[extension];
-      
+
       if (type[1]) {
         // append charset
         return type[0] + "; charset=utf-8";
       }
 
-      return type[0]; 
+      return type[0];
     }
     // fall-through intentional
   }
@@ -279,7 +275,7 @@ exports.printTable = function  (list, columns, framed) {
   }
   else {
     what = columns;
-  } 
+  }
 
   j = 0;
   descriptions = [ ];
@@ -324,7 +320,7 @@ exports.printTable = function  (list, columns, framed) {
       }
     });
   });
-    
+
   var divider = function () {
     var parts = [ ];
     descriptions.forEach(function (desc) {
@@ -412,16 +408,12 @@ exports.stringPadding = function (str, len, pad, dir) {
   return str;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
 });

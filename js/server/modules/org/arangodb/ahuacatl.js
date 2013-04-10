@@ -32,7 +32,7 @@
 
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = require("org/arangodb").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

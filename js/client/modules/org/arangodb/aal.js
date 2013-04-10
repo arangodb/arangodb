@@ -36,8 +36,8 @@ var fs = require("fs");
 
 var arangodb = require("org/arangodb");
 var arangosh = require("org/arangodb/arangosh");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
+var ArangoError = arangodb.ArangoError;
 var arango = internal.arango;
 var db = arangodb.db;
 

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoError, ArangoCursor,
+/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
          AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN */
 
@@ -55,9 +55,6 @@
 
   internal.ArangoDatabase = ArangoDatabase;
   delete ArangoDatabase;
-
-  internal.ArangoError = ArangoError;
-  delete ArangoError;
 
   internal.ArangoCursor = ArangoCursor;
   delete ArangoCursor;

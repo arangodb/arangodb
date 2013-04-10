@@ -988,7 +988,6 @@ function require (path) {
         || norm === "/org/arangodb/actions"
         || norm === "/org/arangodb/arango-collection"
         || norm === "/org/arangodb/arango-database"
-        || norm === "/org/arangodb/arango-error"
         || norm === "/org/arangodb/arango-statement"
         || norm === "/org/arangodb/shaped-json") {
       return;

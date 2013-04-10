@@ -181,22 +181,18 @@ sub formatFile ($$$) {
     if ($line =~ /^\/\/\/ \@addtogroup/) {
       $lastLine = undef;
       $skipGroup = 1;
-      print STDERR "skip group 1\n";
       next;
     }
 
     if ($line =~ /^\/\/\/ @}/) {
       $lastLine = undef;
       $skipGroup = 1;
-      print STDERR "skip group 1a\n";
       next;
     }
 
     if ($skipGroup == 1) {
       if ($line =~ /^\/\/\/\/\/\//) {
 	$skipGroup = 2;
-	print STDERR "skip group 2\n";
-	print STDERR "$line\n";
       }
 
       next;
@@ -205,8 +201,6 @@ sub formatFile ($$$) {
     if ($skipGroup == 2) {
       if ($line !~ /^[\t ]*$/) {
 	$skipGroup = 0;
-	print STDERR "skip group 0\n";
-	print STDERR "$line\n";
       }
       else {
 	next;
