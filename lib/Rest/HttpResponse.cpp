@@ -498,6 +498,66 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps data
 ////////////////////////////////////////////////////////////////////////////////
+void HttpResponse::setCookie (string const& name, string const& value, 
+        int lifeTimeSeconds, string const& path, string const& domain,
+        bool secure, bool httpOnly) {
+          
+  triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  
+  string tmp = StringUtils::trim(name);
+  buffer->appendText(tmp.c_str(), tmp.length());
+  buffer->appendChar('=');
+  
+  tmp = StringUtils::urlEncode(value);
+  buffer->appendText(tmp.c_str(), tmp.length());
+  
+  if (lifeTimeSeconds > 0) {
+    time_t rawtime;
+    struct tm * timeinfo;
+    char buffer2 [80];
+
+    time(&rawtime);
+    rawtime += lifeTimeSeconds;
+
+    if (rawtime > 0) {
+      timeinfo = gmtime(&rawtime);
+      strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
+      buffer->appendText("; expires=");
+      buffer->appendText(buffer2);
+    }
+  }
+  
+  if (path != "") {
+    buffer->appendText("; path=");
+    buffer->appendText(path);
+  }
+
+  if (domain != "") {
+    buffer->appendText("; domain=");
+    buffer->appendText(domain);
+  }
+  
+
+  if (secure) {
+    buffer->appendText("; secure");
+  }
+
+  if (httpOnly) {
+    buffer->appendText("; HttpOnly");
+  }
+  
+  char const* l = StringUtils::duplicate(buffer->c_str());
+  buffer->clear();
+  free(buffer);
+  
+  _cookies.push_back(l);
+  
+  _freeables.push_back(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief swaps data
+////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* HttpResponse::swap () {
   HttpResponse* response = new HttpResponse(_code);
@@ -560,6 +620,13 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     output->appendText("\r\n", 2);
   }
 
+  for (vector<char const*>::iterator iter = _cookies.begin(); 
+          iter != _cookies.end(); ++iter) {
+    output->appendText("Set-Cookie: ", 12);
+    output->appendText(*iter);
+    output->appendText("\r\n", 2);    
+  }
+  
   if (seenTransferEncoding && transferEncoding == "chunked") {
     output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
   }
