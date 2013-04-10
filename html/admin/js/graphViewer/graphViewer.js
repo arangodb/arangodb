@@ -60,55 +60,6 @@ function GraphViewer(svg, width, height,
     edges = [],
     nodes = [],
 
-  
-    /*
-  bindEventsFromConfig = function(conf) {
-    var checkDefs = function(el) {
-      return el !== undefined && el.target !== undefined && el.type !== undefined;
-    },
-    checkFunction = function(el) {
-      return el !== undefined && _.isFunction(el);
-    };
-    
-    if (checkDefs(conf.expand)) {
-      dispatcher.bind(conf.expand.target, conf.expand.type, dispatcher.events.EXPAND);
-    }
-  
-    if (checkDefs(conf.createNode)
-    && checkFunction(conf.createNode.callback)) {
-      dispatcher.bind(conf.createNode.target,
-        conf.createNode.type,
-        function() {
-          dispatcher.events.CREATENODE(conf.createNode.callback);
-          start();
-        });
-    }
-  
-    if (checkDefs(conf.patchNode)) {
-      dispatcher.bind(conf.patchNode.target,
-        conf.patchNode.type,
-        dispatcher.events.PATCHNODE);
-    }
-  
-    if (checkDefs(conf.deleteNode)
-    && checkFunction(conf.deleteNode.callback)) {
-      dispatcher.bind(conf.deleteNode.target,
-        conf.deleteNode.type,
-        function(n) {
-          dispatcher.events.DELETENODE(n, conf.deleteNode.callback);
-        }
-      );
-    }
-    if (conf.custom !== undefined) {
-      _.each(conf.custom, function(toBind) {
-        if (checkDefs(toBind)
-        && checkFunction(toBind.func)) {
-          dispatcher.bind(toBind.target, toBind.type, toBind.func);
-        }
-      });
-    }
-  },
-  */
   parseLayouterConfig = function (config) {
     if (!config) {
       // Default
@@ -143,34 +94,6 @@ function GraphViewer(svg, width, height,
     nodeContainer = svg.append("svg:g");
     self.nodeShaper = new NodeShaper(nodeContainer, nsConf, idFunc);
     layouter.setCombinedUpdateFunction(self.nodeShaper, self.edgeShaper);
-    
-    /*
-    if (nodeShaperConfig.childrenCentrality !== undefined) {
-      fixedSize = nodeShaperConfig.size || 12;
-      nodeShaperConfig.size = function(node) {
-        if (node._expanded) {
-          return fixedSize;
-        }
-        if (node._centrality !== undefined) {
-          return fixedSize + 3 * node._centrality;
-        }
-        adapter.requestCentralityChildren(node._id, function(c) {
-          node._centrality = c;
-          nodeShaper.reshapeNode(node);
-        });
-        return fixedSize;
-      };
-    }
-    */
-    /*
-    if (nodeShaperConfig.dragable !== undefined) {
-      nodeShaperConfig.ondrag = layouter.drag;
-    }
-    */
-  
-    
-    
-    
   };
   
   switch (adapterConfig.type.toLowerCase()) {
@@ -206,35 +129,6 @@ function GraphViewer(svg, width, height,
     self.nodeShaper.drawNodes(nodes);
     layouter.start();
   };
-  /*
-  if (eventsConfig.expand !== undefined) {
-    eventsDispatcherConfig.expand = {
-      edges: edges,
-      nodes: nodes,
-      startCallback: start,
-      loadNode: adapter.loadNodeFromTreeById,
-      reshapeNode: nodeShaper.reshapeNode
-    };
-  }
-  if (eventsConfig.createNode !== undefined
-    || eventsConfig.patchNode !== undefined
-    || eventsConfig.deleteNode !== undefined) {
-    eventsDispatcherConfig.nodeEditor = {
-      nodes: nodes,
-      adapter: adapter
-    };
-  }
-  if (eventsConfig.edgeEditor !== undefined) {
-    eventsDispatcherConfig.edgeEditor = {
-      edges: edges,
-      adapter: adapter
-    };
-  }
-  */
-  
-  //dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
-  
-  //bindEventsFromConfig(eventsConfig);
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
@@ -260,14 +154,24 @@ function GraphViewer(svg, width, height,
     });
   };
   
-  
-  //TODO REMOVE
-  //HACK to view the Controls in the Demo
-  /*
-  var edgeShaperControls = new EdgeShaperControls($("#controls")[0], edgeShaper);
-  edgeShaperControls.addAll();
-  var nodeShaperControls = new NodeShaperControls($("#controls")[0], nodeShaper);
-  nodeShaperControls.addAll();
-  */
-  
+  self.dispatcherConfig = {
+    expand: {
+      edges: edges,
+      nodes: nodes,
+      startCallback: self.start,
+      loadNode: self.adapter.loadNodeFromTreeById,
+      reshapeNode: self.nodeShaper.reshapeNode
+    },
+    drag: {
+      layouter: layouter
+    },
+    nodeEditor: {
+      nodes: nodes,
+      adapter: self.adapter
+    },
+    edgeEditor: {
+      edges: edges,
+      adapter: self.adapter
+    }  
+  };  
 }

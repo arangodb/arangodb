@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
-/*global describe, it, expect */
+/*global describe, it, expect, jasmine */
 /*global waitsFor, runs, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
@@ -138,6 +138,50 @@ describe("Graph Viewer", function() {
       
       it('should offer the adapter', function() {
         expect(viewer.adapter).toBeDefined();
+      });
+      
+      it('should offer the complete config for the event dispatcher', function() {
+        expect(viewer.dispatcherConfig).toBeDefined();
+        expect(viewer.dispatcherConfig).toEqual({
+          expand: {
+            edges: [],
+            nodes: [],
+            startCallback: jasmine.any(Function),
+            loadNode: jasmine.any(Function),
+            reshapeNode: jasmine.any(Function)
+          },
+          drag: {
+            layouter: jasmine.any(Object)
+          },
+          nodeEditor: {
+            nodes: [],
+            adapter: jasmine.any(Object)
+          },
+          edgeEditor: {
+            edges: [],
+            adapter: jasmine.any(Object)
+          }
+        });
+        expect(viewer.dispatcherConfig.expand).toEqual({
+          edges: [],
+          nodes: [],
+          startCallback: jasmine.any(Function),
+          loadNode: jasmine.any(Function),
+          reshapeNode: jasmine.any(Function)
+        });
+        expect(viewer.dispatcherConfig.drag).toEqual({
+          layouter: jasmine.any(Object)
+        });
+        expect(viewer.dispatcherConfig.nodeEditor).toEqual({
+          nodes: [],
+          adapter: jasmine.any(Object)
+        });
+        expect(viewer.dispatcherConfig.edgeEditor).toEqual({
+          edges: [],
+          adapter: jasmine.any(Object)
+        });
+        
+        
       });
       
       it('should offer to load a new graph', function() {

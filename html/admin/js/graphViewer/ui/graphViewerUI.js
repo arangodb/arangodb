@@ -27,7 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphViewerUI(container) {
+function GraphViewerUI(container, adapterConfig) {
   "use strict";
   
   if (container === undefined) {
@@ -36,6 +36,9 @@ function GraphViewerUI(container) {
   if (!container.id) {
     throw "The parent element needs an unique id.";
   }
+  if (adapterConfig === undefined) {
+    throw "An adapter configuration has to be given";
+  } 
   
   var makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
@@ -58,32 +61,70 @@ function GraphViewerUI(container) {
       div.appendChild(list);
       return list;
     },
-    svg = document.createElement("svg"),
-    toolbox = document.createElement("div"),
-    menucontainer = document.createElement("div"),
-    menubar = document.createElement("ul"),
-    nodeShaperDropDown = document.createElement("div"),
-    
-    nodeShaperList = makeBootstrapDropdown(nodeShaperDropDown, "nodeshaperdropdown", "Node Shaper"),
-    
-    edgeShaperDropDown = document.createElement("div"),
-    edgeShaperList = makeBootstrapDropdown(edgeShaperDropDown, "edgeshaperdropdown", "Edge Shaper");
-    
-  
-  toolbox.id = "toolbox";
-  toolbox.className = "toolbox";
-  menubar.id = "menubar";
-  nodeShaperDropDown.id = "nodeshapermenu";
-  edgeShaperDropDown.id = "edgeshapermenu";
-  
+    createSVG = function () {
+      var svg = document.createElement("svg");
+      container.appendChild(svg);
+    },
+    createToolbox = function() {
+      var toolbox = document.createElement("div"),
+      toollist = document.createElement("ul"),
+      dispatcherUI = new EventDispatcherControls(toollist, graphViewer.nodeShaper, graphViewer.edgeShaper, graphViewer.dispatcherConfig);
+      toolbox.id = "toolbox";
+      toolbox.className = "toolbox";
+      container.appendChild(toolbox);
+      toolbox.appendChild(toollist);
+      dispatcherUI.addAll();
+    },
+    createMenu = function() {
+      var menucontainer = document.createElement("div"),
+      menubar = document.createElement("ul"),
+      searchDiv = document.createElement("div"),
+      searchField = document.createElement("input"),
+      searchStart = document.createElement("img"),
+      nodeShaperDropDown = document.createElement("div"),
+      nodeShaperList = makeBootstrapDropdown(nodeShaperDropDown, "nodeshaperdropdown", "Node Shaper"),
+      edgeShaperDropDown = document.createElement("div"),
+      edgeShaperList = makeBootstrapDropdown(edgeShaperDropDown, "edgeshaperdropdown", "Edge Shaper"),
+      nodeShaperUI = new NodeShaperControls(nodeShaperList, graphViewer.nodeShaper),
+      edgeShaperUI = new EdgeShaperControls(edgeShaperList, graphViewer.edgeShaper);
+      
+      menubar.id = "menubar";
+      
+      searchField.id = "nodeid";
+      searchField.className = "searchInput";
+      searchStart.id = "loadnode";
+      searchStart.width = 16;
+      searchStart.height = 16;
+      searchStart.src = "img/enter_icon.png";
+      
+      nodeShaperDropDown.id = "nodeshapermenu";
+      edgeShaperDropDown.id = "edgeshapermenu";
+      
+      searchStart.onclick = function() {
+        var nodeId = searchField.value;
+        graphViewer.loadGraph(nodeId);
+      };
+      
+      container.appendChild(menucontainer);
+      menucontainer.appendChild(menubar);
+      menubar.appendChild(searchDiv);
+      searchDiv.appendChild(searchField);
+      searchDiv.appendChild(searchStart);
+      menubar.appendChild(nodeShaperDropDown);
+      menubar.appendChild(edgeShaperDropDown);
+      
+      
+      nodeShaperUI.addAll();
+      edgeShaperUI.addAll();
+      
+    },
+    graphViewer,
+    width = container.width, // TODO
+    height = container.height; // TODO
 
-  // Append all elements
-  container.appendChild(svg);
-  container.appendChild(toolbox);
-  container.appendChild(menucontainer);
-  menucontainer.appendChild(menubar);
-  menubar.appendChild(nodeShaperDropDown);
-  menubar.appendChild(edgeShaperDropDown);
+  createSVG();
+  graphViewer = new GraphViewer(d3.select("#" + container.id + " svg"), 10, 10, adapterConfig);
   
-  
+  createToolbox();
+  createMenu();
 }
