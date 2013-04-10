@@ -40,11 +40,7 @@ describe("Graph Viewer", function() {
   var viewer,
   waittime = 100,
   svg,
-  docSVG,
-  
-  clickOnNode = function(id) {
-    helper.simulateMouseEvent("click", id);
-  };
+  docSVG;
   
   beforeEach(function() {
     docSVG = document.createElement("svg");
