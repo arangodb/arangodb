@@ -42,14 +42,6 @@ describe("Graph Viewer", function() {
   svg,
   docSVG,
   
-  simulateMouseEvent = function (type, objectId) {
-    var evt = document.createEvent("MouseEvents"),
-    testee = document.getElementById(objectId); 
-    evt.initMouseEvent(type, true, true, window,
-      0, 0, 0, 0, 0, false, false, false, false, 0, null);
-    testee.dispatchEvent(evt);
-  },
-  
   clickOnNode = function(id) {
     helper.simulateMouseEvent("click", id);
   };
@@ -114,50 +106,11 @@ describe("Graph Viewer", function() {
       ).toThrow("A height greater 0 has to be given");
     });
     
-    it('should throw an error if the adapter config is not given', function() {
-      expect(
-        function() {
-          var t = new GraphViewer(svg, 10, 10);
-        }
-      ).toThrow("Adapter config has to be given");
-    });
-    
-    it('should throw an error if the node shaper config is not given', function() {
-      expect(
-        function() {
-          var t = new GraphViewer(svg, 10, 10, adapterConfig);
-        }
-      ).toThrow("Node Shaper config has to be given");
-    });
-    
-    it('should throw an error if the edge shaper config is not given', function() {
-      expect(
-        function() {
-          var t = new GraphViewer(svg, 10, 10, adapterConfig, {});
-        }
-      ).toThrow("Edge Shaper config has to be given");
-    });
-    
-    it('should throw an error if the layouter config is not given', function() {
-      expect(
-        function() {
-          var t = new GraphViewer(svg, 10, 10, adapterConfig, {}, {});
-        }
-      ).toThrow("Layouter config has to be given");
-    });
-    
-    it('should throw an error if the events config is not given', function() {
-      expect(
-        function() {
-          var t = new GraphViewer(svg, 10, 10, adapterConfig, {}, {}, layouterConfig);
-        }
-      ).toThrow("Events config has to be given");
-    });
     
     it('should not throw an error if everything is given', function() {
       expect(
         function() {
-          var t = new GraphViewer(svg, 10, 10, adapterConfig, {}, {}, layouterConfig, {});
+          var t = new GraphViewer(svg, 10, 10);
         }
       ).not.toThrow();
     });
@@ -170,8 +123,6 @@ describe("Graph Viewer", function() {
     
     beforeEach(function() {
       var aconf = {type: "json", path: "../test_data/"},
-      nsconf = {},
-      esconf = {},
       lconf = {type: "force"},
       evconf = {
         expand: {
@@ -179,8 +130,13 @@ describe("Graph Viewer", function() {
           type: "click",
           callback: function(){}
         }
+      },
+      config = {
+        adapter: aconf,
+        layouter: lconf,
+        events: evconf
       };
-      viewer = new GraphViewer(svg, 10, 10, aconf, nsconf, esconf, lconf, evconf);
+      viewer = new GraphViewer(svg, 10, 10, config);
       
       this.addMatchers({
         toBeDisplayed: function() {
@@ -261,7 +217,7 @@ describe("Graph Viewer", function() {
         waits(waittime);
       });
       
-      
+      /*
       it('should be able to rebind the events', function() {
         var called = false;
         
@@ -288,7 +244,7 @@ describe("Graph Viewer", function() {
         });
         
       });
-      
+      */
       it("should be able to expand a node", function() {
     
         runs (function() {
