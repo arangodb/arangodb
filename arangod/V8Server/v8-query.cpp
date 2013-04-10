@@ -1675,6 +1675,10 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   const size_t n = docs.size();
   uint32_t count = 0;
+  
+  if (n > 0) {
+    TRI_ASSERT_MAINTAINER(barrier != 0);
+  }
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
