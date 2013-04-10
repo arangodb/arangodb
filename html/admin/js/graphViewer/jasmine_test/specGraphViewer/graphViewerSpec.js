@@ -59,12 +59,10 @@ describe("Graph Viewer", function() {
   
   describe('set up process', function() {
     
-    var adapterConfig,
-    layouterConfig;
+    var adapterConfig;
     
     beforeEach(function() {
       adapterConfig = {type: "json", path: "../test_data/"};
-      layouterConfig = {type: "force"};
     });
     
     it('should throw an error if the svg is not given or incorrect', function() {
@@ -106,347 +104,93 @@ describe("Graph Viewer", function() {
       ).toThrow("A height greater 0 has to be given");
     });
     
-    
-    it('should not throw an error if everything is given', function() {
+    it('should throw an error if the adapterConfig is not given', function() {
       expect(
         function() {
           var t = new GraphViewer(svg, 10, 10);
         }
+      ).toThrow("An adapter configuration has to be given");
+    });
+    
+    it('should not throw an error if everything is given', function() {
+      expect(
+        function() {
+          var t = new GraphViewer(svg, 10, 10, adapterConfig);
+        }
       ).not.toThrow();
+    });
+    
+    describe('GraphViewer set up correctly', function() {
+      
+      var viewer;
+      
+      beforeEach(function() {
+        viewer = new GraphViewer(svg, 10, 10, adapterConfig);
+      });
+      
+      it('should offer the nodeShaper', function() {
+        expect(viewer.nodeShaper).toBeDefined();
+      });
+      
+      it('should offer the edgeShaper', function() {
+        expect(viewer.edgeShaper).toBeDefined();
+      });
+      
+      it('should offer the startFunction', function() {
+        expect(viewer.start).toBeDefined();
+      });
+      
+      it('should offer the adapter', function() {
+        expect(viewer.adapter).toBeDefined();
+      });
+      
+      it('should offer to load a new graph', function() {
+        expect(viewer.loadGraph).toBeDefined();
+      });
+      
+      it('should offer to load a new graph by attribute value', function() {
+        expect(viewer.loadGraphWithAttributeValue).toBeDefined();
+      });
+      
+      
+      it("should be able to load a root node", function() {
+        runs (function() {
+          this.addMatchers({
+            toBeDisplayed: function() {
+              var nodes = this.actual,
+              nonDisplayed = [];
+              this.message = function(){
+                var msg = "Nodes: [";
+                _.each(nonDisplayed, function(n) {
+                  msg += n + " ";
+                });
+                msg += "] are not displayed.";
+                return msg;
+              };
+              _.each(nodes, function(n) {
+                if ($("svg #" + n)[0] === undefined) {
+                  nonDisplayed.push(n);
+                }
+              });
+              return nonDisplayed.length === 0;
+            }
+          });
+          
+          viewer.loadGraph(0);
+        });
+    
+        // Give it a second to load
+        // Unfortunately there is no handle to check for changes
+        waits(waittime);
+    
+        runs (function() {
+          expect([0, 1, 2, 3, 4]).toBeDisplayed();
+        });
+      });
+      
     });
     
   });
   
-  describe('set up with jsonAdapter, forceLayout, click Expand and default shapers', function() {
-    
-    var viewer;
-    
-    beforeEach(function() {
-      var aconf = {type: "json", path: "../test_data/"},
-      lconf = {type: "force"},
-      evconf = {
-        expand: {
-          target: "nodes",
-          type: "click",
-          callback: function(){}
-        }
-      },
-      config = {
-        adapter: aconf,
-        layouter: lconf,
-        events: evconf
-      };
-      viewer = new GraphViewer(svg, 10, 10, config);
-      
-      this.addMatchers({
-        toBeDisplayed: function() {
-          var nodes = this.actual,
-          nonDisplayed = [];
-          this.message = function(){
-            var msg = "Nodes: [";
-            _.each(nonDisplayed, function(n) {
-              msg += n + " ";
-            });
-            msg += "] are not displayed.";
-            return msg;
-          };
-          _.each(nodes, function(n) {
-            if ($("svg #" + n)[0] === undefined) {
-              nonDisplayed.push(n);
-            }
-          });
-          return nonDisplayed.length === 0;
-        },
-        toNotBeDisplayed: function() {
-          var nodes = this.actual,
-          displayed = [];
-          this.message = function() {
-            var msg = "Nodes: [";
-            _.each(displayed, function(n) {
-              msg += n + " ";
-            });
-            msg += "] are still displayed.";
-            return msg;
-          };
-          _.each(nodes, function(n) {
-            if ($("svg #" + n)[0] !== undefined) {
-              displayed.push(n);
-            }
-          });
-          return displayed.length === 0;
-        },
-        toBeConnectedTo: function(target) {
-          var source = this.actual;
-          this.message = function() {
-            return source + " -> " + target + " edge, does not exist";
-          };
-          return $("svg #" + source + "-" + target)[0] !== undefined;
-        },
-        toNotBeConnectedTo: function(target) {
-          var source = this.actual;
-          this.message = function() {
-            return source + " -> " + target + " edge, does still exist";
-          };
-          return $("svg #" + source + "-" + target)[0] === undefined;
-        }
-      });
-      
-    });
-    
-    it("should be able to load a root node", function() {
-      runs (function() {
-        viewer.loadGraph(0);
-      });
-    
-      // Give it a second to load
-      // Unfortunately there is no handle to check for changes
-      waits(waittime);
-    
-      runs (function() {
-        expect([0, 1, 2, 3, 4]).toBeDisplayed();
-      });
-    });
-    
-    describe('when a graph has been loaded', function() {
-      beforeEach(function() {
-      
-        runs (function() {
-          viewer.loadGraph(0);
-        });
-    
-        waits(waittime);
-      });
-      
-      /*
-      it('should be able to rebind the events', function() {
-        var called = false;
-        
-        runs(function() {
-          var newEventConfig = {custom: [
-            {
-              target: "nodes",
-              type: "click",
-              func: function() {
-                called = true;
-              }
-            }
-          ]};
-          viewer.rebind(newEventConfig);
-          clickOnNode(1);
-        });
-        
-        waitsFor(function() {
-          return called;
-        }, 1000, "The click event should have been triggered.");
-        
-        runs(function() {
-          expect(called).toBeTruthy();
-        });
-        
-      });
-      */
-      it("should be able to expand a node", function() {
-    
-        runs (function() {
-          clickOnNode(1);
-        });
-    
-        waits(waittime);
-        
-        runs (function() {
-          expect([0, 1, 2, 3, 4, 5, 6, 7]).toBeDisplayed();
-        });
 
-      });
-      
-      it("should be able to collapse the root", function() {
-    
-        runs (function() {
-          clickOnNode(0);
-        });
-    
-        waits(waittime);
-    
-        runs (function() {
-          // Load 1 Nodes: Root
-          expect([0]).toBeDisplayed();
-          expect([1, 2, 3, 4]).toNotBeDisplayed();
-        });
-
-      });
-      
-      it("should be able to load a different graph", function() {
-        runs (function() {
-          viewer.loadGraph(42);
-        });
-    
-        waits(waittime);
-    
-        runs (function() {
-          expect([42, 43, 44, 45]).toBeDisplayed();
-          expect([0, 1, 2, 3, 4]).toNotBeDisplayed();
-        });
-      
-      });
-      
-      describe("when a user rapidly expand nodes", function() {
-        
-        beforeEach(function() {
-          runs (function() {
-            clickOnNode(1);
-            clickOnNode(2);
-            clickOnNode(3);
-            clickOnNode(4);
-          });
-    
-          waits(waittime);
-          
-          it("the graph should still be correct", function() {
-            expect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12]).toBeDisplayed();
-          });
-        });
-      });
-      
-      describe("when a user rapidly expand and collapses nodes", function() {
-      
-        beforeEach(function() {
-          runs (function() {
-            clickOnNode(1);
-            clickOnNode(2);
-            clickOnNode(3);
-            clickOnNode(4);
-          });
-        
-          // Wait a gentle second for all nodes to expand properly
-          waits(waittime);
-
-          runs(function() {
-            clickOnNode(1);
-            clickOnNode(4);
-          });
-        
-          waits(waittime);
-        });
-        
-        it("the graph should still be correct", function() {
-          expect([0, 1, 2, 3, 4, 8, 9]).toBeDisplayed();
-          expect([5, 6, 7, 12]).toNotBeDisplayed();
-        });
-      });
-      
-      describe("when an undirected circle has been loaded", function() {
-        
-        beforeEach(function() {
-
-          runs (function() {
-            clickOnNode(2);
-            clickOnNode(3);
-          });
-          
-          waits(waittime);
-          
-        });
-        
-        it("the basis should be correct", function() {
-          expect([0, 1, 2, 3, 4, 8, 9]).toBeDisplayed();
-        });
-        
-        it("should be able to collapse one node "
-         + "without removing the double referenced one", function() {
-      
-          runs (function() {
-            clickOnNode(2);
-          });
-      
-          waits(waittime);
-      
-          runs (function() {
-            expect([2, 3, 8]).toBeDisplayed();
-            expect(2).toNotBeConnectedTo(8);
-            expect(3).toBeConnectedTo(8);
-          });
-        });
-        
-        
-        it("should be able to collapse the other node "
-         + "without removing the double referenced one", function() {
-      
-          runs (function() {
-            clickOnNode(3);
-          });
-      
-          waits(waittime);
-      
-          runs (function() {
-            expect([2, 3, 8]).toBeDisplayed();
-            expect(3).toNotBeConnectedTo(8);
-            expect(2).toBeConnectedTo(8);
-          });
-        });
-        
-        it("should be able to collapse the both nodes "
-         + "and remove the double referenced one", function() {
-      
-          runs (function() {
-            clickOnNode(3);
-            clickOnNode(2);
-          });
-      
-          waits(waittime);
-      
-          runs (function() {
-            expect([2, 3]).toBeDisplayed();
-            expect([8]).toNotBeDisplayed();
-            expect(3).toNotBeConnectedTo(8);
-            expect(2).toNotBeConnectedTo(8);
-          });
-        });
-        
-      });
-      
-      describe("when a complex graph has been loaded", function() {
-        
-        beforeEach(function() {
-          runs(function() {
-            clickOnNode(1);
-            clickOnNode(4);
-            clickOnNode(2);
-            clickOnNode(3);
-          });
-          waits(waittime);
-        });
-        
-        it("should be able to collapse a node "
-        + "referencing a node connected to a subgraph", function() {
-          
-          runs(function() {         
-            clickOnNode(1);
-          });
-          
-          waits(waittime);
-          
-          runs(function() {
-            
-            expect([0, 1, 2, 3, 4, 5, 8, 9, 12]).toBeDisplayed();
-            expect([6, 7, 10, 11]).toNotBeDisplayed();
-            
-            expect(0).toBeConnectedTo(1);
-            expect(0).toBeConnectedTo(2);
-            expect(0).toBeConnectedTo(3);
-            expect(0).toBeConnectedTo(4); 
-            expect(1).toNotBeConnectedTo(5);
-            
-            expect(2).toBeConnectedTo(8);
-            
-            expect(3).toBeConnectedTo(8);
-            expect(3).toBeConnectedTo(9);
-            
-            expect(4).toBeConnectedTo(5);
-            expect(4).toBeConnectedTo(12);
-          });
-        });
-      });
-      
-    });
-  });
 });
