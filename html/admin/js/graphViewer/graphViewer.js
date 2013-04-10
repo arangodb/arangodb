@@ -31,8 +31,7 @@
 
 
 function GraphViewer(svg, width, height,
-  adapterConfig, nodeShaperConfig, edgeShaperConfig,
-  layouterConfig, eventsConfig) {
+  adapterConfig, config) {
   
   "use strict";
   // Check if all required inputs are given
@@ -48,30 +47,11 @@ function GraphViewer(svg, width, height,
     throw "A height greater 0 has to be given";
   }
   
-  if (adapterConfig === undefined) {
-    throw "Adapter config has to be given";
-  }
-  
-  if (nodeShaperConfig === undefined) {
-    throw "Node Shaper config has to be given";
-  }
-  
-  if (edgeShaperConfig === undefined) {
-    throw "Edge Shaper config has to be given";
-  }
-  
-  if (layouterConfig === undefined) {
-    throw "Layouter config has to be given";
-  }
-  
-  if (eventsConfig === undefined) {
-    throw "Events config has to be given";
+  if (adapterConfig === undefined || adapterConfig.type === undefined) {
+    throw "An adapter configuration has to be given";
   }
   
   var self = this,
-    adapter,
-    nodeShaper,
-    edgeShaper,
     nodeContainer,
     edgeContainer,
     layouter,
@@ -79,12 +59,9 @@ function GraphViewer(svg, width, height,
     dispatcher,
     edges = [],
     nodes = [],
-    eventsDispatcherConfig = {},
-    // Function after handling events, will update the drawers and the layouter.
-    start,
-    bindEventsFromConfig;
+
   
-  
+    /*
   bindEventsFromConfig = function(conf) {
     var checkDefs = function(el) {
       return el !== undefined && el.target !== undefined && el.type !== undefined;
@@ -130,11 +107,75 @@ function GraphViewer(svg, width, height,
         }
       });
     }
+  },
+  */
+  parseLayouterConfig = function (config) {
+    if (!config) {
+      // Default
+      config = {};
+      config.nodes = nodes;
+      config.links = edges;
+      config.width = width;
+      config.height = height;
+      layouter = new ForceLayouter(config);
+      return;
+    }
+    switch (config.type.toLowerCase()) {
+      case "force":
+        config.nodes = nodes;
+        config.links = edges;
+        config.width = width;
+        config.height = height;
+        layouter = new ForceLayouter(config);
+        break;
+      default:
+        throw "Sorry unknown layout type.";
+    }
+  },
+  parseConfig = function(config) {
+    var esConf = config.edgeShaper || {},
+      nsConf = config.nodeShaper || {},
+      idFunc = nsConf.idfunc || undefined;
+    
+    parseLayouterConfig(config.layouter);
+    edgeContainer = svg.append("svg:g");
+    self.edgeShaper = new EdgeShaper(edgeContainer, esConf);
+    nodeContainer = svg.append("svg:g");
+    self.nodeShaper = new NodeShaper(nodeContainer, nsConf, idFunc);
+    layouter.setCombinedUpdateFunction(self.nodeShaper, self.edgeShaper);
+    
+    /*
+    if (nodeShaperConfig.childrenCentrality !== undefined) {
+      fixedSize = nodeShaperConfig.size || 12;
+      nodeShaperConfig.size = function(node) {
+        if (node._expanded) {
+          return fixedSize;
+        }
+        if (node._centrality !== undefined) {
+          return fixedSize + 3 * node._centrality;
+        }
+        adapter.requestCentralityChildren(node._id, function(c) {
+          node._centrality = c;
+          nodeShaper.reshapeNode(node);
+        });
+        return fixedSize;
+      };
+    }
+    */
+    /*
+    if (nodeShaperConfig.dragable !== undefined) {
+      nodeShaperConfig.ondrag = layouter.drag;
+    }
+    */
+  
+    
+    
+    
   };
   
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
-      adapter = new ArangoAdapter(
+      self.adapter = new ArangoAdapter(
         adapterConfig.host,
         nodes,
         edges,
@@ -145,7 +186,7 @@ function GraphViewer(svg, width, height,
       );
       break;
     case "json":
-      adapter = new JSONAdapter(
+      self.adapter = new JSONAdapter(
         adapterConfig.path,
         nodes,
         edges,
@@ -157,60 +198,15 @@ function GraphViewer(svg, width, height,
       throw "Sorry unknown adapter type.";
   }    
   
-  
-  switch (layouterConfig.type.toLowerCase()) {
-    case "force":
-      layouterConfig.nodes = nodes;
-      layouterConfig.links = edges;
-      layouterConfig.width = width;
-      layouterConfig.height = height;
-      layouter = new ForceLayouter(layouterConfig);
-      break;
-    default:
-      throw "Sorry unknown layout type.";
-  } 
-  
-  edgeContainer = svg.append("svg:g");
-  
-  edgeShaper = new EdgeShaper(edgeContainer, edgeShaperConfig);
-
-  nodeContainer = svg.append("svg:g");
-  
-  if (nodeShaperConfig.childrenCentrality !== undefined) {
-    fixedSize = nodeShaperConfig.size || 12;
-    nodeShaperConfig.size = function(node) {
-      if (node._expanded) {
-        return fixedSize;
-      }
-      if (node._centrality !== undefined) {
-        return fixedSize + 3 * node._centrality;
-      }
-      adapter.requestCentralityChildren(node._id, function(c) {
-        node._centrality = c;
-        nodeShaper.reshapeNode(node);
-      });
-      return fixedSize;
-    };
-  }
-  if (nodeShaperConfig.dragable !== undefined) {
-    nodeShaperConfig.ondrag = layouter.drag;
-  }
-  
-  if (nodeShaperConfig.idfunc !== undefined) {
-    nodeShaper = new NodeShaper(nodeContainer, nodeShaperConfig, nodeShaperConfig.idfunc);
-  } else {
-    nodeShaper = new NodeShaper(nodeContainer, nodeShaperConfig);
-  }
-  
-  layouter.setCombinedUpdateFunction(nodeShaper, edgeShaper);
-  
-  start = function() {
+  parseConfig(config || {});
+    
+  self.start = function() {
     layouter.stop();
-    edgeShaper.drawEdges(edges);
-    nodeShaper.drawNodes(nodes);
+    self.edgeShaper.drawEdges(edges);
+    self.nodeShaper.drawNodes(nodes);
     layouter.start();
   };
-  
+  /*
   if (eventsConfig.expand !== undefined) {
     eventsDispatcherConfig.expand = {
       edges: edges,
@@ -234,32 +230,33 @@ function GraphViewer(svg, width, height,
       adapter: adapter
     };
   }
+  */
   
-  dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
+  //dispatcher = new EventDispatcher(nodeShaper, edgeShaper, eventsDispatcherConfig);
   
-  bindEventsFromConfig(eventsConfig);
+  //bindEventsFromConfig(eventsConfig);
   
   self.loadGraph = function(nodeId) {
     nodes.length = 0;
     edges.length = 0;
-    adapter.loadNodeFromTreeById(nodeId, function (node) {
+    self.adapter.loadNodeFromTreeById(nodeId, function (node) {
       node._expanded = true;
       node.x = width / 2;
       node.y = height / 2;
       node.fixed = true;
-      start();
+      self.start();
     });
   };
   
   self.loadGraphWithAttributeValue = function(attribute, value) {
     nodes.length = 0;
     edges.length = 0;
-    adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
+    self.adapter.loadNodeFromTreeByAttributeValue(attribute, value, function (node) {
       node._expanded = true;
       node.x = width / 2;
       node.y = height / 2;
       node.fixed = true;
-      start();
+      self.start();
     });
   };
   
