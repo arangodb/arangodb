@@ -31,7 +31,7 @@ module.define("org/arangodb/simple-query-common", function(exports, module) {
 
 var arangodb = require("org/arangodb");
 
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = arangodb.ArangoError;
 
 // forward declaration
 var SimpleQueryArray;

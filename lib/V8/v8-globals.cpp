@@ -28,16 +28,145 @@
 #include "v8-globals.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
+  : JSBarriers(),
+
+    ErrorTempl(),
+    GeneralCursorTempl(),
+    ShapedJsonTempl(),
+    TransactionTempl(),
+    VocbaseColTempl(),
+    VocbaseTempl(),
+
+    DeleteConstant(),
+    GetConstant(),
+    HeadConstant(),
+    OptionsConstant(),
+    PatchConstant(),
+    PostConstant(),
+    PutConstant(),
+
+    BodyFromFileKey(),
+    BodyKey(),
+    CodeKey(),
+    ContentTypeKey(),
+    ErrorKey(),
+    ErrorMessageKey(),
+    ErrorNumKey(),
+    HeadersKey(),
+    IdKey(),
+    IsSystemKey(),
+    IsVolatileKey(),
+    JournalSizeKey(),
+    KeyOptionsKey(),
+    ParametersKey(),
+    PathKey(),
+    PrefixKey(),
+    RequestBodyKey(),
+    RequestTypeKey(),
+    ResponseCodeKey(),
+    SuffixKey(),
+    TransformationsKey(),
+    UrlKey(),
+    UserKey(),
+    WaitForSyncKey(),
+
+    _FromKey(),
+    _IdKey(),
+    _KeyKey(),
+    _OldRevKey(),
+    _RevKey(),
+    _ToKey(),
+
+    DocumentIdRegex(),
+    DocumentKeyRegex(),
+    IdRegex(),
+    IndexIdRegex(),
+
+    _currentTransaction(0),
+    _vocbase(0) {
+  v8::HandleScope scope;
+
+  DeleteConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("DELETE"));
+  GetConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("GET"));
+  HeadConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("HEAD"));
+  OptionsConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("OPTIONS"));
+  PatchConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PATCH"));
+  PostConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("POST"));
+  PutConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PUT"));
+  
+  BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
+  BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
+  CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
+  ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
+  ErrorKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("error"));
+  ErrorMessageKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("errorMessage"));
+  ErrorNumKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("errorNum"));
+  HeadersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("headers"));
+  IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("id"));
+  IsSystemKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isSystem"));
+  IsVolatileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isVolatile"));
+  JournalSizeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("journalSize"));
+  KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
+  ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
+  PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
+  PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
+  RequestBodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestBody"));
+  RequestTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestType"));
+  ResponseCodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("responseCode"));
+  SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
+  TransformationsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("transformations"));
+  UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));
+  UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));
+  WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
+  
+  _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));
+  _IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_id"));
+  _KeyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_key"));
+  _OldRevKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_oldRev"));
+  _RevKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_rev"));
+  _ToKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_to"));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_v8_global_s::~TRI_v8_global_s () {
+  regfree(&DocumentIdRegex);
+  regfree(&DocumentKeyRegex);
+  regfree(&IndexIdRegex);
+  regfree(&IdRegex);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  GLOBAL FUNCTIONS
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Globals
-/// @{
+/// @brief creates a global context
 ////////////////////////////////////////////////////////////////////////////////
 
+TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+
+  if (v8g == 0) {
+    v8g = new TRI_v8_global_t(isolate);
+    isolate->SetData(v8g);
+  }
+
+  return v8g;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a method to a prototype object
+/// @brief adds a method to a prototype object
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
@@ -55,7 +184,7 @@ void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a method to an object
+/// @brief adds a method to an object
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
@@ -73,7 +202,7 @@ void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a global function to the given context
+/// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
@@ -84,7 +213,7 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a global function to the given context
+/// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
@@ -105,9 +234,9 @@ void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
   context->Global()->Set(TRI_V8_SYMBOL(name), value, v8::ReadOnly);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

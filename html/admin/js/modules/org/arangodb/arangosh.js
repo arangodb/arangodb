@@ -89,8 +89,8 @@ exports.createHelpHeadline = function (text) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // must came after the export of createHelpHeadline
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
 var arangodb = require("org/arangodb");
+var ArangoError = arangodb.ArangoError;
 
 exports.checkRequestResult = function (requestResult) {
   if (requestResult === undefined) {

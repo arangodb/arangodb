@@ -367,8 +367,8 @@ static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
   if (arg->IsObject()) {
     v8::Handle<v8::Object> obj = arg->ToObject();
 
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
+    if (obj->Has(v8g->_KeyKey)) {
+      v8::Handle<v8::Value> v = obj->Get(v8g->_KeyKey);
 
       if (v->IsString()) {
         // string key
@@ -1008,10 +1008,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1077,9 +1077,9 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1182,9 +1182,9 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1302,10 +1302,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -5233,10 +5233,10 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> r = v8::Object::New();
-    r->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-    r->Set(v8g->RevKey, V8RevisionId(document._rid));
-    r->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-    r->Set(v8g->KeyKey, v8::String::New(document._key));
+    r->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+    r->Set(v8g->_RevKey, V8RevisionId(document._rid));
+    r->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+    r->Set(v8g->_KeyKey, v8::String::New(document._key));
 
     result = r;
   }
@@ -6309,9 +6309,9 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
     }
   }
 
-  result->Set(count++, v8g->DidKey);
-  result->Set(count++, v8g->RevKey);
-  result->Set(count++, v8g->KeyKey);
+  result->Set(count++, v8g->_IdKey);
+  result->Set(count++, v8g->_RevKey);
+  result->Set(count++, v8g->_KeyKey);
 
   return scope.Close(result);
 }
@@ -6400,13 +6400,13 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
+    v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
 
     if (! ParseDocumentHandle(didVal, collectionName, key)) {
       return false;
     }
 
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey), true);
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
 
     if (rid == 0) {
       return false;
@@ -6518,7 +6518,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IidKey);
+    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
@@ -6577,7 +6577,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(v8g->DidKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6623,17 +6623,17 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
-  result->Set(v8g->RevKey, V8RevisionId(rid), v8::ReadOnly);
-  result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
+  result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
+  result->Set(v8g->_KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
 
-    result->Set(v8g->FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    result->Set(v8g->_FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
   }
 
   // and return
@@ -6657,18 +6657,11 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                                       const size_t threadNumber) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::Template> pt;
-
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  // set the default database
   v8g->_vocbase = vocbase;
 
   // create the regular expressions
@@ -6698,44 +6691,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
 
-
-  // .............................................................................
-  // keys
-  // .............................................................................
-
-  v8g->IsSystemKey       = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isSystem"));
-  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isVolatile"));
-  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("journalSize"));
-  v8g->KeyOptionsKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("keyOptions"));
-  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("waitForSync"));
-
-  if (v8g->DidKey.IsEmpty()) {
-    v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
-  }
-
-  if (v8g->KeyKey.IsEmpty()) {
-    v8g->KeyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_key"));
-  }
-
-  if (v8g->FromKey.IsEmpty()) {
-    v8g->FromKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_from"));
-  }
-
-  if (v8g->IidKey.IsEmpty()) {
-    v8g->IidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("id"));
-  }
-
-  if (v8g->OldRevKey.IsEmpty()) {
-    v8g->OldRevKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_oldRev"));
-  }
-
-  if (v8g->RevKey.IsEmpty()) {
-    v8g->RevKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_rev"));
-  }
-
-  if (v8g->ToKey.IsEmpty()) {
-    v8g->ToKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_to"));
-  }
+  v8::Handle<v8::ObjectTemplate> rt;
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::Template> pt;
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -6764,7 +6722,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
-
 
   // .............................................................................
   // generate the TRI_shaped_json_t template

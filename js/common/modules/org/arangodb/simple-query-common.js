@@ -30,7 +30,7 @@
 
 var arangodb = require("org/arangodb");
 
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = arangodb.ArangoError;
 
 // forward declaration
 var SimpleQueryArray;

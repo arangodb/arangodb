@@ -26,7 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
-var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+
+var ArangoError = require("org/arangodb").ArangoError; 
 var ERRORS = require("internal").errors;
 var EXPLAIN = require("internal").AQL_EXPLAIN;
 

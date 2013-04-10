@@ -30,10 +30,10 @@ module.define("org/arangodb/arango-collection-common", function(exports, module)
 ////////////////////////////////////////////////////////////////////////////////
 
 var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb/arango-error").ArrangoError;
 
 var arangodb = require("org/arangodb");
 
+var ArangoError = arangodb.ArrangoError;
 var output = arangodb.output;
 var sprintf = arangodb.sprintf;
 var db = arangodb.db;
