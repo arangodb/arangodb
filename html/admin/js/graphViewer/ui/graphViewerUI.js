@@ -1,5 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
+/*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls*/
+/*global GraphViewer, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -40,7 +42,10 @@ function GraphViewerUI(container, adapterConfig) {
     throw "An adapter configuration has to be given";
   } 
   
-  var makeBootstrapDropdown = function (div, id, title) {
+  var graphViewer,
+    width = container.width, // TODO
+    height = container.height, // TODO 
+    makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
       div.className = "dropdown";
       btn = document.createElement("a");
@@ -68,7 +73,12 @@ function GraphViewerUI(container, adapterConfig) {
     createToolbox = function() {
       var toolbox = document.createElement("div"),
       toollist = document.createElement("ul"),
-      dispatcherUI = new EventDispatcherControls(toollist, graphViewer.nodeShaper, graphViewer.edgeShaper, graphViewer.dispatcherConfig);
+      dispatcherUI = new EventDispatcherControls(
+        toollist,
+        graphViewer.nodeShaper,
+        graphViewer.edgeShaper,
+        graphViewer.dispatcherConfig
+      );
       toolbox.id = "toolbox";
       toolbox.className = "toolbox";
       container.appendChild(toolbox);
@@ -82,11 +92,25 @@ function GraphViewerUI(container, adapterConfig) {
       searchField = document.createElement("input"),
       searchStart = document.createElement("img"),
       nodeShaperDropDown = document.createElement("div"),
-      nodeShaperList = makeBootstrapDropdown(nodeShaperDropDown, "nodeshaperdropdown", "Node Shaper"),
+      nodeShaperList = makeBootstrapDropdown(
+        nodeShaperDropDown,
+        "nodeshaperdropdown",
+        "Node Shaper"
+      ),
       edgeShaperDropDown = document.createElement("div"),
-      edgeShaperList = makeBootstrapDropdown(edgeShaperDropDown, "edgeshaperdropdown", "Edge Shaper"),
-      nodeShaperUI = new NodeShaperControls(nodeShaperList, graphViewer.nodeShaper),
-      edgeShaperUI = new EdgeShaperControls(edgeShaperList, graphViewer.edgeShaper);
+      edgeShaperList = makeBootstrapDropdown(
+        edgeShaperDropDown,
+        "edgeshaperdropdown",
+        "Edge Shaper"
+      ),
+      nodeShaperUI = new NodeShaperControls(
+        nodeShaperList,
+        graphViewer.nodeShaper
+      ),
+      edgeShaperUI = new EdgeShaperControls(
+        edgeShaperList,
+        graphViewer.edgeShaper
+      );
       
       menubar.id = "menubar";
       
@@ -117,10 +141,7 @@ function GraphViewerUI(container, adapterConfig) {
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
       
-    },
-    graphViewer,
-    width = container.width, // TODO
-    height = container.height; // TODO
+    };
 
   createSVG();
   graphViewer = new GraphViewer(d3.select("#" + container.id + " svg"), 10, 10, adapterConfig);
