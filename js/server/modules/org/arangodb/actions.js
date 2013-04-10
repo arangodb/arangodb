@@ -1938,6 +1938,48 @@ function pathHandler (req, res, options, next) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a cookie
+////////////////////////////////////////////////////////////////////////////////
+
+function addCookie (res, name, value, liveTime, path, domain, secure, httpOnly) {
+  'use strict';
+
+  if (name === undefined) {
+    return;
+  }
+  if (value === undefined) {
+    return;
+  }
+  
+  var cookie = {
+    'name' : name,
+    'value' : value
+  };
+  
+  if (liveTime !== undefined && liveTime !== null) {
+    cookie.liveTime = parseInt(liveTime);
+  }
+  if (path !== undefined && path !== null) {
+    cookie.path = path;
+  }
+  if (domain !== undefined && domain !== null) {
+    cookie.path = domain;
+  }
+  if (secure !== undefined && secure !== null) {
+    cookie.secure = (secure) ? true : false;
+  }
+  if (httpOnly !== undefined && httpOnly !== null) {
+    cookie.httpOnly = (httpOnly) ? true : false;
+  }
+  
+  if (res.cookies === undefined || res.cookies === null) {
+    res.cookies = [];
+  }
+  
+  res.cookies.push(cookie);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1959,6 +2001,7 @@ exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
 exports.routingCache             = function() { return RoutingCache; };
+exports.addCookie                = addCookie;
 
 // standard HTTP responses
 exports.badParameter             = badParameter;

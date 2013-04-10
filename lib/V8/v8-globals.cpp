@@ -57,25 +57,31 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     BodyKey(),
     CodeKey(),
     ContentTypeKey(),
+    DomainKey(),
     ErrorKey(),
     ErrorMessageKey(),
     ErrorNumKey(),
     HeadersKey(),
+    HttpOnlyKey(),
     IdKey(),
     IsSystemKey(),
     IsVolatileKey(),
     JournalSizeKey(),
     KeyOptionsKey(),
+    LiveTimeKey(),
+    NameKey(),
     ParametersKey(),
     PathKey(),
     PrefixKey(),
     RequestBodyKey(),
     RequestTypeKey(),
     ResponseCodeKey(),
+    SecureKey(),
     SuffixKey(),
     TransformationsKey(),
     UrlKey(),
     UserKey(),
+    ValueKey(),
     WaitForSyncKey(),
 
     _FromKey(),
@@ -106,25 +112,32 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
   CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
+  CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
+  DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
   ErrorKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("error"));
   ErrorMessageKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("errorMessage"));
   ErrorNumKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("errorNum"));
   HeadersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("headers"));
+  HttpOnlyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("httpOnly"));
   IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("id"));
   IsSystemKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isSystem"));
   IsVolatileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isVolatile"));
   JournalSizeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("journalSize"));
   KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
+  LiveTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("liveTime"));
+  NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
   PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
   RequestBodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestBody"));
   RequestTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestType"));
   ResponseCodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("responseCode"));
+  SecureKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("secure"));
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
   TransformationsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("transformations"));
   UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));
   UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));
+  ValueKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("value"));
   WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
   
   _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));

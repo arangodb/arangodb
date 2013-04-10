@@ -271,6 +271,60 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add cookie
+////////////////////////////////////////////////////////////////////////////////
+
+static void addCookie (TRI_v8_global_t* v8g, HttpResponse* response, v8::Handle<v8::Object> data) {
+  
+  string name;
+  string value;
+  int lifeTimeSeconds = 0;
+  string path = "/";
+  string domain = "";
+  bool secure = false;
+  bool httpOnly = false;
+  
+  if (data->Has(v8g->NameKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->NameKey);
+    name = TRI_ObjectToString(v);    
+  }
+  else {
+    // something is wrong here
+    return;
+  }
+  if (data->Has(v8g->ValueKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->ValueKey);
+    value = TRI_ObjectToString(v);    
+  }
+  else {
+    // something is wrong here
+    return;
+  }
+  if (data->Has(v8g->LiveTimeKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->LiveTimeKey);
+    lifeTimeSeconds = TRI_ObjectToInt64(v);
+  }  
+  if (data->Has(v8g->PathKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->PathKey);
+    path = TRI_ObjectToString(v);    
+  }
+  if (data->Has(v8g->DomainKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->DomainKey);
+    domain = TRI_ObjectToString(v);    
+  }
+  if (data->Has(v8g->SecureKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->SecureKey);
+    secure = TRI_ObjectToBoolean(v);    
+  }
+  if (data->Has(v8g->HttpOnlyKey)) {
+    v8::Handle<v8::Value> v = data->Get(v8g->HttpOnlyKey);
+    httpOnly = TRI_ObjectToBoolean(v);    
+  }
+
+  response->setCookie(name, value, lifeTimeSeconds, path, domain, secure, httpOnly);    
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -309,6 +363,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   //          "accept-encoding" : "gzip, deflate",
   //          "accept-language" : "de-de,en-us;q=0.7,en;q=0.3",
   //          "user-agent" : "Mozilla/5.0"
+  //        },
+  //
+  //        "cookies" : {
+  //          "ARANGODB_SESSION_ID" : "0cwuzusd23nw3qiwui84uwqwqw23e"
   //        },
   //
   //        "requestType" : "GET",
@@ -489,6 +547,18 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   req->Set(v8g->ParametersKey, valuesObject);
 
+  // copy cookies
+  v8::Handle<v8::Object> cookiesObject = v8::Object::New();
+
+  map<string, string> const& cookies = request->cookieValues();
+  iter = cookies.begin();
+
+  for (; iter != cookies.end(); ++iter) {
+    cookiesObject->Set(v8::String::New(iter->first.c_str()), v8::String::New(iter->second.c_str()));
+  }
+
+  req->Set(v8g->CookiesKey, cookiesObject);
+  
   // execute the callback
   v8::Handle<v8::Object> res = v8::Object::New();
   v8::Handle<v8::Value> args[2] = { req, res };
@@ -599,6 +669,30 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       }
     }
 
+    // .............................................................................
+    // cookies
+    // .............................................................................
+
+    if (res->Has(v8g->CookiesKey)) {
+      v8::Handle<v8::Value> val = res->Get(v8g->CookiesKey);
+      v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
+
+      if (v8Cookies->IsArray()) {
+        v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
+        
+        for (uint32_t i = 0; i < v8Array->Length(); i++) {
+          v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);          
+          if (v8Cookie->IsObject()) {
+            addCookie(v8g, response, v8Cookie.As<v8::Object>());
+          }
+        }
+      }
+      else if (v8Cookies->IsObject()) {
+        // one cookie
+        addCookie(v8g, response, v8Cookies);               
+      }
+    }
+    
     return response;
   }
 }
