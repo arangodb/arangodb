@@ -66,6 +66,7 @@ HttpRequest::HttpRequest (char const* header, size_t length)
     _headers(5),
     _values(10),
     _arrayValues(10),
+    _cookies(1),
     _contentLength(0),
     _body(0),
     _bodySize(0),
@@ -95,6 +96,7 @@ HttpRequest::HttpRequest ()
     _headers(1),
     _values(1),
     _arrayValues(1),
+    _cookies(1),
     _contentLength(0),
     _body(0),
     _bodySize(0),
@@ -251,6 +253,30 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     char const* value = begin->_value;
     TRI_AppendStringStringBuffer(buffer, value);
     TRI_AppendString2StringBuffer(buffer, "\r\n", 2);
+  }
+  
+  first = true;
+  for (_cookies.range(begin, end);  begin < end;  ++begin) {
+    char const* key = begin->_key;
+
+    if (key == 0) {
+      continue;
+    }
+
+    if (first) {
+      first = false;
+      TRI_AppendString2StringBuffer(buffer, "Cookie: ", 8);
+    }
+    else {
+      TRI_AppendString2StringBuffer(buffer, "; ", 2);      
+    }
+    
+    const size_t keyLength = strlen(key);
+    TRI_AppendString2StringBuffer(buffer, key, keyLength);
+    TRI_AppendString2StringBuffer(buffer, "=", 2);
+
+    char const* value = begin->_value;
+    TRI_AppendUrlEncodedStringStringBuffer(buffer, value);
   }
 
   TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
@@ -441,6 +467,61 @@ map<string, vector<char const*>* > HttpRequest::arrayValues () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+char const* HttpRequest::cookieValue (char const* key) const {
+  Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
+
+  if (kv == 0) {
+    return EMPTY_STR;
+  }
+  else {
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+char const* HttpRequest::cookieValue (char const* key, bool& found) const {
+  Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
+
+  if (kv == 0) {
+    found = false;
+    return EMPTY_STR;
+  }
+  else {
+    found = true;
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+map<string, string> HttpRequest::cookieValues () const {
+  basics::Dictionary<char const*>::KeyValue const* begin;
+  basics::Dictionary<char const*>::KeyValue const* end;
+
+  map<string, string> result;
+
+  for (_cookies.range(begin, end);  begin < end;  ++begin) {
+    char const* key = begin->_key;
+
+    if (key == 0) {
+      continue;
+    }
+
+    result[key] = begin->_value;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 char const* HttpRequest::body () const {
   return _body == 0 ? EMPTY_STR : _body;
 }
@@ -480,9 +561,13 @@ void HttpRequest::setHeader (char const* key, size_t keyLength, char const* valu
 
     _contentLength = TRI_Int64String(value);
   }
+  else if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) { // 6 = strlen("cookie")
+    parseCookies(value);
+  }
   else {
     _headers.insert(key, keyLength, value);
   }
+  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1205,6 +1290,128 @@ void HttpRequest::setArrayValue (char* key, size_t length, char const* value) {
 
   v->push_back(value);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set cookie
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::setCookie (char* key, size_t length, char const* value) {
+  _cookies.insert(key, length, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse value of a cookie header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::parseCookies (const char* buffer) {
+  char* keyBegin = 0;
+  char* key = 0;
+
+  char* valueBegin = 0;
+  char* value = 0;
+
+  enum { KEY, VALUE } phase = KEY;
+  enum { NORMAL, HEX1, HEX2 } reader = NORMAL;
+
+  int hex = 0;
+
+  char const AMB     = ';';
+  char const EQUAL   = '=';
+  char const PERCENT = '%';
+  char const SPACE   = ' ';
+  
+  char* buffer2 = (char*) buffer;
+  char* end = buffer2 + strlen(buffer);
+
+  for (keyBegin = key = buffer2; buffer2 < end; buffer2++) {
+    char next = *buffer2;
+
+    if (phase == KEY && next == EQUAL) {
+      phase = VALUE;
+
+      valueBegin = value = buffer2 + 1;
+
+      continue;
+    }
+    else if (next == AMB) {
+      phase = KEY;
+
+      *key = '\0';
+
+      // check for missing value phase
+      if (valueBegin == 0) {
+        valueBegin = value = key;
+      }
+      else {
+        *value = '\0';
+      }
+
+      setCookie(keyBegin, key - keyBegin, valueBegin);
+                  
+      //keyBegin = key = buffer2 + 1;
+      while ( *(keyBegin = key = buffer2 + 1) == SPACE && buffer2 < end) {
+        buffer2++;
+      }
+      valueBegin = value = 0;
+
+      continue;
+    }
+    else if (next == PERCENT) {
+      reader = HEX1;
+      continue;
+    }
+    else if (reader == HEX1) {
+      int h1 = StringUtils::hex2int(next, -1);
+
+      if (h1 == -1) {
+        reader = NORMAL;
+        --buffer2;
+        continue;
+      }
+
+      hex = h1 * 16;
+      reader = HEX2;
+      continue;
+    }
+    else if (reader == HEX2) {
+      int h1 = StringUtils::hex2int(next, -1);
+
+      if (h1 == -1) {
+        --buffer2;
+      }
+      else {
+        hex += h1;
+      }
+
+      reader = NORMAL;
+      next = static_cast<char>(hex);
+    }
+
+    if (phase == KEY) {
+      *key++ = next;
+    }
+    else {
+      *value++ = next;
+    }
+  }
+
+  if (keyBegin != key) {
+    *key = '\0';
+
+    // check for missing value phase
+    if (valueBegin == 0) {
+      valueBegin = value = key;
+    }
+    else {
+      *value = '\0';
+    }
+
+    setCookie(keyBegin, key - keyBegin, valueBegin);
+    
+  }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
