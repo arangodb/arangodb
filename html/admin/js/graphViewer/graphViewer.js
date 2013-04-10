@@ -263,9 +263,6 @@ function GraphViewer(svg, width, height,
     });
   };
   
-  self.rebind = function(eventConfig) {
-    bindEventsFromConfig(eventConfig);
-  };
   
   //TODO REMOVE
   //HACK to view the Controls in the Demo
