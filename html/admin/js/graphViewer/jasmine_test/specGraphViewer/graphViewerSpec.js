@@ -38,6 +38,7 @@
 describe("Graph Viewer", function() {
   "use strict";
   var viewer,
+  waittime = 100,
   svg,
   docSVG,
   
@@ -243,7 +244,7 @@ describe("Graph Viewer", function() {
     
       // Give it a second to load
       // Unfortunately there is no handle to check for changes
-      waits(1000);
+      waits(waittime);
     
       runs (function() {
         expect([0, 1, 2, 3, 4]).toBeDisplayed();
@@ -257,7 +258,7 @@ describe("Graph Viewer", function() {
           viewer.loadGraph(0);
         });
     
-        waits(1000);
+        waits(waittime);
       });
       
       
@@ -294,7 +295,7 @@ describe("Graph Viewer", function() {
           clickOnNode(1);
         });
     
-        waits(1000);
+        waits(waittime);
         
         runs (function() {
           expect([0, 1, 2, 3, 4, 5, 6, 7]).toBeDisplayed();
@@ -308,7 +309,7 @@ describe("Graph Viewer", function() {
           clickOnNode(0);
         });
     
-        waits(1000);
+        waits(waittime);
     
         runs (function() {
           // Load 1 Nodes: Root
@@ -323,7 +324,7 @@ describe("Graph Viewer", function() {
           viewer.loadGraph(42);
         });
     
-        waits(1000);
+        waits(waittime);
     
         runs (function() {
           expect([42, 43, 44, 45]).toBeDisplayed();
@@ -342,7 +343,7 @@ describe("Graph Viewer", function() {
             clickOnNode(4);
           });
     
-          waits(1000);
+          waits(waittime);
           
           it("the graph should still be correct", function() {
             expect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12]).toBeDisplayed();
@@ -361,14 +362,14 @@ describe("Graph Viewer", function() {
           });
         
           // Wait a gentle second for all nodes to expand properly
-          waits(1000);
+          waits(waittime);
 
           runs(function() {
             clickOnNode(1);
             clickOnNode(4);
           });
         
-          waits(1000);
+          waits(waittime);
         });
         
         it("the graph should still be correct", function() {
@@ -386,7 +387,7 @@ describe("Graph Viewer", function() {
             clickOnNode(3);
           });
           
-          waits(1000);
+          waits(waittime);
           
         });
         
@@ -401,7 +402,7 @@ describe("Graph Viewer", function() {
             clickOnNode(2);
           });
       
-          waits(1000);
+          waits(waittime);
       
           runs (function() {
             expect([2, 3, 8]).toBeDisplayed();
@@ -418,7 +419,7 @@ describe("Graph Viewer", function() {
             clickOnNode(3);
           });
       
-          waits(1000);
+          waits(waittime);
       
           runs (function() {
             expect([2, 3, 8]).toBeDisplayed();
@@ -435,7 +436,7 @@ describe("Graph Viewer", function() {
             clickOnNode(2);
           });
       
-          waits(1000);
+          waits(waittime);
       
           runs (function() {
             expect([2, 3]).toBeDisplayed();
@@ -456,7 +457,7 @@ describe("Graph Viewer", function() {
             clickOnNode(2);
             clickOnNode(3);
           });
-          waits(1000);
+          waits(waittime);
         });
         
         it("should be able to collapse a node "
@@ -466,7 +467,7 @@ describe("Graph Viewer", function() {
             clickOnNode(1);
           });
           
-          waits(1000);
+          waits(waittime);
           
           runs(function() {
             
