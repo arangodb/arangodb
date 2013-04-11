@@ -4223,6 +4223,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   bool created = false;
   TRI_index_t* idx;
 
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // .............................................................................
   // Check that we have a valid collection
