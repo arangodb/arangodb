@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <link rel="stylesheet" href="style/bootstrap.min.css" type="text/css"/>
   <link rel="stylesheet" href="style/graphlayout.css" type="text/css"/>
+    <link rel="stylesheet" type="text/css" href="style/bootstrap.min.css">
   
   <script src="../lib/d3.v3.min.js"></script>
   <script src="../lib/underscore.js"></script>
@@ -16,17 +17,20 @@
   <script src="graph/eventDispatcher.js"></script>
   <script src="graph/nodeShaper.js"></script>
   <script src="graph/edgeShaper.js"></script>
-  <script src="graph/arangoAdapter.js"></script>
+  <script src="graph/arangoAdapter.js"></script>  
   
   <script type="text/javascript" src="ui/modalDialogHelper.js"></script>
   <script type="text/javascript" src="ui/nodeShaperControls.js"></script>
   <script type="text/javascript" src="ui/edgeShaperControls.js"></script>
+  <script type="text/javascript" src="ui/uiComponentsHelper.js"></script>
+  <script type="text/javascript" src="ui/eventDispatcherControls.js"></script>
+  <script type="text/javascript" src="ui/graphViewerUI.js"></script>
   
   <script src="graphViewer.js"></script>
   <script>
   
-  //var arangodb = "http://localhost:8529";
-  var arangodb = "nirvana.org";
+  var arangodb = "http://localhost:8529";
+  //var arangodb = "nirvana.org";
   
   var createCollection = function(name, type, callback) {
         if (type !== "Document" && type !== "Edge") {
@@ -159,106 +163,37 @@
     insertEdge(edgesCollection, c11, nsc6);
   };
 
-  function loadGraphFromNode() {
-    viewer.loadGraph($("#startNode").attr("value"));
-  }
-
-  function loadGraphFromAttribute() {
-    viewer.loadGraphWithAttributeValue($("#attribute").attr("value"), $("#value").attr("value"));
-  }
-
   function createViewer() {
-    var nshape,
-    nlabel,
-    nsize,
-    ncentr,
-    ndragable,
-    nsconfig,
-    
-    host,
+    var host,
     ecol,
     ncol,
-    aaconfig,
-    
-    esconfig,
-    
-    evconfig,
-    
-    layouterConfig;
-    
-    
-    nshape = $("#nodeShape")[0];
-    nshape = nshape.options[nshape.selectedIndex].value;
-    
-    nslabel = $("#nodeLabel")[0].value;
-    
-    nsize = parseFloat($("#nodeSize")[0].value);
-    
-    ncentr = $("#nodeCentrality")[0];
-    ncentr = ncentr.options[ncentr.selectedIndex].value;
-    
-    ndragable = $("#dragable")[0].checked;
+    aaconfig;
     
     host = $("#host")[0].value;
     ecol = $("#edgeCollection")[0].value;
     ncol = $("#nodeCollection")[0].value;
-       
-    nsconfig = {
-      shape : {
-        type: NodeShaper.shapes[nshape],
-        radius: nsize
-      },
-      label: nslabel 
-    };
-    
-    if (ncentr === "children") {
-      nsconfig.childrenCentrality = true;
-    }
-    
-    if (ndragable) {
-      nsconfig.dragable = true;
-    }
-    
+           
     aaconfig = {
       type: "arango",
       nodeCollection: ncol,
       edgeCollection: ecol,
       host: host
     };
-    
-    esconfig = {};
-    
-    evconfig = {
-      expand: {target: "nodes", type: "click"},
-      createNode: {target: $("#createNode"), type: "click", callback: function(newNode) {console.log(newNode);}}
-    };
-    
-    
+
+/*    
     layouterConfig = {
       "type": "force",
       "gravity": 0.01,
       "distance": 100,
       "charge": -300
     };
-    
+*/    
     
     $("#creationDialog")[0].style.display = "none";
-    viewer = new GraphViewer(d3.select("svg"), 980, 640, aaconfig, nsconfig, esconfig, layouterConfig, evconfig);
+    ui = new GraphViewerUI(document.getElementById("content"), aaconfig);
   }
 
-  function bindExpander() {
-    viewer.rebind({expand: {target: "nodes", type: "click"}});
-  }
-  
-  function bindEdit() {
-    
-  }
-  
-  function bindDelete() {
-    viewer.rebind({deleteNode: {target: "nodes", type: "click", callback: function() {console.log("Gone AWAY!");}}})
-  }
-
-  var viewer;
+  var ui;
   </script>
   <title>DEMO</title>
 </head>
@@ -288,45 +223,7 @@
           </div>
         </div>
       </fieldset>
-      
-      <fieldset>
-        <legend>Nodes</legend>
-        <div class="control-group">
-          <label for="nodeShape" class="control-label">Node Shape</label>
-          <div class="controls">
-            <select class="input-xlarge" id="nodeShape" name="nodeShape">
-              <option value="CIRCLE">circle</option>
-            </select>
-          </div>
-        </div>
-        <div class="control-group">
-          <label for="nodeSize" class="control-label">Node Size</label>
-          <div class="controls">
-            <input id="nodeSize" type="text" name="nodeSize" placeholder="size" maxlength="75" class="input-xlarge" value="12">
-          </div>
-        </div>
-        <div class="control-group">
-          <label for="nodeLabel" class="control-label">Node Label</label>
-          <div class="controls">
-            <input id="nodeLabel" type="text" name="nodeLabel" placeholder="label" maxlength="75" class="input-xlarge" value="id">
-          </div>
-        </div>
-        <div class="control-group">
-          <label for="nodeCentrality" class="control-label">Size Centrality</label>
-          <div class="controls">
-            <select class="input-xlarge" id="nodeCentrality" name="nodeCentrality">
-              <option value="children">children</option>
-              <option value="none">none</option>
-            </select>
-          </div>
-        </div>
-        <div class="control-group">
-          <label for="nodeCentrality" class="control-label">Dragable</label>
-          <div class="controls">
-            <input type="checkbox" value="dragable" id="dragable">
-          </div>
-        </div>
-      </fieldset>      
+           
       <div class="control-group">
         <div class="controls">
           <button type="submit" class="btn btn-primary" onclick="createViewer()">Create</button>
@@ -334,68 +231,7 @@
       </div>
     </fieldset>
   </form>
-
-<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
-  <fieldset>
-    <div class="control-group">
-      <div class="controls">
-        <button id="expander" type="submit" class="btn btn-primary" onclick="bindExpander()">Expand</button>
-        <button id="edit" type="submit" class="btn btn-primary" onclick="bindEdit()">Edit</button>
-        <button id="delete" type="submit" class="btn btn-primary" onclick="bindDelete()">Delete</button>
-      </div>
-    </div>
-  </fieldset>
-</form>
-<ul id="controls"></ul>
-<svg width="980" height="640" id="svg">
-
-</svg>
-<br />
-<form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog">
-  <fieldset>
-    <div class="control-group">
-      <div class="controls">
-        <input type="text" id="startNode" placeholder="Start-Node (1)" />
-      </div>
-    </div>
-    <div class="control-group">
-      <div class="controls">
-        <button type="submit" class="btn btn-primary" onclick="loadGraphFromNode()">Load</button>
-      </div>
-    </div>
-    <div class="control-group">
-      <div class="controls">
-        <button id="createNode" type="submit" class="btn btn-primary">Create Node</button>
-      </div>
-    </div>
-  </fieldset>
-</form>
-<br />
-<form action="javascript:void(0);" autocomplete="on" class="form-vertical" id="creationDialog2">
-  <fieldset>
-    <div class="control-group">
-      <div class="controls">
-        <input type="text" id="attribute" placeholder="Attribute" />
-      </div>
-    </div>
-    <div class="control-group">
-      <div class="controls">
-        <input type="text" id="value" placeholder="Value" />
-      </div>
-    </div>
-    <div class="control-group">
-      <div class="controls">
-        <button type="submit" class="btn btn-primary" onclick="loadGraphFromAttribute()">Load</button>
-      </div>
-    </div>
-    <div class="control-group">
-      <div class="controls">
-        <button id="createNode" type="submit" class="btn btn-primary">Create Node</button>
-      </div>
-    </div>
-  </fieldset>
-</form>
-
+  <div id="content" style="width:980px; height:640px" />
 
 </body>
 </html>

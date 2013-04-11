@@ -43,32 +43,35 @@ function GraphViewerUI(container, adapterConfig) {
   } 
   
   var graphViewer,
-    width = container.width, // TODO
-    height = container.height, // TODO 
+    width = container.offsetWidth, // TODO
+    height = container.offsetHeight, // TODO
+    svg, 
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
       div.className = "dropdown";
       btn = document.createElement("a");
       btn.className = "dropdown-toggle";
       btn.id = id;
-      btn.role = "button";
-      btn["data-toggle"] = "dropdown";
-      btn["data-target"] = "#";
+      btn.setAttribute("role", "button");
+      btn.setAttribute("data-toggle", "dropdown");
+      btn.setAttribute("data-target", "#");
       btn.appendChild(document.createTextNode(title));
       caret = document.createElement("b");
       caret.className = "caret";
       btn.appendChild(caret);
       list = document.createElement("ul");
       list.className = "dropdown-menu";
-      list.role = "menu";
-      list["aria-labelledby"] = id;
+      list.setAttribute("role", "menu");
+      list.setAttribute("aria-labelledby", id);
       div.appendChild(btn);
       div.appendChild(list);
       return list;
     },
     createSVG = function () {
-      var svg = document.createElement("svg");
-      container.appendChild(svg);
+      return d3.select("#" + container.id)
+        .append("svg")
+        .attr("width",width)
+        .attr("height",height);
     },
     createToolbox = function() {
       var toolbox = document.createElement("div"),
@@ -143,8 +146,8 @@ function GraphViewerUI(container, adapterConfig) {
       
     };
 
-  createSVG();
-  graphViewer = new GraphViewer(d3.select("#" + container.id + " svg"), 10, 10, adapterConfig);
+  svg = createSVG();
+  graphViewer = new GraphViewer(svg, width, height, adapterConfig);
   
   createToolbox();
   createMenu();
