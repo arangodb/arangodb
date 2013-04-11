@@ -49,21 +49,17 @@ function GraphViewerUI(container, adapterConfig) {
     svg, 
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
-      div.className = "dropdown";
-      btn = document.createElement("a");
-      btn.className = "dropdown-toggle";
+      div.className = "btn-group pull-right";
+      btn = document.createElement("button");
+      btn.className = "btn btn-inverse btn-small dropdown-toggle";
       btn.id = id;
-      btn.setAttribute("role", "button");
       btn.setAttribute("data-toggle", "dropdown");
-      btn.setAttribute("data-target", "#");
-      btn.appendChild(document.createTextNode(title));
-      caret = document.createElement("b");
+      btn.appendChild(document.createTextNode(title + " "));
+      caret = document.createElement("span");
       caret.className = "caret";
       btn.appendChild(caret);
       list = document.createElement("ul");
       list.className = "dropdown-menu";
-      list.setAttribute("role", "menu");
-      list.setAttribute("aria-labelledby", id);
       div.appendChild(btn);
       div.appendChild(list);
       return list;
@@ -126,7 +122,7 @@ function GraphViewerUI(container, adapterConfig) {
       searchField.id = "nodeid";
       searchField.className = "searchInput";
       searchField.type = "text";
-      searchStart.id = "loadNode";
+      searchStart.id = "loadnode";
       searchStart.className = "searchSubmit";
       searchStart.width = 16;
       searchStart.height = 16;
@@ -145,8 +141,8 @@ function GraphViewerUI(container, adapterConfig) {
       transparentHeader.appendChild(searchDiv);
       searchDiv.appendChild(searchField);
       searchDiv.appendChild(searchStart);
-      menubar.appendChild(nodeShaperDropDown);
-      menubar.appendChild(edgeShaperDropDown);
+      transparentHeader.appendChild(nodeShaperDropDown);
+      transparentHeader.appendChild(edgeShaperDropDown);
       
       
       nodeShaperUI.addAll();
