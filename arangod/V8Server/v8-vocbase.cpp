@@ -1864,6 +1864,22 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
 
   // extract the properties from the object
+  
+  // "lockTimeout"
+  double lockTimeout = 0.0;
+
+  if (object->Has(TRI_V8_SYMBOL("lockTimeout"))) {
+    static const string timeoutError = "<lockTimeout> must be a valid numeric value"; 
+    
+    if (! object->Get(TRI_V8_SYMBOL("lockTimeout"))->IsNumber()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
+    }
+
+    lockTimeout = (double) TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("lockTimeout")));
+    if (lockTimeout < 0.0) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
+    }
+  }
 
   // "collections"
   static const string collectionError = "missing/invalid collections definition for transaction";
@@ -1898,6 +1914,9 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
         readCollections.push_back(TRI_ObjectToString(collection));
       }
     }
+    else if (collections->Get(TRI_V8_SYMBOL("read"))->IsString()) {
+      readCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_SYMBOL("read"))));
+    }
     else {
       isValid = false;
     }
@@ -1917,6 +1936,9 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
       
         writeCollections.push_back(TRI_ObjectToString(collection));
       }
+    }
+    else if (collections->Get(TRI_V8_SYMBOL("write"))->IsString()) {
+      writeCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_SYMBOL("write"))));
     }
     else {
       isValid = false;
@@ -1944,7 +1966,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
   
   CollectionNameResolver resolver(vocbase);
-  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, resolver, readCollections, writeCollections);
+  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, resolver, readCollections, writeCollections, lockTimeout);
 
   int res = trx.begin();
 
@@ -4701,7 +4723,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
       bool waitForSync = base->_info._waitForSync;
       size_t maximalSize = base->_info._maximalSize;
-      size_t maximumMarkerSize = base->_maximumMarkerSize;
 
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -4715,11 +4736,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
 
         if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-          ReleaseCollection(collection);
-          TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize too small");
-        }
-
-        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
           ReleaseCollection(collection);
           TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize too small");
         }
@@ -5369,12 +5385,12 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_rid_t rid = primary->base._info._rid;
+  TRI_voc_tick_t tick = primary->base._info._tick;
 
   trx.finish(res);
   // READ-LOCK end
 
-  return scope.Close(V8RevisionId(rid));
+  return scope.Close(V8RevisionId(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6596,6 +6612,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
                                           TRI_doc_mptr_t const* document,
                                           TRI_barrier_t* barrier) {
   v8::HandleScope scope;
+  
+  TRI_ASSERT_MAINTAINER(document != 0);
+  TRI_ASSERT_MAINTAINER(document->_key != 0);
+  TRI_ASSERT_MAINTAINER(collection != 0);
+  TRI_ASSERT_MAINTAINER(barrier != 0);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();

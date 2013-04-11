@@ -92,6 +92,7 @@ namespace triagens {
           _nestingLevel(0),
           _readOnly(true),
           _hints(0),
+          _timeout(0.0),
           _trx(0),
           _vocbase(vocbase),
           _resolver(resolver) {
@@ -328,6 +329,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the lock acquisition timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        void setTimeout (double timeout) {
+          _timeout = timeout; 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a transaction hint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -398,7 +407,13 @@ namespace triagens {
           }
 
           // READ-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_READ);
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            TRI_FreeBarrier(*barrier);
+            *barrier = 0;
+            return res;
+          }
 
           if (primary->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
@@ -455,7 +470,11 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           // READ-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_READ);
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+          
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
@@ -497,7 +516,11 @@ namespace triagens {
           }
 
           // READ-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_READ);
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
           if (primary->_primaryIndex._nrUsed == 0) {
             // nothing to do
@@ -631,7 +654,7 @@ namespace triagens {
                            const bool lock) {
          
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
-           
+
           int res = primary->insert(trxCollection,
                                     key, 
                                     mptr, 
@@ -756,10 +779,13 @@ namespace triagens {
           size_t n = ids.size();
 
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
-          res = TRI_ERROR_NO_ERROR;
 
           // WRITE-LOCK START
-          this->lock(trxCollection, TRI_TRANSACTION_WRITE);
+          res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
@@ -903,7 +929,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext);
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _timeout);
 
           if (_trx == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -969,6 +995,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_transaction_hint_t _hints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout for lock acquisition
+////////////////////////////////////////////////////////////////////////////////
+
+        double _timeout;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

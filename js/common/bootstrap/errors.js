@@ -33,6 +33,7 @@
     "ERROR_CANNOT_WRITE_FILE"      : { "code" : 15, "message" : "cannot write file" }, 
     "ERROR_CANNOT_OVERWRITE_FILE"  : { "code" : 16, "message" : "cannot overwrite file" }, 
     "ERROR_TYPE_ERROR"             : { "code" : 17, "message" : "type error" }, 
+    "ERROR_LOCK_TIMEOUT"           : { "code" : 18, "message" : "lock timeout" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 
     "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" }, 

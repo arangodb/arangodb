@@ -796,7 +796,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   datafile->_state = TRI_DF_STATE_WRITE;
 
   // create the header
-  memset(&header, 0, sizeof(TRI_df_header_marker_t));
   TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
 
   header._version     = TRI_DF_VERSION;
@@ -1269,9 +1268,6 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
   char* ptr;
   char* end;
 
-  // this function must not be called for non-physical datafiles
-  assert(datafile->isPhysical(datafile));
-
   LOG_TRACE("iterating over datafile '%s', fid: %llu", datafile->getName(datafile), (unsigned long long) datafile->_fid);
 
   ptr = datafile->_data;
@@ -1474,7 +1470,6 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
 
   // create the footer
-  memset(&footer, 0, sizeof(TRI_df_footer_marker_t));
   TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
 
   // reserve space and write footer to file

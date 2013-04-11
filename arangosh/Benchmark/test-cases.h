@@ -829,6 +829,139 @@ struct CollectionCreationTest : public BenchmarkOperation {
   string _url;
 };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  transaction test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Benchmark
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct TransactionAqlTest : public BenchmarkOperation {
+  TransactionAqlTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~TransactionAqlTest () {
+  }
+
+  bool setUp (SimpleClient* client) {
+    _c1 = string(Collection + "1");
+    _c2 = string(Collection + "2");
+    _c3 = string(Collection + "3");
+
+    return DeleteCollection(client, _c1) &&
+           DeleteCollection(client, _c2) &&
+           DeleteCollection(client, _c3) &&
+           CreateCollection(client, _c1, 2) &&
+           CreateCollection(client, _c2, 2) &&
+           CreateCollection(client, _c3, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return string("/_api/cursor");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 8;
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    if (mod == 0) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 1) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 2) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
+      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 3) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c1 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, " FOR c2 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 4) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c2 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, " FOR c1 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 5) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c3 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
+      TRI_AppendStringStringBuffer(buffer, " FOR c1 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 6) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c2 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, " FOR c3 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+    else if (mod == 7) {
+      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c1 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, " FOR c2 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, " FOR c3 IN ");
+      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
+      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+    }
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = buffer->_buffer;
+    buffer->_buffer = NULL;
+
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+
+  string _c1;
+  string _c2;
+  string _c3;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Benchmark
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 BenchmarkCounter<uint64_t>* CollectionCreationTest::_counter = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -959,6 +1092,9 @@ static BenchmarkOperation* GetTestCase (const string& name) {
   }
   if (name == "crud-append") {
     return new DocumentCrudAppendTest();
+  }
+  if (name == "aqltrx") {
+    return new TransactionAqlTest();
   }
 
   return 0;
