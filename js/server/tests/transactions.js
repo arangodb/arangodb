@@ -590,6 +590,31 @@ function transactionOperationsSuite () {
 /// @brief test: trx with create index operation
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCreatePqIndex : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          c1.ensurePQIndex("foo");
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with create index operation
+////////////////////////////////////////////////////////////////////////////////
+
     testCreateHashConstraint : function () {
       c1 = db._create(cn1);
 
