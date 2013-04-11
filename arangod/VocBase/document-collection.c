@@ -2217,7 +2217,7 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
       if (res == TRI_ERROR_NO_ERROR) {
         size_t i, n; 
 
-        LOG_INFO("recovering transaction %llu", state->_tid);
+        LOG_INFO("recovering transaction %llu", (unsigned long long) state->_tid);
         n = state->_operations._length;
 
         for (i = 0; i < n; ++i) {
@@ -2236,7 +2236,7 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
       }
     }
 
-    LOG_INFO("rolling back uncommitted transaction %llu", state->_tid);
+    LOG_INFO("rolling back uncommitted transaction %llu", (unsigned long long) state->_tid);
     OpenIteratorResetOperations(state);
   }
 
