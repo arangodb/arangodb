@@ -112,13 +112,11 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function not found");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
-  REG_ERROR(ERROR_TRANSACTION_INCOMPLETE, "transaction definition is incomplete");
   REG_ERROR(ERROR_TRANSACTION_INVALID_STATE, "invalid transaction state");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
   REG_ERROR(ERROR_TRANSACTION_DISALLOWED_OPERATION, "disallowed operation inside transaction");
-  REG_ERROR(ERROR_TRANSACTION_DEADLOCK, "deadlock detected during transaction execution");
   REG_ERROR(ERROR_USER_INVALID_NAME, "invalid user name");
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");

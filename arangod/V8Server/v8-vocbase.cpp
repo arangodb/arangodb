@@ -1866,7 +1866,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   // extract the properties from the object
   
   // "lockTimeout"
-  double lockTimeout = 0.0;
+  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
 
   if (object->Has(TRI_V8_SYMBOL("lockTimeout"))) {
     static const string timeoutError = "<lockTimeout> must be a valid numeric value"; 
@@ -1879,6 +1879,17 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     if (lockTimeout < 0.0) {
       TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
     }
+  }
+
+  // "waitForSync"
+  bool waitForSync = false;
+
+  if (object->Has(TRI_V8_SYMBOL("waitForSync"))) {
+    if (! object->Get(TRI_V8_SYMBOL("waitForSync"))->IsBoolean()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<waitForSync> must be a boolean value");
+    }
+    
+    waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
   }
 
   // "collections"
@@ -1966,7 +1977,12 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
   
   CollectionNameResolver resolver(vocbase);
-  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, resolver, readCollections, writeCollections, lockTimeout);
+  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
+                                                                        resolver, 
+                                                                        readCollections, 
+                                                                        writeCollections, 
+                                                                        lockTimeout,
+                                                                        waitForSync); 
 
   int res = trx.begin();
 

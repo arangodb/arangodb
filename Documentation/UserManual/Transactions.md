@@ -425,9 +425,14 @@ There is thus the potential risk of losing data between the commit of the
 transaction and the actual disk synchronisation. This is the same as for 
 collections that have the `waitForSync` property set to `false`.
 
-Contrary, when a transaction is synchronised to disk, the commit will only
-return when all data of the transaction has been synchronised to disk, reducing
-the risk of losing any data in case of a crash.
+Contrary, when at least one of the collections modified in a transaction has 
+the `waitForSync` property set to `true`, or the transaction included some
+operation with an explicit sync request, the transaction data is synchronised 
+to disk on commit. There will be at least one sync operation per modified 
+collection.
+The transaction will return only after the data of all modified collections 
+has been synchronised to disk, reducing the risk of losing any data in case of a 
+crash directly after the commit.
 
 
 Limitations {#TransactionsLimitations}

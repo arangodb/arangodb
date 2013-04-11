@@ -117,7 +117,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     vocbase = primary->base._vocbase;
     cid = primary->base._info._cid;
 
-    trx = TRI_CreateTransaction(vocbase->_transactionContext, 0.0);
+    trx = TRI_CreateTransaction(vocbase->_transactionContext, 0.0, false);
 
     if (trx == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;

@@ -243,10 +243,7 @@ extern "C" {
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @LIT{transaction definition is incomplete}
-///   Will be raised when the transaction definition is incomplete (e.g. lacks
-///   collections to use).
-/// - 1651: @LIT{invalid transaction state}
+/// - 1650: @LIT{invalid transaction state}
 ///   Will be raised when an operation is requested on a transaction that has
 ///   an incompatible state.
 /// - 1652: @LIT{nested transactions detected}
@@ -260,8 +257,6 @@ extern "C" {
 /// - 1655: @LIT{disallowed operation inside transaction}
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
-/// - 1656: @LIT{deadlock detected during transaction execution}
-///   Will be raised when a deadlock is detected during transaction execution.
 /// - 1700: @LIT{invalid user name}
 ///   Will be raised when an invalid user name is used
 /// - 1701: @LIT{invalid password}
@@ -1453,18 +1448,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1650: ERROR_TRANSACTION_INCOMPLETE
-///
-/// transaction definition is incomplete
-///
-/// Will be raised when the transaction definition is incomplete (e.g. lacks
-/// collections to use).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INCOMPLETE                                  (1650)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1651: ERROR_TRANSACTION_INVALID_STATE
+/// @brief 1650: ERROR_TRANSACTION_INVALID_STATE
 ///
 /// invalid transaction state
 ///
@@ -1472,7 +1456,7 @@ void TRI_InitialiseErrorMessages (void);
 /// incompatible state.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1651)
+#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1652: ERROR_TRANSACTION_NESTED
@@ -1515,16 +1499,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1655)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1656: ERROR_TRANSACTION_DEADLOCK
-///
-/// deadlock detected during transaction execution
-///
-/// Will be raised when a deadlock is detected during transaction execution.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_DEADLOCK                                    (1656)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME
