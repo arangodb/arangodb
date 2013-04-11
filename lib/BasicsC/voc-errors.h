@@ -47,6 +47,8 @@ extern "C" {
 ///   Will be raised when an attempt is made to overwrite an existing file.
 /// - 17: @LIT{type error}
 ///   Will be raised when a type error is unencountered.
+/// - 18: @LIT{lock timeout}
+///   Will be raised when there's a timeout waiting for a lock.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -596,6 +598,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TYPE_ERROR                                              (17)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 18: ERROR_LOCK_TIMEOUT
+///
+/// lock timeout
+///
+/// Will be raised when there's a timeout waiting for a lock.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCK_TIMEOUT                                            (18)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

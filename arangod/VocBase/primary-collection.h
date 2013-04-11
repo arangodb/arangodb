@@ -70,6 +70,13 @@ struct TRI_primary_collection_s;
   TRI_ReadLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to read lock the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocks the documents and indexes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -82,6 +89,13 @@ struct TRI_primary_collection_s;
 
 #define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
   TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to write lock the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  TRI_TryWriteLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks the documents and indexes
@@ -108,11 +122,13 @@ struct TRI_primary_collection_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_mptr_s {
-  TRI_voc_rid_t  _rid;        // this is the revision identifier
-  TRI_voc_fid_t  _fid;        // this is the datafile identifier
-  TRI_voc_tick_t _validTo;    // this is the deletion time (0 if document is not yet deleted)
-  void const*    _data;       // this is the pointer to the beginning of the raw marker
-  char*          _key;        // this is the document identifier (string)
+  TRI_voc_rid_t          _rid;      // this is the revision identifier
+  TRI_voc_fid_t          _fid;      // this is the datafile identifier
+  TRI_voc_tick_t         _validTo;  // this is the deletion time (0 if document is not yet deleted)
+  void const*            _data;     // this is the pointer to the beginning of the raw marker
+  char*                  _key;      // this is the document identifier (string)
+  struct TRI_doc_mptr_s* _prev;     // previous master pointer
+  struct TRI_doc_mptr_s* _next;     // next master pointer
 }
 TRI_doc_mptr_t;
 
@@ -284,7 +300,11 @@ typedef struct TRI_primary_collection_s {
 
   int (*beginWrite) (struct TRI_primary_collection_s*);
   int (*endWrite) (struct TRI_primary_collection_s*);
+  
+  int (*beginReadTimed) (struct TRI_primary_collection_s*, uint64_t, uint64_t);
+  int (*beginWriteTimed) (struct TRI_primary_collection_s*, uint64_t, uint64_t);
 
+  void (*dump) (struct TRI_primary_collection_s*);
   int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
 
   int (*insert) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);
@@ -415,7 +435,9 @@ bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t*,
 /// @brief creates a new compactor file
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t*);
+TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t*,
+                                                      TRI_voc_fid_t,
+                                                      TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing compactor file
@@ -423,6 +445,12 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t*)
 
 bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t*,
                                           size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump information about all datafiles of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

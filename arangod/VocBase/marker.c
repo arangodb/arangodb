@@ -54,6 +54,8 @@ char* TRI_NameMarker (TRI_df_marker_t const* marker) {
       return "commit transaction";
     case TRI_DOC_MARKER_ABORT_TRANSACTION:
       return "abort transaction";
+    case TRI_DOC_MARKER_PREPARE_TRANSACTION:
+      return "prepare transaction";
 
     case TRI_DF_MARKER_HEADER:
     case TRI_COL_MARKER_HEADER:

@@ -389,6 +389,11 @@
       return true;
     });
 
+    // set up the collection _trx
+    addTask("setupTrx", "setup _trx collection", function () {
+      return createSystemCollection("_trx", { waitForSync : false });
+    });
+
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), "
                 + activeTasks.length + " task(s) to run");

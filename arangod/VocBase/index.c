@@ -82,8 +82,6 @@ void TRI_InitIndex (TRI_index_t* idx,
   idx->cleanup           = NULL;
 
   idx->postInsert        = NULL;
-  idx->postUpdate        = NULL;
-  idx->postRemove        = NULL;
 
   idx->beginTransaction  = NULL;
   idx->abortTransaction  = NULL;
