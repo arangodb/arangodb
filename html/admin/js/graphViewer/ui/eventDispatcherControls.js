@@ -57,6 +57,15 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         callback
       );
     },
+    createIcon = function(icon, title, callback) {
+      uiComponentsHelper.createIconButton(
+        baseClass,
+        list,
+        icon,
+        "control_" + title,
+        callback
+      );
+    },
     rebindNodes = function(actions) {
       dispatcher.rebind("nodes", actions);
     },
@@ -75,7 +84,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         
         
       };
-    createButton("drag", callback);
+    createIcon("move", "drag", callback);
   };
   
   this.addControlEdit = function() {
@@ -109,7 +118,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         rebindNodes({click: nodeCallback});
         rebindEdges({click: edgeCallback});
       };
-    createButton("edit", callback);
+    createIcon("edit", "edit", callback);
   };
   
   this.addControlExpand = function() {
@@ -119,7 +128,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         rebindNodes({click: dispatcher.events.EXPAND});
         rebindEdges();
       };
-    createButton("expand", callback);
+    createIcon("plus", "expand", callback);
   };
   
   this.addControlDelete = function() {
@@ -133,7 +142,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
           edgeShaper.reshapeEdges();
         })});
       };
-    createButton("delete", callback);
+    createIcon("trash", "delete", callback);
   };
   
   this.addControlConnect = function() {
@@ -149,7 +158,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         });
         rebindEdges();
       };
-    createButton("connect", callback);
+    createIcon("resize-horizontal", "connect", callback);
   };
   
   
