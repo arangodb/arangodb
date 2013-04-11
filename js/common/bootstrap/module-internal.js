@@ -832,7 +832,7 @@
               context.output += s;
             }
           }
-          catch (e) {
+          catch (e1) {
             context.output += "[Function]";
           }
         }
@@ -840,7 +840,7 @@
           try {
             context.output += value.toString();
           }
-          catch (e) {
+          catch (e2) {
             context.output += "[Object ";
             printObject(value, context);
             context.output += "]";
