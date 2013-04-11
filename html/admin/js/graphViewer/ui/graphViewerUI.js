@@ -45,6 +45,7 @@ function GraphViewerUI(container, adapterConfig) {
   var graphViewer,
     width = container.offsetWidth, // TODO
     height = container.offsetHeight, // TODO
+    menubar = document.createElement("ul"),
     svg, 
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
@@ -89,37 +90,44 @@ function GraphViewerUI(container, adapterConfig) {
       dispatcherUI.addAll();
     },
     createMenu = function() {
-      var menucontainer = document.createElement("div"),
-      menubar = document.createElement("ul"),
-      searchDiv = document.createElement("div"),
-      searchField = document.createElement("input"),
-      searchStart = document.createElement("img"),
-      nodeShaperDropDown = document.createElement("div"),
-      nodeShaperList = makeBootstrapDropdown(
-        nodeShaperDropDown,
-        "nodeshaperdropdown",
-        "Node Shaper"
-      ),
-      edgeShaperDropDown = document.createElement("div"),
-      edgeShaperList = makeBootstrapDropdown(
-        edgeShaperDropDown,
-        "edgeshaperdropdown",
-        "Edge Shaper"
-      ),
-      nodeShaperUI = new NodeShaperControls(
-        nodeShaperList,
-        graphViewer.nodeShaper
-      ),
-      edgeShaperUI = new EdgeShaperControls(
-        edgeShaperList,
-        graphViewer.edgeShaper
-      );
+      var transparentHeader = document.createElement("div"),
+        searchDiv = document.createElement("div"),
+        searchField = document.createElement("input"),
+        searchStart = document.createElement("img"),
+        nodeShaperDropDown = document.createElement("div"),
+        nodeShaperList = makeBootstrapDropdown(
+          nodeShaperDropDown,
+          "nodeshaperdropdown",
+          "Node Shaper"
+        ),
+        edgeShaperDropDown = document.createElement("div"),
+        edgeShaperList = makeBootstrapDropdown(
+          edgeShaperDropDown,
+          "edgeshaperdropdown",
+          "Edge Shaper"
+        ),
+        nodeShaperUI = new NodeShaperControls(
+          nodeShaperList,
+          graphViewer.nodeShaper
+        ),
+        edgeShaperUI = new EdgeShaperControls(
+          edgeShaperList,
+          graphViewer.edgeShaper
+        );
       
       menubar.id = "menubar";
+      menubar.className = "thumbnails2";
+      
+      transparentHeader.id = "transparentHeader";
+      
+      searchDiv.id = "transparentPlaceholder";
+      searchDiv.className = "pull-left";
       
       searchField.id = "nodeid";
       searchField.className = "searchInput";
-      searchStart.id = "loadnode";
+      searchField.type = "text";
+      searchStart.id = "loadNode";
+      searchStart.className = "searchSubmit";
       searchStart.width = 16;
       searchStart.height = 16;
       searchStart.src = "img/enter_icon.png";
@@ -132,9 +140,9 @@ function GraphViewerUI(container, adapterConfig) {
         graphViewer.loadGraph(nodeId);
       };
       
-      container.appendChild(menucontainer);
-      menucontainer.appendChild(menubar);
-      menubar.appendChild(searchDiv);
+      
+      menubar.appendChild(transparentHeader);
+      transparentHeader.appendChild(searchDiv);
       searchDiv.appendChild(searchField);
       searchDiv.appendChild(searchStart);
       menubar.appendChild(nodeShaperDropDown);
@@ -145,7 +153,7 @@ function GraphViewerUI(container, adapterConfig) {
       edgeShaperUI.addAll();
       
     };
-
+  container.appendChild(menubar);
   svg = createSVG();
   graphViewer = new GraphViewer(svg, width, height, adapterConfig);
   

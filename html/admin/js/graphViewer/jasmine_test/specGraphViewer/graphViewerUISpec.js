@@ -177,9 +177,10 @@
         expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
         var field = $("#contentDiv #menubar #nodeid")[0],
           btn = $("#contentDiv #menubar #loadnode")[0];
-        expect(field.tagName.toLowerCase()).toEqual("input");
+        expect(field).toBeTag("input");
+        expect(field.type).toEqual("text");
         expect(field.className).toEqual("searchInput");
-        expect(btn.tagName.toLowerCase()).toEqual("img");
+        expect(btn).toBeTag("img");
         expect(btn.width).toEqual(16);
         expect(btn.height).toEqual(16);
       });
@@ -218,7 +219,7 @@
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
-          transHeader = header.firstChild;
+          transHeader = header.firstChild,
           searchField = transHeader.children[0],
           
           content = div.children[1];
@@ -233,6 +234,7 @@
         expect(searchField.className).toEqual("pull-left");
         expect(searchField.children[0].id).toEqual("nodeid");
         expect(searchField.children[1].id).toEqual("loadnode");
+        expect(searchField.children[1].className).toEqual("searchSubmit");
       });
     });
     
