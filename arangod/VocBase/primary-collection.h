@@ -304,7 +304,9 @@ typedef struct TRI_primary_collection_s {
   int (*beginReadTimed) (struct TRI_primary_collection_s*, uint64_t, uint64_t);
   int (*beginWriteTimed) (struct TRI_primary_collection_s*, uint64_t, uint64_t);
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   void (*dump) (struct TRI_primary_collection_s*);
+#endif  
   int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
 
   int (*insert) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool);

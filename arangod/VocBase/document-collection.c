@@ -1742,6 +1742,8 @@ static int BeginWriteTimed (TRI_primary_collection_t* primary,
 /// @brief dumps information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+
 static void DumpCollection (TRI_primary_collection_t* primary) {
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
@@ -1751,6 +1753,8 @@ static void DumpCollection (TRI_primary_collection_t* primary) {
   document->_headers->dump(document->_headers);
   printf("----------------------------\n\n");
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -2762,7 +2766,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.beginReadTimed    = BeginReadTimed;
   collection->base.beginWriteTimed   = BeginWriteTimed;
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   collection->base.dump              = DumpCollection;
+#endif
 
   collection->base.notifyTransaction = NotifyTransaction;
 
