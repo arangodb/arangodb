@@ -47,6 +47,8 @@
     beforeEach(function() {
       div = document.createElement("div");
       div.id = "contentDiv";
+      div.style.width = "200px";
+      div.style.height = "200px";
       adapterConfig = {type: "json", path: "../test_data/"};
       document.body.appendChild(div);
       ui = new GraphViewerUI(div, adapterConfig);
@@ -68,38 +70,38 @@
             msg = "first element has to be a link";
             return false;
           }
-          if (btn.className !== "dropdown-toggle") {
+          if (btn.getAttribute("class") !== "dropdown-toggle") {
             msg = "first elements class to be dropdown-toggle";
             return false;
           }
-          if (btn.role !== "button") {
+          if (btn.getAttribute("role") !== "button") {
             msg = "first elements role to be button";
             return false;
           }
-          if (btn["data-toggle"] !== "dropdown") {
+          if (btn.getAttribute("data-toggle") !== "dropdown") {
             msg = "first elements data-toggle to be dropdown";
             return false;
           }
-          if (btn["data-target"] !== "#") {
+          if (btn.getAttribute("data-target") !== "#") {
             msg = "first elements data-target to be a link";
             return false;
           }
           if (btn.children[0].tagName.toLowerCase() !== "b"
-            && btn.children[0].className !== "caret") {
+            && btn.children[0].getAttribute("class") !== "caret") {
             msg = "first element to contain a caret";
             return false;
           }
 
           // Check the list
-          if (list.className !== "dropdown-menu") {
+          if (list.getAttribute("class") !== "dropdown-menu") {
             msg = "list element to be of class dropdown-menu";
             return false;
           }
-          if (list.role !== "menu") {
+          if (list.getAttribute("role") !== "menu") {
             msg = "list elements role to be menu";
             return false;
           }
-          if (list["aria-labelledby"] !== btn.id) {
+          if (list.getAttribute("aria-labelledby") !== btn.id) {
             msg = "list elements aria-labelledby to be same as button id";
             return false;
           }
