@@ -845,10 +845,11 @@ static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments cons
 void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicationV8) {
   v8::HandleScope scope;
 
+  GlobalV8Dealer = applicationV8;
+
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-
-  GlobalV8Dealer = applicationV8;
+  /* TRI_v8_global_t* v8g = */ TRI_CreateV8Globals(isolate);
 
   // .............................................................................
   // create the global functions

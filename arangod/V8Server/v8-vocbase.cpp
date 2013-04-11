@@ -1768,7 +1768,9 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 /// @brief weak reference callback for general cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakGeneralCursorCallback (v8::Isolate* isolate,
+                                       v8::Persistent<v8::Value> object,
+                                       void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
 
   LOG_TRACE("weak-callback for general cursor called");
@@ -1782,7 +1784,7 @@ static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* p
   TRI_EndUsageDataShadowData(vocbase->_cursors, parameter);
 
   // dispose and clear the persistent handle
-  object.Dispose();
+  object.Dispose(isolate);
   object.Clear();
 }
 
@@ -1794,8 +1796,8 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  TRI_v8_global_t* v8g;
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
 
@@ -1805,7 +1807,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
     return scope.Close(cursorObject);
   }
 
-  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
+  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(cursor));
 
   if (tryCatch.HasCaught()) {
     return scope.Close(v8::Undefined());
@@ -1814,7 +1816,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
   cursorObject->SetInternalField(SLOT_CLASS, persistent);
 
-  persistent.MakeWeak(cursor, WeakGeneralCursorCallback);
+  persistent.MakeWeak(isolate, cursor, WeakGeneralCursorCallback);
 
   return scope.Close(cursorObject);
 }
@@ -6159,9 +6161,11 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
 /// @brief weak reference callback for a barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakBarrierCallback (v8::Isolate* isolate,
+                                 v8::Persistent<v8::Value> object,
+                                 void* parameter) {
   TRI_barrier_t* barrier;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
   barrier = (TRI_barrier_t*) parameter;
 
   LOG_TRACE("weak-callback for barrier called");
@@ -6172,7 +6176,7 @@ static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* paramet
 
 
   // dispose and clear the persistent handle
-  persistent.Dispose();
+  persistent.Dispose(isolate);
   persistent.Clear();
 
   // free the barrier
@@ -6593,7 +6597,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
                                           TRI_barrier_t* barrier) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
@@ -6611,11 +6616,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
   if (i == v8g->JSBarriers.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(barrier));
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
     result->SetInternalField(SLOT_BARRIER, persistent);
 
     v8g->JSBarriers[barrier] = persistent;
-    persistent.MakeWeak(barrier, WeakBarrierCallback);
+    persistent.MakeWeak(isolate, barrier, WeakBarrierCallback);
   }
   else {
     result->SetInternalField(SLOT_BARRIER, i->second);
@@ -6853,8 +6858,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
-
-  return v8g;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
