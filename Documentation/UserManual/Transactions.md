@@ -434,6 +434,18 @@ The transaction will return only after the data of all modified collections
 has been synchronised to disk, reducing the risk of losing any data in case of a 
 crash directly after the commit.
 
+To explicitly force the durability of a transaction even in case all 
+participating collections have the `waitForSync` property set the `false`,
+the transaction can be declared with the `waitForSync` attribute set to `true`:
+
+    TRANSACTION({
+      collections: { 
+        write: "users"
+      },
+      waitForSync: true,
+      action: function () { ... }
+    });
+
 
 Limitations {#TransactionsLimitations}
 ======================================
