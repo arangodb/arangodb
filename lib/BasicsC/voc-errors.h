@@ -257,7 +257,7 @@ extern "C" {
 /// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
-/// - 1655: @LIT{disallowed operation inside a transaction}
+/// - 1655: @LIT{disallowed operation inside transaction}
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
 /// - 1656: @LIT{deadlock detected during transaction execution}
@@ -1509,7 +1509,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1655: ERROR_TRANSACTION_DISALLOWED_OPERATION
 ///
-/// disallowed operation inside a transaction
+/// disallowed operation inside transaction
 ///
 /// Will be raised when a disallowed operation is carried out in a transaction.
 ////////////////////////////////////////////////////////////////////////////////

@@ -125,6 +125,7 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \
+	Transactions \
 	Upgrading11 \
 	Upgrading12 \
 	UserManual \
