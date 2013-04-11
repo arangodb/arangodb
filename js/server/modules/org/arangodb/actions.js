@@ -1941,7 +1941,7 @@ function pathHandler (req, res, options, next) {
 /// @brief add a cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-function addCookie (res, name, value, liveTime, path, domain, secure, httpOnly) {
+function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) {
   'use strict';
 
   if (name === undefined) {
@@ -1956,8 +1956,8 @@ function addCookie (res, name, value, liveTime, path, domain, secure, httpOnly) 
     'value' : value
   };
   
-  if (liveTime !== undefined && liveTime !== null) {
-    cookie.liveTime = parseInt(liveTime);
+  if (lifeTime !== undefined && lifeTime !== null) {
+    cookie.lifeTime = parseInt(lifeTime);
   }
   if (path !== undefined && path !== null) {
     cookie.path = path;
