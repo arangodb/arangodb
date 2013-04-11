@@ -50,6 +50,30 @@
       list.id = "control_list";
       shaperUI = new NodeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
+      this.addMatchers({
+        toConformToListCSS: function() {
+          var li = this.actual,
+            a = li.firstChild,
+            lbl = a.firstChild,
+            msg = "";
+          this.message = function() {
+            return "Expected " + msg;
+          };
+          if (li === undefined || li.tagName.toLowerCase() !== "li") {
+            msg = "first element to be a li";
+            return false;
+          }
+          if (a === undefined || a.tagName.toLowerCase() !== "a") {
+            msg = "first element to be a a";
+            return false;
+          }
+          if (lbl === undefined || lbl.tagName.toLowerCase() !== "label") {
+            msg = "first element to be a label";
+            return false;
+          }
+          return true;
+        }
+      });
     });
 
     afterEach(function () {
@@ -71,6 +95,7 @@
         shaperUI.addControlOpticShapeNone();
       
         expect($("#control_list #control_none").length).toEqual(1);
+        expect($("#control_list #control_none")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_none");
       
@@ -87,7 +112,8 @@
         shaperUI.addControlOpticShapeCircle();
       
         expect($("#control_list #control_circle").length).toEqual(1);
-      
+        expect($("#control_list #control_circle")[0]).toConformToListCSS();
+        
         helper.simulateMouseEvent("click", "control_circle");
         expect($("#control_circle_modal").length).toEqual(1);
       
@@ -113,6 +139,7 @@
         shaperUI.addControlOpticShapeRect();
       
         expect($("#control_list #control_rect").length).toEqual(1);
+        expect($("#control_list #control_rect")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_rect");
         $("#control_rect_width").attr("value", 42);
@@ -139,6 +166,7 @@
         shaperUI.addControlOpticLabel();
       
         expect($("#control_list #control_label").length).toEqual(1);
+        expect($("#control_list #control_label")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_label");
         $("#control_label_key").attr("value", "theAnswer");
@@ -160,6 +188,7 @@
         shaperUI.addControlOpticSingleColour();
       
         expect($("#control_list #control_singlecolour").length).toEqual(1);
+        expect($("#control_list #control_singlecolour")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_singlecolour");
         $("#control_singlecolour_fill").attr("value", "#123456");
@@ -186,6 +215,7 @@
         shaperUI.addControlOpticAttributeColour();
       
         expect($("#control_list #control_attributecolour").length).toEqual(1);
+        expect($("#control_list #control_attributecolour")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_attributecolour");
         $("#control_attributecolour_key").attr("value", "label");
@@ -210,6 +240,7 @@
         shaperUI.addControlOpticExpandColour();
       
         expect($("#control_list #control_expandcolour").length).toEqual(1);
+        expect($("#control_list #control_expandcolour")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_expandcolour");
         $("#control_expandcolour_expanded").attr("value", "#123456");

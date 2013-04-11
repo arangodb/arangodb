@@ -43,8 +43,8 @@ function GraphViewerUI(container, adapterConfig) {
   } 
   
   var graphViewer,
-    width = container.offsetWidth, // TODO
-    height = container.offsetHeight, // TODO
+    width = container.offsetWidth - 60,
+    height = container.offsetHeight,
     menubar = document.createElement("ul"),
     svg, 
     makeBootstrapDropdown = function (div, id, title) {
@@ -68,7 +68,9 @@ function GraphViewerUI(container, adapterConfig) {
       return d3.select("#" + container.id)
         .append("svg")
         .attr("width",width)
-        .attr("height",height);
+        .attr("height",height)
+        .attr("class", "pull-right")
+        .attr("style", "width:" + width + "px");
     },
     createToolbox = function() {
       var toolbox = document.createElement("div"),
@@ -80,7 +82,7 @@ function GraphViewerUI(container, adapterConfig) {
         graphViewer.dispatcherConfig
       );
       toolbox.id = "toolbox";
-      toolbox.className = "toolbox";
+      toolbox.className = "toolbox pull-left";
       container.appendChild(toolbox);
       toolbox.appendChild(toollist);
       dispatcherUI.addAll();
