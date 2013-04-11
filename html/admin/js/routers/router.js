@@ -18,7 +18,8 @@ $(document).ready(function() {
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
-      "applications/documentation"          : "applicationsDocumentation"
+      "applications/documentation"          : "applicationsDocumentation",
+      "graph"                               : "graph"
       
     },
     initialize: function () {
@@ -63,6 +64,7 @@ $(document).ready(function() {
       this.footerView = new window.footerView();
       this.naviView.render();
       this.footerView.render();
+      this.graphView = new window.graphView();
     },
     collections: function() {
       var naviView = this.naviView;
@@ -155,6 +157,11 @@ $(document).ready(function() {
           self.naviView.selectMenuItem('dashboard-menu');
         }
       });
+    },
+    
+    graph: function() {
+      this.graphView.render();
+      this.naviView.selectMenuItem('graph-menu'); 
     },
     
     applicationsAvailable: function() {

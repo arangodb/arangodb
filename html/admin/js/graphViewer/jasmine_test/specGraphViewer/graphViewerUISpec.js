@@ -53,6 +53,14 @@
       document.body.appendChild(div);
       ui = new GraphViewerUI(div, adapterConfig);
       this.addMatchers({
+        toBeTag: function(name) {
+          var el = this.actual;
+          this.message = function() {
+            return el.tagName.toLowerCase() + " to be a " + name; 
+          };
+          return el.tagName.toLowerCase() === name;
+        },
+        
         toBeADropdownMenu: function() {
           var div = this.actual,
             btn = div.children[0],
@@ -208,6 +216,24 @@
         expect(false).toBeTruthy();
       });
       
+      it('should have the same layout as the web interface', function() {
+        var header = div.children[0],
+          transHeader = header.firstChild;
+          searchField = transHeader.children[0],
+          
+          content = div.children[1];
+        expect(header).toBeTag("ul");
+        expect(header.id).toEqual("menubar");
+        expect(header.className).toEqual("thumbnails2");
+        expect(transHeader).toBeTag("div");
+        expect(transHeader.id).toEqual("transparentHeader");
+        
+        expect(searchField).toBeTag("div");
+        expect(searchField.id).toEqual("transparentPlaceholder");
+        expect(searchField.className).toEqual("pull-left");
+        expect(searchField.children[0].id).toEqual("nodeid");
+        expect(searchField.children[1].id).toEqual("loadnode");
+      });
     });
     
     
