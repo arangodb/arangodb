@@ -1,0 +1,13 @@
+.searchSubmit {
+  height: 14px;
+  margin-left: -18px;
+  margin-top: 11px;
+  opacity: 0.2;
+  position: absolute;
+  width: 14px;
+}
+
+.searchSubmit:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
