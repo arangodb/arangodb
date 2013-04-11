@@ -79,11 +79,17 @@ function transactionInvocationSuite () {
         { collections: true, action: function () { } },
         { collections: { read: true }, action: function () { } },
         { collections: { }, lockTimeout: -1, action: function () { } },
+        { collections: { }, lockTimeout: -30.0, action: function () { } },
         { collections: { }, lockTimeout: null, action: function () { } },
         { collections: { }, lockTimeout: true, action: function () { } },
         { collections: { }, lockTimeout: "foo", action: function () { } },
         { collections: { }, lockTimeout: [ ], action: function () { } },
-        { collections: { }, lockTimeout: { }, action: function () { } }
+        { collections: { }, lockTimeout: { }, action: function () { } },
+        { collections: { }, waitForSync: null, action: function () { } },
+        { collections: { }, waitForSync: 0, action: function () { } },
+        { collections: { }, waitForSync: "foo", action: function () { } },
+        { collections: { }, waitForSync: [ ], action: function () { } },
+        { collections: { }, waitForSync: { }, action: function () { } }
       ];
 
       tests.forEach(function (test) {
@@ -108,7 +114,11 @@ function transactionInvocationSuite () {
         { collections: { }, action: function () { result = 1; return true; } },
         { collections: { read: [ ] }, action: function () { result = 1; return true; } },
         { collections: { write: [ ] }, action: function () { result = 1; return true; } },
-        { collections: { read: [ ], write: [ ] }, action: function () { result = 1; return true; } }
+        { collections: { read: [ ], write: [ ] }, action: function () { result = 1; return true; } },
+        { collections: { read: [ ], write: [ ] }, lockTimeout: 5.0, action: function () { result = 1; return true; } },
+        { collections: { read: [ ], write: [ ] }, lockTimeout: 0.0, action: function () { result = 1; return true; } },
+        { collections: { read: [ ], write: [ ] }, waitForSync: true, action: function () { result = 1; return true; } },
+        { collections: { read: [ ], write: [ ] }, waitForSync: false, action: function () { result = 1; return true; } }
       ];
 
       tests.forEach(function (test) {
@@ -476,6 +486,44 @@ function transactionCollectionsSuite () {
       catch (err) {
         assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx using waitForSync
+////////////////////////////////////////////////////////////////////////////////
+
+    testWaitForSyncTrue : function () {
+      var obj = {
+        collections : { 
+          write : [ cn1 ]
+        },
+        waitForSync: true,
+        action : function () {
+          c1.save({ _key : "foo" });
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx using waitForSync
+////////////////////////////////////////////////////////////////////////////////
+
+    testWaitForSyncFalse : function () {
+      var obj = {
+        collections : { 
+          write : [ cn1 ]
+        },
+        waitForSync: false,
+        action : function () {
+          c1.save({ _key : "foo" });
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
     }
 
   };
