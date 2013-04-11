@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
-/*global NodeShaper, modalDialogHelper*/
+/*global NodeShaper, modalDialogHelper, uiComponentsHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -37,30 +37,23 @@ function NodeShaperControls(list, shaper) {
   if (shaper === undefined) {
     throw "The NodeShaper has to be given.";
   }
-  var self = this;
+  var self = this,
+    baseClass = "graph";
   
   this.addControlOpticShapeNone = function() {
-    var prefix = "control_none",
-    idprefix = prefix + "_",
-    callback = function() {
+    uiComponentsHelper.createButton(baseClass, list, "None", "control_none", function() {
       shaper.changeTo({
         shape: {
           type: NodeShaper.shapes.NONE
         }
       });
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("None"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticShapeCircle = function() {
     var prefix = "control_circle",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Circle", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Circle",
         idprefix, [{
           type: "text",
@@ -75,21 +68,15 @@ function NodeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Circle"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticShapeRect = function() {
     var prefix = "control_rect",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Rectangle", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Rectangle",
-        idprefix, [{
+        "control_rect_", [{
           type: "text",
           id: "width"
         },{
@@ -107,19 +94,13 @@ function NodeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Rectangle"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticLabel = function() {
     var prefix = "control_label",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
@@ -131,13 +112,7 @@ function NodeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Label"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   //////////////////////////////////////////////////////////////////
@@ -146,8 +121,8 @@ function NodeShaperControls(list, shaper) {
   
   this.addControlOpticSingleColour = function() {
     var prefix = "control_singlecolour",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Single Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Colour",
         idprefix, [{
           type: "text",
@@ -167,19 +142,13 @@ function NodeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Single Colour"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticAttributeColour = function() {
     var prefix = "control_attributecolour",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Colour by Attribute", prefix, function() {
       modalDialogHelper.createModalDialog("Display colour by attribute",
         idprefix, [{
           type: "text",
@@ -194,19 +163,13 @@ function NodeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Colour by Attribute"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticExpandColour = function() {
     var prefix = "control_expandcolour",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Expansion Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Display colours for expansion",
         idprefix, [{
           type: "text",
@@ -226,13 +189,7 @@ function NodeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Expansion Colour"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addAllOptics = function () {

@@ -67,34 +67,26 @@
             list = div.children[1],
             msg = "";
           this.message = function() {
-            return msg;
+            return "Expected " + msg;
           };
-          if (div.className !== "dropdown") {
-            msg = "div class to be dropdown";
+          if (div.className !== "btn-group pull-right") {
+            msg = "div class to be \"btn-group pull-right\"";
             return false;
           }
           // Check the toggle button
-          if (btn === undefined || btn.tagName.toLowerCase() !== "a") {
-            msg = "first element has to be a link";
+          if (btn === undefined || btn.tagName.toLowerCase() !== "button") {
+            msg = "first element has to be a button";
             return false;
           }
-          if (btn.getAttribute("class") !== "dropdown-toggle") {
-            msg = "first elements class to be dropdown-toggle";
-            return false;
-          }
-          if (btn.getAttribute("role") !== "button") {
-            msg = "first elements role to be button";
+          if (btn.getAttribute("class") !== "btn btn-inverse btn-small dropdown-toggle") {
+            msg = "first elements class to be \"btn btn-inverse btn-small dropdown-toggle\"";
             return false;
           }
           if (btn.getAttribute("data-toggle") !== "dropdown") {
             msg = "first elements data-toggle to be dropdown";
             return false;
           }
-          if (btn.getAttribute("data-target") !== "#") {
-            msg = "first elements data-target to be a link";
-            return false;
-          }
-          if (btn.children[0].tagName.toLowerCase() !== "b"
+          if (btn.children[0].tagName.toLowerCase() !== "span"
             && btn.children[0].getAttribute("class") !== "caret") {
             msg = "first element to contain a caret";
             return false;
@@ -103,14 +95,6 @@
           // Check the list
           if (list.getAttribute("class") !== "dropdown-menu") {
             msg = "list element to be of class dropdown-menu";
-            return false;
-          }
-          if (list.getAttribute("role") !== "menu") {
-            msg = "list elements role to be menu";
-            return false;
-          }
-          if (list.getAttribute("aria-labelledby") !== btn.id) {
-            msg = "list elements aria-labelledby to be same as button id";
             return false;
           }
           return true;
@@ -183,6 +167,7 @@
         expect(btn).toBeTag("img");
         expect(btn.width).toEqual(16);
         expect(btn.height).toEqual(16);
+        expect(btn.className).toEqual("searchSubmit");
       });
       
       it('should contain a menu for the node shapes', function() {
@@ -234,7 +219,6 @@
         expect(searchField.className).toEqual("pull-left");
         expect(searchField.children[0].id).toEqual("nodeid");
         expect(searchField.children[1].id).toEqual("loadnode");
-        expect(searchField.children[1].className).toEqual("searchSubmit");
       });
     });
     
