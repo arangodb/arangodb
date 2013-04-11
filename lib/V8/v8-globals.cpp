@@ -68,7 +68,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     IsVolatileKey(),
     JournalSizeKey(),
     KeyOptionsKey(),
-    LiveTimeKey(),
+    LifeTimeKey(),
     NameKey(),
     ParametersKey(),
     PathKey(),
@@ -124,7 +124,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   IsVolatileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isVolatile"));
   JournalSizeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("journalSize"));
   KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
-  LiveTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("liveTime"));
+  LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
   NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
