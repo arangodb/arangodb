@@ -453,6 +453,29 @@ function transactionCollectionsSuite () {
       };
 
       assertTrue(TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx using a reserved name
+////////////////////////////////////////////////////////////////////////////////
+
+    testTrxCollection : function () {
+      var obj = {
+        collections : {
+          write: "_trx"
+        },
+        action : function () {
+          return true;
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
+      }
     }
 
   };

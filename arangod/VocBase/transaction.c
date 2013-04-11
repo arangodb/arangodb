@@ -557,7 +557,7 @@ static int WriteCollectionAbort (TRI_transaction_collection_t* trxCollection) {
                                           abortMarker->base._size,
                                           NULL,
                                           &result, 
-                                          trxCollection->_waitForSync);
+                                          false /* trxCollection->_waitForSync */);
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, abortMarker);
 
@@ -590,7 +590,7 @@ static int WriteCollectionCommit (TRI_transaction_collection_t* trxCollection) {
                                           commitMarker->base._size,
                                           NULL,
                                           &result, 
-                                          trxCollection->_waitForSync);
+                                          trx->_waitForSync);
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, commitMarker);
 
@@ -623,7 +623,7 @@ static int WriteCollectionPrepare (TRI_transaction_collection_t* trxCollection) 
                                           prepareMarker->base._size,
                                           NULL,
                                           &result, 
-                                          false);
+                                          trx->_waitForSync);
     
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, prepareMarker);
 
@@ -1397,7 +1397,8 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
-                                          double timeout) {
+                                          double timeout,
+                                          bool waitForSync) {
   TRI_transaction_t* trx;
 
   trx = (TRI_transaction_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false);
@@ -1418,9 +1419,13 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
   trx->_nestingLevel  = 0;
   trx->_timeout       = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
   trx->_hasOperations = false;
+  trx->_waitForSync   = waitForSync;
 
   if (timeout > 0.0) {
     trx->_timeout     = (uint64_t) (timeout * 1000000.0);
+  }
+  else if (timeout == 0.0) {
+    trx->_timeout     = (uint64_t) 0;
   }
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
@@ -1703,7 +1708,7 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
                                                oldData,
                                                marker, 
                                                totalSize,
-                                               syncRequested || trxCollection->_waitForSync);
+                                               syncRequested || trxCollection->_waitForSync || trx->_waitForSync);
     *written = true;
   }
   else {
@@ -1716,6 +1721,10 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
     
   if (syncRequested) {
     trxCollection->_waitForSync = true;
+    trx->_waitForSync = true;
+  }
+  else if (trxCollection->_waitForSync) {
+    trx->_waitForSync = true;
   }
 
   return res;
@@ -1895,7 +1904,7 @@ int TRI_ExecuteSingleOperationTransaction (TRI_vocbase_t* vocbase,
   cid = collection->_cid;
 
   // write the data using a one-operation transaction  
-  trx = TRI_CreateTransaction(vocbase->_transactionContext, 0.0);
+  trx = TRI_CreateTransaction(vocbase->_transactionContext, 0.0, false);
 
   if (trx == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;

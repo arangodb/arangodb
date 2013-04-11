@@ -315,6 +315,7 @@ typedef struct TRI_transaction_s {
   int                        _nestingLevel;
   uint64_t                   _timeout;        // timeout for lock acquisition
   bool                       _hasOperations; 
+  bool                       _waitForSync;    // whether or not the collection had a synchronous op
 }
 TRI_transaction_t;
 
@@ -356,7 +357,8 @@ TRI_transaction_collection_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const, 
-                                          double);
+                                          double, 
+                                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a transaction container

@@ -93,6 +93,7 @@ namespace triagens {
           _readOnly(true),
           _hints(0),
           _timeout(0.0),
+          _waitForSync(false),
           _trx(0),
           _vocbase(vocbase),
           _resolver(resolver) {
@@ -324,6 +325,9 @@ namespace triagens {
 
         int addCollection (const string& name,
                            TRI_transaction_type_e type) {
+          if (name == TRI_TRANSACTION_COORDINATOR_COLLECTION) {
+            return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+          }
 
           return addCollection(_resolver.getCollectionId(name), type);
         }
@@ -334,6 +338,14 @@ namespace triagens {
 
         void setTimeout (double timeout) {
           _timeout = timeout; 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the waitForSync property
+////////////////////////////////////////////////////////////////////////////////
+
+        void setWaitForSync () {
+          _waitForSync = true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -929,7 +941,7 @@ namespace triagens {
           TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _timeout);
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, _timeout, _waitForSync);
 
           if (_trx == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -1001,6 +1013,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _timeout;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for sync property for transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _waitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
