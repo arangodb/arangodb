@@ -1774,6 +1774,7 @@ static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* p
   LOG_TRACE("weak-callback for general cursor called");
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+
   if (! vocbase) {
     return;
   }
@@ -6652,9 +6653,9 @@ const int32_t TRI_GetVocBaseColType () {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
-                                      TRI_vocbase_t* vocbase,
-                                      const size_t threadNumber) {
+void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+                          TRI_vocbase_t* vocbase,
+                          const size_t threadNumber) {
   v8::HandleScope scope;
 
   // check the isolate
@@ -6720,7 +6721,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
   TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
 
-  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
 
   // .............................................................................
@@ -6741,9 +6742,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                                                         // Handle<Value> data = Handle<Value>());
                               );
 
-  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ShapedJson", ft->GetFunction());
-
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -6799,9 +6799,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
-  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCollection", ft->GetFunction());
-
 
   // .............................................................................
   // generate the general cursor template
@@ -6825,7 +6824,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCursor", ft->GetFunction());
 
   // .............................................................................

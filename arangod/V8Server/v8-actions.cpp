@@ -115,10 +115,10 @@ class v8_action_t : public TRI_action_t {
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(isolate);
 
       if (i != _callbacks.end()) {
-        i->second.Dispose();
+        i->second.Dispose(isolate);
       }
 
-      _callbacks[isolate] = v8::Persistent<v8::Function>::New(callback);
+      _callbacks[isolate] = v8::Persistent<v8::Function>::New(isolate, callback);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -847,7 +847,6 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
   GlobalV8Dealer = applicationV8;
 
