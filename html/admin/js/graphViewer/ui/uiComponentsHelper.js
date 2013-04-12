@@ -46,17 +46,15 @@ var uiComponentsHelper = uiComponentsHelper || {};
     button.onclick = callback;
   };
   
-  uiComponentsHelper.createIconButton = function(baseclass, list, icon, prefix, callback) {
-    var button = document.createElement("li"),
-      a = document.createElement("a"),
+  uiComponentsHelper.createIconButton = function(icon, prefix, callback) {
+    var button = document.createElement("button"),
       i = document.createElement("i");
-    button.className = baseclass + "_control " + prefix;
+    button.className = "btn btn-icon";
     button.id = prefix;
-    button.appendChild(a);
-    a.appendChild(i);
-    i.className = "icon-" + icon;
-    list.appendChild(button);
+    button.appendChild(i);
+    i.className = "icon-" + icon + " icon-white";
     button.onclick = callback;
+    return button;
   };
   
 }());

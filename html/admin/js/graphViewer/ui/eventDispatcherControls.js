@@ -43,11 +43,30 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   }
   
   var self = this,
+    firstButton = true,
+    currentListGroup,
+    placeHolderBtn = uiComponentsHelper.createIconButton(
+      "none",
+      ""
+    ),
     baseClass = "event",
     eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
-    
+    appendToList = function(button) {
+      if (firstButton) {
+        currentListGroup = document.createElement("div");
+        currentListGroup.className = "btn btn-group";
+        currentListGroup.appendChild(button);
+        currentListGroup.appendChild(placeHolderBtn);
+        firstButton = false;
+        list.appendChild(currentListGroup);
+      } else {
+        currentListGroup.removeChild(placeHolderBtn);
+        currentListGroup.appendChild(button);
+        firstButton = true;
+      }
+    },
     createButton = function(title, callback) {
       uiComponentsHelper.createButton(
         baseClass,
@@ -58,13 +77,12 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       );
     },
     createIcon = function(icon, title, callback) {
-      uiComponentsHelper.createIconButton(
-        baseClass,
-        list,
+      var btn = uiComponentsHelper.createIconButton(
         icon,
         "control_" + title,
         callback
       );
+      appendToList(btn);
     },
     rebindNodes = function(actions) {
       dispatcher.rebind("nodes", actions);
