@@ -36,6 +36,8 @@ static bool DeleteCollection (SimpleClient*, const string&);
 
 static bool CreateCollection (SimpleClient*, const string&, const int);
 
+static bool CreateDocument (SimpleClient*, const string&, const string&);
+
 static bool CreateIndex (SimpleClient*, const string&, const string&, const string&);
 
 // -----------------------------------------------------------------------------
@@ -954,6 +956,157 @@ struct TransactionAqlTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  transaction test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Benchmark
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct TransactionCountTest : public BenchmarkOperation {
+  TransactionCountTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~TransactionCountTest () {
+  }
+
+  bool setUp (SimpleClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return string("/_admin/execute");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    TRI_AppendStringStringBuffer(buffer, "var c = require(\"internal\").db._collection(\"");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\"); return TRANSACTION({ collections: { write: \"");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\" }, action: function () { var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error\"; } c.save({ }); } return true; } });");
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = buffer->_buffer;
+    buffer->_buffer = NULL;
+
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  transaction test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Benchmark
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct TransactionMultiTest : public BenchmarkOperation {
+  TransactionMultiTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~TransactionMultiTest () {
+  }
+
+  bool setUp (SimpleClient* client) {
+    _c1 = string(Collection + "1");
+    _c2 = string(Collection + "2");
+
+    return DeleteCollection(client, _c1) &&
+           DeleteCollection(client, _c2) &&
+           CreateCollection(client, _c1, 2) &&
+           CreateCollection(client, _c2, 2) && 
+           CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return string("/_admin/execute");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 2;
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\"internal\").db._collection(\"");
+    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\"); ");
+    TRI_AppendStringStringBuffer(buffer, "var c2 = require(\"internal\").db._collection(\"");
+    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\"); TRANSACTION({ collections: { ");
+    
+    if (mod == 0) {
+      TRI_AppendStringStringBuffer(buffer, "write: [ \"");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\", \"");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\" ] }, ");
+      TRI_AppendStringStringBuffer(buffer, "action: function () { var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); return true; } });");
+    }
+    else {
+      TRI_AppendStringStringBuffer(buffer, "read: [ \"");
+      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\", \"");
+      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\" ] }, ");
+      TRI_AppendStringStringBuffer(buffer, "action: function () { var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error\"; } return true; } });");
+    }
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = buffer->_buffer;
+    buffer->_buffer = NULL;
+
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+  string _c1;
+  string _c2;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -1065,6 +1218,37 @@ static bool CreateIndex (SimpleClient* client,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CreateDocument (SimpleClient* client,
+                            const string& collection,
+                            const string& payload) {
+  map<string, string> headerFields;
+  SimpleHttpResult* result = 0;
+
+  result = client->request(HttpRequest::HTTP_REQUEST_POST,
+                           "/_api/document?collection=" + collection,
+                           payload.c_str(),
+                           payload.size(),
+                           headerFields);
+
+  bool failed = true;
+
+  if (result != 0) {
+    if (result->getHttpReturnCode() == 200 || 
+        result->getHttpReturnCode() == 201 || 
+        result->getHttpReturnCode() == 202) {
+      failed = false;
+    }
+
+    delete result;
+  }
+
+  return ! failed;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the test case for a name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1095,6 +1279,12 @@ static BenchmarkOperation* GetTestCase (const string& name) {
   }
   if (name == "aqltrx") {
     return new TransactionAqlTest();
+  }
+  if (name == "counttrx") {
+    return new TransactionCountTest();
+  }
+  if (name == "multitrx") {
+    return new TransactionMultiTest();
   }
 
   return 0;
