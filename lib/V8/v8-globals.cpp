@@ -97,7 +97,8 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     IndexIdRegex(),
 
     _currentTransaction(0),
-    _vocbase(0) {
+    _vocbase(0) 
+{
   v8::HandleScope scope;
 
   DeleteConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("DELETE"));

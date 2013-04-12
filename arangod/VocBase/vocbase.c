@@ -1047,7 +1047,7 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
 /// @brief opens an exiting database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
   TRI_vocbase_t* vocbase;
   char* lockFile;
   int res;
@@ -1107,6 +1107,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
+  vocbase->_name = TRI_DuplicateString(name);
 
   // init AQL functions
   vocbase->_functions = TRI_InitialiseFunctionsAql();

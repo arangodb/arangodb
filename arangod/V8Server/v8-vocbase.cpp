@@ -818,6 +818,20 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a vocbase from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vocbase_t* UnwrapVocBase (v8::Handle<v8::Object> vocbaseObject) {  
+  if (false) {
+    return TRI_UnwrapClass<TRI_vocbase_t>(vocbaseObject, WRP_VOCBASE_TYPE);
+  }
+  else {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    return (TRI_vocbase_t*) v8g->_vocbase;  
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
 /// it is the caller's responsibility to acquire and release the required locks
@@ -853,7 +867,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._document()
-    vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    vocbase = UnwrapVocBase(argv.Holder());
   }
 
   assert(vocbase);
@@ -961,7 +976,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._replace()
-    vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    vocbase = UnwrapVocBase(argv.Holder());
   }
 
   assert(vocbase);
@@ -1228,7 +1244,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._update()
-    vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    vocbase = UnwrapVocBase(argv.Holder());
   }
 
   assert(vocbase);
@@ -1345,7 +1362,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   }
   else {
     // called as db._remove()
-    vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    //vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+    vocbase = UnwrapVocBase(argv.Holder());
   }
 
   assert(vocbase);
@@ -1393,7 +1411,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
 static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_type_e collectionType) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -5566,7 +5585,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   v8::HandleScope scope;
 
   v8::Handle<v8::Object> holder = info.Holder()->ToObject();
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(holder, WRP_VOCBASE_TYPE);
+  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(holder, WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = UnwrapVocBase(holder);
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -5669,7 +5689,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -5717,7 +5738,8 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  //TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
   if (vocbase == 0) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
@@ -5747,7 +5769,8 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  // TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
 
   if (vocbase == 0) {
     return scope.Close(v8::Array::New());
@@ -5787,6 +5810,8 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
   result->Set(j++, v8::String::New("_version()"));
+  result->Set(j++, v8::String::New("_path()"));
+  result->Set(j++, v8::String::New("_name()"));
 
   return scope.Close(result);
 }
@@ -6135,6 +6160,38 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   return scope.Close(v8::String::New(TRIAGENS_VERSION));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the path to database files
+///
+/// @FUN{@FA{db}._path()}
+///
+/// Returns the path.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_PathVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  
+  return scope.Close(v8::String::New(vocbase->_path));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database name
+///
+/// @FUN{@FA{db}._name()}
+///
+/// Returns the database name.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  
+  return scope.Close(v8::String::New(vocbase->_name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6560,7 +6617,7 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
                                             WRP_VOCBASE_TYPE,
                                             const_cast<TRI_vocbase_t*>(database));
 
-  result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
+  //result->Set(TRI_V8_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6719,6 +6776,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_replace", JS_ReplaceVocbase);
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
   TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
+  TRI_AddMethodVocbase(rt, "_path", JS_PathVocbase);
+  TRI_AddMethodVocbase(rt, "_name", JS_NameVocbase);
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());

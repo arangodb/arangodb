@@ -50,7 +50,7 @@
   var db = internal.db;
 
   // path to the VERSION file
-  var versionFile = internal.db._path + "/VERSION";
+  var versionFile = internal.db._path() + "/VERSION";
 
   function runUpgrade (currentVersion) {
     var allTasks = [ ];
@@ -120,6 +120,28 @@
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
+
+    if (IS_SYSTEM_DATABASE === true) {
+
+      // set up the collection _databases
+      addTask("setupDatabases", "setup _databases collection", function () {
+        return createSystemCollection("_databases", { waitForSync : true });
+      });
+    
+      // create a unique index on "name" attribute in _users
+      addTask("createDatabasesIndex", 
+            "create index on 'name' attribute in _databases collection",
+        function () {
+          var databases = getCollection("_databases");
+          if (! databases) {
+            return false;
+          }
+
+          databases.ensureUniqueConstraint("name");
+          
+          return true;
+        });
+    }
 
     // set up the collection _users 
     addTask("setupUsers", "setup _users collection", function () {
