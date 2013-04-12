@@ -743,7 +743,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return requestResult.result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
