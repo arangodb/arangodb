@@ -465,5 +465,12 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
     });
   };
   
+  self.changeTo = function (nodesCol, edgesCol ) {
+    nodeCollection = nodesCol;
+    edgeCollection = edgesCol;
+    api.node = api.base + "document?collection=" + nodeCollection; 
+    api.edge = api.base + "edge?collection=" + edgeCollection; 
+    console.log(api.node);
+  };
   
 }
