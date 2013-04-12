@@ -204,7 +204,7 @@ function NodeShaper(parent, flags, idfunc) {
             .attr("fill", "black")
             .attr("stroke", "black")
             .text(function(d) { 
-              return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
+              return d._data[label] !== undefined ? d._data[label] : "";
             });
         };
       }
