@@ -56,9 +56,17 @@
         toBeTag: function(name) {
           var el = this.actual;
           this.message = function() {
-            return el.tagName.toLowerCase() + " to be a " + name; 
+            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
           };
           return el.tagName.toLowerCase() === name;
+        },
+        
+        toBeOfClass: function(name) {
+          var el = this.actual;
+          this.message = function() {
+            return "Expected " + el.className + " to be " + name; 
+          };
+          return el.className === name;
         },
         
         toBeADropdownMenu: function() {
@@ -69,19 +77,9 @@
           this.message = function() {
             return "Expected " + msg;
           };
-          if (div.className !== "btn-group pull-right") {
-            msg = "div class to be \"btn-group pull-right\"";
-            return false;
-          }
-          // Check the toggle button
-          if (btn === undefined || btn.tagName.toLowerCase() !== "button") {
-            msg = "first element has to be a button";
-            return false;
-          }
-          if (btn.getAttribute("class") !== "btn btn-inverse btn-small dropdown-toggle") {
-            msg = "first elements class to be \"btn btn-inverse btn-small dropdown-toggle\"";
-            return false;
-          }
+          expect(div).toBeOfClass("btn-group pull-right");
+          expect(btn).toBeTag("button");
+          expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
           if (btn.getAttribute("data-toggle") !== "dropdown") {
             msg = "first elements data-toggle to be dropdown";
             return false;
@@ -137,6 +135,23 @@
     describe('checking the toolbox', function() {
       var toolboxSelector = "#contentDiv #toolbox";
       
+      beforeEach(function() {
+        this.addMatchers({
+          toConformToToolboxLayout: function() {
+            var box = this.actual;
+            expect(box).toBeTag("div");
+            expect(box.id).toEqual("toolbox");
+            expect(box).toBeOfClass("btn-group btn-group-vertical pull-left toolbox");
+            _.each(box.children, function(group) {
+              expect(group).toBeTag("div");
+              expect(group).toBeOfClass("btn btn-group");
+              expect(group.children.length).toEqual(2);
+              // Correctness of buttons is checked in eventDispatcherUISpec.
+            });
+          }
+        });
+      });
+      
       it('should append the toolbox', function() {
         expect($(toolboxSelector).length).toEqual(1);
       });
@@ -148,6 +163,11 @@
         expect($(toolboxSelector + " #control_delete").length).toEqual(1);
         expect($(toolboxSelector + " #control_connect").length).toEqual(1);
       });
+      
+      it('should have the correct layout', function() {
+        expect($(toolboxSelector)[0]).toConformToToolboxLayout();
+      });
+      
     });
     
     describe('checking the menubar', function() {
@@ -224,8 +244,8 @@
     
     
     describe('set up with jsonAdapter and click Expand rest default', function() {
-    
-      var waittime = 100,
+      // This waittime is rather opcimistic, on a slow machine this has to be increased
+      var waittime = 100, 
     
       clickOnNode = function(id) {
         helper.simulateMouseEvent("click", id);
