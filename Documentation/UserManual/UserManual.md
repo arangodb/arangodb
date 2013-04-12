@@ -13,5 +13,6 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{Aql}
 @CHAPTER_REF{AqlExamples}
 @CHAPTER_REF{UserManualActions}
+@CHAPTER_REF{Transactions}
 @CHAPTER_REF{CommandLine}
 @CHAPTER_REF{Glossary}
