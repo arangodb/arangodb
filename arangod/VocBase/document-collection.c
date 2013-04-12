@@ -1971,7 +1971,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
     if (oldData._validTo > 0) {
       // TODO: remove this
-      LOG_WARNING("encountered wrong document marker order when loading collection");
+      LOG_WARNING("encountered wrong document marker order when loading collection. did not expect old.validTo > 0");
       // we resurrected a deleted marker
       // increase the count by one now because we did not count the document previously
       IncreaseDocumentCount(primary);
@@ -1981,7 +1981,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // it is a delete
   else if (found->_validTo != 0) {
     // TODO: remove this
-    LOG_WARNING("encountered wrong document marker order when loading collection");
+    LOG_WARNING("encountered wrong document marker order when loading collection. did not expect found.validTo > 0");
   }
 
   // it is a stale update
@@ -2039,8 +2039,6 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
 
   // it is a new entry, so we missed the create
   if (found == NULL) {
-    LOG_WARNING("encountered wrong document marker order when loading collection");
-
     // update the datafile info
     if (state->_dfi != NULL) {
       state->_dfi->_numberDeletion++;
