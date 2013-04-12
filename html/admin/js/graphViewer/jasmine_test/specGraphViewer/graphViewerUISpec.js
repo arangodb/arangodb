@@ -148,6 +148,7 @@
               expect(group.children.length).toEqual(2);
               // Correctness of buttons is checked in eventDispatcherUISpec.
             });
+            return true;
           }
         });
       });

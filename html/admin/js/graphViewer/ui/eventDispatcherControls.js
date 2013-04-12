@@ -136,7 +136,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         rebindNodes({click: nodeCallback});
         rebindEdges({click: edgeCallback});
       };
-    createIcon("edit", "edit", callback);
+    createIcon("pencil", "edit", callback);
   };
   
   this.addControlExpand = function() {
