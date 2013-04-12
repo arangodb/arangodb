@@ -37,11 +37,13 @@ DOXYGEN = \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
 	Doxygen/js/actions/api-explain.c \
+	Doxygen/js/actions/api-foxx.c \
 	Doxygen/js/actions/api-graph.c \
 	Doxygen/js/actions/api-index.c \
 	Doxygen/js/actions/api-query.c \
 	Doxygen/js/actions/api-simple.c \
 	Doxygen/js/actions/api-system.c \
+	Doxygen/js/actions/api-transaction.c \
 	Doxygen/js/actions/api-user.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
@@ -93,6 +95,7 @@ WIKI = \
 	HttpQuery \
 	HttpSimple \
 	HttpSystem \
+	HttpTransactions \
 	HttpUser \
 	ImpManual \
 	ImpManualBasics \
