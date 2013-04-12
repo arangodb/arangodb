@@ -954,6 +954,70 @@ struct TransactionAqlTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  transaction test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Benchmark
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct TransactionCountTest : public BenchmarkOperation {
+  TransactionCountTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~TransactionCountTest () {
+  }
+
+  bool setUp (SimpleClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return string("/_admin/execute");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    TRI_AppendStringStringBuffer(buffer, "var c = require(\"internal\").db._collection(\"");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\"); return TRANSACTION({ collections: { write: \"");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\" }, action: function () { var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error\"; } c.save({ }); } return true; } });");
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = buffer->_buffer;
+    buffer->_buffer = NULL;
+
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -1095,6 +1159,9 @@ static BenchmarkOperation* GetTestCase (const string& name) {
   }
   if (name == "aqltrx") {
     return new TransactionAqlTest();
+  }
+  if (name == "counttrx") {
+    return new TransactionCountTest();
   }
 
   return 0;
