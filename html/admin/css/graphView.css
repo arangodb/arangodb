@@ -11,3 +11,13 @@
   opacity: 0.8;
   cursor: pointer;
 }
+
+.toolbox > .btn {
+  padding: 0px;
+  background-color: rgb(51, 51, 51);
+}
+
+.btn-icon {
+  padding: 4px 4px;
+  background-color: rgb(56, 52, 52);
+}
