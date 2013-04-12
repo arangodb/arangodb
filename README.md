@@ -19,6 +19,7 @@ Key features include:
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
 * **Powerful query language** (AQL) to retrieve data 
+* **Transactions**: run queries on multiple documents or collections with optional transactional consistency and isolation
 * It is **open source** (Apache Licence 2.0)
 
 For more in-depth information
