@@ -553,29 +553,44 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     // the following sanity check offers some, but not 100% crash-protection when reading
     // totally corrupted datafiles
     if (! TRI_IsValidMarkerDatafile(marker)) {
-      datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-      datafile->_currentSize = currentSize;
-      datafile->_next = datafile->_data + datafile->_currentSize;
-      datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-      LOG_WARNING("marker in datafile '%s' is corrupt", datafile->getName(datafile));
-      return false;
+      if (marker->_type == 0 && marker->_size < 128) {
+        // ignore markers with type 0 and a small size
+        LOG_WARNING("ignoring suspicious marker in datafile '%s': type: %d, size: %lu", 
+                    datafile->getName(datafile), 
+                    (int) marker->_type, 
+                    (unsigned long) marker->_size);
+      }
+      else {
+        datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+        datafile->_currentSize = currentSize;
+        datafile->_next = datafile->_data + datafile->_currentSize;
+        datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+
+        LOG_WARNING("marker in datafile '%s' is corrupt: type: %d, size: %lu", 
+                    datafile->getName(datafile), 
+                    (int) marker->_type, 
+                    (unsigned long) marker->_size);
+        return false;
+      }
     }
 
-    ok = TRI_CheckCrcMarkerDatafile(marker);
+    if (marker->_type != 0) {
+      ok = TRI_CheckCrcMarkerDatafile(marker);
 
-    if (! ok) {
-      datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-      datafile->_currentSize = currentSize;
-      datafile->_next = datafile->_data + datafile->_currentSize;
-      datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+      if (! ok) {
+        datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+        datafile->_currentSize = currentSize;
+        datafile->_next = datafile->_data + datafile->_currentSize;
+        datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-      LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
+        LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
 
-      return false;
+        return false;
+      }
+
+      TRI_UpdateTickVocBase(marker->_tick);
     }
-
-    TRI_UpdateTickVocBase(marker->_tick);
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
     currentSize += size;
