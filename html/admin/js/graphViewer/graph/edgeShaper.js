@@ -213,7 +213,8 @@ function EdgeShaper(parent, flags, idfunc) {
             .attr("text-anchor", "middle") // Define text-anchor
             .attr("stroke", "black")
             .text(function(d) { 
-              return d[label] !== undefined ? d[label] : ""; // Which value should be used as label
+              // Which value should be used as label
+              return d._data[label] !== undefined ? d._data[label] : "";
             });
         };
       }
@@ -274,7 +275,7 @@ function EdgeShaper(parent, flags, idfunc) {
         case "attribute":
           addColor = function (line, g) {
              g.attr("stroke", function(e) {
-               return colourMapper.getColour(e[color.key]);
+               return colourMapper.getColour(e._data[color.key]);
              });
           };
           break; 
