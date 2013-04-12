@@ -1963,11 +1963,32 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   // extract the "action" property
   static const string actionError = "missing/invalid action definition for transaction";
 
-  if (! object->Has(TRI_V8_SYMBOL("action")) || ! object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+  if (! object->Has(TRI_V8_SYMBOL("action"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
+  }
+
+  v8::Handle<v8::Function> action;
+
+  if (object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+    action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
+  }
+  else if (object->Get(TRI_V8_SYMBOL("action"))->IsString()) {
+    // Get global object
+    v8::Local<v8::Object> global = v8::Context::GetCurrent()->Global();
+    // Get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+    v8::Local<v8::Function> function_ctor = v8::Local<v8::Function>::Cast(global->Get(v8::String::New("Function")));
+
+    // Invoke Function constructor to create function with the given body and no arguments
+    v8::Handle<v8::String> body = object->Get(TRI_V8_SYMBOL("action"))->ToString(); 
+    v8::Handle<v8::Value> argv[1] = { body };
+    v8::Local<v8::Object> function = function_ctor->NewInstance(1, argv);
+
+    action = v8::Local<v8::Function>::Cast(function);
+  }
+  else {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
   
-  v8::Handle<v8::Function> action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
 
   if (action.IsEmpty()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
