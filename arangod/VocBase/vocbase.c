@@ -42,16 +42,18 @@
 #include "BasicsC/random.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
+
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/general-cursor.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/server-id.h"
 #include "VocBase/shadow-data.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/synchroniser.h"
-#include "VocBase/general-cursor.h"
+#include "VocBase/transaction.h"
 
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
@@ -212,6 +214,104 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a JSON array with collection meta data 
+///
+/// this function is called when a collection is created or dropped
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* CreateJsonCollectionInfo (TRI_vocbase_col_t const* collection,
+                                             const char* situation) {
+  TRI_json_t* json;
+  TRI_json_t* details;
+  char* cidString;
+
+  details = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_TypeNameCollection(collection->_type)));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, collection->_name));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, details, "action", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, situation));
+
+  cidString = TRI_StringUInt64((uint64_t) collection->_cid);
+
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "collection"));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "details", details);
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, cidString);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the id of a collection into the "_ids" collection 
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertIdCallback (TRI_transaction_collection_t* trxCollection,
+                             void* data) {
+  TRI_shaped_json_t* shaped;
+  TRI_primary_collection_t* primary;
+  TRI_json_t* json;
+  TRI_doc_mptr_t mptr;
+  int res;
+
+  primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
+  json = data;
+
+  shaped = TRI_ShapedJsonJson(primary->_shaper, json);
+
+  if (shaped == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  res = primary->insert(trxCollection, NULL, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, NULL, false, false);
+  TRI_FreeShapedJson(primary->_shaper, shaped);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save collection info on create or drop
+///
+/// the info will be stored permanently in the "_ids" collection, so we can
+/// later reconstruct ids of collections that are/were dropped
+////////////////////////////////////////////////////////////////////////////////
+
+static bool WriteCollectionInfo (TRI_vocbase_t* vocbase,
+                                 TRI_vocbase_col_t const* collection,
+                                 const char* situation) {
+  TRI_json_t* json;
+  int res;
+
+  if (collection == NULL) {
+    return false;
+  }
+
+  json = CreateJsonCollectionInfo(collection, situation);
+
+  if (json == NULL) {
+    return false;
+  }
+
+  res = TRI_ExecuteSingleOperationTransaction(vocbase,  
+                                              "_ids", 
+                                              TRI_TRANSACTION_WRITE, 
+                                              InsertIdCallback, 
+                                              json);
+  
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+
+  return (res == TRI_ERROR_NO_ERROR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current tick value, without using a lock
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t GetTick (void) {
+  return (ServerIdentifier | (CurrentTick << 16));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the tick counter, without using a lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -240,6 +340,8 @@ static void FreeCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  WriteCollectionInfo(vocbase, collection, "drop");
+
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
@@ -627,19 +729,18 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 /// @brief this iterator is called on startup for journal and compactor file
 /// of a collection
 /// it will check the ticks of all markers and update the internal tick 
-/// counter accordingly
+/// counter accordingly. this is done so we'll not re-assign an already used
+/// tick value
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-static bool StartupIterator (TRI_df_marker_t const* marker, 
-                             void* data, 
-                             TRI_datafile_t* datafile, 
-                             bool journal) {
+static bool StartupTickIterator (TRI_df_marker_t const* marker, 
+                                 void* data, 
+                                 TRI_datafile_t* datafile, 
+                                 bool journal) {
   UpdateTick(marker->_tick);
   
   return true;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scans a directory and loads all collections
@@ -753,9 +854,26 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
         if (TRI_IS_DOCUMENT_COLLECTION(type)) {
           TRI_vocbase_col_t* c;
 
+          if (info._version < TRI_COL_VERSION) {
+            LOG_INFO("upgrading collection '%s'", info._name);
+
+            res = TRI_UpgradeCollection(vocbase, file, &info);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              LOG_ERROR("upgrading collection '%s' failed.", info._name);
+            
+              TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+              regfree(&re);
+              TRI_DestroyVectorString(&files);
+              TRI_FreeCollectionInfoOptions(&info);
+ 
+              return TRI_set_errno(res);
+            }
+          } 
+
           c = AddCollection(vocbase, type, info._name, info._cid, file);
           
-          // TRI_IterateStartupCollection(file, StartupIterator, NULL);
+          TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
 
           if (c == NULL) {
             LOG_ERROR("failed to add document collection from '%s'", file);
@@ -1129,6 +1247,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
                              EqualKeyCollectionName,
                              NULL);
 
+  // transactions
   vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase);
 
   TRI_InitAssociativePointer(&vocbase->_authInfo,
@@ -1143,7 +1262,6 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
 
   vocbase->_syncWaiters = 0;
   TRI_InitCondition(&vocbase->_syncWaitersCondition);
-
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
   // .............................................................................
@@ -1151,17 +1269,19 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
   // .............................................................................
 
   // defaults
-  vocbase->_defaultMaximalSize = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
-  vocbase->_defaultWaitForSync = false; // default sync behavior for new collections
-  vocbase->_forceSyncShapes    = true;  // force sync of shape data to disk
-  vocbase->_removeOnCompacted  = true;
-  vocbase->_removeOnDrop       = true;
-
+  vocbase->_defaultMaximalSize     = TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE;
+  vocbase->_defaultWaitForSync     = false; // default sync behavior for new collections
+  vocbase->_forceSyncShapes        = true;  // force sync of shape data to disk
+  vocbase->_removeOnCompacted      = true;
+  vocbase->_removeOnDrop           = true;
+ 
   if (TRI_ERROR_NO_ERROR != ReadServerId(vocbase)) {
     LOG_FATAL_AND_EXIT("reading/creating server id failed");
   }
 
   // scan the database path for collections
+  // this will create the list of collections and their datafiles, and will also
+  // determine the last tick values used
   res = ScanPath(vocbase, vocbase->_path);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1178,6 +1298,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
 
     return NULL;
   }
+
+  LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());  
 
 
   // .............................................................................
@@ -1522,6 +1644,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_CopyString(collection->_path, primary->base._directory, sizeof(collection->_path));
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
   return collection;
 }
 

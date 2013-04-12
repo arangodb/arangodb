@@ -43,11 +43,30 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
   }
   
   var self = this,
+    firstButton = true,
+    currentListGroup,
+    placeHolderBtn = uiComponentsHelper.createIconButton(
+      "none",
+      ""
+    ),
     baseClass = "event",
     eventlib = new EventLibrary(),
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
     
-    
+    appendToList = function(button) {
+      if (firstButton) {
+        currentListGroup = document.createElement("div");
+        currentListGroup.className = "btn btn-group";
+        currentListGroup.appendChild(button);
+        currentListGroup.appendChild(placeHolderBtn);
+        firstButton = false;
+        list.appendChild(currentListGroup);
+      } else {
+        currentListGroup.removeChild(placeHolderBtn);
+        currentListGroup.appendChild(button);
+        firstButton = true;
+      }
+    },
     createButton = function(title, callback) {
       uiComponentsHelper.createButton(
         baseClass,
@@ -56,6 +75,14 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         "control_" + title,
         callback
       );
+    },
+    createIcon = function(icon, title, callback) {
+      var btn = uiComponentsHelper.createIconButton(
+        icon,
+        "control_" + title,
+        callback
+      );
+      appendToList(btn);
     },
     rebindNodes = function(actions) {
       dispatcher.rebind("nodes", actions);
@@ -75,7 +102,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         
         
       };
-    createButton("drag", callback);
+    createIcon("move", "drag", callback);
   };
   
   this.addControlEdit = function() {
@@ -85,7 +112,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         modalDialogHelper.createModalEditDialog(
           "Edit Node " + n._id,
           "control_node_edit_",
-          n,
+          n._data,
           function(newData) {
             dispatcher.events.PATCHNODE(n, newData, function() {
               $("#control_node_edit_modal").modal('hide');
@@ -95,9 +122,9 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
       },
       edgeCallback = function(e) {
         modalDialogHelper.createModalEditDialog(
-          "Edit Edge " + e.source._id + "->" + e.target._id,
+          "Edit Edge " + e._data._from + "->" + e._data._to,
           "control_edge_edit_",
-          e,
+          e._data,
           function(newData) {
             dispatcher.events.PATCHEDGE(e, newData, function() {
               $("#control_edge_edit_modal").modal('hide');
@@ -109,7 +136,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         rebindNodes({click: nodeCallback});
         rebindEdges({click: edgeCallback});
       };
-    createButton("edit", callback);
+    createIcon("pencil", "edit", callback);
   };
   
   this.addControlExpand = function() {
@@ -119,7 +146,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         rebindNodes({click: dispatcher.events.EXPAND});
         rebindEdges();
       };
-    createButton("expand", callback);
+    createIcon("plus", "expand", callback);
   };
   
   this.addControlDelete = function() {
@@ -133,7 +160,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
           edgeShaper.reshapeEdges();
         })});
       };
-    createButton("delete", callback);
+    createIcon("trash", "delete", callback);
   };
   
   this.addControlConnect = function() {
@@ -149,7 +176,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         });
         rebindEdges();
       };
-    createButton("connect", callback);
+    createIcon("resize-horizontal", "connect", callback);
   };
   
   

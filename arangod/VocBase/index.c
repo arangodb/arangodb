@@ -82,8 +82,6 @@ void TRI_InitIndex (TRI_index_t* idx,
   idx->cleanup           = NULL;
 
   idx->postInsert        = NULL;
-  idx->postUpdate        = NULL;
-  idx->postRemove        = NULL;
 
   idx->beginTransaction  = NULL;
   idx->abortTransaction  = NULL;
@@ -1021,7 +1019,7 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collect
   // Allocate sufficent memory for the field list
   // ..........................................................................  
 
-  fieldList = TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, (sizeof(char*) * pqIndex->_paths._length) , false);
+  fieldList = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizeof(char*) * pqIndex->_paths._length) , false);
 
   if (fieldList == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1053,7 +1051,7 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collect
 
   fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
   for (j = 0; j < pqIndex->_paths._length; ++j) {
-    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, fieldList[j]));
+    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 

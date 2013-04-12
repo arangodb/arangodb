@@ -50,6 +50,13 @@ function CapConstraintSuite() {
   var cn = "UnitTestsCollectionCap";
   var collection = null;
 
+  var nsort = function (l, r) {
+    if (l !== r) {
+      return (l < r) ? -1 : 1;
+    }
+    return 0;
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +141,7 @@ function CapConstraintSuite() {
       }
 
       assertEqual(10, collection.count());
-      assertEqual([0,1,2,3,4,5,6,7,8,9], collection.toArray().map(fun).sort());
+      assertEqual([0,1,2,3,4,5,6,7,8,9], collection.toArray().map(fun).sort(nsort));
 
       collection.save({ n : 10 });
       var a = collection.save({ n : 11 });
@@ -144,7 +151,7 @@ function CapConstraintSuite() {
       }
 
       assertEqual(10, collection.count());
-      assertEqual([10,11,12,13,14,15,16,17,18,19], collection.toArray().map(fun).sort());
+      assertEqual([10,11,12,13,14,15,16,17,18,19], collection.toArray().map(fun).sort(nsort));
 
       collection.replace(a._id, { n : 11, a : 1 });
 
@@ -153,8 +160,255 @@ function CapConstraintSuite() {
       }
 
       assertEqual(10, collection.count());
-      assertEqual([11,20,21,22,23,24,25,26,27,28], collection.toArray().map(fun).sort());
-    }
+      assertEqual([11,20,21,22,23,24,25,26,27,28], collection.toArray().map(fun).sort(nsort));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: deletes
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeletes : function () {
+      var idx = collection.ensureCapConstraint(5);
+      var fun = function(d) { return d.n; };
+
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(5, idx.size);
+
+      assertEqual(0, collection.count());
+
+      for (var i = 0;  i < 5;  ++i) {
+        try {
+          collection.remove("foo");
+        }
+        catch (err) {
+        }
+      }
+      
+      assertEqual(0, collection.count());
+      assertEqual([ ], collection.toArray());
+
+      var d = collection.save({ n : 1 });
+      assertEqual(1, collection.count());
+      assertEqual([ 1 ], collection.toArray().map(fun).sort(nsort));
+
+      collection.remove(d);
+      assertEqual(0, collection.count());
+      assertEqual([ ], collection.toArray());
+
+      for (var i = 0; i < 10; ++i) {
+        collection.save({ n : i });
+      }
+      
+      assertEqual(5, collection.count());
+      assertEqual([ 5, 6, 7, 8, 9 ], collection.toArray().map(fun).sort(nsort));
+      
+      collection.truncate();
+      assertEqual(0, collection.count());
+      assertEqual([ ], collection.toArray());
+
+      for (var i = 25; i < 35; ++i) {
+        collection.save({ n : i });
+      }
+      
+      assertEqual(5, collection.count());
+      assertEqual([ 30, 31, 32, 33, 34 ], collection.toArray().map(fun).sort(nsort));
+      
+      collection.truncate();
+      assertEqual(0, collection.count());
+
+      collection.unload();
+      internal.wait(5);
+
+      assertEqual(0, collection.count());
+      assertEqual([ ], collection.toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdates : function () {
+      var idx = collection.ensureCapConstraint(5);
+      var fun = function(d) { return d.n; };
+
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(5, idx.size);
+
+      assertEqual(0, collection.count());
+
+      var docs = [ ];
+      for (var i = 0;  i < 6;  ++i) {
+        docs[i] = collection.save({ n : i });
+      }
+      
+      assertEqual(5, collection.count());
+      assertEqual([1, 2, 3, 4, 5], collection.toArray().map(fun).sort(nsort));
+
+      collection.replace(docs[1], { n: 100 });
+      assertEqual(5, collection.count());
+      assertEqual([2, 3, 4, 5, 100], collection.toArray().map(fun).sort(nsort));
+
+      collection.save({ n: 99 });
+      assertEqual(5, collection.count());
+      assertEqual([3, 4, 5, 99, 100], collection.toArray().map(fun).sort(nsort));
+
+      collection.remove(docs[3]);
+      assertEqual(4, collection.count());
+      assertEqual([4, 5, 99, 100], collection.toArray().map(fun).sort(nsort));
+      
+      collection.save({ n: 98 });
+      assertEqual(5, collection.count());
+      assertEqual([4, 5, 98, 99, 100], collection.toArray().map(fun).sort(nsort));
+      
+      collection.save({ n: 97 });
+      assertEqual(5, collection.count());
+      assertEqual([5, 97, 98, 99, 100], collection.toArray().map(fun).sort(nsort));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdates : function () {
+      var idx = collection.ensureCapConstraint(3);
+      var fun = function(d) { return d._key; };
+
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(3, idx.size);
+
+      collection.save({ _key: "foo" });
+      collection.save({ _key: "bar" });
+      collection.save({ _key: "baz" });
+
+      assertEqual(3, collection.count());
+      assertEqual([ "bar", "baz", "foo" ], collection.toArray().map(fun).sort());
+
+      collection.replace("foo", { a : 1 }); // bar, baz, foo
+      assertEqual(3, collection.count());
+      assertEqual([ "bar", "baz", "foo" ], collection.toArray().map(fun).sort());
+      
+      collection.save({ _key: "bad" });     // baz, foo, bad
+      assertEqual(3, collection.count());
+      assertEqual([ "bad", "baz", "foo" ], collection.toArray().map(fun).sort());
+      
+      collection.replace("baz", { a : 1 }); // foo, bad, baz
+      assertEqual(3, collection.count());
+      assertEqual([ "bad", "baz", "foo" ], collection.toArray().map(fun).sort());
+      
+      collection.save({ _key: "bam" });     // bad, baz, bam
+      assertEqual(3, collection.count());
+      assertEqual([ "bad", "bam", "baz" ], collection.toArray().map(fun).sort());
+      
+      collection.save({ _key: "abc" });     // baz, bam, abc
+      assertEqual(3, collection.count());
+      assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
+
+      collection.unload();
+      internal.wait(4);
+      
+      assertEqual(3, collection.count());
+      assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
+
+      collection.save({ _key: "def" });     // bam, abc, def
+      assertEqual(3, collection.count());
+      assertEqual([ "abc", "bam", "def" ], collection.toArray().map(fun).sort());
+      
+      collection.save({ _key: "ghi" });     // abc, def, ghi
+      assertEqual(3, collection.count());
+      assertEqual([ "abc", "def", "ghi" ], collection.toArray().map(fun).sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testReload : function () {
+      var idx = collection.ensureCapConstraint(5);
+      var fun = function(d) { return d.n; };
+
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(5, idx.size);
+
+      assertEqual(0, collection.count());
+
+      for (var i = 0;  i < 10;  ++i) {
+        collection.save({ n : i });
+      }
+
+      assertEqual(5, collection.count());
+      assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+
+      collection.unload();
+      internal.wait(5);
+
+      assertEqual(5, collection.count());
+      assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+
+      collection.save({ n : 10 });
+      assertEqual(5, collection.count());
+      assertEqual([6, 7, 8, 9, 10], collection.toArray().map(fun).sort(nsort));
+      
+      collection.save({ n : 11 });
+      assertEqual(5, collection.count());
+      assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
+      
+      collection.unload();
+      internal.wait(5);
+
+      assertEqual(5, collection.count());
+      assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
+      
+      for (var i = 15;  i < 20;  ++i) {
+        collection.save({ n : i });
+      }
+      
+      assertEqual(5, collection.count());
+      assertEqual([15, 16, 17, 18, 19], collection.toArray().map(fun).sort(nsort));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: reload
+////////////////////////////////////////////////////////////////////////////////
+
+    testReloadMulti : function () {
+      var idx = collection.ensureCapConstraint(5);
+      var fun = function(d) { return d.n; };
+
+      assertEqual("cap", idx.type);
+      assertEqual(true, idx.isNewlyCreated);
+      assertEqual(5, idx.size);
+
+      assertEqual(0, collection.count());
+
+      collection.unload();
+      internal.wait(5);
+
+      assertEqual(0, collection.count());
+
+      for (var i = 0; i < 10; ++i) {
+        collection.save({ n : i });
+      }
+      
+      collection.unload();
+      internal.wait(5);
+      
+      assertEqual(5, collection.count());
+      assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+      
+      collection.unload();
+      internal.wait(5);
+      
+      assertEqual(5, collection.count());
+      assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+
+      collection.save({ n: 0 });
+      assertEqual([0, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+    },
+
   };
 }
 

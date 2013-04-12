@@ -2873,6 +2873,20 @@ function PASSTHRU (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sleep
+///
+/// sleep for the specified duration
+////////////////////////////////////////////////////////////////////////////////
+
+function SLEEP (duration) {
+  if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
+  }
+
+  INTERNAL.wait(duration);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief always fail
 ///
 /// this function is non-deterministic so it is not executed at query 
@@ -3532,6 +3546,7 @@ exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
+exports.SLEEP = SLEEP;
 exports.FAIL = FAIL;
 
 exports.reload = reloadUserFunctions;

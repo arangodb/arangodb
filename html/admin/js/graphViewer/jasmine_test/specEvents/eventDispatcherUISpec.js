@@ -58,14 +58,32 @@
     beforeEach(function () {
       nodes = [{
         _id: 1,
-        name: "Alice"
+        _rev: 1,
+        _key: 1,
+        _data: {
+          _id: 1,
+          name: "Alice"
+        }
       },{
-        _id: 2
+        _id: 2,
+        _rev: 2,
+        _key: 2,
+        _data: {
+          _id: 2
+        }
       }];
       edges = [{
         source: nodes[0],
         target: nodes[1],
-        label: "oldLabel"
+        _data: {
+          _id: 12,
+          _rev: 12,
+          _key: 12,
+          _from: 1,
+          _to: 2,
+          label: "oldLabel"
+        }
+        
       }];
       adapter = mocks.adapter;
       layouter = mocks.layouter;
@@ -116,9 +134,44 @@
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
       
+      this.addMatchers({
+        toBeTag: function(name) {
+          var item = this.actual;
+          this.message = function() {
+            return "Expected " + item.tagName.toLowerCase() + " to be " + name; 
+          };
+          return item.tagName.toLowerCase() === name;
+        },
+        
+        toBeOfClass: function(name) {
+          var item = this.actual;
+          this.message = function() {
+            return "Expected " + item.className + " to be " + name; 
+          };
+          return item.className === name;
+        },
+        toConformToToolbox: function() {
+          var box = this.actual;
+          _.each(box.children, function(div) {
+            expect(div).toBeTag("div");
+            expect(div).toBeOfClass("btn btn-group");
+            expect(div.children.length).toEqual(2);
+            _.each(div.children, function(btn) {
+              expect(btn).toBeTag("button");
+              expect(btn).toBeOfClass("btn btn-icon");
+              expect(btn.children.length).toEqual(1);
+              expect(btn.firstChild).toBeTag("i");
+              expect(btn.firstChild.className).toMatch(/^icon-\S+ icon-white$/);
+            });
+          });          
+          return true;
+        }
+      });
+      
     });
 
     afterEach(function () {
+      expect(list).toConformToToolbox();
       document.body.removeChild(list);
     });
 
@@ -139,7 +192,7 @@
         dispatcherUI.addControlDrag();
       
         expect($("#control_list #control_drag").length).toEqual(1);
-      
+        
         helper.simulateMouseEvent("click", "control_drag");
       
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
@@ -192,9 +245,7 @@
         
         helper.simulateMouseEvent("click", "control_node_edit_submit");
         expect(adapter.patchNode).toHaveBeenCalledWith(
-        { _id: 1,
-          name: "Alice"
-        },
+        nodes[0],
         { _id: "1",
           name: "Bob"
         },
@@ -216,8 +267,11 @@
         expect(adapter.patchEdge).toHaveBeenCalledWith(
           edges[0],
           {
-            source: nodes[0],
-            target: nodes[1],
+            _id: "12",
+            _rev: "12",
+            _key: "12",
+            _from: "1",
+            _to: "2",
             label: "newLabel"
           },
           jasmine.any(Function));

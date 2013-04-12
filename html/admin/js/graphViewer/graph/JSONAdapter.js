@@ -97,18 +97,13 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
       });
       _.each(n.children, function(c) {
         var check = findNode(c);
-        if (check) {
-          insertEdge(n, check);
-          self.requestCentralityChildren(check._id, function(c) {
-            n._centrality = c;
-          });
-        } else {
-          insertNode(c);
-          insertEdge(n, c);
-          self.requestCentralityChildren(c._id, function(c) {
-            n._centrality = c;
-          });
+        if (!check) {
+          check = insertNode(c);
         }
+        insertEdge(n, check);
+        self.requestCentralityChildren(check._id, function(c) {
+          n._centrality = c;
+        });
       });
       if (callback) {
         callback(n);

@@ -74,11 +74,14 @@
       nodes = [];
       edges = [];
       
+      this.loadNode = function() {};
+      spyOn(this, "loadNode");
+      
       expandConfig = {
         edges: edges,
         nodes: nodes,
         startCallback: function() {},
-        loadNode: function() {},
+        loadNode: this.loadNode,
         reshapeNode: function() {}
       };
       
@@ -419,7 +422,29 @@
     describe('checking different events', function() {
       
       it('should be able to bind the expand event', function() {
+        runs(function() {
+          nodes = [{_id: 1}];
+          nodeShaper.drawNodes(nodes);
+          dispatcher.bind("nodes", "click", dispatcher.events.EXPAND);
+          helper.simulateMouseEvent("click", "1");
+        });
         
+        waitsFor(function() {
+          return this.loadNode.wasCalled;
+        }, 1000, "The loadNode function should have been called.");
+        
+        runs(function() {
+          expect(nodes[0]._expanded).toBeTruthy();
+          helper.simulateMouseEvent("click", "1");
+        });
+        
+        waitsFor(function() {
+          return !nodes[0]._expanded;
+        }, 1000, "The loadNode function should have been called.");
+        
+        runs(function() {
+          expect(true).toBeTruthy();
+        });
       });
       
       it('should be able to bind the drag event', function() {
