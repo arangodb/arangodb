@@ -39,7 +39,7 @@
 #define V8_H_
 
 // TODO(svenpanne) Remove me when the Chrome bindings are adapted.
-#define V8_DISABLE_DEPRECATIONS 1
+#define V8_DISABLE_DEPRECATIONS 0
 
 #include "v8stdint.h"
 

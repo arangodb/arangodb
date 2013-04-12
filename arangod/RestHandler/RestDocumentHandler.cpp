@@ -373,7 +373,6 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
@@ -382,6 +381,7 @@ bool RestDocumentHandler::createDocument () {
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
@@ -1064,6 +1064,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   ResourceHolder holder;
 
   TRI_json_t* json = parseJsonBody();
+
   if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
@@ -1085,6 +1086,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;

@@ -32,8 +32,6 @@
 var internal = require("internal");
 var arangosh = require("org/arangodb/arangosh");
 
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
 // -----------------------------------------------------------------------------
@@ -78,6 +76,8 @@ exports.ArangoCollection = ArangoCollection;
 
 // must be called after exporting ArangoCollection
 require("org/arangodb/arango-collection-common");
+
+var ArangoError = require("org/arangodb").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

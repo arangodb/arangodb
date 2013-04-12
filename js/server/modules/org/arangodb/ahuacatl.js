@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
-/*global require, exports, COMPARE_STRING */
+/*global require, exports, COMPARE_STRING, MATCHES */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions 
@@ -32,7 +32,7 @@
 
 var INTERNAL = require("internal");
 var TRAVERSAL = require("org/arangodb/graph/traversal");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = require("org/arangodb").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -78,6 +78,29 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief filter using a list of examples
+////////////////////////////////////////////////////////////////////////////////
+
+function FILTER (list, 
+                 examples) {
+  var result = [ ], i;
+
+  if (examples === undefined || examples === null) {
+    return list;
+  }
+
+  for (i = 0; i < list.length; ++i) {
+    var element = list[i];
+
+    if (MATCHES(element, examples, false)) {
+      result.push(element);
+    }
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throw a runtime exception
@@ -2803,6 +2826,7 @@ function MATCHES (element, examples, returnIndex) {
   if (! Array.isArray(examples)) {
     examples = [ examples ];
   }
+
   if (examples.length === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
   }
@@ -2846,6 +2870,20 @@ function MATCHES (element, examples, returnIndex) {
 
 function PASSTHRU (value) {
   return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleep
+///
+/// sleep for the specified duration
+////////////////////////////////////////////////////////////////////////////////
+
+function SLEEP (duration) {
+  if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
+  }
+
+  INTERNAL.wait(duration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3258,7 +3296,8 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 
 function GRAPH_EDGES (edgeCollection, 
                       vertex, 
-                      direction) {
+                      direction, 
+                      examples) {
   var c = COLLECTION(edgeCollection), result;
 
   // validate arguments
@@ -3274,6 +3313,55 @@ function GRAPH_EDGES (edgeCollection,
   else {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
   }
+
+  return FILTER(result, examples);
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_NEIGHBORS (vertexCollection,
+                          edgeCollection, 
+                          vertex, 
+                          direction,
+                          examples) {
+  var c = COLLECTION(vertexCollection);
+
+  if (vertex.indexOf('/') === -1) {
+    vertex = vertexCollection + '/' + vertex;
+  }
+
+  var edges = GRAPH_EDGES(edgeCollection, vertex, direction);
+  var result = [ ];
+  
+  FILTER(edges, examples).forEach (function (e) {
+    var key;
+
+    if (direction === "inbound") {
+      key = e._from;
+    }
+    else if (direction === "outbound") {
+      key = e._to;
+    }
+    else if (direction === "any") {
+      key = e._from;
+      if (key === vertex) {
+        key = e._to;
+      }
+    }
+
+    if (key === vertex) {
+      // do not return the start vertex itself
+      return;
+    }
+
+    try {
+      result.push({ edge: CLONE(e), vertex: c.document(key) });
+    }
+    catch (err) {
+    }
+  });
 
   return result;
 } 
@@ -3446,6 +3534,7 @@ exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GRAPH_EDGES = GRAPH_EDGES;
+exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
@@ -3457,6 +3546,7 @@ exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
+exports.SLEEP = SLEEP;
 exports.FAIL = FAIL;
 
 exports.reload = reloadUserFunctions;

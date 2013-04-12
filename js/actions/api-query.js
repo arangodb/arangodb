@@ -27,7 +27,8 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+
+var ArangoError = arangodb.ArangoError;
 var PARSE = require("internal").AQL_PARSE;
 
 // -----------------------------------------------------------------------------

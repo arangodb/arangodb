@@ -31,7 +31,7 @@
 var internal = require("internal");
 var console = require("console");
 
-var ArangoError = require("org/arangodb/arango-error");
+var ArangoError = require("org/arangodb").ArangoError;
 
 var sq = require("org/arangodb/simple-query-common");
 

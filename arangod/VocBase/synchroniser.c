@@ -30,6 +30,7 @@
 #include "BasicsC/logging.h"
 
 #include "VocBase/document-collection.h"
+#include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -197,140 +198,6 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a compactor file needs to be synced
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* doc) {
-  TRI_collection_t* base;
-  TRI_datafile_t* journal;
-  bool ok;
-  bool worked;
-  char const* synced;
-  char* written;
-  size_t i;
-  size_t n;
-
-  worked = false;
-  base = &doc->base.base;
-
-  // .............................................................................
-  // the only thread MODIFYING the _compactors variable is this thread,
-  // therefore no locking is required to access the _compactors
-  // .............................................................................
-
-  n = base->_compactors._length;
-
-  for (i = 0;  i < n; ++i) {
-    journal = base->_compactors._buffer[i];
-
-    // we only need to care about physical datafiles
-    if (! journal->isPhysical(journal)) {
-      // anonymous regions do not need to be synced
-      continue;
-    }
-
-    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-    synced = journal->_synced;
-    written = journal->_written;
-
-    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-    if (synced < written) {
-      worked = true;
-      ok = journal->sync(journal, synced, written);
-
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-      if (ok) {
-        journal->_synced = written;
-      }
-      else {
-        journal->_state = TRI_DF_STATE_WRITE_ERROR;
-      }
-
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-      if (ok) {
-        LOG_TRACE("msync succeeded %p, size %lu", synced, (unsigned long)(written - synced));
-      }
-      else {
-        LOG_ERROR("msync failed with: %s", TRI_last_error());
-      }
-    }
-  }
-
-  return worked;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the compactor of a simple collection
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CheckCompactorDocumentCollection (TRI_document_collection_t* doc) {
-  TRI_collection_t* base;
-  TRI_datafile_t* compactor;
-  bool worked;
-  size_t i;
-  size_t n;
-
-  worked = false;
-  base = &doc->base.base;
-
-  // .............................................................................
-  // the only thread MODIFYING the _compactor variable is this thread,
-  // therefore no locking is required to access the _compactors
-  // .............................................................................
-
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-  n = base->_compactors._length;
-
-  for (i = 0;  i < n;) {
-    compactor = base->_compactors._buffer[i];
-
-    if (compactor->_full) {
-      worked = true;
-
-      LOG_DEBUG("closing full compactor '%s'", compactor->_filename);
-
-      TRI_CloseCompactorPrimaryCollection(&doc->base, i);
-
-      n = base->_compactors._length;
-      i = 0;
-    }
-    else {
-      ++i;
-    }
-  }
-
-  // we don't have a compactor file anymore
-  if (base->_compactors._length == 0) {
-    compactor = TRI_CreateCompactorPrimaryCollection(&doc->base);
-
-    if (compactor != NULL) {
-      worked = true;
-      LOG_DEBUG("created new compactor '%s'", compactor->_filename);
-
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-    }
-    else {
-      // an error occurred when creating the compactor file
-      LOG_ERROR("could not create compactor file");
-
-      // we still must wake up the other thread from time to time, otherwise we'll deadlock
-      TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-    }
-  }
-
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
-
-  return worked;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -405,12 +272,6 @@ void TRI_SynchroniserVocBase (void* data) {
         worked |= result;
 
         result = CheckJournalDocumentCollection((TRI_document_collection_t*) primary);
-        worked |= result;
-
-        result = CheckSyncCompactorDocumentCollection((TRI_document_collection_t*) primary);
-        worked |= result;
-
-        result = CheckCompactorDocumentCollection((TRI_document_collection_t*) primary);
         worked |= result;
       }
 

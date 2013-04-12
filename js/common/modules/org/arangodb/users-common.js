@@ -31,8 +31,9 @@
 var internal = require("internal"); // OK: time
 var arangodb = require("org/arangodb");
 var crypto = require("org/arangodb/crypto");
+
 var db = arangodb.db;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = arangodb.ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       module "org/arangodb/users"

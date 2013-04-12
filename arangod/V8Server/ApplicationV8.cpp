@@ -861,7 +861,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   }
 
   context->_context->Exit();
-  context->_context.Dispose();
+  context->_context.Dispose(context->_isolate);
 
   context->_isolate->Exit();
   delete context->_locker;

@@ -80,8 +80,49 @@ bool EqualElement (TRI_associative_pointer_t* array, void const* left, void cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief equal element
+/// @brief inserts an entry at the front or end of a linked array
 ////////////////////////////////////////////////////////////////////////////////
+
+static int AddLinkedArray (TRI_linked_array_t* array, 
+                           void const* data, 
+                           const bool front) {
+  TRI_linked_list_entry_t* entry;
+  TRI_linked_list_entry_t* found;
+
+  // create entry
+  entry = TRI_Allocate(array->_memoryZone, sizeof(TRI_linked_list_entry_t), false);
+
+  if (entry == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  entry->_data = data;
+
+  // insert to lookup table
+  found = TRI_InsertElementAssociativePointer(&array->_array, entry, true);
+
+  if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY) {
+    TRI_Free(array->_memoryZone, entry);
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // this should not happen
+  if (found != NULL) {
+    TRI_RemoveLinkedList(&array->_list, found);
+    TRI_Free(array->_memoryZone, found);
+  }
+
+  if (front) {
+    // add element at the beginning
+    TRI_AddFrontLinkedList(&array->_list, entry);
+  }
+  else {
+    // add element at the end
+    TRI_AddLinkedList(&array->_list, entry);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -200,6 +241,28 @@ void TRI_AddLinkedList (TRI_linked_list_t* list, TRI_linked_list_entry_t* entry)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts an entry at the front of a linked list
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AddFrontLinkedList (TRI_linked_list_t* list, TRI_linked_list_entry_t* entry) {
+  TRI_linked_list_entry_t* begin = list->_begin;
+
+  if (begin == NULL) {
+    // list is empty
+    TRI_AddLinkedList(list, entry);
+  }
+  else {
+    // list is not empty
+    begin->_prev = entry;
+    entry->_prev = NULL;
+    entry->_next = begin;
+
+    list->_begin = entry;
+    // end does not change
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from a linked list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -227,36 +290,15 @@ void TRI_RemoveLinkedList (TRI_linked_list_t* list, TRI_linked_list_entry_t* ent
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddLinkedArray (TRI_linked_array_t* array, void const* data) {
-  TRI_linked_list_entry_t* entry;
-  TRI_linked_list_entry_t* found;
+  return AddLinkedArray(array, data, false);
+}
 
-  // create entry
-  entry = TRI_Allocate(array->_memoryZone, sizeof(TRI_linked_list_entry_t), false);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts an entry at the beginning of a linked array
+////////////////////////////////////////////////////////////////////////////////
 
-  if (entry == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  entry->_data = data;
-
-  // insert to lookup table
-  found = TRI_InsertElementAssociativePointer(&array->_array, entry, true);
-
-  if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY) {
-    TRI_Free(array->_memoryZone, entry);
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // this should not happen
-  if (found != NULL) {
-    TRI_RemoveLinkedList(&array->_list, found);
-    TRI_Free(array->_memoryZone, found);
-  }
-
-  // add element at the beginning
-  TRI_AddLinkedList(&array->_list, entry);
-
-  return TRI_ERROR_NO_ERROR;
+int TRI_AddFrontLinkedArray (TRI_linked_array_t* array, void const* data) {
+  return AddLinkedArray(array, data, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

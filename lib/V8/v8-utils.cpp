@@ -1956,6 +1956,43 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoError
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> self = args.Holder()->ToObject();
+
+  self->Set(v8g->ErrorKey, v8::True());
+  self->Set(v8g->ErrorNumKey, v8::Integer::New(TRI_ERROR_FAILED));
+
+  if (0 < args.Length() && args[0]->IsObject()) {
+    v8::Handle<v8::Object> data = args[0]->ToObject();
+
+    if (data->Has(v8g->ErrorKey)) {
+      self->Set(v8g->ErrorKey, data->Get(v8g->ErrorKey));
+    }
+
+    if (data->Has(v8g->CodeKey)) {
+      self->Set(v8g->CodeKey, data->Get(v8g->CodeKey));
+    }
+
+    if (data->Has(v8g->ErrorNumKey)) {
+      self->Set(v8g->ErrorNumKey, data->Get(v8g->ErrorNumKey));
+    }
+
+    if (data->Has(v8g->ErrorMessageKey)) {
+      self->Set(v8g->ErrorMessageKey, data->Get(v8g->ErrorMessageKey));
+    }
+  }
+
+  return scope.Close(self);
+} 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -2335,19 +2372,12 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& tempPath) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::ObjectTemplate> rt;
-
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
-  if (v8g == 0) {
-    // this check is necessary because when building arangosh, we do not include v8-vocbase and
-    // this init function is the first one we call
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::ObjectTemplate> rt;
 
   TempPath = tempPath;
 
@@ -2357,10 +2387,19 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   ft = v8::FunctionTemplate::New();
   ft->SetClassName(TRI_V8_SYMBOL("ArangoError"));
+  ft->SetCallHandler(JS_ArangoError);
+
+  // ArangoError is a "sub-class" of Error
+  v8::Handle<v8::Function> ArangoErrorFunc = ft->GetFunction();
+  v8::Handle<v8::Value> ErrorObject = context->Global()->Get(TRI_V8_STRING("Error"));
+  v8::Handle<v8::Value> ErrorPrototype = ErrorObject->ToObject()->Get(TRI_V8_STRING("prototype"));
+
+  ArangoErrorFunc->Get(TRI_V8_SYMBOL("prototype"))->ToObject()->SetPrototype(ErrorPrototype);
+
+  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ft->GetFunction());
+  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
 
   // .............................................................................
   // create the global functions
