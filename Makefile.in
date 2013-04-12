@@ -186,7 +186,7 @@ noinst_PROGRAMS = $(am__EXEEXT_2)
 @ENABLE_MRUBY_TRUE@am__append_5 = lib/libarango_mruby.a
 @ENABLE_MRUBY_TRUE@am__append_6 = bin/arangoirb
 @ENABLE_MRUBY_TRUE@am__append_7 = \
-@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
+@ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions -name "*.rb" -print) 
 
 DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/arangod/Makefile.files \
@@ -312,7 +312,6 @@ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/ax_cxx_check_lib.m4 \
 	$(top_srcdir)/m4/configure.basics \
-	$(top_srcdir)/m4/configure.static \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
@@ -948,6 +947,7 @@ LIBS = @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ @ZLIB_LIBS@ \
 	@READLINE_LIBS@ $(am__append_4)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
+MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MARKDOWN_EXEC = @MARKDOWN_EXEC@
 MATH_CPPFLAGS = @MATH_CPPFLAGS@
@@ -1816,6 +1816,7 @@ WIKI = \
 	RestDocument \
 	RestEdge \
 	SimpleQueries \
+	Transactions \
 	Upgrading11 \
 	Upgrading12 \
 	UserManual \
@@ -1829,7 +1830,6 @@ JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/org/arangodb.js \
 	html/admin/js/modules/org/arangodb/arango-collection.js \
 	html/admin/js/modules/org/arangodb/arango-database.js \
-	html/admin/js/modules/org/arangodb/arango-error.js \
 	html/admin/js/modules/org/arangodb/arango-query-cursor.js \
 	html/admin/js/modules/org/arangodb/arango-statement.js \
 	html/admin/js/modules/org/arangodb/arangosh.js \
@@ -1838,7 +1838,6 @@ JAVASCRIPT_BROWSER = \
 	\
 	html/admin/js/modules/org/arangodb-common.js \
 	html/admin/js/modules/org/arangodb/arango-collection-common.js \
-	html/admin/js/modules/org/arangodb/arango-error-common.js \
 	html/admin/js/modules/org/arangodb/arango-statement-common.js \
 	html/admin/js/modules/org/arangodb/graph-common.js \
 	html/admin/js/modules/org/arangodb/graph/traversal.js \
@@ -1887,7 +1886,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1915,9 +1914,9 @@ $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
 
-$(top_srcdir)/configure:  $(am__configure_deps)
+$(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	$(am__cd) $(srcdir) && $(AUTOCONF)
-$(ACLOCAL_M4):  $(am__aclocal_m4_deps)
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 $(am__aclocal_m4_deps):
 
@@ -1928,7 +1927,7 @@ config/config.h: config/stamp-h1
 config/stamp-h1: $(top_srcdir)/config/config.h.in $(top_builddir)/config.status
 	@rm -f config/stamp-h1
 	cd $(top_builddir) && $(SHELL) ./config.status config/config.h
-$(top_srcdir)/config/config.h.in:  $(am__configure_deps) 
+$(top_srcdir)/config/config.h.in: @MAINTAINER_MODE_TRUE@ $(am__configure_deps) 
 	($(am__cd) $(top_srcdir) && $(AUTOHEADER))
 	rm -f config/stamp-h1
 	touch $@
@@ -7259,6 +7258,7 @@ unittests-arangob:
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 4000 --concurrency 2 --test edge --complexity 4 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 5000 --concurrency 2 --test hash --complexity 1 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 5000 --concurrency 2 --test skiplist --complexity 1 || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test aqltrx --complexity 1 || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
