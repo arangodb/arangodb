@@ -247,6 +247,37 @@
       });
     });
     
+    it('should be able to load a tree node from ArangoDB'
+      + ' by internal attribute and value', function() {
+      
+      var c0, c1, c2, c3, c4;
+      
+      runs(function() {
+        c0 = insertNode(nodesCollection, 0);
+        c1 = insertNode(nodesCollection, 1);
+        c2 = insertNode(nodesCollection, 2);
+        c3 = insertNode(nodesCollection, 3);
+        c4 = insertNode(nodesCollection, 4);
+        
+        insertEdge(edgesCollection, c0, c1);
+        insertEdge(edgesCollection, c0, c2);
+        insertEdge(edgesCollection, c0, c3);
+        insertEdge(edgesCollection, c0, c4);
+        
+        callbackCheck = false;
+        adapter.loadNodeFromTreeByAttributeValue("id", 0, checkCallbackFunction);
+      });
+      
+      waitsFor(function() {
+        return callbackCheck;
+      });
+      
+      runs(function() {
+        existNodes([c0, c1, c2, c3, c4]);
+        expect(nodes.length).toEqual(5);
+      });
+    });
+    
     it('should be able to request the number of children centrality', function() {
       var c0, c1 ,c2 ,c3 ,c4,
       children;
