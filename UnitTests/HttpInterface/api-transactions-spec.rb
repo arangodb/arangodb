@@ -1,0 +1,447 @@
+# coding: utf-8
+
+require 'rspec'
+require './arangodb.rb'
+
+describe ArangoDB do
+  api = "/_api/transaction"
+  prefix = "api-transaction"
+
+  context "running server-side transactions:" do
+
+################################################################################
+## error handling
+################################################################################
+
+    context "error handling:" do
+      it "returns an error if a wrong method type is used" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \" for \" }"
+        doc = ArangoDB.log_put("#{prefix}-invalid-method", cmd, :body => body)
+        
+        doc.code.should eq(405)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(405)
+        doc.parsed_response['errorNum'].should eq(405)
+      end
+
+      it "returns an error if no body is posted" do
+        cmd = api
+        doc = ArangoDB.log_post("#{prefix}-missing-body", cmd)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+
+      it "returns an error if no collections attribute is present" do
+        cmd = api
+        body = "{ \"foo\" : \"bar\" }"
+        doc = ArangoDB.log_post("#{prefix}-no-collection", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+
+      it "returns an error if the collections attribute has a wrong type" do
+        cmd = api
+        doc = ArangoDB.log_post("#{prefix}-collection-wrong-type", cmd)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+
+      it "returns an error if collections sub-attribute is wrong" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": false } }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-collection-subattribute", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+
+      it "returns an error if no action is specified" do
+        cmd = api
+        body = "{ \"collections\" : { } }"
+        doc = ArangoDB.log_post("#{prefix}-missing-action", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+      
+      it "returns an error if action attribute has a wrong type" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : false }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-action", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+      
+      it "returns an error if action attribute contains broken code" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \" for \" }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-action", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
+
+      it "returns an error if transactions are nested" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \"return TRANSACTION({ collections: { }, action: function() { return 1; } });\" }"
+        doc = ArangoDB.log_post("#{prefix}-nested1", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1651)
+      end
+
+      it "returns an error if transactions are nested" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \"return TRANSACTION({ collections: { }, action: \\\"return 1;\\\" });\" }"
+        doc = ArangoDB.log_post("#{prefix}-nested2", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1651)
+      end
+
+    end
+
+################################################################################
+## using "wrong" collections
+################################################################################
+
+    context "using wrong collections:" do
+      before do
+        @cn1 = "UnitTestsTransactions1"
+        @cn2 = "UnitTestsTransactions2"
+        ArangoDB.create_collection(@cn1, false)
+        ArangoDB.create_collection(@cn2, false)
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn1)
+        ArangoDB.drop_collection(@cn2)
+      end
+
+      it "returns an error if referring to a non-existing collection" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": \"_meow\" }, \"action\" : \"return 1;\" }"
+        doc = ArangoDB.log_post("#{prefix}-non-existing-collection", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1203)
+      end
+      
+      it "returns an error when using a non-declared collection" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": \"#{@cn1}\" }, \"action\" : \"require(\\\"internal\\\").db.#{@cn2}.save({ });\" }"
+        doc = ArangoDB.log_post("#{prefix}-non-declared-collection", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1652)
+      end
+
+      it "returns an error when using a collection in invalid mode" do
+        cmd = api
+        body = "{ \"collections\" : { \"read\": \"#{@cn1}\" }, \"action\" : \"require(\\\"internal\\\").db.#{@cn1}.save({ });\" }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-mode1", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1652)
+      end
+
+      it "returns an error when using a collection in invalid mode" do
+        cmd = api
+        body = "{ \"collections\" : { \"read\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"require(\\\"internal\\\").db.#{@cn1}.save({ });\" }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-mode2", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1652)
+      end
+
+      it "returns an error when using a disallowed operation" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \"require(\\\"internal\\\").db._create(\\\"abc\\\");\" }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-mode2", cmd, :body => body)
+        
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1653)
+      end
+    end
+
+################################################################################
+## non-collection transactions
+################################################################################
+
+    context "non-collection transactions:" do
+      it "returning a simple type" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \"return 42;\" }"
+        doc = ArangoDB.log_post("#{prefix}-empty-transaction1", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq(42)
+      end
+
+      it "returning a compound type" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \"return [ true, { a: 42, b: [ null, true ], c: \\\"foo\\\" } ];\" }"
+        doc = ArangoDB.log_post("#{prefix}-empty-transaction2", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq([ true, { "a" => 42, "b" => [ nil, true ], "c" => "foo" } ])
+      end
+
+      it "returning an exception" do
+        cmd = api
+        body = "{ \"collections\" : { }, \"action\" : \"throw \\\"doh!\\\";\" }"
+        doc = ArangoDB.log_post("#{prefix}-empty-exception", cmd, :body => body)
+        
+        doc.code.should eq(500)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(500)
+        doc.parsed_response['errorNum'].should eq(500)
+      end
+    end
+
+################################################################################
+## single-collection transactions
+################################################################################
+
+    context "single collection transactions:" do
+      before do
+        @cn = "UnitTestsTransactions"
+        @cid = ArangoDB.create_collection(@cn, false)
+      end
+      
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "read-only, using write" do
+        body = "{ }"
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        
+        ArangoDB.size_collection(@cn).should eq(3);
+
+        cmd = api
+        body = "{ \"collections\" : { \"write\": \"#{@cn}\" }, \"action\" : \"var c = require(\\\"internal\\\").db.UnitTestsTransactions; return c.count();\" }"
+        doc = ArangoDB.log_post("#{prefix}-read-write", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq(3)
+
+        ArangoDB.size_collection(@cn).should eq(3);
+      end
+
+      it "read-only, using read" do
+        body = "{ }"
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
+        
+        ArangoDB.size_collection(@cn).should eq(3);
+
+        cmd = api
+        body = "{ \"collections\" : { \"read\": \"#{@cn}\" }, \"action\" : \"var c = require(\\\"internal\\\").db.UnitTestsTransactions; return c.count();\" }"
+        doc = ArangoDB.log_post("#{prefix}-read-only", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq(3)
+
+        ArangoDB.size_collection(@cn).should eq(3);
+      end
+
+      it "committing" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": \"#{@cn}\" }, \"action\" : \"var c = require(\\\"internal\\\").db.UnitTestsTransactions; c.save({ }); c.save({ }); return c.count();\" }"
+        doc = ArangoDB.log_post("#{prefix}-single-commit", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq(2)
+
+        ArangoDB.size_collection(@cn).should eq(2);
+      end
+
+      it "aborting" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": \"#{@cn}\" }, \"action\" : \"var c = require(\\\"internal\\\").db.UnitTestsTransactions; c.save({ }); c.save({ }); throw \\\"doh!\\\";\" }"
+        doc = ArangoDB.log_post("#{prefix}-single-abort", cmd, :body => body)
+        
+        doc.code.should eq(500)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(500)
+        doc.parsed_response['errorNum'].should eq(500)
+
+        ArangoDB.size_collection(@cn).should eq(0);
+      end
+
+    end
+
+################################################################################
+## multi-collection transactions
+################################################################################
+
+    context "multi collection transactions:" do
+      before do
+        @cn1 = "UnitTestsTransactions1"
+        @cn2 = "UnitTestsTransactions2"
+        ArangoDB.create_collection(@cn1, false)
+        ArangoDB.create_collection(@cn2, false)
+      end
+      
+      after do
+        ArangoDB.drop_collection(@cn1)
+        ArangoDB.drop_collection(@cn2)
+      end
+
+      it "read-only, using write" do
+        body = "{ }"
+        doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn2}", :body => body)
+        
+        ArangoDB.size_collection(@cn1).should eq(3);
+        ArangoDB.size_collection(@cn2).should eq(1);
+
+        cmd = api
+        body = "{ \"collections\" : { \"write\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"var c1 = require(\\\"internal\\\").db.#{@cn1}; var c2 = require(\\\"internal\\\").db.#{@cn2}; return [ c1.count(), c2.count() ];\" }"
+        doc = ArangoDB.log_post("#{prefix}-multi-read-write", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq([ 3, 1 ])
+
+        ArangoDB.size_collection(@cn1).should eq(3);
+        ArangoDB.size_collection(@cn2).should eq(1);
+      end
+
+      it "read-only, using read" do
+        body = "{ }"
+        doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
+        doc = ArangoDB.post("/_api/document?collection=#{@cn2}", :body => body)
+        
+        ArangoDB.size_collection(@cn1).should eq(3);
+        ArangoDB.size_collection(@cn2).should eq(1);
+
+        cmd = api
+        body = "{ \"collections\" : { \"read\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"var c1 = require(\\\"internal\\\").db.#{@cn1}; var c2 = require(\\\"internal\\\").db.#{@cn2}; return [ c1.count(), c2.count() ];\" }"
+        doc = ArangoDB.log_post("#{prefix}-multi-read-only", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq([ 3, 1 ])
+
+        ArangoDB.size_collection(@cn1).should eq(3);
+        ArangoDB.size_collection(@cn2).should eq(1);
+      end
+
+      it "committing" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"var c1 = require(\\\"internal\\\").db.#{@cn1}; var c2 = require(\\\"internal\\\").db.#{@cn2}; c1.save({ }); c1.save({ }); c2.save({ }); return [ c1.count(), c2.count() ];\" }"
+        doc = ArangoDB.log_post("#{prefix}-multi-commit", cmd, :body => body)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['result'].should eq([ 2, 1 ])
+
+        ArangoDB.size_collection(@cn1).should eq(2);
+        ArangoDB.size_collection(@cn2).should eq(1);
+      end
+
+      it "aborting" do
+        cmd = api
+        body = "{ \"collections\" : { \"write\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"var c1 = require(\\\"internal\\\").db.#{@cn1}; var c2 = require(\\\"internal\\\").db.#{@cn2}; c1.save({ }); c1.save({ }); c2.save({ }); throw \\\"doh!\\\";\" }"
+        doc = ArangoDB.log_post("#{prefix}-multi-abort", cmd, :body => body)
+        
+        doc.code.should eq(500)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(500)
+        doc.parsed_response['errorNum'].should eq(500)
+
+        ArangoDB.size_collection(@cn1).should eq(0);
+        ArangoDB.size_collection(@cn2).should eq(0);
+      end
+
+    end
+
+  end
+end

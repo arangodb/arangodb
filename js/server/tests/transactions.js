@@ -148,6 +148,62 @@ function transactionInvocationSuite () {
       tests.forEach(function (test) {
         assertEqual(test.expected, TRANSACTION(test.trx));
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: action
+////////////////////////////////////////////////////////////////////////////////
+
+    testActionFunction : function () {
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          return 42;
+        }
+      };
+
+      assertEqual(42, TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: action
+////////////////////////////////////////////////////////////////////////////////
+
+    testActionString : function () {
+      var obj = {
+        collections : {
+        },
+        action : "return 42;"
+      };
+
+      assertEqual(42, TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: nesting
+////////////////////////////////////////////////////////////////////////////////
+
+    testNesting : function () {
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          TRANSACTION({
+            collections: {
+            },
+            action: "return 1;"
+          });
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_NESTED.code, err.errorNum);
+      }
     }
 
   };

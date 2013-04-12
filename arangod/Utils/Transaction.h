@@ -175,7 +175,7 @@ namespace triagens {
 
         int begin () {
           if (_trx == 0) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
           if (_setupState != TRI_ERROR_NO_ERROR) {
@@ -194,7 +194,7 @@ namespace triagens {
         int commit () {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_CommitTransaction(_trx, _nestingLevel);
@@ -209,7 +209,7 @@ namespace triagens {
         int abort () {
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_AbortTransaction(_trx, _nestingLevel);
@@ -300,7 +300,7 @@ namespace triagens {
           if (status == TRI_TRANSACTION_COMMITTED ||
               status == TRI_TRANSACTION_ABORTED) {
             // transaction already finished?
-            return registerError(TRI_ERROR_TRANSACTION_INVALID_STATE);
+            return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
           }
 
           int res;
@@ -364,7 +364,7 @@ namespace triagens {
                   const TRI_transaction_type_e type) {
 
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
@@ -380,7 +380,7 @@ namespace triagens {
                     const TRI_transaction_type_e type) {
 
           if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+            return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           int res = TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
@@ -878,7 +878,7 @@ namespace triagens {
 
           if (getStatus() != TRI_TRANSACTION_CREATED) {
             // transaction already started?
-            res = TRI_ERROR_TRANSACTION_INVALID_STATE;
+            res = TRI_ERROR_TRANSACTION_INTERNAL;
           }
           else {
             res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
