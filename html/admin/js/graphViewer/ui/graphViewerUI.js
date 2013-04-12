@@ -74,17 +74,15 @@ function GraphViewerUI(container, adapterConfig) {
     },
     createToolbox = function() {
       var toolbox = document.createElement("div"),
-      toollist = document.createElement("ul"),
-      dispatcherUI = new EventDispatcherControls(
-        toollist,
-        graphViewer.nodeShaper,
-        graphViewer.edgeShaper,
-        graphViewer.dispatcherConfig
-      );
+        dispatcherUI = new EventDispatcherControls(
+          toolbox,
+          graphViewer.nodeShaper,
+          graphViewer.edgeShaper,
+          graphViewer.dispatcherConfig
+        );
       toolbox.id = "toolbox";
-      toolbox.className = "toolbox pull-left";
+      toolbox.className = "btn-group btn-group-vertical pull-left toolbox";
       container.appendChild(toolbox);
-      toolbox.appendChild(toollist);
       dispatcherUI.addAll();
     },
     createMenu = function() {
