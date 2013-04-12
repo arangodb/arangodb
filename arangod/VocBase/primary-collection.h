@@ -455,6 +455,21 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t*,
 void TRI_DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over all documents in the collection, using a user-defined
+/// callback function. Returns the total number of documents in the collection
+///
+/// The user can abort the iteration by return "false" from the callback
+/// function.
+///
+/// Note: the function will not acquire any locks. It is the task of the caller
+/// to ensure the collection is properly locked
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t*,
+                                              void*,
+                                              bool (*callback)(TRI_doc_mptr_t const*, void*));
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

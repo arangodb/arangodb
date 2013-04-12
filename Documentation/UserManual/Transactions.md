@@ -416,27 +416,27 @@ On commit, all modifications done in the transaction will be written to the
 collection datafiles. These writes will be synchronised to disk if any of the
 modified collections has the `waitForSync` property set to `true`, or if any
 individual operation in the transaction was executed with the `waitForSync` 
-attribute.
+attribute. 
+Additionally, transactions that modify data in more than one collection are
+automatically synchronised to disk. This synchronisation is done to not only
+ensure durability, but to also ensure consistency in case of a server crash.
 
-That means using only collections in a transaction that have `waitForSync` 
-set to `false`, the whole transaction will not be synchronised to disk instantly,
-but with a small delay. 
+That means if you only modify data in a single collection, and that collection 
+has its `waitForSync` property set to `false`, the whole transaction will not 
+be synchronised to disk instantly, but with a small delay.
+
 There is thus the potential risk of losing data between the commit of the 
-transaction and the actual disk synchronisation. This is the same as for 
-collections that have the `waitForSync` property set to `false`.
+transaction and the actual (delayed) disk synchronisation. This is the same as 
+writing into collections that have the `waitForSync` property set to `false`
+outside of a transaction.
+In case of a crash with `waitForSync` set to false, the operations performed in
+the transaction will either be visible completely or not at all, depending on
+whether the delayed synchronisation had kicked in or not.
 
-Contrary, when at least one of the collections modified in a transaction has 
-the `waitForSync` property set to `true`, or the transaction included some
-operation with an explicit sync request, the transaction data is synchronised 
-to disk on commit. There will be at least one sync operation per modified 
-collection.
-The transaction will return only after the data of all modified collections 
-has been synchronised to disk, reducing the risk of losing any data in case of a 
-crash directly after the commit.
-
-To explicitly force the durability of a transaction even in case all 
-participating collections have the `waitForSync` property set the `false`,
-the transaction can be declared with the `waitForSync` attribute set to `true`:
+To ensure durability of transactions on a collection that have the `waitForSync`
+property set to `false`, you can set the `waitForSync` attribute of the object
+that is passed to `TRANSACTION`. This will force a synchronisation of the
+transaction to disk even for collections that have `waitForSync´ set to `false`:
 
     TRANSACTION({
       collections: { 
@@ -445,6 +445,39 @@ the transaction can be declared with the `waitForSync` attribute set to `true`:
       waitForSync: true,
       action: function () { ... }
     });
+
+
+An alternative is to perform an operation with an explicit `sync` request in
+a transaction, e.g.
+
+    db.users.save({ _key: "1234" }, true); 
+
+In this case, the `true` value will make the whole transaction be synchronised
+to disk at the commit.
+
+In any case, ArangoDB will give users the choice of whether or not they want 
+full durability for single collection transactions. Using the delayed synchronisation
+(i.e. `waitForSync` with a value of `false`) will potentially increase throughput 
+and performance of transactions, but will introduce the risk of losing the last
+committed transactions in the case of a crash.
+
+In contrast, transactions that modify data in more than one collection are 
+automatically synchronised to disk. This comes at the cost of several disk sync
+For a multi-collection transaction, the call to the `TRANSACTION` function will
+only return only after the data of all modified collections has been synchronised 
+to disk and the transaction has been made fully durable. This not only reduces the
+risk of losing data in case of a crash but also ensures consistency after a
+restart.
+
+In case of a server crash, any multi-collection transactions that were not yet 
+committed or in preparation to be committed will be rolled back on server restart.
+
+For multi-collection transactions, there will be at least one disk sync operation 
+per modified collection. Multi-collection transactions thus have a potentially higher
+cost than single collection transactions. There is no configuration to turn off disk 
+synchronisation for multi-collection transactions in ArangoDB. 
+The disk sync speed of the system will thus be the most important factor for the 
+performance of multi-collection transactions.
 
 
 Limitations {#TransactionsLimitations}
