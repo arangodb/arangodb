@@ -68,28 +68,31 @@ function NodeShaper(parent, flags, idfunc) {
     
     },
     colourMapper = new ColourMapper(),
-    events = {
-      click: noop,
-      dblclick: noop,
-      drag: noop,
-      mousedown: noop,
-      mouseup: noop,
-      mousemove: noop
-    },
+    events,
+    addUpdate,
     idFunction = function(d) {
       return d._id;
     },
-    addUpdate = noop,
     addColor = noop,
     addShape = noop,
     addLabel = noop,
+    
+    unbindEvents = function() {
+     events = {
+       click: noop,
+       dblclick: noop,
+       drag: noop,
+       mousedown: noop,
+       mouseup: noop,
+       mousemove: noop
+     };
+     addUpdate = noop;
+    },
     
     addEvents = function (nodes) {
       _.each(events, function (func, type) {
         if (type === "drag") {
           nodes.call(func);
-        } else if (type === "update") {
-          addUpdate = func;
         } else {
           nodes.on(type, func);
         }
@@ -109,8 +112,9 @@ function NodeShaper(parent, flags, idfunc) {
         addUpdate = func;
       } else if (events[type] === undefined) {
         throw "Sorry Unknown Event " + type + " cannot be bound.";
+      } else {
+        events[type] = func;
       }
-      events[type] = func;
     },
     
     shapeNodes = function (nodes) {
@@ -207,8 +211,13 @@ function NodeShaper(parent, flags, idfunc) {
     },
     
     parseActionFlag = function (actions) {
+      if (actions.reset !== undefined && actions.reset) {
+        unbindEvents();
+      }
       _.each(actions, function(func, type) {
-        bindEvent(type, func);
+        if (type !== "reset") {
+          bindEvent(type, func);
+        }
       });
     },
     
@@ -260,28 +269,26 @@ function NodeShaper(parent, flags, idfunc) {
     
   self.parent = parent;
   
-  if (flags !== undefined) {
-    parseConfig(flags);
-    /*
+  unbindEvents();
+  
+  if (flags === undefined) {
     flags = {
       color: {
         type: "single",
-        stroke: "#FF8F35",
-        fill: "#8AA051"
+        fill: "#FF8F35",
+        stroke: "#8AA051"
       }
     };
-    */
   }
-  /*
+  
   if (flags.color === undefined) {
     flags.color = {
       type: "single",
-      stroke: "#FF8F35",
-      fill: "#8AA051"
-    };
-    
+      fill: "#FF8F35",
+      stroke: "#8AA051"
+    }; 
   }
-  */
+  parseConfig(flags);
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;

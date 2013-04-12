@@ -330,14 +330,12 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
   }
 
   // string handle
-
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
   char const* s = *str;
 
   if (s == 0) {
     return false;
   }
-
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   regmatch_t matches[3];
@@ -356,6 +354,43 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> arg,
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a document key from a document
+////////////////////////////////////////////////////////////////////////////////
+
+static int ExtractDocumentKey (v8::Handle<v8::Value> arg,
+                               TRI_voc_key_t& key) {
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  if (arg->IsObject()) {
+    v8::Handle<v8::Object> obj = arg->ToObject();
+
+    if (obj->Has(v8g->_KeyKey)) {
+      v8::Handle<v8::Value> v = obj->Get(v8g->_KeyKey);
+
+      if (v->IsString()) {
+        // string key
+        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+        key = TRI_DuplicateString2(*str, str.length());
+
+        return TRI_ERROR_NO_ERROR;
+      }
+      else {
+        key = 0;
+        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      }
+    }
+    else {
+      key = 0;
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+    }
+  }
+  else {
+    key = 0;
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,11 +493,11 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
 /// @brief converts argument strings to TRI_vector_pointer_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int AttributeNamesFromArguments (v8::Arguments const& argv,
-                                 TRI_vector_pointer_t* result,
-                                 size_t start,
-                                 size_t end,
-                                 string& error) {
+static int AttributeNamesFromArguments (v8::Arguments const& argv,
+                                        TRI_vector_pointer_t* result,
+                                        size_t start,
+                                        size_t end,
+                                        string& error) {
 
   // ...........................................................................
   // convert the arguments into a "C" string and stuff them into a vector
@@ -973,10 +1008,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -985,13 +1020,21 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 /// @brief saves a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
-                                             TRI_vocbase_col_t* col,
-                                             v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveVocbaseCol (
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    TRI_vocbase_col_t* col,
+    v8::Arguments const& argv,
+    bool replace,
+    bool lock) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, <waitForSync>)");
+    if (replace) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>])");
+    }
+    else {
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
+    }
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -1000,20 +1043,16 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   // set document key
   TRI_voc_key_t key = 0;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  int res;
 
   if (argv[0]->IsObject()) {
-    v8::Handle<v8::Object> obj = argv[0]->ToObject();
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-      if (v->IsString()) {
-        // string key
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
-        holder.registerString(TRI_CORE_MEM_ZONE, key);
-      }
-      else {
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-      }
+    res = ExtractDocumentKey(argv[0]->ToObject(), key);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    else if (key != 0) {
+      holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
 
@@ -1027,7 +1066,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   const bool forceSync = ExtractForceSync(argv, 2);
 
   TRI_doc_mptr_t document;
-  int res = trx->createDocument(key, &document, shaped, forceSync, true);
+  res = trx->createDocument(key, &document, shaped, forceSync, lock);
 
   res = trx->finish(res);
 
@@ -1038,47 +1077,33 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new edge document
-///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
-///
-/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
-/// must be documents or document references.
-///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
-///
-/// The optional @FA{waitForSync} parameter can be used to force
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
-///
-/// @EXAMPLES
-///
-/// @TINYEXAMPLE{shell_create-edge,create an edge}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
-                                          TRI_vocbase_col_t* col,
-                                          v8::Arguments const& argv) {
+static v8::Handle<v8::Value> SaveEdgeCol (
+    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    TRI_vocbase_col_t* col,
+    v8::Arguments const& argv,
+    bool replace,
+    bool lock) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   if (argv.Length() < 3 || argv.Length() > 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, <waitForSync>)");
+    if (replace) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>])");
+    }
+    else {
+      TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
+    }
   }
 
   CollectionNameResolver resolver(col->_vocbase);
@@ -1086,19 +1111,16 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
   // set document key
   TRI_voc_key_t key = 0;
+  int res;
 
   if (argv[2]->IsObject()) {
-    v8::Handle<v8::Object> obj = argv[2]->ToObject();
-    if (obj->Has(v8g->KeyKey)) {
-      v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
-      if (v->IsString()) {
-        TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
-        key = TRI_DuplicateString2(*str, str.length());
-        holder.registerString(TRI_CORE_MEM_ZONE, key);
-      }
-      else {
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-      }
+    res = ExtractDocumentKey(argv[2]->ToObject(), key);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    else if (key != 0) {
+      holder.registerString(TRI_CORE_MEM_ZONE, key);
     }
   }
 
@@ -1150,7 +1172,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
 
 
   TRI_doc_mptr_t document;
-  int res = trx->createEdge(key, &document, shaped, forceSync, &edge, true);
+  res = trx->createEdge(key, &document, shaped, forceSync, &edge, lock);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1160,9 +1182,9 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   assert(document._key != 0);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1280,10 +1302,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
-  result->Set(v8g->RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+  result->Set(v8g->_KeyKey, v8::String::New(document._key));
 
   return scope.Close(result);
 }
@@ -1746,12 +1768,15 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 /// @brief weak reference callback for general cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakGeneralCursorCallback (v8::Isolate* isolate,
+                                       v8::Persistent<v8::Value> object,
+                                       void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
 
   LOG_TRACE("weak-callback for general cursor called");
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
+
   if (! vocbase) {
     return;
   }
@@ -1759,7 +1784,7 @@ static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* p
   TRI_EndUsageDataShadowData(vocbase->_cursors, parameter);
 
   // dispose and clear the persistent handle
-  object.Dispose();
+  object.Dispose(isolate);
   object.Clear();
 }
 
@@ -1771,8 +1796,8 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  TRI_v8_global_t* v8g;
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   v8::Handle<v8::Object> cursorObject = v8g->GeneralCursorTempl->NewInstance();
 
@@ -1782,7 +1807,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
     return scope.Close(cursorObject);
   }
 
-  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
+  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(cursor));
 
   if (tryCatch.HasCaught()) {
     return scope.Close(v8::Undefined());
@@ -1791,7 +1816,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
   cursorObject->SetInternalField(SLOT_CLASS, persistent);
 
-  persistent.MakeWeak(cursor, WeakGeneralCursorCallback);
+  persistent.MakeWeak(isolate, cursor, WeakGeneralCursorCallback);
 
   return scope.Close(cursorObject);
 }
@@ -1839,6 +1864,33 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
 
   // extract the properties from the object
+  
+  // "lockTimeout"
+  double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+
+  if (object->Has(TRI_V8_SYMBOL("lockTimeout"))) {
+    static const string timeoutError = "<lockTimeout> must be a valid numeric value"; 
+    
+    if (! object->Get(TRI_V8_SYMBOL("lockTimeout"))->IsNumber()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
+    }
+
+    lockTimeout = (double) TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("lockTimeout")));
+    if (lockTimeout < 0.0) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, timeoutError);
+    }
+  }
+
+  // "waitForSync"
+  bool waitForSync = false;
+
+  if (object->Has(TRI_V8_SYMBOL("waitForSync"))) {
+    if (! object->Get(TRI_V8_SYMBOL("waitForSync"))->IsBoolean()) {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "<waitForSync> must be a boolean value");
+    }
+    
+    waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
+  }
 
   // "collections"
   static const string collectionError = "missing/invalid collections definition for transaction";
@@ -1873,6 +1925,9 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
         readCollections.push_back(TRI_ObjectToString(collection));
       }
     }
+    else if (collections->Get(TRI_V8_SYMBOL("read"))->IsString()) {
+      readCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_SYMBOL("read"))));
+    }
     else {
       isValid = false;
     }
@@ -1892,6 +1947,9 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
       
         writeCollections.push_back(TRI_ObjectToString(collection));
       }
+    }
+    else if (collections->Get(TRI_V8_SYMBOL("write"))->IsString()) {
+      writeCollections.push_back(TRI_ObjectToString(collections->Get(TRI_V8_SYMBOL("write"))));
     }
     else {
       isValid = false;
@@ -1919,7 +1977,12 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
   
   CollectionNameResolver resolver(vocbase);
-  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, resolver, readCollections, writeCollections);
+  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
+                                                                        resolver, 
+                                                                        readCollections, 
+                                                                        writeCollections, 
+                                                                        lockTimeout,
+                                                                        waitForSync); 
 
   int res = trx.begin();
 
@@ -4156,7 +4219,6 @@ static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& 
   return EnsurePathIndex("lookupHashIndex", argv, false, false, TRI_IDX_TYPE_HASH_INDEX);
 }
 
-#if 0
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a priority queue index exists
 ///
@@ -4177,6 +4239,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   bool created = false;
   TRI_index_t* idx;
 
+  PREVENT_EMBEDDED_TRANSACTION(scope);  
 
   // .............................................................................
   // Check that we have a valid collection
@@ -4276,7 +4339,6 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   ReleaseCollection(collection);
   return scope.Close(index);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
@@ -4678,7 +4740,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
       bool waitForSync = base->_info._waitForSync;
       size_t maximalSize = base->_info._maximalSize;
-      size_t maximumMarkerSize = base->_maximumMarkerSize;
 
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -4692,11 +4753,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         maximalSize = TRI_ObjectToDouble(po->Get(v8g->JournalSizeKey));
 
         if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-          ReleaseCollection(collection);
-          TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize too small");
-        }
-
-        if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
           ReleaseCollection(collection);
           TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize too small");
         }
@@ -5030,7 +5086,6 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 /// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
 
-
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -5052,10 +5107,185 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, col, argv);
+    result = SaveVocbaseCol(&trx, col, argv, false, true);
   }
   else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, col, argv);
+    result = SaveEdgeCol(&trx, col, argv, false, true);
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn SaveEdgeCol
+/// @brief saves a new edge document
+///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
+///
+/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
+/// must be documents or document references.
+///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @EXAMPLES
+///
+/// @TINYEXAMPLE{shell_create-edge,create an edge}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves or replaces a document
+///
+/// @FUN{@FA{collection}.saveOrReplace(@FA{data})}
+///
+/// Creates a new document with in the @FA{collection} from the given @FA{data}
+/// or replaces an existing document. The @FA{data} must be a hash array. It
+/// must not contain attributes starting with `_`, expect the document key
+/// stored in `_key`. If there already exists a document with the given key it
+/// is replaced.
+///
+/// The method returns a document with the attributes `_key`, `_id` and `_rev`.
+/// The attribute `_id` contains the document handle of the newly created or
+/// replaced document; the attribute `_key` contains the document key; the
+/// attribute `_rev` contains the document revision.
+///
+/// @FUN{@FA{collection}.saveOrReplace(@FA{data}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document creation operation to disk even in case that the
+/// `waitForSync` flag had been disabled for the entire collection.  Thus, the
+/// `waitForSync` parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the `waitForSync` parameter to
+/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
+/// then the collection's default `waitForSync` behavior is applied. The
+/// `waitForSync` parameter cannot be used to disable synchronisation for
+/// collections that have a default `waitForSync` value of `true`.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{ShellSaveOrReplace1}
+/// doc = db.saveOrReplace("aardvark", { german: "Erdferkell" });
+/// doc = db.saveOrReplace("aardvark", { german: "Erdferkel" });
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (col == 0) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  size_t pos;
+
+  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+    if (argv.Length() < 1) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<data>, [<waitForSync>]");
+    }
+
+    pos = 0;
+  }
+  else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+    if (argv.Length() < 1) {
+      TRI_V8_EXCEPTION_USAGE(scope, "saveOrReplace(<from>, <to>, <data>, [<waitForSync>]");
+    }
+
+    pos = 2;
+  }
+  else {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "unknown collection type");
+  }
+
+  ResourceHolder holder;
+
+  TRI_voc_key_t key;
+  int res = ExtractDocumentKey(argv[pos], key);
+
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  else if (key != 0) {
+    holder.registerString(TRI_CORE_MEM_ZONE, key);
+  }
+
+  CollectionNameResolver resolver(col->_vocbase);
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, resolver, col->_cid);
+
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.begin failed");
+  }
+
+  res = trx.lockWrite();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.lockWrite failed");
+  }
+
+  if (key != 0) {
+    TRI_doc_mptr_t document;
+    res = trx.read(&document, key, false);
+  }
+  else {
+    res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  v8::Handle<v8::Value> result;
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_primary_collection_t* primary = trx.primaryCollection();
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[pos], primary->_shaper);
+
+    if (! holder.registerShapedJson(primary->_shaper, shaped)) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
+    }
+
+    const bool forceSync = ExtractForceSync(argv, pos + 1);
+
+    TRI_doc_mptr_t document;
+    TRI_voc_rid_t rid = 0;
+    TRI_voc_rid_t actualRevision = 0;
+    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision, true);
+
+    res = trx.finish(res);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot replace document");
+    }
+
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+    v8::Handle<v8::Object> r = v8::Object::New();
+    r->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+    r->Set(v8g->_RevKey, V8RevisionId(document._rid));
+    r->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+    r->Set(v8g->_KeyKey, v8::String::New(document._key));
+
+    result = r;
+  }
+  else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+      result = SaveVocbaseCol(&trx, col, argv, true, false);
+    }
+    else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
+      result = SaveEdgeCol(&trx, col, argv, true, false);
+    }
+  }
+  else {
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot save document: trx.read failed");
   }
 
   return scope.Close(result);
@@ -5172,12 +5402,12 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   // READ-LOCK start
   trx.lockRead();
   TRI_primary_collection_t* primary = collection->_collection;
-  TRI_voc_rid_t rid = primary->base._info._rid;
+  TRI_voc_tick_t tick = primary->base._info._tick;
 
   trx.finish(res);
   // READ-LOCK end
 
-  return scope.Close(V8RevisionId(rid));
+  return scope.Close(V8RevisionId(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5589,6 +5819,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_createDocumentCollection()"));
   result->Set(j++, v8::String::New("_createEdgeCollection()"));
   result->Set(j++, v8::String::New("_document()"));
+  result->Set(j++, v8::String::New("_drop()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));
@@ -5964,9 +6195,11 @@ static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
 /// @brief weak reference callback for a barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakBarrierCallback (v8::Isolate* isolate,
+                                 v8::Persistent<v8::Value> object,
+                                 void* parameter) {
   TRI_barrier_t* barrier;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
   barrier = (TRI_barrier_t*) parameter;
 
   LOG_TRACE("weak-callback for barrier called");
@@ -5977,7 +6210,7 @@ static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* paramet
 
 
   // dispose and clear the persistent handle
-  persistent.Dispose();
+  persistent.Dispose(isolate);
   persistent.Clear();
 
   // free the barrier
@@ -6115,9 +6348,9 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
     }
   }
 
-  result->Set(count++, v8g->DidKey);
-  result->Set(count++, v8g->RevKey);
-  result->Set(count++, v8g->KeyKey);
+  result->Set(count++, v8g->_IdKey);
+  result->Set(count++, v8g->_RevKey);
+  result->Set(count++, v8g->_KeyKey);
 
   return scope.Close(result);
 }
@@ -6206,13 +6439,13 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> val,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
+    v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
 
     if (! ParseDocumentHandle(didVal, collectionName, key)) {
       return false;
     }
 
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->RevKey), true);
+    rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
 
     if (rid == 0) {
       return false;
@@ -6324,7 +6557,7 @@ TRI_index_t* TRI_LookupIndexByHandle (const CollectionNameResolver& resolver,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IidKey);
+    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
@@ -6383,7 +6616,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(v8g->DidKey, V8CollectionId(collection->_cid), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6397,8 +6630,14 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
                                           TRI_doc_mptr_t const* document,
                                           TRI_barrier_t* barrier) {
   v8::HandleScope scope;
+  
+  TRI_ASSERT_MAINTAINER(document != 0);
+  TRI_ASSERT_MAINTAINER(document->_key != 0);
+  TRI_ASSERT_MAINTAINER(collection != 0);
+  TRI_ASSERT_MAINTAINER(barrier != 0);
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
@@ -6416,11 +6655,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
   if (i == v8g->JSBarriers.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(barrier));
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
     result->SetInternalField(SLOT_BARRIER, persistent);
 
     v8g->JSBarriers[barrier] = persistent;
-    persistent.MakeWeak(barrier, WeakBarrierCallback);
+    persistent.MakeWeak(isolate, barrier, WeakBarrierCallback);
   }
   else {
     result->SetInternalField(SLOT_BARRIER, i->second);
@@ -6429,17 +6668,17 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (const CollectionNameResolver& resolver
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->DidKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
-  result->Set(v8g->RevKey, V8RevisionId(rid), v8::ReadOnly);
-  result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(collection->_cid), document->_key), v8::ReadOnly);
+  result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
+  result->Set(v8g->_KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
 
-    result->Set(v8g->FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    result->Set(v8g->_FromKey, V8DocumentId(resolver.getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver.getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
   }
 
   // and return
@@ -6458,23 +6697,16 @@ const int32_t TRI_GetVocBaseColType () {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
-                                      TRI_vocbase_t* vocbase,
-                                      const size_t threadNumber) {
+void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+                          TRI_vocbase_t* vocbase,
+                          const size_t threadNumber) {
   v8::HandleScope scope;
-
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::Template> pt;
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  // set the default database
   v8g->_vocbase = vocbase;
 
   // create the regular expressions
@@ -6504,44 +6736,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     LOG_FATAL_AND_EXIT("cannot compile regular expression");
   }
 
-
-  // .............................................................................
-  // keys
-  // .............................................................................
-
-  v8g->IsSystemKey       = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isSystem"));
-  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("isVolatile"));
-  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("journalSize"));
-  v8g->KeyOptionsKey     = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("keyOptions"));
-  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("waitForSync"));
-
-  if (v8g->DidKey.IsEmpty()) {
-    v8g->DidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_id"));
-  }
-
-  if (v8g->KeyKey.IsEmpty()) {
-    v8g->KeyKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_key"));
-  }
-
-  if (v8g->FromKey.IsEmpty()) {
-    v8g->FromKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_from"));
-  }
-
-  if (v8g->IidKey.IsEmpty()) {
-    v8g->IidKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("id"));
-  }
-
-  if (v8g->OldRevKey.IsEmpty()) {
-    v8g->OldRevKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_oldRev"));
-  }
-
-  if (v8g->RevKey.IsEmpty()) {
-    v8g->RevKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_rev"));
-  }
-
-  if (v8g->ToKey.IsEmpty()) {
-    v8g->ToKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_to"));
-  }
+  v8::Handle<v8::ObjectTemplate> rt;
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::Template> pt;
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -6568,9 +6765,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
   TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
 
-  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
-
 
   // .............................................................................
   // generate the TRI_shaped_json_t template
@@ -6590,9 +6786,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                                                         // Handle<Value> data = Handle<Value>());
                               );
 
-  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ShapedJson", ft->GetFunction());
-
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -6617,9 +6812,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
-#if 0
   TRI_AddMethodVocbase(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
-#endif
   TRI_AddMethodVocbase(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
@@ -6647,11 +6840,11 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
+  TRI_AddMethodVocbase(rt, "saveOrReplace", JS_SaveOrReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
-  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCollection", ft->GetFunction());
-
 
   // .............................................................................
   // generate the general cursor template
@@ -6675,7 +6868,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCursor", ft->GetFunction());
 
   // .............................................................................
@@ -6700,13 +6893,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create global variables
   // .............................................................................
   
-  TRI_AddGlobalVariableVocbase(context, "DATABASEPATH", v8::String::New(vocbase->_path));
   TRI_AddGlobalVariableVocbase(context, "db", TRI_WrapVocBase(vocbase));
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
-
-  return v8g;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

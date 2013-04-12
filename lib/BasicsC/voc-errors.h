@@ -47,6 +47,8 @@ extern "C" {
 ///   Will be raised when an attempt is made to overwrite an existing file.
 /// - 17: @LIT{type error}
 ///   Will be raised when a type error is unencountered.
+/// - 18: @LIT{lock timeout}
+///   Will be raised when there's a timeout waiting for a lock.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 403: @LIT{forbidden}
@@ -162,6 +164,8 @@ extern "C" {
 ///   current user.
 /// - 1225: @LIT{out of keys}
 ///   Will be raised when a key generator runs out of keys.
+/// - 1226: @LIT{missing document key}
+///   Will be raised when a document key is missing.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -239,10 +243,7 @@ extern "C" {
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @LIT{transaction definition is incomplete}
-///   Will be raised when the transaction definition is incomplete (e.g. lacks
-///   collections to use).
-/// - 1651: @LIT{invalid transaction state}
+/// - 1650: @LIT{invalid transaction state}
 ///   Will be raised when an operation is requested on a transaction that has
 ///   an incompatible state.
 /// - 1652: @LIT{nested transactions detected}
@@ -253,7 +254,7 @@ extern "C" {
 /// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
-/// - 1655: @LIT{disallowed operation inside a transaction}
+/// - 1655: @LIT{disallowed operation inside transaction}
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
 /// - 1700: @LIT{invalid user name}
@@ -592,6 +593,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TYPE_ERROR                                              (17)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 18: ERROR_LOCK_TIMEOUT
+///
+/// lock timeout
+///
+/// Will be raised when there's a timeout waiting for a lock.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCK_TIMEOUT                                            (18)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1106,6 +1117,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_OUT_OF_KEYS                                      (1225)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1226: ERROR_ARANGO_DOCUMENT_KEY_MISSING
+///
+/// missing document key
+///
+/// Will be raised when a document key is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING                             (1226)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -1427,18 +1448,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1650: ERROR_TRANSACTION_INCOMPLETE
-///
-/// transaction definition is incomplete
-///
-/// Will be raised when the transaction definition is incomplete (e.g. lacks
-/// collections to use).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INCOMPLETE                                  (1650)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1651: ERROR_TRANSACTION_INVALID_STATE
+/// @brief 1650: ERROR_TRANSACTION_INVALID_STATE
 ///
 /// invalid transaction state
 ///
@@ -1446,7 +1456,7 @@ void TRI_InitialiseErrorMessages (void);
 /// incompatible state.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1651)
+#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1652: ERROR_TRANSACTION_NESTED
@@ -1483,7 +1493,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1655: ERROR_TRANSACTION_DISALLOWED_OPERATION
 ///
-/// disallowed operation inside a transaction
+/// disallowed operation inside transaction
 ///
 /// Will be raised when a disallowed operation is carried out in a transaction.
 ////////////////////////////////////////////////////////////////////////////////

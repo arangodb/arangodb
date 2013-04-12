@@ -93,7 +93,9 @@ const int32_t TRI_GetVocBaseColType ();
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context>, TRI_vocbase_t*, const size_t);
+void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
+                          TRI_vocbase_t*,
+                          const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

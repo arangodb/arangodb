@@ -177,17 +177,6 @@ struct TRI_df_marker_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enum for write operations
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_DOCUMENT_INSERT = 1,
-  TRI_DOCUMENT_UPDATE,
-  TRI_DOCUMENT_REMOVE
-}
-TRI_document_operation_e;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief primary collection with global read-write lock
 ///
 /// A primary collection is a collection with a single read-write lock. This
@@ -273,6 +262,16 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rolls back a document operation
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
+                                             TRI_voc_document_operation_e,
+                                             TRI_doc_mptr_t*,
+                                             TRI_doc_mptr_t*,
+                                             TRI_doc_mptr_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker into the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -288,7 +287,8 @@ int TRI_WriteMarkerDocumentCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteOperationDocumentCollection (TRI_document_collection_t*,
-                                          TRI_document_operation_e,
+                                          TRI_voc_document_operation_e,
+                                          TRI_doc_mptr_t*,
                                           TRI_doc_mptr_t*,
                                           TRI_doc_mptr_t*,
                                           TRI_df_marker_t*,
@@ -670,6 +670,13 @@ TRI_vector_t TRI_SelectByExample (struct TRI_transaction_collection_s*,
 int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
                                           struct TRI_doc_update_policy_s const*,
                                           TRI_doc_mptr_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the collection revision id
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetRevisionDocumentCollection (TRI_document_collection_t*,
+                                        TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

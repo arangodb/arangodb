@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Edge Shaper UI', function () {
-    var svg, shaper, shaperUI, list, spy;
+    var svg, shaper, shaperUI, list;
 
     beforeEach(function () {
       svg = document.createElement("svg");
@@ -50,6 +50,30 @@
       list.id = "control_list";
       shaperUI = new EdgeShaperControls(list, shaper);
       spyOn(shaper, 'changeTo');
+      this.addMatchers({
+        toConformToListCSS: function() {
+          var li = this.actual,
+            a = li.firstChild,
+            lbl = a.firstChild,
+            msg = "";
+          this.message = function() {
+            return "Expected " + msg;
+          };
+          if (li === undefined || li.tagName.toLowerCase() !== "li") {
+            msg = "first element to be a li";
+            return false;
+          }
+          if (a === undefined || a.tagName.toLowerCase() !== "a") {
+            msg = "first element to be a a";
+            return false;
+          }
+          if (lbl === undefined || lbl.tagName.toLowerCase() !== "label") {
+            msg = "first element to be a label";
+            return false;
+          }
+          return true;
+        }
+      });
     });
 
     afterEach(function () {
@@ -71,6 +95,7 @@
         shaperUI.addControlOpticShapeNone();
       
         expect($("#control_list #control_none").length).toEqual(1);
+        expect($("#control_list #control_none")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_none");
       
@@ -87,6 +112,7 @@
         shaperUI.addControlOpticShapeArrow();
       
         expect($("#control_list #control_arrow").length).toEqual(1);
+        expect($("#control_list #control_arrow")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_arrow");
       
@@ -104,6 +130,7 @@
         shaperUI.addControlOpticLabel();
       
         expect($("#control_list #control_label").length).toEqual(1);
+        expect($("#control_list #control_label")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_label");
         $("#control_label_key").attr("value", "theAnswer");
@@ -125,6 +152,7 @@
         shaperUI.addControlOpticSingleColour();
       
         expect($("#control_list #control_singlecolour").length).toEqual(1);
+        expect($("#control_list #control_singlecolour")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_singlecolour");
         $("#control_singlecolour_stroke").attr("value", "#123456");
@@ -149,6 +177,7 @@
         shaperUI.addControlOpticAttributeColour();
       
         expect($("#control_list #control_attributecolour").length).toEqual(1);
+        expect($("#control_list #control_attributecolour")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_attributecolour");
         $("#control_attributecolour_key").attr("value", "label");
@@ -173,6 +202,7 @@
         shaperUI.addControlOpticGradientColour();
       
         expect($("#control_list #control_gradientcolour").length).toEqual(1);
+        expect($("#control_list #control_gradientcolour")[0]).toConformToListCSS();
       
         helper.simulateMouseEvent("click", "control_gradientcolour");
         $("#control_gradientcolour_source").attr("value", "#123456");
@@ -193,10 +223,6 @@
       }, 2000, "The modal dialog should disappear.");
       
     });
-    
-    
-    
-    
     
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();

@@ -1,0 +1,52 @@
+{
+  "apiVersion":"1.2beta",
+  "swaggerVersion":"1.1",
+  "apis":[    {
+      "path": "/document",
+      "description": "Interface for Documents"
+    },
+    {
+      "path": "/edges",
+      "description": "Interface for Edges"
+    },
+    {
+      "path": "/collection",
+      "description": "Interface for Collections"
+    },
+    {
+      "path": "/graph",
+      "description": "Interface for Graphs"
+    },
+    {
+      "path": "/user",
+      "description": "Interface for Users"
+    },
+    {
+      "path": "/system",
+      "description": "Interface for System"
+    },
+    {
+      "path": "/cursor",
+      "description": "Interface for Cursors"
+    },
+    {
+      "path": "/explain",
+      "description": "Interface for Explain"
+    },
+    {
+      "path": "/index",
+      "description": "Interface for Indexes"
+    },
+    {
+      "path": "/simple",
+      "description": "Interface for SimpleQueries"
+    },
+    {
+      "path": "/query",
+      "description": "Interface for Queries"
+    },
+    {
+      "path": "/structure",
+      "description": "Interface for Structures"
+    }]
+  }

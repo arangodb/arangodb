@@ -18,7 +18,8 @@ var documentView = Backbone.View.extend({
     "click #documentTableID tr" : "clicked",
     "click #editSecondRow"      : "editSecond",
     "keydown .sorting_1"        : "listenKey",
-    "keydown"                   : "listenGlobalKey"
+    "keydown"                   : "listenGlobalKey",
+    "blur textarea"             : "checkFocus",
   },
 
   checkFocus: function(e) {
@@ -28,9 +29,10 @@ var documentView = Backbone.View.extend({
     $.each(data, function(key, val) {
       if (val[0] === self.currentKey) {
         $(self.table).dataTable().fnDeleteRow( key );
+        $('#addRow').removeClass('disabledBtn');
       }
     });
-
+  $('td').removeClass('validateError');
   },
 
   listenGlobalKey: function(e) {
@@ -105,6 +107,7 @@ var documentView = Backbone.View.extend({
       var result = window.arangoDocumentStore.saveDocument(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Document saved');
+        $('td').removeClass('validateError');
       }
       else if (result === false) {
         arangoHelper.arangoAlert('Document error');
@@ -116,6 +119,7 @@ var documentView = Backbone.View.extend({
       var result = window.arangoDocumentStore.saveEdge(this.colid, this.docid, model);
       if (result === true) {
         arangoHelper.arangoNotification('Edge saved');
+        $('td').removeClass('validateError');
       }
       else if (result === false) {
         arangoHelper.arangoError('Edge error');
@@ -173,6 +177,10 @@ var documentView = Backbone.View.extend({
   },
 
   addLine: function (event) {
+    if ($('#addRow').hasClass('disabledBtn') === true) {
+      return;
+    }
+    $('#addRow').addClass('disabledBtn');
     //event.stopPropagation();
     var randomKey = arangoHelper.getRandomToken();
     var self = this;
@@ -342,8 +350,34 @@ var documentView = Backbone.View.extend({
       cancelcssclass: 'btn btn-danger pull-right',
       cancel: 'Cancel',
       submit: 'Save',
-      onblur: 'ignore'
+      onblur: 'cancel',
+      onsubmit: self.validate
     });
+  },
+  validate: function (settings, td) {
+    var returnval = true;
+    if ($(td).hasClass('sorting_1') === true) {
+      var toCheck = $('textarea').val();
+      var data = $('#documentTableID').dataTable().fnGetData();
+
+      if (toCheck === '') {
+          $(td).addClass('validateError');
+          arangoHelper.arangoNotification("Key is empty!");
+          returnval = false;
+          return returnval;
+      }
+
+      $.each(data, function(key, val) {
+        if (val[0] === toCheck) {
+          $(td).addClass('validateError');
+          arangoHelper.arangoNotification("Key already exists!");
+          returnval = false;
+        }
+      });
+    }
+    else if ($(td).hasClass('rightCell') === true) {
+    }
+    return returnval;
   },
   getTypedValue: function (value) {
     value = value.replace(/(^\s+|\s+$)/g, '');

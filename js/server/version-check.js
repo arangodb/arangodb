@@ -50,7 +50,7 @@
   var db = internal.db;
 
   // path to the VERSION file
-  var versionFile = internal.DATABASEPATH + "/VERSION";
+  var versionFile = internal.db._path + "/VERSION";
 
   function runUpgrade (currentVersion) {
     var allTasks = [ ];
@@ -327,7 +327,7 @@
 
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { waitForSync : false });
+      return createSystemCollection("_aal", { waitForSync : true });
     });
     
     // create a unique index on collection attribute in _aal
@@ -348,6 +348,50 @@
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
       return createSystemCollection("_aqlfunctions", { waitForSync : false });
+    });
+
+    // set up the collection _fishbowl
+    addTask("setupFishbowl", "setup _fishbowl collection", function () {
+      return createSystemCollection("_fishbowl", { waitForSync : true });
+    });
+    
+    // create a unique index on collection attribute in _aal
+    addTask("createFisbowlIndex",
+            "create indexes on collection attribute in _fishbowl collection",
+      function () {
+        var fishbowl = getCollection("_fishbowl");
+
+        if (! fishbowl) {
+          return false;
+        }
+
+        fishbowl.ensureFulltextIndex("description");
+        fishbowl.ensureFulltextIndex("name");
+
+        return true;
+    });
+
+    // set up the collection _ids
+    addTask("setupIds", "setup _ids collection", function () {
+      return createSystemCollection("_ids", { waitForSync : false });
+    });
+    
+    // create a cap constraint for _ids
+    addTask("ensureIdsCap", "ensureCapConstraint for _ids collection", function () {
+      var ids = getCollection("_ids");
+
+      if (! ids) {
+        return false;
+      }
+
+      ids.ensureCapConstraint(50);
+
+      return true;
+    });
+
+    // set up the collection _trx
+    addTask("setupTrx", "setup _trx collection", function () {
+      return createSystemCollection("_trx", { waitForSync : false });
     });
 
     // loop through all tasks and execute them

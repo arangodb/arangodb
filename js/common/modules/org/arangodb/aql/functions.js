@@ -30,8 +30,9 @@
 
 var internal = require("internal"); 
 var arangodb = require("org/arangodb");
+
 var db = arangodb.db;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = arangodb.ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               module "org/arangodb/aql/functions"

@@ -166,6 +166,9 @@ sub formatFile ($$$) {
       || die "cannot open output file '$file.new'";
   }
 
+  my $lastLine = undef;
+  my $skipGroup = 0;
+
   while (<IN>) {
     chomp;
 
@@ -175,11 +178,45 @@ sub formatFile ($$$) {
     my $line = $_;
     $breakLine = 0;
 
+    if ($line =~ /^\/\/\/ \@addtogroup/) {
+      $lastLine = undef;
+      $skipGroup = 1;
+      next;
+    }
+
+    if ($line =~ /^\/\/\/ @}/) {
+      $lastLine = undef;
+      $skipGroup = 1;
+      next;
+    }
+
+    if ($skipGroup == 1) {
+      if ($line =~ /^\/\/\/\/\/\//) {
+	$skipGroup = 2;
+      }
+
+      next;
+    }
+
+    if ($skipGroup == 2) {
+      if ($line !~ /^[\t ]*$/) {
+	$skipGroup = 0;
+      }
+      else {
+	next;
+      }
+    }
+
+    if (defined $lastLine) {
+      print $out "$lastLine\n";
+      $lastLine = undef;
+    }
+
     if ($line eq '/// @author Dr. O') {
       $line = '/// @author Dr. Oreste Costa-Panaia';
     }
 
-    if ($line =~ /\/\/ outline-regexp:/) {
+    if ($line =~ /^\/\/ outline-regexp:/) {
       if ($isJavaScript == 1) {
 	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
       }
@@ -297,8 +334,13 @@ sub formatFile ($$$) {
     }
 
     if (! $dryRun || ! $preambleDone) {
-      print $out "$line\n";
+      $lastLine = $line;
     }
+  }
+
+  if (defined $lastLine) {
+    print $out "$lastLine\n";
+    $lastLine = undef;
   }
 
   if (! $dryRun) {

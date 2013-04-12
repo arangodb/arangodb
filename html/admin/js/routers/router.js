@@ -14,10 +14,12 @@ $(document).ready(function() {
       "query"                               : "query",
       "logs"                                : "logs",
       "about"                               : "about",
-      "application/:key"                    : "applicationEdit",
+      "application/installed/:key"          : "applicationEdit",
+      "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
-      "applications/documentation"          : "applicationsDocumentation"
+      "applications/documentation"          : "applicationsDocumentation",
+      "graph"                               : "graph"
       
     },
     initialize: function () {
@@ -62,6 +64,7 @@ $(document).ready(function() {
       this.footerView = new window.footerView();
       this.naviView.render();
       this.footerView.render();
+      this.graphView = new window.graphView();
     },
     collections: function() {
       var naviView = this.naviView;
@@ -156,6 +159,11 @@ $(document).ready(function() {
       });
     },
     
+    graph: function() {
+      this.graphView.render();
+      this.naviView.selectMenuItem('graph-menu'); 
+    },
+    
     applicationsAvailable: function() {
       if (this.foxxList === undefined) {
         this.foxxList = new window.FoxxCollection();
@@ -196,8 +204,25 @@ $(document).ready(function() {
         var editAppView = new window.foxxEditView({model: this.foxxList.findWhere({_key: appkey})});
         editAppView.render();
       }
+    },
+    
+    applicationInstall: function(appkey) {
+      if (this.foxxList === undefined) {
+        var self = this;
+        this.foxxList = new window.FoxxCollection();
+        this.foxxList.fetch({
+          success: function() {
+            var installAppView = new window.foxxMountView({model: self.foxxList.findWhere({_key: appkey})});
+            installAppView.render();
+          }
+        });
+      } else {
+        var installAppView = new window.foxxMountView({model: this.foxxList.findWhere({_key: appkey})});
+        installAppView.render();
+      }
       
     },
+    
     
     applicationsDocumentation: function() {
       if (this.appDocuView === undefined) {

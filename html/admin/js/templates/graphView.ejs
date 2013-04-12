@@ -1,18 +1,32 @@
-<ul class="thumbnails2">
-  <div id="transparentHeader">
-    <h4>Graph Editor</h4>
-  </div>
-</ul>
-
-<div id="queryDiv" class="form-actions">
-  <div id="outputLabel">Output</div>
-  <div id="graphOutput" class="thumbnail">
-    <svg id="graphSVG">
-    </svg>
-  </div>
-  <i class="icon-trash clearicon"></i>
-
-  <div id="editorLabel">Input</div>
-  <div id="aqlEditor"></div>
-  <button id="submitQueryButton" class="btn btn-success">Submit</button>
-</div>
+<form action="javascript:void(0);" autocomplete="on" class="form-horizontal" id="creationDialog">
+  <fieldset>
+    <legend>Create the Viewer</legend>
+    <fieldset>
+      <legend>Setup Arango Connection</legend>
+      <div class="control-group">
+        <label for="host" class="control-label">Host</label>
+        <div class="controls">
+          <input id="host" type="text" name="host" placeholder="Host" maxlength="75" class="input-xlarge" value="http://localhost:8529">
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="nodeCollection" class="control-label">Node Collection</label>
+        <div class="controls">
+          <input id="nodeCollection" type="text" name="nodeCollection" placeholder="Node Collection" maxlength="75" class="input-xlarge" value="Classes">
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="edgeCollection" class="control-label">Edge Collection</label>
+        <div class="controls">
+          <input id="edgeCollection" type="text" name="edgeCollection" placeholder="Edge Collection" maxlength="75" class="input-xlarge" value="Connections">
+        </div>
+      </div>
+    </fieldset>
+         
+    <div class="control-group">
+      <div class="controls">
+        <button type="submit" class="btn btn-primary" id="createViewer" >Create</button>
+      </div>
+    </div>
+  </fieldset>
+</form>

@@ -1,7 +1,7 @@
 {
   "apiVersion":"1.2beta",
   "swaggerVersion":"1.1",
-  "basePath":"http://127.0.0.1:8529/_admin/html/api-docs",
+  "basexPath":"http://192.168.173.10:8529/_admin/html/api-docs",
   "apis":[    {
       "path": "/document",
       "description": "Interface for Documents"

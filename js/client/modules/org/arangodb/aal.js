@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, continue: true, regexp: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,10 +36,10 @@ var fs = require("fs");
 
 var arangodb = require("org/arangodb");
 var arangosh = require("org/arangodb/arangosh");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
+var ArangoError = arangodb.ArangoError;
 var arango = internal.arango;
-var db = internal.db;
+var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -55,7 +55,29 @@ var db = internal.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function getStorage () {
+  'use strict';
+
   return db._collection('_aal');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the aal collection
+////////////////////////////////////////////////////////////////////////////////
+
+function getFishbowlStorage () {
+  'use strict';
+
+  return db._collection('_fishbowl');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the fishbow repository
+////////////////////////////////////////////////////////////////////////////////
+
+function getFishbowlUrl (version) {
+  'use strict';
+
+  return "triAGENS/ArangoDB-Apps";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,6 +85,8 @@ function getStorage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildGithubUrl (repository, version) {
+  'use strict';
+
   if (typeof version === "undefined") {
     version = "master";
   }
@@ -75,7 +99,9 @@ function buildGithubUrl (repository, version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildGithubFishbowlUrl (name) {
-  return "https://raw.github.com/triAGENS/ArangoDB-Apps/master/Fishbowl/" + name + ".json";
+  'use strict';
+
+  return "https://raw.github.com/" + getFishbowlUrl() + "/master/Fishbowl/" + name + ".json";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,6 +109,8 @@ function buildGithubFishbowlUrl (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function throwDownloadError (msg) {
+  'use strict';
+
   var err = new ArangoError();
   err.errorNum = arangodb.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code;
   err.errorMessage = arangodb.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg);
@@ -95,6 +123,8 @@ function throwDownloadError (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateAppName (name) {
+  'use strict';
+
   if (typeof name === 'string' && name.length > 0) {
     return;
   }
@@ -111,6 +141,8 @@ function validateAppName (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateMount (mnt) {
+  'use strict';
+
   if (typeof mnt === 'string' && mnt.substr(0, 1) === '/') {
     return;
   }
@@ -127,6 +159,8 @@ function validateMount (mnt) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function extractNameAndVersionManifest (source, filename) {
+  'use strict';
+
   var manifest = JSON.parse(fs.read(filename));
 
   source.name = manifest.name;
@@ -138,6 +172,8 @@ function extractNameAndVersionManifest (source, filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function processDirectory (source) {
+  'use strict';
+
   var i;
   var location = source.location;
 
@@ -183,6 +219,8 @@ function processDirectory (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function repackZipFile (source) {
+  'use strict';
+
   var i;
 
   var filename = source.filename;
@@ -266,6 +304,8 @@ function repackZipFile (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function processZip (source) {
+  'use strict';
+
   var location = source.location;
 
   if (! fs.exists(location) || ! fs.isFile(location)) {
@@ -283,6 +323,8 @@ function processZip (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function processGithubRepository (source) {
+  'use strict';
+
   var url = buildGithubUrl(source.location, source.version);
   var tempFile = fs.getTempFile("downloads", false); 
 
@@ -309,6 +351,8 @@ function processGithubRepository (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function processSource (src) {
+  'use strict';
+
   if (src.type === "zip") {
     processZip(src);
   }
@@ -342,6 +386,113 @@ function processSource (src) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the fishbowl from a zip archive
+////////////////////////////////////////////////////////////////////////////////
+
+function updateFishbowlFromZip (filename) {
+  'use strict';
+
+  var i;
+  var tempPath = fs.getTempPath();
+  var fishbowl = getFishbowlStorage();
+
+  try {
+    fs.makeDirectoryRecursive(tempPath);
+    fs.unzipFile(filename, tempPath, false, true);
+
+    var root = fs.join(tempPath, "ArangoDB-Apps-master/Fishbowl");
+
+    if (! fs.exists(root)) {
+      throw new Error("fishbowl not found");
+    }
+
+    var m = fs.listTree(root);
+    var reSub = /(.*)\.json$/;
+    
+    for (i = 0;  i < m.length;  ++i) {
+      var f = m[i];
+      var match = reSub.exec(f);
+
+      if (match === null) {
+        continue;
+      }
+
+      var app = fs.join(root, f);
+      var desc;
+
+      try {
+        desc = JSON.parse(fs.read(app));
+      }
+      catch (err1) {
+        console.error("cannot parse description for app '" + f + "': %s", String(err1));
+        continue;
+      }
+
+      desc._key = match[1];
+
+      if (! desc.hasOwnProperty("name")) {
+        desc.name = match[1];
+      }
+
+      try {
+        try {
+          fishbowl.save(desc);
+        }
+        catch (err3) {
+          fishbowl.replace(desc._key, desc);
+        }
+      }
+      catch (err2) {
+        console.error("cannot save description for app '" + f + "': %s", String(err2));
+        continue;
+      }
+    }
+  }
+  catch (err) {
+    if (tempPath !== undefined && tempPath !== "") {
+      fs.removeDirectoryRecursive(tempPath);
+    }
+
+    throw err;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads the fishbowl repository
+////////////////////////////////////////////////////////////////////////////////
+
+function updateFishbowl () {
+  'use strict';
+
+  var i;
+
+  var url = buildGithubUrl(getFishbowlUrl());
+  var filename = fs.getTempFile("downloads", false); 
+  var path = fs.getTempFile("zip", false); 
+
+  try {
+    var result = internal.download(url, "get", filename);
+
+    if (result.code < 200 || result.code > 299) {
+      throw "github download failed";
+    }
+
+    updateFishbowlFromZip(filename);
+
+    filename = undefined;
+  }
+  catch (err) {
+    if (filename !== undefined) {
+      fs.remove(filename);
+    }
+
+    fs.removeDirectoryRecursive(path);
+
+    throw err;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -359,6 +510,8 @@ function processSource (src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.load = function (type, location, version) {
+  'use strict';
+
   var source;
   var filename;
   var req;
@@ -398,6 +551,8 @@ exports.load = function (type, location, version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.installApp = function (appId, mount, options) {
+  'use strict';
+
   var res;
   var req = {
     appId: appId,
@@ -419,6 +574,8 @@ exports.installApp = function (appId, mount, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.installDevApp = function (name, mount, options) {
+  'use strict';
+
   var res;
   var req = {
     name: name,
@@ -440,6 +597,8 @@ exports.installDevApp = function (name, mount, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.uninstallApp = function (key) {
+  'use strict';
+
   var res;
   var req = {
     key: key
@@ -456,6 +615,8 @@ exports.uninstallApp = function (key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printInstalled = function (showPrefix) {
+  'use strict';
+
   var list = exports.listInstalled(showPrefix);
 
   if (showPrefix) {
@@ -475,6 +636,8 @@ exports.printInstalled = function (showPrefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.listInstalled = function (showPrefix) {
+  'use strict';
+
   var aal = getStorage();
   var cursor = aal.byExample({ type: "mount" });
   var result = [];
@@ -513,6 +676,8 @@ exports.listInstalled = function (showPrefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printAvailable = function () {
+  'use strict';
+
   var list = exports.listAvailable();
 
   arangodb.printTable(
@@ -525,6 +690,8 @@ exports.printAvailable = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.listAvailable = function () {
+  'use strict';
+
   var aal = getStorage();
   var cursor = aal.byExample({ type: "app" });
   var result = [];
@@ -545,51 +712,107 @@ exports.listAvailable = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief details for an application
+/// @brief lists all FOXX applications from the FishBowl
+////////////////////////////////////////////////////////////////////////////////
+
+exports.listFishbowl = function () {
+  'use strict';
+
+  var fishbowl = getFishbowlStorage();
+  var cursor = fishbowl.all();
+  var result = [];
+
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+    var res = {
+      name: doc.name,
+      description: doc.description,
+      author: doc.author
+    };
+
+    result.push(res);
+  }
+
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists all FOXX applications from the FishBowl
+////////////////////////////////////////////////////////////////////////////////
+
+exports.printFishbowl = function () {
+  'use strict';
+
+  var compare = function (a,b) {
+    if (a.name < b.name) {return -1;}
+    if (b.name < a.name) {return 1;}
+    return 0;
+  };
+
+  var list = exports.listFishbowl();
+
+  if (list.length === 0) {
+    arangodb.print("Fishbowl is empty, please use 'updateFishbowl'");
+  }
+  else {
+    arangodb.printTable(
+      list.sort(compare),
+      [ "name", "author", "description" ]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief searchs for FOXX applications from the FishBowl
+////////////////////////////////////////////////////////////////////////////////
+
+exports.search = function (name) {
+  'use strict';
+
+  var fishbowl = getFishbowlStorage();
+
+  if (fishbowl.count() === 0) {
+    arangodb.print("Fishbowl is empty, please use 'updateFishbowl'");
+
+    return [];
+  }
+
+  var docs = fishbowl.fulltext("description", "prefix:" + name).toArray();
+  docs = docs.concat(fishbowl.fulltext("name", "prefix:" + name).toArray());
+
+  arangodb.printTable(
+    docs,
+    [ "name", "author", "description" ]);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief details for a FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.details = function (name) {
   'use strict';
 
-  validateAppName(name);
-
   var i;
 
-  var tempFile = fs.getTempFile("downloads", false); 
-  var url = buildGithubFishbowlUrl(name);
-  var content;
+  validateAppName(name);
 
-  try {
-    var result = internal.download(url, "get", tempFile);
+  var fishbowl = getFishbowlStorage();
 
-    if (result.code < 200 || result.code > 299) {
-      throwDownloadError("could not download from repository '" + url + "'");
-    }
-
-    content = fs.read(tempFile);
-    fs.remove(tempFile);
-  }
-  catch (err1) {
-    if (fs.exists(tempFile)) {
-      try {
-        fs.remove(tempFile);
-      }
-      catch (err2) {
-      }
-    }
-    throwDownloadError("could not download from repository '" + url + "': " + String(err1));
+  if (fishbowl.count() === 0) {
+    arangodb.print("Fishbowl is empty, please use 'updateFishbowl'");
+    return;
   }
 
   var desc;
 
   try {
-    desc = JSON.parse(content);
+    desc = fishbowl.document(name);
   }
   catch (err) {
-    throw "description file for '" + name + "' is corrupt: " + String(err);
+    arangodb.print("No '" + name + "' in Fishbowl, please try 'search'");
+    return;
   }
 
-  internal.printf("Name: %s\n", name);
+  internal.printf("Name: %s\n", desc.name);
 
   if (desc.hasOwnProperty('author')) {
     internal.printf("Author: %s\n", desc.author);
@@ -617,6 +840,12 @@ exports.details = function (name) {
     }
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the Fishbowl
+////////////////////////////////////////////////////////////////////////////////
+
+exports.updateFishbowl = updateFishbowl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

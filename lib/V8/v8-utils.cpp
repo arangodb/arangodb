@@ -29,9 +29,9 @@
 #include "BasicsC/win-utils.h"
 #endif
 
-#include "build.h"
-
 #include "v8-utils.h"
+
+#include "build.h"
 
 #include <fstream>
 #include <locale>
@@ -87,11 +87,6 @@ namespace {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -110,18 +105,9 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a Javascript error object
@@ -133,9 +119,9 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), message.size());
-  
+
   v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
-  
+
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
@@ -289,18 +275,9 @@ static void FillDistribution (v8::Handle<v8::Object> list,
   list->Set(TRI_V8_SYMBOL(name), result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      JS functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a Javascript snippet, but do not execute it
@@ -356,13 +333,13 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 ///
 /// @FUN{internal.download(@FA{url}, @FA{method}, @FA{outfile}, @FA{timeout})}
 ///
-/// Downloads the data from the URL specified by @FA{url} and saves the 
+/// Downloads the data from the URL specified by @FA{url} and saves the
 /// response body to @FA{outfile}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   if (argv.Length() < 3) {
     TRI_V8_EXCEPTION_USAGE(scope, "download(<url>, <method>, <outfile>, <timeout>)");
   }
@@ -423,7 +400,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     else {
       TRI_V8_SYNTAX_ERROR(scope, "unsupported URL specified");
     }
-    
+
     LOGGER_TRACE("downloading file. endpoint: " << endpoint << ", relative URL: " << url);
 
     GeneralClientConnection* connection = GeneralClientConnection::factory(Endpoint::clientFactory(endpoint), timeout, timeout, 3);
@@ -491,7 +468,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
         }
       }
     }
-      
+
     result->Set(v8::String::New("code"),    v8::Number::New(returnCode));
     result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
 
@@ -502,7 +479,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
     delete connection;
     return scope.Close(result);
   }
-  
+
   TRI_V8_EXCEPTION_INTERNAL(scope, "too many redirects");
 }
 
@@ -732,8 +709,8 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
 ///
 /// @FUN{fs.getTempFile(@FA{directory}, @FA{createFile})}
 ///
-/// Returns the name for a new temporary file in directory @FA{directory}. 
-/// If @FA{createFile} is @LIT{true}, an empty file will be created so no other 
+/// Returns the name for a new temporary file in directory @FA{directory}.
+/// If @FA{createFile} is @LIT{true}, an empty file will be created so no other
 /// process can create a file of the same name.
 ///
 /// Note that the directory @FA{directory} must exist.
@@ -857,7 +834,7 @@ static v8::Handle<v8::Value> JS_List (v8::Arguments const& argv) {
   uint32_t j = 0;
 
   for (size_t i = 0;  i < list._length;  ++i) {
-    const char* f = list._buffer[i]; 
+    const char* f = list._buffer[i];
     result->Set(j++, v8::String::New(f));
   }
 
@@ -900,7 +877,7 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
   uint32_t j = 0;
 
   for (size_t i = 0;  i < list._length;  ++i) {
-    const char* f = list._buffer[i]; 
+    const char* f = list._buffer[i];
     result->Set(j++, v8::String::New(f));
   }
 
@@ -920,7 +897,7 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   // 2nd argument (permissions) are ignored for now
 
   // extract arguments
@@ -1021,8 +998,8 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(argv[2]);
- 
-  int res = TRI_ERROR_NO_ERROR; 
+
+  int res = TRI_ERROR_NO_ERROR;
   TRI_vector_string_t filenames;
   TRI_InitVectorString(&filenames, TRI_UNKNOWN_MEM_ZONE);
 
@@ -1043,8 +1020,8 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
 
     TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <files>, <password>)");
   }
- 
-  const char* p; 
+
+  const char* p;
   string password;
   if (argv.Length() == 4) {
     password = TRI_ObjectToString(argv[3]);
@@ -1638,7 +1615,7 @@ static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
   if (argv.Length() != 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "remove(<filename>)");
   }
-  
+
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
@@ -1670,7 +1647,7 @@ static v8::Handle<v8::Value> JS_RemoveDirectory (v8::Arguments const& argv) {
   if (argv.Length() != 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "removeDirectory(<path>)");
   }
-  
+
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
@@ -1695,7 +1672,7 @@ static v8::Handle<v8::Value> JS_RemoveDirectory (v8::Arguments const& argv) {
 ///
 /// @FUN{fs.removeDirectoryRecursive(@FA{path})}
 ///
-/// Removes a directory with all subelements. Throws an exception if the path 
+/// Removes a directory with all subelements. Throws an exception if the path
 /// is not a directory.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1706,7 +1683,7 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
   if (argv.Length() != 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "removeDirectoryRecursive(<path>)");
   }
-  
+
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
@@ -1716,7 +1693,7 @@ static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& a
   if (! TRI_IsDirectory(*name)) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<path> must be a valid directory name");
   }
-  
+
   if (TempPath.size() < 8) {
     // some security measure so we don't accidently delete all our files
     TRI_V8_EXCEPTION_PARAMETER(scope, "temporary directory name is too short. will not remove directory");
@@ -1980,17 +1957,45 @@ static v8::Handle<v8::Value> JS_RequestStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> self = args.Holder()->ToObject();
+
+  self->Set(v8g->ErrorKey, v8::True());
+  self->Set(v8g->ErrorNumKey, v8::Integer::New(TRI_ERROR_FAILED));
+
+  if (0 < args.Length() && args[0]->IsObject()) {
+    v8::Handle<v8::Object> data = args[0]->ToObject();
+
+    if (data->Has(v8g->ErrorKey)) {
+      self->Set(v8g->ErrorKey, data->Get(v8g->ErrorKey));
+    }
+
+    if (data->Has(v8g->CodeKey)) {
+      self->Set(v8g->CodeKey, data->Get(v8g->CodeKey));
+    }
+
+    if (data->Has(v8g->ErrorNumKey)) {
+      self->Set(v8g->ErrorNumKey, data->Get(v8g->ErrorNumKey));
+    }
+
+    if (data->Has(v8g->ErrorMessageKey)) {
+      self->Set(v8g->ErrorMessageKey, data->Get(v8g->ErrorMessageKey));
+    }
+  }
+
+  return scope.Close(self);
+} 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds attributes to array
@@ -2367,32 +2372,34 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
                       string const& tempPath) {
   v8::HandleScope scope;
 
-  v8::Handle<v8::FunctionTemplate> ft;
-  v8::Handle<v8::ObjectTemplate> rt;
-
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
-  if (v8g == 0) {
-    // this check is necessary because when building arangosh, we do not include v8-vocbase and
-    // this init function is the first one we call
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::ObjectTemplate> rt;
 
   TempPath = tempPath;
 
   // .............................................................................
   // generate the general error template
   // .............................................................................
-  
+
   ft = v8::FunctionTemplate::New();
   ft->SetClassName(TRI_V8_SYMBOL("ArangoError"));
+  ft->SetCallHandler(JS_ArangoError);
+
+  // ArangoError is a "sub-class" of Error
+  v8::Handle<v8::Function> ArangoErrorFunc = ft->GetFunction();
+  v8::Handle<v8::Value> ErrorObject = context->Global()->Get(TRI_V8_STRING("Error"));
+  v8::Handle<v8::Value> ErrorPrototype = ErrorObject->ToObject()->Get(TRI_V8_STRING("prototype"));
+
+  ArangoErrorFunc->Get(TRI_V8_SYMBOL("prototype"))->ToObject()->SetPrototype(ErrorPrototype);
+
+  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
-  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoError", ft->GetFunction());
+  v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
 
   // .............................................................................
   // create the global functions
@@ -2459,9 +2466,9 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(context, "SYS_PLATFORM", v8::String::New(TRI_PLATFORM));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

@@ -988,7 +988,6 @@ function require (path) {
         || norm === "/org/arangodb/actions"
         || norm === "/org/arangodb/arango-collection"
         || norm === "/org/arangodb/arango-database"
-        || norm === "/org/arangodb/arango-error"
         || norm === "/org/arangodb/arango-statement"
         || norm === "/org/arangodb/shaped-json") {
       return;
@@ -1212,7 +1211,7 @@ function require (path) {
       libpath = fs.join(this._root, this._path, this._manifest[type]);
     }
     else {
-      libpath = fs.join(this._root, this._path);
+      libpath = fs.join(this._root, this._path, type);
     }
 
     var pkg = new Package("application",

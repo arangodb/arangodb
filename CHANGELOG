@@ -1,3 +1,12 @@
+v1.3.0-alpha2 (2013-04-12)
+--------------------------
+
+* added transaction support
+
+* switched to semantic versioning (at least for alpha & alpha naming)
+
+* added saveOrReplace() for server-side JS
+
 v1.3.alpha1 (2013-04-05)
 ------------------------
 
@@ -95,6 +104,12 @@ v1.3.alpha1 (2013-04-05)
 
 v1.2.3 (XXXX-XX-XX)
 -------------------
+
+* added optional parameter `edgexamples` for AQL function EDGES() and NEIGHBORS()
+
+* added AQL function NEIGHBORS()
+ 
+* added freebsd support
 
 * fixed firstExample() query with `_id` and `_key` attributes
 

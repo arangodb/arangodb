@@ -135,7 +135,6 @@ dnl ============================================================================
 m4_include([m4/configure.basics])
 AC_PROG_RANLIB
 
-m4_include([m4/configure.static])
 m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])

@@ -30,8 +30,6 @@
 
 #include "BasicsC/common.h"
 
-#include "VocBase/vocbase.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,5 +1,33 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Graph functionality
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Michael Hackstein
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
 var modalDialogHelper = modalDialogHelper || {};
 
 (function dialogHelper() {
@@ -39,6 +67,8 @@ var modalDialogHelper = modalDialogHelper || {};
     header.appendChild(document.createTextNode(title));
     
     bodyDiv.className = "modal_body";
+    
+    bodyTable.id = idprefix + "table";
     
     footerDiv.className = "modal_footer";
     
@@ -108,6 +138,50 @@ var modalDialogHelper = modalDialogHelper || {};
           break;
       }
     });
+    $("#" + idprefix + "modal").modal('show');
+  };
+  
+  modalDialogHelper.createModalEditDialog = function(title, idprefix, object, callback) {
+    var tableToJSON,
+      callbackCapsule = function() {
+        callback(tableToJSON);
+      },
+      table =  modalDialogHelper.modalDivTemplate(title, idprefix, callbackCapsule);
+      
+    tableToJSON = function() {
+      var result = {};
+      _.each($("#" + idprefix + "table tr"), function(tr) {
+        var key = tr.children[0].children[0].value,
+          value = tr.children[1].children[0].value;
+        result[key] = value;
+      });
+      return result;
+    };
+    _.each(object, function(value, key) {
+      var tr = document.createElement("tr"),
+      keyTh = document.createElement("th"),
+      valueTh = document.createElement("th"),
+      keyInput,
+      valueInput;
+      
+      table.appendChild(tr);
+      tr.appendChild(keyTh);
+      keyTh.className = "collectionTh";
+      keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.id = idprefix + key + "_key";
+      keyInput.value = key;
+      keyTh.appendChild(keyInput);
+      
+      tr.appendChild(valueTh);
+      valueTh.className = "collectionTh";
+      valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.id = idprefix + key + "_value";
+      valueInput.value = value;
+      valueTh.appendChild(valueInput);
+      }
+    );
     $("#" + idprefix + "modal").modal('show');
   };
   
