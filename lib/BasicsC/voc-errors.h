@@ -243,18 +243,15 @@ extern "C" {
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @LIT{invalid transaction state}
-///   Will be raised when an operation is requested on a transaction that has
-///   an incompatible state.
-/// - 1652: @LIT{nested transactions detected}
-///   Will be raised when transactions are nested.
-/// - 1653: @LIT{internal transaction error}
+/// - 1650: @LIT{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
-/// - 1654: @LIT{unregistered collection used in transaction}
+/// - 1651: @LIT{nested transactions detected}
+///   Will be raised when transactions are nested.
+/// - 1652: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
-/// - 1655: @LIT{disallowed operation inside transaction}
+/// - 1653: @LIT{disallowed operation inside transaction}
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
 /// - 1700: @LIT{invalid user name}
@@ -1448,28 +1445,7 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1650: ERROR_TRANSACTION_INVALID_STATE
-///
-/// invalid transaction state
-///
-/// Will be raised when an operation is requested on a transaction that has an
-/// incompatible state.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1650)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1652: ERROR_TRANSACTION_NESTED
-///
-/// nested transactions detected
-///
-/// Will be raised when transactions are nested.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_TRANSACTION_NESTED                                      (1652)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1653: ERROR_TRANSACTION_INTERNAL
+/// @brief 1650: ERROR_TRANSACTION_INTERNAL
 ///
 /// internal transaction error
 ///
@@ -1477,10 +1453,20 @@ void TRI_InitialiseErrorMessages (void);
 /// internal error and indicates a bug in ArangoDB.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1653)
+#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1654: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
+/// @brief 1651: ERROR_TRANSACTION_NESTED
+///
+/// nested transactions detected
+///
+/// Will be raised when transactions are nested.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_NESTED                                      (1651)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1652: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
 ///
 /// unregistered collection used in transaction
 ///
@@ -1488,17 +1474,17 @@ void TRI_InitialiseErrorMessages (void);
 /// was not registered at transaction start.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
+#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1652)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1655: ERROR_TRANSACTION_DISALLOWED_OPERATION
+/// @brief 1653: ERROR_TRANSACTION_DISALLOWED_OPERATION
 ///
 /// disallowed operation inside transaction
 ///
 /// Will be raised when a disallowed operation is carried out in a transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1655)
+#define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1653)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME

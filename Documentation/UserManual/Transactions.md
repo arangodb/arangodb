@@ -44,9 +44,10 @@ is started.
 
 There are no individual `BEGIN`, `COMMIT` or `ROLLBACK` transaction commands 
 in ArangoDB. Instead, a transaction in ArangoDB is started by providing a 
-description of the transaction to the `TRANSACTION` Javascript function:
+description of the transaction to the `db._executeTransaction` Javascript 
+function:
 
-    TRANSACTION(description);
+    db._executeTransaction(description);
 
 This function will then automatically start a transaction, execute all required
 data retrieval and/or modification operations, and at the end automatically 
@@ -72,10 +73,10 @@ read operations on a collection. Any attempt to write into a collection used
 in read-only mode will make the transaction fail.
 
 Collections for a transaction are declared by providing them in the `collections` 
-attribute of the object passed to the `TRANSACTION` function. The `collections`
-attribute has the sub-attributes `read` and `write`:
+attribute of the object passed to the `_executeTransaction` function. The 
+`collections` attribute has the sub-attributes `read` and `write`:
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "users", "logins" ],
         read: [ "recommendations" ],
@@ -89,7 +90,7 @@ the operations inside the transactions demand for it.
 The contents of `read` or `write` can each be lists with collection names or a 
 single collection name (as a string):
     
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: "users",
         read: "recommendations",
@@ -111,7 +112,7 @@ All data modification and retrieval operations that are to be executed inside
 the transaction need to be specified in a Javascript function, using the `action`
 attribute:
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: "users",
       },
@@ -131,7 +132,7 @@ There is no explicit commit command.
 To make a transaction abort and roll back all changes, an exception needs to
 be thrown and not caught inside the transaction:
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: "users",
       },
@@ -149,7 +150,7 @@ As mentioned earlier, a transaction will commit automatically when the end of
 the `action` function is reached and no exception has been thrown. In this 
 case, the user can return any legal Javascript value from the function:
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: "users",
       },
@@ -167,7 +168,7 @@ Examples
 
 The first example will write 3 documents into a collection named `c1`. 
 The `c1` collection needs to be declared in the `write` attribute of the 
-`collections` attribute passed to the `TRANSACTION` function.
+`collections` attribute passed to the `executeTransaction` function.
 
 The `action` attribute contains the actual transaction code to be executed.
 This code contains all data modification operations (3 in this example).
@@ -176,7 +177,7 @@ This code contains all data modification operations (3 in this example).
     var db = require("internal").db;
     db._create("c1");
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "c1" ]
       },
@@ -197,7 +198,7 @@ will revert all changes, so as if the transaction never happened:
     var db = require("internal").db;
     db._create("c1");
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "c1" ]
       },
@@ -222,7 +223,7 @@ at some point during transaction execution:
     var db = require("internal").db;
     db._create("c1");
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "c1" ]
       },
@@ -260,7 +261,7 @@ start. The following example using a cap constraint should illustrate that:
     db.c1.save({ _key: "key4" });
 
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "c1" ]
       },
@@ -288,7 +289,7 @@ attribute, e.g.:
     db._create("c1");
     db._create("c2");
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "c1", "c2" ]
       },
@@ -310,7 +311,7 @@ transaction abort and roll back all changes in all collections:
     db._create("c1");
     db._create("c2");
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: {
         write: [ "c1", "c2" ]
       },
@@ -340,7 +341,7 @@ Some operations are not allowed inside ArangoDB transactions:
 - creation and deletion of indexes (`db.ensure...Index()`, `db.dropIndex()`)
 
 If an attempt is made to carry out any of these operations during a transaction,
-ArangoDB will abort the transaction with error code `1655 (disallowed operation inside
+ArangoDB will abort the transaction with error code `1653 (disallowed operation inside
 transaction)`.
 
 
@@ -378,7 +379,7 @@ collections are potentially non-repeatable.
 
 Example:
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: { 
         read: "users"
       },
@@ -445,10 +446,10 @@ whether the delayed synchronisation had kicked in or not.
 
 To ensure durability of transactions on a collection that have the `waitForSync`
 property set to `false`, you can set the `waitForSync` attribute of the object
-that is passed to `TRANSACTION`. This will force a synchronisation of the
+that is passed to `executeTransaction`. This will force a synchronisation of the
 transaction to disk even for collections that have `waitForSync´ set to `false`:
 
-    TRANSACTION({
+    db._executeTransaction({
       collections: { 
         write: "users"
       },
@@ -473,8 +474,8 @@ committed transactions in the case of a crash.
 
 In contrast, transactions that modify data in more than one collection are 
 automatically synchronised to disk. This comes at the cost of several disk sync
-For a multi-collection transaction, the call to the `TRANSACTION` function will
-only return only after the data of all modified collections has been synchronised 
+For a multi-collection transaction, the call to the `_executeTransaction` function 
+will only return only after the data of all modified collections has been synchronised 
 to disk and the transaction has been made fully durable. This not only reduces the
 risk of losing data in case of a crash but also ensures consistency after a
 restart.
@@ -510,7 +511,7 @@ into one transaction.
 
 Additionally, transactions in ArangoDB cannot be nested, i.e. a transaction 
 must not call any other transaction. If an attempt is made to call a transaction 
-from inside a running transaction, the server will throw error `1652 (nested 
+from inside a running transaction, the server will throw error `1651 (nested 
 transactions detected`).
 
 It is also disallowed to execute user transaction on some of ArangoDB's own system
@@ -520,9 +521,9 @@ transaction.
 
 Finally, all collections that may be modified during a transaction must be 
 declared beforehand, i.e. using the `collections` attribute of the object passed
-to the `TRANSACTION` function. If any attempt is made to carry out a data
+to the `_executeTransaction` function. If any attempt is made to carry out a data
 modification operation on a collection that was not declared in the `collections`
-attribute, the transaction will be aborted and ArangoDB will throw error `1654
+attribute, the transaction will be aborted and ArangoDB will throw error `1652
 unregistered collection used in transaction`. 
 It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
