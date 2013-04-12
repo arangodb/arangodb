@@ -68,7 +68,7 @@ exports.ArangoDatabase = ArangoDatabase;
 
 // load after exporting ArangoDatabase
 ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = require("org/arangodb").ArangoError;
 var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, regexp: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, regexp: true, plusplus: true, continue: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +256,7 @@ function teardownApp (app, mount, prefix) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an app entry for aal
+/// @brief creates an app entry
 ////////////////////////////////////////////////////////////////////////////////
 
 function upsertAalAppEntry (manifest, thumbnail, path) {
@@ -283,7 +283,7 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs an app for aal
+/// @brief installs an app
 ////////////////////////////////////////////////////////////////////////////////
 
 function installAalApp (app, mount, prefix, development) {
@@ -333,7 +333,7 @@ function installAalApp (app, mount, prefix, development) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief installs an app for aal
+/// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingAalApp (app, mount, prefix) {

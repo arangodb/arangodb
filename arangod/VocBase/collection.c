@@ -39,6 +39,161 @@
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              COLLECTION MIGRATION
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes the document id. this is used from the UpgradeOpenIterator
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key) {
+  return TRI_FnvHashString((char const*) key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes the document header. this is used from UpgradeOpenIterator
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
+  TRI_doc_mptr_t const* e = element;
+  return TRI_FnvHashString((char const*) e->_key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a document id and a document
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
+  TRI_doc_mptr_t const* e = element;
+
+  char const * k = key;
+  return (strcmp(k, e->_key) == 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this iterates over all markers of a collection on upgrade
+///
+/// It will build a standalone temporary index with all documents, without
+/// using any of the existing functionality in document-collection.c or
+/// primary-collection.c. The reason is that the iteration over datafiles has
+/// changed between 1.2 and 1.3, and this function preserves the logic from
+/// 1.2. It is thus used to read 1.2-collections.
+/// After the iteration, we have all the (surviving) documents in the 
+/// temporary primary index, which will then be used to write out the documents
+/// to a new datafile.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UpgradeOpenIterator (TRI_df_marker_t const* marker, 
+                                 void* data, 
+                                 TRI_datafile_t* datafile, 
+                                 bool journal) {
+  TRI_doc_mptr_t const* found;
+  TRI_associative_pointer_t* primaryIndex;
+  TRI_voc_key_t key = NULL;
+
+  primaryIndex = data;
+
+  // new or updated document
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+      marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
+
+    key = ((char*) d) + d->_offsetKey;
+
+    found = TRI_LookupByKeyAssociativePointer(primaryIndex, key);
+
+    // it is a new entry
+    if (found == NULL) {
+      TRI_doc_mptr_t* header;
+
+      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t), true);
+      if (header == NULL) {
+        return false;
+      }
+
+      header->_rid = marker->_tick;
+      header->_fid = datafile->_fid;
+      header->_validTo = 0;
+      header->_data = marker;
+      header->_key = ((char*) d) + d->_offsetKey;
+
+      // insert into primary index
+      TRI_InsertKeyAssociativePointer(primaryIndex, header->_key, header, false);
+    }
+
+    // it is an update, but only if found has a smaller revision identifier
+    else if (found->_rid < d->_rid || 
+             (found->_rid == d->_rid && found->_fid <= datafile->_fid)) {
+      TRI_doc_mptr_t* newHeader;
+      
+      newHeader = CONST_CAST(found);
+
+      // update the header info
+      newHeader->_rid = d->_rid;
+      newHeader->_fid = datafile->_fid;
+      newHeader->_data = marker;
+      newHeader->_key = ((char*) d) + d->_offsetKey;
+      newHeader->_validTo = 0;
+    }
+  }
+  // deletion
+  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+    TRI_doc_deletion_key_marker_t const* d;
+
+    d = (TRI_doc_deletion_key_marker_t const*) marker;
+    key = ((char*) d) + d->_offsetKey;
+
+    found = TRI_LookupByKeyAssociativePointer(primaryIndex, key);
+
+    // it is a new entry, so we missed the create
+    if (found == NULL) {
+      TRI_doc_mptr_t* header;
+
+      header = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t), true);
+      if (header == NULL) {
+        return false;
+      }
+
+      header->_fid     = datafile->_fid;
+      header->_rid     = d->_rid;
+      header->_validTo = marker->_tick; 
+      header->_data    = marker;
+      header->_key     = key;
+
+      // insert into indexes
+      TRI_InsertKeyAssociativePointer(primaryIndex, header->_key, header, false);
+    }
+
+    // it is a real delete
+    else if (found->_validTo == 0) {
+      TRI_doc_mptr_t* newHeader;
+      
+      newHeader = CONST_CAST(found);
+
+      // mark element as deleted
+      newHeader->_validTo = marker->_tick; 
+      newHeader->_data    = marker;
+      newHeader->_key     = key;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -74,7 +229,7 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two filenames, based on the numeric part contained in
-/// the filename
+/// the filename. this is used to sort datafile filenames on startup 
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FilenameComparator (const void* lhs, const void* rhs) {
@@ -151,8 +306,6 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
 
-  collection->_maximumMarkerSize = 0;
-
   collection->_directory = directory;
 
   TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
@@ -176,7 +329,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   files = TRI_FilesDirectory(path);
   n = files._length;
 
-  regcomp(&re, "^(temp|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
+  regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
@@ -221,13 +374,47 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           TRI_PushBackVectorString(&structure._journals, filename);
         }
 
-        // file is a compactor file
-        else if (TRI_EqualString2("compactor", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._compactors, filename);
-        }
-
         // file is a datafile
         else if (TRI_EqualString2("datafile", first, firstLen)) {
+          TRI_PushBackVectorString(&structure._datafiles, filename);
+        }
+        
+        // file is a left-over compaction file. rename it back
+        else if (TRI_EqualString2("compaction", first, firstLen)) {
+          char* relName;
+          char* newName;
+          
+          relName = TRI_Concatenate2String("datafile-", file + strlen("compaction-"));
+          newName = TRI_Concatenate2File(path, relName);
+          TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
+          
+          if (! TRI_ExistsFile(newName)) {
+            TRI_UnlinkFile(filename);
+          
+            LOG_WARNING("removing left-over compaction file '%s'", filename);
+
+            TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
+            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+            continue;
+          }
+          else {
+            int res;
+
+            TRI_UnlinkFile(newName);
+
+            res = TRI_RenameFile(filename, newName);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              LOG_ERROR("unable to rename compaction file '%s'", filename);
+            
+              TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
+              TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+            
+              continue;
+            }
+          }
+
+          filename = newName;
           TRI_PushBackVectorString(&structure._datafiles, filename);
         }
 
@@ -289,7 +476,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   files = TRI_FilesDirectory(collection->_directory);
   n = files._length;
 
-  regcomp(&re, "^(temp|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
+  regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
@@ -307,6 +494,20 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
       char const* third = file + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
+        
+      // check for temporary files
+
+      if (TRI_EqualString2("temp", first, firstLen)) {
+        // found a temporary file. we can delete it!
+        char* filename;
+
+        filename = TRI_Concatenate2File(collection->_directory, file);
+
+        LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
+        TRI_UnlinkFile(filename);
+        TRI_Free(TRI_CORE_MEM_ZONE, filename);
+        continue;
+      }
 
       // .............................................................................
       // file is an index, just store the filename
@@ -328,7 +529,49 @@ static bool CheckCollection (TRI_collection_t* collection) {
         char* ptr;
         TRI_col_header_marker_t* cm;
 
-        filename = TRI_Concatenate2File(collection->_directory, file);
+
+        if (TRI_EqualString2("compaction", first, firstLen)) {
+          // found a compaction file. now rename it back
+          char* relName;
+          char* newName;
+         
+          filename = TRI_Concatenate2File(collection->_directory, file);
+          relName  = TRI_Concatenate2String("datafile-", file + strlen("compaction-"));
+          newName  = TRI_Concatenate2File(collection->_directory, relName);
+
+          TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
+          
+          if (! TRI_ExistsFile(newName)) {
+            // we have a compaction-xxxx and a datafile-xxxx file. we'll keep the datafile
+            LOG_WARNING("removing compaction file '%s'", filename);
+            TRI_UnlinkFile(filename);
+
+            TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
+            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+            continue;
+          }
+          else {
+            int res;
+          
+            res = TRI_RenameFile(filename, newName);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              LOG_ERROR("unable to rename compaction file '%s' to '%s'", filename, newName);
+              TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
+              TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+              stop = true;
+              break;
+            }
+          }
+
+          TRI_Free(TRI_CORE_MEM_ZONE, filename);
+          // reuse newName
+          filename = newName;
+        }
+        else {
+          filename = TRI_Concatenate2File(collection->_directory, file);
+        }
+
         datafile = TRI_OpenDatafile(filename);
 
         if (datafile == NULL) {
@@ -379,21 +622,15 @@ static bool CheckCollection (TRI_collection_t* collection) {
             TRI_PushBackVectorPointer(&journals, datafile);
           }
         }
-
-        // file is a compactor file
+        
+        // file is a compactor
         else if (TRI_EqualString2("compactor", first, firstLen)) {
-          if (datafile->_isSealed) {
-            LOG_WARNING("strange, compactor journal '%s' is already sealed; must be a left over; will use it as datafile", filename);
-
-            TRI_PushBackVectorPointer(&sealed, datafile);
-          }
-          else {
-            TRI_PushBackVectorPointer(&compactors, datafile);
-          }
+          // ignore
         }
 
-        // file is a datafile
-        else if (TRI_EqualString2("datafile", first, firstLen)) {
+        // file is a datafile (or was a compaction file)
+        else if (TRI_EqualString2("datafile", first, firstLen) ||
+                 TRI_EqualString2("compaction", first, firstLen)) {
           if (! datafile->_isSealed) {
             LOG_ERROR("datafile '%s' is not sealed, this should never happen", filename);
 
@@ -405,12 +642,6 @@ static bool CheckCollection (TRI_collection_t* collection) {
           else {
             TRI_PushBackVectorPointer(&datafiles, datafile);
           }
-        }
-
-        // temporary file, we can delete it!
-        else if (TRI_EqualString2("temp", first, firstLen)) {
-          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
-          TRI_UnlinkFile(filename);
         }
 
         else {
@@ -634,7 +865,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_version       = TRI_COL_VERSION;
   parameter->_type          = type;
   parameter->_cid           = 0;
-  parameter->_rid           = 0;
+  parameter->_tick          = 0;
 
   parameter->_deleted       = false;
   parameter->_isVolatile    = false;
@@ -660,7 +891,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_version       = src->_version;
   dst->_type          = src->_type;
   dst->_cid           = src->_cid;
-  dst->_rid           = src->_rid;
+  dst->_tick          = src->_tick;
 
   dst->_deleted       = src->_deleted;
   dst->_isSystem      = src->_isSystem;
@@ -1068,10 +1299,6 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     collection->_info._maximalSize = parameter->_maximalSize;
     collection->_info._waitForSync = parameter->_waitForSync;
 
-    if (collection->_info._maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
-      collection->_info._maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
-    }
-
     // the following collection properties are intentionally not updated as updating
     // them would be very complicated:
     // - _cid
@@ -1150,6 +1377,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   bool result;
 
   datafiles = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_datafiles);
+
   if (datafiles == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -1157,6 +1385,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   }
 
   journals = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_journals);
+
   if (journals == NULL) {
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1165,6 +1394,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   }
 
   compactors = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_compactors);
+
   if (compactors == NULL) {
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
@@ -1320,22 +1550,329 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over the markers incollection journals journal
+/// @brief upgrade a collection
 ///
-/// this function is called on server startup for all collections
+/// this is called when starting the database for all collections that have a
+/// too low (< TRI_COL_VERSION) "version" attribute. 
+/// For now, the upgrade procedure will grab all existing journals, datafiles,
+/// and compactors files and read them into memory, into a temporary index.
+/// It will use the UpgradeOpenIterator function callback for that.
+///
+/// All documents that are present in that temporary index will be written 
+/// out into a new datafile. That datafiles will only contain the existing
+/// documents (at most one per unique key), and the order of the documents in 
+/// it does not matter. That file can then be read with the 1.3 OpenIterator,
+/// which has a slightly different way of determining which document revision
+/// is active.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateStartupCollection (const char* const path,
-                                   bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
-                                   void* data) {
+int TRI_UpgradeCollection (TRI_vocbase_t* vocbase, 
+                           const char* const path,
+                           TRI_col_info_t* info) {
+  TRI_vector_string_t files;
+  regex_t re;
+  size_t i, n;
+  int res;
+  
+  res = TRI_ERROR_NO_ERROR;
+            
+  TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION);
+
+  // find all files in the collection directory
+  files = TRI_FilesDirectory(path);
+  n = files._length;
+
+  // .............................................................................
+  // remove all .new files. they are probably left-overs from previous runs
+  // .............................................................................
+  
+  regcomp(&re, "^.*\\.new$", REG_EXTENDED);
+
+  for (i = 0;  i < n;  ++i) {
+    regmatch_t matches[1];
+    char const* file = files._buffer[i];
+
+    if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      char* fqn = TRI_Concatenate2File(path, file);
+      int r;
+    
+      r = TRI_UnlinkFile(fqn);
+
+      if (r != TRI_ERROR_NO_ERROR) {
+        LOG_WARNING("could not remove previous temporary file '%s': '%s'", fqn, TRI_errno_string(r));
+      }
+      
+      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
+    }
+  }
+
+  regfree(&re);
+ 
+    
+  // .............................................................................
+  // migrate journals and datafiles
+  // .............................................................................
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_vector_pointer_t datafiles;
+    TRI_associative_pointer_t primaryIndex;
+    char* outfile;
+    TRI_voc_size_t neededSize;
+    TRI_voc_size_t actualSize;
+    ssize_t written;
+    size_t markers;
+    int fdout;
+
+    outfile = NULL;
+
+    TRI_InitVectorPointer(&datafiles, TRI_CORE_MEM_ZONE);
+    // we're interested in these files...
+    regcomp(&re, "^(compactor|journal|datafile)-.*\\.db$", REG_EXTENDED);
+  
+    for (i = 0;  i < n;  ++i) {
+      regmatch_t matches[1];
+      char const* file = files._buffer[i];
+
+      if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+        char* fqn = TRI_Concatenate2File(path, file);
+
+        // open the datafile, and push it into a vector of datafiles
+        TRI_datafile_t* datafile = TRI_OpenDatafile(fqn);
+
+        if (datafile != NULL) {
+          TRI_PushBackVectorPointer(&datafiles, datafile);
+        }
+        else {
+          LOG_WARNING("could not open datafile '%s'", fqn);
+          res = TRI_errno();
+        }
+        
+        TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
+      }
+    }
+
+    regfree(&re);
+
+    // all datafiles opened
+
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      // build an in-memory index of documents
+      TRI_InitAssociativePointer(&primaryIndex,
+          TRI_UNKNOWN_MEM_ZONE,
+          HashKeyHeader,
+          HashElementDocument,
+          IsEqualKeyDocument,
+          0);
+
+      // read all markers in the existing datafiles
+      for (i = 0; i < datafiles._length; ++i) {
+        TRI_datafile_t* df = datafiles._buffer[i];
+
+        TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false);
+      }
+
+
+      // calculate the length for the new datafile
+      markers = 0;
+      neededSize = sizeof(TRI_df_header_marker_t) + 
+                   sizeof(TRI_col_header_marker_t) + 
+                   sizeof(TRI_df_footer_marker_t);
+
+      // go over all documents in the index and calculate the total length
+      for (i = 0; i < primaryIndex._nrAlloc; ++i) {
+        TRI_doc_mptr_t* header = primaryIndex._table[i];
+
+        if (header != NULL && header->_validTo == 0) {
+          TRI_df_marker_t const* marker = header->_data;
+
+          if (marker != NULL) {
+            neededSize += TRI_DF_ALIGN_BLOCK(marker->_size);
+            markers++;
+          }
+        }
+      }
+
+      // round up to nearest page size
+      actualSize = ((neededSize + PageSize - 1) / PageSize) * PageSize;
+      written = 0;
+
+      // generate the name for the new datafile: datafile-xxx.db.new
+      { 
+        char* fidString;
+        char* jname;
+
+        fidString = TRI_StringUInt64(TRI_NewTickVocBase());
+        jname = TRI_Concatenate3String("datafile-", fidString, ".db.new");
+        TRI_FreeString(TRI_CORE_MEM_ZONE, fidString);
+
+        outfile = TRI_Concatenate2File(path, jname);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
+      }
+
+      LOG_INFO("migrating data for collection '%s' (id: %llu, %llu documents) into new datafile '%s'", 
+          info->_name, 
+          (unsigned long long) info->_cid,
+          (unsigned long long) markers,
+          outfile);
+
+      // create the outfile
+      fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+      if (fdout < 0) {
+        res = TRI_ERROR_CANNOT_WRITE_FILE;
+        LOG_ERROR("cannot create new datafile '%s'", outfile);
+      }
+      else {
+        TRI_df_header_marker_t header;
+        TRI_col_header_marker_t cm;
+        TRI_df_footer_marker_t footer;
+
+        // datafile header
+        TRI_InitMarker(&header.base, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), TRI_NewTickVocBase());
+        header._version     = TRI_DF_VERSION;
+        header._maximalSize = actualSize;
+        header._fid         = TRI_NewTickVocBase();
+        header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
+
+        written += TRI_WRITE(fdout, &header.base, header.base._size);
+
+        // col header
+        TRI_InitMarker(&cm.base, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t), TRI_NewTickVocBase());
+        cm._type     = (TRI_col_type_t) info->_type;
+        cm._cid      = info->_cid;
+        cm.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &cm.base, cm.base._size));
+
+        written += TRI_WRITE(fdout, &cm.base, cm.base._size);
+
+        // write all surviving documents into the datafile
+        for (i = 0; i < primaryIndex._nrAlloc; ++i) {
+          TRI_doc_mptr_t* mptr = primaryIndex._table[i];
+
+          if (mptr != NULL && mptr->_validTo == 0) {
+            TRI_df_marker_t const* marker = mptr->_data;
+
+            if (marker != NULL) {
+              TRI_doc_document_key_marker_t* doc;
+              void* buffer;
+              ssize_t w;
+              
+              assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+                     marker->_type == TRI_DOC_MARKER_KEY_EDGE);
+
+              // copy the old marker
+              buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, TRI_DF_ALIGN_BLOCK(marker->_size), true);
+              memcpy(buffer, marker, marker->_size);
+
+              doc = (TRI_doc_document_key_marker_t*) buffer;
+              // reset _tid value to 0
+              doc->_tid = 0;
+              // recalc crc
+              doc->base._crc = 0;
+              doc->base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) doc, marker->_size));
+
+              w = TRI_WRITE(fdout, buffer, TRI_DF_ALIGN_BLOCK(marker->_size));
+
+              TRI_Free(TRI_CORE_MEM_ZONE, buffer);
+
+              if (w <= 0) {
+                res = TRI_ERROR_INTERNAL;
+                LOG_ERROR("an error occurred while writing documents into datafile '%s'", outfile);
+                break;
+              }
+
+              written += w;
+            }
+          }
+        }
+
+        // datafile footer
+        TRI_InitMarker(&footer.base, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t), TRI_NewTickVocBase());
+        footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
+        written += TRI_WRITE(fdout, &footer.base, footer.base._size);
+
+        TRI_CLOSE(fdout);
+
+      }
+
+      TRI_DestroyAssociativePointer(&primaryIndex);
+
+      // rename target file (by removing the .new suffix)
+      if (res == TRI_ERROR_NO_ERROR) {
+        char* dst = TRI_DuplicateString2(outfile, strlen(outfile) - strlen(".new"));
+
+        res = TRI_RenameFile(outfile, dst);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, dst);
+      }
+
+    }
+
+    if (outfile != NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, outfile);
+    }
+
+    // close "old" datafiles
+    for (i = 0; i < datafiles._length; ++i) {
+      TRI_datafile_t* df = datafiles._buffer[i];
+      char* old;
+
+      old = TRI_DuplicateString(df->getName(df));
+
+      TRI_CloseDatafile(df);
+      TRI_FreeDatafile(df);
+
+      // if no error happened, we'll also rename the old datafiles to ".old"
+      if (res == TRI_ERROR_NO_ERROR) {
+        char* dst;
+
+        dst = TRI_Concatenate2String(old, ".old");
+        res = TRI_RenameFile(old, dst);
+        TRI_FreeString(TRI_CORE_MEM_ZONE, dst);
+      }
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, old);
+    }
+
+    TRI_DestroyVectorPointer(&datafiles);
+  }
+
+  TRI_DestroyVectorString(&files);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // when no error occurred, we'll bump the version number in the collection parameters file.
+    info->_version = TRI_COL_VERSION;
+    res = TRI_SaveCollectionInfo(path, info, true); 
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over the markers in a collection's datafiles
+///
+/// this function may be called on server startup for all collections, in order
+/// to get the last tick value used 
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IterateTicksCollection (const char* const path,
+                                 bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                 void* data) {
 
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
   bool result;
 
-  // iterate of journals & compactors, not datafiles
-  result  = IterateFiles(&structure._journals, iterator, data, true);
-  result &= IterateFiles(&structure._compactors, iterator, data, false);
-  result &= IterateFiles(&structure._datafiles, iterator, data, false);
+  LOG_TRACE("iterating ticks of journal '%s'", path);
+
+  if (structure._journals._length == 0) {
+    // no journal found for collection. should not happen normally, but if
+    // it does, we need to grab the ticks from the datafiles, too
+    result = IterateFiles(&structure._datafiles, iterator, data, false);
+  }
+  else {
+    // compactor files don't need to be iterated... they just contain data copied
+    // from other files, so their tick values will never be any higher
+    result = IterateFiles(&structure._journals, iterator, data, true);
+  }
   
   TRI_DestroyFileStructureCollection(&structure);
 

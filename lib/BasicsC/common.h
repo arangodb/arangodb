@@ -193,11 +193,15 @@ static inline void* CONST_CAST (void const* ptr) {
 
 #ifdef __cplusplus
 
-#define TRI_ASSERT_MAINTAINER(what) (static_cast<void> (0))
+// TODO: change back when releasing
+//#define TRI_ASSERT_MAINTAINER(what) (static_cast<void> (0))
+#define TRI_ASSERT_MAINTAINER(what) assert(what)
 
 #else
 
-#define TRI_ASSERT_MAINTAINER(what) ((void) (0))
+// TODO: change back when releasing
+//#define TRI_ASSERT_MAINTAINER(what) ((void) (0))
+#define TRI_ASSERT_MAINTAINER(what) assert(what)
 
 #endif
 

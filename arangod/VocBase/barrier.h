@@ -57,7 +57,8 @@ struct TRI_datafile_s;
 
 typedef enum {
   TRI_BARRIER_ELEMENT,
-  TRI_BARRIER_DATAFILE_CALLBACK,
+  TRI_BARRIER_DATAFILE_DROP_CALLBACK,
+  TRI_BARRIER_DATAFILE_RENAME_CALLBACK,
   TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK,
   TRI_BARRIER_COLLECTION_DROP_CALLBACK,
   TRI_BARRIER_COLLECTION_COMPACTION
@@ -100,17 +101,30 @@ typedef struct TRI_barrier_compaction_s {
 TRI_barrier_compaction_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief barrier element datafile callback
+/// @brief barrier element datafile removal callback
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_barrier_datafile_cb_s {
+typedef struct TRI_barrier_datafile_drop_cb_s {
   TRI_barrier_t base;
 
   struct TRI_datafile_s* _datafile;
   void* _data;
   void (*callback) (struct TRI_datafile_s*, void*);
 }
-TRI_barrier_datafile_cb_t;
+TRI_barrier_datafile_drop_cb_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barrier element datafile rename callback
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_barrier_datafile_rename_cb_s {
+  TRI_barrier_t base;
+
+  struct TRI_datafile_s* _datafile;
+  void* _data;
+  void (*callback) (struct TRI_datafile_s*, void*);
+}
+TRI_barrier_datafile_rename_cb_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief barrier element collection callback
@@ -190,10 +204,19 @@ TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container);
 /// @brief creates a new datafile deletion barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_barrier_t* TRI_CreateBarrierDatafile (TRI_barrier_list_t* container,
-                                          struct TRI_datafile_s* datafile,
-                                          void (*callback) (struct TRI_datafile_s*, void*),
-                                          void* data);
+TRI_barrier_t* TRI_CreateBarrierDropDatafile (TRI_barrier_list_t* container,
+                                               struct TRI_datafile_s* datafile,
+                                               void (*callback) (struct TRI_datafile_s*, void*),
+                                               void* data);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new datafile rename barrier
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
+                                                struct TRI_datafile_s* datafile,
+                                                void (*callback) (struct TRI_datafile_s*, void*),
+                                                void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection unload barrier

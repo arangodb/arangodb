@@ -53,11 +53,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief begins a new CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,7 +66,7 @@ static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
   (*array)->Set(column, v8::String::New(field));
@@ -81,7 +76,7 @@ static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t r
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
   (*array)->Set(column, v8::String::New(field));
@@ -93,18 +88,9 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
   (*cb)->Call(*cb, 2, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      JS functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a CSV file
@@ -273,8 +259,8 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 
       getline(file, line);
 
-      char const* ptr = line.c_str();
-      char const* end = ptr + line.length();
+      const char* ptr = line.c_str();
+      const char* end = ptr + line.length();
 
       while (ptr < end && (*ptr == ' ' || *ptr == '\t' || *ptr == '\r')) {
         ++ptr;
@@ -310,10 +296,6 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
   return scope.Close(v8::Undefined());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL
 // -----------------------------------------------------------------------------
@@ -321,11 +303,6 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 shell functions inside the global variable
@@ -341,90 +318,94 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_CSV_FILE", JS_ProcessCsvFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_JSON_FILE", JS_ProcessJsonFile);
 
+  // .............................................................................
+  // create the global variables
+  // .............................................................................
+
   v8::Handle<v8::Object> colors = v8::Object::New();
 
-  colors->Set(v8::String::New("COLOR_RED"),
-              v8::String::New(TRI_SHELL_COLOR_RED),
+  colors->Set(TRI_V8_STRING("COLOR_RED"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_RED),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_RED"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_RED),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_RED"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_RED),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_GREEN"),
-              v8::String::New(TRI_SHELL_COLOR_GREEN),
+  colors->Set(TRI_V8_STRING("COLOR_GREEN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_GREEN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_GREEN"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_GREEN),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_GREEN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_GREEN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BLUE"),
-              v8::String::New(TRI_SHELL_COLOR_BLUE),
+  colors->Set(TRI_V8_STRING("COLOR_BLUE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BLUE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_BLUE"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_BLUE),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_BLUE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLUE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_YELLOW"),
-              v8::String::New(TRI_SHELL_COLOR_YELLOW),
+  colors->Set(TRI_V8_STRING("COLOR_YELLOW"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_YELLOW),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_YELLOW"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_YELLOW),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_YELLOW"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_YELLOW),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_WHITE"),
-              v8::String::New(TRI_SHELL_COLOR_WHITE),
+  colors->Set(TRI_V8_STRING("COLOR_WHITE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_WHITE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_WHITE"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_WHITE),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_WHITE"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_WHITE),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_CYAN"),
-              v8::String::New(TRI_SHELL_COLOR_CYAN),
+  colors->Set(TRI_V8_STRING("COLOR_CYAN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_CYAN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_CYAN"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_CYAN),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_CYAN"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_CYAN),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_MAGENTA"),
-              v8::String::New(TRI_SHELL_COLOR_MAGENTA),
+  colors->Set(TRI_V8_STRING("COLOR_MAGENTA"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_MAGENTA),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_MAGENTA"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_MAGENTA),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_MAGENTA"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BLACK"),
-              v8::String::New(TRI_SHELL_COLOR_BLACK),
+  colors->Set(TRI_V8_STRING("COLOR_BLACK"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BLACK),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BOLD_BLACK"),
-              v8::String::New(TRI_SHELL_COLOR_BOLD_BLACK),
+  colors->Set(TRI_V8_STRING("COLOR_BOLD_BLACK"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLACK),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BLINK"),
-              v8::String::New(TRI_SHELL_COLOR_BLINK),
+  colors->Set(TRI_V8_STRING("COLOR_BLINK"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BLINK),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_BRIGHT"),
-              v8::String::New(TRI_SHELL_COLOR_BRIGHT),
+  colors->Set(TRI_V8_STRING("COLOR_BRIGHT"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_BRIGHT),
               v8::ReadOnly);
 
-  colors->Set(v8::String::New("COLOR_RESET"),
-              v8::String::New(TRI_SHELL_COLOR_RESET),
+  colors->Set(TRI_V8_STRING("COLOR_RESET"),
+              TRI_V8_STRING(TRI_SHELL_COLOR_RESET),
               v8::ReadOnly);
 
-  context->Global()->Set(v8::String::New("COLORS"), colors, v8::ReadOnly);
+  TRI_AddGlobalVariableVocbase(context, "COLORS", colors);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

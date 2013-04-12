@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
@@ -55,6 +54,7 @@ exports.ArangoCollection = ArangoCollection;
 require("org/arangodb/arango-collection-common");
 
 var simple = require("org/arangodb/simple-query");
+var ArangoError = require("org/arangodb").ArangoError;
 var ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////

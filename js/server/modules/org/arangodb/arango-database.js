@@ -54,7 +54,7 @@ var ArangoDatabase = exports.ArangoDatabase;
 
 // must called after export
 var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb/arango-error").ArangoError;
+var ArangoError = require("org/arangodb").ArangoError;
 var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,8 @@
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var users = require("org/arangodb/users");
-var ArangoError = require("org/arangodb/arango-error").ArangoError; 
+
+var ArangoError = arangodb.ArangoError; 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

@@ -137,8 +137,6 @@ typedef struct TRI_index_s {
 
   // NULL by default. will only be called if non-NULL
   int (*postInsert) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  int (*postRemove) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_s const*);
-  int (*postUpdate) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*, struct TRI_doc_mptr_s const*);
 
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
