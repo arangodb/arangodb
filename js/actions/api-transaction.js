@@ -25,6 +25,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
@@ -58,8 +59,8 @@ var actions = require("org/arangodb/actions");
 ///
 /// - @LIT{lockTimeout}: an optional numeric value that can be used to set a
 ///   timeout for waiting on collection locks. If not specified, a default 
-///   value will be used. Setting @LIT{lockTimeout} to 0 will make ArangoDB not
-///   time out waiting for a lock.
+///   value will be used. Setting @LIT{lockTimeout} to @LIT{0} will make ArangoDB 
+///   not time out waiting for a lock.
 ///
 /// - @LIT{action}: the actual transaction operations to be executed, in the
 ///   form of stringified Javascript code. The code will be executed on server
@@ -98,11 +99,38 @@ var actions = require("org/arangodb/actions");
 ///
 /// If a transaction fails to commit, either by an exception thrown in the 
 /// @LIT{action} code, or by an internal error, the server will respond with 
-/// @LIT{HTTP 500}.
+/// an error. 
+///
+/// Exceptions thrown by users will make the server respond with a return code of 
+/// @LIT{HTTP 500}. Any other errors will be returned with any of the return codes
+/// @LIT{HTTP 400}, @LIT{HTTP 409}, or @LIT{HTTP 500}.
+///
+/// @EXAMPLES
+///
+/// Executing a transaction on a single collection:
+///
+/// @verbinclude api-transaction-single
+///
+/// Executing a transaction using multiple collections:
+///
+/// @verbinclude api-transaction-multi
+///
+/// Aborting a transaction due to an internal error:
+///
+/// @verbinclude api-transaction-abort-internal
+///
+/// Aborting a transaction by throwing an exception:
+///
+/// @verbinclude api-transaction-abort
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_transaction(req, res) {
   var json = actions.getJsonBody(req, res);
+
+  if (json === undefined) {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
 
   var result = TRANSACTION(json);
 
