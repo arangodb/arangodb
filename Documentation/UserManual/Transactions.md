@@ -37,21 +37,21 @@ SQL transaction is finished with a `COMMIT` command, or rolled back with a
 `ROLLBACK` command. There may be client/server communication between the start
 and the commit/rollback of an SQL transaction.
 
-In ArangoDB, a transaction is always a server-only operation. A transaction
-is executed on the server in one go, without any client interaction. All 
-operations to be executed inside a transaction need to be known by the server
-when the transaction is started.
+In ArangoDB, a transaction is always a server-side operation, and is executed
+on the server in one go, without any client interaction. All operations to be 
+executed inside a transaction need to be known by the server when the transaction 
+is started.
 
-There are no individual `BEGIN`, `COMMIT` or `ROLLBACK` commands in ArangoDB.
-Instead, a transaction in ArangoDB is started by providing a description of the
-transaction to the `TRANSACTION` Javascript function:
+There are no individual `BEGIN`, `COMMIT` or `ROLLBACK` transaction commands 
+in ArangoDB. Instead, a transaction in ArangoDB is started by providing a 
+description of the transaction to the `TRANSACTION` Javascript function:
 
     TRANSACTION(description);
 
 This function will then automatically start a transaction, execute all required
 data retrieval and/or modification operations, and at the end automatically 
 commit the transaction. If an error occurs during transaction execution, the
-transaction is automatically rolled back.
+transaction is automatically aborted, and all changes are rolled back.
 
 
 Declaration of collections
@@ -63,16 +63,17 @@ beforehand. This is a necessity to ensure proper locking and isolation.
 Collections can be used in a transaction in write mode or in read-only mode.
 
 If any data modification operations are to be executed, the collection must be 
-used in write mode. The write mode allows modifying and reading data from the 
-collection during the transaction (thus, the write mode includes the read mode,
-too).
+declared for use in write mode. The write mode allows modifying and reading data 
+from the collection during the transaction (i.e. the write mode includes the 
+read mode).
 
 Contrary, using a collection in read-only mode will only allow performing 
 read operations on a collection. Any attempt to write into a collection used
 in read-only mode will make the transaction fail.
 
-Collections for a transaction are declared using the `collections` attribute of
-the object passed to the `TRANSACTION` function:
+Collections for a transaction are declared by providing them in the `collections` 
+attribute of the object passed to the `TRANSACTION` function. The `collections`
+attribute has the sub-attributes `read` and `write`:
 
     TRANSACTION({
       collections: {
@@ -85,7 +86,7 @@ the object passed to the `TRANSACTION` function:
 `read` and `write` are optional attributes, and only need to be specified if 
 the operations inside the transactions demand for it.
 
-The contents of `read` or `write` can be lists of collections names or a 
+The contents of `read` or `write` can each be lists with collection names or a 
 single collection name (as a string):
     
     TRANSACTION({
@@ -123,14 +124,12 @@ Any valid Javascript code is allowed inside `action` but the code may only
 access the collections declared in `collections`.
 
 When the code inside the `action` attribute is executed, the transaction is
-already started and all required locks are held by the transaction.
-When the code inside the `action` attribute finishes, the transaction will
-either commit or rollback, depending on the return value of the function.
+already started and all required locks have been acquired. When the code inside 
+the `action` attribute finishes, the transaction will automatically commit.
+There is no explicit commit command. 
 
-If `true` is returned, the transaction will commit. If any other value is
-returned from the `action`, then the transaction will roll back. If an exception
-is thrown insdie the `action` code and is not caught, the transaction will also
-roll back.
+To make a transaction abort and roll back all changes, an exception needs to
+be thrown and not caught inside the transaction:
 
     TRANSACTION({
       collections: {
@@ -139,10 +138,29 @@ roll back.
       action: function () {
         db.users.save({ _key: "hello" });
 
-        /* will commit the transaction */
-        return true;
+        /* will abort and roll back the transaction */
+        throw "doh!";
       }
     });
+
+There is no explicit abort or roll back command.
+
+As mentioned earlier, a transaction will commit automatically when the end of
+the `action` function is reached and no exception has been thrown. In this 
+case, the user can return any legal Javascript value from the function:
+
+    TRANSACTION({
+      collections: {
+        write: "users",
+      },
+      action: function () {
+        db.users.save({ _key: "hello" });
+
+        /* will commit the transaction and return the value "hello" */
+        return "hello"; 
+      }
+    });
+
 
 Examples
 ========
@@ -153,7 +171,6 @@ The `c1` collection needs to be declared in the `write` attribute of the
 
 The `action` attribute contains the actual transaction code to be executed.
 This code contains all data modification operations (3 in this example).
-The `return true` at the end of the code will make the transaction commit.
 
     /* setup */
     var db = require("internal").db;
@@ -167,17 +184,14 @@ The `return true` at the end of the code will make the transaction commit.
         db.c1.save({ _key: "key1" });
         db.c1.save({ _key: "key2" });
         db.c1.save({ _key: "key3" });
- 
-        /* will cause a commit */
-        return true; 
       }
     });
 
     db.c1.count(); /* 3 */
 
 
-Failure to return `true` from the `TRANSACTION` function will make the transaction 
-roll back automatically:
+Aborting the transaction by throwing an exception in the `action` function
+will revert all changes, so as if the transaction never happened:
     
     /* setup */
     var db = require("internal").db;
@@ -194,15 +208,15 @@ roll back automatically:
         db.c1.save({ _key: "key2" });
         db.c1.count(); /* 2 */
 
-        /* return true missing here, so transaction will not commit */
+        throw "doh!";
       }
     });
 
     db.c1.count(); /* 0 */
 
 
-The automatic rollback is also executed when an exception is thrown at some
-point during transaction execution:
+The automatic rollback is also executed when an internal exception is thrown 
+at some point during transaction execution:
 
     /* setup */
     var db = require("internal").db;
@@ -215,11 +229,10 @@ point during transaction execution:
       action: function () {
         db.c1.save({ _key: "key1" });
         
-        /* will throw duplicate a key error */
+        /* will throw duplicate a key error, not explicitly requested by the user */
         db.c1.save({ _key: "key1" });  
 
-        /* the return true will not be reached */
-        return true; 
+        /* we'll never get here... */
       }
     });
 
@@ -227,7 +240,7 @@ point during transaction execution:
 
 
 As required by the *consistency* principle, aborting or rolling back a 
-transaction should also restore secondary indexes to the state at transaction
+transaction will also restore secondary indexes to the state at transaction
 start. The following example using a cap constraint should illustrate that:
 
     /* setup */
@@ -260,7 +273,6 @@ start. The following example using a cap constraint should illustrate that:
       }
     });
 
-
     /* we now have these keys back: [ "key2", "key3", "key4" ] */
 
 
@@ -283,8 +295,6 @@ attribute, e.g.:
       action: function () {
         db.c1.save({ _key: "key1" });
         db.c2.save({ _key: "key2" });
-
-        return true;
       }
     });
 
@@ -292,8 +302,8 @@ attribute, e.g.:
     db.c2.count(); /* 1 */
 
 
-Again, not returning `true` from the `TRANSACTION` function will make the transaction 
-roll back automatically, reverting the changes done in all declared collections:
+Again, throwing an exception from inside the `action` function will make the 
+transaction abort and roll back all changes in all collections:
 
     /* setup */
     var db = require("internal").db;
@@ -503,6 +513,11 @@ must not call any other transaction. If an attempt is made to call a transaction
 from inside a running transaction, the server will throw error `1652 (nested 
 transactions detected`).
 
+It is also disallowed to execute user transaction on some of ArangoDB's own system
+collections. This shouldn't be problem for regular usage as system collections will
+not contain user data and there is no need to access them from within a user
+transaction.
+
 Finally, all collections that may be modified during a transaction must be 
 declared beforehand, i.e. using the `collections` attribute of the object passed
 to the `TRANSACTION` function. If any attempt is made to carry out a data
@@ -511,4 +526,6 @@ attribute, the transaction will be aborted and ArangoDB will throw error `1654
 unregistered collection used in transaction`. 
 It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
+
+Please refer to @ref TransactionsLocking for more details.
 

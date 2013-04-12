@@ -1973,9 +1973,10 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
   
-  // start actual transaction
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-  
+
+
+  // start actual transaction
   CollectionNameResolver resolver(vocbase);
   ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
                                                                         resolver, 
@@ -1999,19 +2000,13 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (! TRI_ObjectToBoolean(result)) {
-    trx.abort();
-    
-    return scope.Close(v8::False());
-  }
-  
   res = trx.commit();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  return scope.Close(v8::True());
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

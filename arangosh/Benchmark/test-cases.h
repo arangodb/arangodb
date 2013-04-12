@@ -945,7 +945,6 @@ struct TransactionAqlTest : public BenchmarkOperation {
     return headers;
   }
 
-
   string _c1;
   string _c2;
   string _c3;
@@ -996,7 +995,7 @@ struct TransactionCountTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
     TRI_AppendStringStringBuffer(buffer, "\"); return TRANSACTION({ collections: { write: \"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\" }, action: function () { var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error\"; } c.save({ }); } return true; } });");
+    TRI_AppendStringStringBuffer(buffer, "\" }, action: function () { var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error\"; } c.save({ }); } } });");
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
@@ -1076,7 +1075,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "\", \"");
       TRI_AppendStringStringBuffer(buffer, _c2.c_str());
       TRI_AppendStringStringBuffer(buffer, "\" ] }, ");
-      TRI_AppendStringStringBuffer(buffer, "action: function () { var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); return true; } });");
+      TRI_AppendStringStringBuffer(buffer, "action: function () { var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); } });");
     }
     else {
       TRI_AppendStringStringBuffer(buffer, "read: [ \"");
@@ -1084,7 +1083,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "\", \"");
       TRI_AppendStringStringBuffer(buffer, _c2.c_str());
       TRI_AppendStringStringBuffer(buffer, "\" ] }, ");
-      TRI_AppendStringStringBuffer(buffer, "action: function () { var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error\"; } return true; } });");
+      TRI_AppendStringStringBuffer(buffer, "action: function () { var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error\"; } } });");
     }
 
     *length = TRI_LengthStringBuffer(buffer);
