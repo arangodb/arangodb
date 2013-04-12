@@ -1,9 +1,11 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
------------------
+--------------------------
+
+* added transaction support
 
 * switched to semantic versioning (at least for alpha & alpha naming)
 
-* added saveOrReplace for server-side JS
+* added saveOrReplace() for server-side JS
 
 v1.3.alpha1 (2013-04-05)
 ------------------------

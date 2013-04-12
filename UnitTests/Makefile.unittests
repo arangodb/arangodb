@@ -562,6 +562,7 @@ unittests-arangob:
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 4000 --concurrency 2 --test edge --complexity 4 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 5000 --concurrency 2 --test hash --complexity 1 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 5000 --concurrency 2 --test skiplist --complexity 1 || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test aqltrx --complexity 1 || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 

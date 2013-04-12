@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
-/*global EdgeShaper, modalDialogHelper*/
+/*global EdgeShaper, modalDialogHelper, uiComponentsHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -37,50 +37,39 @@ function EdgeShaperControls(list, shaper) {
   if (shaper === undefined) {
     throw "The EdgeShaper has to be given.";
   }
-  var self = this;
+  var self = this,
+    baseClass = "graph";
   
   this.addControlOpticShapeNone = function() {
     var prefix = "control_none",
-    idprefix = prefix + "_",
-    callback = function() {
+    idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "None", prefix, function() {
       shaper.changeTo({
         shape: {
           type: EdgeShaper.shapes.NONE
         }
       });
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("None"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticShapeArrow = function() {
     var prefix = "control_arrow",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Arrow", prefix, function() {
       shaper.changeTo({
         shape: {
           type: EdgeShaper.shapes.ARROW
         }
       });
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Arrow"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
 
     
   this.addControlOpticLabel = function() {
     var prefix = "control_label",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Label", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
@@ -92,13 +81,7 @@ function EdgeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Label"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   
@@ -106,8 +89,8 @@ function EdgeShaperControls(list, shaper) {
   
   this.addControlOpticSingleColour = function() {
     var prefix = "control_singlecolour",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Single Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Switch to Colour",
         idprefix, [{
           type: "text",
@@ -122,19 +105,13 @@ function EdgeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Single Colour"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticAttributeColour = function() {
     var prefix = "control_attributecolour",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Colour by Attribute", prefix, function() {
       modalDialogHelper.createModalDialog("Display colour by attribute",
         idprefix, [{
           type: "text",
@@ -149,19 +126,13 @@ function EdgeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Colour by Attribute"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addControlOpticGradientColour = function() {
     var prefix = "control_gradientcolour",
-    idprefix = prefix + "_",
-    callback = function() {
+      idprefix = prefix + "_";
+    uiComponentsHelper.createButton(baseClass, list, "Gradient Colour", prefix, function() {
       modalDialogHelper.createModalDialog("Change colours for gradient",
         idprefix, [{
           type: "text",
@@ -181,13 +152,7 @@ function EdgeShaperControls(list, shaper) {
           });
         }
       );
-    },
-    button = document.createElement("li");
-    button.className = "graph_control " + prefix;
-    button.id = prefix;
-    button.appendChild(document.createTextNode("Gradient Colour"));
-    list.appendChild(button);
-    button.onclick = callback;
+    });
   };
   
   this.addAllOptics = function () {

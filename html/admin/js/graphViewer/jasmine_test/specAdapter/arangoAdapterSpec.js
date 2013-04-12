@@ -460,7 +460,7 @@
         });
         
         runs(function() {
-          expect(toPatch.hello).toEqual("world");
+          expect(toPatch._data.hello).toEqual("world");
           expect(toPatch._id).toHavePermanentAttributeWithValue("hello", "world");
         });
         
@@ -479,7 +479,7 @@
         });
         
         runs(function() {
-          expect(toPatch.hello).toEqual("world");
+          expect(toPatch._data.hello).toEqual("world");
           expect(toPatch._id).toHavePermanentAttributeWithValue("hello", "world");
         });
       });

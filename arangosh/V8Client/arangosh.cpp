@@ -500,7 +500,9 @@ enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 /// @brief weak reference callback for queries (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_DestructorCallback (v8::Persistent<v8::Value> , void* parameter) {
+static void ClientConnection_DestructorCallback (v8::Isolate*,
+                                                 v8::Persistent<v8::Value>,
+                                                 void* parameter) {
   V8ClientConnection* client = (V8ClientConnection*) parameter;
   delete client;
 }
@@ -510,11 +512,12 @@ static void ClientConnection_DestructorCallback (v8::Persistent<v8::Value> , voi
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connection) {
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::Handle<v8::Object> result = ConnectionTempl->NewInstance();
-  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(connection));
+  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(connection));
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRAP_TYPE_CONNECTION));
   result->SetInternalField(SLOT_CLASS, persistent);
-  persistent.MakeWeak(connection, ClientConnection_DestructorCallback);
+  persistent.MakeWeak(isolate, connection, ClientConnection_DestructorCallback);
 
   return result;
 }
@@ -1425,6 +1428,8 @@ int main (int argc, char* argv[]) {
 
   v8::HandleScope handle_scope;
 
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+
   // create the global template
   v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
 
@@ -1489,7 +1494,7 @@ int main (int argc, char* argv[]) {
     connection_inst->SetInternalFieldCount(2);    
     
     TRI_AddGlobalVariableVocbase(context, "ArangoConnection", connection_proto->NewInstance());
-    ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(connection_inst);
+    ConnectionTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, connection_inst);
 
     // add the client connection to the context:
     TRI_AddGlobalVariableVocbase(context, "SYS_ARANGO", wrapV8ClientConnection(ClientConnection));
@@ -1739,7 +1744,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   context->Exit();
-  context.Dispose();
+  context.Dispose(isolate);
 
   BaseClient.closeLog();
 

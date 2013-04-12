@@ -62,10 +62,20 @@ namespace triagens {
         ExplicitTransaction (struct TRI_vocbase_s* const vocbase,
                              const triagens::arango::CollectionNameResolver& resolver,
                              const vector<string>& readCollections,
-                             const vector<string>& writeCollections) :
+                             const vector<string>& writeCollections,
+                             const double lockTimeout,
+                             const bool waitForSync) :
           Transaction<T>(vocbase, resolver) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
+
+          if (lockTimeout >= 0.0) {
+            this->setTimeout(lockTimeout);
+          }
+
+          if (waitForSync) {
+            this->setWaitForSync();
+          }
 
           for (size_t i = 0; i < readCollections.size(); ++i) {
             this->addCollection(readCollections[i], TRI_TRANSACTION_READ);

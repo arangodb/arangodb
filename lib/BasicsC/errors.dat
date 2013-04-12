@@ -20,6 +20,7 @@ ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not foun
 ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file cannot be written."
 ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
 ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is unencountered."
+ERROR_LOCK_TIMEOUT,18,"lock timeout","Will be raised when there's a timeout waiting for a lock."
 
 ################################################################################
 ## HTTP standard errors
@@ -160,13 +161,11 @@ ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is 
 ## ArangoDB transaction errors
 ################################################################################
 
-ERROR_TRANSACTION_INCOMPLETE,1650,"transaction definition is incomplete","Will be raised when the transaction definition is incomplete (e.g. lacks collections to use)."
-ERROR_TRANSACTION_INVALID_STATE,1651,"invalid transaction state","Will be raised when an operation is requested on a transaction that has an incompatible state."
+ERROR_TRANSACTION_INVALID_STATE,1650,"invalid transaction state","Will be raised when an operation is requested on a transaction that has an incompatible state."
 ERROR_TRANSACTION_NESTED,1652,"nested transactions detected","Will be raised when transactions are nested."
 ERROR_TRANSACTION_INTERNAL,1653,"internal transaction error","Will be raised when a wrong usage of transactions is detected. this is an internal error and indicates a bug in ArangoDB."
 ERROR_TRANSACTION_UNREGISTERED_COLLECTION,1654,"unregistered collection used in transaction","Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start."
-ERROR_TRANSACTION_DISALLOWED_OPERATION,1655,"disallowed operation inside a transaction","Will be raised when a disallowed operation is carried out in a transaction."
-ERROR_TRANSACTION_DEADLOCK,1656,"deadlock detected during transaction execution","Will be raised when a deadlock is detected during transaction execution."
+ERROR_TRANSACTION_DISALLOWED_OPERATION,1655,"disallowed operation inside transaction","Will be raised when a disallowed operation is carried out in a transaction."
 
 ################################################################################
 ## User management

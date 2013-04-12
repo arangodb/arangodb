@@ -31,12 +31,16 @@
     <link href="css/documentSourceView.css" rel="stylesheet">
     <link href="css/swaggerView.css" rel="stylesheet">
     <link href="css/foxxView.css" rel="stylesheet">
+    <link href="css/graphView.css" rel="stylesheet">
     
     <link href="css/jquery.snippet.css" rel="stylesheet">
     <link href="css/jquery.gritter.css" rel="stylesheet">
     <link href="css/modal.css" rel="stylesheet">
     <link href="css/ansi.css" rel="stylesheet">
     
+    
+    
+    <link rel="stylesheet" href="js/graphViewer/style/graphlayout.css" type="text/css"/>
 
 
 </head>
@@ -80,8 +84,7 @@
   <script src="js/lib/backbone-1.0.0.js"></script>
   
   <script src="js/lib/d3.v3.js"></script>
-  <script src="js/lib/nv.d3.js"></script>
-  
+  <script src="js/lib/nv.d3.js"></script>  
   
   <script src="js/lib/ColVis.js"></script>
   <script src="js/lib/ejs_fulljslint.js"></script>
@@ -96,6 +99,24 @@
   <script src='js/lib/swagger-ui.js' type='text/javascript'></script>
   <script src='js/lib/highlight.7.3.pack.js' type='text/javascript'></script>
   
+  <!-- graphViewer -->
+  <script src="js/graphViewer/graph/colourMapper.js"></script>
+  <script src="js/graphViewer/graph/forceLayouter.js"></script>
+  <script src="js/graphViewer/graph/eventLibrary.js"></script>
+  <script src="js/graphViewer/graph/eventDispatcher.js"></script>
+  <script src="js/graphViewer/graph/nodeShaper.js"></script>
+  <script src="js/graphViewer/graph/edgeShaper.js"></script>
+  <script src="js/graphViewer/graph/arangoAdapter.js"></script>  
+  
+  <script type="text/javascript" src="js/graphViewer/ui/modalDialogHelper.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/nodeShaperControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/edgeShaperControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/uiComponentsHelper.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/eventDispatcherControls.js"></script>
+  <script type="text/javascript" src="js/graphViewer/ui/graphViewerUI.js"></script>
+  
+  <script src="js/graphViewer/graphViewer.js"></script>
+
 
   <!-- arango -->
   <script src="js/arango/arango.js"></script>
@@ -163,6 +184,7 @@
   <script src="js/views/foxxEditView.js"></script>
   <script src="js/views/foxxMountView.js"></script>
   <script src="js/views/appDocumentationView.js"></script>
+  <script src="js/views/graphView.js"></script>
 
   <!-- router -->
   <script src="js/routers/router.js"></script>

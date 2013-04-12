@@ -659,6 +659,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, ".", NULL); // simple non-deterministic wrapper to avoid optimisations at parse time
+  REGISTER_FUNCTION("SLEEP", "SLEEP", false, false, "n", NULL); // sleep function
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, "", NULL);
   REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".|+", NULL);
   REGISTER_FUNCTION("FIRST_LIST", "FIRST_LIST", true, false, ".|+", NULL);
