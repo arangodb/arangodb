@@ -257,7 +257,7 @@ void ApplicationV8::skipUpgrade () {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
+ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase, bool initialise) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   while (_freeContexts.empty() && ! _stopping) {
@@ -297,6 +297,12 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (bool initialise) {
                                 false);
   }
 
+  // set the current database
+  LOGGER_INFO("set v8g->_vocbase to database '" + string(vocbase->_name) + "'"); 
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+  v8g->_vocbase = vocbase;
+  
   return context;
 }
 
@@ -339,6 +345,30 @@ void ApplicationV8::exitContext (V8Context* context) {
   guard.broadcast();
 
   LOGGER_TRACE("returned dirty V8 context");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add user vocbase
+////////////////////////////////////////////////////////////////////////////////
+        
+void ApplicationV8::addUserVocbase (TRI_vocbase_s* vocbase) {
+  _vocbases[vocbase->_name] = vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add user vocbase
+////////////////////////////////////////////////////////////////////////////////
+        
+TRI_vocbase_s* ApplicationV8::lookupVocbase (string const& name) {
+  if (name == "_system") {
+    return _vocbase;
+  }
+  
+  map<string, TRI_vocbase_s*>::iterator find = _vocbases.find(name);
+  if (find != _vocbases.end()) {
+    return find->second;
+  }
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -764,6 +794,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
+    TRI_AddGlobalVariableVocbase(context->_context, "IS_SYSTEM_DATABASE", v8::Boolean::New(true));
     v8::Handle<v8::Value> result = _startupLoader.executeGlobalScript(context->_context, "server/version-check.js");
 
     if (! TRI_ObjectToBoolean(result)) {

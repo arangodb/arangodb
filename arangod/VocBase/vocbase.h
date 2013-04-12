@@ -297,6 +297,8 @@ typedef struct TRI_vocbase_s {
   bool _defaultWaitForSync;
   bool _forceSyncShapes;    // force syncing of shape data to disk
   bool _forceSyncProperties; // force syncing of shape data to disk
+  
+  char* _name;
 
   TRI_voc_size_t _defaultMaximalSize;
 
@@ -426,7 +428,7 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end);
 /// @brief opens an exiting database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase (char const* path);
+TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections

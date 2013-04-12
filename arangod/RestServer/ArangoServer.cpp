@@ -546,7 +546,7 @@ int ArangoServer::startupServer () {
   // open the database
   // .............................................................................
 
-  openDatabase();
+  openDatabases();
 
 
   // .............................................................................
@@ -637,7 +637,7 @@ int ArangoServer::startupServer () {
 
   _applicationServer->stop();
 
-  closeDatabase();
+  closeSystemDatabase();
 
   return 0;
 }
@@ -663,10 +663,38 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   bool ok;
 
   // open the database
-  openDatabase();
-
+  openDatabases();
+  TRI_vocbase_t* vocbase = _vocbase;
+  
+/*
+  // TODO load user databases
+  // TODO select a database  
+  string testName = "userDB";
+  string aPath = "/tmp/test_user_database/";
+  TRI_vocbase_t* userVocbase = TRI_OpenVocBase(aPath.c_str(), testName.c_str(), false);  
+  userVocbase->_removeOnDrop = _removeOnDrop;
+  userVocbase->_removeOnCompacted = _removeOnCompacted;
+  userVocbase->_defaultMaximalSize = _defaultMaximalSize;
+  userVocbase->_defaultWaitForSync = _defaultWaitForSync;
+  userVocbase->_forceSyncShapes = _forceSyncShapes;
+  userVocbase->_forceSyncProperties = _forceSyncProperties;
+  
+  if (! userVocbase) {
+    string message = "cannot open database '" + aPath + "'";
+    LOGGER_FATAL_AND_EXIT(message);
+  }
+  _applicationV8->addUserVocbase(userVocbase);
+  
+            
+  vocbase = _applicationV8->lookupVocbase(testName);
+  if (! vocbase) {
+    LOGGER_FATAL_AND_EXIT("cannot get vocbase");
+  }
+  
+  cout << "got a vocbase: " << vocbase->_name << endl;
+*/  
   // load authentication
-  TRI_LoadAuthInfoVocBase(_vocbase);
+  TRI_LoadAuthInfoVocBase(vocbase);
 
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
@@ -692,7 +720,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->start();
 
   // enter V8 context
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, true);
 
   // .............................................................................
   // execute everything with a global scope
@@ -894,7 +922,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   _applicationV8->stop();
 
 
-  closeDatabase();
+  closeSystemDatabase();
   Random::shutdown();
 
   if (!ok) {
@@ -1074,33 +1102,83 @@ int ArangoServer::executeRubyConsole () {
 
 #endif
 
+static TRI_vocbase_t* openDatabase(char const* path, 
+        char const* name,
+        bool removeOnDrop,
+        bool removeOnCompacted,
+        uint64_t defaultMaximalSize,
+        bool defaultWaitForSync,
+        bool forceSyncShapes,
+        bool forceSyncProperties) {
+  
+  TRI_vocbase_t* vocbase = TRI_OpenVocBase(path, name);
+  vocbase->_removeOnDrop = removeOnDrop;
+  vocbase->_removeOnCompacted = removeOnCompacted;
+  vocbase->_defaultMaximalSize = defaultMaximalSize;
+  vocbase->_defaultWaitForSync = defaultWaitForSync;
+  vocbase->_forceSyncShapes = forceSyncShapes;
+  vocbase->_forceSyncProperties = forceSyncProperties;
+  
+  return vocbase;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabase () {
+void ArangoServer::openDatabases () {
   TRI_InitialiseVocBase();
 
-  _vocbase = TRI_OpenVocBase(_databasePath.c_str());
+  // open/load the system database
+  _vocbase = openDatabase(_databasePath.c_str(), 
+        "_system", 
+        _removeOnDrop,
+        _removeOnCompacted,
+        _defaultMaximalSize,
+        _defaultWaitForSync,
+        _forceSyncShapes,
+        _forceSyncProperties);
 
   if (! _vocbase) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
+  
+  TRI_vocbase_col_t* databaseCollection = TRI_UseCollectionByNameVocBase(_vocbase, "_databases");
+  
+  if (databaseCollection) {
+/*
+    if (primary->_primaryIndex._nrUsed > 0) {
+      void** ptr = primary->_primaryIndex._table;
+      void** end = ptr + primary->_primaryIndex._nrAlloc;
 
-  _vocbase->_removeOnDrop = _removeOnDrop;
-  _vocbase->_removeOnCompacted = _removeOnCompacted;
-  _vocbase->_defaultMaximalSize = _defaultMaximalSize;
-  _vocbase->_defaultWaitForSync = _defaultWaitForSync;
-  _vocbase->_forceSyncShapes = _forceSyncShapes;
-  _vocbase->_forceSyncProperties = _forceSyncProperties;
+      for (; ptr < end; ++ptr) {
+        if (*ptr) {
+          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+          if (d->_validTo == 0) {
+            
+            // jetzt name und path ermitteln
+            
+            ids.push_back(d->_key);
+          }
+        }
+      }
+ */
+    }
+
+
+    TRI_ReleaseCollectionVocBase(_vocbase, databaseCollection);
+  }
+  
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::closeDatabase () {
+void ArangoServer::closeSystemDatabase () {
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
