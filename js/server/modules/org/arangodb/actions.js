@@ -1957,7 +1957,7 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
   };
   
   if (lifeTime !== undefined && lifeTime !== null) {
-    cookie.lifeTime = parseInt(lifeTime);
+    cookie.lifeTime = parseInt(lifeTime, 10);
   }
   if (path !== undefined && path !== null) {
     cookie.path = path;

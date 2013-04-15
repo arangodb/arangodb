@@ -127,6 +127,133 @@ function transactionInvocationSuite () {
         TRANSACTION(test);
         assertEqual(1, result);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: return values
+////////////////////////////////////////////////////////////////////////////////
+
+    testReturnValues : function () {
+      var result;
+
+      var tests = [
+        { expected: 1, trx: { collections: { }, action: function () { return 1; } } },
+        { expected: undefined, trx: { collections: { }, action: function () { } } },
+        { expected: [ ], trx: { collections: { read: [ ] }, action: function () { return [ ] } } },
+        { expected: [ null, true, false ], trx: { collections: { write: [ ] }, action: function () { return [ null, true, false ] } } },
+        { expected: "foo", trx: { collections: { read: [ ], write: [ ] }, action: function () { return "foo" } } },
+        { expected: { "a" : 1, "b" : 2 }, trx: { collections: { read: [ ], write: [ ] }, action: function () { return { "a" : 1, "b" : 2 } } } }
+      ];
+
+      tests.forEach(function (test) {
+        assertEqual(test.expected, TRANSACTION(test.trx));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: action
+////////////////////////////////////////////////////////////////////////////////
+
+    testActionFunction : function () {
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          return 42;
+        }
+      };
+
+      assertEqual(42, TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: action
+////////////////////////////////////////////////////////////////////////////////
+
+    testActionInvalidString : function () {
+      try {
+        TRANSACTION({
+          collections : {
+          },
+          action : "return 42;"
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: action
+////////////////////////////////////////////////////////////////////////////////
+
+    testActionString : function () {
+      var obj = {
+        collections : {
+        },
+        action : "function () { return 42; }"
+      };
+
+      assertEqual(42, TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: nesting
+////////////////////////////////////////////////////////////////////////////////
+
+    testNesting : function () {
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          TRANSACTION({
+            collections: {
+            },
+            action: "function () { return 1; }"
+          });
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_TRANSACTION_NESTED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: params
+////////////////////////////////////////////////////////////////////////////////
+
+    testParamsFunction : function () {
+      var obj = {
+        collections : {
+        },
+        action : function (params) {
+          return [ params[1], params[4] ];
+        },
+        params: [ 1, 2, 3, 4, 5 ]
+      };
+
+      assertEqual([ 2, 5 ], TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: params
+////////////////////////////////////////////////////////////////////////////////
+
+    testParamsString : function () {
+      var obj = {
+        collections : {
+        },
+        action : "function (params) { return [ params[1], params[4] ]; }",
+        params: [ 1, 2, 3, 4, 5 ]
+      };
+
+      assertEqual([ 2, 5 ], TRANSACTION(obj));
     }
 
   };
@@ -1373,12 +1500,17 @@ function transactionRollbackSuite () {
 
           c1.save({ _key: "tam" });
           assertTrue(c1.revision() > r);
-
-          return false;
+        
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(1, c1.count());
       assertEqual(r, c1.revision());
@@ -1404,11 +1536,16 @@ function transactionRollbackSuite () {
           c1.save({ _key: "tam" });
 
           assertEqual(6, c1.count());
-          return false;
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(3, c1.count());
       assertEqual([ "bar", "foo", "meow" ], sortedKeys(c1));
@@ -1436,11 +1573,16 @@ function transactionRollbackSuite () {
           c1.update(d3, { a: 6 });
 
           assertEqual(3, c1.count());
-          return false;
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(3, c1.count());
       assertEqual([ "bar", "foo", "meow" ], sortedKeys(c1));
@@ -1477,11 +1619,17 @@ function transactionRollbackSuite () {
           }
 
           assertEqual(3, c1.count());
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(3, c1.count());
       assertEqual([ "bar", "foo", "meow" ], sortedKeys(c1));
@@ -1513,11 +1661,17 @@ function transactionRollbackSuite () {
 
           assertEqual(1, c1.count());
           assertEqual([ "bar" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(3, c1.count());
       assertEqual([ "bar", "foo", "meow" ], sortedKeys(c1));
@@ -1541,11 +1695,17 @@ function transactionRollbackSuite () {
           } 
 
           assertEqual(101, c1.count());
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(1, c1.count());
       assertEqual([ "foo" ], sortedKeys(c1));
@@ -1567,11 +1727,17 @@ function transactionRollbackSuite () {
           for (var i = 0; i < 100; ++i) {
             c1.truncate();
           } 
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
@@ -1598,11 +1764,17 @@ function transactionRollbackSuite () {
             c1.truncate();
           } 
           c1.save({ _key: "bar" });
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(100, c1.count());
     },
@@ -1623,7 +1795,8 @@ function transactionRollbackSuite () {
           c1.save({ _key: "bar" });
 
           c1.save({ _key: "foo" });
-          fail();
+
+          throw "rollback";
         }
       };
 
@@ -1656,7 +1829,8 @@ function transactionRollbackSuite () {
           c1.save( { name: "bar" });
           c1.save( { name: "baz" });
           c1.save( { name: "foo" });
-          fail();
+
+          throw "rollback";
         }
       };
 
@@ -1690,11 +1864,17 @@ function transactionRollbackSuite () {
 
           assertEqual(2, c1.count()); // bar, tom
           assertEqual([ "bar", "tom" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(2, c1.count());
       assertEqual([ "bar", "foo" ], sortedKeys(c1));
@@ -1721,11 +1901,17 @@ function transactionRollbackSuite () {
 
           assertEqual(2, c1.count()); // tom, tim
           assertEqual([ "tim", "tom" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(2, c1.count());
       assertEqual([ "bar", "foo" ], sortedKeys(c1));
@@ -1755,11 +1941,17 @@ function transactionRollbackSuite () {
           c1.save({ _key: "tum" });
           assertEqual(2, c1.count()); // tim, tum
           assertEqual([ "tim", "tum" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(2, c1.count());
       assertEqual([ "bar", "foo" ], sortedKeys(c1));
@@ -1791,11 +1983,17 @@ function transactionRollbackSuite () {
           c1.remove("tem");
           assertEqual(1, c1.count()); // tim, tum
           assertEqual([ "tam" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(2, c1.count());
       assertEqual([ "bar", "foo" ], sortedKeys(c1));
@@ -1825,11 +2023,18 @@ function transactionRollbackSuite () {
           c1.save({ _key: "5" });
           assertEqual(3, c1.count()); 
           assertEqual([ "3", "4", "5" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
       c1.save({ _key: "4" });
       assertEqual(3, c1.count());
       assertEqual([ "2", "3", "4" ], sortedKeys(c1));
@@ -1860,11 +2065,17 @@ function transactionRollbackSuite () {
           assertEqual(3, c1.count()); // tom, tim, tum
           assertEqual([ "tim", "tom", "tum" ], sortedKeys(c1));
           c1.replace("tum", { a : 1 });
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(2, c1.count());
       assertEqual([ "bar", "foo" ], sortedKeys(c1));
@@ -1901,11 +2112,17 @@ function transactionRollbackSuite () {
           assertEqual(3, c1.count());
           c1.save({ _key: "tim" });
           assertEqual([ "bar", "foo", "tim" ], sortedKeys(c1));
-          return false;
+
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
 
       assertEqual(3, c1.count());
       assertEqual([ "bar", "baz", "foo" ], sortedKeys(c1));
@@ -2055,11 +2272,16 @@ function transactionCountSuite () {
           c1.remove("foo");
           assertEqual(3, c1.count());
 
-          return false;
+          throw "rollback";
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
       assertEqual(2, c1.count());
 
       var keys = [ ];
@@ -2333,12 +2555,18 @@ function transactionCrossCollectionSuite () {
           c2.save({ _key: "b2" });
           c2.update("b1", { a: 2 });
           assertEqual(2, c2.document("b1").a);
-          
-          return false;
+        
+          throw "rollback";  
         }
       };
 
-      TRANSACTION(obj);
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
 

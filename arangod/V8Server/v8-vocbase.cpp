@@ -1371,7 +1371,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision, false);
+  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1963,19 +1963,55 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   // extract the "action" property
   static const string actionError = "missing/invalid action definition for transaction";
 
-  if (! object->Has(TRI_V8_SYMBOL("action")) || ! object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+  if (! object->Has(TRI_V8_SYMBOL("action"))) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
+  }
+
+  // function parameters
+  v8::Handle<v8::Value> params;
+
+  if (object->Has(TRI_V8_SYMBOL("params"))) {
+    params = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("params")));
+  }
+  else {
+    params = v8::Undefined();
+  }
+  
+  if (params.IsEmpty()) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+  
+
+  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+
+  // callback function
+  v8::Handle<v8::Function> action;
+
+  if (object->Get(TRI_V8_SYMBOL("action"))->IsFunction()) {
+    action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
+  }
+  else if (object->Get(TRI_V8_SYMBOL("action"))->IsString()) {
+    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+
+    // Invoke Function constructor to create function with the given body and no arguments
+    string body = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("action"))->ToString());
+    body = "return (" + body + ")(params);";
+    v8::Handle<v8::Value> argv[2] = { v8::String::New("params"), v8::String::New(body.c_str(), body.size()) };
+    v8::Local<v8::Object> function = ctor->NewInstance(2, argv);
+
+    action = v8::Local<v8::Function>::Cast(function);
+  }
+  else {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
   
-  v8::Handle<v8::Function> action = v8::Handle<v8::Function>::Cast(object->Get(TRI_V8_SYMBOL("action")));
-
   if (action.IsEmpty()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
-  
+
+
   // start actual transaction
-  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-  
   CollectionNameResolver resolver(vocbase);
   ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
                                                                         resolver, 
@@ -1990,8 +2026,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  v8::Handle<v8::Value> args;
-  v8::Handle<v8::Value> result = action->Call(current, 0, &args);
+  v8::Handle<v8::Value> args = params;
+  v8::Handle<v8::Value> result = action->Call(current, 1, &args);
 
   if (tryCatch.HasCaught()) {
     trx.abort();
@@ -1999,19 +2035,13 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (! TRI_ObjectToBoolean(result)) {
-    trx.abort();
-    
-    return scope.Close(v8::False());
-  }
-  
   res = trx.commit();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  return scope.Close(v8::True());
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5818,8 +5848,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_create()"));
   result->Set(j++, v8::String::New("_createDocumentCollection()"));
   result->Set(j++, v8::String::New("_createEdgeCollection()"));
+  result->Set(j++, v8::String::New("_createStatement()"));
   result->Set(j++, v8::String::New("_document()"));
   result->Set(j++, v8::String::New("_drop()"));
+  result->Set(j++, v8::String::New("_executeTransaction()"));
   result->Set(j++, v8::String::New("_remove()"));
   result->Set(j++, v8::String::New("_replace()"));
   result->Set(j++, v8::String::New("_update()"));

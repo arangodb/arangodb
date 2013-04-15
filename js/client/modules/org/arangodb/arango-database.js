@@ -56,8 +56,6 @@ function ArangoDatabase (connection) {
   this._collectionConstructor = ArangoCollection;
   this._type = ArangoCollection.TYPE_DOCUMENT;
 
-  // private function to store a collection in both "db" and "edges" at the 
-  // same time
   this._registerCollection = function (name, obj) {
     // store the collection in our own list
     this[name] = obj;
@@ -684,6 +682,68 @@ ArangoDatabase.prototype._createStatement = function (data) {
 
 ArangoDatabase.prototype._query = function (data) {  
   return new ArangoStatement(this, { query: data }).execute();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      transactions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._executeTransaction = function (data) { 
+  if (! data || typeof(data) !== 'object') {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "usage: _executeTransaction(<object>)"
+    });
+  }
+
+  if (! data.collections || typeof(data.collections) !== 'object') { 
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "missing/invalid collections definition for transaction"
+    });
+  }
+
+  if (! data.action || 
+      (typeof(data.action) !== 'string' && typeof(data.action) !== 'function')) {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "missing/invalid action definition for transaction"
+    });
+  }
+
+  if (typeof(data.action) === 'function') {
+    data.action = String(data.action);
+  }
+
+  var requestResult = this._connection.POST("/_api/transaction", 
+    JSON.stringify(data));
+
+  if (requestResult !== null && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

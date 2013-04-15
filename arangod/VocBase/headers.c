@@ -131,6 +131,7 @@ static void MoveBackHeader (TRI_headers_t* h,
 
   if (headers->_end == header) {
     // header is already at the end
+    TRI_ASSERT_MAINTAINER(header->_next == NULL);
     return;
   }
 
@@ -145,6 +146,7 @@ static void MoveBackHeader (TRI_headers_t* h,
   }
   
   if (headers->_begin == header) {
+    TRI_ASSERT_MAINTAINER(header->_next != NULL);
     headers->_begin = header->_next;
   }
 
