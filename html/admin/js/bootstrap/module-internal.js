@@ -59,8 +59,15 @@
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.ArangoError = ArangoError;
-  delete ArangoError;
+  try {
+    if (ArangoError !== undefined) {
+      exports.ArangoError = ArangoError;
+      delete ArangoError;
+    }
+  }
+  catch (err) {
+    exports.ArangoError = require("org/arangodb/arango-error").ArangoError;
+  }
 
   exports.ArangoError.prototype._PRINT = function (context) {
     context.output += this.toString();
