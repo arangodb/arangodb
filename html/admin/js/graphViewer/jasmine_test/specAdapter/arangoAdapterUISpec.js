@@ -43,14 +43,32 @@
 
     beforeEach(function () {
       adapter = {
-        
+        changeTo: function(){}
       };
       list = document.createElement("ul");
       document.body.appendChild(list);
       list.id = "control_list";
       adapterUI = new ArangoAdapterControls(list, adapter);
       spyOn(adapter, 'changeTo');
-
+      this.addMatchers({
+        toBeTag: function(name) {
+          var el = this.actual;
+          this.message = function() {
+            return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
+          };
+          return el.tagName.toLowerCase() === name;
+        },
+        
+        toConformToListCSS: function() {
+          var li = this.actual,
+            a = li.firstChild,
+            lbl = a.firstChild;
+          expect(li).toBeTag("li");
+          expect(a).toBeTag("a");
+          expect(lbl).toBeTag("label");
+          return true;
+        }
+      });
     });
 
     afterEach(function () {
@@ -77,8 +95,8 @@
       
         expect($("#control_collections_modal").length).toEqual(1);
       
-        $("#control_collections_nodes").attr("value", "newNodes");
-        $("#control_collections_edges").attr("value", "newEdges");
+        $("#control_collections_nodecollection").attr("value", "newNodes");
+        $("#control_collections_edgecollection").attr("value", "newEdges");
         
         helper.simulateMouseEvent("click", "control_collections_submit");
       
@@ -87,6 +105,11 @@
           "newEdges"
         );
       });      
+    });
+    
+    it('should be able to add all controls to the list', function() {
+      adapterUI.addAll();
+      expect($("#control_list #control_collections").length).toEqual(1);
     });
   });
 }());
