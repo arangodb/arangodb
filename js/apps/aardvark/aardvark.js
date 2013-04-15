@@ -93,7 +93,14 @@
   app.get("/foxxes/thumbnail/:app", function (req, res) {
     res.transformations = [ "base64decode" ];
     res.body = repositories.foxxes.thumbnail(req.params("app"));
-  });
+  }).pathParam("app", {
+    description: "The appname which is used to identify the foxx in the list of available foxxes.",
+    dataType: "string",
+    required: true,
+    allowMultiple: false
+  }).nickname("thumbnails")
+  .summary("Get the thumbnail of a foxx.")
+  .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
   
   
   app.get('/foxxes', function (req, res) {
@@ -109,13 +116,22 @@
   .notes("This function simply returns the list of all running"
    + " foxxes and supplies the paths for the swagger documentation");
   
-  app.get('/docus/*', function(req, res) {
+   app.get("/docu/:key",function (req, res) {
+     var subPath = req.path.substr(0,req.path.lastIndexOf("[")-1),
+       key = req.params("key"),
+       path = "http://" + req.headers.host + subPath + "/" + key + "/";
+     res.json(repositories.docus.listOne(path, key));
+  }).nickname("swaggers")
+  .summary("List documentation of all foxxes.")
+  .notes("This function simply returns one specific"
+   + " foxx and supplies the paths for the swagger documentation");
+  
+  
+  app.get('/docu/:key/*', function(req, res) {
     var mountPoint = "";
     require("underscore").each(req.suffix, function(part) {
       mountPoint += "/" + part;
     });
-    
-    //require("console").log(JSON.stringify(req));
     res.json(repositories.docus.show(mountPoint))
   }).pathParam("appname", {
     description: "The mount point of the App the documentation should be requested for",
