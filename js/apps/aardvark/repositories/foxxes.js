@@ -66,18 +66,13 @@
       return thumb;
     },
     
-    install: function (name, mount, version) {
-      require("console").log(name);
-      require("console").log(mount);
-      require("console").log(version);
-      
-      
+    install: function (name, mount, version) {      
       return foxxmanager.installApp(name, mount, version);
     },
     
     // Define the functionality to uninstall an installed foxx
     uninstall: function (key) {
-      return Foxx.uninstallApp(key);
+      return foxxmanager.uninstallApp(key);
     },
     
     // Define the functionality to deactivate an installed foxx.
