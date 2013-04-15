@@ -93,7 +93,7 @@
     },
     
     dummyNodeShaper = {
-      "updateNodes": function() {
+      updateNodes: function() {
         var changeDist = 0;
         _.each(nodes, function(d) {
           changeDist += Math.abs(d.px - d.x) + Math.abs(d.py - d.y);
@@ -316,7 +316,118 @@
       }).not.toThrow("No links defined");
     });
     
+    describe('testing for parameters', function() {
+      // Mock the force!
+      var mock = {
+        nodes: function() {},
+        links: function() {},
+        size: function() {},
+        linkDistance: function() {},
+        gravity: function() {},
+        charge: function() {},
+        on: function() {}
+      },
+      config;
+      
+      
+      beforeEach(function() {
+        d3.layout.force = function() {
+          return mock;
+        };
+        config = {
+          nodes: [],
+          links: []
+        };
+      });
+      
+      it('should set the nodes', function() {
+        spyOn(mock, "nodes");
+        config.nodes = [{_id: 1}];
+        var tmp = new ForceLayouter(config);
+        expect(mock.nodes).wasCalledWith([{_id: 1}]);
+      });
+      
+      it('should set the edges', function() {
+        spyOn(mock, "links");
+        config.links = [{_id: 1}];
+        var tmp = new ForceLayouter(config);
+        expect(mock.links).wasCalledWith([{_id: 1}]);
+      });
+      
+      it('should set the size', function() {
+        spyOn(mock, "size");
+        config.width = 100;
+        config.height = 80;
+        var tmp = new ForceLayouter(config);
+        expect(mock.size).wasCalledWith([100, 80]);
+      });
+      
+      it('should set the distance', function() {
+        spyOn(mock, "linkDistance");
+        config.distance = 100;
+        var tmp = new ForceLayouter(config);
+        expect(mock.linkDistance).wasCalledWith(100);
+      });
+      
+      it('should set the gravity', function() {
+        spyOn(mock, "gravity");
+        config.gravity = 100;
+        var tmp = new ForceLayouter(config);
+        expect(mock.gravity).wasCalledWith(100);
+      });
+      
+      it('should set the charge', function() {
+        spyOn(mock, "charge");
+        config.charge = 100;
+        var tmp = new ForceLayouter(config);
+        expect(mock.charge).wasCalledWith(100);
+      });
+      
+      it('should set default values', function() {
+        spyOn(mock, "size");
+        spyOn(mock, "linkDistance");
+        spyOn(mock, "gravity");
+        spyOn(mock, "charge");
+        
+        var tmp = new ForceLayouter(config);
+        
+        expect(mock.size).wasCalledWith([940, 640]);
+        expect(mock.linkDistance).wasCalledWith(100);
+        expect(mock.gravity).wasCalledWith(0.01);
+        expect(mock.charge).wasCalledWith(-300);
+      });
+      
+      it('should be able to switch the distance', function() {
+        var tmp = new ForceLayouter(config);
+        spyOn(mock, "linkDistance");
+        tmp.changeTo({
+          distance: 200
+        });
+        expect(mock.linkDistance).wasCalledWith(200);
+      });
+      
+      it('should be able to switch the gravity', function() {
+        var tmp = new ForceLayouter(config);
+        spyOn(mock, "gravity");
+        tmp.changeTo({
+          gravity: 200
+        });
+        expect(mock.gravity).wasCalledWith(200);
+      });
+      
+      it('should be able to switch the charge', function() {
+        var tmp = new ForceLayouter(config);
+        spyOn(mock, "charge");
+        tmp.changeTo({
+          charge: 200
+        });
+        expect(mock.charge).wasCalledWith(200);
+      });
+      
+      
+    });
     
+    /*
     describe('tested under normal conditions (50 nodes)', function() {
       beforeEach(function() {
         nodes = createNodeList(50);
@@ -360,6 +471,7 @@
       }); 
       
     });
+    */
     /*
     describe('tested under evil stress (5000 nodes)', function() {
       
