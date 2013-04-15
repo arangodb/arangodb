@@ -1,6 +1,10 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
 --------------------------
 
+* issue #474: Web interface problems with the JS Shell
+ 
+* added missing documentation for AQL UNION function
+
 * added transaction support. 
   This provides ACID transactions for ArangoDB. Transactions can be invoked
   using the `db._executeTransaction()` function, or the `/_api/transaction`
