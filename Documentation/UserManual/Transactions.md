@@ -123,6 +123,31 @@ attribute:
 
 Any valid Javascript code is allowed inside `action` but the code may only
 access the collections declared in `collections`.
+`action` may be a Javascript function as shown above, or a string representation 
+of a Javascript function:
+
+    db._executeTransaction({
+      collections: {
+        write: "users",
+      },
+      action: "function () { /* all operations go here */ }"
+    });
+
+Please note that any operations specified in `action` will be executed on the 
+server, in a separate scope. Variables will be bound late. Accessing any Javascript 
+variables defined on the client-side or in some other server context from inside
+a transaction may not work. 
+Instead, any variables used inside `action` should be defined inside `action` itself:
+
+    db._executeTransaction({
+      collections: {
+        write: "users",
+      },
+      action: function () {
+        var db = require(...).db;
+        db.users.save({ ... });
+      }
+    });
 
 When the code inside the `action` attribute is executed, the transaction is
 already started and all required locks have been acquired. When the code inside 
@@ -137,6 +162,7 @@ be thrown and not caught inside the transaction:
         write: "users",
       },
       action: function () {
+        var db = require("internal").db;
         db.users.save({ _key: "hello" });
 
         /* will abort and roll back the transaction */
@@ -155,6 +181,7 @@ case, the user can return any legal Javascript value from the function:
         write: "users",
       },
       action: function () {
+        var db = require("internal").db;
         db.users.save({ _key: "hello" });
 
         /* will commit the transaction and return the value "hello" */
@@ -174,7 +201,6 @@ The `action` attribute contains the actual transaction code to be executed.
 This code contains all data modification operations (3 in this example).
 
     /* setup */
-    var db = require("internal").db;
     db._create("c1");
 
     db._executeTransaction({
@@ -182,6 +208,7 @@ This code contains all data modification operations (3 in this example).
         write: [ "c1" ]
       },
       action: function () {
+        var db = require("internal").db;
         db.c1.save({ _key: "key1" });
         db.c1.save({ _key: "key2" });
         db.c1.save({ _key: "key3" });
@@ -195,7 +222,6 @@ Aborting the transaction by throwing an exception in the `action` function
 will revert all changes, so as if the transaction never happened:
     
     /* setup */
-    var db = require("internal").db;
     db._create("c1");
 
     db._executeTransaction({
@@ -203,6 +229,7 @@ will revert all changes, so as if the transaction never happened:
         write: [ "c1" ]
       },
       action: function () {
+        var db = require("internal").db;
         db.c1.save({ _key: "key1" });
         db.c1.count(); /* 1 */
 
@@ -220,7 +247,6 @@ The automatic rollback is also executed when an internal exception is thrown
 at some point during transaction execution:
 
     /* setup */
-    var db = require("internal").db;
     db._create("c1");
 
     db._executeTransaction({
@@ -228,6 +254,7 @@ at some point during transaction execution:
         write: [ "c1" ]
       },
       action: function () {
+        var db = require("internal").db;
         db.c1.save({ _key: "key1" });
         
         /* will throw duplicate a key error, not explicitly requested by the user */
@@ -245,7 +272,6 @@ transaction will also restore secondary indexes to the state at transaction
 start. The following example using a cap constraint should illustrate that:
 
     /* setup */
-    var db = require("internal").db;
     db._create("c1");
     
     /* limit the number of documents to 3 */
@@ -266,6 +292,7 @@ start. The following example using a cap constraint should illustrate that:
         write: [ "c1" ]
       },
       action: function () {
+        var db = require("internal").db;
         /* this will push out key2. we now have keys [ "key3", "key4", "key5" ] */
         db.c1.save({ _key: "key5" }); 
 
@@ -285,7 +312,6 @@ In this case, multiple collections need to be declared in the `collections`
 attribute, e.g.:
 
     /* setup */
-    var db = require("internal").db;
     db._create("c1");
     db._create("c2");
 
@@ -294,6 +320,7 @@ attribute, e.g.:
         write: [ "c1", "c2" ]
       },
       action: function () {
+        var db = require("internal").db;
         db.c1.save({ _key: "key1" });
         db.c2.save({ _key: "key2" });
       }
@@ -307,7 +334,6 @@ Again, throwing an exception from inside the `action` function will make the
 transaction abort and roll back all changes in all collections:
 
     /* setup */
-    var db = require("internal").db;
     db._create("c1");
     db._create("c2");
 
@@ -316,6 +342,7 @@ transaction abort and roll back all changes in all collections:
         write: [ "c1", "c2" ]
       },
       action: function () {
+        var db = require("internal").db;
         for (var i = 0; i < 100; ++i) {
           db.c1.save({ _key: "key" + i });
           db.c2.save({ _key: "key" + i });
@@ -331,6 +358,38 @@ transaction abort and roll back all changes in all collections:
 
     db.c1.count(); /* 0 */
     db.c2.count(); /* 0 */
+
+
+Passing parameters to transactions {#TransactionsParameters}
+============================================================
+
+Arbitrary parameters can be passed to transactions by setting the `params` 
+attribute when declaring the transaction. This feature is handy to re-use the
+same transaction code for multiple calls but with different parameters.
+
+A basic example:
+
+    db._executeTransaction({
+      collections: { },
+      action: "function (params) { return params[1]; }",
+      params: [ 1, 2, 3 ]
+    });
+
+The above example will return `1`.
+
+Some example that uses collections:
+
+    db._executeTransaction({
+      collections: { 
+        write: "users",
+        read: [ "c1", "c2" ]
+      },
+      action: "function (params) { var db = require('internal').db; var doc = db.c1.document(params['c1Key']); db.users.save(doc); doc = db.c2.document(params['c2Key']); db.users.save(doc);}", 
+      params: { 
+        c1Key: "foo", 
+        c2Key: "bar" 
+      }
+    });
 
 
 Disallowed operations {#TransactionsDisallowedOperations}

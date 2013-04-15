@@ -1,5 +1,5 @@
 > curl --data @- -X POST --dump - http://localhost:8529/_api/transaction
-{ "collections" : { "write" : [ "users" ] }, "action" : "var users = require(\"internal\").db.users; users.save({ _key: \"abc\" }); users.save({ _key: \"abc\" });" }
+{ "collections" : { "write" : [ "users" ] }, "action" : "function () { var users = require(\"internal\").db.users; users.save({ _key: \"abc\" }); users.save({ _key: \"abc\" }); }" }
 
 HTTP/1.1 400 Bad Request
 content-type: application/json; charset=utf-8

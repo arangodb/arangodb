@@ -60,6 +60,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   try {
+    // necessary for the web interface
     if (ArangoError !== undefined) {
       exports.ArangoError = ArangoError;
       delete ArangoError;

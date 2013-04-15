@@ -708,7 +708,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
       error: true,
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
       errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: "usage: TRANSACTION(<object>)"
+      errorMessage: "usage: _executeTransaction(<object>)"
     });
   }
 
@@ -732,7 +732,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   }
 
   if (typeof(data.action) === 'function') {
-    data.action = 'return ' + String(data.action) + '();';
+    data.action = String(data.action);
   }
 
   var requestResult = this._connection.POST("/_api/transaction", 
@@ -744,7 +744,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return requestResult.result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
