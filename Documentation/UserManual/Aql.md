@@ -950,6 +950,33 @@ AQL supports the following functions to operate on list values:
   uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
   Calling this function might return the unique elements in any order.
 
+- @FN{UNION(@FA{list1\, list2\, ...})}: returns the union of all lists specified.
+  The function expects at least two list values as its arguments.
+  Note: no duplicates will be removed. In order to remove duplicates, please use the
+  @LIT{UNIQUE} function.
+
+  Example:
+    RETURN UNION(
+      [ 1, 2, 3 ],
+      [ 1, 2 ]
+    )
+
+  will produce:
+    [ [ 1, 2, 3, 1, 2 ] ]
+
+  with duplicate removal:
+
+    RETURN UNIQUE(
+      UNION(
+        [ 1, 2, 3 ],
+        [ 1, 2 ]
+      )
+    )
+  
+  will produce:
+    [ [ 1, 2, 3 ] ]
+
+
 Apart from these functions, AQL also offers several language constructs (e.g.
 `FOR`, `SORT`, `LIMIT`, `COLLECT`) to operate on lists.
 
