@@ -980,7 +980,7 @@ struct TransactionCountTest : public BenchmarkOperation {
   }
 
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return string("/_admin/execute");
+    return string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
@@ -991,11 +991,11 @@ struct TransactionCountTest : public BenchmarkOperation {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
-    TRI_AppendStringStringBuffer(buffer, "var c = require(\"internal\").db._collection(\"");
+    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { \"write\": \"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\"); return TRANSACTION({ collections: { write: \"");
+    TRI_AppendStringStringBuffer(buffer, "\" }, \"action\": \"function () { var c = require(\\\"internal\\\").db._collection(\\\""); 
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\" }, action: function () { var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error\"; } c.save({ }); } } });");
+    TRI_AppendStringStringBuffer(buffer, "\\\"); var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \\\"error\\\"; } c.save({ }); } }\" }");
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
@@ -1050,7 +1050,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
   }
 
   string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return string("/_admin/execute");
+    return string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
@@ -1062,29 +1062,33 @@ struct TransactionMultiTest : public BenchmarkOperation {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
-    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\"internal\").db._collection(\"");
-    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\"); ");
-    TRI_AppendStringStringBuffer(buffer, "var c2 = require(\"internal\").db._collection(\"");
-    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\"); TRANSACTION({ collections: { ");
+    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
     
     if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, "write: [ \"");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\", \"");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\" ] }, ");
-      TRI_AppendStringStringBuffer(buffer, "action: function () { var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); } });");
+      TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
     }
     else {
-      TRI_AppendStringStringBuffer(buffer, "read: [ \"");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\", \"");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\" ] }, ");
-      TRI_AppendStringStringBuffer(buffer, "action: function () { var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error\"; } } });");
+      TRI_AppendStringStringBuffer(buffer, "\"read\": [ \"");
     }
+
+    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\", \"");
+    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\" ] }, \"action\": \"function () { ");
+    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\\\"); var c2 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\\\"); ");
+  
+    if (mod == 0) {
+      TRI_AppendStringStringBuffer(buffer, "var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\\\"sum\\\"); c2.update(d, { count: d.count + n });");
+    }
+    else {
+      TRI_AppendStringStringBuffer(buffer, "var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\\\"sum\\\").count; if (r1 !== r2) { throw \\\"error\\\"; }");
+    }
+    
+    TRI_AppendStringStringBuffer(buffer, " }\" }");
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
