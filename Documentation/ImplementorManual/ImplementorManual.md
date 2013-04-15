@@ -15,6 +15,7 @@ ArangoDB for API Implementors (@VERSION) {#ImplementorManual}
 @CHAPTER_REF{IndexSkiplistHttp}
 @CHAPTER_REF{IndexGeoHttp}
 @CHAPTER_REF{IndexFulltextHttp}
+@CHAPTER_REF{HttpTransactions}
 @CHAPTER_REF{HttpGraph}
 @CHAPTER_REF{HttpImport}
 @CHAPTER_REF{HttpBatch}

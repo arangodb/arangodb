@@ -245,13 +245,12 @@ namespace triagens {
                             const TRI_doc_update_policy_e policy,
                             bool forceSync,
                             const TRI_voc_rid_t expectedRevision,
-                            TRI_voc_rid_t* actualRevision,
-                            const bool lock) {
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->remove(this->trxCollection(), key, policy, expectedRevision, actualRevision, forceSync, lock);
+          return this->remove(this->trxCollection(), key, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
