@@ -1371,7 +1371,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot delete document");
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision, false);
+  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
