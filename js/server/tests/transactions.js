@@ -170,11 +170,29 @@ function transactionInvocationSuite () {
 /// @brief test: action
 ////////////////////////////////////////////////////////////////////////////////
 
+    testActionInvalidString : function () {
+      try {
+        TRANSACTION({
+          collections : {
+          },
+          action : "return 42;"
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: action
+////////////////////////////////////////////////////////////////////////////////
+
     testActionString : function () {
       var obj = {
         collections : {
         },
-        action : "return 42;"
+        action : "function () { return 42; }"
       };
 
       assertEqual(42, TRANSACTION(obj));
@@ -192,7 +210,7 @@ function transactionInvocationSuite () {
           TRANSACTION({
             collections: {
             },
-            action: "return 1;"
+            action: "function () { return 1; }"
           });
         }
       };
@@ -204,6 +222,38 @@ function transactionInvocationSuite () {
       catch (err) {
         assertEqual(arangodb.errors.ERROR_TRANSACTION_NESTED.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: params
+////////////////////////////////////////////////////////////////////////////////
+
+    testParamsFunction : function () {
+      var obj = {
+        collections : {
+        },
+        action : function (params) {
+          return [ params[1], params[4] ];
+        },
+        params: [ 1, 2, 3, 4, 5 ]
+      };
+
+      assertEqual([ 2, 5 ], TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: params
+////////////////////////////////////////////////////////////////////////////////
+
+    testParamsString : function () {
+      var obj = {
+        collections : {
+        },
+        action : "function (params) { return [ params[1], params[4] ]; }",
+        params: [ 1, 2, 3, 4, 5 ]
+      };
+
+      assertEqual([ 2, 5 ], TRANSACTION(obj));
     }
 
   };

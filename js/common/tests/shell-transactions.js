@@ -74,7 +74,7 @@ function TransactionsInvocationsSuite () {
     testInvokeActionString : function () {
       var result = db._executeTransaction({ 
         collections: { }, 
-        action: "return 23;" 
+        action: "function () { return 23; }" 
       });
 
       assertEqual(23, result);
@@ -87,7 +87,7 @@ function TransactionsInvocationsSuite () {
     testInvokeActionStringFunction : function () {
       var result = db._executeTransaction({ 
         collections: { }, 
-        action: "return function () { return 11; }()" 
+        action: "function () { return function () { return 11; }(); }" 
       });
 
       assertEqual(11, result);
@@ -160,11 +160,28 @@ function TransactionsInvocationsSuite () {
 /// @brief execute a transaction with a non-working action declaration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionBroken : function () {
+    testInvokeActionBroken1 : function () {
       try {
         db._executeTransaction({ 
           collections: { },
-          action: "function () { return 11; }" 
+          action: "return 11;" 
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a transaction with a non-working action declaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvokeActionBroken2 : function () {
+      try {
+        db._executeTransaction({ 
+          collections: { },
+          action: "function () { " 
         });
         fail();
       }
@@ -189,6 +206,36 @@ function TransactionsInvocationsSuite () {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testParametersString : function () {
+      var result = db._executeTransaction({ 
+        collections: { }, 
+        action: "function (params) { return [ params[1], params[4] ]; }",
+        params: [ 1, 2, 3, 4, 5 ]
+      });
+
+      assertEqual([ 2, 5 ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parameters
+////////////////////////////////////////////////////////////////////////////////
+
+    testParametersFunction : function () {
+      var result = db._executeTransaction({ 
+        collections: { }, 
+        action: function (params) {
+          return [ params[1], params[4] ];
+        },
+        params: [ 1, 2, 3, 4, 5 ]
+      });
+
+      assertEqual([ 2, 5 ], result);
+    }
 
   };
 }

@@ -1,5 +1,5 @@
 > curl --data @- -X POST --dump - http://localhost:8529/_api/transaction
-{ "collections" : { "write" : [ "users", "logins" ] }, "action" : "var users = require(\"internal\").db.users; var logins = require(\"internal\").db.logins; users.save({ }); logins.save({ }); return \"worked!\";" }
+{ "collections" : { "write" : [ "users", "logins" ] }, "action" : "function () { var users = require(\"internal\").db.users; var logins = require(\"internal\").db.logins; users.save({ }); logins.save({ }); return \"worked!\"; }" }
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8

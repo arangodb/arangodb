@@ -46,13 +46,23 @@ var actions = require("org/arangodb/actions");
 ///
 /// The transaction description must be passed in the body of the POST request.
 ///
-/// The following attributes can be used inside the JSON object:
+/// The following attributes must be specified inside the JSON object:
 ///
 /// - @LIT{collections}: contains the list of collections to be used in the
 ///   transaction (mandatory). @LIT{collections} must be a JSON array that can
 ///   have the optional sub-attributes @LIT{read} and @LIT{write}. @LIT{read}
 ///   and @LIT{write} must each be either lists of collections names or strings
 ///   with a single collection name. 
+///
+/// - @LIT{action}: the actual transaction operations to be executed, in the
+///   form of stringified Javascript code. The code will be executed on server
+///   side, with late binding. It is thus critical that the code specified in
+///   @LIT{action} properly sets up all the variables it needs. 
+///   If the code specified in @LIT{action} ends with a return statement, the
+///   value returned will also be returned by the REST API in the @LIT{result}
+///   attribute if the transaction committed successfully.
+///
+/// The following optional attributes may also be specified in the request:
 ///
 /// - @LIT{waitForSync}: an optional boolean flag that, if set, will force the 
 ///   transaction to write all data to disk before returning.
@@ -62,12 +72,7 @@ var actions = require("org/arangodb/actions");
 ///   value will be used. Setting @LIT{lockTimeout} to @LIT{0} will make ArangoDB 
 ///   not time out waiting for a lock.
 ///
-/// - @LIT{action}: the actual transaction operations to be executed, in the
-///   form of stringified Javascript code. The code will be executed on server
-///   side, so it is critical that it will only access variables that are
-///   defined & available on the server side. The code specified in @LIT{action}
-///   can end with a return statement. The value returned will be returned to
-///   the client if the transaction commits successfully.
+/// - @LIT{params}: optional arguments passed to @LIT{action}.
 ///
 /// If the transaction is fully executed and committed on the server, 
 /// @LIT{HTTP 200} will be returned. Additionally, the return value of the 
