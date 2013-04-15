@@ -177,6 +177,7 @@
         expect($("#contentDiv #menubar").length).toEqual(1);
       });
       
+      /*
       it('should contain a field to load a node', function() {
         expect($("#contentDiv #menubar #nodeid").length).toEqual(1);
         expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
@@ -190,6 +191,27 @@
         expect(btn.height).toEqual(16);
         expect(btn.className).toEqual("searchSubmit");
       });
+      */
+      
+      it('should contain a field to load a node by attribute', function() {
+        expect($("#contentDiv #menubar #attribute").length).toEqual(1);
+        expect($("#contentDiv #menubar #value").length).toEqual(1);
+        expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
+        var attrfield = $("#contentDiv #menubar #attribute")[0],
+          valfield = $("#contentDiv #menubar #value")[0],
+          btn = $("#contentDiv #menubar #loadnode")[0];
+        expect(attrfield).toBeTag("input");
+        expect(attrfield.type).toEqual("text");
+        expect(attrfield.className).toEqual("searchInput");
+        expect(valfield).toBeTag("input");
+        expect(valfield.type).toEqual("text");
+        expect(valfield.className).toEqual("searchInput");
+        expect(btn).toBeTag("img");
+        expect(btn.width).toEqual(16);
+        expect(btn.height).toEqual(16);
+        expect(btn.className).toEqual("searchSubmit");
+      });
+      
       
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
@@ -220,7 +242,7 @@
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect(false).toBeTruthy();
+        expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
       
       it('should have the same layout as the web interface', function() {

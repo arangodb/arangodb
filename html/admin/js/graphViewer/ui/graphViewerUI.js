@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
-/*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls*/
+/*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls, ArangoAdapterControls*/
 /*global GraphViewer, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -102,6 +102,12 @@ function GraphViewerUI(container, adapterConfig) {
           "edgeshaperdropdown",
           "Edge Shaper"
         ),
+        adapterDropDown = document.createElement("div"),
+        adapterList = makeBootstrapDropdown(
+          adapterDropDown,
+          "adapterdropdown",
+          "Connection"
+        ),
         nodeShaperUI = new NodeShaperControls(
           nodeShaperList,
           graphViewer.nodeShaper
@@ -109,6 +115,10 @@ function GraphViewerUI(container, adapterConfig) {
         edgeShaperUI = new EdgeShaperControls(
           edgeShaperList,
           graphViewer.edgeShaper
+        ),
+        adapterUI = new ArangoAdapterControls(
+          adapterList,
+          graphViewer.adapter
         );
       
       menubar.id = "menubar";
@@ -130,6 +140,7 @@ function GraphViewerUI(container, adapterConfig) {
       
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
+      adapterDropDown.id = "adaptermenu";
       
       searchStart.onclick = function() {
         var nodeId = searchField.value;
@@ -143,11 +154,11 @@ function GraphViewerUI(container, adapterConfig) {
       searchDiv.appendChild(searchStart);
       transparentHeader.appendChild(nodeShaperDropDown);
       transparentHeader.appendChild(edgeShaperDropDown);
-      
+      transparentHeader.appendChild(adapterDropDown);
       
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
-      
+      adapterUI.addAll();
     };
   container.appendChild(menubar);
   svg = createSVG();
