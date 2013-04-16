@@ -891,7 +891,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
-  res = trx.read(&document, key, true);
+  res = trx.read(&document, key);
 
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson(resolver, col, &document, barrier);
@@ -995,7 +995,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   }
 
   TRI_doc_mptr_t document;
-  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision, true);
+  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
 
   res = trx.finish(res);
 
@@ -1024,8 +1024,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv,
-    bool replace,
-    bool lock) {
+    bool replace) {
   v8::HandleScope scope;
 
   if (argv.Length() < 1 || argv.Length() > 2) {
@@ -1066,7 +1065,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   const bool forceSync = ExtractForceSync(argv, 2);
 
   TRI_doc_mptr_t document;
-  res = trx->createDocument(key, &document, shaped, forceSync, lock);
+  res = trx->createDocument(key, &document, shaped, forceSync);
 
   res = trx->finish(res);
 
@@ -1092,8 +1091,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv,
-    bool replace,
-    bool lock) {
+    bool replace) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
@@ -1172,7 +1170,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
 
   TRI_doc_mptr_t document;
-  res = trx->createEdge(key, &document, shaped, forceSync, &edge, lock);
+  res = trx->createEdge(key, &document, shaped, forceSync, &edge);
   res = trx->finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1266,8 +1264,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   trx.lockWrite();
 
   TRI_doc_mptr_t document;
-  // do not acquire an extra lock
-  res = trx.read(&document, key, false);
+  res = trx.read(&document, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot update document");
@@ -1289,8 +1286,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  // do not acquire an extra-lock
-  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision, false);
+  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -5137,10 +5133,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, col, argv, false, true);
+    result = SaveVocbaseCol(&trx, col, argv, false);
   }
   else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, col, argv, false, true);
+    result = SaveEdgeCol(&trx, col, argv, false);
   }
 
   return scope.Close(result);
@@ -5267,7 +5263,7 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
 
   if (key != 0) {
     TRI_doc_mptr_t document;
-    res = trx.read(&document, key, false);
+    res = trx.read(&document, key);
   }
   else {
     res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -5288,7 +5284,7 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
     TRI_doc_mptr_t document;
     TRI_voc_rid_t rid = 0;
     TRI_voc_rid_t actualRevision = 0;
-    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision, true);
+    res = trx.updateDocument(key, &document, shaped, TRI_DOC_UPDATE_LAST_WRITE, forceSync, rid, &actualRevision);
 
     res = trx.finish(res);
 
@@ -5308,10 +5304,10 @@ static v8::Handle<v8::Value> JS_SaveOrReplaceVocbaseCol (v8::Arguments const& ar
   }
   else if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
-      result = SaveVocbaseCol(&trx, col, argv, true, false);
+      result = SaveVocbaseCol(&trx, col, argv, true);
     }
     else if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_EDGE) {
-      result = SaveEdgeCol(&trx, col, argv, true, false);
+      result = SaveEdgeCol(&trx, col, argv, true);
     }
   }
   else {

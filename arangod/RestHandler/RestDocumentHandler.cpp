@@ -398,7 +398,7 @@ bool RestDocumentHandler::createDocument () {
   const TRI_voc_cid_t cid = trx.cid();
 
   TRI_doc_mptr_t document;
-  res = trx.createDocument(&document, json, waitForSync, true);
+  res = trx.createDocument(&document, json, waitForSync);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
@@ -570,7 +570,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   const TRI_voc_cid_t cid = trx.cid();
   TRI_doc_mptr_t document;
 
-  res = trx.read(&document, key, true);
+  res = trx.read(&document, key);
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
   assert(primary != 0);
@@ -1120,7 +1120,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     trx.lockWrite();
 
     // do not lock again
-    res = trx.read(&oldDocument, key, false);
+    res = trx.read(&oldDocument, key);
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
@@ -1144,13 +1144,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
       if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
         // do not acquire an extra lock
-        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid, false);
+        res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
       }
     }
   }
   else {
     // replacing an existing document, using a lock
-    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid, true);
+    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
   }
 
   const bool wasSynchronous = trx.synchronous();
@@ -1169,10 +1169,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // generate result
   if (wasSynchronous) {
-    generateCreated(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
+    generateCreated(cid, (TRI_voc_key_t) key.c_str(), document._rid);
   }
   else {
-    generateAccepted(cid,  (TRI_voc_key_t) key.c_str(), document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), document._rid);
   }
 
   return true;

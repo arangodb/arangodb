@@ -158,7 +158,7 @@ namespace triagens {
 /// @brief read any (random) document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int read (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
+        inline int readRandom (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
           return this->readAny(this->trxCollection(), mptr, barrier);
         }
 
@@ -166,8 +166,8 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int read (TRI_doc_mptr_t* mptr, const string& key, const bool lock) {
-          return this->readSingle(this->trxCollection(), mptr, key, lock);
+        inline int read (TRI_doc_mptr_t* mptr, const string& key) {
+          return this->readSingle(this->trxCollection(), mptr, key);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
