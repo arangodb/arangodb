@@ -127,8 +127,8 @@ ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised w
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1521,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
 ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."
 ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,1530,"document attribute '%s' is assigned multiple times","Will be raised when a document attribute is re-assigned."
-ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1540,"usage of unknown function '%s'","Will be raised when an undefined function is called."
-ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,1541,"invalid number of arguments for function '%s'","Will be raised when the number of arguments used in a function call does not match the expected number of arguments for the function."
+ERROR_QUERY_FUNCTION_NAME_UNKNOWN,1540,"usage of unknown function '%s()'","Will be raised when an undefined function is called."
+ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,1541,"invalid number of arguments for function '%s()'","Will be raised when the number of arguments used in a function call does not match the expected number of arguments for the function."
 ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,1542,"invalid argument type used in call to function '%s()'","Will be raised when the type of an argument used in a function call does not match the expected argument type."
 ERROR_QUERY_INVALID_REGEX,1543,"invalid regex argument value used in call to function '%s()'","Will be raised when an invalid regex argument value is used in a call to a function that expects a regex."
 ERROR_QUERY_BIND_PARAMETERS_INVALID,1550,"invalid structure of bind parameters","Will be raised when the structure of bind parameters passed has an unexpected format."
@@ -149,7 +149,7 @@ ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fu
 
 ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be raised when a user function with an invalid name is registered."
 ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
-ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function not found","Will be raised when a user function is accessed but not found."
+ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function '%s()' not found","Will be raised when a user function is accessed but not found."
 
 ################################################################################
 ## ArangoDB cursor errors
