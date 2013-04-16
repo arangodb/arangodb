@@ -127,32 +127,32 @@ function JSONAdapter(jsonPath, nodes, edges, width, height) {
     });
   };
   
-  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback){
-      alert("Sorry this adapter is read-only");
+  self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+    throw "Sorry this adapter is read-only";
   };
   
   self.createEdge = function(edgeToCreate, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.deleteEdge = function(edgeToDelete, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.patchEdge = function(edgeToPatch, patchData, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.createNode = function(nodeToCreate, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.deleteNode = function(nodeToDelete, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   self.patchNode = function(nodeToPatch, patchData, callback){
-      alert("Sorry this adapter is read-only");
+      throw "Sorry this adapter is read-only";
   };
   
   

@@ -42,9 +42,23 @@
     
     var div,
     ui,
-    adapterConfig;
+    adapterConfig,
+    adapterMockCall;
     
     beforeEach(function() {
+      //Mock for jsonAdapter
+      var tmp = JSONAdapter;
+      JSONAdapter = function (jsonPath, nodes, edges, width, height) {
+        var r = new tmp(jsonPath, nodes, edges, width, height);
+        r.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
+          adapterMockCall = {
+            attribute: attribute,
+            value: value
+          }
+        }
+        return r;
+      }
+      
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -194,12 +208,13 @@
       */
       
       it('should contain a field to load a node by attribute', function() {
-        expect($("#contentDiv #menubar #attribute").length).toEqual(1);
-        expect($("#contentDiv #menubar #value").length).toEqual(1);
-        expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
-        var attrfield = $("#contentDiv #menubar #attribute")[0],
-          valfield = $("#contentDiv #menubar #value")[0],
-          btn = $("#contentDiv #menubar #loadnode")[0];
+        var barSelector = "#contentDiv #menubar";
+        expect($(barSelector + " #attribute").length).toEqual(1);
+        expect($(barSelector + " #value").length).toEqual(1);
+        expect($(barSelector + " #loadnode").length).toEqual(1);
+        var attrfield = $(barSelector + " #attribute")[0],
+          valfield = $(barSelector + " #value")[0],
+          btn = $(barSelector + " #loadnode")[0];
         expect(attrfield).toBeTag("input");
         expect(attrfield.type).toEqual("text");
         expect(attrfield.className).toEqual("searchInput");
@@ -280,9 +295,68 @@
       });
     });
     
+    describe('checking to load a graph', function() {
+      
+      var waittime = 100;
+      
+      beforeEach(function() {
+        this.addMatchers({
+          toBeDisplayed: function() {
+            var nodes = this.actual,
+            nonDisplayed = [];
+            this.message = function(){
+              var msg = "Nodes: [";
+              _.each(nonDisplayed, function(n) {
+                msg += n + " ";
+              });
+              msg += "] are not displayed.";
+              return msg;
+            };
+            _.each(nodes, function(n) {
+              if ($("svg #" + n)[0] === undefined) {
+                nonDisplayed.push(n);
+              }
+            });
+            return nonDisplayed.length === 0;
+          }
+        });
+      });
+      
+      it('should load the graph by _id', function() {
+        
+        runs(function() {
+          $("#contentDiv #menubar #value").attr("value", "0");
+          helper.simulateMouseEvent("click", "loadnode");
+        });
+        
+        waits(waittime);
+        
+        runs(function() {
+          expect([0, 1, 2, 3, 4]).toBeDisplayed();
+        });
+        
+      });
+      
+      it('should load the graph by attribute and value', function() {
+        
+        runs(function() {
+          adapterMockCall = {};
+          $("#contentDiv #menubar #attribute").attr("value", "name");
+          $("#contentDiv #menubar #value").attr("value", "0");
+          helper.simulateMouseEvent("click", "loadnode");
+          expect(adapterMockCall).toEqual({
+            attribute: "name",
+            value: "0"
+          });
+        });
+        
+      });
+      
+    });
+    
     
     describe('set up with jsonAdapter and click Expand rest default', function() {
-      // This waittime is rather opcimistic, on a slow machine this has to be increased
+      // This waittime is rather optimistic, on a slow machine this has to be increased
       var waittime = 100, 
     
       clickOnNode = function(id) {
@@ -346,7 +420,7 @@
         });
       
         runs (function() {
-          $("#contentDiv #menubar #nodeid").attr("value", "0");
+          $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
           helper.simulateMouseEvent("click", "control_expand");
         });
@@ -355,9 +429,7 @@
       
       });
     
-      it('should have loaded the graph', function() {
-        expect([0, 1, 2, 3, 4]).toBeDisplayed();
-      });
+      
     
       it("should be able to expand a node", function() {
   
