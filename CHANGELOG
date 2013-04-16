@@ -1,6 +1,8 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
 --------------------------
 
+* issue #475: A better error message for deleting a non-existent graph
+
 * issue #474: Web interface problems with the JS Shell
  
 * added missing documentation for AQL UNION function
