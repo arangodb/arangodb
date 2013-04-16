@@ -38,7 +38,7 @@
 describe("Graph Viewer", function() {
   "use strict";
   var viewer,
-  waittime = 100,
+  waittime = 200,
   svg,
   docSVG;
   
