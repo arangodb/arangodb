@@ -193,23 +193,39 @@
             key: "label"
           }
         }),
-        c1, c2, c3, c4;
+        c1f, c2f, c3f, c4f,
+        c1s, c2s, c3s, c4s;
         shaper.drawNodes(nodes);
         
-        c1 = $("#1").attr("fill");
-        c2 = $("#2").attr("fill");
-        c3 = $("#3").attr("fill");
-        c4 = $("#4").attr("fill");
+        c1f = $("#1").attr("fill");
+        c2f = $("#2").attr("fill");
+        c3f = $("#3").attr("fill");
+        c4f = $("#4").attr("fill");
         
-        expect(c1).toBeDefined();
-        expect(c2).toBeDefined();
-        expect(c3).toBeDefined();
-        expect(c4).toBeDefined();
+        c1s = $("#1").attr("stroke");
+        c2s = $("#2").attr("stroke");
+        c3s = $("#3").attr("stroke");
+        c4s = $("#4").attr("stroke");
         
-        expect(c1).toEqual(c4);
-        expect(c1).not.toEqual(c2);
-        expect(c1).not.toEqual(c3);
-        expect(c2).not.toEqual(c3);
+        expect(c1f).toBeDefined();
+        expect(c2f).toBeDefined();
+        expect(c3f).toBeDefined();
+        expect(c4f).toBeDefined();
+        
+        expect(c1f).toEqual(c4f);
+        expect(c1f).not.toEqual(c2f);
+        expect(c1f).not.toEqual(c3f);
+        expect(c2f).not.toEqual(c3f);
+        
+        expect(c1s).toBeDefined();
+        expect(c2s).toBeDefined();
+        expect(c3s).toBeDefined();
+        expect(c4s).toBeDefined();
+        
+        expect(c1s).toEqual(c4s);
+        expect(c1s).not.toEqual(c2s);
+        expect(c1s).not.toEqual(c3s);
+        expect(c2s).not.toEqual(c3s);
       });
       
       it('should be able to use colours based on _expanded attribute', function() {
@@ -231,20 +247,33 @@
             collapsed: "#654321"
           }
         }),
-        c1, c2, c3;
+        c1s, c2s, c3s,
+        c1f, c2f, c3f;
         shaper.drawNodes(nodes);
         
-        c1 = $("#1").attr("fill");
-        c2 = $("#2").attr("fill");
-        c3 = $("#3").attr("fill");
+        c1f = $("#1").attr("fill");
+        c2f = $("#2").attr("fill");
+        c3f = $("#3").attr("fill");
         
-        expect(c1).toBeDefined();
-        expect(c2).toBeDefined();
-        expect(c3).toBeDefined();
+        c1s = $("#1").attr("stroke");
+        c2s = $("#2").attr("stroke");
+        c3s = $("#3").attr("stroke");
         
-        expect(c1).toEqual("#123456");
-        expect(c2).toEqual("#654321");
-        expect(c3).toEqual("#654321");
+        expect(c1f).toBeDefined();
+        expect(c2f).toBeDefined();
+        expect(c3f).toBeDefined();
+        
+        expect(c1f).toEqual("#123456");
+        expect(c2f).toEqual("#654321");
+        expect(c3f).toEqual("#654321");
+        
+        expect(c1s).toBeDefined();
+        expect(c2s).toBeDefined();
+        expect(c3s).toBeDefined();
+        
+        expect(c1s).toEqual("#123456");
+        expect(c2s).toEqual("#654321");
+        expect(c3s).toEqual("#654321");
       });
       
     });
