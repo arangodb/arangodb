@@ -392,9 +392,9 @@
         var tmp = new ForceLayouter(config);
         
         expect(mock.size).wasCalledWith([940, 640]);
-        expect(mock.linkDistance).wasCalledWith(100);
-        expect(mock.gravity).wasCalledWith(0.01);
-        expect(mock.charge).wasCalledWith(-300);
+        expect(mock.linkDistance).wasCalledWith(80);
+        expect(mock.gravity).wasCalledWith(0.08);
+        expect(mock.charge).wasCalledWith(-240);
       });
       
       it('should be able to switch the distance', function() {

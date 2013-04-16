@@ -151,17 +151,26 @@
       
       it('should be able to use a colour based on attribute value', function() {
         var nodes = [
-          {_id: 1,
-            label: "lbl1"
+          {
+            _id: 1,
+            _data: {
+              label: "lbl1"
+            }
           }, {
             _id: 2,
-            label: "lbl2"
+            _data: {
+              label: "lbl2"
+            }
           }, {
             _id: 3,
-            label: "lbl3"
+            _data: {
+              label: "lbl3"
+            }
           }, {
             _id: 4,
-            label: "lbl1"
+            _data: {
+              label: "lbl1"
+            }
           }],
         shaper = new NodeShaper(d3.select("svg"),
         {

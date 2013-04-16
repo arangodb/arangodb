@@ -242,7 +242,7 @@ function NodeShaper(parent, flags, idfunc) {
         case "attribute":
           addColor = function (g) {
              g.attr("fill", function(n) {
-               return colourMapper.getColour(n[color.key]);
+               return colourMapper.getColour(n._data[color.key]);
              });
           };
           break; 
