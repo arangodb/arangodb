@@ -140,6 +140,10 @@ describe("Graph Viewer", function() {
         expect(viewer.adapter).toBeDefined();
       });
       
+      it('should offer the layouter', function() {
+        expect(viewer.layouter).toBeDefined();
+      });
+      
       it('should offer the complete config for the event dispatcher', function() {
         expect(viewer.dispatcherConfig).toBeDefined();
         expect(viewer.dispatcherConfig).toEqual({

@@ -77,7 +77,7 @@
           this.message = function() {
             return "Expected " + msg;
           };
-          expect(div).toBeOfClass("btn-group pull-right");
+          expect(div).toBeOfClass("btn-group");
           expect(btn).toBeTag("button");
           expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
           if (btn.getAttribute("data-toggle") !== "dropdown") {
@@ -177,6 +177,7 @@
         expect($("#contentDiv #menubar").length).toEqual(1);
       });
       
+      /*
       it('should contain a field to load a node', function() {
         expect($("#contentDiv #menubar #nodeid").length).toEqual(1);
         expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
@@ -190,6 +191,32 @@
         expect(btn.height).toEqual(16);
         expect(btn.className).toEqual("searchSubmit");
       });
+      */
+      
+      it('should contain a field to load a node by attribute', function() {
+        expect($("#contentDiv #menubar #attribute").length).toEqual(1);
+        expect($("#contentDiv #menubar #value").length).toEqual(1);
+        expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
+        var attrfield = $("#contentDiv #menubar #attribute")[0],
+          valfield = $("#contentDiv #menubar #value")[0],
+          btn = $("#contentDiv #menubar #loadnode")[0];
+        expect(attrfield).toBeTag("input");
+        expect(attrfield.type).toEqual("text");
+        expect(attrfield.className).toEqual("searchInput");
+        expect(valfield).toBeTag("input");
+        expect(valfield.type).toEqual("text");
+        expect(valfield.className).toEqual("searchInput");
+        expect(btn).toBeTag("img");
+        expect(btn.width).toEqual(16);
+        expect(btn.height).toEqual(16);
+        expect(btn.className).toEqual("searchSubmit");
+      });
+      
+      it('should contain a position for the layout buttons', function() {
+        expect($("#contentDiv #menubar #modifiers").length).toEqual(1);
+        expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
+      });
+      
       
       it('should contain a menu for the node shapes', function() {
         var menuSelector = "#contentDiv #menubar #nodeshapermenu";
@@ -220,8 +247,18 @@
         var menuSelector = "#contentDiv #menubar #adaptermenu";
         expect($(menuSelector).length).toEqual(1);
         expect($(menuSelector)[0]).toBeADropdownMenu();
-        expect(false).toBeTruthy();
+        expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
+      
+      it('should contain a menu for the layouter', function() {
+        var menuSelector = "#contentDiv #menubar #layoutermenu";
+        expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
+        expect($(menuSelector + " #control_gravity").length).toEqual(1);
+        expect($(menuSelector + " #control_distance").length).toEqual(1);
+        expect($(menuSelector + " #control_charge").length).toEqual(1);
+      });
+      
       
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
