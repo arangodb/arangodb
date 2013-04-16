@@ -117,6 +117,20 @@
       expect(clicked[2]).toBeUndefined();
     });
 
+    it('should display circles by default', function() {
+      var node = [{_id: 1}],
+        shaper = new NodeShaper(d3.select("svg"));
+      shaper.drawNodes(node);
+      expect($("svg .node")[0]).toBeDefined();
+      expect($("svg .node").length).toEqual(1);
+      expect($("svg #1")[0]).toBeDefined();
+      expect($("svg circle")[0]).toBeDefined();
+      expect($("svg circle").length).toEqual(1);
+      expect($("svg .node circle")[0]).toBeDefined();
+      expect($("svg .node circle").length).toEqual(1);
+      expect($("svg #1 circle")[0].attributes.r.value).toEqual("8");
+    });
+
     describe('testing for colours', function() {
       
       it('should have a default colouring of no colour flag is given', function() {
@@ -267,10 +281,10 @@
       });
       
       it('should be able to change display formats', function() {
-        expect($("svg circle").length).toEqual(0);
-        expect($("svg rect").length).toEqual(0);
-        shaper.changeTo({shape: {type: NodeShaper.shapes.CIRCLE, radius: 12}});
         expect($("svg circle").length).toEqual(3);
+        expect($("svg rect").length).toEqual(0);
+        shaper.changeTo({shape: {type: NodeShaper.shapes.NONE}});
+        expect($("svg circle").length).toEqual(0);
         expect($("svg rect").length).toEqual(0);
         shaper.changeTo({shape: {type: NodeShaper.shapes.RECT, width: 12, height: 5}});
         expect($("svg circle").length).toEqual(0);
@@ -311,6 +325,60 @@
         expect(clicked[2]).toBeUndefined();
         expect(clicked[3]).toBeUndefined();
       });
+      
+      it('should be able to reset bound events', function() {
+        shaper.changeTo({
+          actions: {
+            click: click
+          }
+        });
+        shaper.drawNodes(nodes);
+        
+        helper.simulateMouseEvent("click", "1");
+        
+        shaper.changeTo({actions: {
+          reset: true
+        }});
+        
+        helper.simulateMouseEvent("click", "2");
+        
+        expect(clicked[1]).toBeTruthy();
+        expect(clicked[2]).toBeUndefined();
+        expect(clicked[3]).toBeUndefined();
+      });
+      
+      it('should be able to reset the drag event', function() {
+        var dragged = 0,
+          dragTest = function() {
+            this.on("mousedown.drag", function() {
+              dragged++;
+            }).on("touchstart.drag", function() {
+              dragged++;
+            });
+          };
+        
+        shaper.changeTo({
+          actions: {
+            drag: dragTest
+          }
+        });
+        shaper.drawNodes(nodes);
+
+        helper.simulateDragEvent("1");
+        
+        expect(dragged).toEqual(1);
+        
+        shaper.changeTo({actions: {
+          reset: true
+        }});
+        
+        helper.simulateDragEvent("1");
+        helper.simulateDragEvent("2");
+        helper.simulateDragEvent("3");
+        
+        expect(dragged).toEqual(1);
+      });
+      
       
       it('should display each node exactly once if an event is added', function() {
         shaper.changeTo({actions: {

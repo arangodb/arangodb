@@ -208,7 +208,7 @@
           }
         });
         
-        helper.simulateMouseEvent("drag", "1");
+        helper.simulateDragEvent("1");
         
         expect(layouter.drag).toHaveBeenCalled();
       });
