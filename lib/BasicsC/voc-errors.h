@@ -194,9 +194,9 @@ extern "C" {
 ///   allowed value.
 /// - 1530: @LIT{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
-/// - 1540: @LIT{usage of unknown function '\%s'}
+/// - 1540: @LIT{usage of unknown function '\%s()'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @LIT{invalid number of arguments for function '\%s'}
+/// - 1541: @LIT{invalid number of arguments for function '\%s()'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
 /// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
@@ -238,7 +238,7 @@ extern "C" {
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
 ///   Will be raised when a user function is registered with invalid code.
-/// - 1582: @LIT{user function not found}
+/// - 1582: @LIT{user function '\%s()' not found}
 ///   Will be raised when a user function is accessed but not found.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
@@ -1248,7 +1248,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
 ///
-/// usage of unknown function '%s'
+/// usage of unknown function '%s()'
 ///
 /// Will be raised when an undefined function is called.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1258,7 +1258,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
 ///
-/// invalid number of arguments for function '%s'
+/// invalid number of arguments for function '%s()'
 ///
 /// Will be raised when the number of arguments used in a function call does
 /// not match the expected number of arguments for the function.
@@ -1426,7 +1426,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1582: ERROR_QUERY_FUNCTION_NOT_FOUND
 ///
-/// user function not found
+/// user function '%s()' not found
 ///
 /// Will be raised when a user function is accessed but not found.
 ////////////////////////////////////////////////////////////////////////////////
