@@ -139,13 +139,12 @@ namespace triagens {
 
         int createDocument (TRI_doc_mptr_t* mptr,
                             TRI_json_t const* json,
-                            const bool forceSync,
-                            const bool lock) {
+                            const bool forceSync) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,13 +154,13 @@ namespace triagens {
         int createEdge (TRI_doc_mptr_t* mptr,
                         TRI_json_t const* json,
                         bool forceSync,
-                        void const* data,
-                        const bool lock) {
+                        void const* data) {
+
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,13 +170,12 @@ namespace triagens {
         int createDocument (TRI_voc_key_t key,
                             TRI_doc_mptr_t* mptr,
                             TRI_shaped_json_t const* shaped,
-                            bool forceSync,
-                            const bool lock) {
+                            bool forceSync) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,13 +186,12 @@ namespace triagens {
                         TRI_doc_mptr_t* mptr,
                         TRI_shaped_json_t const* shaped,
                         bool forceSync,
-                        void const* data,
-                        const bool lock) {
+                        void const* data) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync, lock);
+          return this->create(this->trxCollection(), TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,13 +205,12 @@ namespace triagens {
                             const TRI_doc_update_policy_e policy,
                             bool forceSync,
                             const TRI_voc_rid_t expectedRevision,
-                            TRI_voc_rid_t* actualRevision,
-                            const bool lock) {
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->update(this->trxCollection(), key, mptr, json, policy, expectedRevision, actualRevision, forceSync, lock);
+          return this->update(this->trxCollection(), key, mptr, json, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,13 +224,12 @@ namespace triagens {
                             const TRI_doc_update_policy_e policy,
                             bool forceSync,
                             const TRI_voc_rid_t expectedRevision,
-                            TRI_voc_rid_t* actualRevision,
-                            const bool lock) {
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          return this->update(this->trxCollection(), key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync, lock);
+          return this->update(this->trxCollection(), key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

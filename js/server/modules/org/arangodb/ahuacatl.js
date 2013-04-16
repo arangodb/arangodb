@@ -80,6 +80,20 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalise a function name
+////////////////////////////////////////////////////////////////////////////////
+
+function NORMALIZE_FNAME (functionName) {
+  var p = functionName.indexOf(':');
+
+  if (p === -1) {
+    return functionName;
+  }
+
+  return functionName.substr(p + 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief filter using a list of examples
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -317,7 +331,8 @@ function TYPEWEIGHT (value) {
 
 function ARG_CHECK (actualValue, expectedType, functionName) {
   if (TYPEWEIGHT(actualValue) !== expectedType) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
+          NORMALIZE_FNAME(functionName));
   }
 }
 
@@ -399,7 +414,7 @@ function FCALL_USER (name, parameters) {
     return FIX_VALUE(result);
   }
 
-  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -461,7 +476,8 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
           keys[key2] = true;
         }
         else {
-          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, functionName);
+          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
+                NORMALIZE_FNAME(functionName));
         }
       }
     }
