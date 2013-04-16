@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global $, d3, _, console*/
+/*global $, d3, _, console, document*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -27,227 +27,285 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, width, height) {
+//function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, width, height) {
+function ArangoAdapter(nodes, edges, config) {
   "use strict";
   
+  if (nodes === undefined) {
+    throw "The nodes have to be given.";
+  }
+  if (edges === undefined) {
+    throw "The edges have to be given.";
+  }
+  if (config === undefined) {
+    throw "A configuration with node- and edgeCollection has to be given.";
+  }
+  if (config.nodeCollection === undefined) {
+    throw "The nodeCollection has to be given.";
+  }
+  if (config.edgeCollection === undefined) {
+    throw "The edgeCollection has to be given.";
+  }
+  
   var self = this,
-  initialX = {},
-  initialY = {},
-  api = {},
-  queries = {},
-  
-  findNode = function(id) {
-    var res = $.grep(nodes, function(e){
-      return e._id === id;
-    });
-    if (res.length === 0) {
-      return false;
-    } 
-    if (res.length === 1) {
-      return res[0];
-    }
-    throw "Too many nodes with the same ID, should never happen";
-  },
-  
-  findEdge = function(id) {
-    var res = $.grep(edges, function(e){
-      return e._id === id;
-    });
-    if (res.length === 0) {
-      return false;
-    } 
-    if (res.length === 1) {
-      return res[0];
-    }
-    throw "Too many nodes with the same ID, should never happen";
-  },
-  
-  insertNode = function(data) {
-    var node = {
-      _data: data,
-      _id: data._id
-    },
-      n = findNode(node._id);
-    if (n) {
-      return n;
-    }
+    initialX = {},
+    initialY = {},
+    api = {},
+    queries = {},
+    nodeCollection,
+    edgeCollection,
+    arangodb,
+    width,
+    height,
     
-    initialY.getStart();
-    node.x = initialX.getStart();
-    node.y = initialY.getStart();
-    nodes.push(node);
-    node._outboundCounter = 0;
-    node._inboundCounter = 0;
-    return node;
-  },
+    setWidth = function(w) {
+      initialX.range = width / 2;
+      initialX.start = width / 4;
+      initialX.getStart = function () {
+        return this.start + Math.random() * this.range;
+      };
+    },
+    
+    setHeight = function(h) {
+      initialY.range = height / 2;
+      initialY.start = height / 4;
+      initialY.getStart = function () {
+        return this.start + Math.random() * this.range;
+      };
+    },
+    
+    parseConfig = function(config) {
+      initialX.getStart = function() {return 0;};
+      initialY.getStart = function() {return 0;};
+      nodeCollection = config.nodeCollection;
+      edgeCollection = config.edgeCollection;
+      if (config.host === undefined) {
+        arangodb = "http://" + document.location.host;
+      } else {
+        arangodb = config.host;
+      }
+      if (config.width !== undefined) {
+        setWidth(config.width);
+      }
+      if (config.height !== undefined) {
+        setHeight(config.height);
+      }
+    },
   
-  insertEdge = function(data) {
-    var source,
-      target,
-      edge = {
+    findNode = function(id) {
+      var res = $.grep(nodes, function(e){
+        return e._id === id;
+      });
+      if (res.length === 0) {
+        return false;
+      } 
+      if (res.length === 1) {
+        return res[0];
+      }
+      throw "Too many nodes with the same ID, should never happen";
+    },
+  
+    findEdge = function(id) {
+      var res = $.grep(edges, function(e){
+        return e._id === id;
+      });
+      if (res.length === 0) {
+        return false;
+      } 
+      if (res.length === 1) {
+        return res[0];
+      }
+      throw "Too many nodes with the same ID, should never happen";
+    },
+  
+    insertNode = function(data) {
+      var node = {
         _data: data,
         _id: data._id
       },
-      e = findEdge(edge._id);
-    if (e) {
-      return e;
-    }
-    source = findNode(data._from);
-    target = findNode(data._to);
-    if (!source) {
-      throw "Unable to insert Edge, source node not existing " + edge._from;
-    }
-    if (!target) {
-      throw "Unable to insert Edge, target node not existing " + edge._to;
-    }
-    edge.source = source;
-    edge.target = target;
-    edges.push(edge);
-    source._outboundCounter++;
-    target._inboundCounter++;
-    return edge;
-  },
-  
-  removeNode = function (node) {
-    var i;
-    for ( i = 0; i < nodes.length; i++ ) {
-      if ( nodes[i] === node ) {
-        nodes.splice( i, 1 );
-        return;
+        n = findNode(node._id);
+      if (n) {
+        return n;
       }
-    }
-  },
+    
+      initialY.getStart();
+      node.x = initialX.getStart();
+      node.y = initialY.getStart();
+      nodes.push(node);
+      node._outboundCounter = 0;
+      node._inboundCounter = 0;
+      return node;
+    },
   
-  removeEdgesForNode = function (node) {
-    var i;
-    for ( i = 0; i < edges.length; i++ ) {
-      if (edges[i].source === node) {
-        node._outboundCounter--;
-        edges[i].target._inboundCounter--;
-        edges.splice( i, 1 );
-        i--;
-      } else if (edges[i].target === node) {
-        node._inboundCounter--;
-        edges[i].source._outboundCounter--;
-        edges.splice( i, 1 );
-        i--;
+    insertEdge = function(data) {
+      var source,
+        target,
+        edge = {
+          _data: data,
+          _id: data._id
+        },
+        e = findEdge(edge._id);
+      if (e) {
+        return e;
       }
-    }
-  },
+      source = findNode(data._from);
+      target = findNode(data._to);
+      if (!source) {
+        throw "Unable to insert Edge, source node not existing " + edge._from;
+      }
+      if (!target) {
+        throw "Unable to insert Edge, target node not existing " + edge._to;
+      }
+      edge.source = source;
+      edge.target = target;
+      edges.push(edge);
+      source._outboundCounter++;
+      target._inboundCounter++;
+      return edge;
+    },
   
-  // Helper function to easily remove all outbound edges for one node
-  removeOutboundEdgesFromNode = function ( node ) {
-    if (node._outboundCounter > 0) {
-      var removed = [],
-      i;
+    removeNode = function (node) {
+      var i;
+      for ( i = 0; i < nodes.length; i++ ) {
+        if ( nodes[i] === node ) {
+          nodes.splice( i, 1 );
+          return;
+        }
+      }
+    },
+  
+    removeEdgesForNode = function (node) {
+      var i;
       for ( i = 0; i < edges.length; i++ ) {
-        if ( edges[i].source === node ) {
-          removed.push(edges[i]);
+        if (edges[i].source === node) {
           node._outboundCounter--;
           edges[i].target._inboundCounter--;
           edges.splice( i, 1 );
-          if (node._outboundCounter === 0) {
-            break;
-          }
+          i--;
+        } else if (edges[i].target === node) {
+          node._inboundCounter--;
+          edges[i].source._outboundCounter--;
+          edges.splice( i, 1 );
           i--;
         }
       }
-      return removed;
-    }
-  },
+    },
   
-  
-  sendQuery = function(query, bindVars, onSuccess) {
-    if (query !== queries.connectedEdges) {
-      bindVars["@nodes"] = nodeCollection;
-    }
-    bindVars["@edges"] = edgeCollection;
-    var data = {
-      query: query,
-      bindVars: bindVars
-    };
-    $.ajax({
-      type: "POST",
-      url: api.cursor,
-      data: JSON.stringify(data),
-      contentType: "application/json",
-      dataType: "json",
-      processData: false,
-      success: function(data) {
-        onSuccess(data.result);
-      },
-      error: function(data) {
-        try {
-          console.log(data.statusText);
-          throw "[" + data.errorNum + "] " + data.errorMessage;
+    // Helper function to easily remove all outbound edges for one node
+    removeOutboundEdgesFromNode = function ( node ) {
+      if (node._outboundCounter > 0) {
+        var removed = [],
+        i;
+        for ( i = 0; i < edges.length; i++ ) {
+          if ( edges[i].source === node ) {
+            removed.push(edges[i]);
+            node._outboundCounter--;
+            edges[i].target._inboundCounter--;
+            edges.splice( i, 1 );
+            if (node._outboundCounter === 0) {
+              break;
+            }
+            i--;
+          }
         }
-        catch (e) {
-          console.log(e);
-          throw "Undefined ERROR";
-        }
+        return removed;
       }
-    });
-  },
+    },
   
-  parseResultOfTraversal = function (result, callback) {
-    result = result[0];
-    _.each(result, function(visited) {
-      var node = insertNode(visited.vertex),
-      path = visited.path;
-      _.each(path.vertices, function(connectedNode) {
-        insertNode(connectedNode);
-      });
-      _.each(path.edges, function(edge) {
-        insertEdge(edge);
-      });
-    });
-    if (callback) {
-      callback(result[0].vertex);
-    }
-  },
   
-  parseResultOfQuery = function (result, callback) {
-    _.each(result, function (node) {
-      var n = findNode(node._id);
-      if (!n) {
-        insertNode(node);
-        n = node;
-      } else {
-        n.children = node.children;
+    sendQuery = function(query, bindVars, onSuccess) {
+      if (query !== queries.connectedEdges) {
+        bindVars["@nodes"] = nodeCollection;
       }
-      self.requestCentralityChildren(node._id, function(c) {
-        n._centrality = c;
-      });
-      _.each(n.children, function(id) {
-        var check = findNode(id),
-        newnode;
-        if (check) {
-          insertEdge(n, check);
-          self.requestCentralityChildren(id, function(c) {
-            n._centrality = c;
-          });
-        } else {
-          newnode = {_id: id};
-          insertNode(newnode);
-          insertEdge(n, newnode);
-          self.requestCentralityChildren(id, function(c) {
-            newnode._centrality = c;
-          });
+      bindVars["@edges"] = edgeCollection;
+      var data = {
+        query: query,
+        bindVars: bindVars
+      };
+      $.ajax({
+        type: "POST",
+        url: api.cursor,
+        data: JSON.stringify(data),
+        contentType: "application/json",
+        dataType: "json",
+        processData: false,
+        success: function(data) {
+          onSuccess(data.result);
+        },
+        error: function(data) {
+          try {
+            console.log(data.statusText);
+            throw "[" + data.errorNum + "] " + data.errorMessage;
+          }
+          catch (e) {
+            console.log(e);
+            throw "Undefined ERROR";
+          }
         }
+      });
+    },
+  
+    parseResultOfTraversal = function (result, callback) {
+      result = result[0];
+      _.each(result, function(visited) {
+        var node = insertNode(visited.vertex),
+        path = visited.path;
+        _.each(path.vertices, function(connectedNode) {
+          insertNode(connectedNode);
+        });
+        _.each(path.edges, function(edge) {
+          insertEdge(edge);
+        });
       });
       if (callback) {
-        callback(n);
+        callback(result[0].vertex);
       }
-    });
-  },
+    },
   
-  permanentlyRemoveEdgesOfNode = function (nodeId) {
-     sendQuery(queries.connectedEdges, {
-       id: nodeId
-     }, function(res) {
-       _.each(res, self.deleteEdge);
-     });
-  };
+    parseResultOfQuery = function (result, callback) {
+      _.each(result, function (node) {
+        var n = findNode(node._id);
+        if (!n) {
+          insertNode(node);
+          n = node;
+        } else {
+          n.children = node.children;
+        }
+        self.requestCentralityChildren(node._id, function(c) {
+          n._centrality = c;
+        });
+        _.each(n.children, function(id) {
+          var check = findNode(id),
+          newnode;
+          if (check) {
+            insertEdge(n, check);
+            self.requestCentralityChildren(id, function(c) {
+              n._centrality = c;
+            });
+          } else {
+            newnode = {_id: id};
+            insertNode(newnode);
+            insertEdge(n, newnode);
+            self.requestCentralityChildren(id, function(c) {
+              newnode._centrality = c;
+            });
+          }
+        });
+        if (callback) {
+          callback(n);
+        }
+      });
+    },
+  
+    permanentlyRemoveEdgesOfNode = function (nodeId) {
+       sendQuery(queries.connectedEdges, {
+         id: nodeId
+       }, function(res) {
+         _.each(res, self.deleteEdge);
+       });
+    };
+  
+  parseConfig(config);
   
   api.base = arangodb.lastIndexOf("http://", 0) === 0
     ? arangodb + "/_api/"
@@ -302,18 +360,6 @@ function ArangoAdapter(arangodb, nodes, edges, nodeCollection, edgeCollection, w
    + " FILTER e._to == @id"
    + " || e._from == @id"
    + " RETURN e";
-  
-  initialX.range = width / 2;
-  initialX.start = width / 4;
-  initialX.getStart = function () {
-    return this.start + Math.random() * this.range;
-  };
-  
-  initialY.range = height / 2;
-  initialY.start = height / 4;
-  initialY.getStart = function () {
-    return this.start + Math.random() * this.range;
-  };
   
   self.oldLoadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.nodeById, {
