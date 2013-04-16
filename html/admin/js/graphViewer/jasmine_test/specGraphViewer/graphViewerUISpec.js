@@ -245,6 +245,16 @@
         expect($(menuSelector +  " #control_collections").length).toEqual(1);
       });
       
+      it('should contain a menu for the layouter', function() {
+        var menuSelector = "#contentDiv #menubar #layoutermenu";
+        expect($(menuSelector).length).toEqual(1);
+        expect($(menuSelector)[0]).toBeADropdownMenu();
+        expect($(menuSelector + " #control_gravity").length).toEqual(1);
+        expect($(menuSelector + " #control_distance").length).toEqual(1);
+        expect($(menuSelector + " #control_charge").length).toEqual(1);
+      });
+      
+      
       it('should have the same layout as the web interface', function() {
         var header = div.children[0],
           transHeader = header.firstChild,
