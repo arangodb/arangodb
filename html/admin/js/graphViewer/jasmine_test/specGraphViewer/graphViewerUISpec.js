@@ -200,10 +200,12 @@
         expect($(barSelector + " #loadnode").length).toEqual(1);
         expect(attrfield).toBeTag("input");
         expect(attrfield.type).toEqual("text");
-        expect(attrfield.className).toEqual("searchInput");
+        expect(attrfield.className).toEqual("input-mini searchByAttribute");
+        expect(attrfield.placeholder).toEqual("key");
         expect(valfield).toBeTag("input");
         expect(valfield.type).toEqual("text");
         expect(valfield.className).toEqual("searchInput");
+        expect(valfield.placeholder).toEqual("value");
         expect(btn).toBeTag("img");
         expect(btn.width).toEqual(16);
         expect(btn.height).toEqual(16);

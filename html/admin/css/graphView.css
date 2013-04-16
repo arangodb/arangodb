@@ -21,3 +21,8 @@
   padding: 4px 4px;
   background-color: rgb(56, 52, 52);
 }
+
+.searchByAttribute {
+  margin-top: 3px;
+  margin-right: 10px;
+}

@@ -146,11 +146,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       searchDiv.className = "pull-left";
       
       searchAttrField.id = "attribute";
-      searchAttrField.className = "searchInput";
+      searchAttrField.className = "input-mini searchByAttribute";
       searchAttrField.type = "text";
+      searchAttrField.placeholder = "key";
       searchValueField.id = "value";
       searchValueField.className = "searchInput";
       searchValueField.type = "text";
+      searchValueField.placeholder = "value";
       searchStart.id = "loadnode";
       searchStart.className = "searchSubmit";
       searchStart.width = 16;
