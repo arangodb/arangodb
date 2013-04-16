@@ -459,15 +459,14 @@ namespace triagens {
 
         int readSingle (TRI_transaction_collection_t* trxCollection,
                         TRI_doc_mptr_t* mptr,
-                        const string& key,
-                        const bool lock) {
+                        const string& key) {
           
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
           int res = primary->read(trxCollection,
                                   (TRI_voc_key_t) key.c_str(), 
                                   mptr,
-                                  lock && ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+                                  ! isLocked(trxCollection, TRI_TRANSACTION_READ));
 
           return res;
         }
@@ -622,8 +621,7 @@ namespace triagens {
                     TRI_doc_mptr_t* mptr,
                     TRI_json_t const* json,
                     void const* data,
-                    const bool forceSync,
-                    const bool lock) {
+                    const bool forceSync) {
 
           TRI_voc_key_t key = 0;
           int res = DocumentHelper::getKey(json, &key);
@@ -644,8 +642,7 @@ namespace triagens {
                        mptr, 
                        shaped, 
                        data, 
-                       forceSync, 
-                       lock);
+                       forceSync); 
 
           TRI_FreeShapedJson(shaper(trxCollection), shaped);
 
@@ -662,8 +659,7 @@ namespace triagens {
                            TRI_doc_mptr_t* mptr,
                            TRI_shaped_json_t const* shaped,
                            void const* data,
-                           const bool forceSync,
-                           const bool lock) {
+                           const bool forceSync) {
          
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
@@ -673,7 +669,7 @@ namespace triagens {
                                     markerType, 
                                     shaped, 
                                     data, 
-                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
+                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
                                     forceSync);
 
           return res;
@@ -690,8 +686,7 @@ namespace triagens {
                     const TRI_doc_update_policy_e policy,
                     const TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
-                    const bool forceSync,
-                    const bool lock) {
+                    const bool forceSync) {
 
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper(trxCollection), json);
 
@@ -706,8 +701,7 @@ namespace triagens {
                            policy, 
                            expectedRevision, 
                            actualRevision, 
-                           forceSync, 
-                           lock);
+                           forceSync); 
 
           TRI_FreeShapedJson(shaper(trxCollection), shaped);
 
@@ -725,8 +719,7 @@ namespace triagens {
                            const TRI_doc_update_policy_e policy,
                            const TRI_voc_rid_t expectedRevision,
                            TRI_voc_rid_t* actualRevision,
-                           const bool forceSync,
-                           const bool lock) {
+                           const bool forceSync) {
 
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
@@ -738,7 +731,7 @@ namespace triagens {
                                     mptr, 
                                     shaped, 
                                     &updatePolicy, 
-                                    (lock && ! isLocked(trxCollection, TRI_TRANSACTION_WRITE)), 
+                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
                                     forceSync);
           
           return res;

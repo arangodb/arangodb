@@ -211,7 +211,7 @@ bool RestEdgeHandler::createDocument () {
 
   // will hold the result
   TRI_doc_mptr_t document;
-  res = trx.createEdge(&document, json, waitForSync, &edge, true);
+  res = trx.createEdge(&document, json, waitForSync, &edge);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
