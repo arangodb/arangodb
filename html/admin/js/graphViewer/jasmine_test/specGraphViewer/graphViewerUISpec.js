@@ -77,7 +77,7 @@
           this.message = function() {
             return "Expected " + msg;
           };
-          expect(div).toBeOfClass("btn-group pull-right");
+          expect(div).toBeOfClass("btn-group");
           expect(btn).toBeTag("button");
           expect(btn).toBeOfClass("btn btn-inverse btn-small dropdown-toggle");
           if (btn.getAttribute("data-toggle") !== "dropdown") {
@@ -210,6 +210,11 @@
         expect(btn.width).toEqual(16);
         expect(btn.height).toEqual(16);
         expect(btn.className).toEqual("searchSubmit");
+      });
+      
+      it('should contain a position for the layout buttons', function() {
+        expect($("#contentDiv #menubar #modifiers").length).toEqual(1);
+        expect($("#contentDiv #menubar #modifiers")[0].className).toEqual("pull-right");
       });
       
       
