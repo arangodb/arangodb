@@ -204,14 +204,12 @@ function EdgeShaper(parent, flags, idfunc) {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black")
             .text(label);
         };
       } else {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
-            .attr("stroke", "black")
             .text(function(d) { 
               // Which value should be used as label
               return d._data[label] !== undefined ? d._data[label] : "";
