@@ -71,7 +71,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         .attr("width",width)
         .attr("height",height)
         .attr("class", "pull-right")
-        .attr("style", "width:" + width + "px");
+        .attr("style", "width:" + width + "px;height:" + height + ";");
     },
     createToolbox = function() {
       var toolbox = document.createElement("div"),
