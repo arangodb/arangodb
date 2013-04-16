@@ -1,6 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
-/*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls, ArangoAdapterControls*/
+/*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
+/*global LayouterControls, ArangoAdapterControls*/
 /*global GraphViewer, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -29,7 +30,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphViewerUI(container, adapterConfig) {
+function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
   "use strict";
   
   if (container === undefined) {
@@ -43,8 +44,8 @@ function GraphViewerUI(container, adapterConfig) {
   } 
   
   var graphViewer,
-    width = container.offsetWidth - 60,
-    height = container.offsetHeight,
+    width = (optWidth || container.offsetWidth) - 60,
+    height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
     svg, 
     makeBootstrapDropdown = function (div, id, title) {
@@ -94,19 +95,25 @@ function GraphViewerUI(container, adapterConfig) {
         nodeShaperList = makeBootstrapDropdown(
           nodeShaperDropDown,
           "nodeshaperdropdown",
-          "Node Shaper"
+          "Nodes"
         ),
         edgeShaperDropDown = document.createElement("div"),
         edgeShaperList = makeBootstrapDropdown(
           edgeShaperDropDown,
           "edgeshaperdropdown",
-          "Edge Shaper"
+          "Edges"
         ),
         adapterDropDown = document.createElement("div"),
         adapterList = makeBootstrapDropdown(
           adapterDropDown,
           "adapterdropdown",
           "Connection"
+        ),
+        layouterDropDown = document.createElement("div"),
+        layouterList = makeBootstrapDropdown(
+          layouterDropDown,
+          "layouterdropdown",
+          "Layout"
         ),
         nodeShaperUI = new NodeShaperControls(
           nodeShaperList,
@@ -119,6 +126,10 @@ function GraphViewerUI(container, adapterConfig) {
         adapterUI = new ArangoAdapterControls(
           adapterList,
           graphViewer.adapter
+        ),
+        layouterUI = new LayouterControls(
+          layouterList,
+          graphViewer.layouter
         );
       
       menubar.id = "menubar";
@@ -141,6 +152,7 @@ function GraphViewerUI(container, adapterConfig) {
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
       adapterDropDown.id = "adaptermenu";
+      layouterDropDown.id = "layoutermenu";
       
       searchStart.onclick = function() {
         var nodeId = searchField.value;
@@ -155,10 +167,12 @@ function GraphViewerUI(container, adapterConfig) {
       transparentHeader.appendChild(nodeShaperDropDown);
       transparentHeader.appendChild(edgeShaperDropDown);
       transparentHeader.appendChild(adapterDropDown);
+      transparentHeader.appendChild(layouterDropDown);
       
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
       adapterUI.addAll();
+      layouterUI.addAll();
     };
   container.appendChild(menubar);
   svg = createSVG();
