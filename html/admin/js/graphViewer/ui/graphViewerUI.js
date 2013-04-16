@@ -50,7 +50,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
     svg, 
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
-      div.className = "btn-group pull-right";
+      div.className = "btn-group";
+      //div.className = "btn-group pull-right";
       btn = document.createElement("button");
       btn.className = "btn btn-inverse btn-small dropdown-toggle";
       btn.id = id;
@@ -91,6 +92,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
         searchDiv = document.createElement("div"),
         searchField = document.createElement("input"),
         searchStart = document.createElement("img"),
+        buttons = document.createElement("div"),
         nodeShaperDropDown = document.createElement("div"),
         nodeShaperList = makeBootstrapDropdown(
           nodeShaperDropDown,
@@ -137,6 +139,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       
       transparentHeader.id = "transparentHeader";
       
+      buttons.id = "modifiers";
+      buttons.className = "pull-right";
+      
       searchDiv.id = "transparentPlaceholder";
       searchDiv.className = "pull-left";
       
@@ -164,11 +169,17 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       transparentHeader.appendChild(searchDiv);
       searchDiv.appendChild(searchField);
       searchDiv.appendChild(searchStart);
+      transparentHeader.appendChild(buttons);
+      buttons.appendChild(nodeShaperDropDown);
+      buttons.appendChild(edgeShaperDropDown);
+      buttons.appendChild(adapterDropDown);
+      buttons.appendChild(layouterDropDown);
+      /*
       transparentHeader.appendChild(nodeShaperDropDown);
       transparentHeader.appendChild(edgeShaperDropDown);
       transparentHeader.appendChild(adapterDropDown);
       transparentHeader.appendChild(layouterDropDown);
-      
+      */
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
       adapterUI.addAll();
