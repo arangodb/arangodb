@@ -4,7 +4,7 @@
 /*global runs, waitsFor, spyOn, waits */
 /*global window, eb, loadFixtures, document */
 /*global $, _, d3*/
-/*global helper, mocks*/
+/*global helper, mocks, JSONAdapter:true*/
 /*global GraphViewerUI*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,18 +47,17 @@
     
     beforeEach(function() {
       //Mock for jsonAdapter
-      var tmp = JSONAdapter;
+      var Tmp = JSONAdapter;
       JSONAdapter = function (jsonPath, nodes, edges, width, height) {
-        var r = new tmp(jsonPath, nodes, edges, width, height);
+        var r = new Tmp(jsonPath, nodes, edges, width, height);
         r.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
           adapterMockCall = {
             attribute: attribute,
             value: value
-          }
-        }
+          };
+        };
         return r;
-      }
-      
+      };
       div = document.createElement("div");
       div.id = "contentDiv";
       div.style.width = "200px";
@@ -191,30 +190,14 @@
         expect($("#contentDiv #menubar").length).toEqual(1);
       });
       
-      /*
-      it('should contain a field to load a node', function() {
-        expect($("#contentDiv #menubar #nodeid").length).toEqual(1);
-        expect($("#contentDiv #menubar #loadnode").length).toEqual(1);
-        var field = $("#contentDiv #menubar #nodeid")[0],
-          btn = $("#contentDiv #menubar #loadnode")[0];
-        expect(field).toBeTag("input");
-        expect(field.type).toEqual("text");
-        expect(field.className).toEqual("searchInput");
-        expect(btn).toBeTag("img");
-        expect(btn.width).toEqual(16);
-        expect(btn.height).toEqual(16);
-        expect(btn.className).toEqual("searchSubmit");
-      });
-      */
-      
       it('should contain a field to load a node by attribute', function() {
-        var barSelector = "#contentDiv #menubar";
+        var barSelector = "#contentDiv #menubar",
+          attrfield = $(barSelector + " #attribute")[0],
+          valfield = $(barSelector + " #value")[0],
+          btn = $(barSelector + " #loadnode")[0];
         expect($(barSelector + " #attribute").length).toEqual(1);
         expect($(barSelector + " #value").length).toEqual(1);
         expect($(barSelector + " #loadnode").length).toEqual(1);
-        var attrfield = $(barSelector + " #attribute")[0],
-          valfield = $(barSelector + " #value")[0],
-          btn = $(barSelector + " #loadnode")[0];
         expect(attrfield).toBeTag("input");
         expect(attrfield.type).toEqual("text");
         expect(attrfield.className).toEqual("searchInput");
@@ -290,8 +273,9 @@
         expect(searchField).toBeTag("div");
         expect(searchField.id).toEqual("transparentPlaceholder");
         expect(searchField.className).toEqual("pull-left");
-        expect(searchField.children[0].id).toEqual("nodeid");
-        expect(searchField.children[1].id).toEqual("loadnode");
+        expect(searchField.children[0].id).toEqual("attribute");
+        expect(searchField.children[1].id).toEqual("value");
+        expect(searchField.children[2].id).toEqual("loadnode");
       });
     });
     
@@ -463,7 +447,7 @@
     
       it("should be able to load a different graph", function() {
         runs (function() {
-          $("#contentDiv #menubar #nodeid").attr("value", "42");
+          $("#contentDiv #menubar #value").attr("value", "42");
           helper.simulateMouseEvent("click", "loadnode");
         });
   
