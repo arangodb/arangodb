@@ -78,15 +78,19 @@ function NodeShaper(parent, flags, idfunc) {
     addLabel = noop,
     
     unbindEvents = function() {
-     events = {
-       click: noop,
-       dblclick: noop,
-       drag: noop,
-       mousedown: noop,
-       mouseup: noop,
-       mousemove: noop
-     };
-     addUpdate = noop;
+      // Hard unbind the dragging
+      self.parent
+        .selectAll(".node")
+        .on("mousedown.drag", null);
+      events = {
+        click: noop,
+        dblclick: noop,
+        drag: noop,
+        mousedown: noop,
+        mouseup: noop,
+        mousemove: noop
+      };
+      addUpdate = noop;
     },
     
     addEvents = function (nodes) {
@@ -166,7 +170,7 @@ function NodeShaper(parent, flags, idfunc) {
           addShape = noop;
           break;
         case NodeShaper.shapes.CIRCLE:
-          radius = shape.radius || 12;
+          radius = shape.radius || 8;
           addShape = function (node) {
             node.append("circle") // Display nodes as circles
               .attr("r", radius); // Set radius
@@ -279,6 +283,12 @@ function NodeShaper(parent, flags, idfunc) {
         stroke: "#8AA051"
       }
     };
+  }
+  
+  if (flags.shape === undefined) {
+   flags.shape = {
+     type: NodeShaper.shapes.CIRCLE
+   }; 
   }
   
   if (flags.color === undefined) {
