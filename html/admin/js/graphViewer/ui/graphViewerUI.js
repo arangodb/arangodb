@@ -51,7 +51,6 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
     makeBootstrapDropdown = function (div, id, title) {
       var btn, caret, list;
       div.className = "btn-group";
-      //div.className = "btn-group pull-right";
       btn = document.createElement("button");
       btn.className = "btn btn-inverse btn-small dropdown-toggle";
       btn.id = id;
@@ -90,7 +89,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
     createMenu = function() {
       var transparentHeader = document.createElement("div"),
         searchDiv = document.createElement("div"),
-        searchField = document.createElement("input"),
+        searchAttrField = document.createElement("input"),
+        searchValueField = document.createElement("input"),
         searchStart = document.createElement("img"),
         buttons = document.createElement("div"),
         nodeShaperDropDown = document.createElement("div"),
@@ -145,9 +145,12 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       searchDiv.id = "transparentPlaceholder";
       searchDiv.className = "pull-left";
       
-      searchField.id = "nodeid";
-      searchField.className = "searchInput";
-      searchField.type = "text";
+      searchAttrField.id = "attribute";
+      searchAttrField.className = "searchInput";
+      searchAttrField.type = "text";
+      searchValueField.id = "value";
+      searchValueField.className = "searchInput";
+      searchValueField.type = "text";
       searchStart.id = "loadnode";
       searchStart.className = "searchSubmit";
       searchStart.width = 16;
@@ -160,14 +163,22 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight) {
       layouterDropDown.id = "layoutermenu";
       
       searchStart.onclick = function() {
-        var nodeId = searchField.value;
-        graphViewer.loadGraph(nodeId);
+        if (searchAttrField.value === ""
+          || searchAttrField.value === undefined) {
+          graphViewer.loadGraph(searchValueField.value);
+        } else {
+          graphViewer.loadGraphWithAttributeValue(
+            searchAttrField.value,
+            searchValueField.value
+          );
+        }
       };
       
       
       menubar.appendChild(transparentHeader);
       transparentHeader.appendChild(searchDiv);
-      searchDiv.appendChild(searchField);
+      searchDiv.appendChild(searchAttrField);
+      searchDiv.appendChild(searchValueField);
       searchDiv.appendChild(searchStart);
       transparentHeader.appendChild(buttons);
       buttons.appendChild(nodeShaperDropDown);
