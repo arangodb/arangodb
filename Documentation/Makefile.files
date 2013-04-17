@@ -33,6 +33,7 @@ dist_man_MANS += \
 ################################################################################
 
 DOXYGEN = \
+	Doxygen/js/actions/api-aqlfunction.c \
 	Doxygen/js/actions/api-collection.c \
 	Doxygen/js/actions/api-cursor.c \
 	Doxygen/js/actions/api-edges.c \
@@ -49,6 +50,7 @@ DOXYGEN = \
 	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
 	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
 	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
 	Doxygen/js/common/modules/org/arangodb/graph-common.c \
@@ -78,6 +80,7 @@ WIKI = \
 	DbaManualBasics \
 	DbaManualDatafileDebugger \
 	DbaManualEmergencyConsole \
+	ExtendingAql \
 	FirstStepsArangoDB \
 	Glossary \
 	HandlingCollections \
@@ -85,6 +88,7 @@ WIKI = \
 	HandlingEdges \
 	HandlingIndexes \
 	Home \
+	HttpAqlFunctions \
 	HttpBatch \
 	HttpCollection \
 	HttpCursor \
@@ -155,6 +159,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
 	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client

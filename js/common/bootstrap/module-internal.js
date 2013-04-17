@@ -158,13 +158,13 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief plattform
+/// @brief platform
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.plattform = "unknown";
+  exports.platform = "unknown";
 
   if (typeof SYS_PLATFORM !== "undefined") {
-    exports.plattform = SYS_PLATFORM;
+    exports.platform = SYS_PLATFORM;
     delete SYS_PLATFORM;
   }
 
