@@ -8,7 +8,7 @@
 ### find files in
 ###   arangod/RestHandler/*.cpp
 ###   js/actions/system/api-*.js
-### TODO usage aendern! 
+### TODO usage aendern!
 ### @usage generateSwagger.py < RestXXXX.cpp > restSwagger.json
 ###
 ### @file
@@ -47,13 +47,12 @@
 
 import sys, re, json, string
 operation = {}
-errorResponse = { 'code': None, 'reason': None } 
+errorResponse = { 'code': None, 'reason': None }
 # api = {'path': '/_api/document', 'description': '', 'operations': []}
 swagger = {'apiVersion': '0.1',
-					'swaggerVersion': '1.1', 
+					'swaggerVersion': '1.1',
 					'basePath': '/',
 					'apis': [],
-          # 'my': my 
 					}
 
 rc = re.compile
@@ -200,7 +199,7 @@ def restheaderparameters(cargo, r=Regexen()):
         else:																				 continue
 
 def restheaderparam(cargo, r=Regexen()):
-    # TODO 
+    # TODO
     fp, last = cargo
     parametersList = parameters(last).split(',')
     para = {}
@@ -268,7 +267,7 @@ def restdescription(cargo, r=Regexen()):
                 operation['notes'] += '<br>'
             else:
                 operation['notes'] += '<br><br>'
-        elif r.DESCRIPTION_LI.match(line):           operation['notes'] += Typography(line[4:-1]) + '<br>' 
+        elif r.DESCRIPTION_LI.match(line):           operation['notes'] += Typography(line[4:-1]) + '<br>'
         elif r.read_through.match(line):             return read_through, (fp, line)
         elif r.EXAMPLES.match(line):
             return examples, (fp, line)
@@ -337,7 +336,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     while 1:
         line = fp.readline()
         if not line:                                 return eof, (fp, line)
-        elif r.END_EXAMPLE_ARANGOSH_RUN.match(line) or verbinclude: 
+        elif r.END_EXAMPLE_ARANGOSH_RUN.match(line) or verbinclude:
             return examples, (fp, line)
         elif r.read_through.match(line):             return read_through, (fp, line)
 
@@ -363,7 +362,7 @@ def comment(cargo, r=Regexen()):
             api['path'] = FA(path, wordboundary = ['{', '}'])
             api['operations']=[]
             swagger['apis'].append(api)
-            _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [], 
+            _operation = { 'httpMethod': None, 'nickname': None, 'parameters': [],
                 'summary': None, 'notes': '', 'examples': '', 'errorResponses':[]}
             _operation['httpMethod'] = method
             if method == 'POST':
@@ -379,7 +378,7 @@ def comment(cargo, r=Regexen()):
             _operation['nickname'] = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
             _operation['summary'] = summary
             api['operations'].append(_operation)
-            global operation 
+            global operation
             operation = _operation
         elif r.RESTURLPARAMETERS.match(line):        return resturlparameters, (fp, line)
         elif r.RESTHEADERPARAMETERS.match(line):     return restheaderparameters, (fp, line)
