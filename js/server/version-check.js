@@ -121,14 +121,14 @@
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
 
-    if (IS_SYSTEM_DATABASE === true) {
+    if (db._isSystem()) {
 
       // set up the collection _databases
       addTask("setupDatabases", "setup _databases collection", function () {
         return createSystemCollection("_databases", { waitForSync : true });
       });
     
-      // create a unique index on "name" attribute in _users
+      // create a unique index on "name" attribute in _databases
       addTask("createDatabasesIndex", 
             "create index on 'name' attribute in _databases collection",
         function () {
@@ -138,6 +138,25 @@
           }
 
           databases.ensureUniqueConstraint("name");
+          
+          return true;
+        });
+        
+      // set up the collection _endpoints
+      addTask("setupEndpoints", "setup _endpoints collection", function () {
+        return createSystemCollection("_endpoints", { waitForSync : true });
+      });
+    
+      // create a unique index on "endpoint" attribute in _endpoints
+      addTask("createEndpointsIndex", 
+            "create index on 'endpoint' attribute in _endpoints collection",
+        function () {
+          var databases = getCollection("_endpoints");
+          if (! databases) {
+            return false;
+          }
+
+          databases.ensureUniqueConstraint("endpoint");
           
           return true;
         });

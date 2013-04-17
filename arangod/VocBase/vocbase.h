@@ -333,6 +333,10 @@ typedef struct TRI_vocbase_s {
   int64_t _syncWaiters;
   
   char* _lockFile;
+  
+  bool _isSystem;
+  bool _requireAuthentication;  
+
 }
 TRI_vocbase_t;
 

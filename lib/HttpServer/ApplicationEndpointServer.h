@@ -86,7 +86,8 @@ namespace triagens {
                                    ApplicationScheduler*,
                                    ApplicationDispatcher*,
                                    std::string const&,
-                                   HttpHandlerFactory::auth_fptr);
+                                   HttpHandlerFactory::auth_fptr,
+                                   HttpHandlerFactory::context_fptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -155,6 +156,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool parsePhase2 (basics::ProgramOptions&);
+        
+        bool addEndpoint (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -251,6 +254,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpHandlerFactory::auth_fptr _checkAuthentication;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set context callback function
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpHandlerFactory::context_fptr _setContext;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the handler factory

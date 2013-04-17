@@ -37,6 +37,9 @@
 #include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
 
+#include "RestServer/VocbaseManager.h"
+#include "RestServer/VocbaseContext.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -133,6 +136,14 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbas
     _timing(),
     _timingResult(RES_FAIL) {
 
+  RequestContext* rc = request->getRequestContext();
+  _context = static_cast<VocbaseContext*>(rc);
+  
+  // overwrite vocbase 
+  if (_context && _context->getVocbase()) {
+    _vocbase = _context->getVocbase();
+    _resolver = _context->getVocbase();
+  }  
 }
 
 ////////////////////////////////////////////////////////////////////////////////

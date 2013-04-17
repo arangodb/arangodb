@@ -56,9 +56,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
-                                        auth_fptr checkAuthentication)
+                                        auth_fptr checkAuthentication,
+                                        context_fptr setContext)
   : _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
+    _setContext(setContext),
     _requireAuthentication(true),
     _notFound(0) {
 }
@@ -70,6 +72,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
     _checkAuthentication(that._checkAuthentication),
+    _setContext(that._setContext),
     _requireAuthentication(that._requireAuthentication),
     _constructors(that._constructors),
     _datas(that._datas),
@@ -85,6 +88,7 @@ HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& tha
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm,
     _checkAuthentication = that._checkAuthentication,
+    _setContext = that._setContext,
     _requireAuthentication = that._requireAuthentication;
     _constructors = that._constructors;
     _datas = that._datas;
@@ -140,6 +144,7 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
+/*
   if (_checkAuthentication == 0) {
     return true;
   }
@@ -147,7 +152,23 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   bool result = authenticate(request);
 
   return (result || ! _requireAuthentication);
+*/
+  
+  RequestContext* rc = request->getRequestContext();
+  if (!rc) {
+    setRequestContext(request);
+  }
+  return rc->authenticate();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set request context, wrapper method
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpHandlerFactory::setRequestContext (HttpRequest * request) {
+  return _setContext(request);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request, worker method
@@ -213,7 +234,8 @@ string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) {
+HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info, 
+          char const* ptr, size_t length) {
 #if 0
   READ_LOCKER(_maintenanceLock);
 
@@ -222,7 +244,13 @@ HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) 
   }
 #endif
 
-  return new HttpRequest(ptr, length);
+  HttpRequest* request = new HttpRequest(info, ptr, length);
+  
+  if (request) {
+    setRequestContext(request);
+  }
+  
+  return request;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

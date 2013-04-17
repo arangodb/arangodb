@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase authentication and authorisation
+/// @brief vocbase context
 ///
 /// @file
 ///
@@ -22,110 +22,98 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_AUTH_H
-#define TRIAGENS_VOC_BASE_AUTH_H 1
+#include "VocbaseContext.h"
 
-#include "BasicsC/common.h"
+#include "build.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "VocBase/auth.h"
+#include "Logger/Logger.h"
+#include "VocbaseManager.h"
+
+using namespace std;
+using namespace triagens::basics;
+using namespace triagens::arango;
+using namespace triagens::rest;
+
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                                class ArangoServer
 // -----------------------------------------------------------------------------
 
-struct TRI_vocbase_s;
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authentication and authorisation
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_auth_s {
-  char* _username;
-  char* _password;
-  bool _active;
+VocbaseContext::VocbaseContext (rest::HttpRequest* request, VocbaseManager* manager) : 
+  RequestContext(request),
+  _vocbase(0),
+  _manager(manager) {
 }
-TRI_vocbase_auth_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+VocbaseContext::~VocbaseContext () {
+          
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                            public
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads the authentication info
+/// @brief set request user by user name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the default authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DefaultAuthInfo (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reload the authentication info
-/// this must be executed after the underlying _users collection is modified
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ReloadAuthInfo (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the default authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyAuthInfo (struct TRI_vocbase_s*);
+void VocbaseContext::setRequestUserByName (string const&  name) {
+  // TODO:
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo (char const* username,
-                                      char const* password);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo2 (struct TRI_vocbase_s*,
-                                       char const* username,
-                                       char const* password);
+        
+bool VocbaseContext::authenticate () {
+  
+  if (_vocbase && _vocbase->_requireAuthentication) {    
+    // TODO: create a user and add it to the context
+    
+    return _manager->authenticate(_vocbase, _request);
+  }
+  else {
+    return true;  
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

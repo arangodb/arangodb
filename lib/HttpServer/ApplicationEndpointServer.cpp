@@ -81,13 +81,15 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
                                                       ApplicationScheduler* applicationScheduler,
                                                       ApplicationDispatcher* applicationDispatcher,
                                                       std::string const& authenticationRealm,
-                                                      HttpHandlerFactory::auth_fptr checkAuthentication)
+                                                      HttpHandlerFactory::auth_fptr checkAuthentication,
+                                                      HttpHandlerFactory::context_fptr setContext)
   : ApplicationFeature("EndpointServer"),
     _applicationServer(applicationServer),
     _applicationScheduler(applicationScheduler),
     _applicationDispatcher(applicationDispatcher),
     _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
+    _setContext(setContext),
     _handlerFactory(0),
     _servers(),
     _endpointList(),
@@ -281,6 +283,33 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   return true;
 }
 
+ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint) {
+  // create the ssl context (if possible)
+  bool ok = createSslContext();
+
+  if (! ok) {
+    return false;
+  }
+
+  Endpoint* endpoint = Endpoint::serverFactory(newEndpoint, _backlogSize);
+
+  if (endpoint == 0) {
+    LOGGER_WARNING("Could not add endpoint '" << newEndpoint << "'");
+    return false;
+  }
+
+  ok = _endpointList.addEndpoint(endpoint->getProtocol(), endpoint->getEncryption(), endpoint);
+  if (ok) {
+    _endpoints.push_back(newEndpoint);
+  }
+  else {
+    LOGGER_WARNING("Could not add endpoint '" << newEndpoint << "'");
+  }
+  
+  return ok;
+ }
+ 
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +318,7 @@ bool ApplicationEndpointServer::prepare () {
   // dump used endpoints for user information
   _endpointList.dump();
 
-  _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication);
+  _handlerFactory = new HttpHandlerFactory(_authenticationRealm, _checkAuthentication, _setContext);
 
   return true;
 }

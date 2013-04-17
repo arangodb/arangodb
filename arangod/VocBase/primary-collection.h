@@ -467,7 +467,8 @@ void TRI_DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t*);
 
 size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t*,
                                               void*,
-                                              bool (*callback)(TRI_doc_mptr_t const*, void*));
+                                              bool (*callback)(TRI_doc_mptr_t const*, 
+                                              TRI_primary_collection_t*, void*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

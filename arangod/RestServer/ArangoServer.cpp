@@ -77,6 +77,8 @@
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
 
+#include "RestServer/VocbaseManager.h"
+
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
 #include "MRServer/mr-actions.h"
@@ -399,7 +401,8 @@ void ArangoServer::buildApplicationServer () {
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
                                                              "arangodb",
-                                                             TRI_CheckAuthenticationAuthInfo);
+                                                             TRI_CheckAuthenticationAuthInfo,
+                                                             VocbaseManager::setRequestContext);
   _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
@@ -1102,6 +1105,23 @@ int ArangoServer::executeRubyConsole () {
 
 #endif
 
+typedef struct local_vocbase_defaults_s {
+  bool removeOnDrop;
+  bool removeOnCompacted;
+  uint64_t defaultMaximalSize;
+  bool defaultWaitForSync;
+  bool forceSyncShapes;
+  bool forceSyncProperties;
+  ApplicationV8* applicationV8;
+  bool requireAuthentication;
+}
+local_vocbase_defaults_t;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load a database
+////////////////////////////////////////////////////////////////////////////////
+
 static TRI_vocbase_t* openDatabase(char const* path, 
         char const* name,
         bool removeOnDrop,
@@ -1109,7 +1129,9 @@ static TRI_vocbase_t* openDatabase(char const* path,
         uint64_t defaultMaximalSize,
         bool defaultWaitForSync,
         bool forceSyncShapes,
-        bool forceSyncProperties) {
+        bool forceSyncProperties,
+        bool isSystem,
+        bool requireAuthentication) {
   
   TRI_vocbase_t* vocbase = TRI_OpenVocBase(path, name);
   vocbase->_removeOnDrop = removeOnDrop;
@@ -1118,8 +1140,219 @@ static TRI_vocbase_t* openDatabase(char const* path,
   vocbase->_defaultWaitForSync = defaultWaitForSync;
   vocbase->_forceSyncShapes = forceSyncShapes;
   vocbase->_forceSyncProperties = forceSyncProperties;
+  vocbase->_isSystem = isSystem;
+  vocbase->_requireAuthentication = requireAuthentication;
+
+  LOGGER_INFO("loaded database '" << name << "' ('" << path << "')");
   
   return vocbase;
+}
+
+static bool getBooleanValue(TRI_json_t* json, string const& name, bool defaultValue) {
+  TRI_json_t const* b = TRI_LookupArrayJson(json, name.c_str());
+  if (b != 0 && b->_type == TRI_JSON_BOOLEAN) {
+    return b->_value._boolean;
+  }
+
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read database name and configuration from document and
+///        load database
+////////////////////////////////////////////////////////////////////////////////
+
+static bool handleUserDatabase (TRI_doc_mptr_t const* document, 
+        TRI_primary_collection_t* primary, void* data) {
+  TRI_shaped_json_t shapedJson;
+
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+    
+  // get document as json
+  TRI_json_t* json = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
+  
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    // wrong document type
+    if (json) TRI_FreeJson(primary->_shaper->_memoryZone, json);
+    return true;
+  }
+  
+  TRI_json_t const* dbName = TRI_LookupArrayJson(json, "name");
+  if (dbName == 0 || dbName->_type != TRI_JSON_STRING) {
+    // database name not found
+    LOG_ERROR("Database name not found. User database not loaded!");
+    TRI_FreeJson(primary->_shaper->_memoryZone, json);
+    return true;
+  }
+
+  TRI_json_t const* dbPath = TRI_LookupArrayJson(json, "path");
+  if (dbPath == 0 || dbPath->_type != TRI_JSON_STRING) {
+    // database path not found
+    LOG_ERROR("Database path not found. User database not loaded!");
+    TRI_FreeJson(primary->_shaper->_memoryZone, json);
+    return true;
+  }
+
+  local_vocbase_defaults_t* defaults = (local_vocbase_defaults_t*) data;
+
+
+  bool waitForSync = getBooleanValue(json, "waitForSync", 
+          defaults->defaultWaitForSync);
+  bool requireAuthentication = getBooleanValue(json, "requireAuthentication", 
+          defaults->requireAuthentication);  
+  
+  // open/load the system database
+  TRI_vocbase_t* userVocbase = openDatabase(dbPath->_value._string.data, 
+        dbName->_value._string.data, 
+        defaults->removeOnDrop,
+        defaults->removeOnCompacted,
+        defaults->defaultMaximalSize,
+        waitForSync,
+        defaults->forceSyncShapes,
+        defaults->forceSyncProperties,
+        false,
+        requireAuthentication);
+  
+  if (userVocbase) {
+    VocbaseManager::manager.addUserVocbase(userVocbase);
+  }
+  
+  TRI_FreeJson(primary->_shaper->_memoryZone, json);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads user databases found in collection '_databases'
+////////////////////////////////////////////////////////////////////////////////
+
+bool ArangoServer::loadUserDatabases () {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+  local_vocbase_defaults_t data;
+
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_databases");
+
+  if (collection == NULL) {
+    LOG_INFO("collection '_databases' does not exist, no other databases available");
+    return false;
+  }
+
+  TRI_UseCollectionVocBase(_vocbase, collection);
+
+  primary = collection->_collection;
+
+  if (primary == NULL) {
+    LOG_FATAL_AND_EXIT("collection '_databases' cannot be loaded");
+  }
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
+    TRI_ReleaseCollectionVocBase(_vocbase, collection);
+    LOG_FATAL_AND_EXIT("collection '_databases' has an unknown collection type");
+  }
+
+  data.applicationV8 = _applicationV8;
+  data.defaultMaximalSize = _defaultMaximalSize;
+  data.defaultWaitForSync = _defaultWaitForSync;
+  data.forceSyncProperties = _forceSyncProperties;
+  data.forceSyncShapes = _forceSyncShapes;
+  data.removeOnCompacted = _removeOnCompacted;
+  data.removeOnDrop = _removeOnDrop;
+  data.requireAuthentication = !_applicationEndpointServer->isAuthenticationDisabled();
+  
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+    
+  TRI_DocumentIteratorPrimaryCollection(primary, &data, handleUserDatabase);
+
+  // .............................................................................
+  // outside a read transaction
+  // .............................................................................
+
+  TRI_ReleaseCollectionVocBase(_vocbase, collection);
+
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a tcp endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static bool handleEnpoint (TRI_doc_mptr_t const* document, 
+        TRI_primary_collection_t* primary, void* data) {
+  TRI_shaped_json_t shapedJson;
+
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+    
+  // get document as json
+  TRI_json_t* json = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
+  
+  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+    // wrong document type
+    if (json) TRI_FreeJson(primary->_shaper->_memoryZone, json);
+    return true;
+  }
+  
+  TRI_json_t const* endpoint = TRI_LookupArrayJson(json, "endpoint");
+  if (endpoint == 0 || endpoint->_type != TRI_JSON_STRING) {
+    // endpoint string not found
+    LOG_ERROR("Endpoint string not found!");
+    TRI_FreeJson(primary->_shaper->_memoryZone, json);
+    return true;
+  }
+
+  triagens::rest::ApplicationEndpointServer* applicationEndpointServer = 
+          (triagens::rest::ApplicationEndpointServer*) data;
+  applicationEndpointServer->addEndpoint(endpoint->_value._string.data);
+  
+  TRI_FreeJson(primary->_shaper->_memoryZone, json);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start server endpoints found in collection '_endpoints'
+////////////////////////////////////////////////////////////////////////////////
+
+bool ArangoServer::loadEndpoints () {
+  TRI_vocbase_col_t* collection;
+  TRI_primary_collection_t* primary;
+
+  collection = TRI_LookupCollectionByNameVocBase(_vocbase, "_endpoints");
+
+  if (collection == NULL) {
+    // collection '_endpoints' not found
+    return false;
+  }
+
+  TRI_UseCollectionVocBase(_vocbase, collection);
+
+  primary = collection->_collection;
+
+  if (primary == NULL) {
+    LOG_FATAL_AND_EXIT("collection '_endpoints' cannot be loaded");
+  }
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._info._type)) {
+    TRI_ReleaseCollectionVocBase(_vocbase, collection);
+    LOG_FATAL_AND_EXIT("collection '_endpoints' has an unknown collection type");
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+    
+  TRI_DocumentIteratorPrimaryCollection(primary, _applicationEndpointServer, handleEnpoint);
+
+  // .............................................................................
+  // outside a read transaction
+  // .............................................................................
+
+  TRI_ReleaseCollectionVocBase(_vocbase, collection);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1137,41 +1370,22 @@ void ArangoServer::openDatabases () {
         _defaultMaximalSize,
         _defaultWaitForSync,
         _forceSyncShapes,
-        _forceSyncProperties);
+        _forceSyncProperties,
+        true,                     // TODO: get true/false from config file
+        !_applicationEndpointServer->isAuthenticationDisabled());
 
   if (! _vocbase) {
     LOGGER_INFO("please use the '--database.directory' option");
     LOGGER_FATAL_AND_EXIT("cannot open database '" << _databasePath << "'");
   }
+
+  VocbaseManager::manager.addSystemVocbase(_vocbase);
   
-  TRI_vocbase_col_t* databaseCollection = TRI_UseCollectionByNameVocBase(_vocbase, "_databases");
-  
-  if (databaseCollection) {
-/*
-    if (primary->_primaryIndex._nrUsed > 0) {
-      void** ptr = primary->_primaryIndex._table;
-      void** end = ptr + primary->_primaryIndex._nrAlloc;
-
-      for (; ptr < end; ++ptr) {
-        if (*ptr) {
-          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-          if (d->_validTo == 0) {
-            
-            // jetzt name und path ermitteln
-            
-            ids.push_back(d->_key);
-          }
-        }
-      }
- */
-    }
-
-
-    TRI_ReleaseCollectionVocBase(_vocbase, databaseCollection);
+  if (_vocbase->_isSystem) {
+    loadUserDatabases();
+    loadEndpoints();
+    VocbaseManager::manager.addPrefixMapping ("tcp://poll:9000", "userDatabase1");
   }
-  
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1183,6 +1397,9 @@ void ArangoServer::closeSystemDatabase () {
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
+  
+  VocbaseManager::manager.closeUserVocbases();
+  
   TRI_ShutdownVocBase();
 
   Nonce::destroy();
