@@ -170,8 +170,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, dispatcherConfig)
         
         rebindNodes({
           mousedown: dispatcher.events.STARTCREATEEDGE(),
-          mouseup: dispatcher.events.FINISHCREATEEDGE(function(){
-            edgeShaper.reshapeEdges();
+          mouseup: dispatcher.events.FINISHCREATEEDGE(function(edge){
+            edgeShaper.reshapeEdge(edge);
           })
         });
         rebindEdges();
