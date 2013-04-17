@@ -235,7 +235,22 @@
       shaper;
       
       beforeEach(function() {
-        nodes = [{_id: 1}, {_id: 2}, {_id: 3}];
+        nodes = [{
+          _id: 1,
+          _data: {
+            
+          }
+        }, {
+          _id: 2,
+          _data: {
+          
+          }
+        }, {
+          _id: 3,
+          _data: {
+          
+          }
+        }];
         clicked = [];
         shaper = new NodeShaper(d3.select("svg"));
         shaper.drawNodes(nodes);
@@ -305,9 +320,9 @@
       
       it('should be able to reshape a single node only', function() {
         shaper.changeTo({label: "label"});
-        nodes[0].label = "false";
-        nodes[1].label = "true";
-        nodes[2].label = "false_again";
+        nodes[0]._data.label = "false";
+        nodes[1]._data.label = "true";
+        nodes[2]._data.label = "false_again";
         expect($("#1 text").length).toEqual(1);
         expect($("#2 text").length).toEqual(1);
         expect($("#3 text").length).toEqual(1);
@@ -325,8 +340,6 @@
         expect($("#2 text")[0].textContent).toEqual("true");        
       });
     });
-
-    
 
     describe('configured for circle', function () {
       var shaper;
@@ -522,8 +535,6 @@
       });
     });
     
-    
-    
     describe('configured for label', function () {
       var shaper;
 
@@ -534,7 +545,12 @@
       });
 
       it('should add a text element', function () {
-        var node = [{_id: 1, "label": "MyLabel"}];
+        var node = [{
+          _id: 1,
+          _data: {
+            "label": "MyLabel"
+          }
+        }];
         shaper.drawNodes(node);
         expect($("svg .node")[0]).toBeDefined();
         expect($("svg .node").length).toEqual(1);
@@ -550,10 +566,31 @@
 
       it('should ignore other attributes', function () {
         var nodes = [
-          {_id: 1, "label": "correct"},
-          {_id: 2, "alt": "incorrect"},
-          {_id: 3, "alt": "incorrect"},
-          {_id: 4, "label": "correct", "alt": "incorrect"}];
+          {
+            _id: 1, 
+            _data: {
+              "label": "correct"
+            }
+          },
+          {
+            _id: 2, 
+            _data: {
+              "alt": "incorrect"
+            }
+          },
+          {
+            _id: 3, 
+            _data: {
+              "alt": "incorrect"
+            }
+          },
+          {
+            _id: 4, 
+            _data: {
+              "label": "correct",
+              "alt": "incorrect"
+            }
+          }];
         shaper.drawNodes(nodes);
         expect($("svg #1 text")[0].textContent).toEqual("correct");
         expect($("svg #2 text")[0].textContent).toEqual("");
@@ -562,7 +599,12 @@
       });
 
       it('should also print "0" as a label', function() {
-        var node = [{_id: 1, "label": 0}];
+        var node = [{
+          _id: 1,
+          _data: {
+            "label": 0
+          }
+        }];
         shaper.drawNodes(node);
         expect($("svg .node text")[0]).toBeDefined();
         expect($("svg .node text").length).toEqual(1);
@@ -572,8 +614,10 @@
       it('should be able to switch to another label during runtime', function() {
         var node = [{
           _id: 1,
-          label: "before",
-          switched: "after"
+          _data: {
+            label: "before",
+            switched: "after"
+          }
         }];
         shaper.drawNodes(node);
         expect($("svg .node text")[0].textContent).toEqual("before");
@@ -592,11 +636,11 @@
         if (node._id === 4) {
           return "correct";
         }
-        if (node.label) {
-          return node.label;
+        if (node._data.label) {
+          return node._data.label;
         }
-        if (node.alt) {
-          return node.alt;
+        if (node._data.alt) {
+          return node._data.alt;
         }
         return "default";
       };
@@ -609,11 +653,36 @@
 
       it('should display the correct labels according to the function', function () {
         var nodes = [
-          {_id: 1, "label": "correct"},
-          {_id: 2, "alt": "correct"},
-          {_id: 3, "label": "correct", "alt": "incorrect"},
-          {_id: 4, "label": "incorrect", "alt": "incorrect"},
-          {_id: 5}
+          {
+            _id: 1,
+            _data: {
+              "label": "correct"
+            }
+          },
+          {
+            _id: 2,
+            _data: {
+              "alt": "correct"
+            }
+          },
+          {
+            _id: 3,
+            _data: {
+              "label": "correct",
+              "alt": "incorrect"
+            }
+          },
+          {
+            _id: 4,
+            _data: {
+              "label": "incorrect",
+              "alt": "incorrect"
+            }
+          },
+          {
+            _id: 5,
+            _data: {}
+          }
         ];
         shaper.drawNodes(nodes);
         expect($("text").length).toEqual(5);
@@ -712,7 +781,9 @@
       it('should draw circle elements', function () {
         var node = [{
           _id: 1,
-          "label": "correct"
+          _data: {
+            "label": "correct"
+          }
         }];
         shaper.drawNodes(node);
         expect($("svg .node").length).toEqual(1);

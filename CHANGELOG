@@ -1,9 +1,22 @@
 v1.3.0-alpha1 (XXXX-XX-XX)
------------------
+--------------------------
+
+* added API for user-defined AQL functions
+
+* issue #475: A better error message for deleting a non-existent graph
+
+* issue #474: Web interface problems with the JS Shell
+ 
+* added missing documentation for AQL UNION function
+
+* added transaction support. 
+  This provides ACID transactions for ArangoDB. Transactions can be invoked
+  using the `db._executeTransaction()` function, or the `/_api/transaction`
+  REST API.
 
 * switched to semantic versioning (at least for alpha & alpha naming)
 
-* added saveOrReplace for server-side JS
+* added saveOrReplace() for server-side JS
 
 v1.3.alpha1 (2013-04-05)
 ------------------------
@@ -15,8 +28,7 @@ v1.3.alpha1 (2013-04-05)
 * issue #454: error while creation of Collection
 
 * make `collection.count()` not recalculate the number of documents on the fly, but
-  use some internal document counters. This will work at least for non-transactional
-  collections.
+  use some internal document counters.
 
 * issue #457: invalid string value in web interface
 

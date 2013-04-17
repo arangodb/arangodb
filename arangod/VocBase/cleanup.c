@@ -138,10 +138,19 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     // always refer to a different datafile than the one that we will now unload
 
     // execute callback, sone of the callbacks might delete or free our collection
-    if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
-      TRI_barrier_datafile_cb_t* de;
+    if (element->_type == TRI_BARRIER_DATAFILE_DROP_CALLBACK) {
+      TRI_barrier_datafile_drop_cb_t* de;
 
-      de = (TRI_barrier_datafile_cb_t*) element;
+      de = (TRI_barrier_datafile_drop_cb_t*) element;
+
+      de->callback(de->_datafile, de->_data);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+      // next iteration
+    }
+    else if (element->_type == TRI_BARRIER_DATAFILE_RENAME_CALLBACK) {
+      TRI_barrier_datafile_rename_cb_t* de;
+
+      de = (TRI_barrier_datafile_rename_cb_t*) element;
 
       de->callback(de->_datafile, de->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);

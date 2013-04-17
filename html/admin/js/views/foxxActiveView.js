@@ -4,7 +4,8 @@ window.FoxxActiveView = Backbone.View.extend({
   template: new EJS({url: 'js/templates/foxxActiveView.ejs'}),
   
   events: {
-    'click .icon-edit': 'editFoxx'
+    'click .icon-edit': 'editFoxx',
+    'click' : 'showDocu'
   },
   
   initialize: function(){
@@ -14,6 +15,11 @@ window.FoxxActiveView = Backbone.View.extend({
   editFoxx: function(event) {
     event.stopPropagation();
     window.App.navigate("application/installed/" + encodeURIComponent(this.model.get("_key")), {trigger: true});
+  },
+  
+  showDocu: function(event) {
+    event.stopPropagation();
+    window.App.navigate("application/documentation/" + encodeURIComponent(this.model.get("_key")), {trigger: true});
   },
     
   render: function(){

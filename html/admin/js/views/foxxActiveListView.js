@@ -18,7 +18,6 @@ var FoxxActiveListView = Backbone.View.extend({
         self.render();
       },
       error: function() {
-        console.log("Erroreoror!!");
       }
     });
     this.render();

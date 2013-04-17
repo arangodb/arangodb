@@ -355,19 +355,27 @@
         edges = [{
           source: n1,
           target: n2,
-          label: "lbl1"
+          _data: {
+            label: "lbl1"
+          }
         },{
           source: n2,
           target: n3,
-          label: "lbl2"
+          _data: {
+            label: "lbl2"
+          }
         },{
           source: n3,
           target: n4,
-          label: "lbl3"
+          _data: {
+            label: "lbl3"
+          }
         },{
           source: n4,
           target: n1,
-          label: "lbl1"
+          _data: {
+            label: "lbl1"
+          }
         }],
         shaper = new EdgeShaper(d3.select("svg"),
           {
@@ -586,22 +594,30 @@
           {
             "source": nodes[0],
             "target": nodes[1],
-            "label": "first"
+            _data: {
+              label: "first"
+            }
           },
           {
             "source": nodes[1],
             "target": nodes[2],
-            "label": "second"
+            _data: {
+              label: "second"
+            }
           },
           {
             "source": nodes[2],
             "target": nodes[3],
-            "label": "third"
+            _data: {
+              label: "third"
+            }
           },
           {
             "source": nodes[3],
             "target": nodes[0],
-            "label": "fourth"
+            _data: {
+              label: "fourth"
+            }
           }
         ];
         shaper.drawEdges(edges);
@@ -637,7 +653,9 @@
           {
             "source": nodes[0],
             "target": nodes[1],
-            "label": "first"
+            _data: {
+              "label": "first"
+            }
           }
         ];
         shaper.drawEdges(edges);
@@ -651,22 +669,29 @@
           {
             "source": nodes[0],
             "target": nodes[1],
-            "label": "correct"
+            _data: {
+              "label": "correct"
+            }
           },
           {
             "source": nodes[1],
             "target": nodes[2],
-            "alt": "incorrect"
+            _data: {
+              "alt": "incorrect"
+            }
           },
           {
             "source": nodes[2],
-            "target": nodes[3]
+            "target": nodes[3],
+            _data: {}
           },
           {
             "source": nodes[3],
             "target": nodes[0],
-            "label": "correct",
-            "alt": "incorrect"
+            _data: {
+              "label": "correct",
+              "alt": "incorrect"
+            }
           }
         ];
         shaper.drawEdges(edges);
@@ -684,12 +709,16 @@
           {
             "source": nodes[0],
             "target": nodes[1],
-            "label": "old"
+            _data: {
+              "label": "old"
+            }
           },
           {
             "source": nodes[1],
             "target": nodes[0],
-            "new": "new"
+            _data: {
+              "new": "new"
+            }
           }
         ];
         shaper.drawEdges(edges);
