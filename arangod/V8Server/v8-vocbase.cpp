@@ -68,6 +68,7 @@
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
+#include "RestServer/VocbaseManager.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -826,8 +827,7 @@ static TRI_vocbase_t* UnwrapVocBase (v8::Handle<v8::Object> vocbaseObject) {
     return TRI_UnwrapClass<TRI_vocbase_t>(vocbaseObject, WRP_VOCBASE_TYPE);
   }
   else {
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-    return (TRI_vocbase_t*) v8g->_vocbase;  
+    return GetContextVocBase();  
   }
 }
 
@@ -5849,6 +5849,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   result->Set(j++, v8::String::New("_version()"));
   result->Set(j++, v8::String::New("_path()"));
   result->Set(j++, v8::String::New("_name()"));
+  result->Set(j++, v8::String::New("_isSystem()"));
 
   return scope.Close(result);
 }
@@ -6231,6 +6232,76 @@ static v8::Handle<v8::Value> JS_NameVocbase (v8::Arguments const& argv) {
   return scope.Close(v8::String::New(vocbase->_name));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database type
+///
+/// @FUN{@FA{db}._isSystem()}
+///
+/// Returns the database type.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsSystemVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = UnwrapVocBase(argv.Holder());
+  
+  return scope.Close(v8::Boolean::New(vocbase->_isSystem));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database type
+///
+/// @FUN{USE_DATABASES}
+///
+/// Returns the database type.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UseVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "USE_DATABASE(<database name>)");
+  }
+
+  string name = TRI_ObjectToString(argv[0]);
+  
+  TRI_vocbase_t* vocbase = VocbaseManager::manager.lookupVocbaseByName(name);
+  if (vocbase) {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+    v8g->_vocbase = vocbase;
+    return scope.Close(TRI_WrapVocBase(vocbase));
+  }
+    
+  return scope.Close(v8::Boolean::New(false));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of database names
+///
+/// @FUN{SHOW_DATABASES}
+///
+/// Returns the list of database names
+////////////////////////////////////////////////////////////////////////////////
+/*
+static v8::Handle<v8::Value> JS_ListVocbases (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() > 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "SHOW_DATABASES()");
+  }
+
+  
+  
+  TRI_vocbase_t* vocbase = VocbaseManager::manager.lookupVocbaseByName(name);
+  if (vocbase) {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
+    v8g->_vocbase = vocbase;
+    return scope.Close(TRI_WrapVocBase(vocbase));
+  }
+    
+  return scope.Close(v8::Boolean::New(false));
+}
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -6823,6 +6894,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
   TRI_AddMethodVocbase(rt, "_path", JS_PathVocbase);
   TRI_AddMethodVocbase(rt, "_name", JS_NameVocbase);
+  TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemVocbase);
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
@@ -6947,6 +7019,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
+  
+  TRI_AddGlobalFunctionVocbase(context, "USE_DATABASE", JS_UseVocbase);  
 
   // .............................................................................
   // create global variables

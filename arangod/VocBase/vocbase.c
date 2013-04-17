@@ -1226,6 +1226,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path, char const* name) {
   vocbase->_lockFile = lockFile;
   vocbase->_path = TRI_DuplicateString(path);
   vocbase->_name = TRI_DuplicateString(name);
+  vocbase->_isSystem = false;
+  vocbase->_requireAuthentication = true;
 
   // init AQL functions
   vocbase->_functions = TRI_InitialiseFunctionsAql();

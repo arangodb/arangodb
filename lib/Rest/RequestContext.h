@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase authentication and authorisation
+/// @brief request context
 ///
 /// @file
 ///
@@ -21,44 +21,54 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_AUTH_H
-#define TRIAGENS_VOC_BASE_AUTH_H 1
+#ifndef TRIAGENS_REST_REQUEST_CONTEXT_H
+#define TRIAGENS_REST_REQUEST_CONTEXT_H 1
 
-#include "BasicsC/common.h"
+#include "Rest/RequestUser.h"
+#include "Rest/HttpRequest.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace triagens {
+  namespace rest {
+
+    class HttpRequest;
+    
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class RequestContext
+// -----------------------------------------------------------------------------
+
+    class RequestContext {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-struct TRI_vocbase_s;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authentication and authorisation
+/// @brief create the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_auth_s {
-  char* _username;
-  char* _password;
-  bool _active;
-}
-TRI_vocbase_auth_t;
+        RequestContext (HttpRequest* request) : 
+          _request(request) {
+          
+        }
+
+        ~RequestContext () {
+        }
+        
+    private:
+
+        RequestContext (const RequestContext&);
+        RequestContext& operator= (const RequestContext&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -69,61 +79,55 @@ TRI_vocbase_auth_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads the authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the default authentication info
+/// @brief get request user
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DefaultAuthInfo (struct TRI_vocbase_s*);
+        virtual RequestUser* getRequestUser () {
+          return 0;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reload the authentication info
-/// this must be executed after the underlying _users collection is modified
+/// @brief authenticate user
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReloadAuthInfo (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the default authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyAuthInfo (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo (char const* username,
-                                      char const* password);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckAuthenticationAuthInfo2 (struct TRI_vocbase_s*,
-                                       char const* username,
-                                       char const* password);
-
+        virtual bool authenticate () = 0;
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __cplusplus
-}
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the request of the context
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpRequest* _request;
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+    };
+
+  }
+}
 
 #endif
 
