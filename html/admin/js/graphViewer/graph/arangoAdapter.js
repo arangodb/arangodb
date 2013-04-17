@@ -405,8 +405,8 @@ function ArangoAdapter(nodes, edges, config) {
       success: function(data) {
         data._from = edgeToAdd.source._id;
         data._to = edgeToAdd.target._id;
-        insertEdge(data);
-        callback(data);
+        var edge = insertEdge(data);
+        callback(edge);
       },
       error: function(data) {
         throw data.statusText;

@@ -46,7 +46,7 @@
     });
 
     afterEach(function () {
-      document.body.removeChild(svg);
+      //document.body.removeChild(svg);
     });
     
     
@@ -627,12 +627,6 @@
         expect($("#2-3 text")[0].textContent).toEqual("second");
         expect($("#3-4 text")[0].textContent).toEqual("third");
         expect($("#4-1 text")[0].textContent).toEqual("fourth");
-        
-        // All labels should be printed in black
-        expect($("#1-2 text").attr("stroke")).toEqual("black");
-        expect($("#2-3 text").attr("stroke")).toEqual("black");
-        expect($("#3-4 text").attr("stroke")).toEqual("black");
-        expect($("#4-1 text").attr("stroke")).toEqual("black");
         
       });
       

@@ -340,7 +340,6 @@
       
     });
     
-    
     describe('set up with jsonAdapter and click Expand rest default', function() {
       // This waittime is rather optimistic, on a slow machine this has to be increased
       var waittime = 100, 
@@ -414,8 +413,6 @@
         waits(waittime);
       
       });
-    
-      
     
       it("should be able to expand a node", function() {
   
