@@ -332,6 +332,9 @@ swagger:
 		< @srcdir@/js/actions/api-index.js  > @srcdir@/html/admin/api-docs/index
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
+		< @srcdir@/js/actions/api-aqlfunction.js  > @srcdir@/html/admin/api-docs/aqlfunction
+
+	python @srcdir@/Documentation/Scripts/generateSwagger.py \
 		< @srcdir@/js/actions/api-simple.js  > @srcdir@/html/admin/api-docs/simple
 
 	python @srcdir@/Documentation/Scripts/generateSwagger.py \
