@@ -135,6 +135,7 @@ function POST_api_cursor(req, res) {
   var json = actions.getJsonBody(req, res);
 
   if (json === undefined) {
+    actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
     return;
   }
 

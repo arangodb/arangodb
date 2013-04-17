@@ -48,6 +48,33 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief apply a prefix filter on the functions
+////////////////////////////////////////////////////////////////////////////////
+
+var getFiltered = function (group) {
+  var result = [ ];
+
+  if (group !== null && group !== undefined && group.length > 0) {
+    var prefix = group.toUpperCase();
+
+    if (group.substr(group.length - 1, 1) !== ':') {
+      prefix += ':';
+    }
+   
+    getStorage().toArray().forEach(function (f) {
+      if (f.name.toUpperCase().substr(0, prefix.length) === prefix) {
+        result.push(f);
+      }
+    });
+  }
+  else {
+    result = getStorage().toArray();
+  }
+
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a function name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -109,7 +136,7 @@ var getStorage = function () {
   if (functions === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = "collection _aqlfunctions not found";
+    err.errorMessage = "collection '_aqlfunctions' not found";
 
     throw err;
   }
@@ -131,7 +158,22 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_aqlfunctions_unregister
 /// @brief delete an existing AQL user function
+///
+/// @FUN{aqlfunctions.unregister(@FA{name})}
+///
+/// Unregisters an existing AQL user function, identified by the fully qualified
+/// function name.
+///
+/// Trying to unregister a function that does not exist will result in an 
+/// exception.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangosh> require("org/arangodb/aql/functions").unregister("myfunctions:temperature:celsiustofahrenheit");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
 var unregisterFunction = function (name) {
@@ -148,7 +190,7 @@ var unregisterFunction = function (name) {
   if (func === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code;
-    err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.message;
+    err.errorMessage = internal.sprintf(arangodb.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.message, name);
 
     throw err;
   }
@@ -160,16 +202,79 @@ var unregisterFunction = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_aqlfunctions_unregister_group
+/// @brief delete a group of AQL user functions
+///
+/// @FUN{aqlfunctions.unregisterGroup(@FA{prefix})}
+///
+/// Unregisters a group of AQL user function, identified by a common function 
+/// group prefix.
+///
+/// This will return the number of functions unregistered.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions:temperature");
+///
+/// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+  
+var unregisterFunctionsGroup = function (group) {
+  if (group.length === 0) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message;
+  }
+
+  var deleted = 0;
+  
+  getFiltered(group).forEach(function (f) {
+    getStorage().remove(f._id);
+    deleted++;
+  });
+  
+  if (deleted > 0) {
+    internal.reloadAqlFunctions();
+  }
+
+  return deleted;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_aqlfunctions_register
 /// @brief register an AQL user function
+///
+/// @FUN{aqlfunctions.register(@FA{name}, @FA{code})}
+///
+/// Registers an AQL user function, identified by a fully qualified function 
+/// name. The function code in @FA{code} must be specified as a Javascript
+/// function or a string representation of a Javascript function. 
+///
+/// If a function identified by @FA{name} already exists, the previous function
+/// definition will be updated.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangosh> require("org/arangodb/aql/functions").register("myfunctions:temperature:celsiustofahrenheit", 
+///                   function (celsius) {
+///                     return celsius * 1.8 + 32; 
+///                   });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   
 var registerFunction = function (name, code, isDeterministic) {
   // validate input
   validateName(name);
   code = stringifyFunction(code, name);
+
+  var exists = false;
     
   try {
     unregisterFunction(name);
+    exists = true;
   }
   catch (err) {
   }
@@ -184,15 +289,52 @@ var registerFunction = function (name, code, isDeterministic) {
   getStorage().save(data);
   internal.reloadAqlFunctions();
 
-  return true;
+  return exists;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the AQL user functons
+/// @fn JSF_aqlfunctions_toArray
+/// @brief list all AQL user functions
+///
+/// @FUN{aqlfunctions.toArray()}
+///
+/// Returns all previously registered AQL user functions, with their fully 
+/// qualified names and function code.
+/// 
+/// The result may optionally be restricted to a specified group of functions
+/// by specifying a group prefix:
+///
+/// @FUN{aqlfunctions.toArray(@FA{prefix})}
+///
+/// @EXAMPLES
+///
+/// To list all available user functions:
+///
+/// @code
+/// arangosh> require("org/arangodb/aql/functions").toArray();
+/// @endcode
+///
+/// To list all available user functions in the `myfunctions` namespace:
+///
+/// @code
+/// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions");
+/// @endcode
+///
+/// To list all available user functions in the `myfunctions:temperature` namespace:
+///
+/// @code
+/// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions:temperature");
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
+  
+var toArrayFunctions = function (group) {
+  var result = [ ];
 
-var reloadFunctions = function () {
-  throw "cannot use abstract reload function";
+  getFiltered(group).forEach(function (f) {
+    result.push({ name: f.name, code: f.code });
+  });
+
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,9 +350,10 @@ var reloadFunctions = function () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.register   = registerFunction;
-exports.unregister = unregisterFunction;
-exports.reload     = reloadFunctions;
+exports.unregister      = unregisterFunction;
+exports.unregisterGroup = unregisterFunctionsGroup;
+exports.register        = registerFunction;
+exports.toArray         = toArrayFunctions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

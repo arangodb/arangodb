@@ -4,5 +4,6 @@
 
   "apps": {
     "/": "aardvark.js"
-  }
+  },
+  "lib": "."
 }

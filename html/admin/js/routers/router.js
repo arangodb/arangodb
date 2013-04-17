@@ -18,7 +18,7 @@ $(document).ready(function() {
       "application/available/:key"          : "applicationInstall",
       "applications/installed"              : "applicationsInstalled",
       "applications/available"              : "applicationsAvailable",
-      "applications/documentation"          : "applicationsDocumentation",
+      "application/documentation/:key"     : "appDocumentation",
       "graph"                               : "graph"
       
     },
@@ -223,12 +223,9 @@ $(document).ready(function() {
       
     },
     
-    
-    applicationsDocumentation: function() {
-      if (this.appDocuView === undefined) {
-        this.appDocuView = new window.AppDocumentationView();
-      }
-      this.appDocuView.render();
+    appDocumentation: function(key) {
+      var docuView = new window.AppDocumentationView({key: key});
+      docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     }
 

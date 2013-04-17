@@ -58,7 +58,7 @@
 
 #define ARG_CHECK                                                                                                   \
   if (! CheckArgumentType(parameter, &allowed)) {                                                                   \
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, function->_externalName);      \
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, NormalizeName(function));      \
     return false;                                                                                                   \
   }
 
@@ -121,6 +121,24 @@ static param_t InitParam (void) {
   param._regex      = false;
 
   return param;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize function name
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* NormalizeName (const TRI_aql_function_t* const function) {
+  const char* pos;
+
+  TRI_ASSERT_MAINTAINER(function != NULL);
+  TRI_ASSERT_MAINTAINER(function->_externalName != NULL);
+
+  pos = strchr(function->_externalName, ':');
+  if (pos == NULL) {
+    return function->_externalName;
+  }
+
+  return (pos + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -850,7 +868,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate number of arguments
   if (n < function->_minArgs || n > function->_maxArgs) {
     // invalid number of arguments
-    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, function->_externalName);
+    TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, NormalizeName(function));
     return false;
   }
 
